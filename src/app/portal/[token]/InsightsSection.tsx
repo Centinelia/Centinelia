@@ -3,6 +3,17 @@
 import { useEffect, useState, useCallback } from 'react';
 import { CheckCircle, X, RefreshCw, ArrowRight } from 'lucide-react';
 import InfoTooltip from '@/components/InfoTooltip';
+import { MEERKAT_MAP } from '@/lib/portal/meerkat-roles';
+
+// Infiere meerkat por el nombre exacto (Nia, Noah, Nox, Niva, Sofía, Neo,
+// Nash, Nova, Naia). Fallback a null si es un nombre custom.
+function meerkatByName(name: string): { color: string | null; img: string | null } {
+  const key = name.trim().toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const m = Object.values(MEERKAT_MAP).find(mk => mk.nombre?.toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '') === key);
+  return { color: m?.color ?? null, img: m?.imagen ?? null };
+}
 
 interface Rec {
   id:            string;
@@ -264,20 +275,41 @@ export default function InsightsSection({ token }: { token: string }) {
         </div>
       ) : (
         <div className="flex flex-col" style={{ borderTop: '1px solid #F0EDF9' }}>
-          {grouped.map(([agentName, recs], gIdx) => (
+          {grouped.map(([agentName, recs], gIdx) => {
+            const mk = meerkatByName(agentName);
+            const accent = mk.color ?? '#6C3BFF';
+            return (
             <div key={agentName}
               style={{ borderBottom: gIdx === grouped.length - 1 ? 'none' : '1px solid #F0EDF9' }}>
-              {/* Agent header */}
-              <div className="px-5 py-3" style={{ background: '#FAFAFB' }}>
-                <p className="text-[11px] font-semibold uppercase tracking-widest"
-                  style={{ color: '#6B6480' }}>
+              {/* Agent header con avatar del meerkat y su color */}
+              <div className="flex items-center gap-2.5 px-5 py-3" style={{ background: '#FAFAFB' }}>
+                {mk.img ? (
+                  <img
+                    src={mk.img}
+                    alt={agentName}
+                    style={{
+                      width: 26, height: 26, borderRadius: '50%',
+                      objectFit: 'cover', objectPosition: '50% 8%',
+                      border: `1.5px solid ${accent}45`,
+                      background: '#ffffff',
+                      flexShrink: 0,
+                    }}
+                  />
+                ) : (
+                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0"
+                    style={{ background: `${accent}20`, color: accent }}>
+                    {agentName.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <span className="text-[12px] font-semibold" style={{ color: accent }}>
                   {agentName}
-                  {recs[0]?.agent_role && (
-                    <span className="font-normal normal-case tracking-normal ml-1.5" style={{ color: '#9B8FB5' }}>
-                      · {recs[0].agent_role}
-                    </span>
-                  )}
-                </p>
+                </span>
+                {recs[0]?.agent_role && (
+                  <span className="text-[11px] px-1.5 py-0.5 rounded-full font-medium"
+                    style={{ background: `${accent}12`, color: accent }}>
+                    {recs[0].agent_role}
+                  </span>
+                )}
               </div>
 
               {/* Rec rows */}
@@ -345,7 +377,8 @@ export default function InsightsSection({ token }: { token: string }) {
                 </div>
               ))}
             </div>
-          ))}
+          );
+          })}
         </div>
       )}
     </div>

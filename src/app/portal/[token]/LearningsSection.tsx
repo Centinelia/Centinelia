@@ -3,11 +3,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Brain, Check, X, Clock, ChevronDown, BookOpen, ShieldCheck } from 'lucide-react';
 import { EmptyState } from '@/components/portal-ui';
+import { MEERKAT_MAP } from '@/lib/portal/meerkat-roles';
 
 interface AgentRef {
   agent_name:    string | null;
   business_name: string;
   role:          string | null;
+  features?:     Record<string, unknown> | null;
 }
 
 interface Learning {
@@ -24,10 +26,12 @@ interface Learning {
 }
 
 interface AgentGroup {
-  agent_id:   string;
-  label:      string;
-  role:       string | null;
-  learnings:  Learning[];
+  agent_id:       string;
+  label:          string;
+  role:           string | null;
+  meerkatColor:   string | null;
+  meerkatImg:     string | null;
+  learnings:      Learning[];
 }
 
 const CATEGORY_LABELS: Record<'role_kb' | 'guardrails', { label: string; icon: typeof BookOpen; hint: string }> = {
@@ -36,12 +40,19 @@ const CATEGORY_LABELS: Record<'role_kb' | 'guardrails', { label: string; icon: t
 };
 
 const SOURCE_LABELS: Record<string, string> = {
-  call:     'llamada',
-  email:    'correo',
-  chat:     'chat',
-  document: 'documento',
-  task:     'tarea',
+  call:     'Llamada',
+  email:    'Correo',
+  chat:     'Chat',
+  document: 'Documento',
+  task:     'Tarea',
 };
+
+function meerkatFor(va: AgentRef | null): { color: string | null; img: string | null } {
+  const id = (va?.features as { meerkat_role_id?: string } | undefined)?.meerkat_role_id;
+  if (!id) return { color: null, img: null };
+  const m = MEERKAT_MAP[id as keyof typeof MEERKAT_MAP];
+  return { color: m?.color ?? null, img: m?.imagen ?? null };
+}
 
 function sourceColor(source: string | null | undefined): string {
   if (source === 'email')    return '#0ea5e9';
@@ -54,7 +65,11 @@ function sourceColor(source: string | null | undefined): string {
 function agentLabel(l: Learning): string {
   const va = l.voice_agents;
   if (!va) return 'Empleado';
-  return va.agent_name ?? va.business_name;
+  // Preferimos el nombre del empleado (Nia, Noah, Sofía), no el del negocio.
+  // Antes: fallback a business_name mostraba 'Pneuma Studio · recepcionista'
+  // que es raro (Pneuma no es empleado, es la org). Ahora fallback a 'Empleado'.
+  const name = (va.agent_name ?? '').trim();
+  return name || 'Empleado';
 }
 
 function timeAgo(iso: string): string {
@@ -70,11 +85,14 @@ function groupByAgent(list: Learning[]): AgentGroup[] {
   const map = new Map<string, AgentGroup>();
   for (const l of list) {
     if (!map.has(l.agent_id)) {
+      const mk = meerkatFor(l.voice_agents);
       map.set(l.agent_id, {
-        agent_id:  l.agent_id,
-        label:     agentLabel(l),
-        role:      l.voice_agents?.role ?? null,
-        learnings: [],
+        agent_id:     l.agent_id,
+        label:        agentLabel(l),
+        role:         l.voice_agents?.role ?? null,
+        meerkatColor: mk.color,
+        meerkatImg:   mk.img,
+        learnings:    [],
       });
     }
     map.get(l.agent_id)!.learnings.push(l);
@@ -206,19 +224,39 @@ export default function LearningsSection({ token, canApprove = true }: { token: 
               <div key={group.agent_id}
                 style={{ borderBottom: gIdx === groups.length - 1 ? 'none' : '1px solid #F0EDF9' }}>
 
-                {/* Agent header */}
+                {/* Agent header — con avatar del meerkat y su color de rol */}
                 <div className="flex items-center gap-2.5 px-5 py-3"
                   style={{ background: '#FAFAFB' }}>
-                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0"
-                    style={{ background: 'rgba(108,59,255,0.15)', color: '#6C3BFF' }}>
-                    {group.label.charAt(0).toUpperCase()}
-                  </div>
-                  <span className="text-[12px] font-semibold" style={{ color: '#1A0A3B' }}>
+                  {group.meerkatImg ? (
+                    <img
+                      src={group.meerkatImg}
+                      alt={group.label}
+                      style={{
+                        width: 26, height: 26, borderRadius: '50%',
+                        objectFit: 'cover', objectPosition: '50% 8%',
+                        border: `1.5px solid ${group.meerkatColor ?? '#6C3BFF'}45`,
+                        background: '#ffffff',
+                        flexShrink: 0,
+                      }}
+                    />
+                  ) : (
+                    <div className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0"
+                      style={{
+                        background: `${group.meerkatColor ?? '#6C3BFF'}20`,
+                        color:      group.meerkatColor ?? '#6C3BFF',
+                      }}>
+                      {group.label.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <span className="text-[12px] font-semibold" style={{ color: group.meerkatColor ?? '#1A0A3B' }}>
                     {group.label}
                   </span>
                   {group.role && (
                     <span className="text-[11px] px-1.5 py-0.5 rounded-full font-medium"
-                      style={{ background: 'rgba(108,59,255,0.1)', color: '#6C3BFF' }}>
+                      style={{
+                        background: `${group.meerkatColor ?? '#6C3BFF'}12`,
+                        color:      group.meerkatColor ?? '#6C3BFF',
+                      }}>
                       {group.role}
                     </span>
                   )}
@@ -409,7 +447,10 @@ export default function LearningsSection({ token, canApprove = true }: { token: 
           </div>
 
           <div className="flex flex-col" style={{ borderTop: '1px solid #F0EDF9' }}>
-            {visibleApproved.map((l, idx) => (
+            {visibleApproved.map((l, idx) => {
+              const mk = meerkatFor(l.voice_agents);
+              const agentColor = mk.color ?? '#6B6480';
+              return (
               <div key={l.id}
                 className="flex items-start gap-2.5 px-5 py-3"
                 style={{ borderBottom: idx === visibleApproved.length - 1 && approved.length <= 12 ? 'none' : '1px solid #F0EDF9' }}>
@@ -419,14 +460,22 @@ export default function LearningsSection({ token, canApprove = true }: { token: 
                     {l.content}
                   </p>
                   <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                    <span className="text-[10px] font-medium" style={{ color: '#6B6480' }}>
+                    <span className="text-[10px] font-semibold" style={{ color: agentColor }}>
                       {agentLabel(l)}
                     </span>
                     {l.source && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
                         style={{ background: `${sourceColor(l.source)}18`, color: sourceColor(l.source) }}>
                         {SOURCE_LABELS[l.source] ?? l.source}
-                        {l.confidence && l.confidence >= 0.85 ? ' · auto' : ''}
+                      </span>
+                    )}
+                    {typeof l.confidence === 'number' && l.confidence >= 0.85 && (
+                      <span
+                        className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+                        title="Aprendizaje incorporado sin necesidad de tu aprobación (alta certeza)"
+                        style={{ background: 'rgba(34,197,94,0.10)', color: '#16a34a', border: '1px solid rgba(34,197,94,0.25)' }}
+                      >
+                        Sin revisión humana
                       </span>
                     )}
                     {l.category && CATEGORY_LABELS[l.category] && (
@@ -439,7 +488,8 @@ export default function LearningsSection({ token, canApprove = true }: { token: 
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
             {approved.length > 12 && (
               <button
                 onClick={() => setShowAllApproved(v => !v)}

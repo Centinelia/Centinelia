@@ -117,7 +117,9 @@ export async function POST(_req: NextRequest, { params }: Params) {
 
   const [orgRes, agentsRes] = await Promise.all([
     supabase.from('organizations').select('insight_mode').eq('portal_email', portalEmail).single(),
-    supabase.from('voice_agents').select('id, business_name, role').eq('portal_email', portalEmail).eq('active', true),
+    // Incluye agent_name + features (meerkat_role_id) para que el insight
+    // muestre 'Noah' en vez de 'Pneuma Studio' y colorée por rol.
+    supabase.from('voice_agents').select('id, agent_name, business_name, role, features').eq('portal_email', portalEmail).eq('active', true),
   ]);
 
   const rawMode = orgRes.data?.insight_mode ?? 'rules';
@@ -177,11 +179,15 @@ export async function POST(_req: NextRequest, { params }: Params) {
     const calls     = thisRes.data ?? [];
     const prevCalls = prevRes.data ?? [];
 
+    // Prompt-side: usar el nombre del empleado (Noah, Nia) no el business
+    // para que el LLM redacte 'Noah pidió confirmación...' en vez de
+    // 'Pneuma Studio pidió...'.
+    const promptAgentName = (agent as { agent_name?: string | null }).agent_name?.trim() || agent.business_name;
     let recs: Awaited<ReturnType<typeof generateLLMInsights>>;
     if (mode === 'llm') {
-      recs = await generateLLMInsights({ agentId: agent.id, agentName: agent.business_name, agentRole: agent.role ?? '', calls, prevWeekCalls: prevCalls });
+      recs = await generateLLMInsights({ agentId: agent.id, agentName: promptAgentName, agentRole: agent.role ?? '', calls, prevWeekCalls: prevCalls });
     } else {
-      recs = await generateRulesInsights({ agentId: agent.id, agentName: agent.business_name, calls, prevWeekCalls: prevCalls });
+      recs = await generateRulesInsights({ agentId: agent.id, agentName: promptAgentName, calls, prevWeekCalls: prevCalls });
     }
 
     for (let j = 0; j < recs.length; j++) {
@@ -195,7 +201,9 @@ export async function POST(_req: NextRequest, { params }: Params) {
       allRows.push({
         org_id:        portalEmail,
         agent_id:      agent.id,
-        agent_name:    agent.business_name,
+        // Preferir agent_name (Noah/Sofia/Nia) sobre business_name (Pneuma Studio).
+        // Antes ese fallback rompía el display en el portal.
+        agent_name:    (agent as { agent_name?: string | null }).agent_name?.trim() || agent.business_name,
         agent_role:    agent.role ?? null,
         week_start:    weekStart,
         title:         r.title,

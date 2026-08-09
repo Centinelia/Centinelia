@@ -237,8 +237,17 @@ export async function generateLLMInsights(opts: {
 
   // Final instruction considers all sources
   lines.push('');
-  lines.push('Genera entre 2 y 4 recomendaciones accionables considerando toda la actividad (no solo llamadas). Prioriza impacto en negocio: leads, citas, ventas, retencion. Cada recomendacion debe referenciar datos concretos.');
-  lines.push('Responde SOLO con un array JSON valido:');
+  lines.push('Genera entre 2 y 4 recomendaciones accionables considerando toda la actividad (no solo llamadas). Prioriza impacto en negocio: leads, citas, ventas, retención.');
+  lines.push('');
+  lines.push('REGLAS DE LENGUAJE (obligatorias):');
+  lines.push('- Habla como un mentor humano al dueño de un pequeño negocio en México. Nunca uses jerga técnica.');
+  lines.push('- PROHIBIDO mencionar: CES, "dimensiones", "score", "métrica", "puntaje X/5", "auto-evaluación", "resolución autónoma".');
+  lines.push('- No incluyas fracciones ni porcentajes crudos (3/5, 2.7/5, 45%). Traduce a palabras: "poca claridad", "clientes preguntando dos veces", "se está saturando", "cerró bien la venta".');
+  lines.push('- Cada title es 6-10 palabras describiendo el cambio de comportamiento (no el número que lo dispara). Ej: "Confirma cada pedido antes de cerrar la llamada" en vez de "Mejorar CES en Resolución".');
+  lines.push('- Cada body en 2-3 oraciones simples: qué pasó ("noté que en X llamadas pediste que repitieran"), qué probar ("intenta decir Y en vez de Z"), qué esperas ("los clientes se van a sentir escuchados y regresarán más").');
+  lines.push('- Cita ejemplos concretos de las notas si existen, con lenguaje del negocio, no vocabulario de evaluación.');
+  lines.push('');
+  lines.push('Responde SOLO con un array JSON válido:');
   lines.push('[{"title":"...","body":"...","metric_key":"...","current_value":0,"priority":"high|medium|low"}]');
 
   const __t = Date.now();
