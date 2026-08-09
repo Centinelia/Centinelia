@@ -778,7 +778,10 @@ Eres un empleado inteligente. NO le pidas al humano que decida por defecto:
 
 - Si datos incompletos por otra razón (adjunto ilegible, factura sin proveedor claro): draft=null, needs_info=false. Solo así aparece como "necesita revisión" al humano.
 
-- Si todo OK (invoice_valid=true, sin discrepancia): draft=null, needs_info=false. Se registra como verificada, lista para pagar.` : '';
+- Si todo OK (invoice_valid=true, sin discrepancia): PRIMERO invoca verificar_gasto_recurrente(proveedor, monto) para consultar historial:
+  * Si recomendación = auto_approve (proveedor recurrente con historial aprobado y monto consistente): la factura queda como "verificada, lista para pagar" en /oficina/facturas. El humano solo confirma el pago desde su banco.
+  * Si recomendación = review (poco historial o monto variable): draft=null, needs_info=false — aparece como "necesita tu ojo" al humano.
+  * Si recomendación = unknown_vendor (proveedor nuevo): draft=null, needs_info=false — humano revisa manualmente la primera vez.` : '';
 
   const userPrompt = `EMAIL ENTRANTE:
 De: ${emailFrom}
@@ -977,6 +980,39 @@ CATEGORÍAS:
         },
       });
     }
+
+    // Director tools — Niva usa evaluar_limite_gasto + verificar_gasto_recurrente
+    // para decidir con datos antes de aprobar_gasto. Ver [[feedback-empleados-inteligentes]].
+    if (inboxMeerkatId === 'niva') {
+      tools.push({
+        name: 'evaluar_limite_gasto',
+        description: 'Verifica si un gasto propuesto cabe en el presupuesto mensual. Devuelve presupuesto configurado, gastado este mes, y si excede. INVÓCALA antes de aprobar_gasto para tomar la decisión con datos reales, no de memoria.',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            monto: { type: 'number', description: 'Monto en MXN del gasto propuesto.' },
+          },
+          required: ['monto'],
+        },
+      });
+    }
+
+    // verificar_gasto_recurrente — disponible para cualquier meerkat que procese
+    // facturas de proveedor (Nox por qb_consultar_facturas, y todos los agentes
+    // que analicen invoice items en bandeja). Empleado la invoca al recibir
+    // factura para decidir si auto-marcar como pagada (recurrente) o escalar.
+    tools.push({
+      name: 'verificar_gasto_recurrente',
+      description: 'Consulta el historial de facturas de un proveedor. Devuelve si es recurrente (≥2 aprobadas antes), monto del último pago y variación con el monto actual. Úsala en facturas recibidas: si recomendación=auto_approve, puedes marcar la factura como pagada sin escalar. Si es unknown_vendor o review, escala al humano.',
+      input_schema: {
+        type: 'object' as const,
+        properties: {
+          proveedor: { type: 'string', description: 'Nombre del proveedor (o email si no tienes nombre).' },
+          monto:     { type: 'number', description: 'Monto de la factura actual en MXN (opcional).' },
+        },
+        required: ['proveedor'],
+      },
+    });
 
     // Pilar 2 Creatividad — tools condicionales por meerkat_role_id (email)
     {

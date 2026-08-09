@@ -1536,6 +1536,39 @@ async function executeAgentToolInner(
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // evaluar_limite_gasto — Niva la invoca ANTES de aprobar_gasto para
+  // verificar contra presupuesto mensual + gasto acumulado del mes.
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'evaluar_limite_gasto') {
+    const { evaluateExpenseBudget } = await import('@/lib/ops/director-tools');
+    const args = toolInput as { monto?: number };
+    if (typeof args.monto !== 'number' || !(args.monto > 0)) {
+      return { ok: false, error: 'Necesito monto (número > 0).' };
+    }
+    const res = await evaluateExpenseBudget({ supabase, portalEmail, amountMxn: args.monto });
+    return res;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // verificar_gasto_recurrente — cuando llega factura de proveedor, revisa
+  // si es proveedor recurrente con histórico aprobado. Señal para auto-marcar
+  // como pagada sin escalar al humano.
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'verificar_gasto_recurrente') {
+    const { verifyRecurringExpense } = await import('@/lib/ops/director-tools');
+    const args = toolInput as { proveedor?: string; monto?: number };
+    if (!args.proveedor?.trim()) {
+      return { ok: false, error: 'Necesito nombre del proveedor.' };
+    }
+    const res = await verifyRecurringExpense({
+      supabase, portalEmail,
+      proveedor: args.proveedor,
+      monto:     typeof args.monto === 'number' ? args.monto : undefined,
+    });
+    return res;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   // buscar_documento_oficina — reutilizar documentos ya generados
   // ─────────────────────────────────────────────────────────────────────────
   if (toolName === 'buscar_documento_oficina') {

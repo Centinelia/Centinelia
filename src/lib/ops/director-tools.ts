@@ -199,3 +199,176 @@ export async function recordExpenseApproval(args: ExpenseApprovalArgs): Promise<
       : `Rechazo registrado: "${concept.slice(0, 80)}" por ${fmt}. El equipo no debe ejecutar.`,
   };
 }
+
+// ── evaluar_limite_gasto ────────────────────────────────────────────────────
+// Cruza el gasto pedido contra:
+//   - monthly_expense_budget de la org (si está seteado)
+//   - suma de expense_approvals aprobados del mes en curso
+// Devuelve señal para que el empleado decida si aprueba solo o escala.
+
+export interface EvaluateBudgetArgs {
+  supabase:    SupabaseClient;
+  portalEmail: string;
+  amountMxn:   number;
+}
+
+export interface EvaluateBudgetResult {
+  ok:               true;
+  budget:           number | null;   // null si org no configuró presupuesto
+  spent_this_month: number;
+  proposed:         number;
+  remaining_after?: number;          // solo si budget != null
+  within_budget?:   boolean;         // solo si budget != null
+  would_exceed_by?: number;          // solo si excede
+  message:          string;
+}
+
+export async function evaluateExpenseBudget(args: EvaluateBudgetArgs): Promise<EvaluateBudgetResult> {
+  const { supabase, portalEmail, amountMxn } = args;
+
+  const [{ data: org }, { data: rows }] = await Promise.all([
+    supabase.from('organizations').select('monthly_expense_budget').eq('portal_email', portalEmail).maybeSingle(),
+    supabase.from('expense_approvals')
+      .select('amount_mxn')
+      .eq('portal_email', portalEmail)
+      .eq('status', 'approved')
+      .gte('created_at', firstDayOfMonthIso()),
+  ]);
+
+  const budget = (org?.monthly_expense_budget as number | null) ?? null;
+  const spent  = (rows ?? []).reduce((s, r) => s + Number((r as { amount_mxn: number }).amount_mxn ?? 0), 0);
+  const fmt = (n: number) => n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 });
+
+  if (budget == null) {
+    return {
+      ok: true, budget: null, spent_this_month: spent, proposed: amountMxn,
+      message: `Sin presupuesto mensual configurado. Este mes ya se aprobaron ${fmt(spent)} en gastos. Solicitud actual: ${fmt(amountMxn)}. Sugiere al dueño configurar presupuesto en Organización → Presupuesto.`,
+    };
+  }
+
+  const remaining = budget - spent - amountMxn;
+  const withinBudget = remaining >= 0;
+  return {
+    ok:              true,
+    budget,
+    spent_this_month: spent,
+    proposed:         amountMxn,
+    remaining_after:  remaining,
+    within_budget:    withinBudget,
+    would_exceed_by:  withinBudget ? undefined : Math.abs(remaining),
+    message: withinBudget
+      ? `Dentro de presupuesto. Presupuesto ${fmt(budget)}, gastado ${fmt(spent)} este mes, solicitud ${fmt(amountMxn)}. Quedarán ${fmt(remaining)} para el resto del mes.`
+      : `EXCEDE presupuesto por ${fmt(Math.abs(remaining))}. Presupuesto ${fmt(budget)}, gastado ${fmt(spent)}, solicitud ${fmt(amountMxn)}. Escala al dueño antes de aprobar.`,
+  };
+}
+
+// ── verificar_gasto_recurrente ──────────────────────────────────────────────
+// Reemplaza a matchear_orden_compra: no hay tabla de OCs, pero sí historial
+// de facturas recibidas en ops_inbox. Si un proveedor tiene N facturas
+// previas del mismo rango de monto y todas fueron aprobadas → es gasto
+// recurrente, bajo riesgo, empleado puede auto-marcar como pagada sin
+// escalar al humano.
+
+export interface VerifyRecurringArgs {
+  supabase:    SupabaseClient;
+  portalEmail: string;
+  proveedor:   string;
+  monto?:      number;  // monto de la factura actual — para detectar variación anómala
+}
+
+export interface VerifyRecurringResult {
+  ok:               true;
+  proveedor:        string;
+  history_count:    number;
+  approved_count:   number;
+  last_amount?:     number;
+  last_status?:     string;
+  amount_variance?: number;    // 0-1, si monto está más de 20% diferente del histórico
+  is_recurring:     boolean;   // true si count>=2 aprobados
+  recommendation:   'auto_approve' | 'review' | 'unknown_vendor';
+  message:          string;
+}
+
+export async function verifyRecurringExpense(args: VerifyRecurringArgs): Promise<VerifyRecurringResult> {
+  const { supabase, portalEmail, proveedor, monto } = args;
+  const proveedorNorm = proveedor.trim().toLowerCase();
+
+  // Buscar histórico en ops_inbox por invoice_data->proveedor o email_from
+  // que contenga el nombre. Últimas 20 facturas del org, últimos 12 meses.
+  const yearAgo = new Date(Date.now() - 365 * 86400_000).toISOString();
+  const { data: agents } = await supabase.from('voice_agents').select('id').eq('portal_email', portalEmail);
+  const agentIds = (agents ?? []).map(a => a.id as string);
+  if (!agentIds.length) {
+    return {
+      ok: true, proveedor, history_count: 0, approved_count: 0, is_recurring: false,
+      recommendation: 'unknown_vendor',
+      message: 'Sin historial de facturas para esta cuenta.',
+    };
+  }
+
+  const { data: rows } = await supabase
+    .from('ops_inbox')
+    .select('email_from, invoice_data, status, created_at')
+    .in('agent_id', agentIds)
+    .eq('item_type', 'invoice')
+    .gte('created_at', yearAgo)
+    .order('created_at', { ascending: false })
+    .limit(50);
+
+  const matches = (rows ?? []).filter(r => {
+    const from  = String((r as { email_from: string | null }).email_from ?? '').toLowerCase();
+    const invP  = String(((r as { invoice_data: Record<string, unknown> | null }).invoice_data)?.proveedor ?? '').toLowerCase();
+    const invV  = String(((r as { invoice_data: Record<string, unknown> | null }).invoice_data)?.vendor ?? '').toLowerCase();
+    return from.includes(proveedorNorm) || invP.includes(proveedorNorm) || invV.includes(proveedorNorm);
+  });
+
+  const approved = matches.filter(m => m.status === 'approved');
+  const last     = matches[0];
+  const lastAmount = last
+    ? Number(((last as { invoice_data: Record<string, unknown> | null }).invoice_data)?.total ?? ((last as { invoice_data: Record<string, unknown> | null }).invoice_data)?.amount ?? 0)
+    : undefined;
+
+  const fmt = (n: number) => n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 });
+
+  let variance: number | undefined;
+  if (monto && lastAmount && lastAmount > 0) {
+    variance = Math.abs(monto - lastAmount) / lastAmount;
+  }
+
+  const isRecurring = approved.length >= 2;
+  const highVariance = variance != null && variance > 0.2;
+
+  let recommendation: 'auto_approve' | 'review' | 'unknown_vendor';
+  let message: string;
+  if (matches.length === 0) {
+    recommendation = 'unknown_vendor';
+    message = `Sin historial para "${proveedor}". Es un proveedor nuevo — recomendable revisar la factura antes de pagar.`;
+  } else if (isRecurring && !highVariance) {
+    recommendation = 'auto_approve';
+    message = `Proveedor recurrente: ${approved.length} facturas aprobadas antes. Última: ${lastAmount ? fmt(lastAmount) : 'monto no registrado'} · ${last?.status ?? '?'}. Bajo riesgo, puedes auto-marcar como pagada.`;
+  } else if (isRecurring && highVariance) {
+    recommendation = 'review';
+    message = `Proveedor recurrente pero monto varía ${((variance ?? 0) * 100).toFixed(0)}% del último (${lastAmount ? fmt(lastAmount) : '?'} → ${monto ? fmt(monto) : '?'}). Vale la pena revisar antes de pagar.`;
+  } else {
+    recommendation = 'review';
+    message = `Solo ${matches.length} factura(s) previa(s) de "${proveedor}", ${approved.length} aprobada(s). No hay suficiente historial para auto-aprobar.`;
+  }
+
+  return {
+    ok:              true,
+    proveedor,
+    history_count:   matches.length,
+    approved_count:  approved.length,
+    last_amount:     lastAmount,
+    last_status:     last?.status ?? undefined,
+    amount_variance: variance,
+    is_recurring:    isRecurring,
+    recommendation,
+    message,
+  };
+}
+
+function firstDayOfMonthIso(): string {
+  const d = new Date();
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)).toISOString();
+}

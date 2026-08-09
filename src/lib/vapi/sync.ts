@@ -138,6 +138,8 @@ const TOOL_HUMAN_LABEL: Record<string, string> = {
   extraer_tono_de_marca:   'extraer el tono de marca del negocio',
   revisar_desempeno_equipo: 'revisar el desempeño del equipo (solo directores)',
   aprobar_gasto:            'aprobar gastos operativos (solo directores)',
+  evaluar_limite_gasto:     'verificar si un gasto cabe en el presupuesto mensual (solo directores)',
+  verificar_gasto_recurrente: 'verificar si un proveedor es recurrente con historial aprobado',
 };
 
 function peerToolCapabilities(peer: TeamPeer): string[] {
@@ -242,7 +244,7 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
   // Niva — directora general. Visión estratégica: desempeño del equipo,
   // aprobación de gastos, insights de marca/cliente. Delega ejecución fiscal
   // a Nico. Sin qb_crear_factura/qb_reporte_ingresos (los movimos a Nico).
-  niva:  ['consultar_agente', 'delegar_tarea', 'enviar_correo', 'llamar_a', 'crear_documento', 'buscar_documento_oficina', 'enviar_documento_oficina', 'create_file', 'save_to_drive', 'buscar_en_web', 'search_leads', 'list_calendar_events', 'create_calendar_event', 'qb_consultar_facturas', 'qb_buscar_cliente', 'qb_registrar_pago', 'solicitar_factura', 'consultar_factura', 'analizar_publicaciones_ml', 'ver_metricas_ml', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'revisar_desempeno_equipo', 'aprobar_gasto', 'reportar_falla'],
+  niva:  ['consultar_agente', 'delegar_tarea', 'enviar_correo', 'llamar_a', 'crear_documento', 'buscar_documento_oficina', 'enviar_documento_oficina', 'create_file', 'save_to_drive', 'buscar_en_web', 'search_leads', 'list_calendar_events', 'create_calendar_event', 'qb_consultar_facturas', 'qb_buscar_cliente', 'qb_registrar_pago', 'solicitar_factura', 'consultar_factura', 'analizar_publicaciones_ml', 'ver_metricas_ml', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'revisar_desempeno_equipo', 'aprobar_gasto', 'evaluar_limite_gasto', 'verificar_gasto_recurrente', 'reportar_falla'],
 };
 
 type ToolDef = Record<string, unknown>;
@@ -333,6 +335,10 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
     case 'revisar_desempeno_equipo': return { type: 'function', function: { name: 'revisar_desempeno_equipo', description: 'Devuelve un resumen del desempeño del equipo: llamadas, tareas completadas/fallidas, documentos generados, correos gestionados, ops usadas — desglosado por cada empleado. Exclusiva de directores (Niva). Úsala cuando el dueño pregunte "¿cómo va el equipo esta semana?" o similar.', parameters: { type: 'object', properties: { periodo: { type: 'string', enum: ['hoy', 'esta_semana', 'este_mes', 'ultima_semana', 'ultimo_mes', 'ultimos_30_dias'], description: 'Ventana temporal. Default esta_semana.' } }, required: [] } }, server: server('exec/revisar_desempeno_equipo') };
 
     case 'aprobar_gasto': return { type: 'function', function: { name: 'aprobar_gasto', description: 'Registra la aprobación (o rechazo) de un gasto operativo propuesto por el equipo. Deja audit trail: quién aprobó, concepto, monto, justificación. Exclusiva de directores (Niva).', parameters: { type: 'object', properties: { concepto: { type: 'string', description: 'Concepto del gasto. Ej: "Publicidad Facebook oct 2026", "Renovación licencia software X".' }, monto: { type: 'number', description: 'Monto en MXN. Solo dígitos, sin símbolo de moneda.' }, justificacion: { type: 'string', description: 'Razón de la aprobación o rechazo (opcional).' }, status: { type: 'string', enum: ['approved', 'rejected'], description: 'approved (default) o rejected.' } }, required: ['concepto', 'monto'] } }, server: server('exec/aprobar_gasto') };
+
+    case 'evaluar_limite_gasto': return { type: 'function', function: { name: 'evaluar_limite_gasto', description: 'Verifica si un gasto propuesto cabe en el presupuesto mensual de la organización. Devuelve: presupuesto configurado, gastado este mes, y si excede el límite. Invócala ANTES de aprobar_gasto para decidir con datos.', parameters: { type: 'object', properties: { monto: { type: 'number', description: 'Monto en MXN del gasto que se está evaluando.' } }, required: ['monto'] } }, server: server('exec/evaluar_limite_gasto') };
+
+    case 'verificar_gasto_recurrente': return { type: 'function', function: { name: 'verificar_gasto_recurrente', description: 'Consulta el historial de facturas recibidas de un proveedor. Devuelve si es recurrente (≥2 facturas aprobadas antes), monto del último pago, y variación con el monto actual. Úsala en facturas de proveedor para decidir si auto-marcar como pagada o escalar al humano.', parameters: { type: 'object', properties: { proveedor: { type: 'string', description: 'Nombre del proveedor (o email si no tienes nombre).' }, monto: { type: 'number', description: 'Monto de la factura actual en MXN (opcional, para detectar variación anómala).' } }, required: ['proveedor'] } }, server: server('exec/verificar_gasto_recurrente') };
 
     case 'read_url': return { type: 'function', function: { name: 'read_url', description: 'Lee y extrae el contenido de texto de una URL pública. Úsala para obtener información de páginas web específicas.', parameters: { type: 'object', properties: { url: { type: 'string', description: 'URL completa a leer (ej: https://example.com/page)' } }, required: ['url'] } }, server: server('read-url') };
 
