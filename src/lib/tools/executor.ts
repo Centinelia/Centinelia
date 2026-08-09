@@ -902,8 +902,14 @@ async function executeAgentToolInner(
         subject: `Centinelia (Nash): actualización sobre ${target.business_name ?? 'tu cuenta'}`,
         html:    `<p style="font-family:system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.6">${mensaje.replace(/\n/g, '<br>')}</p>${replyHint}<p style="font-family:system-ui,-apple-system,sans-serif;font-size:12px;color:#6b7280;margin-top:24px">Nash, Centinelia interno</p>`,
         replyTo,
+        // Infra lista para separar la identidad de Nash del correo genérico
+        // de notificaciones. Cuando NASH_EMAIL_FROM esté seteado en Vercel
+        // (ej. "Nash de Centinelia <nash@centinelia.mx>"), Nash enviará
+        // desde ese buzón. Sin la var, cae al default RESEND_FROM_EMAIL
+        // (notificaciones@centinelia.mx).
+        from:    process.env.NASH_EMAIL_FROM,
       });
-      return { ok: true, delivered_to: to, channel: 'email', business: target.business_name, reply_to: replyTo ?? null };
+      return { ok: true, delivered_to: to, channel: 'email', business: target.business_name, reply_to: replyTo ?? null, from: process.env.NASH_EMAIL_FROM ?? 'default' };
     }
 
     if (toolName === 'enviar_a_claude_code') {
@@ -1006,8 +1012,9 @@ async function executeAgentToolInner(
         const to = process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? 'hola@centinelia.mx';
         await sendEmail({
           to,
-          subject: `[Nash → Claude Code fallback] ${incident.title}`,
+          subject: `[Nash a Claude Code fallback] ${incident.title}`,
           html:    `<p style="font-family:system-ui,-apple-system,sans-serif;font-size:14px"><strong>Incidente:</strong> ${incident.id}<br><strong>Prioridad:</strong> ${incident.priority}<br><strong>Fuente:</strong> ${incident.source}</p><h3 style="font-family:system-ui,-apple-system,sans-serif;font-size:14px">Prompt para Claude Code:</h3><pre style="background:#f3f4f6;padding:12px;border-radius:8px;font-size:12px;white-space:pre-wrap">${prompt.replace(/</g, '&lt;')}</pre>`,
+          from:    process.env.NASH_EMAIL_FROM,
         });
       }
       const { error: updateErr } = await supabase
@@ -1042,6 +1049,8 @@ async function executeAgentToolInner(
           to,
           subject: `${flag} Nash escala (${urgencia})`,
           html:    `<p style="font-family:system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.6">${razon.replace(/\n/g, '<br>')}</p>${incidentId ? `<p style="font-family:system-ui,-apple-system,sans-serif;font-size:12px;color:#6b7280">Incidente <code>${incidentId}</code></p>` : ''}`,
+          // Ver comentario en responder_cliente_afectado sobre NASH_EMAIL_FROM.
+          from:    process.env.NASH_EMAIL_FROM,
         });
       }
       if (incidentId) {
