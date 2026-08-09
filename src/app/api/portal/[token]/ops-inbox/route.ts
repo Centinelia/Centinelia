@@ -159,6 +159,31 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     }
   }
 
+  // Pedir aclaración sobre factura recibida: enviar correo al proveedor con el mensaje del owner.
+  // Aplica solo a item_type='invoice' + status='info_requested' + clarification_message provisto.
+  const clarificationMessage = typeof body.clarification_message === 'string' && body.clarification_message.trim()
+    ? body.clarification_message.trim()
+    : null;
+  if (newStatus === 'info_requested' && item.item_type === 'invoice' && clarificationMessage && item.email_from) {
+    const guard = await checkAccount(acct.portal_email, supabase);
+    if (!guard.canUseOffice) {
+      return NextResponse.json({ error: 'Cuenta rescindida. No se pueden enviar correos.' }, { status: 403 });
+    }
+    const { data: agt } = await supabase
+      .from('voice_agents')
+      .select('business_name, agent_name')
+      .eq('id', item.agent_id)
+      .single();
+    const agentName    = (agt?.agent_name as string | null) ?? 'Centinelia';
+    const businessName = (agt?.business_name as string) ?? '';
+    sendEmail({
+      to:      item.email_from as string,
+      subject: `Aclaración sobre factura: ${(item.email_subject as string) || ''}`.trim(),
+      html:    simpleResponseHtml(businessName, agentName, clarificationMessage),
+    }).catch(console.error);
+    update.owner_feedback = clarificationMessage;
+  }
+
   // Guard TOCTOU: dos requests simultáneos ambos pasaron la validación de línea 82;
   // el .eq('status','pending') asegura que solo el primero muta el estado.
   const { data: updated, error } = await supabase

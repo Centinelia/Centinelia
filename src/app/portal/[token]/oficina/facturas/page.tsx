@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { FileText, Clock, CheckCircle, XCircle, Copy, Check, Receipt } from 'lucide-react';
 import { EmptyState as PortalEmptyState } from '@/components/portal-ui';
+import ReceivedInvoicesSection from './ReceivedInvoicesSection';
 
 interface Item {
   descripcion:     string;
@@ -164,15 +165,17 @@ export default function FacturasPage() {
             Facturación
           </p>
           <h1 className="text-[28px] font-bold leading-tight tracking-tight" style={{ color: '#1A0A3B' }}>
-            Facturas por emitir
+            Facturas
           </h1>
           <p className="text-[14px]" style={{ color: '#6B6480' }}>
-            {pendingCount > 0
-              ? <><strong style={{ color: '#1A0A3B' }}>{pendingCount}</strong> {pendingCount === 1 ? 'solicitud espera' : 'solicitudes esperan'} que timbres en tu PAC.</>
-              : <>Sin solicitudes pendientes. Cuando tus empleados registren una, aparecerá aquí.</>}
+            Facturas <strong style={{ color: '#1A0A3B' }}>recibidas</strong> de proveedores y solicitudes <strong style={{ color: '#1A0A3B' }}>por emitir</strong> a tus clientes.
+            {pendingCount > 0 && <> Hoy: <strong style={{ color: '#1A0A3B' }}>{pendingCount}</strong> por timbrar en tu PAC.</>}
           </p>
         </div>
       </header>
+
+      {/* Facturas recibidas — proveedores → tu equipo (aparecen aquí ya no en bandeja) */}
+      <ReceivedInvoicesSection token={token} />
 
       {/* Filter pills — segmented control style */}
       {!loading && (

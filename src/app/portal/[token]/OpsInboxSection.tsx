@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Inbox, Check, X, FileText, RefreshCw, Search, AlertTriangle, MessageSquare, RotateCcw, PlugZap, GitBranch, ChevronDown, ChevronRight } from 'lucide-react';
+import { Inbox, Check, X, FileText, RefreshCw, Search, AlertTriangle, MessageSquare, RotateCcw, PlugZap } from 'lucide-react';
 import { SectionHeader, EmptyState } from '@/components/portal-ui';
 import { toast } from 'sonner';
 import type { InboxAgent } from './inbox/categories';
@@ -124,11 +124,16 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
   })();
   const [activeCategory, setActiveCategory] = useState<CategorySlug | null>(initialCategory);
 
-  type ScopeFilter = 'all' | 'org_shared' | 'per_agent';
+  // Filter por buzón: 'all' (todo), 'org_shared' (bandeja del negocio) o
+  // 'agent:<UUID>' (buzón específico de un empleado).
+  type ScopeFilter = 'all' | 'org_shared' | `agent:${string}`;
   const initialScope: ScopeFilter = (() => {
-    const s = searchParams.get('origen');
-    if (s === 'compartida') return 'org_shared';
-    if (s === 'propia')     return 'per_agent';
+    const s = searchParams.get('buzon');
+    if (s === 'negocio') return 'org_shared';
+    if (s?.startsWith('agent:')) return s as `agent:${string}`;
+    // Legacy compat: viejo param 'origen'
+    const legacy = searchParams.get('origen');
+    if (legacy === 'compartida') return 'org_shared';
     return 'all';
   })();
   const [activeScope, setActiveScope] = useState<ScopeFilter>(initialScope);
@@ -136,8 +141,10 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
   const changeScope = useCallback((next: ScopeFilter) => {
     setActiveScope(next);
     const params = new URLSearchParams(searchParams.toString());
-    if (next === 'all') params.delete('origen');
-    else params.set('origen', next === 'org_shared' ? 'compartida' : 'propia');
+    params.delete('origen'); // limpia el param viejo si existe
+    if (next === 'all') params.delete('buzon');
+    else if (next === 'org_shared') params.set('buzon', 'negocio');
+    else params.set('buzon', next);
     router.replace(`?${params.toString()}`, { scroll: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
@@ -333,16 +340,20 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
     } finally { setActing(null); }
   };
 
+  // Bandeja NO muestra facturas recibidas — viven en /oficina/facturas → tab "Recibidas"
+  // (item_type='invoice' se filtra siempre, independientemente del tab).
+  const nonInvoiceItems = useMemo(() => items.filter(i => i.item_type !== 'invoice'), [items]);
+
   // Tab-filtered ops_inbox items
   const tabItems = useMemo<InboxItem[]>(() => {
-    if (activeTab === 'pendientes')  return items.filter(i => ['pending', 'escalated', 'info_requested'].includes(i.status));
-    if (activeTab === 'auto')        return items.filter(i => i.status === 'auto_replied' && i.auto_mode_decision === 'send');
-    if (activeTab === 'spam')        return items.filter(i => i.status === 'skipped' && i.category === 'spam');
+    if (activeTab === 'pendientes')  return nonInvoiceItems.filter(i => ['pending', 'escalated', 'info_requested'].includes(i.status));
+    if (activeTab === 'auto')        return nonInvoiceItems.filter(i => i.status === 'auto_replied' && i.auto_mode_decision === 'send');
+    if (activeTab === 'spam')        return nonInvoiceItems.filter(i => i.status === 'skipped' && i.category === 'spam');
     // Audit trail: decisiones de rechazo pasadas eran invisibles antes (audit sesión 53).
-    if (activeTab === 'rechazados')  return items.filter(i => i.status === 'rejected');
-    if (activeTab === 'reportados')  return items.filter(i => !!i.auto_mode_flagged_at);
-    return items;
-  }, [items, activeTab]);
+    if (activeTab === 'rechazados')  return nonInvoiceItems.filter(i => i.status === 'rejected');
+    if (activeTab === 'reportados')  return nonInvoiceItems.filter(i => !!i.auto_mode_flagged_at);
+    return nonInvoiceItems;
+  }, [nonInvoiceItems, activeTab]);
 
   const filteredItems = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -356,10 +367,14 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
       ? bySearch
       : bySearch.filter(i => normalizeCategory(i.category) === activeCategory);
     if (activeScope === 'all') return byCategory;
-    // 'per_agent' matchea también rows históricas sin origin_scope (null)
-    if (activeScope === 'per_agent')
-      return byCategory.filter(i => i.origin_scope === 'per_agent' || !i.origin_scope);
-    return byCategory.filter(i => i.origin_scope === 'org_shared');
+    if (activeScope === 'org_shared')
+      return byCategory.filter(i => i.origin_scope === 'org_shared');
+    // activeScope es 'agent:<UUID>' — filtrar por el agent_id del empleado.
+    // También matchea rows históricas sin origin_scope (null) como per_agent.
+    const agentId = activeScope.slice('agent:'.length);
+    return byCategory.filter(
+      i => (i.origin_scope === 'per_agent' || !i.origin_scope) && i.agent_id === agentId,
+    );
   }, [tabItems, search, activeCategory, activeScope]);
 
   const attentionItems = useMemo(
@@ -371,13 +386,13 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
     [filteredItems]
   );
 
-  // Badge counts
-  const pendingOpsCount    = items.filter(i => ['pending', 'escalated', 'info_requested'].includes(i.status)).length;
+  // Badge counts — sobre nonInvoiceItems (facturas viven en /oficina/facturas)
+  const pendingOpsCount    = nonInvoiceItems.filter(i => ['pending', 'escalated', 'info_requested'].includes(i.status)).length;
   const pendingBadgeCount  = pendingOpsCount + humanRequests.length;
-  const autoCount          = items.filter(i => i.status === 'auto_replied' && i.auto_mode_decision === 'send').length;
-  const spamCount          = items.filter(i => i.status === 'skipped' && i.category === 'spam').length;
-  const rejectedCount      = items.filter(i => i.status === 'rejected').length;
-  const reportedCount      = items.filter(i => !!i.auto_mode_flagged_at).length;
+  const autoCount          = nonInvoiceItems.filter(i => i.status === 'auto_replied' && i.auto_mode_decision === 'send').length;
+  const spamCount          = nonInvoiceItems.filter(i => i.status === 'skipped' && i.category === 'spam').length;
+  const rejectedCount      = nonInvoiceItems.filter(i => i.status === 'rejected').length;
+  const reportedCount      = nonInvoiceItems.filter(i => !!i.auto_mode_flagged_at).length;
 
   const TAB_CONFIG: { key: Tab; label: string; count?: number }[] = [
     { key: 'pendientes', label: 'Pendientes',    count: pendingBadgeCount > 0 ? pendingBadgeCount : undefined },
@@ -665,9 +680,6 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
               </div>
             )}
 
-            {/* Timeline de estados del state machine */}
-            <InboxTransitionsTimeline inboxId={item.id} token={token} />
-
           </div>
         )}
       </div>
@@ -787,36 +799,54 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
           />
         </div>
 
-        {/* Origen chips */}
-        <div className="flex items-center gap-1.5 flex-wrap flex-shrink-0">
-          <span className="text-[10px] font-bold uppercase tracking-widest hidden sm:inline" style={{ color: '#9B8FB5', letterSpacing: '0.08em' }}>
-            Origen
-          </span>
-          {([
-            { key: 'all',        label: 'Todo' },
-            { key: 'org_shared', label: 'Compartida' },
-            { key: 'per_agent',  label: 'Propios' },
-          ] as const).map(chip => {
-            const isActive = activeScope === chip.key;
-            return (
-              <button
-                key={chip.key}
-                type="button"
-                onClick={() => changeScope(chip.key)}
-                className="text-[12px] px-2.5 py-1 rounded-full transition-colors"
-                style={{
-                  background: isActive ? 'rgba(108,59,255,0.10)' : '#FAFAFB',
-                  color:      isActive ? '#6C3BFF' : '#6B6480',
-                  border:     `1px solid ${isActive ? 'rgba(108,59,255,0.30)' : '#E8E3F5'}`,
-                  fontWeight: isActive ? 600 : 500,
-                  cursor:     'pointer',
-                }}
-              >
-                {chip.label}
-              </button>
-            );
-          })}
-        </div>
+        {/* Buzón chips — Bandeja del negocio + un chip por empleado con
+            correos en su buzón propio */}
+        {(() => {
+          // Agentes con al menos un correo en su buzón propio (per_agent) — ignora facturas
+          const agentsWithInbox = agents.filter(a =>
+            nonInvoiceItems.some(i => i.agent_id === a.id && (i.origin_scope === 'per_agent' || !i.origin_scope))
+          );
+          const hasOrgShared = nonInvoiceItems.some(i => i.origin_scope === 'org_shared');
+          // Si no hay nada compartido ni buzones propios, no mostrar chips
+          if (!hasOrgShared && agentsWithInbox.length === 0) return null;
+
+          const chips: { key: ScopeFilter; label: string }[] = [
+            { key: 'all', label: 'Todo' },
+          ];
+          if (hasOrgShared) chips.push({ key: 'org_shared', label: 'Bandeja del negocio' });
+          for (const a of agentsWithInbox) {
+            const label = a.agent_name?.trim() || a.business_name || 'Empleado';
+            chips.push({ key: `agent:${a.id}`, label });
+          }
+
+          return (
+            <div className="flex items-center gap-1.5 flex-wrap flex-shrink-0">
+              <span className="text-[10px] font-bold uppercase tracking-widest hidden sm:inline" style={{ color: '#9B8FB5', letterSpacing: '0.08em' }}>
+                Buzón
+              </span>
+              {chips.map(chip => {
+                const isActive = activeScope === chip.key;
+                return (
+                  <button
+                    key={chip.key}
+                    type="button"
+                    onClick={() => changeScope(chip.key)}
+                    className="text-[12px] px-2.5 py-1 rounded-full transition-colors"
+                    style={{
+                      background: isActive ? 'rgba(108,59,255,0.10)' : '#FAFAFB',
+                      color:      isActive ? '#6C3BFF' : '#6B6480',
+                      border:     `1px solid ${isActive ? 'rgba(108,59,255,0.30)' : '#E8E3F5'}`,
+                      fontWeight: isActive ? 600 : 500,
+                      cursor:     'pointer',
+                    }}
+                  >
+                    {chip.label}
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Category filter chips */}
@@ -905,74 +935,3 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
   );
 }
 
-interface InboxTransition {
-  id:              string;
-  from_status:     string | null;
-  to_status:       string;
-  actor:           string;
-  reason:          string | null;
-  metadata:        Record<string, unknown> | null;
-  transitioned_at: string;
-}
-
-function InboxTransitionsTimeline({ inboxId, token }: { inboxId: string; token: string }) {
-  const [open,   setOpen]   = useState(false);
-  const [items,  setItems]  = useState<InboxTransition[] | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  const load = useCallback(async () => {
-    if (items || loading) return;
-    setLoading(true);
-    try {
-      const res  = await fetch(`/api/portal/${token}/ops-inbox/${inboxId}/transitions`);
-      const data = await res.json();
-      setItems(data.transitions ?? []);
-    } catch { setItems([]); } finally { setLoading(false); }
-  }, [inboxId, token, items, loading]);
-
-  const toggle = () => {
-    const next = !open;
-    setOpen(next);
-    if (next) void load();
-  };
-
-  const fmt = (iso: string) =>
-    new Date(iso).toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-
-  return (
-    <div className="mt-3">
-      <button
-        onClick={toggle}
-        className="flex items-center gap-1.5 text-xs transition-opacity hover:opacity-80"
-        style={{ color: '#9B8FB5' }}
-      >
-        {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-        <GitBranch size={11} />
-        <span>Historial de estados</span>
-      </button>
-
-      {open && (
-        <div className="mt-2 pl-4 border-l" style={{ borderColor: '#E8E3F5' }}>
-          {loading && <p className="text-xs" style={{ color: '#9B8FB5' }}>Cargando…</p>}
-          {!loading && items?.length === 0 && (
-            <p className="text-xs" style={{ color: '#9B8FB5' }}>Sin historial registrado (item previo al state machine).</p>
-          )}
-          {!loading && items && items.length > 0 && (
-            <ol className="space-y-1">
-              {items.map(t => (
-                <li key={t.id} className="text-xs" style={{ color: '#6B6480' }}>
-                  <span className="font-mono" style={{ color: '#9B8FB5' }}>{fmt(t.transitioned_at)}</span>
-                  {' · '}
-                  <span style={{ color: '#1A0A3B' }}>{t.from_status ? `${t.from_status} → ${t.to_status}` : `→ ${t.to_status}`}</span>
-                  {' · '}
-                  <span style={{ color: '#9B8FB5' }}>{t.actor}</span>
-                  {t.reason && <span style={{ color: '#9B8FB5' }}> · {t.reason}</span>}
-                </li>
-              ))}
-            </ol>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
