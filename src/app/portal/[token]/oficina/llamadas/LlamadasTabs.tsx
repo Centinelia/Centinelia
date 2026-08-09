@@ -233,8 +233,17 @@ export default function LlamadasTabs({
               <EmptyState
                 icon={PhoneOutgoing}
                 title="Llamadas salientes desactivadas"
-                description="Activa esta función desde Configurar tu empleado > Herramientas > Llamadas salientes."
+                description="Activa la función para que tu empleado pueda hacer llamadas de seguimiento, cobro o recuperación."
                 size="sm"
+                action={
+                  <Link
+                    href={`/portal/${token}/configurar?tab=tools#llamadas-salientes`}
+                    className="inline-flex items-center gap-1.5 px-4 h-9 rounded-lg text-[12px] font-semibold transition-opacity hover:opacity-90"
+                    style={{ background: '#6C3BFF', color: '#fff', textDecoration: 'none' }}
+                  >
+                    Activar en Configurar →
+                  </Link>
+                }
               />
             </Card>
           )}
@@ -245,14 +254,34 @@ export default function LlamadasTabs({
           (commit 2026-08-06). Si alguien llega con ?filtro=campanas por
           bookmark viejo, el page.tsx server-side hace redirect. */}
 
-      {/* Recovery */}
+      {/* Recovery — el gate initMissedCall ya asegura que la feature esté activa.
+          Copy honesto: si estamos aquí es porque está activo y no hay perdidas. */}
       {filtro === 'recovery' && initMissedCall && (
         <Card padding="md">
           <EmptyState
             icon={PhoneMissed}
-            title="Missed call recovery activo"
-            description="Configura esta función desde Configurar tu empleado > Horarios y automatizaciones."
+            title="Sin llamadas perdidas"
+            description="Tu empleado devuelve automáticamente cada llamada que se pierde. Aquí verás el historial cuando ocurra alguna."
             size="sm"
+          />
+        </Card>
+      )}
+      {filtro === 'recovery' && !initMissedCall && (
+        <Card padding="md">
+          <EmptyState
+            icon={PhoneMissed}
+            title="Recuperación de llamadas desactivada"
+            description="Cuando la activas, tu empleado devuelve automáticamente cada llamada que no pudo contestar."
+            size="sm"
+            action={
+              <Link
+                href={`/portal/${token}/configurar?tab=personalidad#llamadas`}
+                className="inline-flex items-center gap-1.5 px-4 h-9 rounded-lg text-[12px] font-semibold transition-opacity hover:opacity-90"
+                style={{ background: '#6C3BFF', color: '#fff', textDecoration: 'none' }}
+              >
+                Activar en Configurar →
+              </Link>
+            }
           />
         </Card>
       )}
