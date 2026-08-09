@@ -1,10 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
 import {
   CheckCircle2, XCircle, Loader2, AlertTriangle, Clock, Bot,
-  GitBranch, ChevronDown, ChevronRight, ListChecks, RefreshCw,
+  ListChecks, RefreshCw,
 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
 
@@ -218,8 +217,6 @@ function TaskRow({ task }: { task: Task }) {
             <strong style={{ color: '#EF4444' }}>Evaluación: </strong>{task.eval_notes}
           </div>
         )}
-
-        <TransitionsTimeline taskId={task.id} />
       </div>
     </div>
   );
@@ -245,75 +242,3 @@ function fmt(iso: string): string {
   return d.toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
-interface Transition {
-  id:              string;
-  from_status:     string | null;
-  to_status:       string;
-  actor:           string;
-  reason:          string | null;
-  metadata:        Record<string, unknown> | null;
-  transitioned_at: string;
-}
-
-function TransitionsTimeline({ taskId }: { taskId: string }) {
-  const params = useParams<{ token: string }>();
-  const token  = params?.token as string | undefined;
-  const [open,   setOpen]   = useState(false);
-  const [items,  setItems]  = useState<Transition[] | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  const load = useCallback(async () => {
-    if (!token || items || loading) return;
-    setLoading(true);
-    try {
-      const res  = await fetch(`/api/portal/${token}/agent-tasks/${taskId}/transitions`);
-      const data = await res.json();
-      setItems(data.transitions ?? []);
-    } catch { setItems([]); } finally { setLoading(false); }
-  }, [token, taskId, items, loading]);
-
-  const toggle = () => {
-    const next = !open;
-    setOpen(next);
-    if (next) void load();
-  };
-
-  return (
-    <div className="mt-2">
-      <button
-        onClick={toggle}
-        className="flex items-center gap-1.5 text-[11px] transition-opacity hover:opacity-70"
-        style={{ color: '#9B8FB5' }}
-      >
-        {open ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
-        <GitBranch size={10} />
-        <span>Historial de estados</span>
-      </button>
-
-      {open && (
-        <div className="mt-2 pl-3" style={{ borderLeft: '1px solid #E8E3F5' }}>
-          {loading && <p className="text-[11px]" style={{ color: '#9B8FB5' }}>Cargando…</p>}
-          {!loading && items?.length === 0 && (
-            <p className="text-[11px]" style={{ color: '#9B8FB5' }}>Sin historial registrado.</p>
-          )}
-          {!loading && items && items.length > 0 && (
-            <ol className="space-y-1.5">
-              {items.map(t => (
-                <li key={t.id} className="text-[11px]" style={{ color: '#6B6480' }}>
-                  <span className="font-mono" style={{ color: '#9B8FB5' }}>{fmt(t.transitioned_at)}</span>
-                  {' · '}
-                  <span style={{ color: '#1A0A3B' }}>{t.from_status ? `${t.from_status} → ${t.to_status}` : `→ ${t.to_status}`}</span>
-                  {' · '}
-                  <span style={{ color: '#9B8FB5' }}>{t.actor}</span>
-                  {t.reason && (
-                    <span style={{ color: '#9B8FB5' }}> · {t.reason}</span>
-                  )}
-                </li>
-              ))}
-            </ol>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
