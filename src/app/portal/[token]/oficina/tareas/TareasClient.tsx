@@ -31,23 +31,34 @@ interface Props {
 }
 
 const TABS: { key: Tab; label: string; icon: React.ElementType }[] = [
-  { key: 'tareas',      label: 'En curso',    icon: ListChecks },
+  { key: 'tareas',      label: 'Delegadas',   icon: ListChecks },
   { key: 'programadas', label: 'Programadas', icon: Calendar },
 ];
 
 interface KpiInlineProps {
-  label:  string;
-  value:  number;
-  accent: string;
+  label:    string;
+  value:    number;
+  accent:   string;
+  onClick?: () => void;
+  disabled?: boolean;
 }
 
-function KpiInline({ label, value, accent }: KpiInlineProps) {
+function KpiInline({ label, value, accent, onClick, disabled }: KpiInlineProps) {
+  const commonStyle: React.CSSProperties = {
+    background: '#ffffff',
+    border:     '1px solid #E8E3F5',
+  };
+  const clickable = !!onClick && !disabled;
   return (
-    <div
-      className="flex flex-col gap-0.5 px-4 py-2.5 rounded-xl min-w-0"
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`flex flex-col gap-0.5 px-4 py-2.5 rounded-xl min-w-0 text-left transition-colors ${clickable ? 'hover:border-[#6C3BFF] hover:bg-[#FAF8FF]' : ''}`}
       style={{
-        background: '#ffffff',
-        border:     '1px solid #E8E3F5',
+        ...commonStyle,
+        cursor: clickable ? 'pointer' : 'default',
+        opacity: disabled ? 0.6 : 1,
       }}
     >
       <p className="text-[10px] font-bold uppercase tracking-[0.14em] truncate" style={{ color: '#6B6480' }}>
@@ -56,7 +67,7 @@ function KpiInline({ label, value, accent }: KpiInlineProps) {
       <p className="text-[20px] font-bold leading-none tabular-nums" style={{ color: accent }}>
         {value.toLocaleString('es-MX')}
       </p>
-    </div>
+    </button>
   );
 }
 
@@ -107,12 +118,38 @@ export default function TareasClient({ token, agents, counters }: Props) {
         </div>
       </header>
 
-      {/* ── KPI strip ─────────────────────────────────────────────────────── */}
+      {/* ── KPI strip (clickables — activan tab correspondiente + scroll) ── */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KpiInline label="En curso"     value={counters.activas}      accent="#6C3BFF" />
-        <KpiInline label="Por aprobar"  value={counters.aprobaciones} accent="#F59E0B" />
-        <KpiInline label="7 días"       value={counters.semana}       accent="#22C55E" />
-        <KpiInline label="Programadas"  value={counters.programadas}  accent="#3B82F6" />
+        <KpiInline
+          label="En curso"
+          value={counters.activas}
+          accent="#6C3BFF"
+          onClick={() => setTab('tareas')}
+        />
+        <KpiInline
+          label="Por aprobar"
+          value={counters.aprobaciones}
+          accent="#F59E0B"
+          onClick={() => {
+            setTab('tareas');
+            requestAnimationFrame(() => {
+              document.getElementById('plan-approvals')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+          }}
+          disabled={counters.aprobaciones === 0}
+        />
+        <KpiInline
+          label="7 días"
+          value={counters.semana}
+          accent="#22C55E"
+          onClick={() => setTab('tareas')}
+        />
+        <KpiInline
+          label="Programadas"
+          value={counters.programadas}
+          accent="#3B82F6"
+          onClick={() => setTab('programadas')}
+        />
       </section>
 
       {/* ── Pills de vista ────────────────────────────────────────────────── */}

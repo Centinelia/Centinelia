@@ -62,7 +62,8 @@ export default function PlanApprovalsSection({ token }: { token: string }) {
 
   return (
     <section
-      className="flex flex-col rounded-2xl overflow-hidden"
+      id="plan-approvals"
+      className="flex flex-col rounded-2xl overflow-hidden scroll-mt-6"
       style={{
         background: '#ffffff',
         border:     '1px solid #E8E3F5',
