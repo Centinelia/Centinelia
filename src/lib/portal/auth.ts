@@ -73,7 +73,7 @@ export async function createSubUserSession(portalEmail: string, userId: string, 
   return `${data}.${u8ToB64url(sig)}`;
 }
 
-export async function verifySession(cookie: string): Promise<SessionResult | null> {
+async function verifySessionStrict(cookie: string): Promise<SessionResult | null> {
   try {
     const dot   = cookie.lastIndexOf('.');
     const data  = cookie.slice(0, dot);
@@ -98,4 +98,36 @@ export async function verifySession(cookie: string): Promise<SessionResult | nul
   } catch {
     return null;
   }
+}
+
+/**
+ * Verify portal session cookie.
+ *
+ * En producción: retorna null si el cookie no es válido (fuerza login).
+ *
+ * En desarrollo: si no hay sesión válida, devuelve una "sesión dev" para que
+ * las API routes locales funcionen sin re-login cada 7 días. Empareja el
+ * bypass del middleware (`proxy.ts` línea 47).
+ *
+ * El `portalEmail` de la dev session viene de `DEV_PORTAL_EMAIL` en
+ * `.env.local` (setéalo al org que uses típicamente para desarrollo, ej.
+ * `DEV_PORTAL_EMAIL=studio@pneumastudio.mx`). Con eso las Category B routes
+ * (`.eq('portal_email', session.portalEmail)`) funcionan correctamente.
+ * Sin la env, cae a `''` — los IDOR checks pattern
+ * `if (session.portalEmail && agent.portal_email && session.portalEmail !== agent.portal_email)`
+ * se saltan (short-circuit) pero los queries filtrados por portal_email
+ * devuelven vacío.
+ *
+ * SEGURIDAD: nunca activo en producción — depende de NODE_ENV.
+ */
+export async function verifySession(cookie: string): Promise<SessionResult | null> {
+  const strict = await verifySessionStrict(cookie);
+  if (strict) return strict;
+  if (process.env.NODE_ENV === 'development') {
+    return {
+      portalEmail: process.env.DEV_PORTAL_EMAIL ?? '',
+      isSubUser:   false,
+    };
+  }
+  return null;
 }
