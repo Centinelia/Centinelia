@@ -30,7 +30,12 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const patch: Record<string, string | null> = {};
   if ('email_brand_color'    in body) patch.email_brand_color    = body.email_brand_color    ?? null;
   if ('email_footer_text'    in body) patch.email_footer_text    = body.email_footer_text    ?? null;
-  if ('brand_website'        in body) patch.brand_website        = body.brand_website        ?? null;
+  if ('brand_website'        in body) {
+    patch.brand_website    = body.brand_website ?? null;
+    // Sincroniza al campo usado por el escaneo de sitio (Sitio web y reseñas).
+    // Un solo sitio del negocio, propagado a ambos campos.
+    patch.business_website = body.brand_website ?? null;
+  }
   if ('brand_address'        in body) patch.brand_address        = body.brand_address        ?? null;
   if ('brand_phone'          in body) patch.brand_phone          = body.brand_phone          ?? null;
   if ('brand_color_secondary' in body) patch.brand_color_secondary = body.brand_color_secondary ?? null;

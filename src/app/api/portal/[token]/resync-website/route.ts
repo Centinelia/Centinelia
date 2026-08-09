@@ -36,11 +36,13 @@ export async function POST(req: NextRequest, { params }: Params) {
   const scraped = await scrapeWebsite(newUrl);
   if (!scraped) return NextResponse.json({ error: 'No se pudo acceder al sitio web. Verifica la URL.' }, { status: 422 });
 
-  // Write to organizations — single source of truth for org-level data
+  // Write to organizations — single source of truth for org-level data.
+  // brand_website se mantiene sincronizado para que Identidad Visual y Sitio web
+  // se sientan como un único campo del negocio.
   await supabase
     .from('organizations')
     .upsert(
-      { portal_email: agent.portal_email, business_website: newUrl, website_knowledge: scraped },
+      { portal_email: agent.portal_email, business_website: newUrl, brand_website: newUrl, website_knowledge: scraped },
       { onConflict: 'portal_email' }
     );
 

@@ -1794,7 +1794,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                         </div>
                       </div>
                       <div className="px-5 py-5" style={{ borderTop: '1px solid #F0EDF9' }}>
-                        <WebsiteSyncButton token={token} currentUrl={orgSettings?.business_website ?? (agent as any).business_website ?? null} />
+                        <WebsiteSyncButton token={token} currentUrl={orgSettings?.business_website ?? (agent as any).business_website ?? orgSettings?.brand_website ?? (agent as any).brand_website ?? null} />
                       </div>
                       <div className="px-5 py-5" style={{ borderTop: '1px solid #F0EDF9' }}>
                         <ReviewLinkEditor token={token} initialValue={orgSettings?.google_review_url ?? (agent as any).google_review_url ?? ''} />
