@@ -4,7 +4,6 @@ import { createAdminClient }            from '@/lib/supabase/admin';
 import { notFound, redirect }           from 'next/navigation';
 import { cookies }                      from 'next/headers';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
-import { isPortalV2Enabled }            from '@/lib/portal/portal-v2-flag';
 import Link                             from 'next/link';
 import { Settings2, Bot, Zap, Clock, AlertTriangle, Users, PhoneCall, Sparkles, Layers, Mail } from 'lucide-react';
 import PauseResumeButton               from '../PauseResumeButton';
@@ -405,11 +404,6 @@ export default async function AgentesPage({ params }: Props) {
         })
         .filter((r): r is NonNullable<typeof r> => r !== null)
     : [];
-
-  // V2 flag
-  const v2Enabled = baseAgent.portal_email
-    ? await isPortalV2Enabled(baseAgent.portal_email)
-    : false;
 
   // ─── Shared inner content ────────────────────────────────────────────────────
   // Agent cards grid + capability banner are rendered identically in V1 and V2.
@@ -935,71 +929,7 @@ export default async function AgentesPage({ params }: Props) {
     </div>
   ) : null;
 
-  // ─── V1 body (unified with /inicio look & feel) ─────────────────────────────
-  const pageBodyV1 = (
-    <div className="flex flex-col gap-5">
-
-      {/* Page header — patrón consistente con /inicio */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <p className="text-[10px] font-semibold tracking-widest uppercase mb-1" style={{ color: '#9B8FB5' }}>
-            Tu equipo
-          </p>
-          <h1 className="text-xl font-bold" style={{ color: '#1A0A3B' }}>Mis Empleados</h1>
-          <p className="text-xs mt-1" style={{ color: '#6B6480' }}>
-            {agents.length} {agents.length === 1 ? 'empleado' : 'empleados'} · {baseAgent.business_name}
-          </p>
-        </div>
-        {!annualContractInfo && (
-          <MeerkatPicker
-            token={token}
-            plan={(baseAgent.plan ?? 'pro') as 'pro'}
-            defaultTier={(baseAgent.minutes_plan ?? 'starter') as any}
-          />
-        )}
-      </div>
-
-      {annualContractInfo && (
-        <AnnualContractCallout
-          action="contratar_empleado"
-          folio={annualContractInfo.folio}
-          endDate={annualContractInfo.endDate}
-          isExpired={annualContractInfo.isExpired}
-        />
-      )}
-
-      {/* Empleados pausados por pago — banner destacado (urgencia) */}
-      {billingAlertBanner}
-
-      {/* Métricas del equipo — hero + stat cards */}
-      {agents.length > 0 && teamMetricsBlock}
-
-      {/* Empty state */}
-      {agents.length === 0 && (
-        <div className="flex flex-col items-center gap-3 py-20 rounded-xl"
-          style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 2px rgba(26,10,59,0.04)' }}>
-          <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
-            style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.15)' }}>
-            <Meerkat size={22} style={{ color: '#6C3BFF', opacity: 0.5 }} />
-          </div>
-          <p className="text-sm" style={{ color: '#6B6480' }}>Sin empleados en tu cuenta</p>
-        </div>
-      )}
-
-      {/* Agent cards — el catálogo del equipo */}
-      {agentCardsGrid}
-
-      {/* Cobertura funcional — banner rebrandeado */}
-      {capabilityBanner}
-
-      {/* Ranking del equipo — tiene su propio wrapper card */}
-      <AgentRankingSection token={token} />
-
-    </div>
-  );
-
-  // ─── V2 body (design system shell) ──────────────────────────────────────────
-  const pageBodyV2 = (
+  return (
     <PageContainer>
 
       <PageSection
@@ -1060,7 +990,4 @@ export default async function AgentesPage({ params }: Props) {
 
     </PageContainer>
   );
-
-  if (v2Enabled) return pageBodyV2;
-  return pageBodyV1;
 }

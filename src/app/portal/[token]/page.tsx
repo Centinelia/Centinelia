@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic';
+﻿export const dynamic = 'force-dynamic';
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { notFound } from 'next/navigation';
@@ -21,7 +21,6 @@ import HashScrollHighlight     from './HashScrollHighlight';
 import BrandKitEditor          from './BrandKitEditor';
 import EmailSettings            from './EmailSettings';
 import SheetsMappingsSection    from './configurar/SheetsMappingsSection';
-import BusinessSwitcher        from './BusinessSwitcher';
 import PortalLeadsSection      from './PortalLeadsSection';
 import PortalOrdersSection     from './PortalOrdersSection';
 import PortalAppointmentsSection from './PortalAppointmentsSection';
@@ -39,9 +38,7 @@ import PortalFooter            from './PortalFooter';
 import ActivityTabsCard        from './ActivityTabsCard';
 import CallsSearch             from './CallsSearch';
 import PortalTabNav           from './PortalTabNav';
-import PortalSidebar          from './PortalSidebar';
 import PortalShell            from './PortalShell';
-import { isPortalV2Enabled }  from '@/lib/portal/portal-v2-flag';
 import { PageContainer, PageSection, GridStretch, SectionHeader, Card, StatChip } from '@/components/portal-ui';
 import KnowledgeBaseEditor    from './KnowledgeBaseEditor';
 import OwnerProfileEditor     from './OwnerProfileEditor';
@@ -144,7 +141,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
     acctMinsRes,
     opsAgentsRes,
     accountSerialRes,
-    v2EnabledRes,
   ] = agent.portal_email
     ? await Promise.all([
         lookupEmail
@@ -172,7 +168,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           .eq('portal_email', agent.portal_email)
           .then(r => r.data),
         getOrCreateSerial(agent.portal_email).catch(() => null),
-        isPortalV2Enabled(agent.portal_email),
       ])
     : [
         [] as any[],
@@ -180,7 +175,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
         null,
         null as any,
         null,
-        false,
       ];
 
   const clientAgents  = clientAgentsRes;
@@ -189,7 +183,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const acctMins      = acctMinsRes;
   const opsAgents     = opsAgentsRes;
   const accountSerial = accountSerialRes;
-  const v2Enabled     = v2EnabledRes;
 
   const orgDirectory: DirectoryPerson[] = ((orgSettings as any)?.directory ?? []);
 
@@ -235,19 +228,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
       name:  (a.agent_name?.trim() || 'Centinelia'),
       role:  ((a as any).features as any)?.outbound_role ?? undefined,
     }));
-
-  // Group agents by business
-  type BusinessGroup = { business_name: string; logo_url: string | null; first_token: string; agents: typeof allClientAgents };
-  const businessGroups: BusinessGroup[] = [];
-  const bySeen = new Map<string, BusinessGroup>();
-  for (const a of allClientAgents) {
-    if (!bySeen.has(a.business_name)) {
-      const g: BusinessGroup = { business_name: a.business_name, logo_url: (a as any).logo_url ?? null, first_token: a.portal_token, agents: [] };
-      bySeen.set(a.business_name, g);
-      businessGroups.push(g);
-    }
-    bySeen.get(a.business_name)!.agents.push(a);
-  }
 
   const clientPaused  = (agent as any).client_paused ?? false;
   const billingPaused = !agent.active && agent.billing_status === 'pago_fallido';
@@ -601,659 +581,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
     { id: 'equipo',   label: 'Equipo de gestión' },
   ];
 
-  // V1 main content column — used by the V1 layout unchanged
-  const pageBodyV1 = (
-    <div className="flex-1 min-w-0 flex flex-col">
-
-            {/* Tab nav — mobile only */}
-            <div className="md:hidden" style={{ background: 'var(--c-modal)', borderBottom: '1px solid var(--c-border)', position: 'sticky', top: 53, zIndex: 9 }}>
-              <div className="px-4 sm:px-6">
-                <PortalTabNav token={token} currentTab={tab} tabs={TABS} />
-              </div>
-            </div>
-
-        {/* Alerts */}
-        {(!agent.active || minutesPct > 80) && (
-          <div className="px-4 sm:px-6 pt-4 flex flex-col gap-2 max-w-4xl w-full mx-auto md:mx-0">
-            {billingPaused && (
-              <div className="flex items-center gap-3 px-4 py-3 rounded-xl"
-                style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)' }}>
-                <AlertTriangle size={15} color="#f87171" className="flex-shrink-0" />
-                <p className="text-sm" style={{ color: '#1A0A3B' }}>
-                  Tu empleado está pausado por falta de pago. Actualiza tu método de pago o contacta a Centinelia.
-                </p>
-              </div>
-            )}
-            {clientPaused && !billingPaused && (
-              <div className="flex items-center gap-3 px-4 py-3 rounded-xl"
-                style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)' }}>
-                <AlertTriangle size={15} color="#fbbf24" className="flex-shrink-0" />
-                <p className="text-sm" style={{ color: '#1A0A3B' }}>
-                  Tu empleado está pausado voluntariamente. Puedes reanudarlo cuando quieras desde la pestaña Resumen.
-                </p>
-              </div>
-            )}
-            {minutesPct > 80 && agent.active && (
-              <div className="flex items-start gap-3 px-4 py-3 rounded-xl"
-                style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)' }}>
-                <AlertTriangle size={15} color="#fbbf24" className="flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium" style={{ color: '#1A0A3B' }}>
-                    Estás al {Math.round(minutesPct)}% de tus minutos, te quedan {minutesRemain} min
-                  </p>
-                  <p className="text-xs mt-0.5" style={{ color: '#fbbf24' }}>Reset el {resetDate}</p>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Tab content */}
-        <div className={`flex-1 px-4 sm:px-6 py-6 w-full md:mx-0 ${tab === 'negocio' ? '' : tab === 'inicio' || tab === 'cuenta' ? 'max-w-6xl' : 'max-w-4xl'}`} style={{ position: 'relative', zIndex: 1 }}>
-
-          {/* ── INICIO (dashboard) ───────────────────────────────────────── */}
-          {tab === 'inicio' && (
-            <div className="flex flex-col gap-5">
-
-              {/* Greeting banner */}
-              <div className="rounded-xl px-5 py-4"
-                style={{ background: officeOk ? 'rgba(34,197,94,0.06)' : 'rgba(239,68,68,0.06)', border: `1px solid ${officeOk ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'}` }}>
-                <div className="flex items-center gap-2.5">
-                  <div className="w-2 h-2 rounded-full flex-shrink-0"
-                    style={{ background: officeOk ? '#22c55e' : '#ef4444', boxShadow: officeOk ? '0 0 6px #22c55e' : '0 0 6px #ef4444' }} />
-                  <p className="text-sm" style={{ color: '#1A0A3B' }}>
-                    <span className="font-semibold">{greeting}, {agent.business_name}.</span>{' '}
-                    <span style={{ color: 'var(--c-text-2)' }}>
-                      {officeOk ? 'Tu oficina está activa y atendiendo.' : 'Tu oficina está pausada en este momento.'}
-                    </span>
-                  </p>
-                </div>
-              </div>
-
-              {isFirstTime && (
-                <div
-                  className="relative rounded-xl overflow-hidden"
-                  style={{
-                    background: 'rgba(108,59,255,0.06)',
-                    border:     '1px solid rgba(108,59,255,0.15)',
-                    minHeight:  96,
-                  }}
-                >
-                  <div style={{ position: 'absolute', bottom: 0, left: 16, width: 160, height: 112, pointerEvents: 'none' }}>
-                    <Image src="/meerkats-team.png" alt="" fill sizes="160px"
-                      style={{ objectFit: 'contain', objectPosition: 'bottom left' }} />
-                  </div>
-                  <div style={{ paddingLeft: 196, paddingRight: 20, minHeight: 96, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <p className="text-xs font-semibold mb-1" style={{ color: '#6C3BFF' }}>Tu equipo está listo</p>
-                    <p className="text-xs leading-relaxed" style={{ color: '#6B6480', whiteSpace: 'nowrap' }}>
-                      En cuanto llegue la primera llamada, los registros aparecerán aquí automáticamente.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* ═══ BLOQUE 1: CÓMO VA TU SEMANA ═══ */}
-              {weeklyMetrics.some(m => m.curr > 0 || m.prev > 0) && (
-                <div id="semana" className="rounded-xl p-5 scroll-mt-6" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
-                  <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-                    Cómo va tu semana
-                  </h2>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                    {weeklyMetrics.map(m => {
-                      const dirColor = m.dir === 'up' ? '#22c55e' : m.dir === 'down' ? '#ef4444' : 'var(--c-text-3)';
-                      const arrow    = m.dir === 'up' ? '▲' : m.dir === 'down' ? '▼' : '—';
-                      const deltaSuffix = m.unit === '%' ? 'pp' : '%';
-                      return (
-                        <div key={m.label}>
-                          <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: 'var(--c-text-4)' }}>{m.label}</p>
-                          <div className="flex items-baseline gap-2">
-                            <p className="text-2xl font-bold tabular-nums" style={{ color: 'var(--c-text)' }}>
-                              {m.curr}{m.unit}
-                            </p>
-                            {m.delta !== null && (
-                              <span className="text-xs font-semibold" style={{ color: dirColor }}>
-                                {arrow} {m.delta}{deltaSuffix}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[11px] mt-1" style={{ color: 'var(--c-text-4)' }}>
-                            vs {m.prev}{m.unit} semana anterior
-                          </p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* ═══ BLOQUE 2: HOY TIENES QUE ATENDER (destacado con acento) ═══ */}
-              {(() => {
-                const pendingCount = apptsHoy.length + (bandejaCount > 0 ? 1 : 0) + (salientesEnCola > 0 ? 1 : 0) + (learningsCount > 0 ? 1 : 0) + reauthAlerts.length;
-                if (pendingCount === 0 && !hasNox && !nextTask) return null;
-                return (
-                <div id="hoy" className="rounded-2xl overflow-hidden scroll-mt-6"
-                  style={{ background: 'linear-gradient(180deg, rgba(108,59,255,0.06) 0%, var(--c-surface) 100%)', border: '2px solid rgba(108,59,255,0.28)', boxShadow: '0 4px 20px rgba(108,59,255,0.08)' }}>
-                  <div className="px-5 pt-5 pb-4 flex items-center gap-3" style={{ borderBottom: '1px solid var(--c-border-2)' }}>
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                      style={{ background: '#6C3BFF', boxShadow: '0 4px 12px rgba(108,59,255,0.35)' }}>
-                      <AlertTriangle size={18} color="#fff" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h2 className="text-base font-bold" style={{ color: 'var(--c-text)' }}>
-                        Hoy tienes que atender
-                      </h2>
-                      {pendingCount > 0 && (
-                        <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-                          {pendingCount} {pendingCount === 1 ? 'asunto pendiente' : 'asuntos pendientes'} de tu revisión
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="p-5 flex flex-col gap-2.5">
-                    {/* URGENTE: integraciones caídas */}
-                    {reauthAlerts.map(alert => (
-                      <Link key={alert.provider} href={`/portal/${token}?tab=negocio#integraciones`}
-                        className="flex items-center gap-3 px-4 py-3 rounded-xl no-underline transition-all hover:translate-x-0.5"
-                        style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)' }}>
-                        <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                          style={{ background: '#ef4444' }}>
-                          <AlertTriangle size={16} color="#fff" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold" style={{ color: '#dc2626' }}>
-                            {alert.provider === 'gmail' ? 'Gmail' : 'Outlook'} requiere reconexión
-                          </p>
-                          <p className="text-xs truncate" style={{ color: 'var(--c-text-3)' }}>{alert.email} — el empleado no puede leer correos</p>
-                        </div>
-                        <span className="text-xs font-semibold px-3 py-1.5 rounded-lg whitespace-nowrap"
-                          style={{ background: '#ef4444', color: '#fff' }}>Resolver</span>
-                      </Link>
-                    ))}
-
-                    {/* Citas hoy */}
-                    {apptsHoy.length > 0 && (
-                      <div className="px-4 py-3 rounded-xl"
-                        style={{ background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.2)' }}>
-                        <div className="flex items-center gap-3 mb-2">
-                          <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                            style={{ background: '#3b82f6' }}>
-                            <CalendarDays size={16} color="#fff" />
-                          </div>
-                          <p className="text-sm font-semibold flex-1" style={{ color: 'var(--c-text)' }}>
-                            {apptsHoy.length} {apptsHoy.length === 1 ? 'cita confirmada hoy' : 'citas confirmadas hoy'}
-                          </p>
-                        </div>
-                        <div className="pl-12 flex flex-col gap-1.5">
-                          {apptsHoy.slice(0, 5).map((a: any) => {
-                            const nombre = (a.nombre as string | null)?.trim();
-                            const telefono = (a.telefono as string | null)?.trim();
-                            const displayName = nombre || telefono || 'Sin nombre';
-                            const ubicacion = (a.location as string | null)?.trim();
-                            const eventId = (a.calendar_event_id as string | null)?.trim();
-                            const provider = (a.calendar_provider as string | null)?.trim();
-                            // Deep-link al evento del calendario si existe, o al día si no
-                            let calUrl: string | null = null;
-                            if (eventId && provider === 'gmail') {
-                              // Google Calendar acepta el eventId directo (base64url-safe)
-                              calUrl = `https://calendar.google.com/calendar/u/0/r/eventedit/${eventId}`;
-                            } else if (eventId && provider === 'outlook') {
-                              calUrl = `https://outlook.office.com/calendar/item/${encodeURIComponent(eventId)}`;
-                            } else if (a.starts_at || a.fecha_iso) {
-                              // Fallback: abrir el día en el proveedor conectado (default Google)
-                              const d = new Date((a.starts_at as string) ?? (a.fecha_iso as string));
-                              if (!isNaN(d.getTime())) {
-                                const y = d.getFullYear(), m = d.getMonth() + 1, day = d.getDate();
-                                calUrl = provider === 'outlook'
-                                  ? `https://outlook.office.com/calendar/view/day/${y}-${String(m).padStart(2,'0')}-${String(day).padStart(2,'0')}`
-                                  : `https://calendar.google.com/calendar/u/0/r/day/${y}/${m}/${day}`;
-                              }
-                            }
-                            const content = (
-                              <>
-                                <span className="font-semibold tabular-nums" style={{ color: '#3b82f6' }}>{(a.hora as string) ?? '—'}</span>
-                                <span className="mx-1.5" style={{ color: 'var(--c-text-4)' }}>·</span>
-                                <span className="font-medium">{displayName}</span>
-                                {a.servicio ? <span style={{ color: 'var(--c-text-3)' }}> · {a.servicio}</span> : null}
-                                {ubicacion ? <span style={{ color: 'var(--c-text-3)' }}> · 📍 {ubicacion}</span> : null}
-                                {nombre && telefono ? <span style={{ color: 'var(--c-text-4)' }}> · {telefono}</span> : null}
-                              </>
-                            );
-                            return calUrl ? (
-                              <a key={a.id} href={calUrl} target="_blank" rel="noopener noreferrer"
-                                className="text-xs no-underline transition-opacity hover:opacity-70"
-                                style={{ color: 'var(--c-text-2)' }}>
-                                {content}
-                              </a>
-                            ) : (
-                              <p key={a.id} className="text-xs" style={{ color: 'var(--c-text-2)' }}>
-                                {content}
-                              </p>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Correos pendientes en bandeja */}
-                    {bandejaCount > 0 && (
-                      <Link href={`/portal/${token}/oficina/bandeja`}
-                        className="flex items-center gap-3 px-4 py-3 rounded-xl no-underline transition-all hover:translate-x-0.5"
-                        style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.2)' }}>
-                        <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                          style={{ background: '#6C3BFF' }}>
-                          <Inbox size={16} color="#fff" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>
-                            {bandejaCount} {bandejaCount === 1 ? 'correo espera' : 'correos esperan'} tu aprobación
-                          </p>
-                          <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>Borradores, escalaciones y solicitudes</p>
-                        </div>
-                        <span className="text-xs font-semibold px-3 py-1.5 rounded-lg whitespace-nowrap"
-                          style={{ background: '#6C3BFF', color: '#fff' }}>Ver bandeja</span>
-                      </Link>
-                    )}
-
-                    {/* Salientes en cola */}
-                    {salientesEnCola > 0 && (
-                      <Link href={`/portal/${token}/oficina/llamadas?filtro=salientes`}
-                        className="flex items-center gap-3 px-4 py-3 rounded-xl no-underline transition-all hover:translate-x-0.5"
-                        style={{ background: 'rgba(168,85,247,0.06)', border: '1px solid rgba(168,85,247,0.2)' }}>
-                        <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                          style={{ background: '#a855f7' }}>
-                          <PhoneOutgoing size={16} color="#fff" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>
-                            {salientesEnCola} {salientesEnCola === 1 ? 'contacto en cola' : 'contactos en cola'}
-                          </p>
-                          <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>Campaña saliente activa</p>
-                        </div>
-                        <span className="text-xs font-semibold px-3 py-1.5 rounded-lg whitespace-nowrap"
-                          style={{ background: '#a855f7', color: '#fff' }}>Ver campañas</span>
-                      </Link>
-                    )}
-
-                    {/* Aprendizajes */}
-                    {learningsCount > 0 && (
-                      <Link href={`/portal/${token}/oficina/aprendizajes`}
-                        className="flex items-center gap-3 px-4 py-3 rounded-xl no-underline transition-all hover:translate-x-0.5"
-                        style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.2)' }}>
-                        <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                          style={{ background: '#22c55e' }}>
-                          <Lightbulb size={16} color="#fff" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>
-                            {learningsCount} {learningsCount === 1 ? 'aprendizaje' : 'aprendizajes'} por aprobar
-                          </p>
-                          <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>Reglas propuestas por tu equipo</p>
-                        </div>
-                        <span className="text-xs font-semibold px-3 py-1.5 rounded-lg whitespace-nowrap"
-                          style={{ background: '#22c55e', color: '#fff' }}>Revisar</span>
-                      </Link>
-                    )}
-
-                    {/* Brief del día (integrado, sin card duplicada) */}
-                    {hasNox && (
-                      <div className="mt-1 pt-3" style={{ borderTop: '1px solid var(--c-border-2)' }}>
-                        <p className="text-[10px] font-semibold tracking-widest uppercase mb-2" style={{ color: 'var(--c-text-4)' }}>
-                          Brief del día
-                        </p>
-                        <BriefDelDiaCard />
-                      </div>
-                    )}
-
-                    {/* Próxima tarea automática (línea discreta al pie) */}
-                    {nextTask && (
-                      <p className="text-[11px] pt-2 mt-1" style={{ color: 'var(--c-text-4)', borderTop: '1px solid var(--c-border-2)' }}>
-                        <Clock size={10} className="inline-block mr-1" style={{ verticalAlign: '-1px' }} />
-                        Próxima tarea automática: <span style={{ color: 'var(--c-text-3)' }}>{nextTask.name}</span> · {fmtFuture(nextTask.nextRunAt)} · {nextTask.agentName}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                );
-              })()}
-
-              {/* Fin de los bloques del briefing — InsightsSection removida, vive en /oficina/aprendizajes */}
-
-
-            </div>
-          )}
-
-          {/* ── OFICINA (ops only) ───────────────────────────────────────── */}
-          {/* ── NEGOCIO ──────────────────────────────────────────────────── */}
-          {tab === 'negocio' && (
-            <div className="flex flex-col lg:flex-row gap-5 items-start">
-
-              {/* Main column */}
-              <div className="flex-1 min-w-0 flex flex-col gap-5">
-                <div id="organizacion">
-                  {agent.portal_email && (
-                    <OrgCard token={token} portalEmail={agent.portal_email} logoUrl={(agent as any).logo_url ?? null} initialDescription={orgSettings?.business_description ?? (agent as any).business_description ?? ''} initialBusinessEmail={(orgSettings as any)?.business_email ?? ''} />
-                  )}
-                </div>
-
-                <div id="branding" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <div className="flex items-center gap-1.5 mb-4">
-                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Branding de documentos y correos</h2>
-                    <InfoTooltip text="Define los colores, datos de contacto y pie de página que aparecen en todos los correos y documentos que genera tu empleado." />
-                  </div>
-                  <BrandKitEditor
-                    token={token}
-                    logoUrl={(agent as any).logo_url ?? null}
-                    businessName={agent.business_name}
-                    agentName={agent.agent_name ?? agent.business_name}
-                    initialColor={orgSettings?.email_brand_color ?? (agent as any).email_brand_color ?? '#6C3BFF'}
-                    initialColorSecondary={orgSettings?.brand_color_secondary ?? (agent as any).brand_color_secondary ?? ''}
-                    initialWebsite={orgSettings?.brand_website ?? (agent as any).brand_website ?? ''}
-                    initialAddress={orgSettings?.brand_address ?? (agent as any).brand_address ?? ''}
-                    initialPhone={orgSettings?.brand_phone ?? ''}
-                    initialFooter={orgSettings?.email_footer_text ?? (agent as any).email_footer_text ?? ''}
-                    senderEmail={(orgSettings as any)?.business_email ?? agent.portal_email ?? null}
-                  />
-                </div>
-
-                <div id="conocimiento" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <div className="flex items-center gap-1.5 mb-4">
-                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Manual de la organización</h2>
-                    <InfoTooltip text="Tus empleados consultan esta información en todas sus interacciones: llamadas, correos y mensajes. Incluye servicios, precios, FAQs y cualquier detalle que deban conocer." />
-                  </div>
-                  <KnowledgeBaseEditor
-                    token={token}
-                    initialValue={orgSettings?.knowledge_base ?? (agent as any).knowledge_base ?? ''}
-                    websiteSynced={!!(orgSettings?.website_knowledge ?? (agent as any).website_knowledge)}
-                    hasDescription={!!((orgSettings?.business_description ?? (agent as any).business_description)?.trim())}
-                  />
-                </div>
-
-                <div id="perfil-dueno" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <div className="flex items-center gap-1.5 mb-4">
-                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Perfil del responsable</h2>
-                    <InfoTooltip text="Cuéntale a tus empleados quién eres, cuáles son tus prioridades y cómo te gusta que se hagan las cosas. Cuanto más sepan de ti, mejor se adaptarán a tu estilo." />
-                  </div>
-                  <OwnerProfileEditor
-                    token={token}
-                    initialValue={orgSettings?.owner_profile ?? (agent as any).owner_profile ?? ''}
-                  />
-                </div>
-
-                {/* Contratos y fechas críticas — feature oculto por ahora, código preservado */}
-                {false && (
-                  <div id="contratos-internos" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                    <ContractTrackerSection token={token} />
-                  </div>
-                )}
-
-              </div>
-
-              {/* Col 2 — Sitio web, Reseñas, Notificaciones */}
-              <div className="flex flex-col gap-5 w-full" style={{ flexBasis: 420, flexShrink: 0 }}>
-                <div id="sitio" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <div className="flex items-center gap-1.5 mb-4">
-                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Sitio web</h2>
-                    <InfoTooltip text="Sincroniza tu sitio para que tu empleado tenga siempre la información actualizada de tu organización." />
-                  </div>
-                  <WebsiteSyncButton token={token} currentUrl={orgSettings?.business_website ?? (agent as any).business_website ?? null} />
-                  <div style={{ borderTop: '1px solid var(--c-border)', margin: '20px -20px 16px' }} />
-                  <div className="flex items-center gap-1.5 mb-3">
-                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Reseñas</h2>
-                    <InfoTooltip text="Tu empleado comparte este link con tus clientes al finalizar llamadas exitosas para que dejen una reseña." />
-                  </div>
-                  <ReviewLinkEditor token={token} initialValue={orgSettings?.google_review_url ?? (agent as any).google_review_url ?? ''} />
-                </div>
-
-                <div id="dominio-correo" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <div className="flex items-center gap-1.5 mb-4">
-                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Notificaciones automáticas al cliente</h2>
-                    <InfoTooltip text="Cuando tu empleado atiende una llamada, Centinelia envía correos automáticos al cliente (confirmación de cita, acuse de lead, etc.). Por defecto salen desde centinelia.mx. Registra tu dominio para que lleguen desde tuempresa.com." />
-                  </div>
-                  <EmailSettings token={token} />
-                </div>
-              </div>
-
-              {/* Col 3 — Horario de atención */}
-              <div className="flex flex-col gap-5 w-full" style={{ flexBasis: 280, flexShrink: 0 }}>
-                <div id="horarios" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <div className="flex items-center gap-1.5 mb-4">
-                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Horario de atención</h2>
-                    <InfoTooltip text="Define los días y horarios en que tu empleado está disponible para atender llamadas." />
-                  </div>
-                  <BusinessHoursEditor token={token} initialHours={((orgSettings?.business_hours ?? agent.business_hours) ?? null) as BusinessHours | null} />
-                </div>
-              </div>
-
-            </div>
-          )}
-
-          {/* ── CUENTA ───────────────────────────────────────────────────── */}
-          {tab === 'cuenta' && (
-            <div className="flex flex-col gap-5">
-
-              {/* Header — patrón consistente con /inicio y /agentes */}
-              <div>
-                <p className="text-[10px] font-semibold tracking-widest uppercase mb-1" style={{ color: 'var(--c-text-4)' }}>
-                  TU CUENTA
-                </p>
-                <h1 className="text-xl font-bold" style={{ color: 'var(--c-text)' }}>Plan y consumo</h1>
-                <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
-                  Revisa tu uso del mes, compra saldo extra y consulta el historial de movimientos.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-5 items-start">
-
-                {/* ── Col 1: Consumo promedio + Uso + Compras + Recarga ── */}
-                <div className="flex flex-col gap-5" id="minutos">
-
-                  {/* ── Consumo promedio (arriba, contexto antes del saldo) ── */}
-                  {(allCalls.length > 0 || (aiOpsLimit > 0 && aiOpsUsed > 0)) && (
-                    <div id="consumo-promedio" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
-                      <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Consumo promedio</h2>
-                      <div className={allCalls.length > 0 && aiOpsLimit > 0 && aiOpsUsed > 0 ? 'grid grid-cols-2 gap-4' : ''}>
-                        {allCalls.length > 0 && (
-                          <div className="flex flex-col gap-2">
-                            {aiOpsLimit > 0 && <p className="text-[10px] font-semibold tracking-wide uppercase mb-1" style={{ color: 'var(--c-text-3)' }}>Minutos</p>}
-                            <StatBox label="Por día"    value={`${avgMinPerDay} min`} />
-                            <StatBox label="Por semana" value={`${avgMinPerWeek} min`} />
-                            <StatBox label="Por mes"    value={`${avgMinPerMonth} min`} highlight={avgMinPerMonth > minutesIncluded * 0.9} />
-                          </div>
-                        )}
-                        {aiOpsLimit > 0 && aiOpsUsed > 0 && (
-                          <div className="flex flex-col gap-2">
-                            {allCalls.length > 0 && <p className="text-[10px] font-semibold tracking-wide uppercase mb-1" style={{ color: 'var(--c-text-3)' }}>Tareas</p>}
-                            <StatBox label="Por día"    value={`${avgOpsPerDay}`} />
-                            <StatBox label="Por semana" value={`${avgOpsPerWeek}`} />
-                            <StatBox label="Por mes"    value={`${avgOpsPerMonth}`} highlight={avgOpsPerMonth > aiOpsLimit * 0.9} />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* ── Uso del mes: bloque destacado cuando saldo bajo, normal cuando no ── */}
-                  {(minutesIncluded > 0 || aiOpsLimit > 0) && (() => {
-                    const warnPct = Math.max(minutesPct, aiOpsPct);
-                    const isLow = warnPct >= 80;
-                    return (
-                    <div id="uso-del-mes" className={isLow ? "rounded-2xl overflow-hidden" : "rounded-xl p-5"}
-                      style={isLow ? {
-                        background: 'linear-gradient(180deg, rgba(239,68,68,0.06) 0%, var(--c-surface) 100%)',
-                        border: '2px solid rgba(239,68,68,0.3)',
-                        boxShadow: '0 4px 20px rgba(239,68,68,0.08)',
-                      } : { background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
-                      <div className={isLow ? "px-5 pt-5 pb-4 flex items-center gap-3" : ""} style={isLow ? { borderBottom: '1px solid var(--c-border-2)' } : {}}>
-                        {isLow && (
-                          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                            style={{ background: '#ef4444', boxShadow: '0 4px 12px rgba(239,68,68,0.35)' }}>
-                            <AlertTriangle size={18} color="#fff" />
-                          </div>
-                        )}
-                        <div className="flex-1">
-                          <h2 className={isLow ? "text-base font-bold" : "text-xs font-semibold mb-4 tracking-widest uppercase"}
-                            style={{ color: isLow ? '#dc2626' : 'var(--c-text-3)' }}>
-                            {isLow ? 'Tu saldo está bajando' : 'Uso del mes'}
-                          </h2>
-                          {isLow && (
-                            <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-                              Considera recargar antes del reset para no interrumpir el servicio.
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <div className={isLow ? "p-5" : ""}>
-                      <div className="flex flex-col gap-4">
-                        <div>
-                          <div className="flex justify-between text-xs mb-1.5">
-                            <span className="font-medium" style={{ color: 'var(--c-text-2)' }}>Minutos</span>
-                            {minutesIncluded > 0 ? (
-                              <span style={{ color: minutesColor }}>{minutesUsed} / {minutesIncluded} min</span>
-                            ) : (
-                              <span style={{ color: 'var(--c-text-4)' }}>Jornada sin minutos</span>
-                            )}
-                          </div>
-                          <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
-                            <div className="h-2 rounded-full transition-all" style={{ width: minutesIncluded > 0 ? `${minutesPct}%` : '0%', background: minutesColor }} />
-                          </div>
-                          {minutesIncluded > 0 && (
-                            <div className="flex justify-between text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
-                              <span>{minutesRemain} disponibles</span>
-                              <span>Renueva el {resetDate}</span>
-                            </div>
-                          )}
-                          {rolloverMinutes > 0 && (
-                            <p className="text-xs mt-1" style={{ color: '#6C3BFF' }}>{planBaseMinutes} base + {rolloverMinutes} del mes anterior</p>
-                          )}
-                        </div>
-                        {aiOpsLimit > 0 && (
-                          <div>
-                            <div className="flex justify-between text-xs mb-1.5">
-                              <span className="font-medium" style={{ color: 'var(--c-text-2)' }}>Tareas</span>
-                              <span style={{ color: aiOpsColor }}>{aiOpsUsed} / {aiOpsLimit}</span>
-                            </div>
-                            <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
-                              <div className="h-2 rounded-full transition-all" style={{ width: `${aiOpsPct}%`, background: aiOpsColor }} />
-                            </div>
-                            <div className="flex justify-between text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
-                              <span>{Math.max(0, aiOpsLimit - aiOpsUsed)} disponibles</span>
-                              <span>Renueva el {resetDate}</span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                      </div>
-                    </div>
-                    );
-                  })()}
-
-                  {/* ── Comprar: minutos + tareas en una sola tarjeta ── */}
-                  {(() => {
-                    const warnPct  = Math.max(minutesPct, aiOpsPct);
-                    const bgStyle  = warnPct >= 70 ? 'rgba(108,59,255,0.03)' : 'var(--c-surface)';
-                    const bdrStyle = warnPct >= 90 ? '1px solid rgba(239,68,68,0.35)' : warnPct >= 70 ? '1px solid rgba(108,59,255,0.35)' : '1px solid var(--c-border-2)';
-                    return (
-                      <div id="comprar" className="rounded-xl p-5" style={{ background: bgStyle, border: bdrStyle }}>
-                        <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Comprar saldo</h2>
-                        {warnPct >= 70 && (
-                          <p className="text-xs mb-2 flex items-center gap-1.5" style={{ color: warnPct >= 90 ? '#ef4444' : '#f59e0b' }}>
-                            <AlertTriangle size={11} />
-                            {warnPct >= 90 ? 'Saldo bajo — recarga pronto' : 'Tu saldo está bajando'}
-                          </p>
-                        )}
-                        <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Se suman al instante. No afectan tu plan mensual.</p>
-                        {annualContractInfo ? (
-                          <div className="flex flex-col gap-5">
-                            <AnnualContractCallout action="comprar_minutos"  folio={annualContractInfo.folio} endDate={annualContractInfo.endDate} isExpired={annualContractInfo.isExpired} />
-                            <div style={{ borderTop: '1px solid var(--c-border)' }} />
-                            <AnnualContractCallout action="comprar_tareas"   folio={annualContractInfo.folio} endDate={annualContractInfo.endDate} isExpired={annualContractInfo.isExpired} />
-                          </div>
-                        ) : (
-                          <div className="flex flex-col gap-5">
-                            {minutesIncluded > 0 && (
-                              <div>
-                                {aiOpsLimit > 0 && <p className="text-xs font-semibold mb-2 tracking-wide uppercase" style={{ color: 'var(--c-text-3)' }}>Minutos</p>}
-                                <BuyMinutesSection token={token} />
-                              </div>
-                            )}
-                            {minutesIncluded > 0 && aiOpsLimit > 0 && (
-                              <div style={{ borderTop: '1px solid var(--c-border)' }} />
-                            )}
-                            {aiOpsLimit > 0 && (
-                              <div>
-                                {minutesIncluded > 0 && <p className="text-xs font-semibold mb-2 tracking-wide uppercase" style={{ color: 'var(--c-text-3)' }}>Tareas</p>}
-                                <BuyOpsSection token={token} />
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
-
-                  <div id="recarga" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
-                    <h3 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Recarga automática</h3>
-                    <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Activa para recargar automáticamente cuando el saldo baje de un umbral.</p>
-                    <AutoRefillSection token={token} />
-                  </div>
-                </div>
-
-                {/* ── Col 2: Consumo promedio + Historial de minutos ── */}
-                <div className="flex flex-col gap-5">
-                  {(allCalls.length > 0 || (aiOpsLimit > 0 && aiOpsUsed > 0)) && (
-                    <div id="consumo-promedio" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
-                      <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Consumo promedio</h2>
-                      <div className={allCalls.length > 0 && aiOpsLimit > 0 && aiOpsUsed > 0 ? 'grid grid-cols-2 gap-4' : ''}>
-                        {allCalls.length > 0 && (
-                          <div className="flex flex-col gap-2">
-                            {aiOpsLimit > 0 && <p className="text-[10px] font-semibold tracking-wide uppercase mb-1" style={{ color: 'var(--c-text-3)' }}>Minutos</p>}
-                            <StatBox label="Por día"    value={`${avgMinPerDay} min`} />
-                            <StatBox label="Por semana" value={`${avgMinPerWeek} min`} />
-                            <StatBox label="Por mes"    value={`${avgMinPerMonth} min`} highlight={avgMinPerMonth > minutesIncluded * 0.9} />
-                          </div>
-                        )}
-                        {aiOpsLimit > 0 && aiOpsUsed > 0 && (
-                          <div className="flex flex-col gap-2">
-                            {allCalls.length > 0 && <p className="text-[10px] font-semibold tracking-wide uppercase mb-1" style={{ color: 'var(--c-text-3)' }}>Tareas</p>}
-                            <StatBox label="Por día"    value={`${avgOpsPerDay}`} />
-                            <StatBox label="Por semana" value={`${avgOpsPerWeek}`} />
-                            <StatBox label="Por mes"    value={`${avgOpsPerMonth}`} highlight={avgOpsPerMonth > aiOpsLimit * 0.9} />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  <div id="historial" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
-                    <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Movimientos recientes</h2>
-                    <div className="relative">
-                      <div className="overflow-y-auto" style={{ maxHeight: '420px', paddingRight: 12 }}>
-                        <MinutesLedgerSection agentId={agent.id} minutesIncluded={minutesIncluded} minutesUsed={minutesUsed} callerNames={callerNames} />
-                      </div>
-                      <div className="absolute bottom-0 left-0 right-0 h-10 pointer-events-none"
-                        style={{ background: 'linear-gradient(to bottom, transparent, var(--c-surface))' }} />
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-
-              {/* Términos de servicio — al fondo (referencia legal, no diario) */}
-              <div id="terminos-servicio" style={{ scrollMarginTop: '1.5rem' }}>
-                <ContractSection
-                  token={token}
-                  businessName={agent.business_name}
-                  signedAt={contractAcceptedAt}
-                  contractPreviewUrl={`/portal/${token}/contrato`}
-                />
-              </div>
-            </div>
-          )}
-        </div>
-
-            <PortalFooter token={token} />
-          </div> // /main content column
-  );
 
   // ── V2 body: design-system shell (outer containers only; inner logic untouched) ──
   const pageBodyV2 = (
@@ -2131,96 +1458,38 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
     </div>
   );
 
-  // V2 layout: PortalShell renders header + V2 sidebar, main column is passed as prop
-  if (v2Enabled) {
-    return (
-      <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="light">
-        <HashScrollHighlight />
-        <div className="min-h-screen relative flex flex-col" style={{ background: 'var(--c-bg)', color: 'var(--c-text)', overflowX: 'clip' }}>
-          <div style={{ position: 'absolute', width: 900, height: 500, top: -320, left: '50%', transform: 'translateX(-50%)', background: 'radial-gradient(ellipse, rgba(108,59,255,0.13) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
-          <PortalShell
-            orgId={agent.portal_email ?? ''}
-            token={token}
-            businessName={agent.business_name}
-            logoUrl={(agent as any).logo_url ?? null}
-            hasOpsAgent={hasOpsAgent}
-            showOutbound={showOutbound || agent.plan === 'pro'}
-            isOwner={isOwner}
-            modules={modules}
-            minutesRemain={minutesRemain}
-            minutesIncluded={minutesIncluded}
-            aiOpsUsed={aiOpsUsed}
-            aiOpsLimit={aiOpsLimit}
-            hasStripe={hasStripe}
-            accountSerial={accountSerial}
-            headerActions={
-              <>
-                {accountSerial && (
-                  <div className="hidden sm:flex">
-                    <AccountSerialBadge serial={accountSerial} variant="header" onDark />
-                  </div>
-                )}
-                <NotificationBell token={token} onDark />
-                <PortalLogout onDark />
-              </>
-            }
-            main={pageBodyV2}
-          />
-        </div>
-      </ThemeProvider>
-    );
-  }
-
-  // V1 layout: BusinessSwitcher header + PortalSidebar
   return (
     <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="light">
       <HashScrollHighlight />
       <div className="min-h-screen relative flex flex-col" style={{ background: 'var(--c-bg)', color: 'var(--c-text)', overflowX: 'clip' }}>
         <div style={{ position: 'absolute', width: 900, height: 500, top: -320, left: '50%', transform: 'translateX(-50%)', background: 'radial-gradient(ellipse, rgba(108,59,255,0.13) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
-
-        {/* V1 header */}
-        <div style={{ background: 'var(--c-modal)', borderBottom: '1px solid rgba(108,59,255,0.18)', boxShadow: '0 2px 24px rgba(0,0,0,0.18)', position: 'sticky', top: 0, zIndex: 10 }}>
-          <div className="px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
-            <BusinessSwitcher
-              current={{
-                business_name: agent.business_name,
-                logo_url:      (agent as any).logo_url ?? null,
-                first_token:   token,
-              }}
-              options={businessGroups.map(g => ({
-                business_name: g.business_name,
-                logo_url:      g.logo_url,
-                first_token:   g.first_token,
-              }))}
-              currentBusinessName={agent.business_name}
-            />
-            <div className="flex items-center gap-1.5 shrink-0">
-              {accountSerial && <AccountSerialBadge serial={accountSerial} variant="header" />}
-              <NotificationBell token={token} />
-              <PortalLogout />
-            </div>
-          </div>
-        </div>
-
-        {/* V1 body: sidebar + main */}
-        <div className="flex flex-1">
-          <PortalSidebar
-            token={token}
-            currentTab={tab}
-            hasOpsAgent={hasOpsAgent}
-            showOutbound={showOutbound || agent.plan === 'pro'}
-            hasStripe={hasStripe}
-            minutesRemain={minutesRemain}
-            minutesIncluded={minutesIncluded}
-            aiOpsUsed={aiOpsUsed}
-            aiOpsLimit={aiOpsLimit}
-            isOwner={isOwner}
-            modules={modules}
-            jornadaType={(agent as any).jornada_type ?? 'combinada'}
-          />
-          {pageBodyV1}
-        </div>
-
+        <PortalShell
+          token={token}
+          businessName={agent.business_name}
+          logoUrl={(agent as any).logo_url ?? null}
+          hasOpsAgent={hasOpsAgent}
+          showOutbound={showOutbound || agent.plan === 'pro'}
+          isOwner={isOwner}
+          modules={modules}
+          minutesRemain={minutesRemain}
+          minutesIncluded={minutesIncluded}
+          aiOpsUsed={aiOpsUsed}
+          aiOpsLimit={aiOpsLimit}
+          hasStripe={hasStripe}
+          accountSerial={accountSerial}
+          headerActions={
+            <>
+              {accountSerial && (
+                <div className="hidden sm:flex">
+                  <AccountSerialBadge serial={accountSerial} variant="header" onDark />
+                </div>
+              )}
+              <NotificationBell token={token} onDark />
+              <PortalLogout onDark />
+            </>
+          }
+          main={pageBodyV2}
+        />
       </div>
     </ThemeProvider>
   );

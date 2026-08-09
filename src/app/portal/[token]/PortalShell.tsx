@@ -1,10 +1,8 @@
-import { isPortalV2Enabled } from '@/lib/portal/portal-v2-flag';
 import PortalHeader          from './PortalHeader';
 import PortalSidebarV2Client from './PortalSidebarV2Client';
 import PortalMobileNav       from './PortalMobileNav';
 
 export interface PortalShellProps {
-  orgId: string;                          // portal_email — PK of organizations
   token: string;
   businessName: string;
   logoUrl?: string | null;
@@ -17,22 +15,13 @@ export interface PortalShellProps {
   aiOpsUsed?: number | null;
   aiOpsLimit?: number | null;
   hasStripe?: boolean;
-  accountSerial?: string | null;          // shown in mobile drawer for quick copy
-  headerActions?: React.ReactNode;        // right slot of V2 header
-  main: React.ReactNode;                  // page content
+  accountSerial?: string | null;
+  headerActions?: React.ReactNode;
+  main: React.ReactNode;
 }
 
-/**
- * Server component that conditionally renders the V2 navigation shell.
- *
- * When portal_v2_enabled is ON for the org: renders PortalHeader + PortalSidebarV2Client
- * wrapped around `main`.
- *
- * When OFF: returns null — the calling page keeps its own V1 header + PortalSidebar.
- */
-export default async function PortalShell(props: PortalShellProps): Promise<React.JSX.Element | null> {
+export default function PortalShell(props: PortalShellProps): React.JSX.Element {
   const {
-    orgId,
     token,
     businessName,
     logoUrl,
@@ -49,9 +38,6 @@ export default async function PortalShell(props: PortalShellProps): Promise<Reac
     headerActions,
     main,
   } = props;
-
-  const v2Enabled = await isPortalV2Enabled(orgId);
-  if (!v2Enabled) return null;
 
   const sidebarProps = {
     token,
