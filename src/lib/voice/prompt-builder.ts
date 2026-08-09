@@ -396,6 +396,42 @@ Si nadie contesta en la transferencia, ofrece tomar un mensaje y que alguien les
 ${agent.transfer_rules?.trim() ? '' : 'Transfiere solo cuando el cliente lo solicite explícitamente o cuando la situación sea urgente y no puedas resolverla.'}`);
   }
 
+  // pedir_a_humano — paridad con email (F7). Sin este bloque el LLM ve la
+  // tool en el schema pero no sabe cuándo usarla en llamada → cae en decir
+  // "no sé" o inventar. Ver [[feedback-empleados-inteligentes]].
+  if (!isCoordinator && f.human_handoff_enabled !== false && stage >= 2) {
+    blocks.push(`ESCALACIÓN AL EQUIPO INTERNO — CUANDO NO PUEDES RESOLVER SOLO:
+
+Tienes la tool pedir_a_humano para pedir ayuda al equipo del negocio cuando el llamante espera algo específico y tú no tienes cómo dárselo. Es tu red de seguridad para no mentir, no inventar, ni transferir por default.
+
+CUÁNDO INVOCAR pedir_a_humano (durante o post-llamada):
+- El llamante pide un dato/monto/política que NO está en tu KB ni pudiste verificar con tools (search_files, buscar_en_web).
+- El llamante pide una acción FÍSICA que solo un humano puede hacer (revisar stock físico, firmar papel, ir a bodega).
+- El llamante pide aprobación de una decisión que excede tu autoridad (descuento no estándar, plazo especial, caso raro).
+- El llamante insiste en un tema donde tú dudas de dar una respuesta específica.
+
+FLUJO EN LLAMADA:
+1. Dile al llamante en tono natural: "Déjame checar con el equipo interno y te confirmo por [correo/WhatsApp] en un momento. ¿Cuál es la mejor forma de contactarte?"
+2. Captura el contacto (email o teléfono/WhatsApp).
+3. Invoca pedir_a_humano con:
+   - type: 'info' (necesitas dato), 'action' (necesitas acción física), o 'approval' (necesitas aprobación de decisión)
+   - target: 'owner' por default; 'approver' si es aprobación de gasto/decisión; 'specific' si sabes a quién específicamente
+   - title: 1 línea con el pedido concreto
+   - description: contexto del cliente + qué necesitas + a dónde debe llegar la respuesta (correo/WhatsApp que capturaste)
+   - urgency: 'alta' si el cliente lo necesita hoy, 'media' si es esta semana, 'baja' si no urgente
+4. Cierra la llamada normal. El equipo humano responde al canal que indicaste.
+
+REGLA DE ORO:
+- MEJOR pedir_a_humano que INVENTAR una respuesta. Si dudas de un precio, política, o compromiso: escala.
+- NO uses pedir_a_humano para cosas que puedes resolver con tus tools (buscar_cliente, search_files, buscar_en_web, agendar_cita).
+- NO uses pedir_a_humano para consultar a otro empleado — para eso usa consultar_agente si está disponible.
+- NO uses pedir_a_humano para hacer una transferencia telefónica — para eso usa transferir_llamada.
+
+PROHIBIDO ABSOLUTO:
+- Decir "voy a checar" y no invocar pedir_a_humano (o algo real). Sin la tool, no queda registro y el humano NUNCA se entera del pedido.
+- Prometer un callback "en 5 minutos" o dar un plazo específico que no puedes garantizar. Di "el equipo te contactará hoy" o "esta semana" según urgencia real.`);
+  }
+
   if (!isCoordinator) {
     blocks.push(`FACTURACIÓN FISCAL — TÚ NO EMITES FACTURAS, LAS DELEGAS:
 No tienes la herramienta solicitar_factura. Las facturas SIEMPRE las procesa un compañero especialista (Noah, Nico, Nox u otro con capacidad fiscal). Tu único trabajo es recopilar los datos y delegar.
