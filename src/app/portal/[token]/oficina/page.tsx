@@ -127,13 +127,13 @@ export default async function OficinaHome({ params }: Props) {
   const owner = displayName ?? 'Bienvenido';
 
   // Agent IDs de la cuenta (org-scoped). Si sub-user con agent_ids seteados,
-  // intersectar.
+  // intersectar (aunque el resultado sea vacío — un sub-user restringido a
+  // agentes borrados debe ver 0, no fallback a todos los agentes de la org).
   const accountIds = siblings.map(s => s.id);
   let agentIds = accountIds.length > 0 ? accountIds : [agent.id as string];
   if (subUser?.agent_ids && subUser.agent_ids.length > 0) {
     const allowed = subUser.agent_ids;
-    const filtered = agentIds.filter(id => allowed.includes(id));
-    if (filtered.length > 0) agentIds = filtered;
+    agentIds = agentIds.filter(id => allowed.includes(id));
   }
 
   const now = new Date();
