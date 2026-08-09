@@ -4,7 +4,6 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { notFound }          from 'next/navigation';
 import { cookies }           from 'next/headers';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
-import { getAgentAccess }    from '@/lib/portal/agent-access';
 import AttentionPanel        from './AttentionPanel';
 import ActividadFeed         from './ActividadFeed';
 import Link                  from 'next/link';
@@ -90,32 +89,52 @@ export default async function OficinaHome({ params }: Props) {
   const supabase = createAdminClient();
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('portal_email, business_name, agent_name, client_name')
+    .select('id, portal_email, business_name, agent_name, client_name')
     .eq('portal_token', token)
     .maybeSingle();
   if (!agent) notFound();
 
-  // Resolver nombre a mostrar en el greeting.
+  // ─── Batch 1: siblings (para agentIds) + sub-user profile (para nombre)
+  // en paralelo. Antes: agent → [pu conditional] → getAgentAccess (2 queries
+  // internas) → KPI batch — 3-4 round-trips serializados. Ahora: agent →
+  // [siblings + pu] paralelo → KPI batch.
+  const [siblings, subUser] = await Promise.all([
+    supabase
+      .from('voice_agents')
+      .select('id')
+      .eq('portal_email', agent.portal_email)
+      .eq('active', true)
+      .then(r => (r.data ?? []) as Array<{ id: string }>),
+    session?.isSubUser && session.userId
+      ? supabase
+          .from('portal_users')
+          .select('name, agent_ids')
+          .eq('id', session.userId)
+          .maybeSingle()
+          .then(r => r.data as { name: string | null; agent_ids: string[] | null } | null)
+      : Promise.resolve(null),
+  ]);
+
+  // Nombre a mostrar en el greeting.
   //   Sub-usuario logueado → portal_users.name
   //   Owner               → voice_agents.client_name (nombre completo del registro)
   //   Fallback            → primer nombre extraído del portal_email
   //   Final               → 'Bienvenido'
-  let displayName: string | null = null;
-  if (session?.isSubUser && session.userId) {
-    const { data: pu } = await supabase
-      .from('portal_users')
-      .select('name')
-      .eq('id', session.userId)
-      .maybeSingle();
-    displayName = firstName((pu?.name as string | null) ?? null);
-  } else {
-    displayName = firstName((agent as any).client_name as string | null)
-                ?? firstName((agent as any).portal_email as string | null);
-  }
+  const displayName: string | null = session?.isSubUser && session.userId
+    ? firstName(subUser?.name ?? null)
+    : firstName((agent as any).client_name as string | null)
+      ?? firstName((agent as any).portal_email as string | null);
   const owner = displayName ?? 'Bienvenido';
 
-  const access   = await getAgentAccess(token);
-  const agentIds = access?.ids ?? [];
+  // Agent IDs de la cuenta (org-scoped). Si sub-user con agent_ids seteados,
+  // intersectar.
+  const accountIds = siblings.map(s => s.id);
+  let agentIds = accountIds.length > 0 ? accountIds : [agent.id as string];
+  if (subUser?.agent_ids && subUser.agent_ids.length > 0) {
+    const allowed = subUser.agent_ids;
+    const filtered = agentIds.filter(id => allowed.includes(id));
+    if (filtered.length > 0) agentIds = filtered;
+  }
 
   const now = new Date();
   // Convertir a hora del negocio (default America/Monterrey UTC-6)
