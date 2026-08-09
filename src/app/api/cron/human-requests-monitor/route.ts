@@ -14,18 +14,21 @@ export async function GET(req: NextRequest) {
 
   const supabase = createAdminClient();
   const now = new Date();
-  const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  const twoDaysAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
-  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  // F10: umbrales más agresivos. Aplica [[feedback-empleados-inteligentes]]:
+  // si el empleado escaló al humano, que el humano se entere rápido y
+  // los pendings no se hagan zombies. Antes: 24h/48h/7d. Ahora: 12h/24h/5d.
+  const twelveHoursAgo = new Date(now.getTime() - 12 * 60 * 60 * 1000);
+  const dayAgo         = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const fiveDaysAgo    = new Date(now.getTime() - 5  * 24 * 60 * 60 * 1000);
 
   const results = { reminded: 0, escalated: 0, timed_out: 0, errors: 0 };
 
-  // 1. Reminders: pending > 24h without reminded_at
+  // 1. Reminders: pending > 12h sin reminded_at
   const { data: needReminder } = await supabase
     .from('human_requests')
     .select('id')
     .eq('status', 'pending')
-    .lt('created_at', dayAgo.toISOString())
+    .lt('created_at', twelveHoursAgo.toISOString())
     .is('reminded_at', null);
 
   for (const request of needReminder ?? []) {
@@ -39,12 +42,12 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // 2. Escalations: pending > 48h
+  // 2. Escalations: pending > 24h
   const { data: needEscalation } = await supabase
     .from('human_requests')
     .select('id, agent_id, status')
     .eq('status', 'pending')
-    .lt('created_at', twoDaysAgo.toISOString());
+    .lt('created_at', dayAgo.toISOString());
 
   for (const request of needEscalation ?? []) {
     try {
@@ -72,19 +75,19 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // 3. Timeouts: pending or escalated > 7d
+  // 3. Timeouts: pending o escalated > 5d
   const { data: needTimeout } = await supabase
     .from('human_requests')
     .select('id')
     .in('status', ['pending', 'escalated'])
-    .lt('created_at', weekAgo.toISOString());
+    .lt('created_at', fiveDaysAgo.toISOString());
 
   for (const request of needTimeout ?? []) {
     try {
       await supabase.from('human_requests').update({
         status: 'timeout',
         cancelled_at: now.toISOString(),
-        cancellation_reason: 'auto_timeout_7d',
+        cancellation_reason: 'auto_timeout_5d',
       }).eq('id', request.id as string);
 
       await resumeAgentAfterHumanResponse(request.id as string);
