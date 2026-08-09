@@ -7,9 +7,10 @@ import {
   FileText, ShoppingCart, Upload, Trash2, Save, CheckCircle,
   FileCheck, ChevronDown, ChevronRight, MessageSquare, Wand2,
   Plus, Check, Edit2, GripVertical, ToggleLeft, ToggleRight, X,
-  Copy, AlertTriangle, ExternalLink,
+  Copy, AlertTriangle, ExternalLink, LayoutTemplate,
 } from 'lucide-react';
 import { TEMPLATE_SPECS } from '@/lib/documents/template-spec';
+import OficinaPageHero from '../OficinaPageHero';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -97,11 +98,11 @@ function Field({ label, hint, value, onChange, as: As = 'input', placeholder }: 
   label: string; hint?: string; value: string;
   onChange: (v: string) => void; as?: 'input' | 'textarea'; placeholder?: string;
 }) {
-  const s = { background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' } as React.CSSProperties;
+  const s = { background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' } as React.CSSProperties;
   return (
     <div>
-      <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--c-text-2)' }}>{label}</label>
-      {hint && <p className="text-xs mb-1.5" style={{ color: 'var(--c-text-4)' }}>{hint}</p>}
+      <label className="block text-xs font-semibold mb-1" style={{ color: '#1A0A3B' }}>{label}</label>
+      {hint && <p className="text-xs mb-1.5" style={{ color: '#9B8FB5' }}>{hint}</p>}
       {As === 'textarea'
         ? <textarea rows={2} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} className="w-full rounded-lg px-3 py-2 text-sm resize-none" style={s} />
         : <input type="text" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} className="w-full rounded-lg px-3 py-2 text-sm" style={s} />
@@ -127,14 +128,14 @@ function CondicionesPagoField({ value, onChange }: { value: string; onChange: (v
 
   return (
     <div>
-      <label className="block text-xs font-semibold mb-2" style={{ color: 'var(--c-text-2)' }}>Condiciones de pago</label>
+      <label className="block text-xs font-semibold mb-2" style={{ color: '#1A0A3B' }}>Condiciones de pago</label>
       <div className="flex flex-wrap gap-1.5 mb-2">
         {CONDICIONES_PRESET.map(opt => (
           <button key={opt} type="button" onClick={() => selectPreset(opt)}
             className="text-xs px-2.5 py-1 rounded-full transition-all"
             style={value === opt && !showOtro
               ? { background: 'rgba(108,59,255,0.12)', color: '#6C3BFF', border: '1px solid rgba(108,59,255,0.3)', fontWeight: 600 }
-              : { background: 'transparent', color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }
+              : { background: 'transparent', color: '#6B6480', border: '1px solid #E8E3F5' }
             }
           >{opt}</button>
         ))}
@@ -142,7 +143,7 @@ function CondicionesPagoField({ value, onChange }: { value: string; onChange: (v
           className="text-xs px-2.5 py-1 rounded-full transition-all"
           style={showOtro
             ? { background: 'rgba(108,59,255,0.12)', color: '#6C3BFF', border: '1px solid rgba(108,59,255,0.3)', fontWeight: 600 }
-            : { background: 'transparent', color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }
+            : { background: 'transparent', color: '#6B6480', border: '1px solid #E8E3F5' }
           }
         >Otro</button>
       </div>
@@ -151,7 +152,7 @@ function CondicionesPagoField({ value, onChange }: { value: string; onChange: (v
           placeholder="Ej. Anticipo 50%, saldo a 30 días"
           autoFocus
           className="w-full rounded-lg px-3 py-2 text-sm"
-          style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }}
+          style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }}
         />
       )}
     </div>
@@ -163,13 +164,13 @@ function Toggle({ checked, onChange, label, hint }: { checked: boolean; onChange
     <div className="flex items-center gap-3">
       <button role="switch" aria-checked={checked} onClick={() => onChange(!checked)}
         className="relative inline-flex w-9 h-5 rounded-full transition-colors shrink-0"
-        style={{ background: checked ? '#6C3BFF' : 'var(--c-border)' }}>
+        style={{ background: checked ? '#6C3BFF' : '#E8E3F5' }}>
         <span className="inline-block w-3.5 h-3.5 rounded-full bg-white shadow transition-transform"
           style={{ margin: 3, transform: checked ? 'translateX(16px)' : 'translateX(0)' }} />
       </button>
       <div>
-        <p className="text-sm font-medium" style={{ color: 'var(--c-text)' }}>{label}</p>
-        {hint && <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>{hint}</p>}
+        <p className="text-sm font-medium" style={{ color: '#1A0A3B' }}>{label}</p>
+        {hint && <p className="text-xs" style={{ color: '#9B8FB5' }}>{hint}</p>}
       </div>
     </div>
   );
@@ -189,7 +190,7 @@ function PlaceholderChip({ text, color }: { text: string; color: string }) {
   return (
     <button onClick={copy} title="Copiar"
       className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-mono transition-colors"
-      style={{ background: copied ? `${color}22` : 'var(--c-surface-2)', color: copied ? color : 'var(--c-text-2)', border: `1px solid ${copied ? color + '55' : 'var(--c-border)'}` }}>
+      style={{ background: copied ? `${color}22` : '#FAFAFB', color: copied ? color : '#1A0A3B', border: `1px solid ${copied ? color + '55' : '#E8E3F5'}` }}>
       {text}
       {copied ? <Check size={10} /> : <Copy size={10} style={{ opacity: 0.6 }} />}
     </button>
@@ -205,22 +206,22 @@ function PlaceholderGuide({ docType, color }: { docType: 'factura' | 'orden' | '
   const loops  = spec.placeholders.filter(p => p.isLoop);
 
   return (
-    <div className="rounded-xl overflow-hidden" style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
+    <div className="rounded-xl overflow-hidden" style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
       <button onClick={() => setOpen(o => !o)}
         className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:opacity-80">
         <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${color}12` }}>
           <FileText size={12} style={{ color }} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Marcadores soportados</p>
-          <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Copia y pega estos en tu documento Word donde quieras que aparezcan los datos.</p>
+          <p className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>Marcadores soportados</p>
+          <p className="text-xs" style={{ color: '#9B8FB5' }}>Copia y pega estos en tu documento Word donde quieras que aparezcan los datos.</p>
         </div>
-        <ChevronDown size={14} style={{ color: 'var(--c-text-4)', transform: open ? 'rotate(180deg)' : undefined, transition: 'transform 0.2s' }} />
+        <ChevronDown size={14} style={{ color: '#9B8FB5', transform: open ? 'rotate(180deg)' : undefined, transition: 'transform 0.2s' }} />
       </button>
       {open && (
-        <div className="px-4 pb-4 pt-1 flex flex-col gap-4" style={{ borderTop: '1px solid var(--c-border)' }}>
+        <div className="px-4 pb-4 pt-1 flex flex-col gap-4" style={{ borderTop: '1px solid #E8E3F5' }}>
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: 'var(--c-text-4)' }}>Campos simples</p>
+            <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: '#9B8FB5' }}>Campos simples</p>
             <div className="flex flex-wrap gap-1.5">
               {simple.map(p => (
                 <PlaceholderChip key={p.key} text={`{{${p.key}}}`} color={color} />
@@ -229,10 +230,10 @@ function PlaceholderGuide({ docType, color }: { docType: 'factura' | 'orden' | '
           </div>
           {loops.map(loop => (
             <div key={loop.key}>
-              <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: 'var(--c-text-4)' }}>
+              <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: '#9B8FB5' }}>
                 Tabla de partidas (bloque repetible)
               </p>
-              <p className="text-xs mb-2 leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
+              <p className="text-xs mb-2 leading-relaxed" style={{ color: '#6B6480' }}>
                 Envuelve la fila de tu tabla con <span className="font-mono" style={{ color }}>{'{{#'+loop.key+'}}'}</span> al inicio y <span className="font-mono" style={{ color }}>{'{{/'+loop.key+'}}'}</span> al final. Dentro puedes usar:
               </p>
               <div className="flex flex-wrap gap-1.5">
@@ -274,7 +275,7 @@ function TemplateValidationBadge({ validation, color }: { validation: TemplateVa
             </>
           )}
         </p>
-        <p className="mt-1.5" style={{ color: 'var(--c-text-3)' }}>Agrégalos en Word y vuelve a subir para que los documentos generen bien.</p>
+        <p className="mt-1.5" style={{ color: '#6B6480' }}>Agrégalos en Word y vuelve a subir para que los documentos generen bien.</p>
       </div>
     </div>
   );
@@ -389,14 +390,14 @@ function UploadZone({ token, docType, templateName, templatePath, validation, on
         <div className="flex items-center gap-3 rounded-xl px-4 py-3" style={{ background: `${color}08`, border: `1px solid ${color}25` }}>
           <FileCheck size={15} style={{ color, flexShrink: 0 }} />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold truncate" style={{ color: 'var(--c-text)' }}>{templateName}</p>
-            <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Plantilla Word cargada</p>
+            <p className="text-sm font-semibold truncate" style={{ color: '#1A0A3B' }}>{templateName}</p>
+            <p className="text-xs" style={{ color: '#9B8FB5' }}>Plantilla Word cargada</p>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
             {templatePath && (
               <button onClick={openTemplate}
                 className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg transition-opacity hover:opacity-70"
-                style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }}
+                style={{ background: '#FAFAFB', color: '#6B6480', border: '1px solid #E8E3F5' }}
                 title="Descargar y ver tu plantilla">
                 <ExternalLink size={11} /> Ver
               </button>
@@ -423,7 +424,7 @@ function UploadZone({ token, docType, templateName, templatePath, validation, on
         onDragLeave={() => setDrag(false)}
         onDrop={e => { if (uploading) return; e.preventDefault(); setDrag(false); const f = e.dataTransfer.files[0]; if (f) upload(f); }}
         className={`flex flex-col items-center justify-center gap-2 rounded-xl py-7 transition-all ${uploading ? 'cursor-wait' : 'cursor-pointer'}`}
-        style={{ border: `2px dashed ${drag ? color : 'var(--c-border)'}`, background: drag ? `${color}06` : uploading ? `${color}04` : 'transparent' }}
+        style={{ border: `2px dashed ${drag ? color : '#E8E3F5'}`, background: drag ? `${color}06` : uploading ? `${color}04` : 'transparent' }}
       >
         <input ref={inputRef} type="file" accept=".docx" className="hidden"
           onChange={e => { const f = e.target.files?.[0]; if (f) upload(f); e.target.value = ''; }} />
@@ -431,17 +432,17 @@ function UploadZone({ token, docType, templateName, templatePath, validation, on
           <>
             <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: `${color}44`, borderTopColor: color }} />
             <p className="text-sm font-semibold" style={{ color }}>Analizando tu plantilla...</p>
-            <p className="text-xs text-center max-w-sm" style={{ color: 'var(--c-text-3)' }}>
+            <p className="text-xs text-center max-w-sm" style={{ color: '#6B6480' }}>
               Detectando qué texto corresponde a cada campo dinámico. Tarda ~30 segundos.
             </p>
           </>
         ) : (
           <>
-            <Upload size={18} style={{ color: drag ? color : 'var(--c-text-4)', opacity: drag ? 1 : 0.5 }} />
-            <p className="text-sm font-medium" style={{ color: 'var(--c-text-3)' }}>
+            <Upload size={18} style={{ color: drag ? color : '#9B8FB5', opacity: drag ? 1 : 0.5 }} />
+            <p className="text-sm font-medium" style={{ color: '#6B6480' }}>
               Arrastra tu plantilla Word aqui o haz clic para seleccionarla
             </p>
-            <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>
+            <p className="text-xs" style={{ color: '#9B8FB5' }}>
               Solo .docx · Máx 10 MB · Detectamos automáticamente los marcadores
             </p>
           </>
@@ -491,19 +492,19 @@ function AutoTemplatizePreviewModal({ data, color, docType, onConfirm, onReject 
   return (
     <div className="fixed inset-0 z-50 flex flex-col" style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}
       onClick={onReject}>
-      <div className="flex items-center justify-between px-4 py-3 sm:px-6" style={{ background: 'var(--c-surface)', borderBottom: '1px solid var(--c-border)' }}>
+      <div className="flex items-center justify-between px-4 py-3 sm:px-6" style={{ background: '#ffffff', borderBottom: '1px solid #E8E3F5' }}>
         <div className="flex-1 min-w-0 mr-3">
           <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color }}>Previa · {docTypeLabel}</p>
-          <p className="text-sm font-semibold truncate" style={{ color: 'var(--c-text)' }}>
+          <p className="text-sm font-semibold truncate" style={{ color: '#1A0A3B' }}>
             Detectamos {appliedFields.length} campo{appliedFields.length !== 1 ? 's' : ''} en tu plantilla
           </p>
-          <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>
+          <p className="text-xs" style={{ color: '#9B8FB5' }}>
             Se ve como esperabas? Confirma para guardar. Si algo salió mal, descarta y súbela con {'{{marcadores}}'} manuales.
           </p>
         </div>
         <button onClick={(e) => { e.stopPropagation(); onReject(); }}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-          style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }}>
+          style={{ background: '#FAFAFB', color: '#6B6480', border: '1px solid #E8E3F5' }}>
           <X size={12} /> Descartar
         </button>
       </div>
@@ -517,9 +518,9 @@ function AutoTemplatizePreviewModal({ data, color, docType, onConfirm, onReject 
           )}
         </div>
 
-        <div className="w-full lg:w-72 flex-shrink-0 overflow-y-auto p-4 flex flex-col gap-3" style={{ background: 'var(--c-surface)', borderLeft: '1px solid var(--c-border)' }}>
+        <div className="w-full lg:w-72 flex-shrink-0 overflow-y-auto p-4 flex flex-col gap-3" style={{ background: '#ffffff', borderLeft: '1px solid #E8E3F5' }}>
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: 'var(--c-text-4)' }}>
+            <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: '#9B8FB5' }}>
               Campos detectados ({appliedFields.length})
             </p>
             <div className="flex flex-wrap gap-1">
@@ -534,7 +535,7 @@ function AutoTemplatizePreviewModal({ data, color, docType, onConfirm, onReject 
 
           {notAppliedFields.length > 0 && (
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: 'var(--c-text-4)' }}>
+              <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: '#9B8FB5' }}>
                 No aplicados ({notAppliedFields.length})
               </p>
               <div className="flex flex-wrap gap-1">
@@ -546,13 +547,13 @@ function AutoTemplatizePreviewModal({ data, color, docType, onConfirm, onReject 
                   </span>
                 ))}
               </div>
-              <p className="text-xs mt-2" style={{ color: 'var(--c-text-4)' }}>
+              <p className="text-xs mt-2" style={{ color: '#9B8FB5' }}>
                 Estos campos los identificamos pero no pudimos reemplazarlos. Comúnmente son valores muy fragmentados en el docx.
               </p>
             </div>
           )}
 
-          <div className="mt-auto pt-3 flex flex-col gap-2" style={{ borderTop: '1px solid var(--c-border)' }}>
+          <div className="mt-auto pt-3 flex flex-col gap-2" style={{ borderTop: '1px solid #E8E3F5' }}>
             <button onClick={onConfirm}
               className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-semibold transition-opacity hover:opacity-90"
               style={{ background: color, color: '#fff' }}>
@@ -560,7 +561,7 @@ function AutoTemplatizePreviewModal({ data, color, docType, onConfirm, onReject 
             </button>
             <button onClick={onReject}
               className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-              style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }}>
+              style={{ background: '#FAFAFB', color: '#6B6480', border: '1px solid #E8E3F5' }}>
               <X size={11} /> Descartar y volver a subir
             </button>
           </div>
@@ -669,7 +670,7 @@ function FacturaConfig({ token, onStatsLoad }: { token: string; onStatsLoad?: (c
     } finally { setSaving(false); }
   }
 
-  if (loading) return <p className="text-xs py-4 text-center" style={{ color: 'var(--c-text-4)' }}>Cargando...</p>;
+  if (loading) return <p className="text-xs py-4 text-center" style={{ color: '#9B8FB5' }}>Cargando...</p>;
 
   return (
     <>
@@ -736,7 +737,7 @@ function OrdenConfig({ token, onStatsLoad }: { token: string; onStatsLoad?: (cfg
     } finally { setSaving(false); }
   }
 
-  if (loading) return <p className="text-xs py-4 text-center" style={{ color: 'var(--c-text-4)' }}>Cargando...</p>;
+  if (loading) return <p className="text-xs py-4 text-center" style={{ color: '#9B8FB5' }}>Cargando...</p>;
 
   return (
     <>
@@ -801,7 +802,7 @@ function CotizacionConfigSection({ token, onStatsLoad }: { token: string; onStat
     } finally { setSaving(false); }
   }
 
-  if (loading) return <p className="text-xs py-4 text-center" style={{ color: 'var(--c-text-4)' }}>Cargando...</p>;
+  if (loading) return <p className="text-xs py-4 text-center" style={{ color: '#9B8FB5' }}>Cargando...</p>;
 
   return (
     <>
@@ -866,7 +867,7 @@ function NotaVentaConfigSection({ token, onStatsLoad }: { token: string; onStats
     } finally { setSaving(false); }
   }
 
-  if (loading) return <p className="text-xs py-4 text-center" style={{ color: 'var(--c-text-4)' }}>Cargando...</p>;
+  if (loading) return <p className="text-xs py-4 text-center" style={{ color: '#9B8FB5' }}>Cargando...</p>;
 
   return (
     <>
@@ -976,7 +977,7 @@ function ContratoConfig({ token, onConfiguredLoad }: { token: string; onConfigur
     setEditingId(id);
   }
 
-  if (loading) return <p className="text-xs py-4 text-center" style={{ color: 'var(--c-text-4)' }}>Cargando...</p>;
+  if (loading) return <p className="text-xs py-4 text-center" style={{ color: '#9B8FB5' }}>Cargando...</p>;
 
   return (
     <div className="flex flex-col gap-4">
@@ -987,11 +988,11 @@ function ContratoConfig({ token, onConfiguredLoad }: { token: string; onConfigur
       />
 
       {clauses.length === 0 ? (
-        <div className="flex flex-col items-center py-10 gap-4 rounded-xl" style={{ background: 'var(--c-surface-2)', border: '1px dashed var(--c-border)' }}>
-          <FileText size={28} style={{ color: 'var(--c-text-3)', opacity: 0.35 }} />
+        <div className="flex flex-col items-center py-10 gap-4 rounded-xl" style={{ background: '#FAFAFB', border: '1px dashed #E8E3F5' }}>
+          <FileText size={28} style={{ color: '#6B6480', opacity: 0.35 }} />
           <div className="text-center max-w-xs px-4">
-            <p className="text-sm font-semibold mb-1.5" style={{ color: 'var(--c-text-2)' }}>Plantilla vacia</p>
-            <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
+            <p className="text-sm font-semibold mb-1.5" style={{ color: '#1A0A3B' }}>Plantilla vacia</p>
+            <p className="text-xs leading-relaxed" style={{ color: '#6B6480' }}>
               Esta es la base que tu empleado usa para generar contratos. Carga las clausulas estandar y ajusta el texto segun tus necesidades.
             </p>
           </div>
@@ -1002,14 +1003,14 @@ function ContratoConfig({ token, onConfiguredLoad }: { token: string; onConfigur
           >
             <Plus size={14} /> Cargar clausulas estandar
           </button>
-          <button onClick={addClause} className="text-xs transition-opacity hover:opacity-70" style={{ color: 'var(--c-text-3)' }}>
+          <button onClick={addClause} className="text-xs transition-opacity hover:opacity-70" style={{ color: '#6B6480' }}>
             o agregar clausula en blanco
           </button>
         </div>
       ) : (<>
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
-        <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
+        <p className="text-xs leading-relaxed" style={{ color: '#6B6480' }}>
           Tu empleado usara esta plantilla para generar borradores. Edita las clausulas con el icono de lapiz. Las marcadas como <strong>Requerida</strong> siempre se incluyen.
         </p>
         <button onClick={save} disabled={saving}
@@ -1027,7 +1028,7 @@ function ContratoConfig({ token, onConfiguredLoad }: { token: string; onConfigur
             <code key={v} className="text-xs px-2 py-0.5 rounded" style={{ background: 'rgba(139,92,246,0.12)', color: '#c4b5fd', fontFamily: 'monospace' }}>{v}</code>
           ))}
         </div>
-        <p className="text-xs mt-2" style={{ color: 'var(--c-text-4)' }}>Tu empleado sustituira estas variables con los datos del cliente al generar un borrador.</p>
+        <p className="text-xs mt-2" style={{ color: '#9B8FB5' }}>Tu empleado sustituira estas variables con los datos del cliente al generar un borrador.</p>
       </div>
 
       {/* Clauses */}
@@ -1036,19 +1037,19 @@ function ContratoConfig({ token, onConfiguredLoad }: { token: string; onConfigur
           const isEditing = editingId === clause.id;
           return (
             <div key={clause.id} className="rounded-xl overflow-hidden"
-              style={{ background: 'var(--c-surface)', border: `1px solid ${clause.enabled ? 'var(--c-border)' : 'rgba(255,255,255,0.04)'}`, opacity: clause.enabled ? 1 : 0.5 }}>
+              style={{ background: '#ffffff', border: `1px solid ${clause.enabled ? '#E8E3F5' : 'rgba(255,255,255,0.04)'}`, opacity: clause.enabled ? 1 : 0.5 }}>
               <div className="flex items-center gap-2 px-4 py-2.5">
-                <GripVertical size={14} style={{ color: 'var(--c-text-4)', flexShrink: 0 }} />
-                <span className="text-xs text-center px-1.5 py-0.5 rounded font-mono" style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-4)', minWidth: 20 }}>{idx + 1}</span>
+                <GripVertical size={14} style={{ color: '#9B8FB5', flexShrink: 0 }} />
+                <span className="text-xs text-center px-1.5 py-0.5 rounded font-mono" style={{ background: '#FAFAFB', color: '#9B8FB5', minWidth: 20 }}>{idx + 1}</span>
                 {isEditing ? (
                   <input
                     value={clause.title}
                     onChange={e => updateClause(clause.id, { title: e.target.value.toUpperCase() })}
                     className="flex-1 px-2 py-0.5 rounded text-xs font-bold uppercase"
-                    style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }}
+                    style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }}
                   />
                 ) : (
-                  <span className="flex-1 text-xs font-bold uppercase" style={{ color: 'var(--c-text)' }}>{clause.title}</span>
+                  <span className="flex-1 text-xs font-bold uppercase" style={{ color: '#1A0A3B' }}>{clause.title}</span>
                 )}
                 <div className="flex items-center gap-1.5 shrink-0">
                   {clause.required ? (
@@ -1058,11 +1059,11 @@ function ContratoConfig({ token, onConfiguredLoad }: { token: string; onConfigur
                       title={clause.enabled ? 'Desactivar clausula' : 'Activar clausula'}>
                       {clause.enabled
                         ? <ToggleRight size={18} style={{ color: '#22c55e' }} />
-                        : <ToggleLeft  size={18} style={{ color: 'var(--c-text-4)' }} />}
+                        : <ToggleLeft  size={18} style={{ color: '#9B8FB5' }} />}
                     </button>
                   )}
                   <button onClick={() => setEditingId(isEditing ? null : clause.id)}
-                    className="p-1 rounded" style={{ color: isEditing ? '#8b5cf6' : 'var(--c-text-3)' }}>
+                    className="p-1 rounded" style={{ color: isEditing ? '#8b5cf6' : '#6B6480' }}>
                     <Edit2 size={13} />
                   </button>
                   {!clause.required && (
@@ -1072,7 +1073,7 @@ function ContratoConfig({ token, onConfiguredLoad }: { token: string; onConfigur
                   )}
                 </div>
               </div>
-              <div className="px-4 pb-3" style={{ borderTop: '1px solid var(--c-divider)' }}>
+              <div className="px-4 pb-3" style={{ borderTop: '1px solid #F0EDF9' }}>
                 {isEditing ? (
                   <>
                     <textarea
@@ -1080,18 +1081,18 @@ function ContratoConfig({ token, onConfiguredLoad }: { token: string; onConfigur
                       onChange={e => updateClause(clause.id, { body: e.target.value })}
                       rows={5}
                       className="w-full mt-2.5 px-3 py-2 rounded-lg text-xs resize-none"
-                      style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', fontFamily: 'inherit', lineHeight: 1.7, outline: 'none' }}
+                      style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B', fontFamily: 'inherit', lineHeight: 1.7, outline: 'none' }}
                     />
                     <div className="flex items-center gap-2 mt-2">
-                      <label className="flex items-center gap-1.5 text-xs cursor-pointer" style={{ color: 'var(--c-text-3)' }}>
+                      <label className="flex items-center gap-1.5 text-xs cursor-pointer" style={{ color: '#6B6480' }}>
                         <input type="checkbox" checked={clause.required} onChange={e => updateClause(clause.id, { required: e.target.checked })} className="rounded" />
                         Clausula requerida (tu empleado no puede desactivarla)
                       </label>
                     </div>
                   </>
                 ) : (
-                  <p className="text-xs mt-2.5 leading-relaxed whitespace-pre-wrap" style={{ color: clause.enabled ? 'var(--c-text-2)' : 'var(--c-text-4)' }}>
-                    {clause.body || <span style={{ color: 'var(--c-text-4)', fontStyle: 'italic' }}>Sin contenido. Haz clic en editar para escribir.</span>}
+                  <p className="text-xs mt-2.5 leading-relaxed whitespace-pre-wrap" style={{ color: clause.enabled ? '#1A0A3B' : '#9B8FB5' }}>
+                    {clause.body || <span style={{ color: '#9B8FB5', fontStyle: 'italic' }}>Sin contenido. Haz clic en editar para escribir.</span>}
                   </p>
                 )}
               </div>
@@ -1102,7 +1103,7 @@ function ContratoConfig({ token, onConfiguredLoad }: { token: string; onConfigur
 
       <button onClick={addClause}
         className="flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-medium transition-opacity hover:opacity-80"
-        style={{ background: 'var(--c-surface)', border: '1px dashed var(--c-border)', color: 'var(--c-text-3)' }}>
+        style={{ background: '#ffffff', border: '1px dashed #E8E3F5', color: '#6B6480' }}>
         <Plus size={13} /> Agregar clausula
       </button>
     </>)}
@@ -1161,8 +1162,24 @@ export default function PlantillasPage() {
     }).catch(() => {});
   }, [token]);
 
+  const totalTemplates =
+    (isConfigured(facturaCfg)                                ? 1 : 0) +
+    (isConfigured(ordenCfg)                                  ? 1 : 0) +
+    (isConfigured(cotizacionCfg as unknown as FacturaConfig) ? 1 : 0) +
+    (isConfigured(notaVentaCfg  as unknown as FacturaConfig) ? 1 : 0) +
+    (contratoConfigured                                       ? 1 : 0);
+
   return (
-    <div id="of-plantillas" className="flex flex-col gap-5 p-5 sm:p-7 w-full">
+    <div id="of-plantillas" className="flex flex-col gap-5 max-w-6xl mx-auto w-full p-4 md:p-6">
+
+      <OficinaPageHero
+        icon={LayoutTemplate}
+        eyebrow="Plantillas"
+        title="Plantillas de documentos"
+        description={totalTemplates > 0
+          ? <><strong style={{ color: '#1A0A3B' }}>{totalTemplates}</strong> de 5 plantillas configuradas. Tus empleados usan tu formato Word cada vez que generan un documento.</>
+          : 'Sube tu formato Word y tus empleados lo usarán igual cada vez que generen un documento.'}
+      />
 
       <div
         className="flex flex-col rounded-2xl overflow-hidden"
@@ -1175,10 +1192,10 @@ export default function PlantillasPage() {
         <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
           <div>
             <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>
-              Plantillas de documentos
+              Tipos de documento
             </h2>
             <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>
-              Sube tu formato Word y tus empleados lo usan igual cada vez.
+              Configura cada tipo por separado: campos, cálculos y diseño Word.
             </p>
           </div>
         </div>
