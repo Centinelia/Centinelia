@@ -8,18 +8,18 @@ interface Props {
   initStage:  number;
 }
 
-// Autónomo es el default y la norma — así es como funciona un empleado
-// real. Observador y Supervisado son escalones de control cuando el
-// usuario quiere freno mano deliberado. NUNCA reordenar sin actualizar
-// la copy correspondiente. Ver [[feedback-empleados-inteligentes]].
+// Orden visual: menos autonomía → más autonomía (izq→der), como un
+// slider progresivo. Autónomo mantiene badge "Recomendado" para
+// dejar claro cuál es el default aunque no sea el primero visualmente.
+// Ver [[feedback-empleados-inteligentes]].
 const STAGES = [
   {
-    value:       3,
-    icon:        Zap,
-    name:        'Autónomo',
-    short:       'Trabaja como un empleado real',
-    desc:        'Ejecuta sus responsabilidades sin pedirte permiso paso por paso. Una capa de seguridad revisa cada correo y solo te consulta cuando el caso lo amerita (queja legal, compromiso alto stakes, datos sensibles). Si algo sale mal, tú reportas mal envío y aprende al instante.',
-    recommended: true,
+    value:       1,
+    icon:        Eye,
+    name:        'Observador',
+    short:       'Solo mira, no actúa',
+    desc:        'Solo clasifica y resume lo que entra. No redacta ni envía nada — tú escribes cada respuesta desde cero. Reserva este modo para pruebas o cuentas en pausa.',
+    recommended: false,
   },
   {
     value:       2,
@@ -30,12 +30,12 @@ const STAGES = [
     recommended: false,
   },
   {
-    value:       1,
-    icon:        Eye,
-    name:        'Observador',
-    short:       'Solo mira, no actúa',
-    desc:        'Solo clasifica y resume lo que entra. No redacta ni envía nada — tú escribes cada respuesta desde cero. Reserva este modo para pruebas o cuentas en pausa.',
-    recommended: false,
+    value:       3,
+    icon:        Zap,
+    name:        'Autónomo',
+    short:       'Trabaja como un empleado real',
+    desc:        'Ejecuta sus responsabilidades sin pedirte permiso paso por paso. Una capa de seguridad revisa cada correo y solo te consulta cuando el caso lo amerita (queja legal, compromiso alto stakes, datos sensibles). Si algo sale mal, tú reportas mal envío y aprende al instante.',
+    recommended: true,
   },
 ];
 
