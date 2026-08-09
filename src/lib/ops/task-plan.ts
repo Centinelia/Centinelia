@@ -24,22 +24,49 @@ export interface TaskPlan {
   summary: string;
 }
 
-const APPROVAL_KEYWORDS = ['campaña','lanzamiento','secuencia','múltiples','multiples','todas las','todos los','plan completo'];
-const LARGE_TASK_CHARS  = 200;
-const LARGE_GOAL_ITER   = 3;
+// Solo bandera acciones de ALTO STAKES reales que justifican pausar el
+// trabajo del empleado para pedir permiso. Aplica [[feedback-empleados-inteligentes]]:
+// el default es que el empleado ejecute; solo escala cuando el humano
+// habría dicho "espera, esto es serio" (dinero, contratos, envíos masivos
+// externos, datos personales).
+//
+// Explícitamente NO están: tamaño del texto, cantidad de iteraciones,
+// palabras vagas como "todos los" o "múltiples" — el empleado hace tareas
+// grandes sin pedir permiso, igual que un humano competente.
+const HIGH_STAKES_KEYWORDS = [
+  // Dinero real
+  'pagar', 'pago', 'transferir', 'transferencia',
+  'cobrar', 'reembolso', 'refund', 'depositar', 'depósito',
+  // Compromiso legal
+  'contrato', 'firmar', 'firma', 'demanda', 'abogado',
+  'cancelar contrato', 'rescindir',
+  // Compliance / privacidad
+  'datos personales', 'rfc del cliente', 'documento fiscal',
+  // Envío masivo externo (marketing, campañas amplias)
+  'campaña masiva', 'blast', 'todos los clientes',
+];
 
 export function requiresPlanApproval(input: {
   tarea:            string;
   success_criteria?: string | null;
   max_iterations?:  number | null;
 }): boolean {
-  const { tarea, success_criteria, max_iterations } = input;
+  const { tarea, success_criteria } = input;
   if (!tarea) return false;
-  if (max_iterations && max_iterations >= LARGE_GOAL_ITER) return true;
-  if (tarea.length >= LARGE_TASK_CHARS) return true;
-  if (success_criteria && success_criteria.length >= LARGE_TASK_CHARS) return true;
-  const lower = tarea.toLowerCase();
-  return APPROVAL_KEYWORDS.some(k => lower.includes(k));
+  const haystack = `${tarea} ${success_criteria ?? ''}`.toLowerCase();
+  return HIGH_STAKES_KEYWORDS.some(k => haystack.includes(k));
+}
+
+/**
+ * Segundo gate post-generación: si el plan tiene items en `risks` que huelen
+ * a dinero/legal/comunicación externa masiva, escalamos aunque el keyword
+ * filter inicial haya dejado pasar. El propio empleado ya analizó riesgos —
+ * confiamos en su juicio.
+ */
+export function planRisksJustifyApproval(risks: string[] | undefined | null): boolean {
+  if (!risks?.length) return false;
+  const joined = risks.join(' ').toLowerCase();
+  return HIGH_STAKES_KEYWORDS.some(k => joined.includes(k));
 }
 
 export async function generateTaskPlan(args: {
