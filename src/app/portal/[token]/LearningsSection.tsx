@@ -286,7 +286,7 @@ export default function LearningsSection({ token, canApprove = true }: { token: 
                                   <>
                                     <span>·</span>
                                     <a
-                                      href={`/portal/${token}/oficina/llamadas`}
+                                      href={`/portal/${token}/oficina/llamadas?open=${encodeURIComponent(l.vapi_call_id)}`}
                                       className="underline hover:opacity-70"
                                       style={{ color: '#6C3BFF' }}
                                     >

@@ -42,16 +42,16 @@ interface ModeConfig {
 
 const MODE_CONFIG: Record<'llm' | 'rules', ModeConfig> = {
   llm: {
-    label:    'Profundo',
-    desc:     'Revisa las conversaciones de tu equipo y genera sugerencias específicas para mejorar su desempeño.',
+    label:    'Con lectura de conversaciones',
+    desc:     'Tu equipo lee sus propias llamadas y correos de la semana y te sugiere qué ajustar. Toma más tiempo pero encuentra detalles finos.',
     costNote: () => '2 tareas por empleado',
     costTag:  (n: number) => `${n * 2} tareas en total`,
     tagColor: '#9B6DFF',
     tagBg:    'rgba(108,59,255,0.1)',
   },
   rules: {
-    label:    'Básico',
-    desc:     'Detecta problemas comunes automáticamente: muchas escalaciones, llamadas sin resolver, metas retrasadas.',
+    label:    'Rápido',
+    desc:     'Detecta problemas comunes al vuelo: muchas escalaciones, llamadas sin resolver, metas retrasadas. Sin costo.',
     costNote: () => 'Sin costo',
     costTag:  () => 'Sin costo',
     tagColor: '#22c55e',
@@ -154,17 +154,17 @@ export default function InsightsSection({ token }: { token: string }) {
         <div>
           <div className="flex items-baseline gap-2">
             <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>
-              Insights de la semana
+              Ideas para mejorar a tu equipo
             </h2>
             {data && data.recs.length > 0 && (
               <span className="text-[13px] font-medium tabular-nums" style={{ color: '#9B8FB5' }}>
                 {data.recs.length}
               </span>
             )}
-            <InfoTooltip text="Sugerencias para mejorar a tu equipo basadas en lo que pasó esta semana. Se actualizan cada lunes o las puedes pedir cuando quieras." />
+            <InfoTooltip text="Sugerencias concretas para que tu equipo trabaje mejor. Se actualizan cada lunes con lo que aprendieron esta semana, o puedes pedirlas cuando quieras." />
           </div>
           <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>
-            Recomendaciones para mejorar el desempeño del equipo.
+            Lo que tu equipo detectó que podría mejorarse en su forma de trabajar.
           </p>
         </div>
       </div>
@@ -258,8 +258,8 @@ export default function InsightsSection({ token }: { token: string }) {
         <div className="px-5 py-6" style={{ borderTop: '1px solid #F0EDF9' }}>
           <p className="text-[13px]" style={{ color: '#6B6480' }}>
             {data
-              ? 'Tu equipo tuvo una buena semana. Sin recomendaciones pendientes.'
-              : 'Los insights se generan cada lunes. Usa "Generar ahora" para verlos hoy.'}
+              ? 'Tu equipo tuvo una buena semana. Sin ideas pendientes por ahora.'
+              : 'Las ideas se generan cada lunes. Usa "Generar ahora" para verlas hoy.'}
           </p>
         </div>
       ) : (
@@ -312,13 +312,6 @@ export default function InsightsSection({ token }: { token: string }) {
                     <p className="text-[12px] leading-relaxed" style={{ color: '#6B6480' }}>
                       {rec.body}
                     </p>
-
-                    {rec.current_value !== null && rec.metric_key && (
-                      <p className="text-[11px] mt-1 font-mono" style={{ color: '#9B8FB5' }}>
-                        {rec.metric_key.replace('ces_', 'CES ').replace(/_/g, ' ')}: {rec.current_value}
-                        {rec.metric_key.includes('rate') || rec.metric_key === 'goal' ? '%' : ''}
-                      </p>
-                    )}
 
                     {/* Actions */}
                     <div className="flex items-center gap-2 mt-3 flex-wrap">

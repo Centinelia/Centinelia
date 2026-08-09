@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Search, X } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import CallCard from './CallCard';
@@ -30,6 +31,11 @@ export default function CallsSearch({ calls, isPro, callerNames = {}, token, age
   const [typeFilter, setTypeFilter] = useState('all');
   const [dateFrom,   setDateFrom]   = useState('');
   const [dateTo,     setDateTo]     = useState('');
+
+  // Deep-link: ?open=<vapi_call_id> abre automáticamente esa llamada.
+  // Usado por LearningsSection ("Ver llamada" en el expand de un aprendizaje).
+  const searchParams = useSearchParams();
+  const openCallId   = searchParams.get('open');
 
   const statsLine = useMemo(() => {
     const today      = new Date().toLocaleDateString('en-CA');
@@ -198,6 +204,7 @@ export default function CallsSearch({ calls, isPro, callerNames = {}, token, age
                     clientName={knownName}
                     agentName={perAgent}
                     token={token}
+                    autoOpen={!!openCallId && (call.vapi_call_id === openCallId || call.id === openCallId)}
                   />
                 );
               })

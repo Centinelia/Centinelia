@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Download, Clock, X, FileText, Star, Phone, User, ChevronDown } from 'lucide-react';
 import TranscriptView from '@/components/TranscriptView';
 
@@ -95,15 +95,23 @@ function RecordingPlayer({ url, createdAt }: { url: string; createdAt: string })
   );
 }
 
-export default function CallCard({ call, isPro, clientName, agentName, token }: {
+export default function CallCard({ call, isPro, clientName, agentName, token, autoOpen }: {
   call:       Call;
   isPro?:     boolean;
   clientName?: string;
   agentName?: string;
   token?:     string;
+  /** Cuando true, el card arranca con su modal abierto y hace scrollIntoView.
+      Usado por el deep-link ?open=<vapi_call_id> desde LearningsSection. */
+  autoOpen?:  boolean;
 }) {
-  const [open,     setOpen]     = useState(false);
+  const [open,     setOpen]     = useState(!!autoOpen);
   const [modalTab, setModalTab] = useState<ModalTab>('resumen');
+  const cardRef                 = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (autoOpen) cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [autoOpen]);
 
   const outcome     = OUTCOME_LABELS[call.outcome] ?? OUTCOME_LABELS.other;
   const showRec     = !!(isPro && call.recording_url);
@@ -126,6 +134,7 @@ export default function CallCard({ call, isPro, clientName, agentName, token }: 
     <>
       {/* Compact card */}
       <div
+        ref={cardRef}
         className={`rounded-2xl overflow-hidden transition-opacity ${hasDetails ? 'cursor-pointer hover:opacity-90' : ''}`}
         style={{
           background: '#ffffff',
