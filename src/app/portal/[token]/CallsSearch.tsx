@@ -120,7 +120,7 @@ export default function CallsSearch({ calls, isPro, callerNames = {}, token, age
         {availableOutcomes.length > 1 && (
           <Select value={typeFilter} onValueChange={setTypeFilter}>
             <SelectTrigger
-              className="shrink-0 py-2 text-xs bg-[color:#FAFAFB]"
+              className="w-auto shrink-0 py-2 text-xs bg-[color:#FAFAFB]"
               style={{
                 minWidth:   140,
                 border:     typeFilter !== 'all' ? '1px solid rgba(108,59,255,0.5)' : '1px solid #E8E3F5',
