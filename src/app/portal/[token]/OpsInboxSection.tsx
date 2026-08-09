@@ -394,13 +394,19 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
   const rejectedCount      = nonInvoiceItems.filter(i => i.status === 'rejected').length;
   const reportedCount      = nonInvoiceItems.filter(i => !!i.auto_mode_flagged_at).length;
 
-  const TAB_CONFIG: { key: Tab; label: string; count?: number }[] = [
-    { key: 'pendientes', label: 'Pendientes',    count: pendingBadgeCount > 0 ? pendingBadgeCount : undefined },
-    { key: 'auto',       label: 'Auto-enviados', count: autoCount > 0 ? autoCount : undefined },
-    { key: 'spam',       label: 'Spam',          count: spamCount > 0 ? spamCount : undefined },
-    { key: 'rechazados', label: 'Rechazados',    count: rejectedCount > 0 ? rejectedCount : undefined },
-    { key: 'reportados', label: 'Reportados',    count: reportedCount > 0 ? reportedCount : undefined },
-    { key: 'todo',       label: 'Todo' },
+  const TAB_CONFIG: { key: Tab; label: string; count?: number; tooltip?: string }[] = [
+    { key: 'pendientes', label: 'Pendientes',    count: pendingBadgeCount > 0 ? pendingBadgeCount : undefined,
+      tooltip: 'Correos que esperan tu aprobación o requieren info del cliente.' },
+    { key: 'auto',       label: 'Auto-enviados', count: autoCount > 0 ? autoCount : undefined,
+      tooltip: 'Correos que el empleado respondió por su cuenta sin pedir tu aprobación. Aquí puedes reportar mal envío y enviar corrección al cliente si algo salió mal.' },
+    { key: 'spam',       label: 'Spam',          count: spamCount > 0 ? spamCount : undefined,
+      tooltip: 'Correos que el empleado descartó como spam. Puedes rescatar si detecta un falso positivo.' },
+    { key: 'rechazados', label: 'Rechazados',    count: rejectedCount > 0 ? rejectedCount : undefined,
+      tooltip: 'Correos que tú rechazaste (no se enviaron). Historial para auditoría.' },
+    { key: 'reportados', label: 'Reportados',    count: reportedCount > 0 ? reportedCount : undefined,
+      tooltip: 'Auto-envíos que tú marcaste como mal enviados. El empleado ya aprendió de cada uno.' },
+    { key: 'todo',       label: 'Todo',
+      tooltip: 'Todos los correos, sin importar estado.' },
   ];
 
   const applyPartition = activeTab !== 'reportados' && attentionItems.length > 0;
@@ -754,6 +760,7 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
                 setActiveTab(tab.key);
                 changeCategory(null);
               }}
+              title={tab.tooltip}
               className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] transition-all"
               style={{
                 background: isActive ? '#ffffff' : 'transparent',
@@ -780,6 +787,21 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
           );
         })}
       </div>
+
+      {/* Hint contextual — explica qué son los auto-enviados y qué puedes hacer */}
+      {activeTab === 'auto' && (
+        <div
+          className="flex items-start gap-2.5 px-4 py-3 rounded-xl"
+          style={{ background: 'rgba(108,59,255,0.05)', border: '1px solid rgba(108,59,255,0.18)' }}
+        >
+          <AlertTriangle size={14} strokeWidth={2} className="mt-0.5 flex-shrink-0" style={{ color: '#6C3BFF' }} />
+          <p className="text-[12px] leading-relaxed" style={{ color: '#4A3D6B' }}>
+            <strong style={{ color: '#1A0A3B' }}>Correos que tu empleado envió por su cuenta.</strong>
+            {' '}Si algo salió mal, expande el correo y usa <strong>Reportar mal envío</strong> — el empleado aprende de inmediato para que no vuelva a pasar.
+            Después puedes <strong>Enviar corrección al cliente</strong> con una respuesta corregida.
+          </p>
+        </div>
+      )}
 
       {/* Search + Origen filter — juntos en una card */}
       <div
