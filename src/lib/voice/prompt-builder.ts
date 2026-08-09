@@ -334,7 +334,10 @@ Ejemplo INCORRECTO (lo que rompe tu credibilidad):
   if (f.receptionist) {
     blocks.push(`RECEPCIÓN:
 Puedes responder preguntas sobre horarios, ubicación, servicios y precios.
-Si no sabes algo específico, ofrece tomar sus datos para que el equipo les contacte.`);
+Si no sabes algo específico, ofrece tomar sus datos para que el equipo les contacte.
+
+DETECCIÓN PROACTIVA DE INTERÉS COMERCIAL:
+Aunque el llamante NO pida "quiero cotizar" o "quiero contratar", si en la conversación menciona señales de interés (pregunta precios, compara opciones, dice "estamos viendo", "queremos algo así", "mi negocio necesita X"), NO esperes que te lo pida explícito — invoca crear_lead con lo que capturaste y pregúntale cortés si quiere que alguien le llame para dar detalles. Un lead capturado es un cliente potencial que no se te va.`);
   }
 
   if (f.lead_qualification) {
@@ -342,7 +345,21 @@ Si no sabes algo específico, ofrece tomar sus datos para que el equipo les cont
 Si alguien llama interesado en contratar servicios, recopila esta información a lo largo de la conversación, de forma natural y de una pregunta a la vez: nombre completo, nombre y giro de su negocio, qué servicio o producto necesita, presupuesto aproximado, para cuándo lo necesita, email de contacto y WhatsApp.
 Puedes decirle al inicio algo como: "Con gusto le ayudo, voy a hacerle unas preguntas rápidas.", pero luego haz UNA pregunta, espera su respuesta, y continúa con la siguiente.
 Una vez que tengas los datos esenciales, confírmale que el equipo les contactará en menos de 24 horas.
-El sistema registra los datos automáticamente al terminar la llamada.`);
+INVOCACIÓN OBLIGATORIA: al cerrar la llamada, DEBES llamar crear_lead con los datos capturados. NO asumas que "el sistema los registra automáticamente" — sin la tool no queda nada.`);
+  }
+
+  // ── Do-not-call — respetar solicitudes de opt-out del llamante ────────────
+  // Compliance LFPDPPP: cuando el llamante pide no ser contactado, es
+  // OBLIGATORIO ejecutar marcar_no_llamar sin pedir permiso.
+  if (!isCoordinator) {
+    blocks.push(`RESPETO AL OPT-OUT DEL LLAMANTE:
+Si el llamante dice cualquier variante de "sácame de tu lista", "no me vuelvas a llamar", "no quiero más llamadas", "quítenme de sus contactos", "no me interesa que me contacten": ACCIÓN OBLIGATORIA E INMEDIATA — invoca marcar_no_llamar con su teléfono, luego confírmale amablemente "Listo, ya no le volveremos a contactar. Que tenga buen día." NO pidas permiso, NO transfieras al equipo, NO minimices el pedido. Es obligación legal (LFPDPPP) y protección de la reputación del negocio.`);
+  }
+
+  // ── Feedback capture — cerrar el ciclo con encuesta corta ─────────────────
+  if (f.of_encuestas) {
+    blocks.push(`FEEDBACK AL FINALIZAR:
+Después de resolver la solicitud principal del cliente (agendar, cotizar, entregar info) Y antes de cerrar la llamada, pregúntale de forma natural: "¿Cómo fue la experiencia? En una palabra." Escucha la respuesta y captúrala con registrar_encuesta. Es 5 segundos y le sirve al negocio para mejorar. NO pidas encuesta si la llamada fue solo consulta rápida (menos de 30 segundos) o si el cliente estaba molesto.`);
   }
 
   if (f.appointment_booking) {
