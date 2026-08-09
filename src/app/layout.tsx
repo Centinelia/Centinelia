@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Sora, DM_Sans } from "next/font/google";
 import Script from "next/script";
-import { SpeedInsights } from "@vercel/speed-insights/next";
+import WebVitalsReporter from "@/components/WebVitalsReporter";
 import "./globals.css";
 
 const sora = Sora({
@@ -177,9 +177,10 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col">
         {children}
-        {/* Web Vitals reales (CLS, LCP, INP, FCP, TTFB, FID) — solo activo en
-            producción. Data visible en dashboard Vercel > Speed Insights. */}
-        <SpeedInsights />
+        {/* Web Vitals reales (CLS, LCP, INP, FCP, TTFB, FID) → GA4 como
+            custom events. Ver src/components/WebVitalsReporter.tsx para
+            cómo leer los datos en GA. */}
+        {process.env.NEXT_PUBLIC_GA_ID && <WebVitalsReporter />}
         {process.env.NEXT_PUBLIC_GA_ID && (
           <>
             <Script
