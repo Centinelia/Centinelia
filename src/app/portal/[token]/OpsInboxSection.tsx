@@ -39,6 +39,10 @@ interface InboxItem {
   assigned_by:             'per_agent' | 'rule' | 'llm' | 'fallback' | 'human' | null;
   assignment_confidence:   number | null;
   assignment_metadata:     Record<string, unknown> | null;
+  // null = row previa a la feature (retro-compat, tratar como true)
+  // true = requiere acción del humano (aparece en Pendientes)
+  // false = FYI (aparece en tab Notificaciones)
+  action_required:         boolean | null;
 }
 
 interface HumanRequest {
@@ -84,7 +88,7 @@ const URGENCY_COLORS: Record<string, string> = {
   alta:  '#ef4444',
 };
 
-type Tab = 'pendientes' | 'auto' | 'spam' | 'rechazados' | 'reportados' | 'todo';
+type Tab = 'pendientes' | 'auto' | 'notificaciones' | 'spam' | 'rechazados' | 'reportados' | 'todo';
 
 const FLAG_CATEGORIES: { key: string; label: string; hint: string }[] = [
   { key: 'alucinacion',        label: 'Alucinación',                     hint: 'Datos inventados (horarios, precios, políticas)' },
@@ -344,10 +348,16 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
   // (item_type='invoice' se filtra siempre, independientemente del tab).
   const nonInvoiceItems = useMemo(() => items.filter(i => i.item_type !== 'invoice'), [items]);
 
+  // action_required=false → FYI/notificación. Se muestra solo en tab "Notificaciones".
+  // action_required=null (rows previas a la feature) se trata como true (retro-compat).
+  const isFyi = (i: InboxItem) =>
+    i.action_required === false || i.category === 'notificacion';
+
   // Tab-filtered ops_inbox items
   const tabItems = useMemo<InboxItem[]>(() => {
-    if (activeTab === 'pendientes')  return nonInvoiceItems.filter(i => ['pending', 'escalated', 'info_requested'].includes(i.status));
-    if (activeTab === 'auto')        return nonInvoiceItems.filter(i => i.status === 'auto_replied' && i.auto_mode_decision === 'send');
+    if (activeTab === 'pendientes')  return nonInvoiceItems.filter(i => !isFyi(i) && ['pending', 'escalated', 'info_requested'].includes(i.status));
+    if (activeTab === 'auto')        return nonInvoiceItems.filter(i => !isFyi(i) && i.status === 'auto_replied' && i.auto_mode_decision === 'send');
+    if (activeTab === 'notificaciones') return nonInvoiceItems.filter(i => isFyi(i) && i.category !== 'spam');
     if (activeTab === 'spam')        return nonInvoiceItems.filter(i => i.status === 'skipped' && i.category === 'spam');
     // Audit trail: decisiones de rechazo pasadas eran invisibles antes (audit sesión 53).
     if (activeTab === 'rechazados')  return nonInvoiceItems.filter(i => i.status === 'rejected');
@@ -387,9 +397,10 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
   );
 
   // Badge counts — sobre nonInvoiceItems (facturas viven en /oficina/facturas)
-  const pendingOpsCount    = nonInvoiceItems.filter(i => ['pending', 'escalated', 'info_requested'].includes(i.status)).length;
+  const pendingOpsCount    = nonInvoiceItems.filter(i => !isFyi(i) && ['pending', 'escalated', 'info_requested'].includes(i.status)).length;
   const pendingBadgeCount  = pendingOpsCount + humanRequests.length;
-  const autoCount          = nonInvoiceItems.filter(i => i.status === 'auto_replied' && i.auto_mode_decision === 'send').length;
+  const autoCount          = nonInvoiceItems.filter(i => !isFyi(i) && i.status === 'auto_replied' && i.auto_mode_decision === 'send').length;
+  const notifCount         = nonInvoiceItems.filter(i => isFyi(i) && i.category !== 'spam').length;
   const spamCount          = nonInvoiceItems.filter(i => i.status === 'skipped' && i.category === 'spam').length;
   const rejectedCount      = nonInvoiceItems.filter(i => i.status === 'rejected').length;
   const reportedCount      = nonInvoiceItems.filter(i => !!i.auto_mode_flagged_at).length;
@@ -399,6 +410,8 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
       tooltip: 'Correos que esperan tu aprobación o requieren info del cliente.' },
     { key: 'auto',       label: 'Auto-enviados', count: autoCount > 0 ? autoCount : undefined,
       tooltip: 'Correos que el empleado respondió por su cuenta sin pedir tu aprobación. Aquí puedes reportar mal envío y enviar corrección al cliente si algo salió mal.' },
+    { key: 'notificaciones', label: 'Notificaciones', count: notifCount > 0 ? notifCount : undefined,
+      tooltip: 'Recibos, alertas y avisos automáticos de plataformas (Vercel, Stripe, GitHub, etc.). Puramente informativos — no requieren respuesta.' },
     { key: 'spam',       label: 'Spam',          count: spamCount > 0 ? spamCount : undefined,
       tooltip: 'Correos que el empleado descartó como spam. Puedes rescatar si detecta un falso positivo.' },
     { key: 'rechazados', label: 'Rechazados',    count: rejectedCount > 0 ? rejectedCount : undefined,

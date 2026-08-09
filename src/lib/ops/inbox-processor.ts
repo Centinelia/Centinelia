@@ -15,12 +15,13 @@ import { logLlmCall } from '@/lib/observability/llm-log';
 const anthropic = new Anthropic();
 
 const CATEGORY_LABELS: Record<string, string> = {
-  proveedor: 'Proveedor',
-  cliente:   'Cliente',
-  urgente:   'Urgente',
-  factura:   'Factura',
-  spam:      'Spam',
-  otro:      'Otro',
+  proveedor:    'Proveedor',
+  cliente:      'Cliente',
+  urgente:      'Urgente',
+  factura:      'Factura',
+  notificacion: 'Notificación',
+  spam:         'Spam',
+  otro:         'Otro',
 };
 
 interface ProcessedEmail {
@@ -33,9 +34,14 @@ interface ProcessedEmail {
   needsInfo:          boolean;
   infoNeeded:         string | null;
   requestToSender:    string | null;
+  // Señal independiente de category: ¿este correo REQUIERE que el humano
+  // haga algo, o es puramente informativo (recibo, notificación, FYI)?
+  // Cuando false, se archiva silenciosamente en la tab "Notificaciones"
+  // en vez de aparecer en "Pendientes" con botones Aprobar/Rechazar.
+  actionRequired:     boolean;
 }
 
-const VALID_CATEGORIES = ['proveedor', 'cliente', 'urgente', 'factura', 'spam', 'otro'] as const;
+const VALID_CATEGORIES = ['proveedor', 'cliente', 'urgente', 'factura', 'notificacion', 'spam', 'otro'] as const;
 
 // Aprendizajes globales de conversación aprobados vía admin/conversacional.
 // Voz los inyecta en cada assistant build (src/lib/vapi/sync.ts:26).
@@ -91,6 +97,9 @@ function validateProcessedEmail(raw: unknown): ProcessedEmail {
   const r = (raw ?? {}) as Record<string, unknown>;
   const rawCat = isStr(r.category) ? r.category.toLowerCase().trim() : '';
   const category = (VALID_CATEGORIES as readonly string[]).includes(rawCat) ? rawCat : 'otro';
+  // Default action_required: false para notificacion/spam, true para el resto.
+  // El LLM puede sobreescribir con action_required explícito en el JSON.
+  const defaultActionRequired = !(category === 'notificacion' || category === 'spam');
   return {
     category,
     summary:            strOrNull(r.summary, 500) ?? 'Email recibido.',
@@ -102,6 +111,7 @@ function validateProcessedEmail(raw: unknown): ProcessedEmail {
     needsInfo:          isBool(r.needs_info) ? r.needs_info : false,
     infoNeeded:         strOrNull(r.info_needed, 2000),
     requestToSender:    strOrNull(r.request_to_sender, 4000),
+    actionRequired:     isBool(r.action_required) ? r.action_required : defaultActionRequired,
   };
 }
 
@@ -532,24 +542,25 @@ export async function processInboxEmail(params: {
     });
     if (quick.category) {
       const supabase = createAdminClient();
-      const category = quick.category === 'spam' ? 'spam' : 'otro';
+      const category = quick.category === 'spam' ? 'spam' : 'notificacion';
       const summary  = quick.category === 'spam'
         ? `Correo de marketing (clasificado sin IA: ${quick.reason ?? 'patrón detectado'}).`
         : `Notificación automática (clasificado sin IA: ${quick.reason ?? 'patrón detectado'}).`;
       await supabase.from('ops_inbox').insert({
-        agent_id:       agentId,
+        agent_id:        agentId,
         source,
-        raw_message_id: rawMessageId ?? null,
-        thread_id:      threadId ?? null,
-        email_from:     emailFrom,
-        email_subject:  emailSubject,
-        email_body:     effectiveBody.slice(0, EMAIL_BODY_TRUNCATE_CHARS),
+        raw_message_id:  rawMessageId ?? null,
+        thread_id:       threadId ?? null,
+        email_from:      emailFrom,
+        email_subject:   emailSubject,
+        email_body:      effectiveBody.slice(0, EMAIL_BODY_TRUNCATE_CHARS),
         attachments,
         category,
-        ai_summary:     summary,
-        ai_draft:       null,
-        item_type:      'email',
-        status:         'skipped',
+        ai_summary:      summary,
+        ai_draft:        null,
+        item_type:       'email',
+        status:          'skipped',
+        action_required: false,
         ...dispatcherCols,
       });
       return;
@@ -753,9 +764,16 @@ Produce JSON con:
   "draft": "<borrador de respuesta en español, o null si no aplica>",
   "needs_info": false,
   "info_needed": null,
-  "request_to_sender": null
+  "request_to_sender": null,
+  "action_required": <true si el correo requiere respuesta/acción del negocio, false si es puramente informativo (recibo, notificación de plataforma, alerta FYI)>
 }
-${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepancy' : ''}`;
+${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepancy' : ''}
+
+CATEGORÍAS:
+- cliente / proveedor / urgente / factura → SIEMPRE action_required=true
+- notificacion → correos FYI de plataformas (Vercel, Stripe, GitHub, AWS, Google), recibos, alertas de sistema. action_required=false
+- spam → publicidad no deseada. action_required=false
+- otro → si el correo pide respuesta acción, action_required=true; si es solo informativo, action_required=false`;
 
   let result: ProcessedEmail = {
     category:           'otro',
@@ -767,6 +785,7 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
     needsInfo:          false,
     infoNeeded:         null,
     requestToSender:    null,
+    actionRequired:     true,
   };
 
   // L3 — verifier: tools que completaron OK durante el tool loop; se lee en la etapa auto_replied.
@@ -786,7 +805,7 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
           model:      __obsM,
           max_tokens: 300,
           system: [{ type: 'text', text: `Eres un triador de correos para ${businessName}. Solo clasifica y resume, NUNCA redactes respuesta.`, cache_control: { type: 'ephemeral' } }],
-          messages: [{ role: 'user', content: `Categorías: proveedor, cliente, urgente, factura, spam, otro.\n\nDe: ${emailFrom}\nAsunto: ${emailSubject}\nCuerpo: ${effectiveBody.slice(0, 2000)}\n\nResponde SOLO JSON: { "category": "...", "summary": "1-2 oraciones en español" }` }],
+          messages: [{ role: 'user', content: `Categorías: proveedor, cliente, urgente, factura, notificacion, spam, otro.\n\nUsa "notificacion" para recibos automáticos, confirmaciones de suscripción, alertas de sistema, notificaciones de plataformas (Vercel, Stripe, GitHub, Google, etc.) — correos que son FYI y NO requieren respuesta humana.\n\nEmite además "action_required": boolean — true si el correo requiere respuesta o acción del negocio, false si es puramente informativo/FYI.\n\nDe: ${emailFrom}\nAsunto: ${emailSubject}\nCuerpo: ${effectiveBody.slice(0, 2000)}\n\nResponde SOLO JSON: { "category": "...", "summary": "1-2 oraciones en español", "action_required": true|false }` }],
         });
         void logLlmCall({ source: 'inbox_processor_observador', model: __obsM, usage: obsResp.usage, agentId, portalEmail, latencyMs: Date.now() - __obsT });
         const txt = obsResp.content.find(b => b.type === 'text');
@@ -1146,6 +1165,11 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
   if (result.category === 'spam') {
     finalStatus = 'skipped';
     finalDraft  = null;
+  } else if (result.category === 'notificacion' || result.actionRequired === false) {
+    // FYI/notification: recibo, alerta de plataforma, confirmación automática.
+    // No requiere respuesta humana — se archiva en tab "Notificaciones".
+    finalStatus = 'skipped';
+    finalDraft  = null;
   } else if (result.needsInfo && result.requestToSender) {
     finalStatus = 'info_requested';
     finalDraft  = result.requestToSender;
@@ -1274,6 +1298,7 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
         auto_mode_decision:  autoModeVerdict?.decision ?? null,
         auto_mode_reason:    autoModeVerdict?.reason ?? null,
         auto_mode_signals:   autoModeVerdict?.signals ?? [],
+        action_required:     result.actionRequired,
         ...dispatcherCols,
       })
       .select('id, approval_token')
