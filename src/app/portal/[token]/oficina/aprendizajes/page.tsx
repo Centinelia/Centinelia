@@ -25,7 +25,7 @@ export default async function AprendizajesPage({ params }: Props) {
         icon={Brain}
         eyebrow="Cómo trabajamos"
         title="Aprendizajes del equipo"
-        description="Aprueba lo que tu equipo aprendió en campo. Los cambios se aplican a todos los canales (voz, chat, correo)."
+        description="Lo que el equipo aprende con certeza se aplica automáticamente. Aquí solo aparecen los aprendizajes inciertos que quieren tu confirmación antes de incorporarse a la memoria del equipo."
       />
 
       <LearningsSection token={token} canApprove={canApprove} />

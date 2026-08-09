@@ -267,9 +267,15 @@ export default function OpsReportsSection({ token, agents, meerkatRoleId, report
       {sendResult && <SendResultModal message={sendResult} onClose={() => setSendResult(null)} />}
 
       <div className="flex flex-col gap-4">
-        {/* Hero banner */}
+        {/* Hero banner — cuando hay 2 coordinadores, gradient blend de ambos colores.
+            1 coord (o custom agent): fade del propio color a más transparente. */}
         <div className="rounded-2xl p-4 flex items-end gap-4 overflow-hidden"
-          style={{ background: `linear-gradient(135deg, ${acColor}15 0%, ${acColor}08 100%)`, border: `1px solid ${acColor}25` }}>
+          style={{
+            background: bannerMeerkats.length >= 2
+              ? `linear-gradient(135deg, ${(bannerMeerkats[0].color ?? acColor)}20 0%, ${(bannerMeerkats[1].color ?? acColor)}20 100%)`
+              : `linear-gradient(135deg, ${acColor}15 0%, ${acColor}08 100%)`,
+            border: `1px solid ${acColor}25`,
+          }}>
           <div className="flex-1">
             <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: acColor }}>
               Reportes automáticos

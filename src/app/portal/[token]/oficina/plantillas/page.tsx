@@ -1251,17 +1251,32 @@ export default function PlantillasPage() {
 
       <div className="flex flex-col sm:flex-row gap-3">
         {[
-          { n: '1', t: 'Prepara tu plantilla Word', d: 'Toma tu documento actual, agrega marcadores como {{cliente_nombre}} donde deben aparecer los datos.' },
-          { n: '2', t: 'Sube el .docx', d: 'Solo Word. Detectamos qué marcadores usaste y avisamos si falta alguno.' },
-          { n: '3', t: 'El empleado produce', d: 'Pídele "genera una factura para..." y sale con tu diseño exacto en PDF.' },
+          {
+            n: '1',
+            t: 'Sube tu formato Word',
+            d: 'Toma tu documento actual tal cual. No necesitas agregar marcadores; el sistema detecta y reemplaza los campos por ti.',
+            gradient: 'linear-gradient(90deg, rgba(108,59,255,0.14) 0%, rgba(108,59,255,0.02) 100%)',
+          },
+          {
+            n: '2',
+            t: 'Confirma la detección',
+            d: 'Verás un preview con los campos que detectamos. Confirma para guardar o descarta y sube otra versión.',
+            gradient: 'radial-gradient(ellipse at center, rgba(108,59,255,0.14) 0%, rgba(108,59,255,0.02) 70%)',
+          },
+          {
+            n: '3',
+            t: 'El empleado lo produce',
+            d: 'Pídele "genera una factura para..." y sale con tu diseño exacto en PDF, listo para enviar.',
+            gradient: 'linear-gradient(270deg, rgba(108,59,255,0.14) 0%, rgba(108,59,255,0.02) 100%)',
+          },
         ].map(s => (
           <div key={s.n} className="flex gap-3 rounded-xl p-4 flex-1"
-            style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
+            style={{ background: s.gradient, border: '1px solid #E8E3F5' }}>
             <span className="w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 mt-0.5"
-              style={{ background: 'rgba(108,59,255,0.12)', color: '#6C3BFF' }}>{s.n}</span>
+              style={{ background: 'rgba(108,59,255,0.18)', color: '#6C3BFF' }}>{s.n}</span>
             <div>
               <p className="text-[12px] font-semibold" style={{ color: '#1A0A3B' }}>{s.t}</p>
-              <p className="text-[11px] mt-0.5 leading-relaxed" style={{ color: '#9B8FB5' }}>{s.d}</p>
+              <p className="text-[11px] mt-0.5 leading-relaxed" style={{ color: '#6B6480' }}>{s.d}</p>
             </div>
           </div>
         ))}

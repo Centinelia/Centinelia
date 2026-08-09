@@ -175,8 +175,8 @@ export default function LearningsSection({ token, canApprove = true }: { token: 
             </div>
             <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>
               {canApprove
-                ? 'Revisa y aprueba lo que tu equipo aprendió esta semana.'
-                : 'Notas que el equipo aprendió esta semana.'}
+                ? 'Aprendizajes con baja certeza que el equipo escaló para tu confirmación. Lo aprendido con certeza ya se aplicó solo.'
+                : 'Aprendizajes con baja certeza que el equipo escaló para revisión.'}
             </p>
           </div>
         </div>
@@ -191,10 +191,10 @@ export default function LearningsSection({ token, canApprove = true }: { token: 
           <div style={{ borderTop: '1px solid #F0EDF9' }}>
             <EmptyState
               icon={Brain}
-              title={pending.length === 0 && approved.length === 0 ? 'Sin aprendizajes aún' : 'Nada pendiente por revisar'}
+              title={pending.length === 0 && approved.length === 0 ? 'Sin aprendizajes por revisar' : 'Nada pendiente por revisar'}
               description={pending.length === 0 && approved.length === 0
-                ? 'Los aprendizajes aparecen aquí cuando el equipo termina llamadas. Puedes aprobarlos para que tu empleado los incorpore a su conocimiento.'
-                : 'Todo revisado. Los nuevos aprendizajes aparecerán aquí conforme tu equipo trabaje.'}
+                ? 'Cuando tu equipo aprenda algo que no pueda confirmar solo, aparecerá aquí para tu revisión. Lo aprendido con certeza se aplica sin pedir permiso.'
+                : 'Todo revisado. Los nuevos aparecen aquí solo cuando el equipo dude.'}
               size="sm"
             />
           </div>
