@@ -340,7 +340,7 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
                   <div className="flex justify-between mb-1">
                     <span className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>Minutos</span>
                     <span className="text-[11px] font-medium tabular-nums" style={{ color: hasMinPlan ? uColor(minPct) : '#9ca3af' }}>
-                      {hasMinPlan ? `${minutesRemain} restantes` : 'Sin plan'}
+                      {hasMinPlan ? `${minutesRemain} restantes` : 'Jornada sin minutos'}
                     </span>
                   </div>
                   <div className="rounded-full overflow-hidden" style={{ height: 4, background: 'var(--c-border)' }}>
@@ -348,19 +348,19 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
                   </div>
                 </div>
                 {/* Tareas */}
-                {aiOpsLimit > 0 && (
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <span className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>Tareas</span>
-                      <span className="text-[11px] font-medium tabular-nums" style={{ color: uColor(opsPct) }}>
-                        {opsRemain} restantes
-                      </span>
-                    </div>
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <span className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>Tareas</span>
+                    <span className="text-[11px] font-medium tabular-nums" style={{ color: aiOpsLimit > 0 ? uColor(opsPct) : '#9ca3af' }}>
+                      {aiOpsLimit > 0 ? `${opsRemain} restantes` : 'Jornada sin tareas'}
+                    </span>
+                  </div>
+                  {aiOpsLimit > 0 && (
                     <div className="rounded-full overflow-hidden" style={{ height: 4, background: 'var(--c-border)' }}>
                       <div style={{ width: `${opsPct}%`, height: '100%', background: uColor(opsPct), borderRadius: 9999, transition: 'width 0.4s' }} />
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </Link>
             );
           })()}

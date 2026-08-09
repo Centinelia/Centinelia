@@ -468,7 +468,7 @@ export default function PortalSidebarV2(props: PortalSidebarV2Props) {
                     className="text-[11px] font-medium tabular-nums"
                     style={{ color: hasMinPlan ? uColor(minPct) : '#9ca3af' }}
                   >
-                    {hasMinPlan ? `${minRemain} restantes` : 'Sin plan'}
+                    {hasMinPlan ? `${minRemain} restantes` : 'Jornada sin minutos'}
                   </span>
                 </div>
                 <div className="h-1 overflow-hidden rounded-full bg-neutral-200">
@@ -483,17 +483,17 @@ export default function PortalSidebarV2(props: PortalSidebarV2Props) {
                 </div>
               </div>
               {/* Tareas */}
-              {opsLimit > 0 && (
-                <div>
-                  <div className="mb-1 flex justify-between">
-                    <span className="text-[11px] text-neutral-600">Tareas</span>
-                    <span
-                      className="text-[11px] font-medium tabular-nums"
-                      style={{ color: uColor(opsPct) }}
-                    >
-                      {opsRemain} restantes
-                    </span>
-                  </div>
+              <div>
+                <div className="mb-1 flex justify-between">
+                  <span className="text-[11px] text-neutral-600">Tareas</span>
+                  <span
+                    className="text-[11px] font-medium tabular-nums"
+                    style={{ color: opsLimit > 0 ? uColor(opsPct) : '#9ca3af' }}
+                  >
+                    {opsLimit > 0 ? `${opsRemain} restantes` : 'Jornada sin tareas'}
+                  </span>
+                </div>
+                {opsLimit > 0 && (
                   <div className="h-1 overflow-hidden rounded-full bg-neutral-200">
                     <div
                       className="h-full rounded-full motion-reduce:transition-none"
@@ -504,8 +504,8 @@ export default function PortalSidebarV2(props: PortalSidebarV2Props) {
                       }}
                     />
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </Link>
           );
         })()}
