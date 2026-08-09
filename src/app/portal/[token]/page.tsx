@@ -130,22 +130,62 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   // All agents for this client (same portal_email)
   // In dev the middleware bypasses auth so session is null — fall back to the agent's own email
   const lookupEmail = session?.portalEmail ?? (agent as any).portal_email ?? null;
-  const { data: clientAgents } = lookupEmail
-    ? await supabase
-        .from('voice_agents')
-        .select('id, business_name, agent_name, portal_token, active, client_paused, billing_status, plan, phone_number, logo_url, features, role, stripe_customer_id')
-        .eq('portal_email', lookupEmail)
-    : { data: [] };
-  const allClientAgents = clientAgents ?? [];
 
-  // Org-level settings — single source of truth for the Negocio tab
-  const { data: orgSettings } = agent.portal_email
-    ? await supabase
-        .from('organizations')
-        .select('knowledge_base, owner_profile, business_description, business_email, business_hours, business_website, website_knowledge, google_review_url, email_brand_color, brand_color_secondary, brand_website, brand_address, brand_phone, email_footer_text, billing_model, contract_accepted_at, contract_ip, contract_signer_name, multilingual, brand_voice_guide, directory')
-        .eq('portal_email', agent.portal_email)
-        .single()
-    : { data: null };
+  // ─── Batch 1: paralelizar TODAS las queries org-scoped que dependen de
+  // portal_email pero son independientes entre sí. Antes eran 6 awaits en
+  // serie (~180-600ms tigre en prod contra Supabase). Ahora un solo round-trip.
+  const [
+    clientAgentsRes,
+    orgSettingsRes,
+    acctMinsRes,
+    opsAgentsRes,
+    accountSerialRes,
+    v2EnabledRes,
+  ] = agent.portal_email
+    ? await Promise.all([
+        lookupEmail
+          ? supabase
+              .from('voice_agents')
+              .select('id, business_name, agent_name, portal_token, active, client_paused, billing_status, plan, phone_number, logo_url, features, role, stripe_customer_id')
+              .eq('portal_email', lookupEmail)
+              .then(r => r.data)
+          : Promise.resolve([] as any[]),
+        supabase
+          .from('organizations')
+          .select('knowledge_base, owner_profile, business_description, business_email, business_hours, business_website, website_knowledge, google_review_url, email_brand_color, brand_color_secondary, brand_website, brand_address, brand_phone, email_footer_text, billing_model, contract_accepted_at, contract_ip, contract_signer_name, multilingual, brand_voice_guide, directory')
+          .eq('portal_email', agent.portal_email)
+          .single()
+          .then(r => r.data),
+        supabase
+          .from('account_minutes')
+          .select('minutes_used, minutes_included, minutes_reset_date')
+          .eq('portal_email', agent.portal_email)
+          .single()
+          .then(r => r.data),
+        supabase
+          .from('voice_agents')
+          .select('id, ai_ops_used, ai_ops_limit')
+          .eq('portal_email', agent.portal_email)
+          .then(r => r.data),
+        getOrCreateSerial(agent.portal_email).catch(() => null),
+        isPortalV2Enabled(agent.portal_email),
+      ])
+    : [
+        [] as any[],
+        null,
+        null,
+        null as any,
+        null,
+        false,
+      ];
+
+  const clientAgents  = clientAgentsRes;
+  const allClientAgents = clientAgents ?? [];
+  const orgSettings   = orgSettingsRes as any;
+  const acctMins      = acctMinsRes;
+  const opsAgents     = opsAgentsRes;
+  const accountSerial = accountSerialRes;
+  const v2Enabled     = v2EnabledRes;
 
   const orgDirectory: DirectoryPerson[] = ((orgSettings as any)?.directory ?? []);
 
@@ -233,10 +273,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const agentName  = agent.agent_name?.trim() || 'Centinelia';
 
   // Minutes: account-level pool when portal_email exists, per-agent for demo/standalone
-  const { data: acctMins } = agent.portal_email
-    ? await supabase.from('account_minutes').select('minutes_used, minutes_included, minutes_reset_date').eq('portal_email', agent.portal_email).single()
-    : { data: null };
-
+  // (acctMins ya fue fetcheado en Batch 1 arriba)
   const minutesIncluded = acctMins?.minutes_included ?? agent.minutes_included ?? 0;
   const minutesUsed     = acctMins?.minutes_used     ?? agent.minutes_used     ?? 0;
   const minutesResetDate = acctMins?.minutes_reset_date ?? agent.minutes_reset_date ?? null;
@@ -255,11 +292,9 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   })();
 
   // AI ops: account-level pool (SUM of all agents in account)
-  const { data: opsAgents } = agent.portal_email
-    ? await supabase.from('voice_agents').select('id, ai_ops_used, ai_ops_limit').eq('portal_email', agent.portal_email)
-    : { data: null };
-  const aiOpsUsed  = (opsAgents ?? []).reduce((s, a) => s + (((a as any).ai_ops_used  as number) ?? 0), 0);
-  const aiOpsLimit = (opsAgents ?? []).reduce((s, a) => s + (((a as any).ai_ops_limit as number) ?? 0), 0);
+  // (opsAgents ya fue fetcheado en Batch 1 arriba)
+  const aiOpsUsed  = (opsAgents ?? []).reduce((s: number, a: any) => s + (((a as any).ai_ops_used  as number) ?? 0), 0);
+  const aiOpsLimit = (opsAgents ?? []).reduce((s: number, a: any) => s + (((a as any).ai_ops_limit as number) ?? 0), 0);
   const aiOpsPct   = aiOpsLimit > 0 ? Math.min((aiOpsUsed / aiOpsLimit) * 100, 100) : 0;
   const aiOpsColor = aiOpsPct > 90 ? '#ef4444' : aiOpsPct > 70 ? '#f59e0b' : '#22c55e';
 
@@ -267,9 +302,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const supportEmail       = process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? 'hola@centinelia.mx';
   const centineliReviewUrl = process.env.NEXT_PUBLIC_CENTINELIA_REVIEW_URL ?? '';
 
-  const accountSerial = agent.portal_email
-    ? await getOrCreateSerial(agent.portal_email).catch(() => null)
-    : null;
+  // accountSerial ya fue fetcheado en Batch 1 arriba
 
   // ── Data per tab ───────────────────────────────────────────────────────────
   const since = days ? new Date(Date.now() - days * 86400000).toISOString() : undefined;
@@ -431,10 +464,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
     (a: any) => (a.features as any)?.meerkat_role_id === 'nox' && a.active,
   );
 
-  // Portal V2 flag — orgId is portal_email (primary key of organizations)
-  const v2Enabled = agent.portal_email
-    ? await isPortalV2Enabled(agent.portal_email)
-    : false;
+  // Portal V2 flag ya fue fetcheado en Batch 1 arriba (v2Enabled)
 
   // Per-agent call counts for "Tu equipo hoy"
   const callsByAgentId: Record<string, number> = {};
