@@ -90,15 +90,28 @@ export async function POST(req: NextRequest) {
   if (incidentMatch) {
     // Reabrir el incidente: si estaba resolved/closed, vuelve a open. Si
     // estaba awaiting_verification/sent_to_claude_code, marca open explícito
-    // para que Nash lo re-trabaje.
+    // para que Nash lo re-trabaje. Preserva meta existente (claude_code_comments,
+    // etc.) — antes se pisaba y se perdía el historial de comments de Nash.
+    // También limpia resolution para no dejar el mensaje contradictorio
+    // "auto-verificado" cuando el incidente vuelve a estar abierto.
+    const { data: prevIncident } = await supabase
+      .from('platform_incidents')
+      .select('meta, resolution')
+      .eq('id', incidentMatch.incidentId)
+      .maybeSingle();
+    const prevMeta = ((prevIncident as any)?.meta as Record<string, unknown> | null) ?? {};
+    const prevResolution = (prevIncident as any)?.resolution as string | null;
     await supabase
       .from('platform_incidents')
       .update({
-        status: 'open',
+        status:     'open',
+        resolution: null,
         meta: {
+          ...prevMeta,
           reopened_at:     new Date().toISOString(),
           reopened_reason: 'client_email_reply',
           reopened_by:     from,
+          ...(prevResolution ? { previous_resolution: prevResolution } : {}),
         },
       })
       .eq('id', incidentMatch.incidentId);

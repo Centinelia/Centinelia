@@ -156,6 +156,16 @@ ${orgBrandVoice.trim()}
 Aplica este tono en cada frase, sin mencionarlo. Si el bloque de estilo de voz genérico y este entran en conflicto, esta guía gana.`);
   }
 
+  // ── Org team roster — fuente única de verdad (organizations.directory) ────
+  // Reconocimiento pasivo por nombre en voz/chat/correo. Coordinadores lo
+  // reciben también porque delegar_tarea/consultar_agente se apoyan en saber
+  // quiénes son los humanos de la org.
+  if (orgId && supabase) {
+    const { buildOrgTeamRosterString } = await import('@/lib/portal/directory');
+    const rosterBlock = await buildOrgTeamRosterString(orgId, supabase);
+    if (rosterBlock) blocks.push(rosterBlock);
+  }
+
   // ── Owner profile (User File) ─────────────────────────────────────────────
   const ownerProfile = agent.owner_profile;
   if (ownerProfile?.trim()) {

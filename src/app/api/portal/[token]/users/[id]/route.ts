@@ -93,6 +93,13 @@ export async function PATCH(
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!data) return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
+
+  // Sync a organizations.directory si cambió el nombre.
+  if ('name' in body && !data.is_owner) {
+    const { upsertPortalUserInDirectory } = await import('@/lib/portal/directory');
+    await upsertPortalUserInDirectory(check.accountId, data.id as string, (data.name as string | null) ?? null, supabase);
+  }
+
   return NextResponse.json({ user: data });
 }
 
@@ -116,5 +123,10 @@ export async function DELETE(
     .eq('is_owner', false); // guardarraíl adicional: nunca borrar al owner
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Sync a organizations.directory: quitar la entrada auto-creada.
+  const { removePortalUserFromDirectory } = await import('@/lib/portal/directory');
+  await removePortalUserFromDirectory(check.accountId, id, supabase);
+
   return new NextResponse(null, { status: 204 });
 }

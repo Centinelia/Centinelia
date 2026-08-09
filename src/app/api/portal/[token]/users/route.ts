@@ -99,5 +99,11 @@ export async function POST(
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  // Sync a organizations.directory (fuente única de humanos de la org).
+  if (data?.id) {
+    const { upsertPortalUserInDirectory } = await import('@/lib/portal/directory');
+    await upsertPortalUserInDirectory(check.accountId, data.id as string, (data.name as string | null) ?? null, supabase);
+  }
+
   return NextResponse.json({ user: data }, { status: 201 });
 }

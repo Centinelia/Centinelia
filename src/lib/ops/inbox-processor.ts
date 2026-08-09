@@ -560,6 +560,15 @@ export async function processInboxEmail(params: {
   if (knowledgeBase?.trim()) contextBlocks.push(`NEGOCIO:\n${knowledgeBase.trim()}`);
   if (agentRole?.trim() && roleKB?.trim()) contextBlocks.push(`ROL DEL AGENTE: ${agentRole}\n${roleKB.trim()}`);
   if (portalEmail) {
+    // Roster completo de humanos de la org — fuente única (organizations.directory).
+    // Reconocimiento pasivo por nombre en correo.
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+    const { buildOrgTeamRosterString } = await import('@/lib/portal/directory');
+    const rosterBlock = await buildOrgTeamRosterString(portalEmail, createAdminClient());
+    if (rosterBlock) contextBlocks.push(rosterBlock);
+
+    // Directorio de sub-usuarios del portal (portal_users) — necesario para
+    // pedir_a_humano porque tiene emails, que el roster de org no incluye.
     const { buildInternalDirectoryString } = await import('@/lib/human-handoff/directory');
     const directory = await buildInternalDirectoryString(portalEmail);
     if (directory) contextBlocks.push(directory);
@@ -838,7 +847,7 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
     if (inboxMeerkatId === 'nash') {
       tools.push({
         name: 'revisar_incidentes_plataforma',
-        description: 'Uso exclusivo de Nash. Lee las 5 fuentes de incidentes de la plataforma en una sola llamada: bug reports enviados vía reportar_falla, errores del LLM (llm_call_log), bandejas escaladas estancadas más de 24h, handoff replies fallidos, y agent_tasks con status="failed". Deduplica automáticamente contra platform_incidents ya abiertos. Úsala como primera acción de cada ciclo de monitoreo.',
+        description: 'Uso exclusivo de Nash. Lee las 5 fuentes de incidentes de la plataforma en una sola llamada: bug reports enviados vía reportar_falla, errores del LLM (llm_call_log), bandejas escaladas estancadas más de 24h, handoff replies fallidos, y agent_tasks con status="failed". Deduplica contra platform_incidents (abiertos y cerrados) por source_id, y filtra reopens ya procesados (incident_reply cuyo incidente referenciado fue actualizado después del reply). Úsala como primera acción de cada ciclo de monitoreo.',
         input_schema: {
           type: 'object' as const,
           properties: {

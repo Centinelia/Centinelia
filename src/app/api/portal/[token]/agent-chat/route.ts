@@ -646,7 +646,7 @@ const ML_VER_METRICAS_TOOL: Anthropic.Tool = {
 
 const REVISAR_INCIDENTES_PLATAFORMA_TOOL: Anthropic.Tool = {
   name: 'revisar_incidentes_plataforma',
-  description: 'Uso exclusivo de Nash (meerkat interno de Centinelia). Lee las 5 fuentes de incidentes de la plataforma en una sola llamada: bug reports enviados vía reportar_falla, errores del LLM (llm_call_log), bandejas escaladas estancadas más de 24h, handoff replies fallidos, y agent_tasks con status="failed". Deduplica automáticamente contra platform_incidents ya abiertos (para no crear duplicados). Úsala como primera acción de cada ciclo de monitoreo antes de decidir qué escalar a Claude Code, qué contestar al cliente afectado, o qué marcar como incidente manual.',
+  description: 'Uso exclusivo de Nash (Centinelia interno). Lee las 5 fuentes de incidentes de la plataforma en una sola llamada: bug reports enviados vía reportar_falla, errores del LLM (llm_call_log), bandejas escaladas estancadas más de 24h, handoff replies fallidos, y agent_tasks con status="failed". Deduplica contra platform_incidents (abiertos y cerrados) por source_id, y filtra reopens ya procesados (incident_reply cuyo incidente referenciado fue actualizado después del reply). Úsala como primera acción de cada ciclo de monitoreo antes de decidir qué escalar a Claude Code, qué contestar al cliente afectado, o qué marcar como incidente manual.',
   input_schema: {
     type: 'object' as const,
     properties: {
@@ -1432,9 +1432,15 @@ export async function POST(req: NextRequest, { params }: Params) {
   }
 
   // Team numbers — persistent memory for specific team members (directorio unificado en organizations.directory)
-  const { loadOrgDirectory, toTeamNumbers } = await import('@/lib/portal/directory');
+  const { loadOrgDirectory, toTeamNumbers, renderOrgTeamRoster } = await import('@/lib/portal/directory');
   const directory   = await loadOrgDirectory((agent as any).portal_email, supabase);
   const teamNumbers = toTeamNumbers(directory);
+
+  // Roster completo (fuente única). Va antes del historial de llamadas para
+  // que el agente sepa quiénes existen antes de leer qué han hecho.
+  const rosterBlock = renderOrgTeamRoster(directory);
+  if (rosterBlock) sections.push(`# Equipo humano\n${rosterBlock}`);
+
   const teamCtx = await loadTeamCallContext(acctAgentIds, teamNumbers, supabase);
   if (teamCtx) sections.push(teamCtx);
 

@@ -696,16 +696,24 @@ async function executeAgentToolInner(
     const staleIso  = new Date(now - 24 * 3_600_000).toISOString();
     const perSource = Math.max(1, Math.min(100, (toolInput.limit_per_source as number | undefined) ?? 25));
 
-    // Dedupe: source_id de incidentes no-cerrados ya rastreados por Nash.
+    // Dedupe: source_id de TODOS los incidentes ya rastreados por Nash
+    // (incluye resolved/closed). Antes filtraba solo abiertos y eso causaba
+    // que reopens cuyo incidente duplicado quedó cerrado se reprocesaran
+    // como señal fresca cada 10min → spam de ACKs al cliente.
     const { data: trackedRows } = await supabase
       .from('platform_incidents')
-      .select('source, source_id')
-      .not('status', 'in', '(resolved,closed)')
+      .select('source, source_id, id, updated_at')
       .not('source_id', 'is', null);
     const trackedSet = new Set<string>(
       (trackedRows ?? [])
-        .filter((r): r is { source: string; source_id: string } => typeof r.source_id === 'string')
+        .filter((r): r is { source: string; source_id: string; id: string; updated_at: string } => typeof r.source_id === 'string')
         .map(r => `${r.source}:${r.source_id}`)
+    );
+    // Mapa id → updated_at para filtro de reopens ya procesados (abajo).
+    const incidentUpdatedById = new Map<string, string>(
+      (trackedRows ?? [])
+        .filter((r): r is { source: string; source_id: string; id: string; updated_at: string } => typeof r.id === 'string')
+        .map(r => [r.id, r.updated_at])
     );
 
     // 1) Bug reports enviados vía tool `reportar_falla` (log en tool_call_log).
@@ -716,8 +724,27 @@ async function executeAgentToolInner(
       .gte('created_at', sinceIso)
       .order('created_at', { ascending: false })
       .limit(perSource);
+
+    // Segundo pase de dedup para reopens: un tool_call_log con
+    // source='incident_reply' referencia un incidente existente por UUID.
+    // Si ese incidente fue tocado (updated_at) DESPUÉS del reply, Nash ya lo
+    // procesó → no re-emitir como señal nueva. Sin esto, los reopens quedan
+    // en tool_call_log indefinidamente y se re-procesan en cada ciclo cron.
+    const REOPEN_RE = /Referencia incidente:\s*([0-9a-f-]{36})/i;
+    const handledReopenRowIds = new Set<string>();
+    for (const r of (bugRaw ?? [])) {
+      const input = (r.input_json ?? {}) as Record<string, unknown>;
+      if (input.source !== 'incident_reply') continue;
+      const m = String(input.descripcion ?? '').match(REOPEN_RE);
+      if (!m) continue;
+      const refUpdated = incidentUpdatedById.get(m[1]);
+      if (refUpdated && new Date(refUpdated).getTime() >= new Date(r.created_at as string).getTime()) {
+        handledReopenRowIds.add(r.id as string);
+      }
+    }
+
     const bug_reports = (bugRaw ?? [])
-      .filter(r => !trackedSet.has(`bug_report:${r.id}`))
+      .filter(r => !trackedSet.has(`bug_report:${r.id}`) && !handledReopenRowIds.has(r.id as string))
       .map(r => {
         const input = (r.input_json ?? {}) as Record<string, unknown>;
         return {
@@ -835,6 +862,23 @@ async function executeAgentToolInner(
       if (!['low', 'med', 'high', 'critical'].includes(priority)) return { ok: false, error: `priority inválida: ${priority}` };
       if (!['bug_report', 'error_log', 'escalated_inbox', 'failed_handoff', 'agent_task', 'nash_self_discovery', 'manual'].includes(source)) {
         return { ok: false, error: `source inválida: ${source}` };
+      }
+
+      // Guard duro contra reapertura: si el body es un reopen (contiene
+      // marcador o Referencia incidente), rechazar creación y forzar a Nash
+      // a comentar en el incidente existente vía enviar_a_claude_code.
+      // Sonnet a veces viola la regla 2b del prompt y crea duplicados —
+      // esto es defensa en profundidad.
+      const REOPEN_MARK_RE = /\[REABRI[ÓO] CASO\]|Referencia incidente:\s*([0-9a-f-]{36})/i;
+      const reopenMatch = description.match(REOPEN_MARK_RE);
+      if (reopenMatch) {
+        const refUuidMatch = description.match(/Referencia incidente:\s*([0-9a-f-]{36})/i);
+        const refId = refUuidMatch?.[1] ?? null;
+        return {
+          ok: false,
+          error: 'este contenido es una reapertura de un incidente existente — no crees uno nuevo. Llama enviar_a_claude_code con incidente_id del incidente referenciado (agrega comment al GH issue existente) y responder_cliente_afectado con el mismo incidente_id para el ACK.',
+          reopen_of_incident_id: refId,
+        };
       }
       if (sourceId) {
         const { data: existing } = await supabase

@@ -29,7 +29,7 @@ const NASH_PORTAL     = 'hola@centinelia.mx';
 const NASH_TOOLS: Anthropic.Tool[] = [
   {
     name: 'revisar_incidentes_plataforma',
-    description: 'Lee las 5 fuentes de incidentes en una sola llamada: bug reports (reportar_falla), errores LLM, bandejas escaladas estancadas más de 24h, handoff replies fallidos, y agent_tasks status="failed". Deduplica automáticamente contra platform_incidents ya abiertos. Úsala como primera acción de cada ciclo.',
+    description: 'Lee las 5 fuentes de incidentes en una sola llamada: bug reports (reportar_falla), errores LLM, bandejas escaladas estancadas más de 24h, handoff replies fallidos, y agent_tasks status="failed". Deduplica contra platform_incidents (abiertos y cerrados) por source_id, y filtra reopens ya procesados (incident_reply cuyo incidente referenciado fue actualizado después del reply). Úsala como primera acción de cada ciclo.',
     input_schema: {
       type: 'object' as const,
       properties: {
