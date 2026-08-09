@@ -15,7 +15,7 @@ export async function GET(req: NextRequest, { params }: Params) {
   const supabase  = createAdminClient();
 
   const { data: acct } = await supabase
-    .from('voice_agents').select('id, portal_email').eq('portal_token', token).single();
+    .from('voice_agents').select('id, portal_email, trust_stage').eq('portal_token', token).single();
   if (!acct) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
   if (auth.portalEmail && acct.portal_email && auth.portalEmail !== acct.portal_email)
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
@@ -72,6 +72,10 @@ export async function GET(req: NextRequest, { params }: Params) {
     items:                    items ?? [],
     humanRequests:            humanReqs ?? [],
     integrationsNeedingReauth,
+    // Frontend usa trust_stage para decidir si mostrar botones Aprobar/Rechazar.
+    // En Autónomo (3), solo aparecen para items con auto_mode_decision='human'
+    // (el classifier explícitamente pidió ojos humanos).
+    trustStage: (acct.trust_stage as number | null) ?? 3,
   });
 }
 

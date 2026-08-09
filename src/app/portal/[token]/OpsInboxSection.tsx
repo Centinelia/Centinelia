@@ -107,6 +107,9 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
   const [items, setItems]                                 = useState<InboxItem[]>([]);
   const [humanRequests, setHumanReqs]                     = useState<HumanRequest[]>([]);
   const [reauthNeeded, setReauthNeeded]                   = useState<ReauthNeeded[]>([]);
+  // trust_stage de la cuenta. 3=Autónomo (default), 2=Supervisado, 1=Observador.
+  // Determina cuándo mostrar Aprobar/Rechazar en el frontend.
+  const [trustStage, setTrustStage]     = useState<number>(3);
   const [loading, setLoading]           = useState(true);
   const [expandedId, setExpanded]       = useState<string | null>(null);
   const [acting, setActing]             = useState<string | null>(null);
@@ -170,6 +173,7 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
         setItems(data.items ?? []);
         setHumanReqs(data.humanRequests ?? []);
         setReauthNeeded(data.integrationsNeedingReauth ?? []);
+        if (typeof data.trustStage === 'number') setTrustStage(data.trustStage);
       }
     } finally { setLoading(false); }
   }, [token]);
@@ -531,8 +535,24 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
               </div>
             )}
 
-            {/* Actions */}
-            {isPending && (() => {
+            {/* Actions — respetan trust_stage:
+                  Observador (1): sin botones (usuario escribe desde cero fuera del sistema).
+                  Supervisado (2): botones siempre en cada pending (usuario eligió aprobar todo).
+                  Autónomo (3): botones SOLO cuando el classifier explícitamente pidió humano
+                    (auto_mode_decision='human'). Si es edge case sin decision, mostramos
+                    banner "el empleado no pudo procesar" en vez de botones falsos.
+                Ver [[feedback-empleados-inteligentes]] + audit sesión post-F2. */}
+            {isPending && trustStage === 1 && (
+              <div className="mt-2 px-3 py-2.5 rounded-lg text-xs" style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#6B6480' }}>
+                Modo Observador — el empleado solo triage. Tú redactas la respuesta desde tu correo.
+              </div>
+            )}
+            {isPending && trustStage === 3 && !item.auto_mode_decision && (
+              <div className="mt-2 px-3 py-2.5 rounded-lg text-xs" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', color: '#92400E' }}>
+                El empleado no pudo procesar este correo automáticamente. Revísalo y responde desde tu correo, o baja al modo Supervisado si prefieres siempre aprobar borradores.
+              </div>
+            )}
+            {isPending && (trustStage === 2 || (trustStage === 3 && item.auto_mode_decision === 'human')) && (() => {
               const wasEdited = !!draftEdits[item.id] && draftEdits[item.id].trim() !== (item.ai_draft ?? '').trim();
               return (
                 <div className="flex gap-2 mt-2">

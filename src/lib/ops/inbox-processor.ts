@@ -1237,12 +1237,32 @@ CATEGORÍAS:
     // Model emitió needs_info=true sin request_to_sender. Significa que quería
     // escalar al equipo interno pero no usó la tool pedir_a_humano. Caer a
     // pending (visible en bandeja) en vez de silent drop.
+    // Marcamos decision='human' con reason explícito para que el frontend NO
+    // muestre botones Aprobar/Rechazar en Autónomo (no hay draft que aprobar).
     console.warn('[inbox-processor] needsInfo=true sin requestToSender, fallback a pending. info_needed:', result.infoNeeded);
     finalStatus = 'pending';
     finalDraft  = result.draft;
+    if (!autoModeVerdict) {
+      autoModeVerdict = {
+        decision: 'human',
+        reason:   'fallback_needs_info_no_request',
+        signals:  ['classifier_bypassed', 'no_actionable_output'],
+      };
+    }
   } else if (!result.draft) {
+    // Empleado no produjo draft ni pidió info al remitente. Puede ser porque
+    // agotó tools sin encontrar respuesta, o edge case del prompt.
+    // Marcamos decision='human' para que el frontend muestre el banner
+    // "el empleado no pudo procesar" en vez de botones Aprobar/Rechazar vacíos.
     finalStatus = 'pending';
     finalDraft  = null;
+    if (!autoModeVerdict) {
+      autoModeVerdict = {
+        decision: 'human',
+        reason:   'fallback_no_draft',
+        signals:  ['classifier_bypassed', 'employee_gave_up'],
+      };
+    }
   } else if (autoMode === 'always' && sendReplyFn) {
     // Bright-line: always bypasses classifier
     // L3 — evidence check antes de auto-enviar: si el draft claims acciones sin tool → pending.
