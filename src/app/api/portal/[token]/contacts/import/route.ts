@@ -69,13 +69,13 @@ export async function POST(req: NextRequest, { params }: Params) {
   let rows: ImportRow[] = [];
 
   if (provider === 'notion') {
-    const { data: agentNotion } = await supabase
-      .from('voice_agents')
+    // Notion es org-level desde 2026-08-09
+    const { data: orgNotion } = await supabase
+      .from('organizations')
       .select('notion_access_token')
       .eq('portal_email', access.portalEmail)
-      .not('notion_access_token', 'is', null)
-      .limit(1).maybeSingle();
-    const notionToken = agentNotion?.notion_access_token as string | null;
+      .maybeSingle();
+    const notionToken = orgNotion?.notion_access_token as string | null;
     if (!notionToken) {
       return NextResponse.json({ error: 'Notion no está conectado.' }, { status: 400 });
     }

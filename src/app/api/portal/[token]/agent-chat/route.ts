@@ -1242,16 +1242,21 @@ export async function POST(req: NextRequest, { params }: Params) {
       ? supabase.from('voice_agents').select('*').eq('id', agentId).eq('portal_email', accountAgent.portal_email).single()
       : supabase.from('voice_agents').select('*').eq('id', agentId).eq('id', accountAgent.id).single()
     : supabase.from('voice_agents').select('*').eq('portal_token', token).single();
-  const [{ data: agent }, { data: qbRow }] = await Promise.all([
+  // Notion es org-level desde 2026-08-09 (vive en organizations, no en
+  // voice_agents). Se lee en paralelo con agent y qbRow.
+  const [{ data: agent }, { data: qbRow }, { data: orgNotion }] = await Promise.all([
     targetQuery,
     supabase.from('qb_integrations').select('realm_id').eq('portal_email', accountAgent.portal_email).maybeSingle(),
+    accountAgent.portal_email
+      ? supabase.from('organizations').select('notion_access_token, notion_db_id, notion_products_db_id').eq('portal_email', accountAgent.portal_email).maybeSingle()
+      : Promise.resolve({ data: null }),
   ]);
   if (!agent) return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
 
   const qbConnected             = !!qbRow?.realm_id;
   const agentFeatures           = (agent.features as Record<string, unknown>) ?? {};
   const meerkatId               = (agentFeatures.meerkat_role_id  as string | null) ?? null;
-  const notionProductsConnected = !!(agent.notion_access_token && agentFeatures.notion_products_db_id);
+  const notionProductsConnected = !!(orgNotion?.notion_access_token && orgNotion?.notion_products_db_id);
   const sessionTools            = getToolsForRole(meerkatId, qbConnected, notionProductsConnected);
 
   // preparar_brief_del_dia — Nox exclusivo. Canal voz ausente de forma intencional
@@ -1497,11 +1502,11 @@ export async function POST(req: NextRequest, { params }: Params) {
     sections.push(`# Contratos\n${lines.join('\n')}`);
   }
 
-  if ((agent.notion_access_token as string | null) && (agent.notion_db_id as string | null)) {
+  if (orgNotion?.notion_access_token && orgNotion?.notion_db_id) {
     try {
-      const notion = notionClient(agent.notion_access_token as string);
+      const notion = notionClient(orgNotion.notion_access_token as string);
       const { results } = await (notion.databases as any).query({
-        database_id: agent.notion_db_id as string,
+        database_id: orgNotion.notion_db_id as string,
         page_size:   20,
         sorts:       [{ timestamp: 'last_edited_time', direction: 'descending' }],
       });

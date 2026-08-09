@@ -16,18 +16,27 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = createAdminClient();
+  // Calendar es org-level (migrado de voice_agents a organizations 2026-08-09).
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('calendar_api_key, calendar_event_type_id, timezone')
+    .select('portal_email, timezone')
     .eq('id', agent_id)
     .single();
 
-  if (!agent?.calendar_api_key || !agent?.calendar_event_type_id) {
+  const { data: org } = agent?.portal_email
+    ? await supabase
+        .from('organizations')
+        .select('calendar_api_key, calendar_event_type_id')
+        .eq('portal_email', agent.portal_email)
+        .maybeSingle()
+    : { data: null };
+
+  if (!org?.calendar_api_key || !org?.calendar_event_type_id) {
     return NextResponse.json({ result: 'El calendario no está configurado. Pregunta directamente al cliente qué fecha y hora prefiere.' });
   }
 
   // Build date range, default: today + 7 days
-  const tz = agent.timezone ?? 'America/Monterrey';
+  const tz = agent?.timezone ?? 'America/Monterrey';
   const now = new Date();
   const startTime = fecha_inicio
     ? new Date(`${fecha_inicio}T00:00:00`).toISOString()
@@ -37,8 +46,8 @@ export async function POST(req: NextRequest) {
     : new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
   const params = new URLSearchParams({
-    apiKey:       agent.calendar_api_key,
-    eventTypeId:  agent.calendar_event_type_id,
+    apiKey:       org.calendar_api_key,
+    eventTypeId:  org.calendar_event_type_id,
     startTime,
     endTime,
     timeZone:     tz,

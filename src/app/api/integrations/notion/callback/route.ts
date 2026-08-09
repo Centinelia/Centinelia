@@ -44,12 +44,18 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(`${appUrl}/portal/${state}?tab=integraciones&notion=error`);
   }
 
-  await supabase.from('voice_agents').update({
-    notion_access_token:  access_token,
-    notion_workspace_id:  workspace_id,
-    notion_workspace_name: workspace_name,
-    notion_db_id:         null, // clear existing DB so user picks a new page
-  }).eq('portal_email', agent.portal_email);
+  // Notion es org-level: escribimos en organizations, no en voice_agents.
+  // El campo notion_workspace_id se dejó en la tabla organizations legacy o
+  // se ignora — usamos workspace_name como identificador visible.
+  await supabase
+    .from('organizations')
+    .upsert({
+      portal_email:          agent.portal_email,
+      notion_access_token:   access_token,
+      notion_workspace_name: workspace_name,
+      notion_db_id:          null, // clear existing DB so user picks a new page
+      notion_products_db_id: null,
+    }, { onConflict: 'portal_email' });
 
   return NextResponse.redirect(`${appUrl}/portal/${state}?tab=integraciones&notion=connected`);
 }

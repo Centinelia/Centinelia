@@ -30,20 +30,18 @@ export async function GET(req: NextRequest, { params }: Params) {
 
   const supabase = createAdminClient();
 
-  // Notion: busca cualquier agente del portal_email con notion_access_token
-  const { data: notionAgent } = await supabase
-    .from('voice_agents')
-    .select('id, notion_access_token')
+  // Notion es org-level desde 2026-08-09 (vive en organizations)
+  const { data: orgNotion } = await supabase
+    .from('organizations')
+    .select('notion_access_token')
     .eq('portal_email', access.portalEmail)
-    .not('notion_access_token', 'is', null)
-    .limit(1)
     .maybeSingle();
 
   let notionDatabases: Array<{ id: string; title: string; properties: Record<string, { type: string; name: string }> }> = [];
-  const notionConnected = !!notionAgent?.notion_access_token;
+  const notionConnected = !!orgNotion?.notion_access_token;
   if (notionConnected) {
     try {
-      notionDatabases = await getAccessibleDatabases(notionAgent!.notion_access_token as string);
+      notionDatabases = await getAccessibleDatabases(orgNotion!.notion_access_token as string);
     } catch (err) {
       console.error('[import/sources] Notion databases fetch failed', err);
     }

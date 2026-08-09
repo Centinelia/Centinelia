@@ -17,13 +17,22 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = createAdminClient();
+  // Calendar es org-level (migrado 2026-08-09).
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('business_name, calendar_type, calendar_api_key, calendar_event_type_id, calendar_link, transfer_whatsapp')
+    .select('portal_email, business_name, transfer_whatsapp')
     .eq('id', agent_id)
     .single();
 
   if (!agent) return NextResponse.json({ result: 'Error interno al agendar la cita.' });
+
+  const { data: org } = agent.portal_email
+    ? await supabase
+        .from('organizations')
+        .select('calendar_type, calendar_api_key, calendar_event_type_id, calendar_link')
+        .eq('portal_email', agent.portal_email)
+        .maybeSingle()
+    : { data: null };
 
   // 1. Always save to Supabase
   const fechaIso = /^\d{4}-\d{2}-\d{2}$/.test(fecha) ? fecha : null;
@@ -40,7 +49,7 @@ export async function POST(req: NextRequest) {
 
   // 2. Try Cal.com API if configured
   let calBooked = false;
-  if (agent.calendar_type === 'cal_com' && agent.calendar_api_key && agent.calendar_event_type_id) {
+  if (org?.calendar_type === 'cal_com' && org.calendar_api_key && org.calendar_event_type_id) {
     try {
       // Build ISO datetime, assumes Mexico City timezone
       const startIso = fechaIso
@@ -48,11 +57,11 @@ export async function POST(req: NextRequest) {
         : null;
 
       if (startIso) {
-        const calRes = await fetch(`https://api.cal.com/v1/bookings?apiKey=${agent.calendar_api_key}`, {
+        const calRes = await fetch(`https://api.cal.com/v1/bookings?apiKey=${org.calendar_api_key}`, {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            eventTypeId: parseInt(agent.calendar_event_type_id),
+            eventTypeId: parseInt(org.calendar_event_type_id),
             start:       startIso,
             name:        nombre,
             email:       email ?? `llamada@centinelia.mx`,
@@ -76,13 +85,13 @@ export async function POST(req: NextRequest) {
 
   // 3. Notify business owner
   if (agent.transfer_whatsapp) {
-    const ownerMsg = `📅 *Nueva cita, ${agent.business_name}*\n\nCliente: ${nombre}\nServicio: ${servicio ?? ','}\nFecha: ${fecha} · ${hora}${whatsapp_cliente ? `\nWA: ${whatsapp_cliente}` : ''}${calBooked ? '\n✅ Confirmada en Cal.com' : agent.calendar_link ? '\n📎 Link enviado al cliente' : ''}`;
+    const ownerMsg = `📅 *Nueva cita, ${agent.business_name}*\n\nCliente: ${nombre}\nServicio: ${servicio ?? ','}\nFecha: ${fecha} · ${hora}${whatsapp_cliente ? `\nWA: ${whatsapp_cliente}` : ''}${calBooked ? '\n✅ Confirmada en Cal.com' : org?.calendar_link ? '\n📎 Link enviado al cliente' : ''}`;
     await sendWhatsApp(agent.transfer_whatsapp, ownerMsg).catch(console.error);
   }
 
   const result = calBooked
     ? `Cita confirmada directamente en el calendario de ${agent.business_name}.`
-    : agent.calendar_link
+    : org?.calendar_link
       ? `Datos de la cita registrados. Comparte el link de reserva con el cliente para que confirme.`
       : `Cita registrada: ${nombre}, ${servicio ?? 'sin servicio'}, ${fecha} a las ${hora}.`;
 

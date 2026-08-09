@@ -45,14 +45,23 @@ export async function POST(req: NextRequest) {
   const agentName  = typedAgent.agent_name?.trim() || 'Centinelia';
 
   // Check account status — suspended or terminated accounts cannot receive calls
+  // También traemos los campos de calendar (org-level desde 2026-08-09).
+  let orgCalendar: { calendar_type?: string | null; calendar_api_key?: string | null; calendar_event_type_id?: string | null; calendar_link?: string | null } = {};
   if (typedAgent.portal_email) {
     const { data: org } = await supabase
       .from('organizations')
-      .select('account_status, suspended_until')
+      .select('account_status, suspended_until, calendar_type, calendar_api_key, calendar_event_type_id, calendar_link')
       .eq('portal_email', typedAgent.portal_email)
       .single();
 
     if (org) {
+      orgCalendar = {
+        calendar_type:          org.calendar_type,
+        calendar_api_key:       org.calendar_api_key,
+        calendar_event_type_id: org.calendar_event_type_id,
+        calendar_link:          org.calendar_link,
+      };
+
       const isSuspended = org.account_status === 'suspended' &&
         (!org.suspended_until || new Date(org.suspended_until) > new Date());
       const isTerminated = org.account_status === 'terminated';
@@ -502,8 +511,8 @@ async function buildTools(agent: VoiceAgent, qbConnected = false) {
   }
 
   if (f.appointment_booking) {
-    const hasCalendar     = !!agent.calendar_type;
-    const hasCalComApi    = agent.calendar_type === 'cal_com' && !!agent.calendar_api_key;
+    const hasCalendar     = !!orgCalendar.calendar_type;
+    const hasCalComApi    = orgCalendar.calendar_type === 'cal_com' && !!orgCalendar.calendar_api_key;
     if (hasCalendar) {
       if (hasCalComApi) {
         tools.push({
@@ -942,8 +951,8 @@ async function buildTools(agent: VoiceAgent, qbConnected = false) {
     );
   }
 
-  // Calendar tools — for agents with a connected calendar
-  if (agent.calendar_type) {
+  // Calendar tools — for orgs with a connected calendar (org-level)
+  if (orgCalendar.calendar_type) {
     const execBase = `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools/exec`;
     tools.push(
       {

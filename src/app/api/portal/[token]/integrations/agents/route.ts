@@ -24,14 +24,24 @@ export async function GET(_req: NextRequest, { params }: Params) {
   if (session.portalEmail && anchor.portal_email !== session.portalEmail)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
-  const { data: agents } = await supabase
-    .from('voice_agents')
-    .select('id, agent_name, role, portal_token, features, notion_access_token')
-    .eq('portal_email', anchor.portal_email)
-    .order('created_at', { ascending: true });
+  // Notion es org-level (compartido) — se checa una sola vez y todos los
+  // agentes de la cuenta lo comparten.
+  const [{ data: agents }, { data: orgNotion }] = await Promise.all([
+    supabase
+      .from('voice_agents')
+      .select('id, agent_name, role, portal_token, features')
+      .eq('portal_email', anchor.portal_email)
+      .order('created_at', { ascending: true }),
+    supabase
+      .from('organizations')
+      .select('notion_access_token')
+      .eq('portal_email', anchor.portal_email)
+      .maybeSingle(),
+  ]);
 
   if (!agents?.length) return NextResponse.json({ agents: [] });
 
+  const notionConnected = !!orgNotion?.notion_access_token;
   const agentIds = agents.map(a => a.id);
 
   const { data: emailConns } = await supabase
@@ -52,7 +62,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
       portal_token:    a.portal_token,
       role_color:      ((a.features ?? {}) as Record<string, unknown>).role_color as string | null ?? null,
       connections:     byAgent[a.id] ?? [],
-      notion_connected: !!((a as any).notion_access_token),
+      notion_connected: notionConnected,
     })),
   });
 }
