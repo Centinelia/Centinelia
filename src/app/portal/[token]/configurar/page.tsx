@@ -28,7 +28,8 @@ import RoleEmailLearningSection     from '../RoleEmailLearningSection';
 import JornadaSection               from '../JornadaSection';
 import ApprovalEmailEditor          from '../ApprovalEmailEditor';
 import InvoicingEmailEditor         from '../InvoicingEmailEditor';
-import CallForwardingSection from '../CallForwardingSection';
+import CallForwardingSection   from '../CallForwardingSection';
+import FallbackNumberSection  from '../FallbackNumberSection';
 import AgentEmailSection     from '../AgentEmailSection';
 import SpamFolderToggle      from '../SpamFolderToggle';
 import AutomationsSection    from './AutomationsSection';
@@ -117,9 +118,10 @@ export default async function ConfigurarAgentePage({ params }: Props) {
   }
 
   const { data: orgRow } = agent.portal_email
-    ? await supabase.from('organizations').select('owner_passphrase').eq('portal_email', agent.portal_email).maybeSingle()
+    ? await supabase.from('organizations').select('owner_passphrase, fallback_phone_number').eq('portal_email', agent.portal_email).maybeSingle()
     : { data: null };
-  const ownerPassphrase = orgRow?.owner_passphrase ?? '';
+  const ownerPassphrase      = orgRow?.owner_passphrase ?? '';
+  const fallbackPhoneNumber  = (orgRow as any)?.fallback_phone_number as string | null ?? null;
 
   // Fetch spam folder stats for the last 7 days
   const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
@@ -518,6 +520,25 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                     <CallForwardingSection
                       phoneNumber={(agent as any).phone_number as string}
                       agentName={agentName}
+                    />
+                  </Card>
+                </div>
+              )}
+
+              {!isCoordinator && hasVoiceJornada && (
+                <div id="respaldo" style={SCROLL_STYLE}>
+                  <Card border elevated={false} padding="sm">
+                    <SectionHeader
+                      as="h2"
+                      title="Número de respaldo cuando se agoten tus minutos"
+                      tooltip="Si no te quedan minutos en tu ciclo, las llamadas entrantes se redirigen a este número en lugar de colgarse. Recibes un aviso por WhatsApp cuando esto ocurra."
+                      className="mb-4"
+                    />
+                    <FallbackNumberSection
+                      token={token}
+                      initialValue={fallbackPhoneNumber}
+                      suggestedFromTransferWhatsapp={(agent as any).transfer_whatsapp ?? null}
+                      apiPath={`/api/portal/${token}/org`}
                     />
                   </Card>
                 </div>
