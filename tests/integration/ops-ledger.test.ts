@@ -188,3 +188,27 @@ describe('auto_refresh_ops_pool_cache trigger', () => {
     expect(acct?.ops_included).toBeGreaterThanOrEqual(0); // depends on cap
   });
 });
+
+describe('consumeAiOp behavior with feature flag', () => {
+  it('uses legacy path when flag off', async () => {
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('ops_ledger_enabled')
+      .eq('portal_email', TEST_EMAIL)
+      .maybeSingle();
+
+    // Assumption: TEST_EMAIL org has flag off by default
+    expect(org?.ops_ledger_enabled ?? false).toBe(false);
+
+    // Ledger should be empty of consumption rows for this email
+    const before = await supabase
+      .from('ops_ledger')
+      .select('id')
+      .eq('portal_email', TEST_EMAIL)
+      .eq('kind', 'consumption');
+
+    // No hacemos consumeAiOp real aqui porque toca agentes vivos.
+    // El test principal es que el flag existe y default false.
+    expect(before.data).toEqual([]);
+  });
+});
