@@ -9,7 +9,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { notionClient } from '@/lib/notion/client';
-import { consumeAiOp } from '@/lib/ai/ops-guard';
+import { consumeAiOp, refundOps } from '@/lib/ai/ops-guard';
 import { brandKitFromAgent } from '@/lib/brand/kit';
 import { GenericDocPDF } from '@/lib/pdf/doc';
 import { triggerOutboundCall } from '@/lib/vapi/outbound';
@@ -1965,6 +1965,17 @@ ${context}`;
                 ? { error: String((toolResult as { error?: unknown })?.error ?? '') }
                 : {}),
             });
+
+            // Refund cuando el tool call devuelve ok:false. El cobro por LLM
+            // tokens ya sucedió (Anthropic no reembolsa) pero al menos devolvemos
+            // al cliente los ops de la iteración wasted. Best-effort, no bloquea.
+            if ((toolResult as { ok?: boolean })?.ok === false) {
+              const iterCharge = callCount === 1 ? 3 : 2;
+              void refundOps(agent.id as string, iterCharge, {
+                source: 'agent_chat_refund',
+                label:  `Tool "${call.name}" fallo`,
+              });
+            }
 
             // Debug SSE: qué le regresamos al LLM. Útil para diagnosticar cuando
             // el agente dice "no encontré" pero la tool sí devolvió filas.
