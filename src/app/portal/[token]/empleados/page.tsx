@@ -288,15 +288,19 @@ export default async function AgentesPage({ params }: Props) {
   monthStart.setDate(1);
   monthStart.setHours(0, 0, 0, 0);
 
-  const callCounts = await Promise.all(agents.map(async a => {
-    const { count } = await supabase
-      .from('voice_calls')
-      .select('id', { count: 'exact', head: true })
-      .eq('agent_id', a.id)
-      .gte('created_at', monthStart.toISOString());
-    return { id: a.id, count: count ?? 0 };
-  }));
-  const callCountMap = Object.fromEntries(callCounts.map(c => [c.id, c.count]));
+  // Fix N+1 2026-08-10: antes hacía 1 query de count POR agente en paralelo.
+  // Con N agentes = N queries. Ahora 1 query con .in() + agrupamos en memoria.
+  const agentIds = agents.map(a => a.id);
+  const { data: monthCalls } = agentIds.length > 0
+    ? await supabase.from('voice_calls').select('agent_id')
+        .in('agent_id', agentIds)
+        .gte('created_at', monthStart.toISOString())
+    : { data: [] };
+  const callCountMap: Record<string, number> = {};
+  for (const c of monthCalls ?? []) {
+    const id = (c as { agent_id: string }).agent_id;
+    callCountMap[id] = (callCountMap[id] ?? 0) + 1;
+  }
 
   const { data: orgRow } = baseAgent.portal_email
     ? await supabase.from('organizations').select('owner_passphrase, billing_model, active_contract_id').eq('portal_email', baseAgent.portal_email).single()

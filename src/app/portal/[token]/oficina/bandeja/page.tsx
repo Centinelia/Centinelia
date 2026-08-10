@@ -37,26 +37,24 @@ export default async function BandejaPage({ params }: Props) {
   const isGobierno   = vertical === 'gobierno';
   const commsRouting = isGobierno && agent ? await getCommsRouting(agent.id as string, supabase) : null;
 
-  // ── Inbox agents (chips) ──────────────────────────────────────────────────
+  // ── Inbox agents (chips) + detect Neo — mismo select, 1 sola query ───────
+  // Fix N+1 2026-08-10: antes eran 2 queries separadas al mismo portal_email,
+  // una con 'agent_name, business_name' (chips) y otra con 'features' (Neo).
+  // Merge: traemos ambos sets de columnas en una sola pasada.
   let agents: InboxAgent[] = [];
+  let hasNeo = false;
   if ((agent as any)?.portal_email) {
     const { data } = await supabase
       .from('voice_agents')
-      .select('id, agent_name, business_name')
+      .select('id, agent_name, business_name, features')
       .eq('portal_email', (agent as any).portal_email);
-    agents = (data ?? []) as InboxAgent[];
-  }
-
-  // ── Detectar si tiene Neo (para mostrar link a bandeja de IT) ─────────────
-  let hasNeo = false;
-  if (!isItSubUser && agent?.portal_email) {
-    const { data: peers } = await supabase
-      .from('voice_agents')
-      .select('features')
-      .eq('portal_email', agent.portal_email as string);
-    hasNeo = (peers ?? []).some(
-      (p: any) => (p.features as Record<string, unknown>)?.meerkat_role_id === 'neo'
-    );
+    const peers = data ?? [];
+    agents = peers.map(p => ({ id: p.id, agent_name: p.agent_name, business_name: p.business_name })) as InboxAgent[];
+    if (!isItSubUser) {
+      hasNeo = peers.some(
+        (p: any) => (p.features as Record<string, unknown> | null)?.meerkat_role_id === 'neo'
+      );
+    }
   }
 
   // ── Contadores del hero ───────────────────────────────────────────────────
