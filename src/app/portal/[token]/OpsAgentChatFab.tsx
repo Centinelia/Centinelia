@@ -2,6 +2,10 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { X, Send, Loader2, FileText, Download, Zap, Wrench } from 'lucide-react';
+import { marked } from 'marked';
+
+// Marked: sin encabezados grandes, sin escape de HTML (LLM output es texto puro).
+marked.setOptions({ breaks: true, gfm: true });
 
 // Nombres legibles para las tools cuando aparecen en el chat (evita
 // mostrar "buscar_documento_oficina" crudo al dueño).
@@ -80,11 +84,10 @@ export interface AgentOption {
 type Message = { role: 'user' | 'assistant'; content: string; tools?: string[] };
 
 function welcomeMsg(agent: AgentOption): Message {
-  const name = agent.agent_name?.trim() || 'Centinelia';
-  const role = agent.role?.trim();
+  const name = agent.agent_name?.trim() || 'aquí';
   return {
     role: 'assistant',
-    content: `Hola, soy ${name}${role ? `, ${role} de ${agent.business_name}` : ''}. Tengo acceso completo a la operación de ${agent.business_name}: llamadas recientes, bandeja de entrada, juntas, contratos y manual de la organización. ¿En qué te puedo ayudar?`,
+    content: `${greeting()}. Aquí ${name}, ¿en qué te apoyo hoy?`,
   };
 }
 
@@ -395,10 +398,13 @@ export default function OpsAgentChatFab({ token, agents }: Props) {
                   ) : msg.role === 'user' ? (
                     <span className="whitespace-pre-wrap">{msg.content}</span>
                   ) : (
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-2 chat-md">
                       {parseContent(msg.content).map((part, pi) =>
                         typeof part === 'string' ? (
-                          <span key={pi} className="whitespace-pre-wrap">{part}</span>
+                          <div
+                            key={pi}
+                            dangerouslySetInnerHTML={{ __html: marked.parse(part) as string }}
+                          />
                         ) : (
                           <a key={pi} href={part.url} target="_blank" rel="noopener noreferrer"
                             className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium no-underline self-start"
@@ -511,6 +517,28 @@ export default function OpsAgentChatFab({ token, agents }: Props) {
           </div>
         </div>
       )}
+
+      {/* Estilos para markdown dentro del chat — normaliza márgenes y evita
+          headings enormes en un bubble chico. */}
+      <style jsx global>{`
+        .chat-md p { margin: 0.35em 0; }
+        .chat-md p:first-child { margin-top: 0; }
+        .chat-md p:last-child { margin-bottom: 0; }
+        .chat-md ul, .chat-md ol { margin: 0.4em 0; padding-left: 1.15em; }
+        .chat-md li { margin: 0.12em 0; }
+        .chat-md h1, .chat-md h2, .chat-md h3, .chat-md h4 {
+          font-size: 0.95em; font-weight: 600; margin: 0.6em 0 0.25em;
+        }
+        .chat-md h1:first-child, .chat-md h2:first-child, .chat-md h3:first-child { margin-top: 0; }
+        .chat-md strong { font-weight: 600; }
+        .chat-md em { font-style: italic; }
+        .chat-md code {
+          background: rgba(108,59,255,0.08);
+          padding: 0.1em 0.35em; border-radius: 4px; font-size: 0.9em;
+        }
+        .chat-md a { color: #6C3BFF; text-decoration: underline; }
+        .chat-md hr { border: 0; border-top: 1px solid #E8E3F5; margin: 0.5em 0; }
+      `}</style>
 
       {/* Floating button */}
       <button

@@ -247,7 +247,15 @@ Las cuentas nuevas tienen un límite de 50 llamadas salientes por día durante e
   - Di "jornada" — nunca "plan mensual" para las tres opciones (Media/Completa/Alta Demanda).
 - Si el cliente reporta un bug o falla técnica, dile que use el botón **"Reportar falla"** que está en el footer del portal — eso lo mete al pipeline que Nash procesa automáticamente en el cron. Alternativamente, WhatsApp al +52 811 633 3559.
 - No inventes funcionalidades. Si no sabes algo, dilo con honestidad y sugiere contactar soporte.
-- Tono ejecutivo pero cercano, sin formalismos exagerados. Nunca uses em-dashes (— o –): usa dos puntos, coma o punto.`;
+- Tono ejecutivo pero cercano, sin formalismos exagerados. Nunca uses em-dashes (— o –): usa dos puntos, coma o punto.
+
+## Formato de respuesta
+
+- Usa **párrafos separados** (doble salto de línea) cuando la respuesta tenga varias ideas. No pegues todo en un solo bloque corrido.
+- Usa **bullets** (\`- item\`) cuando enumeres 3+ cosas.
+- Usa **bold** con \`**texto**\` para resaltar términos clave (nombres de secciones, rutas, decisiones).
+- Cuando expliques una ruta del portal, ponla en una línea propia: \`**Organización → Perfil → Manual**\`.
+- Respuestas cortas van en una sola oración. Respuestas largas van en 2-3 párrafos + bullets si aplica.`;
 
 export async function POST(req: NextRequest) {
   const limited = await rateLimit(req, limiters.chat);

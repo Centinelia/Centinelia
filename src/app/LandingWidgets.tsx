@@ -2,6 +2,9 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { X, Send, ChevronDown } from 'lucide-react';
+import { marked } from 'marked';
+
+marked.setOptions({ breaks: true, gfm: true });
 
 // Paleta Noah — verde ventas #22c55e (canónico del meerkat comercial).
 const NOAH_GREEN       = '#22c55e';
@@ -260,6 +263,7 @@ export default function LandingWidgets() {
                   }}
                 >
                   <div
+                    className={m.role === 'assistant' ? 'chat-md-dark' : undefined}
                     style={{
                       maxWidth:     '84%',
                       padding:      '9px 13px',
@@ -268,7 +272,7 @@ export default function LandingWidgets() {
                         : '4px 16px 16px 16px',
                       fontSize:     13,
                       lineHeight:   1.55,
-                      whiteSpace:   'pre-wrap',
+                      whiteSpace:   m.role === 'user' ? 'pre-wrap' : 'normal',
                       wordBreak:    'break-word',
                       background:   m.role === 'user'
                         ? `linear-gradient(135deg, ${NOAH_GREEN}, ${NOAH_GREEN_DARK})`
@@ -280,7 +284,9 @@ export default function LandingWidgets() {
                     }}
                   >
                     {m.content
-                      ? m.content
+                      ? (m.role === 'assistant'
+                          ? <div dangerouslySetInnerHTML={{ __html: marked.parse(m.content) as string }} />
+                          : m.content)
                       : (streaming && i === messages.length - 1)
                         ? <span style={{ opacity: 0.4, letterSpacing: 2 }}>···</span>
                         : null
@@ -439,6 +445,29 @@ export default function LandingWidgets() {
       >
         <WhatsAppIcon size={26} />
       </a>
+
+      {/* Estilos markdown para chat con fondo dark */}
+      <style jsx global>{`
+        .chat-md-dark p { margin: 0.35em 0; }
+        .chat-md-dark p:first-child { margin-top: 0; }
+        .chat-md-dark p:last-child { margin-bottom: 0; }
+        .chat-md-dark ul, .chat-md-dark ol { margin: 0.4em 0; padding-left: 1.15em; }
+        .chat-md-dark li { margin: 0.12em 0; }
+        .chat-md-dark h1, .chat-md-dark h2, .chat-md-dark h3, .chat-md-dark h4 {
+          font-size: 0.95em; font-weight: 600; margin: 0.6em 0 0.25em; color: #fff;
+        }
+        .chat-md-dark h1:first-child, .chat-md-dark h2:first-child, .chat-md-dark h3:first-child { margin-top: 0; }
+        .chat-md-dark strong { font-weight: 600; color: #fff; }
+        .chat-md-dark em { font-style: italic; }
+        .chat-md-dark code {
+          background: rgba(34,197,94,0.18);
+          padding: 0.1em 0.35em; border-radius: 4px; font-size: 0.9em;
+        }
+        .chat-md-dark a { color: #22c55e; text-decoration: underline; }
+        .chat-md-dark hr { border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin: 0.5em 0; }
+        .chat-md-dark table { border-collapse: collapse; margin: 0.4em 0; font-size: 0.92em; }
+        .chat-md-dark th, .chat-md-dark td { border: 1px solid rgba(255,255,255,0.15); padding: 0.25em 0.5em; }
+      `}</style>
     </>
   );
 }

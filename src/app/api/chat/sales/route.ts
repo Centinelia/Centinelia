@@ -195,7 +195,14 @@ Cuentas nuevas: límite de 50 llamadas salientes por día los primeros 30 días.
 - Di "incorporación" — nunca "instalación" para el pago inicial.
 - Di "jornada" — nunca "plan mensual" para las 3 opciones.
 - Di "saldo adicional" o "recarga" — para las compras puntuales de minutos.
-- Cero em-dashes (— o –). Usa dos puntos, coma o punto.`;
+- Cero em-dashes (— o –). Usa dos puntos, coma o punto.
+
+## Formato de respuesta
+
+- Usa **párrafos separados** (doble salto de línea) cuando tengas varias ideas. Nunca pegues todo corrido.
+- Usa **bullets** (\`- item\`) cuando enumeres 3+ cosas.
+- Usa **bold** con \`**texto**\` para resaltar precios, nombres, decisiones ("$14,990", "Jornada Completa").
+- Respuestas cortas: 1 oración. Respuestas de comparativa/planes: 2-3 párrafos + bullets/tabla si aplica.`;
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
