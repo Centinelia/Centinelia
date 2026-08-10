@@ -1,6 +1,7 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { requiredModuleForPath } from '@/lib/portal/modules';
+import { resolveOrgFromToken } from '@/lib/portal/org-token';
 
 const ADMIN_COOKIE = 'Centinelia_admin';
 
@@ -97,6 +98,29 @@ export async function proxy(req: NextRequest) {
   // ── Portal routes ─────────────────────────────────────────────────────────
   if (pathname.startsWith('/portal')) {
     if (pathname === '/portal/login') return NextResponse.next();
+
+    // Legacy token redirect: si el token en URL es un voice_agents.portal_token
+    // legacy (UUID), redirect 301 al nuevo organizations.portal_token (12 chars).
+    // También mapea segmentos de path legacy (agentes → empleados, usuarios → equipo)
+    // para bookmarks/emails viejos.
+    const m = pathname.match(/^\/portal\/([^/]+)(\/.*)?$/);
+    if (m) {
+      const urlToken = m[1];
+      let   rest     = m[2] ?? '';
+      const resolved = await resolveOrgFromToken(urlToken);
+      // Rename de paths viejos (aplica también con org token puro)
+      rest = rest.replace(/^\/agentes(\/|$)/,  '/empleados$1')
+                 .replace(/^\/usuarios(\/|$)/, '/equipo$1');
+      if (resolved?.legacy || rest !== (m[2] ?? '')) {
+        const targetToken = resolved?.orgToken ?? urlToken;
+        const url         = req.nextUrl.clone();
+        url.pathname      = `/portal/${targetToken}${rest}`;
+        if (url.pathname !== pathname) {
+          return NextResponse.redirect(url, 301);
+        }
+      }
+    }
+
     if (/^\/portal\/[^/]+\/setup$/.test(pathname)) return NextResponse.next();
 
     const cookie  = req.cookies.get(PORTAL_COOKIE)?.value ?? '';

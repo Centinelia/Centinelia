@@ -57,7 +57,7 @@ function NotionSection({ token }: { token: string }) {
         Notion se configura a nivel de cuenta, no por empleado. Para conectar o cambiar la base de datos, ve a Integraciones.
       </p>
       <a
-        href={`/portal/${token}?tab=negocio#integraciones`}
+        href={`/portal/${token}?tab=organizacion#integraciones`}
         className="self-start text-xs px-3 py-1.5 rounded-lg font-medium transition-opacity hover:opacity-80"
         style={{ background: 'rgba(108,59,255,0.1)', color: '#6C3BFF', border: '1px solid rgba(108,59,255,0.2)' }}
       >

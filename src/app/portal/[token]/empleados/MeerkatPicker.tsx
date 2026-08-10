@@ -141,9 +141,13 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ meerkat_role_id: selected.id, agent_name: agentName.trim(), minutes_plan: tier, jornada_type: effectiveJornada }),
       });
-      const data = await res.json() as { token?: string; checkoutUrl?: string; error?: string };
+      const data = await res.json() as { token?: string; agent_id?: string; checkoutUrl?: string; error?: string };
       if (data.token) {
-        router.push(`/portal/${data.token}/configurar`);
+        // Preserva URL corto del org + selecciona el empleado recién creado por id.
+        const target = data.agent_id
+          ? `/portal/${token}/configurar?empleado_id=${data.agent_id}`
+          : `/portal/${data.token}/configurar`;
+        router.push(target);
       } else if (data.checkoutUrl) {
         window.location.href = data.checkoutUrl;
       } else {

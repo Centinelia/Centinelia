@@ -127,14 +127,14 @@ describe('buildPortalNav', () => {
   it('Empleados tiene directHref con token y no tabParam', () => {
     const groups = buildPortalNav({ ...base, token: 'MYTOK' });
     const agentes = groups.find(g => g.id === 'agentes')!;
-    expect(agentes.directHref).toBe('/portal/MYTOK/agentes');
+    expect(agentes.directHref).toBe('/portal/MYTOK/empleados');
     expect(agentes.tabParam).toBeUndefined();
   });
 
-  it('Organización tiene tabParam="negocio"', () => {
+  it('Organización tiene tabParam="organizacion"', () => {
     const groups = buildPortalNav(base);
     const negocio = groups.find(g => g.id === 'negocio')!;
-    expect(negocio.tabParam).toBe('negocio');
+    expect(negocio.tabParam).toBe('organizacion');
   });
 
   it('Cuenta tiene tabParam="cuenta"', () => {

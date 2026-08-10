@@ -76,7 +76,7 @@ export function buildPortalNav(input: BuildNavInput): NavGroup[] {
     label: 'Organización',
     iconName: 'Building2',
     moduleId: 'negocio',
-    tabParam: 'negocio',
+    tabParam: 'organizacion',
     items: [
       { label: 'Perfil de la organización',       anchor: 'organizacion' },
       { label: 'Manual de la organización',       anchor: 'conocimiento' },
@@ -99,7 +99,7 @@ export function buildPortalNav(input: BuildNavInput): NavGroup[] {
     label: 'Empleados',
     iconName: 'Meerkat',
     moduleId: 'agentes',
-    directHref: `/portal/${t}/agentes`,
+    directHref: `/portal/${t}/empleados`,
   });
 
   // ── 4. Oficina ───────────────────────────────────────────────────────────
@@ -166,7 +166,7 @@ export function buildPortalNav(input: BuildNavInput): NavGroup[] {
       label: 'Usuarios y permisos',
       iconName: 'Users',
       moduleId: 'usuarios',
-      directHref: `/portal/${t}/usuarios`,
+      directHref: `/portal/${t}/equipo`,
     });
   }
 

@@ -8,5 +8,5 @@ interface Props { params: Promise<{ token: string }> }
 
 export default async function LegacyIntegracionesPage({ params }: Props) {
   const { token } = await params;
-  redirect(`/portal/${token}?tab=negocio#integraciones`);
+  redirect(`/portal/${token}?tab=organizacion#integraciones`);
 }

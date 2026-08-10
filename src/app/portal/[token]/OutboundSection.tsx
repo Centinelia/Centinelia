@@ -15,7 +15,7 @@ import OficinaModal from './oficina/OficinaModal';
 import ImportContactsModal from './oficina/ImportContactsModal';
 import { OUTBOUND_CAPABILITIES } from '@/lib/portal/outbound-capabilities';
 import { MEERKAT_MAP, INTERNAL_MEERKAT_IDS, type MeerkatRole, type MeerkatRoleId } from '@/lib/portal/meerkat-roles';
-import MeerkatPicker from './agentes/MeerkatPicker';
+import MeerkatPicker from './empleados/MeerkatPicker';
 
 /**
  * Devuelve las capabilities que un agente puede ejecutar.

@@ -9,7 +9,7 @@ import {
   Download, List, PlayCircle,
 } from 'lucide-react';
 import { EmptyState as PortalEmptyState } from '@/components/portal-ui';
-import MeerkatPicker from '../../agentes/MeerkatPicker';
+import MeerkatPicker from '../../empleados/MeerkatPicker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // ── Types ────────────────────────────────────────────────────────────────────

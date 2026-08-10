@@ -5,7 +5,7 @@ import OpsInboxSection from '../../OpsInboxSection';
 import HelpdeskSection from '../helpdesk/HelpdeskSection';
 import IncidentesSection from '../helpdesk/IncidentesSection';
 import { Card } from '@/components/portal-ui';
-import MeerkatPicker from '../../agentes/MeerkatPicker';
+import MeerkatPicker from '../../empleados/MeerkatPicker';
 import type { InboxAgent } from '../../inbox/categories';
 
 interface Incident {

@@ -216,7 +216,7 @@ export default function LlamadasTabs({
                 size="sm"
                 action={
                   <Link
-                    href={`/portal/${token}/agentes`}
+                    href={`/portal/${token}/empleados`}
                     className="inline-flex items-center gap-1.5 px-4 h-9 rounded-lg text-[12px] font-semibold transition-opacity hover:opacity-90"
                     style={{ background: '#6C3BFF', color: '#fff', textDecoration: 'none' }}
                   >
@@ -254,7 +254,7 @@ export default function LlamadasTabs({
             size="sm"
             action={
               <Link
-                href={`/portal/${token}/agentes`}
+                href={`/portal/${token}/empleados`}
                 className="inline-flex items-center gap-1.5 px-4 h-9 rounded-lg text-[12px] font-semibold transition-opacity hover:opacity-90"
                 style={{ background: '#6C3BFF', color: '#fff', textDecoration: 'none' }}
               >

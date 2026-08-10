@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { createAdminClient }            from '@/lib/supabase/admin';
+import { getPrimaryAgentFromToken }     from '@/lib/portal/org-token';
 import { notFound, redirect }           from 'next/navigation';
 import { cookies }                      from 'next/headers';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
@@ -247,11 +248,11 @@ export default async function AgentesPage({ params }: Props) {
   const session     = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
 
   const supabase = createAdminClient();
-  const { data: baseAgent } = await supabase
-    .from('voice_agents')
-    .select('portal_email, business_name, plan, minutes_plan')
-    .eq('portal_token', token)
-    .single();
+  const baseAgent = await getPrimaryAgentFromToken<{ portal_email: string | null; business_name: string; plan: string | null; minutes_plan: string | null }>(
+    token,
+    'portal_email, business_name, plan, minutes_plan',
+    supabase,
+  );
   if (!baseAgent) notFound();
 
   if (session?.portalEmail && baseAgent.portal_email && baseAgent.portal_email !== session.portalEmail)
@@ -658,7 +659,7 @@ export default async function AgentesPage({ params }: Props) {
             <div className="flex items-center gap-2 px-4 py-3 mt-auto"
               style={{ borderTop: '1px solid #F0EDF9', background: '#FAFAFB' }}>
               <Link
-                href={`/portal/${a.portal_token as string}/configurar`}
+                href={`/portal/${token}/configurar?empleado_id=${a.id as string}`}
                 className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold transition-all hover:opacity-90"
                 style={{
                   background: accentColor,

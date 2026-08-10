@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
+import { getAgentByToken, resolveOrgFromToken } from '@/lib/portal/org-token';
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft, Mail, CheckCircle, AlertTriangle, Phone, Zap, Clock } from 'lucide-react';
@@ -40,38 +40,73 @@ import ApprovalSettingsSection from './ApprovalSettingsSection';
 import InstantProcessingSection from './InstantProcessingSection';
 import ConfigurarTabs from './ConfigurarTabs';
 import OutboundToggles from '../OutboundToggles';
+import EmpleadoPickerChips from './EmpleadoPickerChips';
 import { Card, SectionHeader } from '@/components/portal-ui';
 
 const SCROLL_STYLE: React.CSSProperties = { scrollMarginTop: '1.5rem' };
 
 interface Props {
-  params: Promise<{ token: string }>;
+  params:       Promise<{ token: string }>;
+  searchParams: Promise<{ empleado_id?: string }>;
 }
 
-export default async function ConfigurarAgentePage({ params }: Props) {
-  const { token } = await params;
+export default async function ConfigurarAgentePage({ params, searchParams }: Props) {
+  const { token }        = await params;
+  const { empleado_id }  = await searchParams;
 
   const cookieStore   = await cookies();
   const sessionCookie = cookieStore.get(PORTAL_COOKIE)?.value ?? '';
   const session       = await verifySession(sessionCookie);
 
   const supabase = createAdminClient();
-  // /configurar es per-agent — el token en la URL debe apuntar al empleado
-  // específico a configurar. Intentar resolver por voice_agents.portal_token
-  // primero (comportamiento legacy correcto). Si no matchea (URL con org-token
-  // nuevo), fallback al primary del org.
-  // Fix bug 2026-08-10: getPrimaryAgentFromToken devolvía el agente más viejo
-  // (Sofía en Pneuma), no el que el usuario acababa de contratar.
-  let { data: agent } = await supabase
-    .from('voice_agents')
-    .select('*')
-    .eq('portal_token', token)
-    .eq('active', true)
-    .maybeSingle();
+
+  // /configurar es per-agent — resolvemos el target agent en este orden:
+  // 1. `?empleado_id=xxx` explícito → usa ese agente (validando que pertenece al org).
+  // 2. Legacy URL (token = voice_agents.portal_token) → ese agente.
+  // 3. Org token corto sin empleado_id → primer agente activo del org (con picker en UI si hay N > 1).
+  let agent: Record<string, any> | null = null;
+
+  const resolved = await resolveOrgFromToken(token);
+  if (!resolved) notFound();
+
+  if (empleado_id) {
+    const { data } = await supabase
+      .from('voice_agents').select('*')
+      .eq('id', empleado_id)
+      .eq('portal_email', resolved.portalEmail)
+      .eq('active', true)
+      .maybeSingle() as { data: Record<string, any> | null };
+    agent = data;
+  }
+
   if (!agent) {
-    agent = await getPrimaryAgentFromToken<Record<string, any>>(token, '*', supabase);
+    agent = await getAgentByToken<Record<string, any>>(token, '*', supabase);
+    if (!agent || agent.active !== true) agent = null;
+  }
+
+  if (!agent) {
+    const { data } = await supabase
+      .from('voice_agents').select('*')
+      .eq('portal_email', resolved.portalEmail)
+      .eq('active', true)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle() as { data: Record<string, any> | null };
+    agent = data;
   }
   if (!agent) notFound();
+
+  // Roster de agentes activos del org (para picker cuando N > 1).
+  const { data: orgAgentsRaw } = await supabase
+    .from('voice_agents')
+    .select('id, agent_name, role, features')
+    .eq('portal_email', resolved.portalEmail)
+    .eq('active', true)
+    .order('created_at', { ascending: true });
+  const orgAgents = (orgAgentsRaw ?? []) as Array<{
+    id: string; agent_name: string | null; role: string | null;
+    features: Record<string, unknown> | null;
+  }>;
 
   if (session?.portalEmail && agent.portal_email && agent.portal_email !== session.portalEmail) {
     redirect('/portal/login');
@@ -179,7 +214,7 @@ export default async function ConfigurarAgentePage({ params }: Props) {
         <div style={{ background: 'var(--c-surface)', borderBottom: '1px solid var(--c-border)' }}>
           <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
             <Link
-              href={`/portal/${token}/agentes`}
+              href={`/portal/${token}/empleados`}
               className="flex items-center gap-1.5 text-sm font-medium transition-opacity hover:opacity-70"
               style={{ color: 'var(--c-text-2)' }}
             >
@@ -191,6 +226,24 @@ export default async function ConfigurarAgentePage({ params }: Props) {
             </div>
           </div>
         </div>
+
+        {/* Empleado picker — solo cuando N > 1. Preserva otros query params. */}
+        {orgAgents.length > 1 && (
+          <div style={{ background: 'var(--c-surface)' }}>
+            <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-4">
+              <EmpleadoPickerChips
+                token={token}
+                activeId={agent.id as string}
+                agents={orgAgents.map(a => ({
+                  id:    a.id,
+                  name:  a.agent_name?.trim() || 'Empleado',
+                  role:  a.role?.trim() ?? null,
+                  color: ((a.features as any)?.role_color as string | null) ?? null,
+                }))}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Agent identity header */}
         {(() => {
@@ -570,7 +623,7 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                       El directorio de personas (responsable, equipo, especialistas) vive a nivel organización y lo comparten todos tus empleados.
                     </p>
                     <a
-                      href={`/portal/${token}?tab=negocio&nav=directorio`}
+                      href={`/portal/${token}?tab=organizacion&nav=directorio`}
                       className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg"
                       style={{ background: 'rgba(108,59,255,0.1)', color: '#6C3BFF' }}
                     >
@@ -614,7 +667,7 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                 </div>
               )}
 
-              {/* Sheets del negocio — vive en Organización (?tab=negocio#sheets-crm)
+              {/* Sheets del negocio — vive en Organización (?tab=organizacion#sheets-crm)
                   porque es config per-organización, no per-empleado. */}
 
             </div>

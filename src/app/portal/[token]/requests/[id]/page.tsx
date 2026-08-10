@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import PortalFooter from '../../PortalFooter';
 import RespondForm from './RespondForm';
@@ -12,11 +13,11 @@ export default async function RespondRequestPage({ params }: Props) {
   const { token, id } = await params;
   const supabase = createAdminClient();
 
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('id, agent_name, business_name, portal_token')
-    .eq('portal_token', token)
-    .maybeSingle();
+  const agent = await getPrimaryAgentFromToken<{ id: string; agent_name: string | null; business_name: string; portal_token: string }>(
+    token,
+    'id, agent_name, business_name, portal_token',
+    supabase,
+  );
   if (!agent) notFound();
 
   const { data: request } = await supabase
