@@ -63,6 +63,36 @@ export async function GET(req: NextRequest) {
       if (sameDay) continue;
     }
 
+    // Obtener todos los agentes del org para queries cross-agente en el collector
+    const { data: orgAgents } = await supabase
+      .from('voice_agents')
+      .select('id')
+      .eq('portal_email', agent.portal_email as string);
+    const orgAgentIds = (orgAgents ?? []).map((a: { id: string }) => a.id);
+
+    // Leer knowledge_base desde organizations, NO desde voice_agents (dropped column)
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('knowledge_base, owner_name')
+      .eq('portal_email', agent.portal_email as string)
+      .maybeSingle();
+
+    // Probe primero: si no hay data, no cobrar ni correr LLM. Marca como
+    // "corrido hoy" para no re-intentar cada hora del cron. Fix 2026-08-10.
+    const data = await collectBriefData(orgAgentIds, agent.portal_email as string, tz, supabase);
+    const totalItems =
+      data.urgentEmails.items.length +
+      data.upcomingEvents.items.length +
+      data.pendingTasks.items.length +
+      data.unresolvedEscalations.items.length +
+      data.pendingContractDrafts.items.length;
+    if (totalItems === 0) {
+      await supabase.from('voice_agents')
+        .update({ brief_del_dia_last_run_at: now.toISOString() })
+        .eq('id', agent.id as string);
+      continue;
+    }
+
     // Consumir 5 ops; si se agotaron, avisar por email y continuar al siguiente agente
     const opsResult = await consumeAiOp(agent.id as string, 5, { source: 'nox_brief', label: 'Brief del día generado por Nox' });
     if (!opsResult.ok) {
@@ -83,22 +113,8 @@ export async function GET(req: NextRequest) {
       continue;
     }
 
-    // Obtener todos los agentes del org para queries cross-agente en el collector
-    const { data: orgAgents } = await supabase
-      .from('voice_agents')
-      .select('id')
-      .eq('portal_email', agent.portal_email as string);
-    const orgAgentIds = (orgAgents ?? []).map((a: { id: string }) => a.id);
-
-    // Leer knowledge_base desde organizations, NO desde voice_agents (dropped column)
-    const { data: org } = await supabase
-      .from('organizations')
-      .select('knowledge_base, owner_name')
-      .eq('portal_email', agent.portal_email as string)
-      .maybeSingle();
-
     try {
-      const data  = await collectBriefData(orgAgentIds, agent.portal_email as string, tz, supabase);
+      // `data` ya se computó arriba en el probe — reutilizar.
       const brief = await renderBrief(data, {
         agentName:    (agent.agent_name as string | null) ?? 'Nox',
         businessName: (agent.business_name as string) ?? '',

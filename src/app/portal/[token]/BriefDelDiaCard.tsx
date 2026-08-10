@@ -19,6 +19,7 @@ export function BriefDelDiaCard() {
   const [expanded, setExpanded]   = useState(true);
   const [preparing, setPreparing] = useState(false);
   const [error, setError]         = useState<string | null>(null);
+  const [emptyMsg, setEmptyMsg]   = useState<string | null>(null);
 
   async function fetchLatest() {
     setLoading(true);
@@ -36,16 +37,16 @@ export function BriefDelDiaCard() {
 
   async function prepareNow() {
     setError(null);
+    setEmptyMsg(null);
     setPreparing(true);
     try {
       const res = await fetch(`/api/portal/${token}/nox/prepare-brief`, { method: 'POST' });
+      const body = await res.json().catch(() => null);
       if (!res.ok) {
-        let msg = 'No se pudo preparar el brief. Intenta de nuevo en unos momentos.';
-        try {
-          const body = await res.json();
-          if (body?.error) msg = body.error;
-        } catch { /* ignore parse errors */ }
-        setError(msg);
+        setError(body?.error ?? 'No se pudo preparar el brief. Intenta de nuevo en unos momentos.');
+      } else if (body?.empty) {
+        // No había nada que reportar — no se consumieron tareas
+        setEmptyMsg(body.message ?? 'Sin pendientes que reportar por ahora.');
       } else {
         await fetchLatest();
       }
@@ -127,6 +128,13 @@ export function BriefDelDiaCard() {
                 <span>{error}</span>
               </div>
             )}
+            {emptyMsg && (
+              <div className="flex items-center gap-1.5 text-[11px] px-2 py-1.5 rounded-md"
+                style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)', color: '#16A34A' }}>
+                <Info size={12} className="shrink-0" />
+                <span>{emptyMsg}</span>
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex flex-col gap-3">
@@ -153,6 +161,12 @@ export function BriefDelDiaCard() {
                 <div className="flex items-center gap-1.5 text-[11px] mr-auto" style={{ color: '#ef4444' }}>
                   <AlertCircle size={12} className="shrink-0" />
                   <span>{error}</span>
+                </div>
+              )}
+              {emptyMsg && (
+                <div className="flex items-center gap-1.5 text-[11px] mr-auto" style={{ color: '#16A34A' }}>
+                  <Info size={12} className="shrink-0" />
+                  <span>{emptyMsg}</span>
                 </div>
               )}
               <button
