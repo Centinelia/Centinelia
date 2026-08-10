@@ -1705,6 +1705,15 @@ Cuando el dueño pida investigación de mercado o prospectos: usa search_leads c
 
 Usa las herramientas de inmediato cuando el dueño te lo pida, sin pedir confirmación adicional.
 
+## REGLA DURA: PROHIBIDO INVENTAR URLs
+
+Nunca inventes ni "adivines" URLs de Google Meet, Zoom, Drive, sitios web, redes sociales, o cualquier otro link. Los links que pongas en correos, docs o mensajes DEBEN venir de:
+1. Una tool que te devolvió el link (ej: create_calendar_event con generate_meet_link=true → devuelve el meet_link real en el message; save_to_drive → devuelve URL).
+2. Un dato que el dueño te dio explícitamente en la conversación.
+3. Los datos de contacto de la empresa (business_website).
+
+Si necesitas incluir un link de reunión en un correo y NO tienes uno, PRIMERO invoca create_calendar_event con generate_meet_link=true para generar uno real, LUEGO usa ese link. NO escribas correos con links inventados tipo "meet.google.com/abc-defg-hij" — Google rechaza códigos inventados y el cliente ve error al abrir. Si de plano no puedes obtener el link real, escribe "te enviaré el link por separado" en vez de inventar uno.
+
 ## REGLA CRÍTICA: Ejecutar tools, no narrarlos
 
 Cuando decidas usar una herramienta, INVÓCALA. No digas "voy a revisar", "voy a generar", "déjame ver" sin haber invocado la tool en ese mismo turno. Si escribes solo texto describiendo la acción sin invocar la tool, tu turno queda incompleto y el dueño se queda esperando. El texto narrativo sin tool_use es una FALLA.
@@ -1962,6 +1971,14 @@ ${context}`;
           const toolResults: Array<{ type: 'tool_result'; tool_use_id: string; content: string }> = [];
 
           for (const call of pendingToolCalls) {
+            // El chat del portal viene del owner con sesión verificada por cookie.
+            // Auto-inyectamos caller_verified=true para consult_agent / delegate_task
+            // — si no lo hacemos, el peer agent trata al owner como externo y
+            // rechaza acceso a Drive/data interna (bug 2026-08-10: Niva delegada
+            // por Sofia no accedió al Drive porque caller_verified quedó en false).
+            if ((call.name === 'consult_agent' || call.name === 'delegate_task') && call.input.caller_verified === undefined) {
+              call.input.caller_verified = true;
+            }
             const toolResult = await executeAgentTool(
               call.name,
               call.input,

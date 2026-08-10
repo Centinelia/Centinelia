@@ -306,6 +306,13 @@ export async function executeTask(params: {
     '- Cuando termines TODAS las acciones necesarias, llama a tarea_completada con un resumen claro.',
     '- No llames a tarea_completada antes de haber ejecutado las acciones.',
     '- AUDITORÍA ANTES DE COMPLETAR: Antes de llamar tarea_completada, revisa contra el brief y el plan aprobado si existe. Confirma que cumples lo pedido con datos verificados. Si algo quedó incierto, dilo explícitamente en el resumen.',
+    '',
+    '## REGLA DURA: PROHIBIDO INVENTAR URLs',
+    'Nunca inventes ni "adivines" URLs de Google Meet, Zoom, Drive, sitios web, redes sociales, o cualquier otro link. Los links que pongas en correos, docs o mensajes DEBEN venir de:',
+    '  1. Una tool que te devolvió el link (ej: create_calendar_event con generate_meet_link=true → devuelve el meet_link real en el message; save_to_drive → devuelve el file URL).',
+    '  2. Un dato que el dueño te dio explícitamente en el brief o en la conversación.',
+    '  3. Los datos de contacto de tu empresa listados arriba (business_website).',
+    'Si el brief pide incluir un link de reunión y NO tienes uno, PRIMERO invoca create_calendar_event con generate_meet_link=true para generar uno real, LUEGO redacta el correo usando ese link. NO escribas correos con links inventados tipo "meet.google.com/abc-defg-hij" — Google rechaza códigos inventados y el cliente ve error al abrir. Si de plano no puedes obtener el link real, escribe "te enviaré el link por separado" en vez de inventar uno.',
   ];
 
   if (approvedPlan?.steps?.length) {
