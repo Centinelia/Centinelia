@@ -871,6 +871,13 @@ export async function pushConversationalPromptsToAllAgents(): Promise<{ synced: 
   const supabase    = createAdminClient();
   const learnings   = await fetchConversationalLearnings();
 
+  // Probe: si no hay learnings conversacionales activos, no re-pushear
+  // el prompt a TODOS los agentes semanalmente. Ahorra N-agentes requests
+  // Vapi cuando el ledger está limpio. Fix 2026-08-10.
+  if (!learnings.general && !learnings.micro) {
+    return { synced: 0, errors: 0, phoneFixes: 0, details: [] };
+  }
+
   const { data: agents } = await supabase
     .from('voice_agents')
     .select('*')
