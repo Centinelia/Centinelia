@@ -1,55 +1,43 @@
 export const dynamic = 'force-dynamic';
 
-import { createAdminClient } from '@/lib/supabase/admin';
-import { PieChart } from 'lucide-react';
-import EncuestasSection from './EncuestasSection';
-import OficinaPageHero from '../OficinaPageHero';
-
-const SURVEY_MEERKAT_IDS = ['nia', 'nelia', 'naia'];
+import { cookies } from 'next/headers';
+import { notFound } from 'next/navigation';
+import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import CampanasClient, { type CampanasTab } from '../campanas/CampanasClient';
+import { loadCampanasData } from '../campanas/loadCampanasData';
 
 interface Props { params: Promise<{ token: string }> }
 
+// /oficina/encuestas ahora es un entry point al UI unificado de Campañas
+// con la tab de Encuestas pre-seleccionada. Mantiene el módulo `of_encuestas`
+// como gate (via middleware). Sub-users con permiso solo de encuestas caen
+// aquí y ven solo la tab de encuestas.
 export default async function EncuestasPage({ params }: Props) {
-  const { token }  = await params;
-  const supabase   = createAdminClient();
+  const { token } = await params;
 
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('agent_name, business_name, plan, minutes_plan, portal_email')
-    .eq('portal_token', token)
-    .single();
+  const data = await loadCampanasData(token);
+  if (!data) notFound();
 
-  const agentName  = (agent as any)?.agent_name ?? agent?.business_name ?? undefined;
-  const plan       = (agent as any)?.plan        ?? 'pro';
-  const defaultTier = (agent as any)?.minutes_plan ?? 'starter';
+  const cookieStore = await cookies();
+  const session     = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
 
-  let hasSurveyAgent = false;
-  if (agent?.portal_email) {
-    const { data: peers } = await supabase
-      .from('voice_agents')
-      .select('features')
-      .eq('portal_email', agent.portal_email as string);
-    hasSurveyAgent = (peers ?? []).some(
-      (p: any) => SURVEY_MEERKAT_IDS.includes((p.features as any)?.meerkat_role_id ?? ''),
-    );
-  }
+  const canLlamadas  = !session?.isSubUser || !!(session.modules?.includes('campanas'));
+  const canEncuestas = !session?.isSubUser || !!(session.modules?.includes('of_encuestas'));
+
+  const visibleTabs: CampanasTab[] = [];
+  if (canLlamadas)  visibleTabs.push('llamadas');
+  if (canEncuestas) visibleTabs.push('encuestas');
+  visibleTabs.push('emails');
 
   return (
-    <div id="of-encuestas" className="flex flex-col gap-5 max-w-6xl mx-auto w-full p-4 md:p-6">
-
-      <OficinaPageHero
-        icon={PieChart}
-        eyebrow="Calidad"
-        title="Encuestas de satisfacción"
-        description="Diseña una vez y tu equipo aplica la encuesta al terminar cada llamada. Los resultados y hallazgos aparecen aquí."
-      />
-
-      <EncuestasSection
+    <div id="of-encuestas">
+      <CampanasClient
         token={token}
-        agentName={agentName}
-        hasSurveyAgent={hasSurveyAgent}
-        plan={plan}
-        defaultTier={defaultTier}
+        initialTab="encuestas"
+        visibleTabs={visibleTabs}
+        outbound={data.outbound}
+        surveys={data.surveys}
+        counters={data.counters}
       />
     </div>
   );

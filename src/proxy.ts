@@ -126,12 +126,19 @@ export async function proxy(req: NextRequest) {
         url.search    = '?tab=inicio';
         return NextResponse.redirect(url);
       }
-      if (required && !(session.modules ?? []).includes(required)) {
-        const token   = pathname.split('/')[2];
-        const url     = req.nextUrl.clone();
-        url.pathname  = `/portal/${token}`;
-        url.search    = '?tab=inicio';
-        return NextResponse.redirect(url);
+      if (required && required !== '__owner_only__') {
+        const userModules = session.modules ?? [];
+        // required puede ser string (uno requerido) o string[] (OR: cualquiera basta)
+        const allowed = Array.isArray(required)
+          ? required.some(m => userModules.includes(m))
+          : userModules.includes(required);
+        if (!allowed) {
+          const token   = pathname.split('/')[2];
+          const url     = req.nextUrl.clone();
+          url.pathname  = `/portal/${token}`;
+          url.search    = '?tab=inicio';
+          return NextResponse.redirect(url);
+        }
       }
     }
 
