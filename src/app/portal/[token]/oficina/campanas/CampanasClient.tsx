@@ -1,12 +1,34 @@
 'use client';
 
-import { Megaphone, PhoneOutgoing } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { Megaphone, PhoneOutgoing, PieChart, Mail, Lock } from 'lucide-react';
 import { Card } from '@/components/portal-ui';
 import { EmptyState } from '@/components/ui/empty-state';
 import OutboundSection from '../../OutboundSection';
+import EncuestasSection from '../encuestas/EncuestasSection';
 import OficinaPageHero from '../OficinaPageHero';
 
+// ── Tipos compartidos ───────────────────────────────────────────────────────
+export type CampanasTab = 'llamadas' | 'encuestas' | 'emails';
+
 interface OutboundAgent { id: string; agent_name: string | null; business_name: string }
+
+interface OutboundData {
+  show:             boolean;                 // showOutbound (feature gate del rol)
+  initialized:      boolean;                 // initOutbound (algún empleado con la tool)
+  contacts:         unknown[];
+  campaigns:        unknown[];
+  agents:           OutboundAgent[];
+  minutesRemaining: number;
+}
+
+interface SurveysData {
+  agentName?:      string;
+  hasSurveyAgent:  boolean;
+  plan:            string;
+  defaultTier:     string;
+}
 
 interface Counters {
   campanasActivas: number;
@@ -16,16 +38,21 @@ interface Counters {
 }
 
 interface Props {
-  token:            string;
-  showOutbound:     boolean;
-  initOutbound:     boolean;
-  contacts:         any[];
-  campaigns:        any[];
-  outboundAgents:   OutboundAgent[];
-  counters:         Counters;
-  minutesRemaining: number;
+  token:        string;
+  initialTab:   CampanasTab;
+  visibleTabs:  CampanasTab[];   // qué tabs puede ver este usuario (owner: todos; sub-user: subset)
+  outbound:     OutboundData;
+  surveys:      SurveysData;
+  counters:     Counters;
 }
 
+const TAB_META: Record<CampanasTab, { label: string; icon: React.ElementType; description: string; enabled: boolean }> = {
+  llamadas:  { label: 'Llamadas',  icon: PhoneOutgoing, description: 'Programa a tu equipo para llamar a listas de contactos.',                enabled: true  },
+  encuestas: { label: 'Encuestas', icon: PieChart,      description: 'Encuestas de satisfacción que tu equipo aplica al terminar cada llamada.', enabled: true  },
+  emails:    { label: 'Correos',   icon: Mail,          description: 'Campañas de correo masivo. Próximamente.',                                 enabled: false },
+};
+
+// ── KPI compacto reutilizable ──────────────────────────────────────────────
 function KpiInline({ label, value, accent }: { label: string; value: number; accent: string }) {
   return (
     <div
@@ -42,59 +69,138 @@ function KpiInline({ label, value, accent }: { label: string; value: number; acc
   );
 }
 
-export default function CampanasClient({
-  token, showOutbound, initOutbound,
-  contacts, campaigns, outboundAgents, counters, minutesRemaining,
-}: Props) {
+export default function CampanasClient({ token, initialTab, visibleTabs, outbound, surveys, counters }: Props) {
+  const searchParams = useSearchParams();
+  const router       = useRouter();
+  const pathname     = usePathname();
+
+  // Fallback si el initialTab no es visible para el usuario
+  const safeInitial: CampanasTab = visibleTabs.includes(initialTab) ? initialTab : (visibleTabs[0] ?? 'llamadas');
+  const [tab, setTab] = useState<CampanasTab>(safeInitial);
+
+  // URL sync — llamadas es default (sin query), el resto se persiste
+  useEffect(() => {
+    const q = new URLSearchParams(Array.from(searchParams.entries()));
+    if (tab === 'llamadas') q.delete('tab'); else q.set('tab', tab);
+    const url = q.toString() ? `${pathname}?${q.toString()}` : pathname;
+    router.replace(url, { scroll: false });
+  }, [tab, pathname, router, searchParams]);
+
+  // ── Hero dinámico según tab activo ────────────────────────────────────────
+  const heroDescription = tab === 'llamadas'
+    ? (counters.campanasActivas > 0
+        ? `${counters.campanasActivas} ${counters.campanasActivas === 1 ? 'campaña activa' : 'campañas activas'} · ${counters.contactos} contactos · ${counters.completadas} llamadas completadas esta semana.`
+        : 'Programa a tu equipo para que llame a tus contactos en el horario que elijas.')
+    : tab === 'encuestas'
+      ? 'Diseña una vez y tu equipo aplica la encuesta al terminar cada llamada. Los resultados y hallazgos aparecen aquí.'
+      : 'Envía correos masivos a segmentos de tu base. Próximamente.';
+
   return (
-    <div className="flex flex-col gap-6 max-w-6xl mx-auto w-full p-4 md:p-6">
+    <div className="flex flex-col gap-5 max-w-6xl mx-auto w-full p-4 md:p-6">
 
       <OficinaPageHero
         icon={Megaphone}
         eyebrow="Campañas"
-        title="Automatiza llamadas salientes"
-        description={counters.campanasActivas > 0
-          ? `${counters.campanasActivas} ${counters.campanasActivas === 1 ? 'campaña activa' : 'campañas activas'} · ${counters.contactos} contactos disponibles · ${counters.completadas} llamadas completadas esta semana.`
-          : 'Programa a tu equipo para que llame a tus contactos en el horario que elijas. Ideal para cobranza, seguimientos de leads y recordatorios.'}
+        title="Acciones masivas hacia tus clientes"
+        description={heroDescription}
       />
 
-      {/* KPIs */}
-      <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KpiInline label="Campañas activas"  value={counters.campanasActivas} accent="#A855F7" />
-        <KpiInline label="Contactos"          value={counters.contactos}      accent="#6C3BFF" />
-        <KpiInline label="Llamadas hoy"       value={counters.llamadasHoy}    accent="#F59E0B" />
-        <KpiInline label="Completadas 7 días" value={counters.completadas}    accent="#22C55E" />
-      </section>
+      {/* Sub-tabs — solo aparece si hay más de una visible */}
+      {visibleTabs.length > 1 && (
+        <div className="flex gap-1.5 flex-wrap">
+          {(Object.keys(TAB_META) as CampanasTab[])
+            .filter(t => visibleTabs.includes(t))
+            .map(t => {
+              const meta   = TAB_META[t];
+              const Icon   = meta.icon;
+              const active = tab === t;
+              const disabled = !meta.enabled;
+              return (
+                <button
+                  key={t}
+                  onClick={() => !disabled && setTab(t)}
+                  disabled={disabled}
+                  title={disabled ? meta.description : undefined}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold transition-all"
+                  style={{
+                    background: active ? '#1A0A3B' : '#ffffff',
+                    color:      active ? '#ffffff' : disabled ? '#9B8FB5' : '#6B6480',
+                    border:     active ? '1px solid #1A0A3B' : '1px solid #E8E3F5',
+                    cursor:     disabled ? 'not-allowed' : 'pointer',
+                    opacity:    disabled ? 0.7 : 1,
+                  }}
+                >
+                  <Icon size={14} strokeWidth={1.75} />
+                  {meta.label}
+                  {disabled && <Lock size={11} strokeWidth={2} />}
+                </button>
+              );
+            })}
+        </div>
+      )}
 
-      {/* Contenido */}
-      {!showOutbound ? (
-        <Card padding="md">
-          <EmptyState
-            icon={Megaphone}
-            title="Las llamadas salientes están apagadas"
-            description="Enciéndelas para que tus empleados puedan marcarle a contactos. Se activa en Configurar > tu empleado > Llamadas salientes."
-            size="sm"
+      {/* KPI strip — solo se muestra en tab llamadas (encuestas tiene su propio dashboard interno) */}
+      {tab === 'llamadas' && (
+        <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <KpiInline label="Campañas activas"  value={counters.campanasActivas} accent="#A855F7" />
+          <KpiInline label="Contactos"          value={counters.contactos}      accent="#6C3BFF" />
+          <KpiInline label="Llamadas hoy"       value={counters.llamadasHoy}    accent="#F59E0B" />
+          <KpiInline label="Completadas 7 días" value={counters.completadas}    accent="#22C55E" />
+        </section>
+      )}
+
+      {/* ── Body por tab ─────────────────────────────────────────────────── */}
+      {tab === 'llamadas' && (
+        !outbound.show ? (
+          <Card padding="md">
+            <EmptyState
+              icon={Megaphone}
+              title="Las llamadas salientes están apagadas"
+              description="Enciéndelas para que tus empleados puedan marcarle a contactos. Se activa en Configurar > tu empleado > Llamadas salientes."
+              size="sm"
+            />
+          </Card>
+        ) : !outbound.initialized ? (
+          <Card padding="md">
+            <EmptyState
+              icon={PhoneOutgoing}
+              title="Ningún empleado tiene activadas las llamadas salientes"
+              description="Ve a Configurar, elige un empleado y enciende Llamadas salientes en Herramientas."
+              size="sm"
+            />
+          </Card>
+        ) : (
+          <OutboundSection
+            token={token}
+            initialContacts={outbound.contacts as never[]}
+            initialCampaigns={outbound.campaigns as never[]}
+            agents={outbound.agents}
+            initialTab="contactos"
+            show="both"
+            minutesRemaining={outbound.minutesRemaining}
           />
-        </Card>
-      ) : !initOutbound ? (
-        <Card padding="md">
-          <EmptyState
-            icon={PhoneOutgoing}
-            title="Ningún empleado tiene activadas las llamadas salientes"
-            description="Ve a Configurar, elige un empleado y enciende Llamadas salientes en Herramientas."
-            size="sm"
-          />
-        </Card>
-      ) : (
-        <OutboundSection
+        )
+      )}
+
+      {tab === 'encuestas' && (
+        <EncuestasSection
           token={token}
-          initialContacts={contacts}
-          initialCampaigns={campaigns}
-          agents={outboundAgents}
-          initialTab="contactos"
-          show="both"
-          minutesRemaining={minutesRemaining}
+          agentName={surveys.agentName}
+          hasSurveyAgent={surveys.hasSurveyAgent}
+          plan={surveys.plan}
+          defaultTier={surveys.defaultTier}
         />
+      )}
+
+      {tab === 'emails' && (
+        <Card padding="md">
+          <EmptyState
+            icon={Mail}
+            title="Correos masivos — próximamente"
+            description="Estamos armando esta pieza. Cuando esté lista podrás programar campañas de correo a segmentos de tu base."
+            size="sm"
+          />
+        </Card>
       )}
     </div>
   );

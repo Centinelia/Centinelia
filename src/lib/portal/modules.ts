@@ -114,9 +114,11 @@ export const GIRO_GROUPS: { id: string; label: string }[] = [
 
 export type PortalModuleId = (typeof PORTAL_MODULES)[number]['id'];
 
-// Maps sub-route segment (after /portal/{token}/) to the module ID it requires.
+// Maps sub-route segment (after /portal/{token}/) to the module(s) it requires.
 // Used by proxy.ts to enforce sub-user access on direct URL navigation.
-export const ROUTE_MODULE_MAP: Record<string, string> = {
+// Un value tipo string[] significa OR: el sub-user necesita AL MENOS UNO
+// (usado por /oficina/campanas que ahora unifica salientes + encuestas).
+export const ROUTE_MODULE_MAP: Record<string, string | string[]> = {
   // Portal top-level
   'agentes':                       'agentes',
   'llamadas':                      'llamadas',
@@ -139,7 +141,9 @@ export const ROUTE_MODULE_MAP: Record<string, string> = {
   'oficina/reportes-ciudadanos':   'of_reportes_ciudadanos',
   'oficina/cabildo':               'of_cabildo',
   'oficina/llamadas':              'llamadas',
-  'oficina/campanas':              'campanas',
+  // Unificado 2026-08-09: /oficina/campanas agrupa salientes + encuestas
+  // (+ correos futuro). Sub-user necesita CUALQUIERA de los dos módulos.
+  'oficina/campanas':              ['campanas', 'of_encuestas'],
   'oficina/onboarding':            'of_onboarding',
   'oficina/encuestas':             'of_encuestas',
   'oficina/helpdesk':              'of_helpdesk',
@@ -148,8 +152,8 @@ export const ROUTE_MODULE_MAP: Record<string, string> = {
 };
 
 // Given a pathname like "/portal/{token}/oficina/bandeja", return the module ID
-// the visitor needs, or null if the route is unrestricted.
-export function requiredModuleForPath(pathname: string): string | null {
+// (o array de OR) que necesita el visitor, o null si la ruta es libre.
+export function requiredModuleForPath(pathname: string): string | string[] | null {
   const m = pathname.match(/^\/portal\/[^/]+\/(.+?)(?:\/|$|\?)/);
   if (!m) return null;
   const rest = pathname.replace(/^\/portal\/[^/]+\//, '').replace(/\?.*$/, '').replace(/\/$/, '');

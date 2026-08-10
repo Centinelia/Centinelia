@@ -30,6 +30,10 @@ interface NavItem {
   icon:      React.ElementType;
   badgeKey:  string;
   vertical?: string;
+  // Permiso alternativo. Si el sub-user tiene moduleId O moduleIdOr, ve el link.
+  // Usado por Campañas para admitir usuarios con solo `of_encuestas` (unificación
+  // de Campañas + Encuestas bajo /oficina/campanas — 2026-08-09).
+  moduleIdOr?: string;
 }
 
 interface NavSection { group: string; items: NavItem[]; }
@@ -67,9 +71,11 @@ const NAV_SECTIONS: NavSection[] = [
     group: 'PERSONAS',
     items: [
       { href: '/llamadas',   moduleId: 'llamadas',      label: 'Llamadas',   icon: Phone,     badgeKey: '' },
-      { href: '/campanas',   moduleId: 'campanas',      label: 'Campañas',   icon: Megaphone, badgeKey: '' },
+      // Campañas unifica salientes + encuestas (+ correos futuro). Accesible
+      // con permiso `campanas` O `of_encuestas` — la UI muestra solo las tabs
+      // permitidas al sub-user (ver CampanasClient.visibleTabs).
+      { href: '/campanas',   moduleId: 'campanas',      moduleIdOr: 'of_encuestas', label: 'Campañas', icon: Megaphone, badgeKey: '' },
       { href: '/onboarding', moduleId: 'of_onboarding', label: 'Onboarding', icon: UserCheck, badgeKey: '' },
-      { href: '/encuestas',  moduleId: 'of_encuestas',  label: 'Calidad',    icon: PieChart,  badgeKey: '' },
     ],
   },
   {
@@ -112,7 +118,7 @@ export default function OficinaSidebarV2({
   const activeGroup = NAV_SECTIONS.find(s =>
     s.items
       .filter(i => !i.vertical || i.vertical === vertical)
-      .filter(i => !modules || modules.includes(i.moduleId))
+      .filter(i => !modules || modules.includes(i.moduleId) || (i.moduleIdOr && modules.includes(i.moduleIdOr)))
       .some(i => (i.href === ''
         ? pathname === base || pathname === `${base}/`
         : pathname.startsWith(`${base}${i.href}`)))
@@ -156,7 +162,7 @@ export default function OficinaSidebarV2({
         {NAV_SECTIONS.map((section, si) => {
           const visibleItems = section.items
             .filter(item => !item.vertical || item.vertical === vertical)
-            .filter(item => !modules || modules.includes(item.moduleId));
+            .filter(item => !modules || modules.includes(item.moduleId) || (item.moduleIdOr && modules.includes(item.moduleIdOr)));
           if (visibleItems.length === 0) return null;
 
           const isOpen = openGroups.has(section.group);
