@@ -10,7 +10,7 @@ interface Props {
   apiPath:                       string; // e.g. `/api/portal/${token}/org`
 }
 
-const E164_RE = /^\+[1-9]\d{7,14}$/;
+const E164_RE = /^\+[1-9]\d{9,14}$/;
 
 export default function FallbackNumberSection({
   token: _token,
@@ -54,12 +54,14 @@ export default function FallbackNumberSection({
     >
       <div className="flex items-center gap-2" style={{ color: '#1A0A3B' }}>
         <PhoneForwarded size={18} />
-        <h3 className="font-semibold">Numero de respaldo</h3>
+        <h3 className="font-semibold">Número de respaldo</h3>
       </div>
       <p className="text-sm" style={{ color: '#4A3B6B' }}>
-        Cuando se agoten tus minutos del ciclo, las llamadas entrantes se transferiran a este numero personal en lugar de colgarse. Se te avisara por WhatsApp cuando esto ocurra.
+        Cuando se agoten tus minutos del ciclo, las llamadas entrantes se transferirán a este número personal en lugar de colgarse. Se te avisará por WhatsApp cuando esto ocurra.
       </p>
+      <label htmlFor="fallback-phone" className="sr-only">Número de teléfono de respaldo</label>
       <input
+        id="fallback-phone"
         type="tel"
         placeholder="+528112345678"
         value={value}
@@ -72,7 +74,7 @@ export default function FallbackNumberSection({
       />
       {!isValid && (
         <p className="text-xs" style={{ color: '#DC2626' }}>
-          Formato invalido. Usa E.164, por ejemplo +528112345678.
+          Formato inválido. Usa E.164, por ejemplo +528112345678.
         </p>
       )}
       {suggestion && (
@@ -82,7 +84,7 @@ export default function FallbackNumberSection({
           className="text-xs text-left underline"
           style={{ color: '#6C3BFF' }}
         >
-          Usar {suggestion} (tu WhatsApp de escalacion)
+          Usar {suggestion} (tu WhatsApp de escalación)
         </button>
       )}
       <div className="flex items-center gap-2">
