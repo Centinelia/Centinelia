@@ -11,6 +11,7 @@ import { quickClassifyEmail } from '@/lib/ops/email-quick-classify';
 import { classifyEmailDraft, type AutoModeVerdict } from '@/lib/tools/email-classifier';
 import { recordInboxCreation, transitionInboxItem, type InboxStatus } from '@/lib/state-machines/inbox-item';
 import { logLlmCall } from '@/lib/observability/llm-log';
+import { TOOL_SCHEMAS, toAnthropicTool } from '@/lib/tools/schemas';
 
 const anthropic = new Anthropic();
 
@@ -142,21 +143,10 @@ const BASE_EMAIL_TOOLS: Anthropic.Tool[] = [
     description: 'Lee el contenido de una URL específica (no redes sociales). Úsala para leer sitios web o documentos en línea mencionados en el email.',
     input_schema: { type: 'object' as const, properties: { url: { type: 'string' }, purpose: { type: 'string' } }, required: ['url'] },
   },
-  {
-    name:        'list_calendar_events',
-    description: 'Consulta la agenda para verificar disponibilidad antes de responder a solicitudes de reunión o citas.',
-    input_schema: { type: 'object' as const, properties: { from: { type: 'string' }, to: { type: 'string' } }, required: ['from', 'to'] },
-  },
-  {
-    name:        'create_calendar_event',
-    description: 'Crea un evento en el calendario cuando el email contiene una solicitud de reunión o cita acordada. Cuando la reunión sea por videollamada Meet y no haya link propio en el hilo, pasa generate_meet_link=true para que el sistema cree el Meet automáticamente y te devuelva el link.',
-    input_schema: { type: 'object' as const, properties: { title: { type: 'string' }, start: { type: 'string' }, end: { type: 'string' }, description: { type: 'string' }, location: { type: 'string' }, attendees: { type: 'array', items: { type: 'string' } }, generate_meet_link: { type: 'boolean', description: 'true para auto-generar link Google Meet' } }, required: ['title', 'start', 'end'] },
-  },
-  {
-    name:        'delete_calendar_event',
-    description: 'Cancela un evento del calendario si el email solicita cancelar una cita.',
-    input_schema: { type: 'object' as const, properties: { event_id: { type: 'string' } }, required: ['event_id'] },
-  },
+  // Migrated to registry: src/lib/tools/schemas.ts
+  toAnthropicTool(TOOL_SCHEMAS['list_calendar_events']),
+  toAnthropicTool(TOOL_SCHEMAS['create_calendar_event']),
+  toAnthropicTool(TOOL_SCHEMAS['delete_calendar_event']),
   {
     name:        'create_civic_report',
     description: 'Registra un reporte ciudadano (bache, luminaria, basura, agua, ruido, etc.) cuando el email es una queja o reporte de servicio municipal.',
@@ -208,11 +198,8 @@ const BASE_EMAIL_TOOLS: Anthropic.Tool[] = [
       required: ['format', 'title'],
     },
   },
-  {
-    name:        'save_to_drive',
-    description: 'Guarda un documento en Drive. Úsala DESPUÉS de create_document o create_file, solo si el correo pide entregar el archivo o si el negocio archiva sus PDFs. No la uses en respuestas informativas.',
-    input_schema: { type: 'object' as const, properties: { file_id: { type: 'string' }, filename: { type: 'string' }, folder_name: { type: 'string' } }, required: ['file_id', 'filename'] },
-  },
+  // Migrated to registry: src/lib/tools/schemas.ts
+  toAnthropicTool(TOOL_SCHEMAS['save_to_drive']),
   {
     name:        'buscar_producto',
     description: 'Busca un producto o servicio en el catálogo de Notion por SKU o nombre. Úsala antes de generar una factura cuando el email mencione un SKU o nombre de producto.',
@@ -232,11 +219,8 @@ const BASE_EMAIL_TOOLS: Anthropic.Tool[] = [
       required: [],
     },
   },
-  {
-    name:        'send_email',
-    description: 'Envía un email directamente (sin aprobación previa) en respuesta al correo entrante o como notificación interna. Úsalo en jornadas de puras tareas para respuestas automatizadas sin supervisión.',
-    input_schema: { type: 'object' as const, properties: { to: { type: 'string' }, subject: { type: 'string' }, body: { type: 'string' }, cc: { type: 'string' }, attachment_file_id: { type: 'string' }, attachment_file_name: { type: 'string' }, attachment_mime_type: { type: 'string' } }, required: ['to', 'subject', 'body'] },
-  },
+  // Migrated to registry: src/lib/tools/schemas.ts
+  toAnthropicTool(TOOL_SCHEMAS['send_email']),
   {
     name:        'trigger_outbound_call',
     description: 'Programa una llamada saliente automatizada. Úsala SOLO si el remitente pide explícitamente que le llames, o si tienes autorización previa para hacer seguimiento telefónico. NUNCA para prospección fría — es más seguro responder por correo primero.',
@@ -255,41 +239,10 @@ const BASE_EMAIL_TOOLS: Anthropic.Tool[] = [
       required: ['topic'],
     },
   },
-  {
-    name:        'consult_agent',
-    description: 'Pide INFORMACIÓN a un compañero especialista (contador, RH, almacén). Úsala cuando no sabes la respuesta y crees que otro empleado sí. Diferente de delegate_task, que le pide EJECUTAR una acción.',
-    input_schema: {
-      type: 'object' as const,
-      properties: {
-        rol:      { type: 'string', description: 'Rol o nombre del compañero a consultar.' },
-        tarea:    { type: 'string', description: 'Qué necesitas saber.' },
-        contexto: { type: 'string', description: 'Contexto adicional (opcional).' },
-        caller_verified: { type: 'boolean', description: 'OBLIGATORIO cuando la consulta requiere info interna. En canal EMAIL el remitente es externo por default — usa FALSE a menos que hayas confirmado que es un compañero interno (dominio corporativo, passphrase, o header interno). Con FALSE, el compañero rechazará compartir info interna. Default false.' },
-      },
-      required: ['rol', 'tarea'],
-    },
-  },
-  {
-    name:        'delegate_task',
-    description: 'Pide a un compañero que EJECUTE una tarea concreta (crear factura, agendar cita, hacer llamada, subir archivo). Úsala cuando la acción está fuera de tu alcance. Diferente de consult_agent, que solo pide información sin ejecutar. Con success_criteria activas el loop-engineering: el compañero itera hasta cumplir el criterio.',
-    input_schema: {
-      type: 'object' as const,
-      properties: {
-        agente:   { type: 'string', description: 'Rol o nombre del compañero a quien delegar.' },
-        tarea:    { type: 'string', description: 'Acción concreta a ejecutar.' },
-        contexto: { type: 'string', description: 'Contexto adicional (opcional).' },
-        caller_verified:   { type: 'boolean', description: 'Para acciones sensibles con info interna. En email el remitente es externo por default — usa FALSE a menos que sea compañero interno confirmado.' },
-        success_criteria:  { type: 'string', description: 'Criterio de éxito verificable (opcional). Si se define, el compañero itera hasta cumplirlo o hasta max_iterations.' },
-        max_iterations:    { type: 'number', description: 'Máximo intentos si success_criteria está definido (1-5, default 3).' },
-      },
-      required: ['agente', 'tarea'],
-    },
-  },
-  {
-    name:        'reportar_falla',
-    description: 'Reporta una falla técnica inesperada al equipo de soporte.',
-    input_schema: { type: 'object' as const, properties: { tipo: { type: 'string' }, descripcion: { type: 'string' }, contexto: { type: 'string' } }, required: ['tipo', 'descripcion'] },
-  },
+  // Migrated to registry: src/lib/tools/schemas.ts
+  toAnthropicTool(TOOL_SCHEMAS['consult_agent']),
+  toAnthropicTool(TOOL_SCHEMAS['delegate_task']),
+  toAnthropicTool(TOOL_SCHEMAS['reportar_falla']),
   // ── Tags de contactos (CRM) ────────────────────────────────────────────────
   {
     name:        'agregar_tag_contacto',
@@ -305,72 +258,12 @@ const BASE_EMAIL_TOOLS: Anthropic.Tool[] = [
     },
   },
   // ── Data capture (voz+chat+email según regla de 3 canales) ────────────────
-  {
-    name:        'crear_lead',
-    description: 'Registra al remitente (o a un prospecto mencionado en el correo) como lead cuando el email exprese interés en contratar, cotizar o probar un servicio. Visible después en Llamadas → Leads. Si ya lo registraste hace unos minutos con el mismo whatsapp o email, el sistema hace merge automatico; NO re-ejecutes para "confirmar". REGLA CRÍTICA: SIEMPRE después de crear_lead debes invocar también crear_contacto_saliente con el mismo teléfono (usa whatsapp) y motivo del interés, más los tags que MEJOR describan al contacto según lo que sabes de él (contenido del correo, tono, señales de urgencia). Usa tu criterio para elegir tags — piensa cómo el dueño querría segmentarlo después: nivel de interés ("Interesado", "Curioso", "En evaluación"), tipo de cliente ("B2B", "PYME", "Enterprise", "Retail"), señales de urgencia ("Urgente", "Presupuesto listo"), o categoría ("Lead", "VIP", "Cliente-actual", "Prospecto-frío"). Puedes combinar varios. Si de veras no tienes más info que el interés inicial, ["Lead"] es un fallback aceptable. Son dos tools en un solo turno.',
-    input_schema: {
-      type: 'object' as const,
-      properties: {
-        nombre:      { type: 'string', description: 'Nombre completo del prospecto' },
-        negocio:     { type: 'string', description: 'Nombre del negocio del prospecto' },
-        giro:        { type: 'string', description: 'Giro o industria del negocio' },
-        servicio:    { type: 'string', description: 'Servicio en el que está interesado' },
-        presupuesto: { type: 'string', description: 'Presupuesto aproximado si lo menciona' },
-        timeline:    { type: 'string', description: 'Para cuándo lo necesita si lo menciona' },
-        email:       { type: 'string', description: 'Correo del prospecto (usa el email del remitente si no da otro)' },
-        whatsapp:    { type: 'string', description: 'WhatsApp del prospecto si lo comparte' },
-      },
-      required: ['nombre', 'servicio'],
-    },
-  },
-  {
-    name:        'buscar_correo_enviado',
-    description: 'Busca correos que TÚ u otro empleado del equipo hayan enviado antes desde el buzón de la empresa. Útil cuando el correo entrante hace referencia a un correo previo, o cuando necesitas ver qué se le comunicó a este remitente antes de responder. Devuelve preview del cuerpo + destinatario + asunto + fecha + qué empleado lo envió.',
-    input_schema: {
-      type: 'object' as const,
-      properties: {
-        query:        { type: 'string', description: 'Texto a buscar en asunto o cuerpo (opcional).' },
-        destinatario: { type: 'string', description: 'Correo del destinatario para filtrar (opcional, match parcial).' },
-        dias:         { type: 'number', description: 'Días hacia atrás (1-365, default 30).' },
-        limit:        { type: 'number', description: 'Máximo resultados (1-20, default 10).' },
-      },
-    },
-  },
-  {
-    name:        'crear_contacto_saliente',
-    description: 'Agrega al prospecto a la lista de outbound para llamarle despues (aparece en Campanas del portal). Debe invocarse SIEMPRE junto con crear_lead (mismo turno) para que todo prospecto registrado quede también visible en Campañas. También úsala independiente cuando el correo pida seguimiento por telefono, agende una call futura, o el remitente comparta su numero explicito para que le llamen. NO la confundas con agregar_tag_contacto (esa solo etiqueta contactos que YA existen).',
-    input_schema: {
-      type: 'object' as const,
-      properties: {
-        nombre:       { type: 'string', description: 'Nombre del contacto' },
-        telefono:     { type: 'string', description: 'Telefono a llamar (obligatorio)' },
-        email:        { type: 'string', description: 'Correo del contacto (opcional; usa el email del remitente si aplica)' },
-        motivo:       { type: 'string', description: 'Motivo o contexto de la llamada de seguimiento' },
-        tags:         { type: 'array', items: { type: 'string' }, description: 'Etiquetas para clasificar el contacto — usa TU criterio según lo que sepas del prospecto (contenido del correo, tono, señales). Piensa cómo el dueño querría segmentarlo después. Ejemplos: nivel de interés ("Interesado", "Curioso"), tipo ("B2B", "PYME", "Enterprise"), urgencia ("Urgente", "Presupuesto listo"), categoría ("Lead", "VIP", "Cliente-actual"). Puedes combinar varios. ["Lead"] es fallback aceptable si no hay más info.' },
-        scheduled_at: { type: 'string', description: 'Fecha/hora ISO 8601 sugerida (opcional). Si se omite queda en pending sin agendar.' },
-      },
-      required: ['telefono'],
-    },
-  },
-  {
-    name:        'agendar_cita',
-    description: 'Agenda, modifica o cancela una cita cuando el remitente confirma día y hora. CRÍTICO: para agendar/modificar SIEMPRE debes mandar fecha_iso (YYYY-MM-DD) y hora (HH:MM 24h) — si las omites el sistema RECHAZA la operación. Antes de agendar, usa list_calendar_events para verificar disponibilidad. Para cancelar solo necesitas telefono.',
-    input_schema: {
-      type: 'object' as const,
-      properties: {
-        accion:       { type: 'string', enum: ['agendar', 'modificar', 'cancelar'], description: 'Acción a realizar' },
-        nombre:       { type: 'string', description: 'Nombre del cliente' },
-        servicio:     { type: 'string', description: 'Servicio para la cita' },
-        fecha:        { type: 'string', description: 'Fecha en lenguaje natural para mostrar al cliente (ej: "lunes 28 de julio"). Es SOLO cosmética — la fecha real que usa el sistema es fecha_iso.' },
-        fecha_iso:    { type: 'string', description: 'Fecha ISO YYYY-MM-DD (ej: 2026-08-11). OBLIGATORIA para agendar/modificar. Confirma el AÑO correcto.' },
-        hora:         { type: 'string', description: 'Hora en formato HH:MM 24h (ej: "14:30" para 2:30pm). OBLIGATORIA para agendar/modificar.' },
-        duracion_min: { type: 'number', description: 'Duración estimada de la cita en minutos. Default 60.' },
-        telefono:     { type: 'string', description: 'Teléfono del cliente (necesario para modificar o cancelar)' },
-        ubicacion:    { type: 'string', description: 'Dirección física, link de videollamada (Zoom/Meet), oficina, o instrucciones para llegar.' },
-      },
-      required: ['accion', 'nombre'],
-    },
-  },
+  // Migrated to registry: src/lib/tools/schemas.ts
+  toAnthropicTool(TOOL_SCHEMAS['crear_lead']),
+  toAnthropicTool(TOOL_SCHEMAS['buscar_correo_enviado']),
+  toAnthropicTool(TOOL_SCHEMAS['crear_contacto_saliente']),
+  // Migrated to registry: src/lib/tools/schemas.ts
+  toAnthropicTool(TOOL_SCHEMAS['agendar_cita']),
   {
     name:        'registrar_pedido',
     description: 'Registra un pedido cuando el email contiene una orden clara: producto, cantidad, forma de entrega. Si algún dato falta, mejor pídelo en la respuesta antes de crear el pedido.',
@@ -387,17 +280,8 @@ const BASE_EMAIL_TOOLS: Anthropic.Tool[] = [
       required: ['nombre', 'items', 'tipo'],
     },
   },
-  {
-    name:        'buscar_cliente',
-    description: 'Busca el historial (llamadas, leads, pedidos, citas) del remitente antes de redactar la respuesta, para dar contexto y evitar preguntar por datos que ya tenemos. Búscalo por email, nombre o teléfono.',
-    input_schema: {
-      type: 'object' as const,
-      properties: {
-        identificador: { type: 'string', description: 'Nombre completo, número de teléfono o email del cliente a buscar' },
-      },
-      required: ['identificador'],
-    },
-  },
+  // Migrated to registry: src/lib/tools/schemas.ts
+  toAnthropicTool(TOOL_SCHEMAS['buscar_cliente']),
   // ── Helpdesk / IT (voz+chat+email según regla de 3 canales) ───────────────
   {
     name:        'crear_ticket',
