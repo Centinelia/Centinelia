@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft, Mail, CheckCircle, AlertTriangle, Phone, Zap, Clock } from 'lucide-react';
@@ -55,8 +56,21 @@ export default async function ConfigurarAgentePage({ params }: Props) {
   const session       = await verifySession(sessionCookie);
 
   const supabase = createAdminClient();
-  const { data: agent } = await supabase
-    .from('voice_agents').select('*').eq('portal_token', token).single();
+  // /configurar es per-agent — el token en la URL debe apuntar al empleado
+  // específico a configurar. Intentar resolver por voice_agents.portal_token
+  // primero (comportamiento legacy correcto). Si no matchea (URL con org-token
+  // nuevo), fallback al primary del org.
+  // Fix bug 2026-08-10: getPrimaryAgentFromToken devolvía el agente más viejo
+  // (Sofía en Pneuma), no el que el usuario acababa de contratar.
+  let { data: agent } = await supabase
+    .from('voice_agents')
+    .select('*')
+    .eq('portal_token', token)
+    .eq('active', true)
+    .maybeSingle();
+  if (!agent) {
+    agent = await getPrimaryAgentFromToken<Record<string, any>>(token, '*', supabase);
+  }
   if (!agent) notFound();
 
   if (session?.portalEmail && agent.portal_email && agent.portal_email !== session.portalEmail) {
