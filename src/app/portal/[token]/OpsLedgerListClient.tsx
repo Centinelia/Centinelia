@@ -76,7 +76,7 @@ export default function OpsLedgerListClient({
         </a>
       </div>
       {entries.length === 0 ? (
-        <p className="text-[13px]" style={{ color: '#6B7280' }}>Sin movimientos todavia.</p>
+        <p className="text-[13px]" style={{ color: '#6B7280' }}>Sin movimientos todavía.</p>
       ) : (
         <ul className="divide-y" style={{ borderColor: '#F3F4F6' }}>
           {entries.map(e => {
