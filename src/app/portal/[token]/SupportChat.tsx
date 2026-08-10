@@ -1,21 +1,50 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Bot, Loader } from 'lucide-react';
+import { X, Send, Loader } from 'lucide-react';
 
 
 type Message = { role: 'user' | 'assistant'; content: string };
 
+// Paleta Nash — cyan #0891B2 (canónico del meerkat interno).
+const NASH_CYAN        = '#0891B2';
+const NASH_CYAN_LIGHT  = '#22D3EE';
+const NASH_CYAN_BG     = 'rgba(8,145,178,0.25)';
+const NASH_CYAN_BORDER = 'rgba(8,145,178,0.4)';
+const NASH_AVATAR_SRC  = '/meerkats/nash.png';
+
 const WELCOME: Message = {
   role: 'assistant',
-  content: '¡Hola! Soy el asistente de Centinelia. Puedo ayudarte con dudas sobre tu portal, minutos, configuración del agente o cualquier otra pregunta. ¿En qué te puedo ayudar?',
+  content: 'Hola, soy Nash. Estoy dentro de tu Centinelia para ayudarte con cualquier cosa del portal: minutos, empleados, configuración, cobros. ¿En qué te apoyo?',
 };
+
+const ERROR_MSG      = 'Se me colgó una pieza. Dame un segundo y prueba de nuevo.';
+const NO_CONNECT_MSG = 'No pude conectarme. Verifica tu conexión e intenta de nuevo.';
 
 interface SupportChatProps {
   /** 'left' (default) posiciona el FAB tras el sidebar del portal.
    *  'right' lo posiciona en la esquina inferior derecha, donde tradicionalmente
    *  vivía el ops-agents FAB. Ver PortalChatDock para el switching por ruta. */
   position?: 'left' | 'right';
+}
+
+function NashAvatar({ size }: { size: number }) {
+  return (
+    <img
+      src={NASH_AVATAR_SRC}
+      alt="Nash"
+      width={size}
+      height={size}
+      style={{
+        width:        size,
+        height:       size,
+        borderRadius: '50%',
+        objectFit:    'cover',
+        objectPosition: 'center 42%',
+        display:      'block',
+      }}
+    />
+  );
 }
 
 export default function SupportChat({ position = 'left' }: SupportChatProps = {}) {
@@ -50,7 +79,7 @@ export default function SupportChat({ position = 'left' }: SupportChatProps = {}
       });
 
       if (!res.ok || !res.body) {
-        setMessages(prev => [...prev, { role: 'assistant', content: 'Ocurrió un error. Por favor intenta de nuevo.' }]);
+        setMessages(prev => [...prev, { role: 'assistant', content: ERROR_MSG }]);
         return;
       }
 
@@ -86,7 +115,7 @@ export default function SupportChat({ position = 'left' }: SupportChatProps = {}
         }
       }
     } catch {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'No pude conectarme. Verifica tu conexión e intenta de nuevo.' }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: NO_CONNECT_MSG }]);
     } finally {
       setStreaming(false);
     }
@@ -104,30 +133,30 @@ export default function SupportChat({ position = 'left' }: SupportChatProps = {}
             width: 'min(360px, calc(100vw - 32px))',
             height: 480,
             background: '#1A0B38',
-            border: '1px solid rgba(108,59,255,0.35)',
+            border: `1px solid ${NASH_CYAN_BORDER}`,
             borderRadius: 20,
-            boxShadow: '0 24px 64px rgba(0,0,0,0.6), 0 0 0 1px rgba(108,59,255,0.1), inset 0 1px 0 rgba(255,255,255,0.05)',
+            boxShadow: '0 24px 64px rgba(0,0,0,0.6), 0 0 0 1px rgba(8,145,178,0.1), inset 0 1px 0 rgba(255,255,255,0.05)',
           }}
         >
           {/* Header */}
           <div
             className="flex items-center gap-3 px-4 py-3 flex-shrink-0"
             style={{
-              background: 'linear-gradient(135deg, rgba(108,59,255,0.25) 0%, rgba(108,59,255,0.1) 100%)',
-              borderBottom: '1px solid rgba(108,59,255,0.2)',
+              background: `linear-gradient(135deg, ${NASH_CYAN_BG} 0%, rgba(8,145,178,0.08) 100%)`,
+              borderBottom: '1px solid rgba(8,145,178,0.2)',
             }}
           >
             <div
-              className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: 'rgba(108,59,255,0.3)', border: '1px solid rgba(108,59,255,0.4)' }}
+              className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden"
+              style={{ background: '#FAFBFF', border: `1px solid ${NASH_CYAN_BORDER}` }}
             >
-              <Bot size={15} color="#A07CFF" />
+              <NashAvatar size={36} />
             </div>
             <div className="flex-1">
-              <p className="text-sm font-semibold" style={{ color: '#E2D9FF' }}>Soporte Centinelia</p>
+              <p className="text-sm font-semibold" style={{ color: '#E6FBFF' }}>Nash</p>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
-                <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>En línea</p>
+                <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: NASH_CYAN_LIGHT }} />
+                <p className="text-xs" style={{ color: 'rgba(226,251,255,0.6)' }}>Tu Centinelia-rep · En línea</p>
               </div>
             </div>
             <button
@@ -147,10 +176,10 @@ export default function SupportChat({ position = 'left' }: SupportChatProps = {}
               <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 {msg.role === 'assistant' && (
                   <div
-                    className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 mr-2 mt-0.5"
-                    style={{ background: 'rgba(108,59,255,0.2)', border: '1px solid rgba(108,59,255,0.3)' }}
+                    className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mr-2 mt-0.5 overflow-hidden"
+                    style={{ background: '#FAFBFF', border: `1px solid ${NASH_CYAN_BORDER}` }}
                   >
-                    <Bot size={11} color="#A07CFF" />
+                    <NashAvatar size={28} />
                   </div>
                 )}
                 <div
@@ -158,7 +187,7 @@ export default function SupportChat({ position = 'left' }: SupportChatProps = {}
                   style={
                     msg.role === 'user'
                       ? {
-                          background: 'linear-gradient(135deg, #6C3BFF, #9B6DFF)',
+                          background: `linear-gradient(135deg, ${NASH_CYAN}, ${NASH_CYAN_LIGHT})`,
                           color: '#fff',
                           borderBottomRightRadius: 4,
                         }
@@ -191,7 +220,7 @@ export default function SupportChat({ position = 'left' }: SupportChatProps = {}
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
-              placeholder="Escribe tu pregunta…"
+              placeholder="Escríbele a Nash…"
               disabled={streaming}
               className="flex-1 text-sm outline-none bg-transparent placeholder:text-sm"
               style={{
@@ -199,7 +228,7 @@ export default function SupportChat({ position = 'left' }: SupportChatProps = {}
                 border: '1px solid rgba(255,255,255,0.1)',
                 borderRadius: 12,
                 padding: '8px 12px',
-                color: '#E2D9FF',
+                color: '#E6FBFF',
               }}
             />
             <button
@@ -207,13 +236,13 @@ export default function SupportChat({ position = 'left' }: SupportChatProps = {}
               disabled={!input.trim() || streaming}
               className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all"
               style={{
-                background: input.trim() && !streaming ? '#6C3BFF' : 'rgba(108,59,255,0.2)',
-                border: '1px solid rgba(108,59,255,0.4)',
+                background: input.trim() && !streaming ? NASH_CYAN : 'rgba(8,145,178,0.2)',
+                border: `1px solid ${NASH_CYAN_BORDER}`,
                 opacity: !input.trim() || streaming ? 0.5 : 1,
               }}
             >
               {streaming
-                ? <Loader size={14} color="#A07CFF" className="animate-spin" />
+                ? <Loader size={14} color={NASH_CYAN_LIGHT} className="animate-spin" />
                 : <Send size={14} color="#fff" />
               }
             </button>
@@ -224,17 +253,20 @@ export default function SupportChat({ position = 'left' }: SupportChatProps = {}
       {/* Floating button */}
       <button
         onClick={() => setOpen(v => !v)}
-        className={`fixed bottom-4 z-50 w-14 h-14 rounded-full flex items-center justify-center transition-all ${
+        className={`fixed bottom-4 z-50 w-14 h-14 rounded-full flex items-center justify-center transition-all overflow-hidden ${
           position === 'right' ? 'right-4' : 'left-4 md:left-[276px]'
         }`}
         style={{
-          background: open ? 'rgba(108,59,255,0.9)' : 'linear-gradient(135deg, #6C3BFF, #9B6DFF)',
-          boxShadow: '0 8px 32px rgba(108,59,255,0.45)',
-          border: '1px solid rgba(255,255,255,0.15)',
+          background: open ? 'rgba(8,145,178,0.9)' : '#FAFBFF',
+          boxShadow: '0 8px 32px rgba(8,145,178,0.45)',
+          border: `1px solid ${NASH_CYAN_BORDER}`,
         }}
-        aria-label="Soporte"
+        aria-label="Nash"
       >
-        {open ? <X size={22} color="#fff" /> : <MessageCircle size={22} color="#fff" />}
+        {open
+          ? <X size={22} color="#fff" />
+          : <NashAvatar size={56} />
+        }
       </button>
     </>
   );

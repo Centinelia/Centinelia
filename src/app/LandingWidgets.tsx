@@ -1,7 +1,33 @@
 ﻿'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { MessageCircle, X, Send, ChevronDown } from 'lucide-react';
+import { X, Send, ChevronDown } from 'lucide-react';
+
+// Paleta Noah — verde ventas #22c55e (canónico del meerkat comercial).
+const NOAH_GREEN       = '#22c55e';
+const NOAH_GREEN_DARK  = '#16A34A';
+const NOAH_GREEN_BG    = 'rgba(34,197,94,0.12)';
+const NOAH_GREEN_TINT  = 'rgba(34,197,94,0.22)';
+const NOAH_AVATAR_SRC  = '/meerkats/noah.png';
+
+function NoahAvatar({ size }: { size: number }) {
+  return (
+    <img
+      src={NOAH_AVATAR_SRC}
+      alt="Noah"
+      width={size}
+      height={size}
+      style={{
+        width:          size,
+        height:         size,
+        borderRadius:   '50%',
+        objectFit:      'cover',
+        objectPosition: 'center 3%',
+        display:        'block',
+      }}
+    />
+  );
+}
 
 // ─── WhatsApp SVG (lucide doesn't include it) ────────────────────────────────
 
@@ -19,7 +45,7 @@ type Message = { role: 'user' | 'assistant'; content: string };
 
 const WELCOME: Message = {
   role:    'assistant',
-  content: '¡Hola! Soy el asistente de Centinelia 👋\n\n¿Tienes dudas sobre los planes, el precio o cómo funciona tu empleado digital? Pregúntame lo que sea.',
+  content: '¡Hola! Soy Noah, empleado de ventas de Centinelia.\n\nCuéntame de tu negocio y te digo si nuestros empleados digitales te sirven — cuánto ahorras, qué haría cada uno por ti, si el pricing te encaja. ¿Qué haces?',
 };
 
 const QUICK_QUESTIONS = [
@@ -115,7 +141,7 @@ export default function LandingWidgets() {
         const updated = [...prev];
         updated[updated.length - 1] = {
           ...updated[updated.length - 1],
-          content: 'Lo siento, ocurrió un error. Intenta de nuevo.',
+          content: 'Perdón, se me trabó. ¿Puedes repetir tu pregunta?',
         };
         return updated;
       });
@@ -155,7 +181,7 @@ export default function LandingWidgets() {
               backdropFilter: 'blur(24px)',
               border:         '1px solid rgba(255,255,255,0.1)',
               borderRadius:   20,
-              boxShadow:      '0 24px 80px rgba(0,0,0,0.8), 0 0 0 1px rgba(108,59,255,0.15)',
+              boxShadow:      `0 24px 80px rgba(0,0,0,0.8), 0 0 0 1px ${NOAH_GREEN_TINT}`,
             }}
           >
             {/* Header */}
@@ -166,29 +192,31 @@ export default function LandingWidgets() {
                 display:        'flex',
                 alignItems:     'center',
                 justifyContent: 'space-between',
-                background:     'rgba(108,59,255,0.12)',
+                background:     NOAH_GREEN_BG,
                 flexShrink:     0,
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{
-                  width:           34,
-                  height:          34,
-                  borderRadius:    10,
-                  background:      'linear-gradient(135deg, #6C3BFF, #9B6DFF)',
+                  width:           36,
+                  height:          36,
+                  borderRadius:    '50%',
+                  background:      '#FAFBFF',
                   display:         'flex',
                   alignItems:      'center',
                   justifyContent:  'center',
                   flexShrink:      0,
+                  overflow:        'hidden',
+                  border:          `1px solid ${NOAH_GREEN_TINT}`,
                 }}>
-                  <MessageCircle size={15} color="#fff" />
+                  <NoahAvatar size={36} />
                 </div>
                 <div>
                   <p style={{ fontSize: 13, fontWeight: 700, color: '#fff', margin: 0, lineHeight: 1.2 }}>
-                    Asistente Centinelia
+                    Noah
                   </p>
-                  <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.38)', margin: 0 }}>
-                    Respuesta inmediata
+                  <p style={{ fontSize: 11, color: NOAH_GREEN, margin: 0 }}>
+                    Ventas · Responde en segundos
                   </p>
                 </div>
               </div>
@@ -243,7 +271,7 @@ export default function LandingWidgets() {
                       whiteSpace:   'pre-wrap',
                       wordBreak:    'break-word',
                       background:   m.role === 'user'
-                        ? 'linear-gradient(135deg, #6C3BFF, #9B6DFF)'
+                        ? `linear-gradient(135deg, ${NOAH_GREEN}, ${NOAH_GREEN_DARK})`
                         : 'rgba(255,255,255,0.07)',
                       color:        '#fff',
                       border:       m.role === 'user'
@@ -271,12 +299,12 @@ export default function LandingWidgets() {
                     key={q}
                     onClick={() => sendText(q)}
                     style={{
-                      background:   'rgba(108,59,255,0.1)',
-                      border:       '1px solid rgba(108,59,255,0.22)',
+                      background:   NOAH_GREEN_BG,
+                      border:       `1px solid ${NOAH_GREEN_TINT}`,
                       borderRadius: 10,
                       padding:      '7px 12px',
                       fontSize:     12,
-                      color:        '#9B6DFF',
+                      color:        NOAH_GREEN,
                       cursor:       'pointer',
                       textAlign:    'left',
                       transition:   'background 0.15s',
@@ -325,7 +353,7 @@ export default function LandingWidgets() {
                   height:         36,
                   borderRadius:   10,
                   background:     (input.trim() && !streaming)
-                    ? 'linear-gradient(135deg, #6C3BFF, #9B6DFF)'
+                    ? `linear-gradient(135deg, ${NOAH_GREEN}, ${NOAH_GREEN_DARK})`
                     : 'rgba(255,255,255,0.06)',
                   border:         'none',
                   cursor:         (input.trim() && !streaming) ? 'pointer' : 'default',
@@ -345,30 +373,31 @@ export default function LandingWidgets() {
         {/* Chat toggle button */}
         <button
           onClick={() => setChatOpen(o => !o)}
-          title="Chat con el asistente"
+          title="Habla con Noah"
           style={{
             width:          56,
             height:         56,
             borderRadius:   '50%',
             background:     chatOpen
               ? 'rgba(255,255,255,0.08)'
-              : 'linear-gradient(135deg, #6C3BFF, #9B6DFF)',
+              : '#FAFBFF',
             border:         chatOpen
               ? '1px solid rgba(255,255,255,0.15)'
-              : 'none',
+              : `1px solid ${NOAH_GREEN_TINT}`,
             cursor:         'pointer',
             display:        'flex',
             alignItems:     'center',
             justifyContent: 'center',
             boxShadow:      chatOpen
               ? 'none'
-              : '0 4px 28px rgba(108,59,255,0.6)',
+              : '0 4px 28px rgba(34,197,94,0.55)',
             transition:     'all 0.2s',
+            overflow:       'hidden',
           }}
         >
           {chatOpen
             ? <ChevronDown size={22} color="rgba(255,255,255,0.8)" />
-            : <MessageCircle size={22} color="#fff" />
+            : <NoahAvatar size={56} />
           }
         </button>
       </div>
