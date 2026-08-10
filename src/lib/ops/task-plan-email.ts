@@ -52,8 +52,11 @@ export function planApprovalEmailHtml(args: {
 }): string {
   const { businessName, targetAgent, targetMeerkat, callerAgent, plan, approveUrl, editUrl, rejectUrl, taskTitle } = args;
 
+  // Sin tool_hint: al usuario le interesa el outcome, no los detalles técnicos
+  // (qué tool interna se invocará). El tool_hint queda en plan.steps para
+  // logging/debug interno pero no se muestra en el email de aprobación.
   const stepsMd = plan.steps
-    .map(s => `${s.n}. **${s.description}**${s.tool_hint ? `  \n_(usará: ${s.tool_hint})_` : ''}`)
+    .map(s => `${s.n}. **${s.description}**`)
     .join('\n\n');
 
   const assetsBlock = plan.assets.length
