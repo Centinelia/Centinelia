@@ -118,5 +118,25 @@ export async function POST(req: NextRequest, { params }: Params) {
     });
   }
 
+  // 5. Contribuir ops al pool via ledger si la jornada asigna ops.
+  if (agent.portal_email && allocation.aiOps && allocation.aiOps > 0) {
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('ops_ledger_enabled')
+      .eq('portal_email', agent.portal_email)
+      .maybeSingle();
+
+    if (org?.ops_ledger_enabled) {
+      await supabase.rpc('apply_ops_ledger_entry', {
+        p_portal_email: agent.portal_email,
+        p_agent_id:     agent.id,
+        p_amount:       allocation.aiOps,
+        p_kind:         'jornada_change',
+        p_reference_id: null,
+        p_description:  `Activación de voz: +${allocation.aiOps} tareas`,
+      });
+    }
+  }
+
   return NextResponse.json({ success: true, phone_number: provisioned.phoneNumber });
 }

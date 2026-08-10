@@ -1,6 +1,7 @@
 import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { resumeVapiAgent } from '@/lib/vapi/control';
+import { maybeNotifyPoolLoss } from '@/lib/billing/rollover-cap-notify';
 
 const FIXED_PACKAGES: Record<number, number> = { 100: 1200, 200: 2400 };
 const PRICE_PER_MIN = 12;
@@ -156,14 +157,35 @@ export async function executeAutoRefillOps(
 
   if (pi.status !== 'succeeded') return { ok: false, error: `pi_status_${pi.status}` };
 
-  // Credit ops to every agent in the account
+  // Credit ops via ledger (respeta cap, trigger refresca cache) when enabled;
+  // otherwise fall back to legacy direct update on ai_ops_limit.
   const currentLimit = (agent.ai_ops_limit as number) ?? 0;
   if (agent.portal_email) {
-    await supabase
-      .from('voice_agents')
-      .update({ ai_ops_limit: currentLimit + ops })
-      .eq('portal_email', agent.portal_email);
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('ops_ledger_enabled')
+      .eq('portal_email', agent.portal_email)
+      .maybeSingle();
+
+    if (org?.ops_ledger_enabled) {
+      await supabase.rpc('apply_ops_ledger_entry', {
+        p_portal_email: agent.portal_email,
+        p_agent_id:     agentId,
+        p_amount:       ops,
+        p_kind:         'auto_refill_ops',
+        p_reference_id: pi.id ?? null,
+        p_description:  `Auto-recarga ${ops} tareas · $${amountMxn.toLocaleString('es-MX')} MXN`,
+      });
+      await maybeNotifyPoolLoss(supabase, { portalEmail: agent.portal_email, referenceId: pi.id ?? null, resource: 'ops' });
+    } else {
+      // LEGACY: update directo a ai_ops_limit
+      await supabase
+        .from('voice_agents')
+        .update({ ai_ops_limit: currentLimit + ops })
+        .eq('portal_email', agent.portal_email);
+    }
   } else {
+    // LEGACY: sin portal_email, update por agentId
     await supabase
       .from('voice_agents')
       .update({ ai_ops_limit: currentLimit + ops })

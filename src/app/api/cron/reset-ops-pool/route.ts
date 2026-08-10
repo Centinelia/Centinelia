@@ -1,17 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
+import { MONTHLY_CONFIG } from '@/lib/billing/plans';
+import type { Plan, MinutesTier } from '@/lib/billing/plans';
 
 export const dynamic = 'force-dynamic';
 
-// Resetea el pool mensual de ops cuando el ciclo cumple. Cubre el hueco que
-// dejaba el flujo Stripe: el webhook de renovación llama a resetAiOps solo
-// cuando Stripe emite invoice.paid — cuentas sin suscripción activa (dev,
-// piloto, cortesía) acumulaban ops para siempre. Corría con Pneuma:
-// Sofía llevaba 50 días sin reset y quedó en 343/100.
-//
-// Cuentas annual_prepaid se resetean en annual-contracts-lifecycle y no
-// tocamos aquí.
 export async function GET(req: Request) {
   if (!verifyCronAuth(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -19,60 +13,84 @@ export async function GET(req: Request) {
 
   const supabase = createAdminClient();
   const today    = new Date().toISOString().slice(0, 10);
+  const nextResetDate = new Date();
+  nextResetDate.setDate(nextResetDate.getDate() + 30);
+  const nextResetIso = nextResetDate.toISOString().slice(0, 10);
 
-  // Orgs stripe cuyo pool_reset_date ya venció.
-  const { data: due, error } = await supabase
+  // Orgs con reset vencido, agrupadas por billing_model
+  const { data: due } = await supabase
     .from('organizations')
-    .select('portal_email, pool_reset_date, monthly_ops_used, monthly_ops_pool')
-    .eq('billing_model', 'stripe')
+    .select('portal_email, pool_reset_date, monthly_ops_used, monthly_ops_pool, billing_model, ops_ledger_enabled, active_contract_id')
     .lte('pool_reset_date', today);
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  let reset = 0;
+  let annualGrants = 0;
+  let stripeSafetyNets = 0;
+  let legacyResets = 0;
   const errors: string[] = [];
 
   for (const org of due ?? []) {
-    const email    = org.portal_email as string;
-    const usedBefore = (org.monthly_ops_used as number | null) ?? 0;
-    const next     = nextPoolResetDate();
+    const email = org.portal_email as string;
+    const model = org.billing_model as string;
+    const ledgerOn = !!org.ops_ledger_enabled;
 
-    // Reset atómico: contador org + atribución per-agente + próxima fecha
-    const [orgUpd, agentUpd] = await Promise.all([
-      supabase
-        .from('organizations')
-        .update({ monthly_ops_used: 0, pool_reset_date: next })
-        .eq('portal_email', email),
-      supabase
-        .from('voice_agents')
-        .update({ ai_ops_used: 0 })
-        .eq('portal_email', email),
-    ]);
+    try {
+      if (ledgerOn && model === 'annual_prepaid' && org.active_contract_id) {
+        // Annual: cierra ciclo con unused_forfeited + abre con annual_grant
+        await supabase.rpc('apply_ops_annual_grant', { p_portal_email: email });
+        annualGrants++;
+      } else if (ledgerOn && (model === 'stripe' || !model)) {
+        // Stripe safety net: si invoice.paid webhook no llegó, insertamos renewal manual.
+        // Sumamos el aiOps del plan de cada agente activo para calcular el crédito total.
+        const { data: agents } = await supabase
+          .from('voice_agents')
+          .select('id, plan, minutes_plan, ai_ops_limit')
+          .eq('portal_email', email)
+          .eq('active', true);
 
-    if (orgUpd.error || agentUpd.error) {
-      errors.push(`${email}: ${orgUpd.error?.message ?? agentUpd.error?.message}`);
-      continue;
+        let totalOps = 0;
+        const primaryAgentId = agents?.[0]?.id ?? null;
+        for (const a of agents ?? []) {
+          const cfg = MONTHLY_CONFIG[a.plan as Plan]?.[a.minutes_plan as MinutesTier];
+          totalOps += cfg?.aiOps ?? (a.ai_ops_limit as number) ?? 0;
+        }
+
+        if (totalOps > 0 && primaryAgentId) {
+          await supabase.rpc('apply_ops_ledger_entry', {
+            p_portal_email: email,
+            p_agent_id:     primaryAgentId,
+            p_amount:       totalOps,
+            p_kind:         'renewal',
+            p_reference_id: `cron-safety-${today}`,
+            p_description:  `Renovación (safety-net cron): ${totalOps} tareas`,
+          });
+          stripeSafetyNets++;
+        }
+      } else {
+        // LEGACY path (flag off): comportamiento actual sin cambios
+        await Promise.all([
+          supabase.from('organizations').update({ monthly_ops_used: 0, pool_reset_date: nextResetIso }).eq('portal_email', email),
+          supabase.from('voice_agents').update({ ai_ops_used: 0 }).eq('portal_email', email),
+        ]);
+        legacyResets++;
+        continue;
+      }
+
+      // En path ledger-enabled también actualizamos pool_reset_date
+      await supabase.from('organizations')
+        .update({ pool_reset_date: nextResetIso })
+        .eq('portal_email', email);
+
+    } catch (err) {
+      errors.push(`${email}: ${err instanceof Error ? err.message : String(err)}`);
     }
-
-    reset++;
-    console.log(`[reset-ops-pool] ${email}: ${usedBefore}→0 · próximo reset ${next}`);
   }
 
   return NextResponse.json({
-    ok:         true,
-    checked:    due?.length ?? 0,
-    reset,
-    errors:     errors.length ? errors : undefined,
+    ok:              true,
+    checked:         due?.length ?? 0,
+    annualGrants,
+    stripeSafetyNets,
+    legacyResets,
+    errors:          errors.length ? errors : undefined,
   });
-}
-
-// Ciclo mensual = today + 30 días. No usamos "día 1 del mes" porque cada
-// cuenta se activó en día distinto y queremos que el ciclo cuente desde
-// activación (más justo que un cutoff calendario común).
-function nextPoolResetDate(): string {
-  const d = new Date();
-  d.setDate(d.getDate() + 30);
-  return d.toISOString().slice(0, 10);
 }

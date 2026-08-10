@@ -185,6 +185,62 @@ export async function consumePoolOps(
   supabase?: Supabase,
 ): Promise<PoolConsumeResult | PoolPassthroughResult> {
   const sb = supabase ?? createAdminClient();
+
+  // Check feature flag
+  const { data: orgFlag } = await sb
+    .from('organizations')
+    .select('ops_ledger_enabled, billing_model')
+    .eq('portal_email', portalEmail)
+    .maybeSingle();
+
+  const ledgerEnabled = !!orgFlag?.ops_ledger_enabled;
+  const model = (orgFlag?.billing_model as BillingModel) ?? 'stripe';
+
+  // NEW path: ledger event-sourced (aplica tanto a stripe como annual)
+  if (ledgerEnabled) {
+    // Solo annual pasa por consumePoolOps hoy — para stripe consumeAiOp llama consume_pool_ops directo
+    if (model !== 'annual_prepaid') {
+      return { consumed: false, billing_model: model === 'expired' ? 'expired' : 'stripe' };
+    }
+
+    const { data: newBalance } = await sb.rpc('consume_pool_ops', {
+      p_portal_email: portalEmail,
+      p_agent_id:     null,
+      p_ops:          ops,
+      p_reference_id: null,
+      p_description:  null,
+    });
+
+    const { data: acct } = await sb
+      .from('account_ops')
+      .select('ops_used, ops_included')
+      .eq('portal_email', portalEmail)
+      .maybeSingle();
+
+    const { data: org } = await sb
+      .from('organizations')
+      .select('overage_ops')
+      .eq('portal_email', portalEmail)
+      .maybeSingle();
+
+    const pool = acct?.ops_included ?? 0;
+    const used = acct?.ops_used ?? 0;
+    const overage = (org?.overage_ops as number) ?? 0;
+    const pctPrev = pool > 0 ? ((used - ops) / pool) * 100 : 0;
+    const pctNext = pool > 0 ? (used / pool) * 100 : 0;
+
+    return {
+      consumed:              true,
+      billing_model:         'annual_prepaid',
+      minutes_used_after:    used,
+      minutes_pool:          pool,
+      overage_after:         overage,
+      crossed_100_threshold: pctPrev < 100 && pctNext >= 100,
+      crossed_120_threshold: pctPrev < 120 && pctNext >= 120,
+    };
+  }
+
+  // LEGACY path: código actual sin cambios
   const snap = await getPoolSnapshot(portalEmail, sb);
   if (!snap) {
     const { data: org } = await sb

@@ -31,6 +31,7 @@ import { isValidE164, maskPhoneNumber } from '@/lib/billing/fallback-validate';
 import BuyOpsSection           from './BuyOpsSection';
 import AnnualContractCallout   from './AnnualContractCallout';
 import MinutesLedgerSection    from './MinutesLedgerSection';
+import OpsLedgerSection        from './OpsLedgerSection';
 import HistorialConsumoSection from './HistorialConsumoSection';
 import CallCard                from './CallCard';
 import DownloadCallsCSV        from './DownloadCallsCSV';
@@ -146,12 +147,28 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   // porque '' es falsy.
   const lookupEmail = session?.portalEmail || (agent as any).portal_email || null;
 
+  // cycleStartIso: inicio del ciclo actual (primer día del mes de reset)
+  // Se computa a partir de agent.minutes_reset_date para poder usarlo en el
+  // Promise.all sin necesitar esperar acctMins (que viene del mismo batch).
+  const cycleStartIso = (() => {
+    const raw = (agent as any).minutes_reset_date as string | null | undefined;
+    if (!raw) {
+      // fallback: primer día del mes en curso
+      const now = new Date();
+      return new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    }
+    const resetNext = new Date(raw + 'T00:00:00');
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    while (resetNext < today) resetNext.setMonth(resetNext.getMonth() + 1);
+    const cycleStart = new Date(resetNext);
+    cycleStart.setMonth(cycleStart.getMonth() - 1);
+    return cycleStart.toISOString();
+  })();
+
   // ─── Batch 1: paralelizar TODAS las queries org-scoped que dependen de
   // portal_email pero son independientes entre sí. Antes eran 6 awaits en
   // serie (~180-600ms tigre en prod contra Supabase). Ahora un solo round-trip.
-  // Ventana del ciclo en curso para agregar rollover_cap perdido. Uso 30 días
-  // hacia atrás desde hoy — coincide con la ventana rodante de consumo del pool.
-  const cycleStartIso = new Date(Date.now() - 30 * 86_400_000).toISOString();
+  // cycleStartIso declarado arriba a partir de agent.minutes_reset_date.
 
   const [
     clientAgentsRes,
@@ -160,6 +177,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
     opsAgentsRes,
     accountSerialRes,
     rolloverLostRes,
+    opsLossRes,
   ] = agent.portal_email
     ? await Promise.all([
         lookupEmail
@@ -194,12 +212,20 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           .eq('kind', 'rollover_cap')
           .gte('created_at', cycleStartIso)
           .then(r => r.data),
+        supabase
+          .from('ops_ledger')
+          .select('amount, kind')
+          .eq('portal_email', agent.portal_email)
+          .in('kind', ['rollover_cap', 'unused_forfeited'])
+          .gte('created_at', cycleStartIso)
+          .then(r => r.data),
       ])
     : [
         [] as any[],
         null,
         null,
         null as any,
+        null,
         null,
         null,
       ];
@@ -318,6 +344,13 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
     : (opsAgents ?? []).reduce((s: number, a: any) => s + (((a as any).ai_ops_limit as number) ?? 0), 0);
   const aiOpsPct   = aiOpsLimit > 0 ? Math.min((aiOpsUsed / aiOpsLimit) * 100, 100) : 0;
   const aiOpsColor = aiOpsPct > 90 ? '#ef4444' : aiOpsPct > 70 ? '#f59e0b' : '#22c55e';
+
+  // Pérdida de tareas este ciclo: rollover_cap (acumulación bloqueada por 2x)
+  // y unused_forfeited (no consumidas en ciclo annual). amounts son negativos en ledger.
+  type OpsLossRow = { amount: number; kind: 'rollover_cap' | 'unused_forfeited' };
+  const opsLossRows = ((opsLossRes ?? []) as OpsLossRow[]);
+  const opsRolloverLost = Math.max(0, -opsLossRows.filter(r => r.kind === 'rollover_cap').reduce((s, r) => s + (r.amount ?? 0), 0));
+  const opsUnusedForfeited = Math.max(0, -opsLossRows.filter(r => r.kind === 'unused_forfeited').reduce((s, r) => s + (r.amount ?? 0), 0));
 
   // ── Fallback banner state ──────────────────────────────────────────────────
   const fallbackPhoneRaw = (orgSettings as any)?.fallback_phone_number ?? null;
@@ -1351,6 +1384,16 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                                 <span><strong style={{ color: '#1A0A3B' }}>{Math.max(0, aiOpsLimit - aiOpsUsed)}</strong> disponibles</span>
                                 <span>Renueva el <strong style={{ color: '#1A0A3B' }}>{resetDate}</strong></span>
                               </div>
+                              {opsRolloverLost > 0 && (
+                                <p className="text-[11px] mt-1" style={{ color: '#B45309' }}>
+                                  {opsRolloverLost} tareas no acumuladas este ciclo por límite de rollover (2× de tu plan base).
+                                </p>
+                              )}
+                              {opsUnusedForfeited > 0 && (
+                                <p className="text-[11px] mt-1" style={{ color: '#B45309' }}>
+                                  {opsUnusedForfeited} tareas no consumidas del ciclo anterior, no acumulan al siguiente.
+                                </p>
+                              )}
                             </div>
                           )}
 
@@ -1460,6 +1503,14 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                       </div>
                     </div>
                   </div>
+
+                  {/* Historial de tareas (ops_ledger) */}
+                  {agent.portal_email && (
+                    <OpsLedgerSection
+                      portalEmail={agent.portal_email}
+                      token={token}
+                    />
+                  )}
                 </div>
 
                 {/* ── Col 2: Reporte mensual (hero) + Términos de servicio ── */}

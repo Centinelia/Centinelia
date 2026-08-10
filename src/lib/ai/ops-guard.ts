@@ -17,10 +17,11 @@ export interface OpsMeta {
 }
 
 // Atomically checks and consumes AI ops from the account pool.
-// 3 paths:
-//   (a) annual_prepaid: descuenta del pool en organizations (nunca falla, tracks overage).
-//   (b) stripe con portal_email: consume_ai_ops RPC con FOR UPDATE lock.
-//   (c) stripe standalone: mismo RPC, account_email=null.
+// 4 paths:
+//   NEW (ops_ledger_enabled=true): consume_pool_ops RPC unifica annual + stripe.
+//   LEGACY (a) annual_prepaid: descuenta del pool en organizations (nunca falla, tracks overage).
+//   LEGACY (b) stripe con portal_email: consume_ai_ops RPC con FOR UPDATE lock.
+//   LEGACY (c) stripe standalone: mismo RPC, account_email=null.
 export async function consumeAiOp(agentId: string, count = 1, meta?: OpsMeta): Promise<OpsResult> {
   const supabase = createAdminClient();
   const logPayload = {
@@ -31,7 +32,7 @@ export async function consumeAiOp(agentId: string, count = 1, meta?: OpsMeta): P
     count,
   };
 
-  // Path (a): pool anual. Resolve org email primero, luego branch.
+  // Resolve portal_email + feature flag + billing_model
   const { data: agentRow } = await supabase
     .from('voice_agents')
     .select('portal_email')
@@ -39,18 +40,55 @@ export async function consumeAiOp(agentId: string, count = 1, meta?: OpsMeta): P
     .maybeSingle();
   const portalEmail = (agentRow?.portal_email as string | null) ?? null;
 
+  let ledgerEnabled = false;
+  if (portalEmail) {
+    const { data: orgRow } = await supabase
+      .from('organizations')
+      .select('ops_ledger_enabled')
+      .eq('portal_email', portalEmail)
+      .maybeSingle();
+    ledgerEnabled = !!orgRow?.ops_ledger_enabled;
+  }
+
+  // Path NEW (feature flag on): unifica annual + stripe via consume_pool_ops
+  if (ledgerEnabled && portalEmail) {
+    const { data: newBalance, error } = await supabase.rpc('consume_pool_ops', {
+      p_portal_email: portalEmail,
+      p_agent_id:     agentId,
+      p_ops:          count,
+      p_reference_id: meta?.reference_id ?? null,
+      p_description:  meta?.label ?? meta?.source ?? null,
+    });
+    if (error) return { ok: false, used: 0, limit: 0 };
+
+    const { data: acct } = await supabase
+      .from('account_ops')
+      .select('ops_used, ops_included')
+      .eq('portal_email', portalEmail)
+      .maybeSingle();
+
+    after(async () => {
+      await supabase
+        .from('ai_ops_log')
+        .insert({ agent_id: agentId, portal_email: portalEmail, ...logPayload });
+    });
+
+    // Balance <=0 = agotado; los grants nuevos vienen del cron
+    return {
+      ok:    (newBalance ?? 0) >= 0,
+      used:  acct?.ops_used ?? 0,
+      limit: acct?.ops_included ?? 0,
+    };
+  }
+
+  // Path LEGACY: código actual sin cambios (annual → consumePoolOps, stripe → consume_ai_ops)
   if (portalEmail) {
     const pool = await consumePoolOps(portalEmail, count, supabase);
     if (pool.consumed) {
-      // E4: overage alert interno (fire and forget)
       void fireOverageAlertIfNeeded(portalEmail, {
         crossed_100_threshold: pool.crossed_100_threshold,
         crossed_120_threshold: pool.crossed_120_threshold,
       });
-      // Audit log — usa after() para sobrevivir al fin de la response HTTP
-      // en Vercel. Antes usaba `void` y el runtime mataba la promesa antes
-      // de que el insert llegara a Supabase (por eso ai_ops_log llevaba
-      // meses sin escrituras reales de producción).
       after(async () => {
         await supabase
           .from('ai_ops_log')
@@ -60,7 +98,6 @@ export async function consumeAiOp(agentId: string, count = 1, meta?: OpsMeta): P
     }
   }
 
-  // Path (b) y (c): Stripe legacy.
   const { data, error } = await supabase
     .rpc('consume_ai_ops', { p_agent_id: agentId, p_count: count })
     .single();
@@ -71,16 +108,12 @@ export async function consumeAiOp(agentId: string, count = 1, meta?: OpsMeta): P
 
   if (row.ok && row.account_email) {
     const accountEmail = row.account_email;
-    // Audit log — after() garantiza que corra post-response sin que Vercel
-    // mate la promesa (bug histórico: los void supabase.insert nunca
-    // llegaban a Supabase, dejando ai_ops_log vacío en producción).
     after(async () => {
       await supabase
         .from('ai_ops_log')
         .insert({ agent_id: agentId, portal_email: accountEmail, ...logPayload });
     });
 
-    // Auto-refill: dispara cuando remaining acaba de cruzar el threshold
     const remaining = row.ops_limit - row.ops_used;
     const prevRemaining = remaining + count;
     after(async () => {

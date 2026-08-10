@@ -5,7 +5,7 @@ import { FEATURE_PLAN_CONFIG, MONTHLY_CONFIG, monthlyConfigFromPriceId, nextRese
 import { resetAiOps, setAiOpsLimit, recomputeOrgOpsPool } from '@/lib/ai/ops-guard';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { sendEmail, paymentFailedHtml, welcomeHtml } from '@/lib/email/send';
-import { maybeNotifyRolloverLoss } from '@/lib/billing/rollover-cap-notify';
+import { maybeNotifyRolloverLoss, maybeNotifyPoolLoss } from '@/lib/billing/rollover-cap-notify';
 import { pauseVapiAgent, resumeVapiAgent } from '@/lib/vapi/control';
 import { createVapiAssistant, resyncPeerAgents } from '@/lib/vapi/sync';
 import { provisionPhoneNumber } from '@/lib/vapi/provision';
@@ -14,6 +14,40 @@ import { PLAN_FEATURES, PLAN_CONCURRENT_CALLS } from '@/types/agent';
 import type { Plan, JornadaType } from '@/types/agent';
 import type { MinutesTier } from '@/lib/billing/plans';
 import type Stripe from 'stripe';
+
+// Helper: escribe al ops ledger cuando el flag esta activo.
+// La legacy path (resetAiOps / setAiOpsLimit / ai_ops_limit UPDATE) se mantiene
+// inline en cada sitio; este helper es ADICIONAL cuando ops_ledger_enabled = true.
+async function creditOpsToPool(
+  supabase: ReturnType<typeof createAdminClient>,
+  args: {
+    portalEmail: string;
+    agentId: string;
+    amount: number;
+    kind: 'renewal' | 'setup_new_agent' | 'jornada_change';
+    referenceId: string | null;
+    description: string;
+  }
+): Promise<void> {
+  const { data: org } = await supabase
+    .from('organizations')
+    .select('ops_ledger_enabled')
+    .eq('portal_email', args.portalEmail)
+    .maybeSingle();
+
+  if (org?.ops_ledger_enabled) {
+    await supabase.rpc('apply_ops_ledger_entry', {
+      p_portal_email: args.portalEmail,
+      p_agent_id:     args.agentId,
+      p_amount:       args.amount,
+      p_kind:         args.kind,
+      p_reference_id: args.referenceId,
+      p_description:  args.description,
+    });
+  }
+  // Legacy path se mantiene inline en cada sitio (no lo movemos aqui para no
+  // acoplar los flujos annual/stripe existentes).
+}
 
 export async function POST(req: NextRequest) {
   const body = await req.text();
@@ -71,6 +105,11 @@ export async function POST(req: NextRequest) {
         const prevTierMin = prevTier ? (MONTHLY_CONFIG[toPlan][prevTier]?.minutes ?? 0) : 0;
         const delta       = Math.max(0, newMinutesCfg.minutes - prevTierMin);
 
+        // Ops delta para upgrade
+        const prevOpsPer  = prevTier ? (MONTHLY_CONFIG[toPlan][prevTier]?.aiOps ?? 0) : 0;
+        const newOpsPer   = newMinutesCfg.aiOps ?? 0;
+        const opsDelta    = Math.max(0, newOpsPer - prevOpsPer);
+
         // Actualizar tier del agente
         await supabase.from('voice_agents').update({
           plan:         toPlan,
@@ -109,6 +148,19 @@ export async function POST(req: NextRequest) {
               kind:        'renewal',
             });
           }
+        }
+
+        // Ops delta credit via ledger (ADICIONAL al legacy ai_ops_limit UPDATE arriba)
+        if (opsDelta > 0 && upgradeEmail) {
+          await creditOpsToPool(supabase, {
+            portalEmail: upgradeEmail,
+            agentId:     agentId,
+            amount:      opsDelta,
+            kind:        'renewal',
+            referenceId: session.id ?? null,
+            description: `Upgrade a ${newMinutesCfg.label}: +${opsDelta} tareas de diferencial`,
+          });
+          after(() => maybeNotifyPoolLoss(supabase, { portalEmail: upgradeEmail, referenceId: session.id ?? null, resource: 'ops' }));
         }
         break;
       }
@@ -185,13 +237,38 @@ export async function POST(req: NextRequest) {
 
         if (!agent) break;
 
-        const newOpsLimit = ((agent.ai_ops_limit as number) ?? 0) + ops;
-        if (agent.portal_email) {
-          await supabase.from('voice_agents')
-            .update({ ai_ops_limit: newOpsLimit }).eq('portal_email', agent.portal_email);
+        const portalEmail = agent.portal_email as string | null;
+        let ledgerEnabled = false;
+        if (portalEmail) {
+          const { data: org } = await supabase
+            .from('organizations')
+            .select('ops_ledger_enabled')
+            .eq('portal_email', portalEmail)
+            .maybeSingle();
+          ledgerEnabled = !!org?.ops_ledger_enabled;
+        }
+
+        if (ledgerEnabled && portalEmail) {
+          // NEW path: escribe al ledger, cap 2x aplicado automaticamente por RPC
+          await supabase.rpc('apply_ops_ledger_entry', {
+            p_portal_email: portalEmail,
+            p_agent_id:     agentId,
+            p_amount:       ops,
+            p_kind:         'extra_ops_purchase',
+            p_reference_id: session.id ?? null,
+            p_description:  `Compra de ${ops} tareas extra`,
+          });
+          after(() => maybeNotifyPoolLoss(supabase, { portalEmail, referenceId: session.id ?? null, resource: 'ops' }));
         } else {
-          await supabase.from('voice_agents')
-            .update({ ai_ops_limit: newOpsLimit }).eq('id', agentId);
+          // LEGACY: comportamiento original — actualiza ai_ops_limit directamente
+          const newOpsLimit = ((agent.ai_ops_limit as number) ?? 0) + ops;
+          if (portalEmail) {
+            await supabase.from('voice_agents')
+              .update({ ai_ops_limit: newOpsLimit }).eq('portal_email', portalEmail);
+          } else {
+            await supabase.from('voice_agents')
+              .update({ ai_ops_limit: newOpsLimit }).eq('id', agentId);
+          }
         }
 
         break;
@@ -332,6 +409,18 @@ export async function POST(req: NextRequest) {
               p_description:  `Activación de nuevo empleado: +${alloc.minutes} min`,
             });
           }
+          // Ops credit via ledger (ADICIONAL a ai_ops_limit UPDATE arriba)
+          const opsForNew = alloc.aiOps ?? 0;
+          if (opsForNew > 0) {
+            await creditOpsToPool(supabase, {
+              portalEmail: activationEmail,
+              agentId:     agentId,
+              amount:      opsForNew,
+              kind:        'setup_new_agent',
+              referenceId: session.id ?? null,
+              description: `Activación de nuevo empleado: +${opsForNew} tareas`,
+            });
+          }
           // Recompute pool sumando cada agente (respeta tiers heterogéneos).
           // NO usar setAiOpsLimit — sobreescribiría los tiers individuales.
           await recomputeOrgOpsPool(activationEmail);
@@ -424,6 +513,17 @@ export async function POST(req: NextRequest) {
       }
 
       if (activationEmail) {
+        // Ops credit via ledger (ADICIONAL a ai_ops_limit UPDATE arriba)
+        if (jornadaAlloc.aiOps > 0) {
+          await creditOpsToPool(supabase, {
+            portalEmail: activationEmail,
+            agentId:     agentId,
+            amount:      jornadaAlloc.aiOps,
+            kind:        'setup_new_agent',
+            referenceId: session.id ?? null,
+            description: `Activación de nuevo empleado: +${jornadaAlloc.aiOps} tareas`,
+          });
+        }
         // Recompute pool desde individual ai_ops_limit (respeta tiers heterogéneos).
         // NO usar setAiOpsLimit — sobreescribiría los tiers de los peers.
         await recomputeOrgOpsPool(activationEmail);
@@ -581,8 +681,32 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // Reset AI ops counter on monthly renewal
+      // Reset AI ops counter on monthly renewal (legacy path — se mantiene)
       if (renewalEmail) await resetAiOps(renewalEmail);
+
+      // Ops credit via ledger en renovacion (ADICIONAL al resetAiOps legacy arriba)
+      if (renewalEmail) {
+        const { data: agentForOps } = await supabase
+          .from('voice_agents')
+          .select('plan, minutes_plan')
+          .eq('id', agentId)
+          .single();
+        const opsConfig = agentForOps?.plan && agentForOps?.minutes_plan
+          ? MONTHLY_CONFIG[agentForOps.plan as Plan]?.[agentForOps.minutes_plan as MinutesTier]
+          : undefined;
+        const opsAmount = opsConfig?.aiOps ?? 0;
+        if (opsAmount > 0) {
+          await creditOpsToPool(supabase, {
+            portalEmail: renewalEmail,
+            agentId:     agentId,
+            amount:      opsAmount,
+            kind:        'renewal',
+            referenceId: invoice.id ?? null,
+            description: `Renovacion mensual: ${opsAmount} tareas`,
+          });
+          after(() => maybeNotifyPoolLoss(supabase, { portalEmail: renewalEmail, referenceId: invoice.id ?? null, resource: 'ops' }));
+        }
+      }
 
       // Re-associate Vapi solo para el agente cuya sub renovó (granularidad per-empleado).
       const { data: agentForResume } = await supabase
