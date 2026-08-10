@@ -31,6 +31,7 @@ import { isValidE164, maskPhoneNumber } from '@/lib/billing/fallback-validate';
 import BuyOpsSection           from './BuyOpsSection';
 import AnnualContractCallout   from './AnnualContractCallout';
 import MinutesLedgerSection    from './MinutesLedgerSection';
+import OpsLedgerSection        from './OpsLedgerSection';
 import HistorialConsumoSection from './HistorialConsumoSection';
 import CallCard                from './CallCard';
 import DownloadCallsCSV        from './DownloadCallsCSV';
@@ -1504,6 +1505,14 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                       </div>
                     </div>
                   </div>
+
+                  {/* Historial de tareas (ops_ledger) */}
+                  {agent.portal_email && (
+                    <OpsLedgerSection
+                      portalEmail={agent.portal_email}
+                      token={token}
+                    />
+                  )}
                 </div>
 
                 {/* ── Col 2: Reporte mensual (hero) + Términos de servicio ── */}
