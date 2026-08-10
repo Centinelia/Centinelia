@@ -287,7 +287,7 @@ const BASE_EMAIL_TOOLS: Anthropic.Tool[] = [
   // ── Data capture (voz+chat+email según regla de 3 canales) ────────────────
   {
     name:        'crear_lead',
-    description: 'Registra al remitente (o a un prospecto mencionado en el correo) como lead cuando el email exprese interés en contratar, cotizar o probar un servicio. Visible después en Llamadas → Leads.',
+    description: 'Registra al remitente (o a un prospecto mencionado en el correo) como lead cuando el email exprese interés en contratar, cotizar o probar un servicio. Visible después en Llamadas → Leads. Si ya lo registraste hace unos minutos con el mismo whatsapp o email, el sistema hace merge automatico; NO re-ejecutes para "confirmar".',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -301,6 +301,20 @@ const BASE_EMAIL_TOOLS: Anthropic.Tool[] = [
         whatsapp:    { type: 'string', description: 'WhatsApp del prospecto si lo comparte' },
       },
       required: ['nombre', 'servicio'],
+    },
+  },
+  {
+    name:        'crear_contacto_saliente',
+    description: 'Agrega al prospecto a la lista de outbound para llamarle despues (aparece en Campanas del portal). Usa cuando el correo pida seguimiento por telefono, agende una call futura, o el remitente comparta su numero explicito para que le llamen. NO la confundas con agregar_tag_contacto (esa solo etiqueta contactos que ya existen). Complementaria a crear_lead: puedes llamar ambas para un mismo prospecto.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        nombre:       { type: 'string', description: 'Nombre del contacto' },
+        telefono:     { type: 'string', description: 'Telefono a llamar (obligatorio)' },
+        motivo:       { type: 'string', description: 'Motivo o contexto de la llamada de seguimiento' },
+        scheduled_at: { type: 'string', description: 'Fecha/hora ISO 8601 sugerida (opcional). Si se omite queda en pending sin agendar.' },
+      },
+      required: ['telefono'],
     },
   },
   {
