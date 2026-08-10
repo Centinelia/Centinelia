@@ -28,7 +28,12 @@ export default async function OficinaCampanasPage({ params }: Props) {
 
   const anyHas = (key: string) => allPeers.some(a => !!((a.features as any)?.[key]));
   const showOutbound   = !!((agent as any).features?.outbound_calls) || anyHas('outbound_calls') || (agent as any).plan === 'pro';
-  const initOutbound   = !!((agent as any).features?.outbound_calls);
+  // BUG FIX 2026-08-09: initOutbound antes solo checkeaba el agente primario
+  // (el que tiene el portal_token en la URL). Si un peer tenía outbound pero
+  // el primario no, se mostraba el empty state "Ningún empleado tiene
+  // activadas las llamadas salientes" aunque sí hubiera peers. Ahora checa
+  // cualquier peer del equipo.
+  const initOutbound   = !!((agent as any).features?.outbound_calls) || anyHas('outbound_calls');
 
   const outboundAgents = allPeers
     .filter(a => !!((a.features as any)?.outbound_calls))
