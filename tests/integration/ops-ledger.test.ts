@@ -167,3 +167,24 @@ describe('apply_ops_annual_grant', () => {
     expect(forfeit![0].amount).toBe(-50);
   });
 });
+
+describe('auto_refresh_ops_pool_cache trigger', () => {
+  beforeAll(cleanup);
+  afterEach(cleanup);
+
+  it('refreshes account_ops after ledger insert', async () => {
+    await supabase.rpc('apply_ops_ledger_entry', {
+      p_portal_email: TEST_EMAIL, p_agent_id: null, p_amount: 42,
+      p_kind: 'admin_adjustment', p_reference_id: 'trigger_test', p_description: 'trigger test',
+    });
+
+    const { data: acct } = await supabase
+      .from('account_ops')
+      .select('ops_balance, ops_included')
+      .eq('portal_email', TEST_EMAIL)
+      .single();
+
+    expect(acct?.ops_balance).toBe(42);
+    expect(acct?.ops_included).toBeGreaterThanOrEqual(0); // depends on cap
+  });
+});

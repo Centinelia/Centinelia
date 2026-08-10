@@ -197,3 +197,67 @@ BEGIN
   );
 END;
 $function$;
+
+-- 9) Refresca account_ops (cache derivada del ledger)
+CREATE OR REPLACE FUNCTION public.refresh_ops_pool_cache(p_portal_email text)
+RETURNS void
+LANGUAGE plpgsql
+AS $function$
+DECLARE
+  v_balance   int;
+  v_cap       int;
+  v_used_30d  int;
+  v_model     text;
+BEGIN
+  v_balance := get_ops_pool_balance(p_portal_email);
+  v_cap     := get_ops_pool_cap(p_portal_email);
+
+  SELECT COALESCE(SUM(-amount), 0)::int INTO v_used_30d
+    FROM ops_ledger
+    WHERE portal_email = p_portal_email
+      AND kind = 'consumption'
+      AND created_at >= NOW() - INTERVAL '30 days';
+
+  INSERT INTO account_ops (
+    portal_email, ops_included, ops_used, ops_balance, ops_reset_date, updated_at
+  )
+  VALUES (
+    p_portal_email, v_cap, v_used_30d, v_balance,
+    (CURRENT_DATE + INTERVAL '30 days')::date, NOW()
+  )
+  ON CONFLICT (portal_email) DO UPDATE SET
+    ops_included = EXCLUDED.ops_included,
+    ops_used     = EXCLUDED.ops_used,
+    ops_balance  = EXCLUDED.ops_balance,
+    updated_at   = NOW();
+
+  -- Para annual: si el balance quedó negativo, eso es overage acumulado del ciclo
+  SELECT billing_model INTO v_model
+    FROM organizations WHERE portal_email = p_portal_email;
+
+  IF v_model = 'annual_prepaid' THEN
+    UPDATE organizations
+      SET overage_ops = GREATEST(0, -v_balance)
+      WHERE portal_email = p_portal_email;
+  END IF;
+END;
+$function$;
+
+-- 10) Trigger: cada insert al ledger refresca la cache automáticamente
+CREATE OR REPLACE FUNCTION public.trigger_refresh_ops_pool_cache()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $function$
+BEGIN
+  IF NEW.portal_email IS NOT NULL THEN
+    PERFORM refresh_ops_pool_cache(NEW.portal_email);
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+
+DROP TRIGGER IF EXISTS auto_refresh_ops_pool_cache ON ops_ledger;
+CREATE TRIGGER auto_refresh_ops_pool_cache
+  AFTER INSERT ON ops_ledger
+  FOR EACH ROW
+  EXECUTE FUNCTION trigger_refresh_ops_pool_cache();
