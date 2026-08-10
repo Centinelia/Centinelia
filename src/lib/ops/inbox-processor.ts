@@ -258,12 +258,32 @@ const BASE_EMAIL_TOOLS: Anthropic.Tool[] = [
   {
     name:        'consult_agent',
     description: 'Pide INFORMACIÓN a un compañero especialista (contador, RH, almacén). Úsala cuando no sabes la respuesta y crees que otro empleado sí. Diferente de delegate_task, que le pide EJECUTAR una acción.',
-    input_schema: { type: 'object' as const, properties: { rol: { type: 'string' }, tarea: { type: 'string' }, contexto: { type: 'string' } }, required: ['rol', 'tarea'] },
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        rol:      { type: 'string', description: 'Rol o nombre del compañero a consultar.' },
+        tarea:    { type: 'string', description: 'Qué necesitas saber.' },
+        contexto: { type: 'string', description: 'Contexto adicional (opcional).' },
+        caller_verified: { type: 'boolean', description: 'OBLIGATORIO cuando la consulta requiere info interna. En canal EMAIL el remitente es externo por default — usa FALSE a menos que hayas confirmado que es un compañero interno (dominio corporativo, passphrase, o header interno). Con FALSE, el compañero rechazará compartir info interna. Default false.' },
+      },
+      required: ['rol', 'tarea'],
+    },
   },
   {
     name:        'delegate_task',
-    description: 'Pide a un compañero que EJECUTE una tarea concreta (crear factura, agendar cita, hacer llamada, subir archivo). Úsala cuando la acción está fuera de tu alcance. Diferente de consult_agent, que solo pide información sin ejecutar.',
-    input_schema: { type: 'object' as const, properties: { agente: { type: 'string' }, tarea: { type: 'string' }, contexto: { type: 'string' } }, required: ['agente', 'tarea'] },
+    description: 'Pide a un compañero que EJECUTE una tarea concreta (crear factura, agendar cita, hacer llamada, subir archivo). Úsala cuando la acción está fuera de tu alcance. Diferente de consult_agent, que solo pide información sin ejecutar. Con success_criteria activas el loop-engineering: el compañero itera hasta cumplir el criterio.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        agente:   { type: 'string', description: 'Rol o nombre del compañero a quien delegar.' },
+        tarea:    { type: 'string', description: 'Acción concreta a ejecutar.' },
+        contexto: { type: 'string', description: 'Contexto adicional (opcional).' },
+        caller_verified:   { type: 'boolean', description: 'Para acciones sensibles con info interna. En email el remitente es externo por default — usa FALSE a menos que sea compañero interno confirmado.' },
+        success_criteria:  { type: 'string', description: 'Criterio de éxito verificable (opcional). Si se define, el compañero itera hasta cumplirlo o hasta max_iterations.' },
+        max_iterations:    { type: 'number', description: 'Máximo intentos si success_criteria está definido (1-5, default 3).' },
+      },
+      required: ['agente', 'tarea'],
+    },
   },
   {
     name:        'reportar_falla',

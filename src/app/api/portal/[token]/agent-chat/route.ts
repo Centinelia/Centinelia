@@ -908,6 +908,10 @@ const CONSULT_AGENT_TOOL: Anthropic.Tool = {
         type: 'string',
         description: 'Contexto adicional relevante para que tu compañero entienda mejor la solicitud. Opcional.',
       },
+      caller_verified: {
+        type: 'boolean',
+        description: 'OBLIGATORIO cuando la consulta requiere info interna. TRUE solo si el interlocutor ya se verificó con passphrase o número reconocido del equipo. FALSE si es cliente externo o si dudas. Con FALSE, el compañero rechazará compartir info interna. Default false.',
+      },
     },
     required: ['rol', 'tarea'],
   },
