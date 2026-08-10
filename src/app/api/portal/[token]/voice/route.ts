@@ -30,7 +30,8 @@ export async function POST(req: NextRequest, { params }: Params) {
     .eq('id', agent.id);
 
   if (agent.vapi_agent_id) {
-    await updateVapiAssistant(agent.vapi_agent_id, { ...agent, elevenlabs_voice_id: voice_id } as VoiceAgent);
+    // syncPeers=false: cambio de voz solo afecta al assistant del agente.
+    await updateVapiAssistant(agent.vapi_agent_id, { ...agent, elevenlabs_voice_id: voice_id } as VoiceAgent, { syncPeers: false });
   }
 
   return NextResponse.json({ ok: true });

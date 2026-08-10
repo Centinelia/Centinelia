@@ -48,7 +48,8 @@ export async function POST() {
 
   if (refreshed?.vapi_agent_id) {
     try {
-      await updateVapiAssistant(refreshed.vapi_agent_id, refreshed as VoiceAgent);
+      // syncPeers=false: cambio de instrucciones del demo solo afecta al agente.
+      await updateVapiAssistant(refreshed.vapi_agent_id, refreshed as VoiceAgent, { syncPeers: false });
     } catch (e) {
       return NextResponse.json({ error: 'DB actualizada pero falló el sync con Vapi', detail: String(e) }, { status: 500 });
     }

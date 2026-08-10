@@ -60,7 +60,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (agent.vapi_agent_id) {
     const { data: refreshed } = await supabase.from('voice_agents').select('*').eq('id', id).single();
     if (refreshed) {
-      updateVapiAssistant(agent.vapi_agent_id, refreshed as VoiceAgent).catch(err => {
+      // syncPeers=false: pin de model version solo afecta al agente actual.
+      updateVapiAssistant(agent.vapi_agent_id, refreshed as VoiceAgent, { syncPeers: false }).catch(err => {
         console.error('[pin-version] resync failed', { id, error: err.message });
       });
     }

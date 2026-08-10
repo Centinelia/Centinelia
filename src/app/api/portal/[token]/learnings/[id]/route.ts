@@ -72,9 +72,11 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   ]);
 
   if (agent.vapi_agent_id) {
+    // syncPeers=false: learning solo afecta al prompt de este agente.
     updateVapiAssistant(
       agent.vapi_agent_id,
       { ...agent, [field]: newLearnings } as VoiceAgent,
+      { syncPeers: false },
     ).catch(console.error);
   }
 
@@ -136,9 +138,11 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   ]);
 
   if (agent.vapi_agent_id) {
+    // syncPeers=false: solo modifica prompt del agente actual.
     updateVapiAssistant(
       agent.vapi_agent_id,
       { ...agent, [field]: updated } as VoiceAgent,
+      { syncPeers: false },
     ).catch(console.error);
   }
 

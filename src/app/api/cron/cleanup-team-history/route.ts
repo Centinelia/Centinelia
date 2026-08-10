@@ -38,41 +38,48 @@ export async function GET(req: NextRequest) {
     const agentIds = (agents ?? []).map(a => a.id as string);
     if (!agentIds.length) continue;
 
-    for (const agentId of agentIds) {
-      for (const number of numbers) {
-        const { data: calls } = await supabase
-          .from('voice_calls')
-          .select('id, summary, created_at')
-          .eq('agent_id', agentId)
-          .eq('caller_number', number)
-          .order('created_at', { ascending: false });
+    // Fix N+1 2026-08-10: antes había un triple loop (per agent × per number)
+    // haciendo 1 query cada iteración. Con 5 agentes × 5 números = 25 queries
+    // por org. Ahora una sola query trae todo y agrupamos en memoria.
+    const { data: allCalls } = await supabase
+      .from('voice_calls')
+      .select('id, agent_id, caller_number, summary, created_at')
+      .in('agent_id', agentIds)
+      .in('caller_number', numbers)
+      .order('created_at', { ascending: false });
 
-        if (!calls?.length) continue;
+    if (!allCalls?.length) continue;
 
-        let usedTokens = 0;
-        const toDelete: string[] = [];
+    // Agrupar por (agent_id, caller_number) para aplicar el budget por par.
+    const groups = new Map<string, Array<{ id: string; summary: string | null }>>();
+    for (const c of allCalls) {
+      const key = `${c.agent_id}::${c.caller_number}`;
+      const arr = groups.get(key) ?? [];
+      arr.push({ id: c.id as string, summary: (c.summary as string | null) ?? null });
+      groups.set(key, arr);
+    }
 
-        for (const call of calls) {
-          const summary = (call.summary as string | null) ?? '';
-          const cost    = estimateTokens(summary);
-
-          if (usedTokens + cost > TOKEN_BUDGET) {
-            toDelete.push(call.id as string);
-          } else {
-            usedTokens += cost;
-          }
+    const toDelete: string[] = [];
+    for (const calls of groups.values()) {
+      let usedTokens = 0;
+      for (const call of calls) {
+        const cost = estimateTokens(call.summary ?? '');
+        if (usedTokens + cost > TOKEN_BUDGET) {
+          toDelete.push(call.id);
+        } else {
+          usedTokens += cost;
         }
-
-        if (!toDelete.length) continue;
-
-        await supabase
-          .from('voice_calls')
-          .update({ summary: null, transcript: null })
-          .in('id', toDelete);
-
-        totalDeleted += toDelete.length;
       }
     }
+
+    if (!toDelete.length) continue;
+
+    await supabase
+      .from('voice_calls')
+      .update({ summary: null, transcript: null })
+      .in('id', toDelete);
+
+    totalDeleted += toDelete.length;
   }
 
   return NextResponse.json({ ok: true, cleared: totalDeleted });

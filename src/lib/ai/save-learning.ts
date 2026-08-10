@@ -76,9 +76,12 @@ export async function saveLearning(opts: {
       ]);
 
       if ((agent as any).vapi_agent_id) {
+        // syncPeers=false: los learnings solo modifican el prompt del agente
+        // actual, no las tools de peers. Evita N-1 requests a Vapi.
         updateVapiAssistant(
           (agent as any).vapi_agent_id,
           { ...agent, [field]: updated } as VoiceAgent,
+          { syncPeers: false },
         ).catch(console.error);
       }
     }

@@ -833,7 +833,21 @@ export async function createVapiAssistant(agent: VoiceAgent): Promise<string | n
   // Callers must save the returned ID to DB and then call resyncPeerAgents()
 }
 
-export async function updateVapiAssistant(vapiAssistantId: string, agent: VoiceAgent): Promise<boolean> {
+/**
+ * Actualiza el assistant en Vapi. Por default también resincroniza a los
+ * peers voice-capable (necesario cuando cambia agent_name, role, o
+ * cualquier prop que aparezca en las tools consultar_agente/delegar_tarea
+ * de los peers).
+ *
+ * Pasar `syncPeers: false` cuando el cambio SOLO afecta al agente actual
+ * (learnings aprobados, cambio de voz, KB propio, prompt propio, etc.).
+ * Evita N-1 requests innecesarias a Vapi por cambio local. Fix 2026-08-10.
+ */
+export async function updateVapiAssistant(
+  vapiAssistantId: string,
+  agent:           VoiceAgent,
+  opts?:           { syncPeers?: boolean },
+): Promise<boolean> {
   if (isNonVoiceRole(agent)) {
     console.warn('[vapi] refusing updateVapiAssistant for non-voice role', {
       agentId: agent.id,
@@ -843,8 +857,11 @@ export async function updateVapiAssistant(vapiAssistantId: string, agent: VoiceA
   }
   // throws if Vapi rejects — callers should catch
   await syncAgentToVapi(vapiAssistantId, agent);
-  // Fire-and-forget: push the updated tool list to all sibling agents
-  resyncPeerAgents(agent.portal_email, agent.id).catch(console.error);
+  const syncPeers = opts?.syncPeers ?? true;
+  if (syncPeers) {
+    // Fire-and-forget: push the updated tool list to all sibling agents
+    resyncPeerAgents(agent.portal_email, agent.id).catch(console.error);
+  }
   return true;
 }
 
