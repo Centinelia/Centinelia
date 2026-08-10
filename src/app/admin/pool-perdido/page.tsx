@@ -209,7 +209,7 @@ export default async function PoolPerdidoPage({ searchParams }: Props) {
                 {/* Totales */}
                 <tr style={{ background: '#F9FAFB', borderTop: '2px solid #E5E7EB' }}>
                   <td className="px-4 py-3 font-semibold" style={{ color: '#111827' }}>
-                    Total — {totalAccounts} cuenta{totalAccounts !== 1 ? 's' : ''}
+                    Total: {totalAccounts} cuenta{totalAccounts !== 1 ? 's' : ''}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums font-bold" style={{ color: '#EF4444' }}>
                     {fmtAmount(totalLost, unit)}
