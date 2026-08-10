@@ -76,3 +76,56 @@ BEGIN
   RETURN v_base * 2;
 END;
 $function$;
+
+-- 6) Aplica un credit/debit con cap 2× enforcement (solo para stripe)
+CREATE OR REPLACE FUNCTION public.apply_ops_ledger_entry(
+  p_portal_email  text,
+  p_agent_id      uuid,
+  p_amount        int,
+  p_kind          text,
+  p_reference_id  text DEFAULT NULL,
+  p_description   text DEFAULT NULL
+)
+RETURNS void
+LANGUAGE plpgsql
+AS $function$
+DECLARE
+  v_balance INT;
+  v_cap     INT;
+  v_excess  INT;
+  v_model   text;
+  v_desc    text;
+BEGIN
+  v_desc := COALESCE(p_description, format('%s: %s ops', p_kind, p_amount));
+
+  SELECT billing_model INTO v_model
+    FROM organizations WHERE portal_email = p_portal_email;
+
+  -- Cap enforcement solo aplica a credits (amount > 0) y modelo stripe
+  IF p_amount > 0 AND p_portal_email IS NOT NULL AND (v_model IS NULL OR v_model = 'stripe') THEN
+    v_balance := get_ops_pool_balance(p_portal_email);
+    v_cap     := get_ops_pool_cap(p_portal_email);
+
+    IF v_balance + p_amount > v_cap THEN
+      v_excess := v_balance + p_amount - v_cap;
+      INSERT INTO ops_ledger (
+        portal_email, agent_id, amount, kind, reference_id,
+        description, source
+      ) VALUES (
+        p_portal_email, p_agent_id, -v_excess, 'rollover_cap',
+        p_reference_id,
+        format('Se pierden %s tareas por exceder cap 2x', v_excess),
+        'rollover_cap'
+      );
+    END IF;
+  END IF;
+
+  INSERT INTO ops_ledger (
+    portal_email, agent_id, amount, kind, reference_id,
+    description, source
+  ) VALUES (
+    p_portal_email, p_agent_id, p_amount, p_kind, p_reference_id,
+    v_desc, p_kind
+  );
+END;
+$function$;
