@@ -983,7 +983,7 @@ const QB_TOOLS: Anthropic.Tool[] = [
 
 const CREAR_LEAD_TOOL: Anthropic.Tool = {
   name: 'crear_lead',
-  description: 'Registra un prospecto interesado en los servicios del negocio. Úsala cuando el dueño mencione un cliente nuevo que quiere darle seguimiento o que llamó pidiendo información.',
+  description: 'Registra un prospecto interesado en los servicios del negocio (aparece en Llamadas del portal). Si ya lo registraste hace unos minutos con el mismo whatsapp o email, el sistema hace merge automatico, NO re-ejecutes esta tool para "confirmar" — solo dile al dueno donde revisar.',
   input_schema: {
     type: 'object' as const,
     properties: {
@@ -997,6 +997,21 @@ const CREAR_LEAD_TOOL: Anthropic.Tool = {
       whatsapp:    { type: 'string', description: 'Número de WhatsApp del prospecto' },
     },
     required: ['nombre', 'servicio'],
+  },
+};
+
+const CREAR_CONTACTO_SALIENTE_TOOL: Anthropic.Tool = {
+  name: 'crear_contacto_saliente',
+  description: 'Agrega un contacto a la lista de outbound para llamarle despues (aparece en Campanas del portal). Usa esta tool cuando el dueno pida que un prospecto quede listado para llamada de seguimiento — NO la confundas con agregar_tag_contacto (esa solo etiqueta contactos que ya existen). Es complementaria a crear_lead: puedes llamar ambas para un mismo prospecto.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      nombre:       { type: 'string', description: 'Nombre del contacto' },
+      telefono:     { type: 'string', description: 'Telefono a llamar (obligatorio)' },
+      motivo:       { type: 'string', description: 'Motivo o contexto de la llamada de seguimiento' },
+      scheduled_at: { type: 'string', description: 'Fecha/hora ISO 8601 sugerida (opcional). Si se omite, queda en pending sin agendar.' },
+    },
+    required: ['telefono'],
   },
 };
 
@@ -1144,6 +1159,7 @@ const ALL_TOOLS = [
   ML_ACTUALIZAR_PUBLICACION_TOOL,
   ML_VER_METRICAS_TOOL,
   CREAR_LEAD_TOOL,
+  CREAR_CONTACTO_SALIENTE_TOOL,
   AGENDAR_CITA_TOOL,
   REGISTRAR_PEDIDO_TOOL,
   BUSCAR_CLIENTE_TOOL,
@@ -1170,6 +1186,7 @@ const VOICE_TO_CHAT: Record<string, string | null> = {
   registrar_encuesta:        null,
   // Chat implementations
   crear_lead:                'crear_lead',
+  crear_contacto_saliente:   'crear_contacto_saliente',
   agendar_cita:              'agendar_cita',
   registrar_pedido:          'registrar_pedido',
   buscar_cliente:            'buscar_cliente',
@@ -1256,6 +1273,7 @@ const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
   extraer_tono_de_marca:     EXTRAER_TONO_TOOL,
   reportar_falla:            REPORT_ISSUE_TOOL,
   crear_lead:                CREAR_LEAD_TOOL,
+  crear_contacto_saliente:   CREAR_CONTACTO_SALIENTE_TOOL,
   agendar_cita:              AGENDAR_CITA_TOOL,
   registrar_pedido:          REGISTRAR_PEDIDO_TOOL,
   buscar_cliente:            BUSCAR_CLIENTE_TOOL,
