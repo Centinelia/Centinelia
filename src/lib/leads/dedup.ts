@@ -125,7 +125,8 @@ export interface OutboundContactInput {
   motivo?:      string | null;
   scheduledAt?: string | null;
   source?:      string;
-  campaignId?:  string | null;
+  email?:       string | null;
+  tags?:        string[] | null;
 }
 
 export interface OutboundContactUpsertResult {
@@ -169,7 +170,8 @@ export async function upsertOutboundContactWithDedup(
       nombre:       input.nombre,
       motivo:       input.motivo,
       scheduled_at: input.scheduledAt,
-      campaign_id:  input.campaignId,
+      email:        input.email,
+      tags:         input.tags,
     });
     if (Object.keys(patch).length > 0) {
       await supabase.from('outbound_contacts').update(patch).eq('id', existingId);
@@ -187,7 +189,8 @@ export async function upsertOutboundContactWithDedup(
       scheduled_at: input.scheduledAt ?? null,
       status:       'pending',
       source:       input.source ?? 'manual',
-      campaign_id:  input.campaignId ?? null,
+      email:        input.email ?? null,
+      tags:         input.tags ?? null,
     })
     .select('id')
     .single();
