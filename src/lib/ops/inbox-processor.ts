@@ -324,6 +324,19 @@ const BASE_EMAIL_TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name:        'buscar_correo_enviado',
+    description: 'Busca correos que TÚ u otro empleado del equipo hayan enviado antes desde el buzón de la empresa. Útil cuando el correo entrante hace referencia a un correo previo, o cuando necesitas ver qué se le comunicó a este remitente antes de responder. Devuelve preview del cuerpo + destinatario + asunto + fecha + qué empleado lo envió.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        query:        { type: 'string', description: 'Texto a buscar en asunto o cuerpo (opcional).' },
+        destinatario: { type: 'string', description: 'Correo del destinatario para filtrar (opcional, match parcial).' },
+        dias:         { type: 'number', description: 'Días hacia atrás (1-365, default 30).' },
+        limit:        { type: 'number', description: 'Máximo resultados (1-20, default 10).' },
+      },
+    },
+  },
+  {
     name:        'crear_contacto_saliente',
     description: 'Agrega al prospecto a la lista de outbound para llamarle despues (aparece en Campanas del portal). Debe invocarse SIEMPRE junto con crear_lead (mismo turno) para que todo prospecto registrado quede también visible en Campañas. También úsala independiente cuando el correo pida seguimiento por telefono, agende una call futura, o el remitente comparta su numero explicito para que le llamen. NO la confundas con agregar_tag_contacto (esa solo etiqueta contactos que YA existen).',
     input_schema: {

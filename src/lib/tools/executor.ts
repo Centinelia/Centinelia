@@ -265,6 +265,64 @@ async function executeAgentToolInner(
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // buscar_correo_enviado — busca en outbound_emails los correos que ANY
+  // meerkat del portal ha enviado. Match por destinatario, asunto y/o
+  // rango de fechas. Devuelve preview del cuerpo (600 chars) para evitar
+  // saturar el context del modelo.
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'buscar_correo_enviado') {
+    if (!portalEmail) return { ok: false, error: 'Sin portal_email para buscar correos.' };
+    const q          = typeof toolInput.query === 'string' ? toolInput.query.trim() : '';
+    const destino    = typeof toolInput.destinatario === 'string' ? toolInput.destinatario.trim() : '';
+    const dias       = typeof toolInput.dias === 'number' ? Math.min(365, Math.max(1, toolInput.dias)) : 30;
+    const limitN     = typeof toolInput.limit === 'number' ? Math.min(20, Math.max(1, toolInput.limit)) : 10;
+    const sinceIso   = new Date(Date.now() - dias * 86_400_000).toISOString();
+
+    let qb = supabase
+      .from('outbound_emails')
+      .select('id, agent_id, to_email, cc_email, subject, body, provider, ok, created_at')
+      .eq('portal_email', portalEmail)
+      .gte('created_at', sinceIso)
+      .order('created_at', { ascending: false })
+      .limit(limitN);
+
+    if (destino) qb = qb.ilike('to_email', `%${destino}%`);
+    if (q)       qb = qb.or(`subject.ilike.%${q}%,body.ilike.%${q}%`);
+
+    const { data: rows, error } = await qb;
+    if (error) return { ok: false, error: `No se pudieron consultar los correos: ${error.message}` };
+    if (!rows?.length) return { ok: true, count: 0, results: [], message: 'No encontré correos enviados que coincidan.' };
+
+    // Enrich con agent_name para que el modelo sepa quién envió cada uno
+    const agentIds = Array.from(new Set(rows.map(r => r.agent_id as string | null).filter(Boolean))) as string[];
+    const agentMap = new Map<string, string>();
+    if (agentIds.length > 0) {
+      const { data: agents } = await supabase
+        .from('voice_agents')
+        .select('id, agent_name')
+        .in('id', agentIds);
+      for (const a of agents ?? []) agentMap.set(a.id as string, (a.agent_name as string | null) ?? 'Empleado');
+    }
+
+    const results = rows.map(r => ({
+      id:           r.id,
+      enviado_por:  r.agent_id ? (agentMap.get(r.agent_id as string) ?? 'Empleado') : 'Sistema',
+      to:           r.to_email,
+      cc:           r.cc_email ?? null,
+      subject:      r.subject,
+      body_preview: typeof r.body === 'string' ? r.body.slice(0, 600) : '',
+      provider:     r.provider,
+      ok:           r.ok,
+      sent_at:      r.created_at,
+    }));
+
+    const summary = results.slice(0, 5).map(r =>
+      `- ${new Date(r.sent_at).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })} · ${r.enviado_por} → ${r.to} · "${r.subject}"`
+    ).join('\n');
+    return { ok: true, count: results.length, results, message: `${results.length} correo(s) encontrado(s):\n${summary}` };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   // create_document
   // ─────────────────────────────────────────────────────────────────────────
   if (toolName === 'create_document') {

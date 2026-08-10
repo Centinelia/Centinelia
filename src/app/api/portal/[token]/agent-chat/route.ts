@@ -1005,6 +1005,20 @@ const CREAR_LEAD_TOOL: Anthropic.Tool = {
   },
 };
 
+const BUSCAR_CORREO_ENVIADO_TOOL: Anthropic.Tool = {
+  name: 'buscar_correo_enviado',
+  description: 'Busca correos que TÚ u otro empleado del equipo hayan enviado en el pasado desde el buzón de la empresa. Útil para: (1) ver qué se le comunicó a un cliente antes de darle seguimiento, (2) revisar histórico de conversaciones cuando el dueño pregunta por un correo previo, (3) evitar duplicar comunicaciones. Devuelve preview del cuerpo + destinatario + asunto + fecha + qué empleado lo envió.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      query:        { type: 'string', description: 'Texto a buscar en asunto o cuerpo (opcional). Ej: "cotización Nemak", "confirmación cita".' },
+      destinatario: { type: 'string', description: 'Correo del destinatario para filtrar (opcional, match parcial). Ej: "pedro" o "@nemak.com".' },
+      dias:         { type: 'number', description: 'Días hacia atrás a buscar (1-365, default 30).' },
+      limit:        { type: 'number', description: 'Máximo resultados a devolver (1-20, default 10).' },
+    },
+  },
+};
+
 const CREAR_CONTACTO_SALIENTE_TOOL: Anthropic.Tool = {
   name: 'crear_contacto_saliente',
   description: 'Agrega un contacto a la lista de outbound para llamarle despues (aparece en Campanas del portal). Debe invocarse SIEMPRE junto con crear_lead (mismo turno) para que todo prospecto registrado quede también visible en Campañas. También úsala independiente cuando el dueño pida seguimiento por llamada. NO la confundas con agregar_tag_contacto (esa solo etiqueta contactos que YA existen).',
@@ -1169,6 +1183,7 @@ const ALL_TOOLS = [
   ML_VER_METRICAS_TOOL,
   CREAR_LEAD_TOOL,
   CREAR_CONTACTO_SALIENTE_TOOL,
+  BUSCAR_CORREO_ENVIADO_TOOL,
   AGENDAR_CITA_TOOL,
   REGISTRAR_PEDIDO_TOOL,
   BUSCAR_CLIENTE_TOOL,
@@ -1196,6 +1211,7 @@ const VOICE_TO_CHAT: Record<string, string | null> = {
   // Chat implementations
   crear_lead:                'crear_lead',
   crear_contacto_saliente:   'crear_contacto_saliente',
+  buscar_correo_enviado:     'buscar_correo_enviado',
   agendar_cita:              'agendar_cita',
   registrar_pedido:          'registrar_pedido',
   buscar_cliente:            'buscar_cliente',
@@ -1283,6 +1299,7 @@ const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
   reportar_falla:            REPORT_ISSUE_TOOL,
   crear_lead:                CREAR_LEAD_TOOL,
   crear_contacto_saliente:   CREAR_CONTACTO_SALIENTE_TOOL,
+  buscar_correo_enviado:     BUSCAR_CORREO_ENVIADO_TOOL,
   agendar_cita:              AGENDAR_CITA_TOOL,
   registrar_pedido:          REGISTRAR_PEDIDO_TOOL,
   buscar_cliente:            BUSCAR_CLIENTE_TOOL,
