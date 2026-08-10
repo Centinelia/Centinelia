@@ -68,6 +68,20 @@ export async function processMeetingAudio(opts: {
     const elData   = await elRes.json();
     const transcript: string = elData.text ?? elData.transcript ?? '';
 
+    // Probe: transcript trivial (< 100 chars = audio silencioso, ruido, o
+    // llamada muy corta). No mandar a Claude ni cobrar ops. Marca la junta
+    // como 'done' degradada para el usuario ver que se procesó pero sin
+    // resumen. Fix 2026-08-10.
+    if (transcript.trim().length < 100) {
+      await supabase.from('ops_meetings').update({
+        status:       'done',
+        transcript,
+        meeting_data: { title, date: new Date().toISOString().slice(0, 10), participants, summary: 'El audio no contiene suficiente contenido para generar un resumen.', decisions: [], action_items: [], next_steps: '', degraded: true },
+        processed_at: new Date().toISOString(),
+      }).eq('id', meetingId);
+      return;
+    }
+
     // Ops cost scales with transcript length (1 op per ~2,500 chars, max 6)
     const meetingOps = Math.min(6, Math.max(1, Math.ceil((transcript.length || 1) / 2500)));
     const opsResult  = await consumeAiOp(agentId, meetingOps, { source: 'meeting_processor', label: 'Procesamiento de junta/reunión' });

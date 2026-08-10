@@ -142,6 +142,21 @@ ${customInstructions ? `INSTRUCCIONES ADICIONALES:\n${customInstructions}\n\n` :
 
 Sé directo, ejecutivo y sin relleno. Máximo 400 palabras.`;
 
+    // Probe: si el periodo no tuvo NINGUNA actividad, no generar reporte
+    // ni cobrar op ni mandar correo. Marca 'skipped_empty' en el run para
+    // trazabilidad. Fix 2026-08-10.
+    const hasActivity =
+      (snapshot.calls?.total ?? 0) > 0 ||
+      (snapshot.leads ?? 0) > 0 ||
+      (snapshot.orders ?? 0) > 0 ||
+      (snapshot.appointments ?? 0) > 0;
+    if (!hasActivity) {
+      await supabase.from('ops_report_runs')
+        .update({ status: 'skipped_empty', completed_at: new Date().toISOString() })
+        .eq('id', run.id);
+      return { ok: true, skipped: true, reason: 'empty_period' };
+    }
+
     const opsResult = await consumeAiOp(agent.id as string, 1, { source: 'report_generator', label: 'Generación de reporte automatizado' });
     if (!opsResult.ok) {
       await supabase.from('ops_report_runs').update({ status: 'error', error: 'ops_limit_reached' }).eq('id', run.id);
