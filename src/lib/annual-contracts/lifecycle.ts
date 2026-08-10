@@ -254,6 +254,20 @@ export async function activateScheduledDrafts(supabase?: Supabase, now?: string)
       })
       .eq('portal_email', draft.organization_email);
 
+    // Fetch org to check ops_ledger_enabled flag
+    const { data: org } = await sb
+      .from('organizations')
+      .select('ops_ledger_enabled')
+      .eq('portal_email', draft.organization_email)
+      .maybeSingle();
+
+    // Apply annual grant if ops_ledger_enabled
+    if (org?.ops_ledger_enabled) {
+      await sb.rpc('apply_ops_annual_grant', {
+        p_portal_email: draft.organization_email,
+      });
+    }
+
     activated.push(draft.id);
   }
 
