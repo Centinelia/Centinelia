@@ -4,6 +4,7 @@ import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { requireVapiAuth } from '@/lib/vapi/auth';
 import { traceVoiceCall } from '@/lib/observability/voice-trace';
 import { syncLeadToSheets } from '@/lib/services/sheets';
+import { upsertLeadWithDedup } from '@/lib/leads/dedup';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -26,15 +27,18 @@ export async function POST(req: NextRequest) {
     .eq('id', agent_id)
     .single();
 
-  await supabase.from('leads_voice').insert({
-    agent_id, nombre, negocio, giro, servicio, presupuesto, timeline, email, whatsapp, source: 'llamada',
+  const upsert = await upsertLeadWithDedup(supabase, {
+    agentId: agent_id, source: 'llamada',
+    nombre, negocio, giro, servicio, presupuesto, timeline, email, whatsapp,
   });
 
   if (agent?.portal_email) {
     void syncLeadToSheets(agent.portal_email, agent_id, args);
   }
 
-  if (agent?.transfer_whatsapp) {
+  // Solo notifica al equipo cuando es lead nuevo. Si es update (mismo prospecto
+  // en <10min) evitamos spam de WhatsApp al owner.
+  if (upsert.action === 'created' && agent?.transfer_whatsapp) {
     const msg = [
       `🎯 *Nuevo lead, ${agent.business_name}*`,
       nombre      ? `👤 ${nombre}`            : null,
@@ -51,8 +55,12 @@ export async function POST(req: NextRequest) {
 
   traceVoiceCall({
     toolName: 'crear_lead', agentId: agent_id, sessionId, input: args,
-    result: { ok: true, lead: { nombre, negocio, servicio, whatsapp, email } },
+    result: { ok: true, action: upsert.action, lead: { id: upsert.id, nombre, negocio, servicio, whatsapp, email } },
     startedAt,
   });
-  return NextResponse.json({ result: 'Lead registrado correctamente. Le haremos llegar información pronto.' });
+
+  const resultMsg = upsert.action === 'updated'
+    ? 'Ya tenías registrado este contacto hace unos minutos, actualicé sus datos.'
+    : 'Lead registrado correctamente. Le haremos llegar información pronto.';
+  return NextResponse.json({ result: resultMsg });
 }

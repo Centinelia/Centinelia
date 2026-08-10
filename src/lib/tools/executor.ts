@@ -48,6 +48,7 @@ import { submitTramite } from '@/lib/tramites/submit';
 import { solicitarFactura, type SolicitarFacturaItem } from '@/lib/fiscal/request-factura';
 import { lookupFacturas } from '@/lib/fiscal/lookup-factura';
 import * as sheetsService from '@/lib/services/sheets';
+import { upsertLeadWithDedup, upsertOutboundContactWithDedup } from '@/lib/leads/dedup';
 
 type SupabaseClient = ReturnType<typeof createAdminClient>;
 
@@ -1606,16 +1607,61 @@ async function executeAgentToolInner(
     const args = toolInput as Record<string, string | undefined>;
     // source refleja el canal real donde llegó el lead (chat portal, voz, email).
     // Antes hardcodeaba 'chat', escondiendo métricas de leads por canal.
-    const { error } = await supabase.from('leads_voice').insert({
-      agent_id: agentId, nombre: args.nombre ?? null, negocio: args.negocio ?? null,
-      giro: args.giro ?? null, servicio: args.servicio ?? null, presupuesto: args.presupuesto ?? null,
-      timeline: args.timeline ?? null, email: args.email ?? null, whatsapp: args.whatsapp ?? null,
-      source: ctx.channel ?? 'chat',
-    });
-    if (error) return { ok: false, error: 'No se pudo registrar el lead.' };
-    // Fire-and-forget Sheets sync — never blocks, never propagates.
-    void sheetsService.syncLeadToSheets(portalEmail, agentId, args as Record<string, string | undefined>);
-    return { ok: true, message: `Lead de ${args.nombre ?? 'nuevo prospecto'} registrado. Visible en Llamadas.` };
+    // Dedup: si el mismo agente ya registró este whatsapp/email en <10min, hacemos
+    // update en vez de insertar (previene el bug donde el modelo re-ejecuta la
+    // tool tras un "no lo veo" del usuario y crea duplicados).
+    try {
+      const upsert = await upsertLeadWithDedup(supabase, {
+        agentId, source: ctx.channel ?? 'chat',
+        nombre:      args.nombre ?? null,
+        negocio:     args.negocio ?? null,
+        giro:        args.giro ?? null,
+        servicio:    args.servicio ?? null,
+        presupuesto: args.presupuesto ?? null,
+        timeline:    args.timeline ?? null,
+        email:       args.email ?? null,
+        whatsapp:    args.whatsapp ?? null,
+      });
+      // Fire-and-forget Sheets sync — never blocks, never propagates.
+      void sheetsService.syncLeadToSheets(portalEmail, agentId, args as Record<string, string | undefined>);
+      const message = upsert.action === 'updated'
+        ? `Ya tenías a ${args.nombre ?? 'este prospecto'} registrado hace unos minutos; actualicé sus datos en Llamadas.`
+        : `Lead de ${args.nombre ?? 'nuevo prospecto'} registrado. Visible en Llamadas.`;
+      return { ok: true, message };
+    } catch {
+      return { ok: false, error: 'No se pudo registrar el lead.' };
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // crear_contacto_saliente
+  //
+  // Agrega un prospecto a la lista de contactos salientes (outbound_contacts)
+  // para que se le llame después desde una campaña. Dedup mismo agente + mismo
+  // teléfono en <10min contra registros pending.
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'crear_contacto_saliente') {
+    const args = toolInput as Record<string, string | undefined>;
+    const telefono = args.telefono?.trim();
+    if (!telefono) {
+      return { ok: false, error: 'Necesito el teléfono del contacto para agregarlo.' };
+    }
+    try {
+      const upsert = await upsertOutboundContactWithDedup(supabase, {
+        agentId,
+        nombre:      args.nombre ?? null,
+        telefono,
+        motivo:      args.motivo ?? null,
+        scheduledAt: args.scheduled_at ?? null,
+        source:      ctx.channel === 'voice' ? 'llamada_entrante' : 'manual',
+      });
+      const message = upsert.action === 'updated'
+        ? `Ya tenía a ${args.nombre ?? 'este contacto'} en la lista de salientes; actualicé sus datos.`
+        : `${args.nombre ?? 'Contacto'} agregado a la lista de salientes. Aparece en Campañas.`;
+      return { ok: true, message };
+    } catch {
+      return { ok: false, error: 'No se pudo agregar el contacto saliente.' };
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
