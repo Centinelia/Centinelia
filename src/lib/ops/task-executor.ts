@@ -126,6 +126,84 @@ const DELEGATION_TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name:        'list_calendar_events',
+    description: 'Consulta eventos del calendario del dueño (Google Calendar u Outlook) en un rango. Úsala para verificar disponibilidad antes de agendar.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        from: { type: 'string', description: 'Inicio del rango en ISO 8601 (ej: 2026-08-11T00:00:00-06:00)' },
+        to:   { type: 'string', description: 'Fin del rango en ISO 8601 (ej: 2026-08-12T00:00:00-06:00)' },
+      },
+      required: ['from', 'to'],
+    },
+  },
+  {
+    name:        'create_calendar_event',
+    description: 'Crea un evento en el calendario del dueño. Si la reunión es por videollamada Meet y NO tienes un link propio, PASA generate_meet_link=true — el sistema crea el Meet real automáticamente y devuelve el link en el message del tool_result. Úsalo SIEMPRE que necesites un link Meet en un correo — nunca inventes URLs.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        title:              { type: 'string', description: 'Título del evento' },
+        start:              { type: 'string', description: 'Inicio ISO 8601 con timezone' },
+        end:                { type: 'string', description: 'Fin ISO 8601 con timezone' },
+        description:        { type: 'string', description: 'Descripción o notas (opcional)' },
+        location:           { type: 'string', description: 'Ubicación física o link propio (opcional)' },
+        attendees:          { type: 'array', items: { type: 'string' }, description: 'Correos de invitados (opcional)' },
+        generate_meet_link: { type: 'boolean', description: 'true para auto-generar link Google Meet real. USA true cuando necesites Meet y no tengas link propio.' },
+      },
+      required: ['title', 'start', 'end'],
+    },
+  },
+  {
+    name:        'delete_calendar_event',
+    description: 'Elimina o cancela un evento del calendario del dueño.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        event_id: { type: 'string', description: 'ID del evento a eliminar' },
+      },
+      required: ['event_id'],
+    },
+  },
+  {
+    name:        'save_to_drive',
+    description: 'Sube a Drive/OneDrive del dueño un archivo generado por crear_documento o create_file (que devuelve un file_id).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        file_id:     { type: 'string', description: 'file_id devuelto por crear_documento/create_file' },
+        filename:    { type: 'string', description: 'Nombre del archivo en Drive con extensión' },
+        folder_name: { type: 'string', description: 'Carpeta destino (opcional; se crea si no existe)' },
+      },
+      required: ['file_id', 'filename'],
+    },
+  },
+  {
+    name:        'buscar_documento_oficina',
+    description: 'Busca documentos ya generados en la Oficina (facturas, cotizaciones, propuestas, etc.). Úsala antes de generar nuevo para reutilizar existentes.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        query:   { type: 'string', description: 'Texto a buscar en título, filename o folio' },
+        cliente: { type: 'string', description: 'Filtro por cliente (fuzzy)' },
+        limit:   { type: 'number', description: 'Máximo resultados (default 10)' },
+      },
+    },
+  },
+  {
+    name:        'buscar_correo_enviado',
+    description: 'Busca correos que TÚ u otro empleado hayan enviado antes desde el buzón de la empresa. Útil para ver histórico antes de dar seguimiento.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        query:        { type: 'string', description: 'Texto en asunto o cuerpo (opcional)' },
+        destinatario: { type: 'string', description: 'Correo destinatario para filtrar (opcional)' },
+        dias:         { type: 'number', description: 'Días hacia atrás (default 30)' },
+        limit:        { type: 'number', description: 'Máximo resultados (default 10)' },
+      },
+    },
+  },
+  {
     name:        'tarea_completada',
     description: 'Señala que la tarea fue completada. Llama a esta herramienta SOLO cuando hayas terminado todas las acciones necesarias.',
     input_schema: {
@@ -146,14 +224,23 @@ async function executeToolOnAgent(
   targetAgentId: string,
 ): Promise<string> {
   const routeMap: Record<string, string> = {
-    buscar_archivo:   'buscar-archivo',
-    leer_archivo:     'leer-archivo',
-    buscar_en_web:    'buscar-en-web',
-    consultar_agente: 'consultar-agente',
-    llamar_a:         'llamar-a',
-    enviar_correo:    'enviar-correo',
-    crear_ticket:     'crear-ticket',
-    crear_documento:  'crear-documento',
+    buscar_archivo:            'buscar-archivo',
+    leer_archivo:              'leer-archivo',
+    buscar_en_web:             'buscar-en-web',
+    consultar_agente:          'consultar-agente',
+    llamar_a:                  'llamar-a',
+    enviar_correo:             'enviar-correo',
+    crear_ticket:              'crear-ticket',
+    crear_documento:           'crear-documento',
+    buscar_documento_oficina:  'buscar-documento-oficina',
+    // Tools que van al executor genérico (paridad con chat/voice cross-canal).
+    // exec/<name> resuelve al mismo handler que el chat, así el behavior es
+    // consistente entre delegate y chat directo.
+    list_calendar_events:      'exec/list_calendar_events',
+    create_calendar_event:     'exec/create_calendar_event',
+    delete_calendar_event:     'exec/delete_calendar_event',
+    save_to_drive:             'exec/save_to_drive',
+    buscar_correo_enviado:     'exec/buscar_correo_enviado',
   };
 
   const routePath = routeMap[toolName];
