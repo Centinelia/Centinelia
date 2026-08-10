@@ -57,3 +57,6 @@ next-env.d.ts
 .claude/
 .superpowers/
 .email-previews/
+
+# Temporary scripts (test verifications, one-off checks)
+.tmp/
