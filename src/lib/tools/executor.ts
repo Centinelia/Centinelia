@@ -1727,8 +1727,9 @@ async function executeAgentToolInner(
       // Rechazamos con mensaje explicito para que el modelo reintente correctamente.
       if (!startsAt || !endsAt) {
         return {
-          ok: false,
-          message: 'No puedo confirmar la cita sin fecha_iso (YYYY-MM-DD) y hora (HH:MM 24h). Pregunta al cliente el dia y hora exactos, y vuelve a llamar agendar_cita incluyendo AMBOS campos.',
+          ok:    false,
+          error: 'agendar_cita_missing_fecha_iso_or_hora',
+          message: 'No puedo confirmar la cita sin fecha_iso (YYYY-MM-DD) y hora (HH:MM 24h). Vuelve a llamar agendar_cita incluyendo AMBOS campos (ej: fecha_iso="2026-08-11", hora="12:00").',
         };
       }
 

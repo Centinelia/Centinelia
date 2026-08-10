@@ -1019,17 +1019,19 @@ const CREAR_CONTACTO_SALIENTE_TOOL: Anthropic.Tool = {
 
 const AGENDAR_CITA_TOOL: Anthropic.Tool = {
   name: 'agendar_cita',
-  description: 'Agenda, modifica o cancela una cita de un cliente. Úsala cuando el dueño quiera registrar una cita nueva, cambiar una existente o cancelarla.',
+  description: 'Agenda, modifica o cancela una cita de un cliente. CRÍTICO: para agendar/modificar SIEMPRE debes mandar fecha_iso (YYYY-MM-DD) y hora (HH:MM 24h) — si las omites el sistema RECHAZA la operación. Para cancelar solo necesitas telefono.',
   input_schema: {
     type: 'object' as const,
     properties: {
-      accion:    { type: 'string', enum: ['agendar', 'modificar', 'cancelar'], description: 'Acción a realizar' },
-      nombre:    { type: 'string', description: 'Nombre del cliente' },
-      servicio:  { type: 'string', description: 'Servicio para la cita' },
-      fecha:     { type: 'string', description: 'Fecha de la cita. Ej: "lunes 28 de julio"' },
-      hora:      { type: 'string', description: 'Hora de la cita. Ej: "10:00 AM"' },
-      telefono:  { type: 'string', description: 'Teléfono del cliente (necesario para cancelar o modificar)' },
-      ubicacion: { type: 'string', description: 'Dirección física, link de videollamada (Zoom/Meet), oficina, o instrucciones para llegar.' },
+      accion:       { type: 'string', enum: ['agendar', 'modificar', 'cancelar'], description: 'Acción a realizar' },
+      nombre:       { type: 'string', description: 'Nombre del cliente' },
+      servicio:     { type: 'string', description: 'Servicio para la cita' },
+      fecha:        { type: 'string', description: 'Fecha en lenguaje natural para mostrar al cliente (ej: "lunes 28 de julio"). Es SOLO cosmética — la fecha real que usa el sistema es fecha_iso.' },
+      fecha_iso:    { type: 'string', description: 'Fecha ISO YYYY-MM-DD (ej: 2026-08-11). OBLIGATORIA para agendar/modificar. Confirma el AÑO correcto (no repitas 2025 si estamos en 2026).' },
+      hora:         { type: 'string', description: 'Hora en formato HH:MM 24h (ej: "14:30" para 2:30pm, "12:00" para mediodía). OBLIGATORIA para agendar/modificar.' },
+      duracion_min: { type: 'number', description: 'Duración estimada de la cita en minutos. Default 60.' },
+      telefono:     { type: 'string', description: 'Teléfono del cliente (necesario para cancelar o modificar)' },
+      ubicacion:    { type: 'string', description: 'Dirección física, link de videollamada (Zoom/Meet), oficina, o instrucciones para llegar.' },
     },
     required: ['accion', 'nombre'],
   },
