@@ -60,7 +60,9 @@ export async function loadCampanasData(token: string): Promise<CampanasPageData 
   const anyHas = (key: string) => allPeers.some(a => !!((a.features as Record<string, unknown> | null)?.[key]));
   const agentFeatures = (agent as { features?: Record<string, unknown> | null }).features ?? null;
   const showOutbound  = !!(agentFeatures?.outbound_calls) || anyHas('outbound_calls') || (agent as { plan?: string }).plan === 'pro';
-  const initOutbound  = !!(agentFeatures?.outbound_calls);
+  // Fix 2026-08-09: initOutbound antes solo checkeaba el primario. Ahora
+  // checa cualquier peer del equipo (patrón corregido en múltiples lugares).
+  const initOutbound  = !!(agentFeatures?.outbound_calls) || anyHas('outbound_calls');
 
   const outboundAgents = allPeers
     .filter(a => !!((a.features as Record<string, unknown> | null)?.outbound_calls))
