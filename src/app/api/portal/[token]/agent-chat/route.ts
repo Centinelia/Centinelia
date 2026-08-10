@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { logLlmCall } from '@/lib/observability/llm-log';
+import { TOOL_SCHEMAS, toAnthropicTool } from '@/lib/tools/schemas';
 import { executeAgentTool, type ReadUrlCounter } from '@/lib/tools/executor';
 import { rateLimit, limiters } from '@/lib/ratelimit';
 import { createElement } from 'react';
@@ -140,23 +141,8 @@ const CREATE_CONTRACT_DRAFT_TOOL: Anthropic.Tool = {
   },
 };
 
-const SEND_EMAIL_TOOL: Anthropic.Tool = {
-  name: 'send_email',
-  description: 'Envía un correo electrónico a cualquier destinatario en nombre del negocio. Puede incluir un archivo adjunto de Google Drive o OneDrive. Úsala cuando el dueño te pida enviar un correo, con o sin adjunto.',
-  input_schema: {
-    type: 'object' as const,
-    properties: {
-      to:                   { type: 'string', description: 'Dirección de correo del destinatario' },
-      subject:              { type: 'string', description: 'Asunto del correo' },
-      body:                 { type: 'string', description: 'Cuerpo del correo en texto. Puedes usar saltos de línea.' },
-      cc:                   { type: 'string', description: 'Dirección en copia (opcional)' },
-      attachment_file_id:   { type: 'string', description: 'ID del archivo de Drive/OneDrive a adjuntar (obtenido de search_files). Opcional.' },
-      attachment_file_name: { type: 'string', description: 'Nombre del archivo adjunto con extensión. Ej: propuesta-acme.pdf' },
-      attachment_mime_type: { type: 'string', description: 'Tipo MIME del archivo (de search_files). Ej: application/vnd.google-apps.document' },
-    },
-    required: ['to', 'subject', 'body'],
-  },
-};
+// Migrated to registry: src/lib/tools/schemas.ts
+const SEND_EMAIL_TOOL: Anthropic.Tool = toAnthropicTool(TOOL_SCHEMAS['send_email']);
 
 const CREATE_DOCUMENT_TOOL: Anthropic.Tool = {
   name: 'create_document',
@@ -318,39 +304,11 @@ const SHEETS_BUSCAR_TOOL: Anthropic.Tool = {
   },
 };
 
-const BUSCAR_DOCUMENTO_OFICINA_TOOL: Anthropic.Tool = {
-  name: 'buscar_documento_oficina',
-  description: 'Busca documentos ya generados y guardados en la Oficina del negocio (facturas, cotizaciones, cartas, propuestas, one-pagers, pitch decks, reportes Excel, órdenes de compra). Úsala cuando el usuario pida "el documento que le mandé la semana pasada" o cuando quieras reutilizar algo antes de generar uno nuevo. Devuelve una lista con id, título, tipo, folio y fecha. Luego usa enviar_documento_oficina con el id para adjuntarlo a un correo. IMPORTANTE: si no estás seguro del tipo exacto, OMITE el parámetro kind y busca solo por query — así verás todos los tipos que matchean.',
-  input_schema: {
-    type: 'object' as const,
-    properties: {
-      query:   { type: 'string', description: 'Texto para buscar en título, filename o folio. Opcional. Ejemplos: "CRM", "ACME", "onboarding".' },
-      kind:    {
-        type: 'string',
-        enum: ['propuesta', 'cotizacion', 'one_pager', 'pitch_deck', 'report_excel', 'correo', 'factura', 'orden_compra', 'proposal', 'letter', 'general', 'nota_venta', 'excel', 'word', 'powerpoint'],
-        description: 'Filtro por tipo EXACTO. Valores válidos (usa el que aplique): "propuesta" (propuestas comerciales), "cotizacion" (cotizaciones con folio COT-XXXXXX), "one_pager" (one-pagers ejecutivos), "pitch_deck" (pitch decks PowerPoint), "report_excel" (reportes Excel), "correo" (correos estructurados), "factura", "orden_compra", "letter" (cartas), "general" (notas y otros). Si no estás seguro, OMITE este parámetro.',
-      },
-      cliente: { type: 'string', description: 'Filtro por nombre del cliente (fuzzy).' },
-      limit:   { type: 'number', description: 'Máximo de resultados. Default 10, máximo 50.' },
-    },
-    required: [],
-  },
-};
+// Migrated to registry: src/lib/tools/schemas.ts
+const BUSCAR_DOCUMENTO_OFICINA_TOOL: Anthropic.Tool = toAnthropicTool(TOOL_SCHEMAS['buscar_documento_oficina']);
 
-const ENVIAR_DOCUMENTO_OFICINA_TOOL: Anthropic.Tool = {
-  name: 'enviar_documento_oficina',
-  description: 'Adjunta un documento ya existente de la Oficina a un correo saliente. Requiere document_id previamente obtenido de buscar_documento_oficina. Úsala cuando el cliente pida reenviar algo ("mándame de nuevo la cotización de la semana pasada") en lugar de generar uno nuevo.',
-  input_schema: {
-    type: 'object' as const,
-    properties: {
-      document_id: { type: 'string', description: 'ID del documento devuelto por buscar_documento_oficina (uuid).' },
-      to:          { type: 'string', description: 'Correo del destinatario.' },
-      subject:     { type: 'string', description: 'Asunto del correo.' },
-      body:        { type: 'string', description: 'Cuerpo del correo. Texto plano — se convierte a HTML.' },
-    },
-    required: ['document_id', 'to', 'subject', 'body'],
-  },
-};
+// Migrated to registry: src/lib/tools/schemas.ts
+const ENVIAR_DOCUMENTO_OFICINA_TOOL: Anthropic.Tool = toAnthropicTool(TOOL_SCHEMAS['enviar_documento_oficina']);
 
 const AGREGAR_TAG_CONTACTO_TOOL: Anthropic.Tool = {
   name: 'agregar_tag_contacto',
@@ -497,19 +455,8 @@ const READ_URL_TOOL: Anthropic.Tool = {
   },
 };
 
-const SAVE_TO_DRIVE_TOOL: Anthropic.Tool = {
-  name: 'save_to_drive',
-  description: 'Guarda un documento generado en Google Drive o OneDrive del dueño. Úsala después de create_document cuando el dueño quiera que el archivo quede en su Drive, o cuando pida explícitamente guardar algo en la nube. Puede crear la carpeta de destino automáticamente si no existe.',
-  input_schema: {
-    type: 'object' as const,
-    properties: {
-      file_id:     { type: 'string', description: 'storage_path del documento generado (campo file_id de create_document). Ej: "uuid/nombre-1234567890.pdf"' },
-      filename:    { type: 'string', description: 'Nombre del archivo en Drive/OneDrive, con extensión. Ej: "Propuesta Acme 2026.pdf"' },
-      folder_name: { type: 'string', description: 'Carpeta de destino en Drive/OneDrive. Se crea si no existe. Ej: "Propuestas 2026". Omite si quiere guardarlo en la raíz.' },
-    },
-    required: ['file_id', 'filename'],
-  },
-};
+// Migrated to registry: src/lib/tools/schemas.ts
+const SAVE_TO_DRIVE_TOOL: Anthropic.Tool = toAnthropicTool(TOOL_SCHEMAS['save_to_drive']);
 
 const CREATE_FILE_TOOL: Anthropic.Tool = {
   name: 'create_file',
@@ -562,48 +509,14 @@ const CREATE_FILE_TOOL: Anthropic.Tool = {
   },
 };
 
-const LIST_CALENDAR_EVENTS_TOOL: Anthropic.Tool = {
-  name: 'list_calendar_events',
-  description: 'Consulta los eventos del calendario (Google Calendar u Outlook Calendar) del dueño en un rango de fechas. Úsala cuando te pregunten qué tienes agendado, cuándo estás disponible, o qué hay en la agenda.',
-  input_schema: {
-    type: 'object' as const,
-    properties: {
-      from: { type: 'string', description: 'Fecha y hora de inicio del rango en formato ISO 8601. Ej: "2026-07-14T00:00:00"' },
-      to:   { type: 'string', description: 'Fecha y hora de fin del rango en formato ISO 8601. Ej: "2026-07-20T23:59:59"' },
-    },
-    required: ['from', 'to'],
-  },
-};
+// Migrated to registry: src/lib/tools/schemas.ts
+const LIST_CALENDAR_EVENTS_TOOL: Anthropic.Tool = toAnthropicTool(TOOL_SCHEMAS['list_calendar_events']);
 
-const CREATE_CALENDAR_EVENT_TOOL: Anthropic.Tool = {
-  name: 'create_calendar_event',
-  description: 'Crea un evento en el calendario (Google Calendar u Outlook Calendar) del dueño. Úsala cuando te pidan agendar una reunión, cita, recordatorio o cualquier evento en el calendario. IMPORTANTE: cuando el cliente pida videollamada/Meet/Zoom y NO tenga link propio, pasa generate_meet_link=true en vez de pedir el link al dueño. El sistema crea el Meet automáticamente y te devuelve el link en el message.',
-  input_schema: {
-    type: 'object' as const,
-    properties: {
-      title:              { type: 'string', description: 'Título del evento.' },
-      start:              { type: 'string', description: 'Fecha y hora de inicio en ISO 8601 con zona horaria. Ej: "2026-07-15T10:00:00-06:00"' },
-      end:                { type: 'string', description: 'Fecha y hora de fin en ISO 8601. Ej: "2026-07-15T11:00:00-06:00"' },
-      description:        { type: 'string', description: 'Descripción o notas del evento. Opcional.' },
-      location:           { type: 'string', description: 'Lugar del evento (dirección, sala, o link de videollamada externa). Opcional.' },
-      attendees:          { type: 'array', items: { type: 'string' }, description: 'Lista de correos de los invitados. Opcional.' },
-      generate_meet_link: { type: 'boolean', description: 'true para generar link Google Meet automáticamente. Úsalo cuando el cliente pida videollamada/Meet y NO haya link propio. El link vuelve en el message del tool_result.' },
-    },
-    required: ['title', 'start', 'end'],
-  },
-};
+// Migrated to registry: src/lib/tools/schemas.ts
+const CREATE_CALENDAR_EVENT_TOOL: Anthropic.Tool = toAnthropicTool(TOOL_SCHEMAS['create_calendar_event']);
 
-const DELETE_CALENDAR_EVENT_TOOL: Anthropic.Tool = {
-  name: 'delete_calendar_event',
-  description: 'Elimina o cancela un evento del calendario. Úsala cuando el dueño quiera cancelar o eliminar un evento. Primero usa list_calendar_events para obtener el ID del evento.',
-  input_schema: {
-    type: 'object' as const,
-    properties: {
-      event_id: { type: 'string', description: 'ID del evento a eliminar (obtenido de list_calendar_events).' },
-    },
-    required: ['event_id'],
-  },
-};
+// Migrated to registry: src/lib/tools/schemas.ts
+const DELETE_CALENDAR_EVENT_TOOL: Anthropic.Tool = toAnthropicTool(TOOL_SCHEMAS['delete_calendar_event']);
 
 const ORGANIZE_FILES_TOOL: Anthropic.Tool = {
   name: 'organize_files',
@@ -852,71 +765,14 @@ const VERIFICAR_FIX_TOOL: Anthropic.Tool = {
   },
 };
 
-const REPORT_ISSUE_TOOL: Anthropic.Tool = {
-  name: 'reportar_falla',
-  description: 'Reporta una falla técnica inesperada al equipo de Centinelia. Úsala cuando encuentres un error real del sistema: timeout de API, falla al escribir archivo, herramienta con comportamiento incorrecto, resultado corrupto, etc. NO la uses para errores de autenticación o sesión expirada — esos se resuelven pidiéndole al dueño que reconecte la integración. No consume ops del cliente.',
-  input_schema: {
-    type: 'object' as const,
-    properties: {
-      tipo: {
-        type: 'string',
-        description: 'Categoría del problema. Ej: "Error de integración", "Falla al enviar correo", "Problema con archivo", "Error en calendario", "Falla en POS", "Error de sistema".',
-      },
-      descripcion: {
-        type: 'string',
-        description: 'Descripción detallada: qué intentabas hacer, qué sucedió y qué error recibiste.',
-      },
-      contexto: {
-        type: 'string',
-        description: 'Contexto adicional: herramienta afectada, pasos realizados antes del error, datos relevantes. Opcional.',
-      },
-    },
-    required: ['tipo', 'descripcion'],
-  },
-};
+// Migrated to registry: src/lib/tools/schemas.ts
+const REPORT_ISSUE_TOOL: Anthropic.Tool = toAnthropicTool(TOOL_SCHEMAS['reportar_falla']);
 
-const DELEGATE_TASK_TOOL: Anthropic.Tool = {
-  name: 'delegate_task',
-  description: 'Delega una tarea a un compañero del equipo digital para que la ejecute ahora mismo. El compañero usa sus propias herramientas (correo, documentos, búsqueda web, Drive) y reporta el resultado. Úsala cuando algo esté fuera de tu área o requiera capacidades de otro empleado.',
-  input_schema: {
-    type: 'object' as const,
-    properties: {
-      agente:            { type: 'string', description: 'Nombre o rol del compañero. Ej: "Nox", "Nova", "contabilidad".' },
-      tarea:             { type: 'string', description: 'Descripción clara de lo que debe ejecutar el compañero.' },
-      contexto:          { type: 'string', description: 'Contexto adicional que ayude al compañero a entender la solicitud. Opcional.' },
-      success_criteria:  { type: 'string', description: 'Criterio de éxito: descripción de qué debe haber pasado para que la tarea se considere completada. Si se define, el agente evaluará su resultado y reintentará si no lo cumple.' },
-      max_iterations:    { type: 'number', description: 'Número máximo de intentos para cumplir el criterio de éxito (1-5, default 3). Solo aplica cuando success_criteria está definido.' },
-    },
-    required: ['agente', 'tarea'],
-  },
-};
+// Migrated to registry: src/lib/tools/schemas.ts
+const DELEGATE_TASK_TOOL: Anthropic.Tool = toAnthropicTool(TOOL_SCHEMAS['delegate_task']);
 
-const CONSULT_AGENT_TOOL: Anthropic.Tool = {
-  name: 'consult_agent',
-  description: 'Consulta a otro empleado del equipo cuando no tienes la información y esa es su área de especialidad. El compañero puede buscar en su Drive e internet si tampoco la tiene en su base de conocimiento. Úsala cuando necesites información que está fuera de tu área.',
-  input_schema: {
-    type: 'object' as const,
-    properties: {
-      rol: {
-        type: 'string',
-        description: 'Nombre o rol del compañero a consultar. Ej: "Nova", "contador", "almacén".',
-      },
-      tarea: {
-        type: 'string',
-        description: 'Qué necesitas saber o que te consiga. Sé específico.',
-      },
-      contexto: {
-        type: 'string',
-        description: 'Contexto adicional relevante para que tu compañero entienda mejor la solicitud. Opcional.',
-      },
-      caller_verified: {
-        type: 'boolean',
-        description: 'OBLIGATORIO cuando la consulta requiere info interna. TRUE solo si el interlocutor ya se verificó con passphrase o número reconocido del equipo. FALSE si es cliente externo o si dudas. Con FALSE, el compañero rechazará compartir info interna. Default false.',
-      },
-    },
-    required: ['rol', 'tarea'],
-  },
-};
+// Migrated to registry: src/lib/tools/schemas.ts
+const CONSULT_AGENT_TOOL: Anthropic.Tool = toAnthropicTool(TOOL_SCHEMAS['consult_agent']);
 
 const QB_TOOLS: Anthropic.Tool[] = [
   {
@@ -986,75 +842,17 @@ const QB_TOOLS: Anthropic.Tool[] = [
   },
 ];
 
-const CREAR_LEAD_TOOL: Anthropic.Tool = {
-  name: 'crear_lead',
-  description: 'Registra un prospecto interesado en los servicios del negocio (aparece en Llamadas del portal). Si ya lo registraste hace unos minutos con el mismo whatsapp o email, el sistema hace merge automatico, NO re-ejecutes esta tool para "confirmar" — solo dile al dueno donde revisar. REGLA CRÍTICA: SIEMPRE después de crear_lead debes invocar también crear_contacto_saliente con el mismo teléfono y motivo del interés, más los tags que MEJOR describan al contacto según lo que sabes de él. Usa tu criterio para elegir tags — piensa cómo el dueño querría segmentarlo después: nivel de interés ("Interesado", "Curioso", "En evaluación"), tipo de cliente ("B2B", "PYME", "Enterprise", "Retail"), señales de urgencia ("Urgente", "Presupuesto listo"), o categoría ("Lead", "VIP", "Cliente-actual", "Prospecto-frío"). Puedes combinar varios. Si de veras no tienes más info que el interés inicial, ["Lead"] es un fallback aceptable. Son dos tools en un solo turno.',
-  input_schema: {
-    type: 'object' as const,
-    properties: {
-      nombre:      { type: 'string', description: 'Nombre completo del prospecto' },
-      negocio:     { type: 'string', description: 'Nombre del negocio del prospecto' },
-      giro:        { type: 'string', description: 'Giro o industria del negocio' },
-      servicio:    { type: 'string', description: 'Servicio en el que está interesado' },
-      presupuesto: { type: 'string', description: 'Presupuesto aproximado' },
-      timeline:    { type: 'string', description: 'Para cuándo lo necesita' },
-      email:       { type: 'string', description: 'Correo electrónico del prospecto' },
-      whatsapp:    { type: 'string', description: 'Número de WhatsApp del prospecto' },
-    },
-    required: ['nombre', 'servicio'],
-  },
-};
+// Migrated to registry: src/lib/tools/schemas.ts
+const CREAR_LEAD_TOOL: Anthropic.Tool = toAnthropicTool(TOOL_SCHEMAS['crear_lead']);
 
-const BUSCAR_CORREO_ENVIADO_TOOL: Anthropic.Tool = {
-  name: 'buscar_correo_enviado',
-  description: 'Busca correos que TÚ u otro empleado del equipo hayan enviado en el pasado desde el buzón de la empresa. Útil para: (1) ver qué se le comunicó a un cliente antes de darle seguimiento, (2) revisar histórico de conversaciones cuando el dueño pregunta por un correo previo, (3) evitar duplicar comunicaciones. Devuelve preview del cuerpo + destinatario + asunto + fecha + qué empleado lo envió.',
-  input_schema: {
-    type: 'object' as const,
-    properties: {
-      query:        { type: 'string', description: 'Texto a buscar en asunto o cuerpo (opcional). Ej: "cotización Nemak", "confirmación cita".' },
-      destinatario: { type: 'string', description: 'Correo del destinatario para filtrar (opcional, match parcial). Ej: "pedro" o "@nemak.com".' },
-      dias:         { type: 'number', description: 'Días hacia atrás a buscar (1-365, default 30).' },
-      limit:        { type: 'number', description: 'Máximo resultados a devolver (1-20, default 10).' },
-    },
-  },
-};
+// Migrated to registry: src/lib/tools/schemas.ts
+const BUSCAR_CORREO_ENVIADO_TOOL: Anthropic.Tool = toAnthropicTool(TOOL_SCHEMAS['buscar_correo_enviado']);
 
-const CREAR_CONTACTO_SALIENTE_TOOL: Anthropic.Tool = {
-  name: 'crear_contacto_saliente',
-  description: 'Agrega un contacto a la lista de outbound para llamarle despues (aparece en Campanas del portal). Debe invocarse SIEMPRE junto con crear_lead (mismo turno) para que todo prospecto registrado quede también visible en Campañas. También úsala independiente cuando el dueño pida seguimiento por llamada. NO la confundas con agregar_tag_contacto (esa solo etiqueta contactos que YA existen).',
-  input_schema: {
-    type: 'object' as const,
-    properties: {
-      nombre:       { type: 'string', description: 'Nombre del contacto' },
-      telefono:     { type: 'string', description: 'Telefono a llamar (obligatorio)' },
-      email:        { type: 'string', description: 'Correo del contacto (opcional)' },
-      motivo:       { type: 'string', description: 'Motivo o contexto de la llamada de seguimiento' },
-      tags:         { type: 'array', items: { type: 'string' }, description: 'Etiquetas para clasificar el contacto — usa TU criterio según lo que sepas del prospecto. Piensa cómo el dueño querría segmentarlo después. Ejemplos: nivel de interés ("Interesado", "Curioso"), tipo ("B2B", "PYME", "Enterprise"), urgencia ("Urgente", "Presupuesto listo"), categoría ("Lead", "VIP", "Cliente-actual"). Puedes combinar varios. ["Lead"] es fallback aceptable si no hay más info.' },
-      scheduled_at: { type: 'string', description: 'Fecha/hora ISO 8601 sugerida (opcional). Si se omite, queda en pending sin agendar.' },
-    },
-    required: ['telefono'],
-  },
-};
+// Migrated to registry: src/lib/tools/schemas.ts
+const CREAR_CONTACTO_SALIENTE_TOOL: Anthropic.Tool = toAnthropicTool(TOOL_SCHEMAS['crear_contacto_saliente']);
 
-const AGENDAR_CITA_TOOL: Anthropic.Tool = {
-  name: 'agendar_cita',
-  description: 'Agenda, modifica o cancela una cita de un cliente. CRÍTICO: para agendar/modificar SIEMPRE debes mandar fecha_iso (YYYY-MM-DD) y hora (HH:MM 24h) — si las omites el sistema RECHAZA la operación. Para cancelar solo necesitas telefono.',
-  input_schema: {
-    type: 'object' as const,
-    properties: {
-      accion:       { type: 'string', enum: ['agendar', 'modificar', 'cancelar'], description: 'Acción a realizar' },
-      nombre:       { type: 'string', description: 'Nombre del cliente' },
-      servicio:     { type: 'string', description: 'Servicio para la cita' },
-      fecha:        { type: 'string', description: 'Fecha en lenguaje natural para mostrar al cliente (ej: "lunes 28 de julio"). Es SOLO cosmética — la fecha real que usa el sistema es fecha_iso.' },
-      fecha_iso:    { type: 'string', description: 'Fecha ISO YYYY-MM-DD (ej: 2026-08-11). OBLIGATORIA para agendar/modificar. Confirma el AÑO correcto (no repitas 2025 si estamos en 2026).' },
-      hora:         { type: 'string', description: 'Hora en formato HH:MM 24h (ej: "14:30" para 2:30pm, "12:00" para mediodía). OBLIGATORIA para agendar/modificar.' },
-      duracion_min: { type: 'number', description: 'Duración estimada de la cita en minutos. Default 60.' },
-      telefono:     { type: 'string', description: 'Teléfono del cliente (necesario para cancelar o modificar)' },
-      ubicacion:    { type: 'string', description: 'Dirección física, link de videollamada (Zoom/Meet), oficina, o instrucciones para llegar.' },
-    },
-    required: ['accion', 'nombre'],
-  },
-};
+// Migrated to registry: src/lib/tools/schemas.ts
+const AGENDAR_CITA_TOOL: Anthropic.Tool = toAnthropicTool(TOOL_SCHEMAS['agendar_cita']);
 
 const REGISTRAR_PEDIDO_TOOL: Anthropic.Tool = {
   name: 'registrar_pedido',
@@ -1073,17 +871,8 @@ const REGISTRAR_PEDIDO_TOOL: Anthropic.Tool = {
   },
 };
 
-const BUSCAR_CLIENTE_TOOL: Anthropic.Tool = {
-  name: 'buscar_cliente',
-  description: 'Busca el historial de un cliente por nombre, teléfono o email. Muestra llamadas, leads, pedidos y citas anteriores. Úsala cuando el dueño quiera consultar el historial de un cliente.',
-  input_schema: {
-    type: 'object' as const,
-    properties: {
-      identificador: { type: 'string', description: 'Nombre completo, número de teléfono o email del cliente a buscar' },
-    },
-    required: ['identificador'],
-  },
-};
+// Migrated to registry: src/lib/tools/schemas.ts
+const BUSCAR_CLIENTE_TOOL: Anthropic.Tool = toAnthropicTool(TOOL_SCHEMAS['buscar_cliente']);
 
 const CREAR_TICKET_TOOL: Anthropic.Tool = {
   name: 'crear_ticket',
