@@ -488,21 +488,41 @@ class GoogleCalendar implements CalendarConnector {
     if (input.attendees?.length) {
       body.attendees = input.attendees.map(email => ({ email }));
     }
-    const res = await fetch(`${GCAL}/calendars/primary/events`, {
+    // Auto-generar Meet link cuando se pida explícito o cuando location
+    // mencione "meet"/"videollamada"/"zoom" y no traiga URL propia — Google
+    // acepta conferenceData sólo con conferenceDataVersion=1 en el query.
+    const wantsMeet = input.generate_meet_link === true
+      || (typeof input.location === 'string' && /\b(meet|videollamada|zoom|remoto|virtual)\b/i.test(input.location) && !/https?:/i.test(input.location));
+    if (wantsMeet) {
+      body.conferenceData = {
+        createRequest: {
+          requestId: `meet-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          conferenceSolutionKey: { type: 'hangoutsMeet' },
+        },
+      };
+    }
+    const url = wantsMeet
+      ? `${GCAL}/calendars/primary/events?conferenceDataVersion=1`
+      : `${GCAL}/calendars/primary/events`;
+    const res = await fetch(url, {
       method:  'POST',
       headers: { ...this.h(), 'Content-Type': 'application/json' },
       body:    JSON.stringify(body),
     });
     if (!res.ok) return null;
     const e = await res.json();
+    const meetLink = e.conferenceData?.entryPoints?.find(
+      (ep: { entryPointType?: string; uri?: string }) => ep.entryPointType === 'video'
+    )?.uri as string | undefined;
     return {
       id:          e.id,
       title:       e.summary ?? input.title,
       start:       e.start?.dateTime ?? input.start,
       end:         e.end?.dateTime   ?? input.end,
-      location:    e.location,
+      location:    meetLink ?? e.location,
       description: e.description,
       attendees:   input.attendees ?? [],
+      meet_link:   meetLink,
     };
   }
 

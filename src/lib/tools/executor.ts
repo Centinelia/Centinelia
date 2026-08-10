@@ -559,7 +559,7 @@ async function executeAgentToolInner(
     return executeListCalendarEvents(agentId, new Date(toolInput.from as string), new Date(toolInput.to as string), supabase);
   }
   if (toolName === 'create_calendar_event') {
-    return executeCreateCalendarEvent(agentId, { title: toolInput.title as string, start: toolInput.start as string, end: toolInput.end as string, description: toolInput.description as string | undefined, location: toolInput.location as string | undefined, attendees: toolInput.attendees as string[] | undefined }, supabase);
+    return executeCreateCalendarEvent(agentId, { title: toolInput.title as string, start: toolInput.start as string, end: toolInput.end as string, description: toolInput.description as string | undefined, location: toolInput.location as string | undefined, attendees: toolInput.attendees as string[] | undefined, generate_meet_link: toolInput.generate_meet_link as boolean | undefined }, supabase);
   }
   if (toolName === 'delete_calendar_event') {
     return executeDeleteCalendarEvent(agentId, toolInput.event_id as string, supabase);

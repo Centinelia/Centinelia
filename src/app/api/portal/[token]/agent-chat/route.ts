@@ -577,16 +577,17 @@ const LIST_CALENDAR_EVENTS_TOOL: Anthropic.Tool = {
 
 const CREATE_CALENDAR_EVENT_TOOL: Anthropic.Tool = {
   name: 'create_calendar_event',
-  description: 'Crea un evento en el calendario (Google Calendar u Outlook Calendar) del dueño. Úsala cuando te pidan agendar una reunión, cita, recordatorio o cualquier evento en el calendario.',
+  description: 'Crea un evento en el calendario (Google Calendar u Outlook Calendar) del dueño. Úsala cuando te pidan agendar una reunión, cita, recordatorio o cualquier evento en el calendario. IMPORTANTE: cuando el cliente pida videollamada/Meet/Zoom y NO tenga link propio, pasa generate_meet_link=true en vez de pedir el link al dueño. El sistema crea el Meet automáticamente y te devuelve el link en el message.',
   input_schema: {
     type: 'object' as const,
     properties: {
-      title:       { type: 'string', description: 'Título del evento.' },
-      start:       { type: 'string', description: 'Fecha y hora de inicio en ISO 8601 con zona horaria. Ej: "2026-07-15T10:00:00"' },
-      end:         { type: 'string', description: 'Fecha y hora de fin en ISO 8601. Ej: "2026-07-15T11:00:00"' },
-      description: { type: 'string', description: 'Descripción o notas del evento. Opcional.' },
-      location:    { type: 'string', description: 'Lugar del evento (dirección o nombre del lugar). Opcional.' },
-      attendees:   { type: 'array', items: { type: 'string' }, description: 'Lista de correos de los invitados. Opcional.' },
+      title:              { type: 'string', description: 'Título del evento.' },
+      start:              { type: 'string', description: 'Fecha y hora de inicio en ISO 8601 con zona horaria. Ej: "2026-07-15T10:00:00-06:00"' },
+      end:                { type: 'string', description: 'Fecha y hora de fin en ISO 8601. Ej: "2026-07-15T11:00:00-06:00"' },
+      description:        { type: 'string', description: 'Descripción o notas del evento. Opcional.' },
+      location:           { type: 'string', description: 'Lugar del evento (dirección, sala, o link de videollamada externa). Opcional.' },
+      attendees:          { type: 'array', items: { type: 'string' }, description: 'Lista de correos de los invitados. Opcional.' },
+      generate_meet_link: { type: 'boolean', description: 'true para generar link Google Meet automáticamente. Úsalo cuando el cliente pida videollamada/Meet y NO haya link propio. El link vuelve en el message del tool_result.' },
     },
     required: ['title', 'start', 'end'],
   },

@@ -149,8 +149,8 @@ const BASE_EMAIL_TOOLS: Anthropic.Tool[] = [
   },
   {
     name:        'create_calendar_event',
-    description: 'Crea un evento en el calendario cuando el email contiene una solicitud de reunión o cita acordada.',
-    input_schema: { type: 'object' as const, properties: { title: { type: 'string' }, start: { type: 'string' }, end: { type: 'string' }, description: { type: 'string' }, location: { type: 'string' }, attendees: { type: 'array', items: { type: 'string' } } }, required: ['title', 'start', 'end'] },
+    description: 'Crea un evento en el calendario cuando el email contiene una solicitud de reunión o cita acordada. Cuando la reunión sea por videollamada Meet y no haya link propio en el hilo, pasa generate_meet_link=true para que el sistema cree el Meet automáticamente y te devuelva el link.',
+    input_schema: { type: 'object' as const, properties: { title: { type: 'string' }, start: { type: 'string' }, end: { type: 'string' }, description: { type: 'string' }, location: { type: 'string' }, attendees: { type: 'array', items: { type: 'string' } }, generate_meet_link: { type: 'boolean', description: 'true para auto-generar link Google Meet' } }, required: ['title', 'start', 'end'] },
   },
   {
     name:        'delete_calendar_event',
