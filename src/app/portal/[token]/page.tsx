@@ -14,6 +14,7 @@ import type { MinutesTier } from '@/lib/billing/plans';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { cookies } from 'next/headers';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { resolveOrgFromToken } from '@/lib/portal/org-token';
 import { redirect } from 'next/navigation';
 
 import PortalLogout            from './PortalLogout';
@@ -67,7 +68,7 @@ import { getOrCreateSerial }    from '@/lib/portal/serial';
 import type { OutboundCall }     from './PortalOutboundSection';
 import type { ContactOutbound } from './PortalContactsSection';
 
-type Tab = 'inicio' | 'llamadas' | 'salientes' | 'oficina' | 'agentes' | 'negocio' | 'integraciones' | 'cuenta' | 'equipo';
+type Tab = 'inicio' | 'llamadas' | 'salientes' | 'oficina' | 'empleados' | 'agentes' | 'organizacion' | 'negocio' | 'integraciones' | 'cuenta' | 'equipo';
 
 interface Props {
   params:       Promise<{ token: string }>;
@@ -98,11 +99,12 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const tab: Tab           = (tabParam as Tab) ?? 'inicio';
   const days               = period ? parseInt(period) : undefined;
 
-  if (tab === 'oficina')                          redirect(`/portal/${token}/oficina`);
-  if (tab === 'agentes')                          redirect(`/portal/${token}/agentes`);
-  if (tab === 'llamadas' || tab === 'salientes')  redirect(`/portal/${token}/llamadas`);
-  if (tab === 'integraciones')                    redirect(`/portal/${token}?tab=negocio#integraciones`);
-  if (tab === 'equipo')                           redirect(`/portal/${token}/usuarios`);
+  if (tab === 'oficina')                            redirect(`/portal/${token}/oficina`);
+  if (tab === 'empleados' || tab === 'agentes')     redirect(`/portal/${token}/empleados`);
+  if (tab === 'llamadas' || tab === 'salientes')    redirect(`/portal/${token}/llamadas`);
+  if (tab === 'integraciones')                      redirect(`/portal/${token}?tab=organizacion#integraciones`);
+  if (tab === 'equipo')                             redirect(`/portal/${token}/equipo`);
+  if (tab === 'negocio')                            redirect(`/portal/${token}?tab=organizacion`);
 
   // ── Auth: verify session owns this portal ─────────────────────────────────
   const cookieStore    = await cookies();
@@ -110,8 +112,18 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const session        = await verifySession(sessionCookie);
 
   const supabase = createAdminClient();
+  const resolved = await resolveOrgFromToken(token);
+  if (!resolved) notFound();
+
+  // "Primer agente activo del org" como display-agent, por retrocompat con el
+  // resto de esta página (agent.id, agent.features, etc.). Sin concepto de primary.
   const { data: agent } = await supabase
-    .from('voice_agents').select('*').eq('portal_token', token).single();
+    .from('voice_agents').select('*')
+    .eq('portal_email', resolved.portalEmail)
+    .eq('active', true)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
   if (!agent) notFound();
 
   // Security: verify this agent belongs to the logged-in client
@@ -137,12 +149,17 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   // ─── Batch 1: paralelizar TODAS las queries org-scoped que dependen de
   // portal_email pero son independientes entre sí. Antes eran 6 awaits en
   // serie (~180-600ms tigre en prod contra Supabase). Ahora un solo round-trip.
+  // Ventana del ciclo en curso para agregar rollover_cap perdido. Uso 30 días
+  // hacia atrás desde hoy — coincide con la ventana rodante de consumo del pool.
+  const cycleStartIso = new Date(Date.now() - 30 * 86_400_000).toISOString();
+
   const [
     clientAgentsRes,
     orgSettingsRes,
     acctMinsRes,
     opsAgentsRes,
     accountSerialRes,
+    rolloverLostRes,
   ] = agent.portal_email
     ? await Promise.all([
         lookupEmail
@@ -170,12 +187,20 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           .eq('portal_email', agent.portal_email)
           .then(r => r.data),
         getOrCreateSerial(agent.portal_email).catch(() => null),
+        supabase
+          .from('minutes_ledger')
+          .select('amount')
+          .eq('portal_email', agent.portal_email)
+          .eq('kind', 'rollover_cap')
+          .gte('created_at', cycleStartIso)
+          .then(r => r.data),
       ])
     : [
         [] as any[],
         null,
         null,
         null as any,
+        null,
         null,
       ];
 
@@ -185,6 +210,10 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const acctMins      = acctMinsRes;
   const opsAgents     = opsAgentsRes;
   const accountSerial = accountSerialRes;
+  const rolloverLostThisCycle = Math.max(
+    0,
+    -((rolloverLostRes ?? []) as Array<{ amount: number }>).reduce((s, r) => s + (r.amount ?? 0), 0),
+  );
 
   const orgDirectory: DirectoryPerson[] = ((orgSettings as any)?.directory ?? []);
 
@@ -588,8 +617,8 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
   const TABS: { id: Tab; label: string }[] = [
     { id: 'inicio',   label: 'Inicio' },
-    { id: 'negocio',  label: 'Organización' },
-    { id: 'agentes',  label: 'Empleados' },
+    { id: 'organizacion', label: 'Organización' },
+    { id: 'empleados',    label: 'Empleados' },
     { id: 'oficina',  label: 'Oficina' },
     { id: 'cuenta',   label: 'Cuenta' },
     { id: 'equipo',   label: 'Equipo de gestión' },
@@ -770,7 +799,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   <div className="px-5 pb-5 pt-4 flex flex-col gap-2.5" style={{ borderTop: '1px solid #F0EDF9' }}>
                     {/* URGENTE: integraciones caídas */}
                     {reauthAlerts.map(alert => (
-                      <Link key={alert.provider} href={`/portal/${token}?tab=negocio#integraciones`}
+                      <Link key={alert.provider} href={`/portal/${token}?tab=organizacion#integraciones`}
                         className="flex items-center gap-3 px-4 py-3 rounded-xl no-underline transition-all hover:translate-x-0.5"
                         style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)' }}>
                         <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
@@ -912,12 +941,9 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                       </Link>
                     )}
 
-                    {/* Brief del día (integrado, sin card duplicada) */}
+                    {/* Brief del día — el label vive dentro del card, no aquí */}
                     {hasNox && (
                       <div className="mt-1 pt-3" style={{ borderTop: '1px solid #F0EDF9' }}>
-                        <p className="text-[10px] font-semibold tracking-widest uppercase mb-2" style={{ color: '#9B8FB5' }}>
-                          Brief del día
-                        </p>
                         <BriefDelDiaCard />
                       </div>
                     )}
@@ -942,7 +968,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
         )}
 
         {/* ── NEGOCIO (V2 design system shells) ───────────────────── */}
-        {tab === 'negocio' && (
+        {tab === 'organizacion' && (
           <PageContainer>
             <div className="flex flex-col gap-5">
 
@@ -1299,6 +1325,11 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                             )}
                             {rolloverMinutes > 0 && (
                               <p className="text-[11px] mt-1" style={{ color: '#6C3BFF' }}>{planBaseMinutes} base + {rolloverMinutes} del mes anterior</p>
+                            )}
+                            {rolloverLostThisCycle > 0 && (
+                              <p className="text-[11px] mt-1" style={{ color: '#B45309' }}>
+                                {rolloverLostThisCycle} min no acumulados este ciclo por límite de rollover (2× de tu plan base).
+                              </p>
                             )}
                           </div>
 
