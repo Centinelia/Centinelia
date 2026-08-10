@@ -635,7 +635,34 @@ export async function processInboxEmail(params: {
     const { buildInternalDirectoryString } = await import('@/lib/human-handoff/directory');
     const directory = await buildInternalDirectoryString(portalEmail);
     if (directory) contextBlocks.push(directory);
+
+    // Datos de contacto de la empresa (para firmas + drafts). Sin estos, los
+    // drafts salen con "contáctenos" sin teléfono/website real (bug 2026-08-10).
+    try {
+      const { createAdminClient: createAdminClient2 } = await import('@/lib/supabase/admin');
+      const { data: orgContact } = await createAdminClient2()
+        .from('organizations')
+        .select('business_email, business_phone, business_website, brand_address')
+        .eq('portal_email', portalEmail)
+        .maybeSingle();
+      const orgC = orgContact as { business_email?: string | null; business_phone?: string | null; business_website?: string | null; brand_address?: string | null } | null;
+      const contactLines: string[] = [];
+      if (orgC?.business_email)   contactLines.push(`- Correo: ${orgC.business_email}`);
+      if (orgC?.business_phone)   contactLines.push(`- Teléfono: ${orgC.business_phone}`);
+      if (orgC?.business_website) contactLines.push(`- Sitio web: ${orgC.business_website}`);
+      if (orgC?.brand_address)    contactLines.push(`- Dirección: ${orgC.brand_address}`);
+      if (contactLines.length > 0) {
+        contextBlocks.push(`# Datos de contacto de tu empresa\nSIEMPRE que redactes un draft o firma, incluye estos datos al final para que el remitente pueda contactarnos:\n${contactLines.join('\n')}`);
+      }
+    } catch { /* best-effort */ }
   }
+
+  // Fecha ISO actual (bloque siempre presente, no solo cuando hay portalEmail).
+  // Sin esto el modelo alucina años viejos en drafts.
+  const todayIsoInbox   = new Date().toISOString().slice(0, 10);
+  const currentYearInbox = new Date().getFullYear();
+  contextBlocks.push(`# Fecha actual\nHoy es ${todayIsoInbox}. Estamos en el año ${currentYearInbox}. USA este año en cualquier fecha que redactes — no repitas años pasados.`);
+
   const contextSection = contextBlocks.length ? `\n\n${contextBlocks.join('\n\n')}` : '';
 
   const spamRescueNote = fromSpamFolder

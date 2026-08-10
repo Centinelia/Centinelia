@@ -1425,11 +1425,14 @@ export async function POST(req: NextRequest, { params }: Params) {
     : getPrimaryAgentFromToken<any>(token, '*', supabase).then(data => ({ data }));
   // Notion es org-level desde 2026-08-09 (vive en organizations, no en
   // voice_agents). Se lee en paralelo con agent y qbRow.
-  const [{ data: agent }, { data: qbRow }, { data: orgNotion }] = await Promise.all([
+  const [{ data: agent }, { data: qbRow }, { data: orgNotion }, { data: orgContact }] = await Promise.all([
     targetQuery,
     supabase.from('qb_integrations').select('realm_id').eq('portal_email', accountAgent.portal_email).maybeSingle(),
     accountAgent.portal_email
       ? supabase.from('organizations').select('notion_access_token, notion_db_id, notion_products_db_id').eq('portal_email', accountAgent.portal_email).maybeSingle()
+      : Promise.resolve({ data: null }),
+    accountAgent.portal_email
+      ? supabase.from('organizations').select('business_email, business_phone, business_website, brand_address, email_footer_text').eq('portal_email', accountAgent.portal_email).maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
   if (!agent) return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
@@ -1709,6 +1712,27 @@ export async function POST(req: NextRequest, { params }: Params) {
   const context  = sections.join('\n\n');
   const kbPortal = await getKnowledgeBase('kb_portal');
 
+  // Fecha actual + datos de contacto de la org — sin esto el modelo alucina
+  // años viejos (bug 2026-08-10: Niva puso "11 de agosto de 2025") y omite
+  // datos reales de contacto al redactar correos ("contáctenos" sin teléfono).
+  const nowForPrompt = new Date();
+  const todayIso     = nowForPrompt.toISOString().slice(0, 10);
+  const todayEs      = nowForPrompt.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const dateBlock    = `## Fecha actual\nHoy es ${todayEs} (${todayIso}). USA este año en cualquier fecha que redactes — no repitas años pasados.`;
+
+  const orgC = orgContact as { business_email?: string | null; business_phone?: string | null; business_website?: string | null; brand_address?: string | null; email_footer_text?: string | null } | null;
+  const contactLines: string[] = [];
+  if (orgC?.business_email)   contactLines.push(`- Correo: ${orgC.business_email}`);
+  if (orgC?.business_phone)   contactLines.push(`- Teléfono: ${orgC.business_phone}`);
+  if (orgC?.business_website) contactLines.push(`- Sitio web: ${orgC.business_website}`);
+  if (orgC?.brand_address)    contactLines.push(`- Dirección: ${orgC.brand_address}`);
+  const contactBlock = contactLines.length > 0
+    ? `## Datos de contacto de tu empresa\nSIEMPRE que redactes un correo, cotización, contrato o firma para un cliente, incluye estos datos al final para que puedan contactarnos:\n${contactLines.join('\n')}`
+    : '';
+  const footerBlock = orgC?.email_footer_text?.trim()
+    ? `## Firma de correos por default\n${orgC.email_footer_text.trim()}`
+    : '';
+
   const system = `Eres ${agentName}, empleado de ${agent.business_name}${agentRole ? ` con el rol de ${agentRole}` : ''}.
 
 El dueño del negocio te está consultando directamente. Tienes acceso completo a tu operación: manual de la empresa, llamadas recientes, bandeja de entrada, juntas, contratos y CRM.
@@ -1797,6 +1821,12 @@ El portal renderiza tu respuesta con markdown, así que úsalo naturalmente para
 
 Respuestas cortas: 1 oración. Respuestas de detalle: 2-3 párrafos + bullets si aplica. Cero em-dashes (— o –).
 ${kbPortal ? `\n## Guía de marca y terminología\n${kbPortal}` : ''}
+
+${dateBlock}
+
+${contactBlock}
+
+${footerBlock}
 
 ## Contexto operativo
 

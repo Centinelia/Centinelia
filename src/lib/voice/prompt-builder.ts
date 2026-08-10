@@ -66,6 +66,39 @@ export async function buildSystemPrompt(
 
   const blocks: string[] = [];
 
+  // ── Fecha actual (bloque explícito) ─────────────────────────────────────
+  // Sin instrucción explícita, el modelo alucina años viejos al redactar
+  // fechas para el cliente (bug 2026-08-10: correos con "2025").
+  const todayIso   = new Date().toISOString().slice(0, 10);
+  const currentYear = new Date().getFullYear();
+  blocks.push(`FECHA ACTUAL:
+Hoy es ${now} (${todayIso}).
+Estamos en el año ${currentYear}. USA este año en cualquier fecha que menciones al cliente. No repitas años pasados ni asumas años futuros — cuando digas "el ${currentYear}" o construyas una fecha, el año es ${currentYear}.`);
+
+  // ── Datos de contacto de la org (para firmas, correos, referencias) ─────
+  // Fetcheados desde organizations (source of truth) — voice_agents solo tiene
+  // business_phone_display que puede estar desactualizado.
+  if (supabase && orgId) {
+    try {
+      const { data: orgContact } = await supabase
+        .from('organizations')
+        .select('business_email, business_phone, business_website, brand_address')
+        .eq('portal_email', orgId)
+        .maybeSingle();
+      const orgC = orgContact as { business_email?: string | null; business_phone?: string | null; business_website?: string | null; brand_address?: string | null } | null;
+      const contactLines: string[] = [];
+      if (orgC?.business_email)   contactLines.push(`- Correo: ${orgC.business_email}`);
+      if (orgC?.business_phone)   contactLines.push(`- Teléfono: ${orgC.business_phone}`);
+      if (orgC?.business_website) contactLines.push(`- Sitio web: ${orgC.business_website}`);
+      if (orgC?.brand_address)    contactLines.push(`- Dirección: ${orgC.brand_address}`);
+      if (contactLines.length > 0) {
+        blocks.push(`DATOS DE CONTACTO DE TU EMPRESA:
+Si el cliente pregunta cómo contactarnos, dale estos datos. Si vas a redactar o dictar un correo, incluye estos datos al final:
+${contactLines.join('\n')}`);
+      }
+    } catch { /* best-effort */ }
+  }
+
   // ── Uso aceptable — omitir con features.skip_aup (agentes de confianza) ──
   const skipAup = !!f.skip_aup;
   if (!skipAup) blocks.push(`POLÍTICA DE USO ACEPTABLE — CENTINELIA (NO NEGOCIABLE):
