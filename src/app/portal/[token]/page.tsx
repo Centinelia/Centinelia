@@ -168,9 +168,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   // ─── Batch 1: paralelizar TODAS las queries org-scoped que dependen de
   // portal_email pero son independientes entre sí. Antes eran 6 awaits en
   // serie (~180-600ms tigre en prod contra Supabase). Ahora un solo round-trip.
-  // Ventana del ciclo en curso para agregar rollover_cap perdido. Uso 30 días
-  // hacia atrás desde hoy — coincide con la ventana rodante de consumo del pool.
-  const cycleStartIso = new Date(Date.now() - 30 * 86_400_000).toISOString();
+  // cycleStartIso declarado arriba a partir de agent.minutes_reset_date.
 
   const [
     clientAgentsRes,
