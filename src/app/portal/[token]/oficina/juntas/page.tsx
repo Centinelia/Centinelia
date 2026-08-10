@@ -25,7 +25,7 @@ export default async function JuntasPage({ params }: Props) {
         icon={Mic}
         eyebrow="Juntas"
         title="Reuniones y minutas"
-        description="Graba, transcribe y genera minutas de tus juntas. Tu equipo captura los pendientes automáticamente."
+        description="Sube el audio de una reunión y tu equipo la transcribe, genera la minuta con decisiones y convierte los compromisos en tareas automáticamente."
       />
       <OpsMeetingsSection token={token} />
     </div>

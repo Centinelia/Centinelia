@@ -9,10 +9,10 @@ import { generateLLMInsights, metricKeyToDeepLink } from '@/lib/ai/insights-engi
 import { generateRulesInsights } from '@/lib/ai/insights-rules';
 import { consumeAiOp }           from '@/lib/ai/ops-guard';
 
-// Cap duro para evitar bloat contemplativo. Si ya hay N activos, no generar más.
-const MAX_ACTIVE_INSIGHTS_PER_ORG = 3;
-// Ventana de dedup: no volver a generar un insight con la misma métrica dentro de X días.
-const DEDUP_WINDOW_DAYS = 14;
+// Cap por empleado — cada empleado puede tener hasta N insights activos.
+// Antes era global por org, lo que hacía que el primer agente en el loop
+// llenara el cap y los demás no aparecieran (bug visible en portal).
+const MAX_ACTIVE_INSIGHTS_PER_AGENT = 3;
 
 interface Params { params: Promise<{ token: string }> }
 
@@ -49,7 +49,10 @@ export async function GET(_req: NextRequest, { params }: Params) {
   const [recsRes, orgRes, agentsRes] = await Promise.all([
     supabase
       .from('agent_recommendations')
-      .select('id, agent_id, agent_name, agent_role, title, body, metric_key, current_value, priority, status, mode, created_at')
+      .select(`
+        id, agent_id, agent_name, agent_role, title, body, metric_key, current_value, priority, status, mode, created_at,
+        voice_agents!agent_id(agent_name, features)
+      `)
       .eq('org_id', portalEmail)
       .eq('week_start', weekStart)
       .neq('status', 'descartada')
@@ -128,32 +131,32 @@ export async function POST(_req: NextRequest, { params }: Params) {
 
   if (!agents.length) return NextResponse.json({ error: 'sin_agentes' }, { status: 400 });
 
-  // Hard cap: rehusar si ya hay MAX_ACTIVE activos (status 'nueva').
-  const { count: activeCount } = await supabase
+  // Cap por agente: contamos activos actuales por agent_id para respetar
+  // el límite individual sin bloquear a otros empleados.
+  const { data: activeByAgentRows } = await supabase
     .from('agent_recommendations')
-    .select('id', { count: 'exact', head: true })
+    .select('agent_id')
     .eq('org_id', portalEmail)
     .eq('status', 'nueva');
-  if ((activeCount ?? 0) >= MAX_ACTIVE_INSIGHTS_PER_ORG) {
+  const activeByAgent = new Map<string, number>();
+  for (const row of activeByAgentRows ?? []) {
+    activeByAgent.set(row.agent_id, (activeByAgent.get(row.agent_id) ?? 0) + 1);
+  }
+  // Solo rechazar si TODOS los agentes ya están al tope (nada por hacer).
+  const anyRoom = agents.some(a => (activeByAgent.get(a.id) ?? 0) < MAX_ACTIVE_INSIGHTS_PER_AGENT);
+  if (!anyRoom) {
     return NextResponse.json({
       error: 'cap_reached',
-      message: `Ya tienes ${activeCount} insights activos. Aplica o descarta los actuales antes de generar más.`,
+      message: 'Todos tus empleados ya tienen sus insights activos al tope. Aplica o descarta algunos antes de generar más.',
     }, { status: 409 });
   }
 
-  // Dedup: fetch metric_keys usados recientemente (últimos DEDUP_WINDOW_DAYS)
-  // por agente. Se filtran de los nuevos recs antes de insertar.
-  const dedupCutoff = new Date(Date.now() - DEDUP_WINDOW_DAYS * 86400000).toISOString();
-  const { data: recentRecs } = await supabase
-    .from('agent_recommendations')
-    .select('agent_id, metric_key')
-    .eq('org_id', portalEmail)
-    .in('status', ['nueva', 'aplicada'])
-    .gte('created_at', dedupCutoff)
-    .not('metric_key', 'is', null);
-  const dedupSet = new Set(
-    (recentRecs ?? []).map(r => `${r.agent_id}::${r.metric_key}`)
-  );
+  // NOTA: en generación MANUAL no aplicamos dedup por metric_key.
+  // El usuario pidió refresh explícito y ya pagó las ops — silenciar recs
+  // porque comparten metric_key con la semana pasada oculta empleados enteros
+  // (bug real con Sofía: 4 metric_keys previos hicieron que sus 4 recs nuevos
+  // se filtraran todos y no apareciera en la lista).
+  // El dedup sigue vivo en /api/cron/weekly-insights para el flujo automático.
 
   // For LLM mode: consume 2 ops per agent upfront (sequential — atomic check)
   if (mode === 'llm') {
@@ -190,13 +193,15 @@ export async function POST(_req: NextRequest, { params }: Params) {
       recs = await generateRulesInsights({ agentId: agent.id, agentName: promptAgentName, calls, prevWeekCalls: prevCalls });
     }
 
+    // Contador por-agente para respetar el cap individual.
+    let addedForAgent = 0;
+    const alreadyActive = activeByAgent.get(agent.id) ?? 0;
+
     for (let j = 0; j < recs.length; j++) {
       const r = recs[j];
-      // Dedup: skip si el (agent, metric_key) ya fue emitido dentro de la ventana
-      const dedupKey = `${agent.id}::${r.metric_key ?? 'null'}`;
-      if (r.metric_key && dedupSet.has(dedupKey)) continue;
-      // Respetar cap total: sumar activos existentes + los que planeamos insertar
-      if ((activeCount ?? 0) + allRows.length >= MAX_ACTIVE_INSIGHTS_PER_ORG) break;
+      // Cap por agente (sin dedup — ver nota arriba)
+      if (alreadyActive + addedForAgent >= MAX_ACTIVE_INSIGHTS_PER_AGENT) break;
+      addedForAgent++;
 
       allRows.push({
         org_id:        portalEmail,
@@ -226,7 +231,10 @@ export async function POST(_req: NextRequest, { params }: Params) {
   // Return fresh recs
   const { data: fresh } = await supabase
     .from('agent_recommendations')
-    .select('id, agent_id, agent_name, agent_role, title, body, metric_key, current_value, priority, status, mode, created_at')
+    .select(`
+      id, agent_id, agent_name, agent_role, title, body, metric_key, current_value, priority, status, mode, created_at,
+      voice_agents!agent_id(agent_name, features)
+    `)
     .eq('org_id', portalEmail)
     .eq('week_start', weekStart)
     .neq('status', 'descartada')

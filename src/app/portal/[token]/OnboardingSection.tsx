@@ -30,11 +30,11 @@ interface OInstance {
   onboarding_templates?: { name: string; steps: string[] };
 }
 
-const STATUS_CFG: Record<string, { label: string; color: string; bg: string }> = {
-  pendiente:  { label: 'Pendiente',   color: '#6b7280', bg: 'rgba(107,114,128,0.1)'  },
-  en_proceso: { label: 'En proceso',  color: '#f59e0b', bg: 'rgba(245,158,11,0.1)'   },
-  completado: { label: 'Completado',  color: '#22c55e', bg: 'rgba(34,197,94,0.1)'    },
-  cancelado:  { label: 'Cancelado',   color: '#ef4444', bg: 'rgba(239,68,68,0.1)'    },
+const STATUS_CFG: Record<string, { label: string; color: string; bg: string; hint: string }> = {
+  pendiente:  { label: 'Esperando al contacto', color: '#6b7280', bg: 'rgba(107,114,128,0.1)', hint: 'El contacto todavía no ha abierto ni respondido su formulario.' },
+  en_proceso: { label: 'Lista tu revisión',     color: '#f59e0b', bg: 'rgba(245,158,11,0.1)',  hint: 'El contacto ya envió sus datos y documentos. Revísalos y márcalo completado si están bien.' },
+  completado: { label: 'Completado',            color: '#22c55e', bg: 'rgba(34,197,94,0.1)',   hint: 'Proceso cerrado. Todos los documentos fueron validados.' },
+  cancelado:  { label: 'Cancelado',             color: '#ef4444', bg: 'rgba(239,68,68,0.1)',   hint: 'Este proceso se canceló.' },
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -225,20 +225,6 @@ export default function OnboardingSection({ token }: {
   return (
     <div className="flex flex-col gap-6 p-5 sm:p-7 w-full">
 
-      {/* Hero */}
-      <div>
-        <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#9B8FB5' }}>
-          Onboarding
-        </p>
-        <h1 className="text-xl font-bold mt-1.5 leading-snug" style={{ color: '#1A0A3B' }}>
-          Tu empleado guía a cada persona en su proceso de incorporación.
-        </h1>
-        <p className="text-sm mt-2 leading-relaxed" style={{ color: '#6B6480' }}>
-          Define plantillas con los pasos y documentos que necesitas de nuevos empleados, clientes o proveedores.
-          Tu empleado envía el formulario por correo y lleva el seguimiento desde aquí.
-        </p>
-      </div>
-
       {/* How it works — se conserva el acento lila (bloque destacado) */}
       <div className="flex flex-col sm:flex-row gap-3">
         {[
@@ -393,7 +379,12 @@ export default function OnboardingSection({ token }: {
               color: view === v ? '#fff' : '#6B6480',
               boxShadow: view === v ? '0 1px 2px rgba(108,59,255,0.24)' : 'none',
             }}>
-            {v === 'instances' ? `Procesos activos${instances.length > 0 ? ` (${instances.length})` : ''}` : 'Plantillas'}
+            {v === 'instances'
+              ? (() => {
+                  const activeCount = instances.filter(i => i.status !== 'completado' && i.status !== 'cancelado').length;
+                  return `Procesos activos${activeCount > 0 ? ` (${activeCount})` : ''}`;
+                })()
+              : `Plantillas${templates.length > 0 ? ` (${templates.length})` : ''}`}
           </button>
         ))}
       </div>
@@ -433,7 +424,7 @@ export default function OnboardingSection({ token }: {
                 'Proveedor: alta en sistema, datos bancarios, CFDI de servicios',
               ].map(ex => (
                 <div key={ex} className="flex items-start gap-2">
-                  <span className="mt-1.5 w-1 h-1 rounded-full shrink-0" style={{ background: '#9B8FB5' }} />
+                  <span className="mt-1.5 w-1.5 h-1.5 rounded-full shrink-0" style={{ background: '#6C3BFF' }} />
                   <p className="text-xs" style={{ color: '#6B6480' }}>{ex}</p>
                 </div>
               ))}
@@ -545,6 +536,7 @@ export default function OnboardingSection({ token }: {
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>{inst.contact_name}</span>
                         <span className="text-xs px-1.5 py-0.5 rounded-full font-medium"
+                          title={stCfg.hint}
                           style={{ background: stCfg.bg, color: stCfg.color }}>{stCfg.label}</span>
                       </div>
                       <p className="text-xs mt-0.5" style={{ color: '#6B6480' }}>{inst.contact_email} · {tplName}</p>
@@ -594,20 +586,15 @@ export default function OnboardingSection({ token }: {
                         </div>
                       )}
 
-                      {/* Status change */}
+                      {/* Acciones. "En proceso" no se ofrece manualmente:
+                          es un estado automático que se prende cuando el
+                          contacto envía el formulario público. */}
                       <div className="flex items-center gap-2 flex-wrap">
                         {inst.status !== 'completado' && (
                           <button onClick={() => handleStatusChange(inst.id, 'completado')}
                             className="px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
                             style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', color: '#22c55e' }}>
-                            Marcar completado
-                          </button>
-                        )}
-                        {inst.status !== 'en_proceso' && inst.status !== 'completado' && (
-                          <button onClick={() => handleStatusChange(inst.id, 'en_proceso')}
-                            className="px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-                            style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)', color: '#f59e0b' }}>
-                            En proceso
+                            Ya validé todo · marcar completado
                           </button>
                         )}
                         <button onClick={() => handleDeleteInstance(inst.id)}

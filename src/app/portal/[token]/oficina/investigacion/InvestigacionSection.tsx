@@ -3,6 +3,21 @@
 import { useState, useEffect } from 'react';
 import { Search, Loader2, ExternalLink, Zap, Users, TrendingUp, BookOpen, Newspaper, RefreshCw, Globe, CheckCircle, Phone } from 'lucide-react';
 import { MEERKAT_MAP } from '@/lib/portal/meerkat-roles';
+import MeerkatPicker from '../../agentes/MeerkatPicker';
+
+interface Researcher {
+  id:              string;
+  agent_name:      string | null;
+  business_name:   string;
+  meerkat_role_id: string | null;
+}
+
+interface ResearchMeerkat {
+  id:     string;
+  nombre: string;
+  color:  string;
+  imagen: string | null;
+}
 
 type ResearchType = 'leads' | 'competidores' | 'mercado' | 'regulaciones' | 'noticias' | 'general';
 
@@ -66,7 +81,14 @@ const LOADING_MESSAGES = [
   'Preparando los hallazgos...',
 ];
 
-export default function InvestigacionSection({ token, agentName, meerkatRoleId }: { token: string; agentName?: string; meerkatRoleId?: string | null }) {
+export default function InvestigacionSection({ token, researchers = [], defaultResearcherId = null, researchMeerkats = [], plan = 'pro', defaultTier = 'starter' }: {
+  token:               string;
+  researchers?:        Researcher[];
+  defaultResearcherId?: string | null;
+  researchMeerkats?:   ResearchMeerkat[];
+  plan?:               string;
+  defaultTier?:        string;
+}) {
   const [topic,       setTopic]       = useState('');
   const [location,    setLocation]    = useState('');
   const [keywords,    setKeywords]    = useState('');
@@ -76,12 +98,16 @@ export default function InvestigacionSection({ token, agentName, meerkatRoleId }
   const [error,       setError]       = useState('');
   const [loadingStep, setLoadingStep] = useState(0);
   const [lastTopic,   setLastTopic]   = useState('');
-  const [history,     setHistory]     = useState<Array<{ topic: string; type: ResearchType; results: Result[] }>>([]);
+  const [history,     setHistory]     = useState<Array<{ topic: string; type: ResearchType; results: Result[]; researcherId: string | null }>>([]);
+  const [researcherId, setResearcherId] = useState<string | null>(defaultResearcherId);
 
-  const selectedType = TYPES.find(t => t.key === type)!;
-  const employeeName = agentName ?? 'Tu empleado';
-  const meerkat      = meerkatRoleId ? MEERKAT_MAP[meerkatRoleId as keyof typeof MEERKAT_MAP] : null;
-  const acColor      = meerkat?.color ?? '#6C3BFF';
+  const selectedType       = TYPES.find(t => t.key === type)!;
+  const selectedResearcher = researchers.find(r => r.id === researcherId) ?? null;
+  const employeeName       = selectedResearcher?.agent_name?.trim() || 'Tu empleado';
+  const meerkat            = selectedResearcher?.meerkat_role_id
+    ? MEERKAT_MAP[selectedResearcher.meerkat_role_id as keyof typeof MEERKAT_MAP]
+    : null;
+  const acColor            = meerkat?.color ?? '#6C3BFF';
 
   useEffect(() => {
     if (!loading) { setLoadingStep(0); return; }
@@ -107,6 +133,7 @@ export default function InvestigacionSection({ token, agentName, meerkatRoleId }
           location: location.trim(),
           type,
           keywords: keywords.trim() ? keywords.split(',').map(k => k.trim()).filter(Boolean) : [],
+          agent_id: researcherId,
         }),
       });
       const data = await res.json();
@@ -115,7 +142,7 @@ export default function InvestigacionSection({ token, agentName, meerkatRoleId }
       setResults(newResults);
       if (newResults.length > 0) {
         setHistory(prev => [
-          { topic: topic.trim(), type, results: newResults },
+          { topic: topic.trim(), type, results: newResults, researcherId },
           ...prev.filter(h => h.topic !== topic.trim()),
         ].slice(0, 3));
       }
@@ -124,6 +151,78 @@ export default function InvestigacionSection({ token, agentName, meerkatRoleId }
     } finally {
       setLoading(false);
     }
+  }
+
+  // Empty state cuando NADIE de los empleados contratados es un rol que sabe
+  // investigar en internet. Estilo banner como el de Naia (onboarding) o Nia
+  // (encuestas) — imágenes + upsell con MeerkatPicker.
+  if (researchers.length === 0) {
+    const primary = researchMeerkats[0] ?? null;
+    const others  = researchMeerkats.slice(1);
+    const namesList = researchMeerkats.map(m => m.nombre).join(', ');
+
+    return (
+      <div className="flex overflow-hidden rounded-2xl"
+        style={{
+          background: 'linear-gradient(135deg, rgba(59,130,246,0.08) 0%, rgba(168,85,247,0.06) 60%, #ffffff 100%)',
+          border: '1px solid rgba(59,130,246,0.30)',
+          boxShadow: '0 4px 20px rgba(59,130,246,0.08)',
+        }}>
+        {/* Stack de imágenes de los empleados que pueden investigar */}
+        <div className="relative shrink-0 self-end flex items-end" style={{ width: primary ? 156 : 0, height: 144 }}>
+          {primary?.imagen && (
+            <img
+              src={primary.imagen}
+              alt={primary.nombre}
+              style={{ width: 128, height: 128, objectFit: 'contain', objectPosition: 'bottom center', position: 'absolute', bottom: 0, left: 20, zIndex: 2 }}
+            />
+          )}
+          {others[0]?.imagen && (
+            <img
+              src={others[0].imagen}
+              alt={others[0].nombre}
+              style={{ width: 96, height: 96, objectFit: 'contain', objectPosition: 'bottom center', position: 'absolute', bottom: 0, left: 0, opacity: 0.75, zIndex: 1 }}
+            />
+          )}
+          {others[1]?.imagen && (
+            <img
+              src={others[1].imagen}
+              alt={others[1].nombre}
+              style={{ width: 96, height: 96, objectFit: 'contain', objectPosition: 'bottom center', position: 'absolute', bottom: 0, right: -12, opacity: 0.6, zIndex: 0 }}
+            />
+          )}
+        </div>
+
+        <div className="flex-1 min-w-0 py-5 pr-5 pl-3 flex flex-col justify-center gap-2">
+          <p className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: '#3B82F6', letterSpacing: '0.08em' }}>
+            Investigación
+          </p>
+          <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>
+            {researchMeerkats.length > 1
+              ? `Contrata a ${researchMeerkats.map(m => m.nombre).join(', ').replace(/, ([^,]*)$/, ' o $1')}`
+              : primary
+                ? `Contrata a ${primary.nombre}`
+                : 'Contrata un empleado que investigue'}
+          </h2>
+          <p className="text-[13px] leading-relaxed" style={{ color: '#6B6480' }}>
+            Ningún empleado de tu equipo tiene el perfil para investigar en internet. {namesList
+              ? `${namesList} sí traen esta habilidad y pueden buscar competidores, prospectos, mercados y regulaciones.`
+              : 'Contrata un empleado con perfil de investigación.'}
+          </p>
+          {primary && (
+            <div className="mt-1">
+              <MeerkatPicker
+                token={token}
+                plan={plan as 'pro'}
+                defaultTier={defaultTier as 'starter' | 'growth' | 'scale'}
+                preselect={primary.id as 'noah' | 'nova' | 'niva'}
+                triggerLabel={`Contratar a ${primary.nombre}`}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -173,10 +272,57 @@ export default function InvestigacionSection({ token, agentName, meerkatRoleId }
       {/* Body */}
       <div className="px-5 pb-5 flex flex-col gap-5" style={{ borderTop: '1px solid #F0EDF9', paddingTop: 16 }}>
 
-        {/* Step 1: Type */}
+        {/* Step 1: Researcher picker — solo si hay más de un empleado */}
+        {researchers.length > 1 && (
+          <div className="flex flex-col gap-2.5">
+            <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9B8FB5' }}>
+              1 · ¿Quién la lleva a cabo?
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {researchers.map(r => {
+                const rMeerkat = r.meerkat_role_id ? MEERKAT_MAP[r.meerkat_role_id as keyof typeof MEERKAT_MAP] : null;
+                const rColor   = rMeerkat?.color ?? '#6C3BFF';
+                const rName    = r.agent_name?.trim() || r.business_name || 'Empleado';
+                const active   = researcherId === r.id;
+                return (
+                  <button
+                    key={r.id}
+                    onClick={() => setResearcherId(r.id)}
+                    className="inline-flex items-center gap-1.5 text-[11px] font-semibold pl-1 pr-2.5 h-7 rounded-full transition-opacity hover:opacity-90"
+                    style={{
+                      background: active ? `${rColor}18` : '#FAFAFB',
+                      color:      active ? rColor        : '#6B6480',
+                      border:     active ? `1px solid ${rColor}55` : '1px solid #E8E3F5',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {rMeerkat?.imagen && (
+                      <span style={{ width: 20, height: 20, borderRadius: '50%', overflow: 'hidden', display: 'inline-block', flexShrink: 0, background: '#ffffff' }}>
+                        <img
+                          src={rMeerkat.imagen}
+                          alt={rName}
+                          style={{
+                            width: '100%', height: '100%',
+                            objectFit: 'cover',
+                            objectPosition: rMeerkat.avatarPosition ?? 'center 3%',
+                            transform: rMeerkat.avatarScale && rMeerkat.avatarScale !== 1 ? `scale(${rMeerkat.avatarScale})` : 'none',
+                            transformOrigin: rMeerkat.avatarPosition ?? 'center 3%',
+                          }}
+                        />
+                      </span>
+                    )}
+                    {rName}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Step 2: Type — si solo hay un empleado, sigue siendo el paso 1 */}
         <div className="flex flex-col gap-2.5">
           <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9B8FB5' }}>
-            1 · ¿Qué quieres investigar?
+            {researchers.length > 1 ? '2' : '1'} · ¿Qué quieres investigar?
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {TYPES.map(t => {
@@ -213,10 +359,10 @@ export default function InvestigacionSection({ token, agentName, meerkatRoleId }
           </div>
         </div>
 
-        {/* Step 2: Query */}
+        {/* Step 3 (o 2 si solo hay 1 empleado): Query */}
         <div className="flex flex-col gap-2.5">
           <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9B8FB5' }}>
-            2 · Da instrucciones a tu empleado
+            {researchers.length > 1 ? '3' : '2'} · Da instrucciones a tu empleado
           </p>
           <div
             className="flex flex-col gap-2 p-3 rounded-xl"

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Brain, Check, X, Clock, ChevronDown, BookOpen, ShieldCheck } from 'lucide-react';
+import { Brain, Check, X, Clock, ChevronDown, BookOpen, ShieldCheck, Trash2 } from 'lucide-react';
 import { EmptyState } from '@/components/portal-ui';
 import { MEERKAT_MAP } from '@/lib/portal/meerkat-roles';
 
@@ -31,6 +31,8 @@ interface AgentGroup {
   role:           string | null;
   meerkatColor:   string | null;
   meerkatImg:     string | null;
+  meerkatPos:     string;
+  meerkatScale:   number;
   learnings:      Learning[];
 }
 
@@ -47,19 +49,24 @@ const SOURCE_LABELS: Record<string, string> = {
   task:     'Tarea',
 };
 
-function meerkatFor(va: AgentRef | null): { color: string | null; img: string | null } {
+function meerkatFor(va: AgentRef | null): { color: string | null; img: string | null; pos: string; scale: number } {
   const id = (va?.features as { meerkat_role_id?: string } | undefined)?.meerkat_role_id;
-  if (!id) return { color: null, img: null };
+  if (!id) return { color: null, img: null, pos: 'center 3%', scale: 1 };
   const m = MEERKAT_MAP[id as keyof typeof MEERKAT_MAP];
-  return { color: m?.color ?? null, img: m?.imagen ?? null };
+  return {
+    color: m?.color ?? null,
+    img:   m?.imagen ?? null,
+    pos:   m?.avatarPosition ?? 'center 3%',
+    scale: m?.avatarScale ?? 1,
+  };
 }
 
+// Paleta oficial: acciones que consumen minutos = cyan (color jornada 'Solo
+// minutos' #0E7490). Acciones que consumen tareas = verde (color jornada
+// 'Solo tareas' #10B981). Estandarizamos en todas las secciones.
 function sourceColor(source: string | null | undefined): string {
-  if (source === 'email')    return '#0ea5e9';
-  if (source === 'chat')     return '#22c55e';
-  if (source === 'document') return '#f59e0b';
-  if (source === 'task')     return '#ec4899';
-  return '#9B6DFF';
+  if (source === 'call') return '#0E7490'; // minutos
+  return '#10B981';                         // email / chat / document / task → tareas
 }
 
 function agentLabel(l: Learning): string {
@@ -92,6 +99,8 @@ function groupByAgent(list: Learning[]): AgentGroup[] {
         role:         l.voice_agents?.role ?? null,
         meerkatColor: mk.color,
         meerkatImg:   mk.img,
+        meerkatPos:   mk.pos,
+        meerkatScale: mk.scale,
         learnings:    [],
       });
     }
@@ -165,6 +174,21 @@ export default function LearningsSection({ token, canApprove = true }: { token: 
   }
 
   const [showAllApproved, setShowAllApproved] = useState(false);
+  const [removing,        setRemoving]        = useState<Record<string, boolean>>({});
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
+
+  async function removeApproved(id: string) {
+    setRemoving(p => ({ ...p, [id]: true }));
+    try {
+      const res = await fetch(`/api/portal/${token}/learnings/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setLearnings(prev => prev.filter(l => l.id !== id));
+        setConfirmRemoveId(null);
+      }
+    } finally {
+      setRemoving(p => { const n = { ...p }; delete n[id]; return n; });
+    }
+  }
 
   const pending  = learnings.filter(l => l.status === 'pending');
   const approved = learnings.filter(l => l.status === 'approved');
@@ -228,17 +252,27 @@ export default function LearningsSection({ token, canApprove = true }: { token: 
                 <div className="flex items-center gap-2.5 px-5 py-3"
                   style={{ background: '#FAFAFB' }}>
                   {group.meerkatImg ? (
-                    <img
-                      src={group.meerkatImg}
-                      alt={group.label}
+                    <div
                       style={{
                         width: 26, height: 26, borderRadius: '50%',
-                        objectFit: 'cover', objectPosition: '50% 8%',
+                        overflow: 'hidden',
                         border: `1.5px solid ${group.meerkatColor ?? '#6C3BFF'}45`,
                         background: '#ffffff',
                         flexShrink: 0,
                       }}
-                    />
+                    >
+                      <img
+                        src={group.meerkatImg}
+                        alt={group.label}
+                        style={{
+                          width: '100%', height: '100%',
+                          objectFit: 'cover',
+                          objectPosition: group.meerkatPos,
+                          transform: group.meerkatScale !== 1 ? `scale(${group.meerkatScale})` : 'none',
+                          transformOrigin: group.meerkatPos,
+                        }}
+                      />
+                    </div>
                   ) : (
                     <div className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0"
                       style={{
@@ -452,7 +486,7 @@ export default function LearningsSection({ token, canApprove = true }: { token: 
               const agentColor = mk.color ?? '#6B6480';
               return (
               <div key={l.id}
-                className="flex items-start gap-2.5 px-5 py-3"
+                className="group flex items-start gap-2.5 px-5 py-3"
                 style={{ borderBottom: idx === visibleApproved.length - 1 && approved.length <= 12 ? 'none' : '1px solid #F0EDF9' }}>
                 <Check size={13} style={{ color: '#22c55e', flexShrink: 0, marginTop: 2 }} />
                 <div className="flex-1 min-w-0">
@@ -487,6 +521,37 @@ export default function LearningsSection({ token, canApprove = true }: { token: 
                     )}
                   </div>
                 </div>
+
+                {/* Eliminar — sin necesidad de ir a la config del empleado */}
+                {confirmRemoveId === l.id ? (
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <button
+                      onClick={() => removeApproved(l.id)}
+                      disabled={removing[l.id]}
+                      className="text-[11px] font-semibold px-2.5 h-7 rounded-md transition-opacity hover:opacity-90 disabled:opacity-50"
+                      style={{ background: '#ef4444', color: '#fff', border: 'none', cursor: 'pointer' }}
+                    >
+                      {removing[l.id] ? 'Quitando…' : 'Confirmar'}
+                    </button>
+                    <button
+                      onClick={() => setConfirmRemoveId(null)}
+                      disabled={removing[l.id]}
+                      className="text-[11px] font-medium px-2.5 h-7 rounded-md transition-opacity hover:opacity-70 disabled:opacity-50"
+                      style={{ background: '#FAFAFB', color: '#6B6480', border: '1px solid #E8E3F5', cursor: 'pointer' }}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setConfirmRemoveId(l.id)}
+                    title="Quitar del conocimiento del empleado"
+                    className="flex-shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity p-1 rounded"
+                    style={{ background: 'transparent', border: 'none', color: '#9B8FB5', cursor: 'pointer' }}
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                )}
               </div>
               );
             })}

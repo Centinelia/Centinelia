@@ -8,6 +8,10 @@ interface ActionItem {
   task:     string;
   assignee: string | null;
   due:      string | null;
+  // Presente cuando el empleado ya la creó como tarea automáticamente al
+  // procesar la junta (nuevo default). Ausente en juntas legacy — en ese
+  // caso se muestra el botón "Crear tarea" antiguo.
+  task_id?: string;
 }
 
 interface MeetingData {
@@ -227,7 +231,7 @@ export default function OpsMeetingsSection({ token }: { token: string }) {
         <div>
           <div className="flex items-baseline gap-2">
             <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>
-              Juntas e inteligencia
+              Tus juntas
             </h2>
             {meetings.length > 0 && (
               <span className="text-[13px] font-medium tabular-nums" style={{ color: '#9B8FB5' }}>
@@ -425,7 +429,7 @@ export default function OpsMeetingsSection({ token }: { token: string }) {
                           <div className="flex items-center gap-2 px-3 py-2 rounded-lg mt-2"
                             style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)' }}>
                             <p className="text-xs" style={{ color: '#f59e0b' }}>
-                              No había tareas disponibles al momento del procesamiento. La transcripción está disponible pero no se generó el análisis.
+                              Tu saldo de tareas inteligentes se agotó antes de terminar la junta. Tienes la transcripción, pero no pudimos generar el resumen ni los compromisos. Compra más y súbela otra vez para procesarla completa.
                             </p>
                           </div>
                         )}
@@ -580,10 +584,18 @@ export default function OpsMeetingsSection({ token }: { token: string }) {
 
                               {data.action_items.length > 0 && (
                                 <div className="rounded-lg p-3" style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.2)' }}>
-                                  <p className="text-xs font-semibold mb-2" style={{ color: '#9B6DFF' }}>Tareas y compromisos</p>
+                                  <div className="flex items-baseline justify-between gap-2 mb-2">
+                                    <p className="text-xs font-semibold" style={{ color: '#9B6DFF' }}>Compromisos convertidos en tareas</p>
+                                    <a href={`/portal/${token}/oficina/tareas`}
+                                      className="text-[10px] font-semibold underline hover:opacity-70"
+                                      style={{ color: '#9B6DFF' }}>
+                                      Ver en tareas
+                                    </a>
+                                  </div>
                                   {data.action_items.map((a, i) => {
-                                    const key     = `${m.id}:${i}`;
-                                    const isDone  = taskDone.has(key);
+                                    const key      = `${m.id}:${i}`;
+                                    const autoDone = !!a.task_id; // Nuevo default: creada auto por el empleado
+                                    const isDone   = autoDone || taskDone.has(key);
                                     const isSaving = taskSaving === key;
                                     return (
                                       <div key={i} className="flex items-start gap-2 mb-2 pb-2"
@@ -591,22 +603,33 @@ export default function OpsMeetingsSection({ token }: { token: string }) {
                                         <div className="flex-1 min-w-0">
                                           <p className="text-sm font-medium" style={{ color: '#1A0A3B' }}>{a.task}</p>
                                           <p className="text-xs" style={{ color: '#6B6480' }}>
-                                            {[a.assignee, a.due].filter(Boolean).join(' · ') || 'Sin asignar'}
+                                            {[a.assignee, a.due].filter(Boolean).join(' · ') || 'Sin responsable asignado'}
                                           </p>
                                         </div>
                                         <div className="flex flex-col items-end gap-1 shrink-0">
-                                          <button
-                                            onClick={() => !isDone && !isSaving && createTask(m.id, a, key)}
-                                            disabled={isDone || isSaving}
-                                            className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold transition-opacity hover:opacity-80"
-                                            style={{
-                                              background: isDone ? 'rgba(34,197,94,0.1)' : 'rgba(108,59,255,0.1)',
-                                              border:     isDone ? '1px solid rgba(34,197,94,0.25)' : '1px solid rgba(108,59,255,0.25)',
-                                              color:      isDone ? '#22c55e' : '#9B6DFF',
-                                              cursor:     isDone ? 'default' : 'pointer',
-                                            }}>
-                                            {isDone ? <><Check size={9} /> Creada</> : isSaving ? '...' : <><Zap size={9} /> Crear tarea</>}
-                                          </button>
+                                          {autoDone ? (
+                                            <span className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold"
+                                              style={{
+                                                background: 'rgba(34,197,94,0.1)',
+                                                border:     '1px solid rgba(34,197,94,0.25)',
+                                                color:      '#22c55e',
+                                              }}>
+                                              <Check size={9} /> Ya en tareas
+                                            </span>
+                                          ) : (
+                                            <button
+                                              onClick={() => !isDone && !isSaving && createTask(m.id, a, key)}
+                                              disabled={isDone || isSaving}
+                                              className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold transition-opacity hover:opacity-80"
+                                              style={{
+                                                background: isDone ? 'rgba(34,197,94,0.1)' : 'rgba(108,59,255,0.1)',
+                                                border:     isDone ? '1px solid rgba(34,197,94,0.25)' : '1px solid rgba(108,59,255,0.25)',
+                                                color:      isDone ? '#22c55e' : '#9B6DFF',
+                                                cursor:     isDone ? 'default' : 'pointer',
+                                              }}>
+                                              {isDone ? <><Check size={9} /> Creada</> : isSaving ? '...' : <><Zap size={9} /> Crear tarea</>}
+                                            </button>
+                                          )}
                                           {taskError[key] && (
                                             <span className="text-[10px]" style={{ color: '#f87171' }}>{taskError[key]}</span>
                                           )}

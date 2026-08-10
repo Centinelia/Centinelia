@@ -47,7 +47,7 @@ export default async function OnboardingPage({ params }: Props) {
             Incorporación de personas
           </h1>
           <p className="text-[14px]" style={{ color: '#6B6480' }}>
-            Da la bienvenida a nuevos empleados, clientes o proveedores con un flujo automatizado por los tres canales.
+            Da la bienvenida a nuevos empleados, clientes o proveedores. Define lo que necesitas de cada uno una vez y reúsalo cada vez que llegue alguien nuevo.
           </p>
         </div>
       </header>

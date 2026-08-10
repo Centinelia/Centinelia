@@ -99,7 +99,7 @@ const inputStyle: React.CSSProperties = {
 };
 
 export default function HelpdeskSection({ token, subUserName, employeeName }: { token: string; subUserName?: string | null; employeeName?: string | null }) {
-  const empName = (employeeName ?? '').trim() || 'Neo';
+  const empName = (employeeName ?? '').trim() || 'tu empleado';
   const [tickets, setTickets]   = useState<Ticket[]>([]);
   const [loading, setLoading]   = useState(true);
   const [filter, setFilter]     = useState<FilterKey>('activos');
@@ -403,7 +403,7 @@ export default function HelpdeskSection({ token, subUserName, employeeName }: { 
                         </span>
                         <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px]"
                           style={{ background: '#FAFAFB', color: '#6B6480', border: '1px solid #E8E3F5' }}>
-                          {STA_ICON[ticket.status]} {STATUS_LABELS[ticket.status] ?? ticket.status.replace('_',' ')}
+                          {STA_ICON[ticket.status]} {STATUS_LABELS[ticket.status] ?? 'Sin estado'}
                         </span>
                         {ticket.incident_id && (
                           <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold"
@@ -455,7 +455,7 @@ export default function HelpdeskSection({ token, subUserName, employeeName }: { 
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              {STATUSES.map(s => <SelectItem key={s} value={s}>{STATUS_LABELS[s] ?? s.replace('_',' ')}</SelectItem>)}
+                              {STATUSES.map(s => <SelectItem key={s} value={s}>{STATUS_LABELS[s] ?? s}</SelectItem>)}
                             </SelectContent>
                           </Select>
                         </div>

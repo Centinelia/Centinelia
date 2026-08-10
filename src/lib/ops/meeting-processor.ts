@@ -12,7 +12,7 @@ export interface MeetingData {
   participants: string[];
   summary:      string;
   decisions:    string[];
-  action_items: { task: string; assignee: string | null; due: string | null }[];
+  action_items: { task: string; assignee: string | null; due: string | null; task_id?: string }[];
   next_steps:   string;
 }
 
@@ -140,13 +140,41 @@ Responde ÚNICAMENTE con JSON válido con esta estructura exacta:
       extracted = { summary: transcript.slice(0, 600), decisions: [], action_items: [], next_steps: '', parse_failed: true } as any;
     }
 
+    // Empleado inteligente: crea las tareas solo (sin pedirle al usuario que
+    // apruebe una por una). Ver [[feedback-empleados-inteligentes]]. Si el
+    // usuario ve una tarea que no debía crearse, la cancela desde /oficina/tareas.
+    const rawActionItems = extracted.action_items ?? [];
+    const enrichedActionItems: MeetingData['action_items'] = [];
+    for (let i = 0; i < rawActionItems.length; i++) {
+      const a = rawActionItems[i];
+      if (!a?.task) continue;
+      const parts = [a.assignee, a.due].filter(Boolean).join(' · ');
+      const { data: inserted } = await supabase.from('agent_tasks').insert({
+        portal_email:   ownerEmail,
+        created_by:     agentId,
+        assigned_to:    agentId,
+        title:          String(a.task).slice(0, 200),
+        description:    parts ? `Compromiso de la junta "${title}". Responsable: ${parts}` : `Compromiso de la junta "${title}".`,
+        status:         'pending',
+        trigger_type:   'meeting_action_item',
+        source_context: `Reunión: ${meetingId}`,
+      }).select('id').maybeSingle();
+
+      enrichedActionItems.push({
+        task:     a.task,
+        assignee: a.assignee ?? null,
+        due:      a.due ?? null,
+        task_id:  inserted?.id ?? undefined,
+      });
+    }
+
     const meetingData: MeetingData = {
       title,
       date:         new Date().toISOString().slice(0, 10),
       participants,
       summary:      extracted.summary ?? '',
       decisions:    extracted.decisions ?? [],
-      action_items: extracted.action_items ?? [],
+      action_items: enrichedActionItems,
       next_steps:   extracted.next_steps ?? '',
     };
 

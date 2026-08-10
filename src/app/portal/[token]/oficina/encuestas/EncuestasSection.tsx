@@ -479,10 +479,10 @@ const ACTION_DEFS: Array<{
   desc:  string;
   Icon:  React.ElementType;
 }> = [
-  { key: 'create_ticket',     label: 'Crear ticket en Mesa de ayuda',   desc: 'Abre un ticket de alta prioridad en helpdesk.',            Icon: ClipboardList },
-  { key: 'notify_manager',    label: 'Notificar al manager por correo', desc: 'Envía un correo de alerta al responsable del portal.',     Icon: Bell          },
-  { key: 'schedule_callback', label: 'Programar callback al cliente',   desc: 'Crea una tarea pendiente para dar seguimiento al cliente.', Icon: PhoneCall     },
-  { key: 'mark_churn_risk',   label: 'Marcar como riesgo de churn',     desc: 'Registra la respuesta con bandera de riesgo de abandono.', Icon: AlertTriangle },
+  { key: 'create_ticket',     label: 'Abrir un ticket en Mesa de ayuda',      desc: 'Levanta un ticket de alta prioridad para que alguien atienda el caso.',          Icon: ClipboardList },
+  { key: 'notify_manager',    label: 'Avisarte por correo',                    desc: 'Te llega un correo de alerta al responsable de la cuenta.',                       Icon: Bell          },
+  { key: 'schedule_callback', label: 'Programar una llamada de seguimiento',   desc: 'Crea una tarea para volver a contactar al cliente y cerrar el ciclo.',            Icon: PhoneCall     },
+  { key: 'mark_churn_risk',   label: 'Marcar al cliente como riesgo de fuga',  desc: 'Guarda la respuesta con bandera para que priorices retenerlo.',                    Icon: AlertTriangle },
 ];
 
 function ActionsTab({
@@ -532,7 +532,7 @@ function ActionsTab({
   return (
     <div className="px-4 pb-4 flex flex-col gap-4">
       <p className="text-xs leading-relaxed" style={{ color: '#6B6480' }}>
-        Cuando la calificación caiga por debajo del umbral, el empleado ejecuta estas acciones automáticamente al terminar la llamada. Todas vienen desactivadas por defecto.
+        Cuando un cliente responda una calificación baja, el empleado hace estas acciones solo al terminar la llamada. Todas vienen apagadas — enciende las que quieras.
       </p>
 
       {!hasEligible && (
@@ -544,9 +544,9 @@ function ActionsTab({
 
       {hasPrimaryRating && (
         <div className="flex flex-col gap-1.5">
-          <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#9B8FB5' }}>Umbral</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#9B8FB5' }}>Cuándo se disparan</p>
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs" style={{ color: '#6B6480' }}>Activar cuando la calificación sea</span>
+            <span className="text-xs" style={{ color: '#6B6480' }}>Cuando la calificación sea</span>
             <Select
               value={String(actions.threshold)}
               onValueChange={v => { setActions(prev => ({ ...prev, threshold: Number(v) })); setSaved(false); }}
@@ -1178,20 +1178,25 @@ function SurveyCard({
           <div className="flex flex-wrap gap-4 px-4 pt-3 pb-2">
             <button
               onClick={() => onToggle(survey.id, 'activa', !survey.activa)}
+              title={survey.activa ? 'La encuesta se está aplicando. Apágala para pausar.' : 'La encuesta está pausada. Enciéndela para que el equipo la aplique.'}
               className="flex items-center gap-1.5 text-xs transition-opacity hover:opacity-70"
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: survey.activa ? '#22c55e' : '#6B6480', padding: 0 }}
             >
               {survey.activa ? <ToggleRight size={15} /> : <ToggleLeft size={15} />}
-              Activa
+              {survey.activa ? 'Encendida' : 'Apagada'}
             </button>
-            <button
-              onClick={() => onToggle(survey.id, 'auto_apply', !survey.auto_apply)}
-              className="flex items-center gap-1.5 text-xs transition-opacity hover:opacity-70"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: survey.auto_apply ? '#6C3BFF' : '#6B6480', padding: 0 }}
-            >
-              {survey.auto_apply ? <ToggleRight size={15} /> : <ToggleLeft size={15} />}
-              Aplicar automáticamente
-            </button>
+            {/* auto_apply solo tiene sentido si hay algún trigger no-manual */}
+            {(survey.triggers ?? []).some(t => t !== 'manual') && (
+              <button
+                onClick={() => onToggle(survey.id, 'auto_apply', !survey.auto_apply)}
+                title="Cuando está encendido, el empleado la aplica solo al terminar cada llamada/ticket/cita que coincida con el trigger. Si apagas, solo se aplica cuando tú la mandes manualmente."
+                className="flex items-center gap-1.5 text-xs transition-opacity hover:opacity-70"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: survey.auto_apply ? '#6C3BFF' : '#6B6480', padding: 0 }}
+              >
+                {survey.auto_apply ? <ToggleRight size={15} /> : <ToggleLeft size={15} />}
+                Se aplica solo en cada llamada
+              </button>
+            )}
             {hasManualTrigger && (
               <button
                 onClick={() => setManualOpen(v => !v)}
@@ -1199,7 +1204,7 @@ function SurveyCard({
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#f59e0b', padding: 0 }}
               >
                 <PlayCircle size={13} />
-                Aplicar ahora
+                Aplicar a un número específico
               </button>
             )}
           </div>
@@ -1208,7 +1213,7 @@ function SurveyCard({
           {hasManualTrigger && manualOpen && (
             <div className="mx-4 mb-3 p-3 rounded-xl flex flex-col gap-2"
               style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.25)' }}>
-              <p className="text-xs font-semibold" style={{ color: '#f59e0b' }}>Aplicar manualmente</p>
+              <p className="text-xs font-semibold" style={{ color: '#f59e0b' }}>Aplicar a un cliente específico</p>
               <div className="flex gap-2">
                 <input
                   value={manualPhone}
@@ -1223,17 +1228,17 @@ function SurveyCard({
                   className="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1"
                   style={{
                     background: manualSent ? 'rgba(34,197,94,0.15)' : '#f59e0b',
-                    color:      manualSent ? '#22c55e'               : '#000',
+                    color:      manualSent ? '#22c55e'               : '#fff',
                     border:     'none', cursor: manualSaving || !manualPhone.trim() ? 'not-allowed' : 'pointer',
                     opacity:    manualSaving || !manualPhone.trim() ? 0.6 : 1,
                   }}
                 >
                   {manualSaving && <Loader2 size={10} className="animate-spin" />}
-                  {manualSent ? 'Tarea creada' : 'Crear tarea'}
+                  {manualSent ? 'Ya se agendó la llamada' : 'Agendar llamada'}
                 </button>
               </div>
               <p className="text-[10px]" style={{ color: '#9B8FB5' }}>
-                Se crea una tarea para que el empleado llame a este número y aplique la encuesta.
+                Le decimos al empleado que llame a este número y le aplique la encuesta. Aparecerá en su lista de tareas pendientes.
               </p>
             </div>
           )}
@@ -1354,8 +1359,9 @@ function SurveyCard({
                           <div className="flex items-center gap-1.5">
                             {r.churn_risk && (
                               <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                                title="El cliente podría dejar de comprarte. Priorízalo."
                                 style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.25)' }}>
-                                Churn risk
+                                Riesgo de fuga
                               </span>
                             )}
                             <span className="text-[10px]" style={{ color: '#9B8FB5' }}>

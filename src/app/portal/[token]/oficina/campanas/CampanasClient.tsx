@@ -1,9 +1,10 @@
 'use client';
 
-import { Megaphone, Users, PhoneOutgoing, CheckCircle2 } from 'lucide-react';
+import { Megaphone, PhoneOutgoing } from 'lucide-react';
 import { Card } from '@/components/portal-ui';
 import { EmptyState } from '@/components/ui/empty-state';
 import OutboundSection from '../../OutboundSection';
+import OficinaPageHero from '../OficinaPageHero';
 
 interface OutboundAgent { id: string; agent_name: string | null; business_name: string }
 
@@ -46,36 +47,16 @@ export default function CampanasClient({
   contacts, campaigns, outboundAgents, counters, minutesRemaining,
 }: Props) {
   return (
-    <div className="flex flex-col gap-6 max-w-6xl mx-auto w-full">
+    <div className="flex flex-col gap-6 max-w-6xl mx-auto w-full p-4 md:p-6">
 
-      {/* Hero */}
-      <header className="flex items-start gap-4">
-        <div
-          className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
-          style={{ background: 'rgba(108,59,255,0.1)', border: '1px solid rgba(108,59,255,0.25)' }}
-        >
-          <Megaphone size={26} style={{ color: '#6C3BFF' }} strokeWidth={2} />
-        </div>
-        <div className="flex flex-col gap-1 min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: '#9B6DFF' }}>
-            Campañas
-          </p>
-          <h1 className="text-[28px] font-bold leading-tight tracking-tight" style={{ color: '#1A0A3B' }}>
-            Automatiza llamadas salientes
-          </h1>
-          <p className="text-[14px]" style={{ color: '#6B6480' }}>
-            {counters.campanasActivas > 0 ? (
-              <>
-                <strong style={{ color: '#1A0A3B' }}>{counters.campanasActivas}</strong> {counters.campanasActivas === 1 ? 'campaña activa' : 'campañas activas'}
-                {' · '}{counters.contactos} contactos disponibles
-                {' · '}{counters.completadas} llamadas completadas esta semana
-              </>
-            ) : (
-              <>Sin campañas activas. Crea una para que tu empleado llame a tus contactos automáticamente en el horario que elijas.</>
-            )}
-          </p>
-        </div>
-      </header>
+      <OficinaPageHero
+        icon={Megaphone}
+        eyebrow="Campañas"
+        title="Automatiza llamadas salientes"
+        description={counters.campanasActivas > 0
+          ? `${counters.campanasActivas} ${counters.campanasActivas === 1 ? 'campaña activa' : 'campañas activas'} · ${counters.contactos} contactos disponibles · ${counters.completadas} llamadas completadas esta semana.`
+          : 'Programa a tu equipo para que llame a tus contactos en el horario que elijas. Ideal para cobranza, seguimientos de leads y recordatorios.'}
+      />
 
       {/* KPIs */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -90,8 +71,8 @@ export default function CampanasClient({
         <Card padding="md">
           <EmptyState
             icon={Megaphone}
-            title="Llamadas salientes desactivadas"
-            description="Activa esta función desde Configurar tu empleado > Herramientas > Llamadas salientes."
+            title="Las llamadas salientes están apagadas"
+            description="Enciéndelas para que tus empleados puedan marcarle a contactos. Se activa en Configurar > tu empleado > Llamadas salientes."
             size="sm"
           />
         </Card>
@@ -99,8 +80,8 @@ export default function CampanasClient({
         <Card padding="md">
           <EmptyState
             icon={PhoneOutgoing}
-            title="Outbound no está activado en ningún empleado"
-            description="Ve a Configurar tu empleado > Herramientas > Llamadas salientes para activarlo."
+            title="Ningún empleado tiene activadas las llamadas salientes"
+            description="Ve a Configurar, elige un empleado y enciende Llamadas salientes en Herramientas."
             size="sm"
           />
         </Card>

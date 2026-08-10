@@ -7,16 +7,22 @@ import { MEERKAT_MAP } from '@/lib/portal/meerkat-roles';
 
 // Infiere meerkat por el nombre exacto (Nia, Noah, Nox, Niva, Sofía, Neo,
 // Nash, Nova, Naia). Fallback a null si es un nombre custom.
-function meerkatByName(name: string): { color: string | null; img: string | null } {
+function meerkatByName(name: string): { color: string | null; img: string | null; pos: string; scale: number } {
   const key = name.trim().toLowerCase()
     .normalize('NFD').replace(/[̀-ͯ]/g, '');
   const m = Object.values(MEERKAT_MAP).find(mk => mk.nombre?.toLowerCase()
     .normalize('NFD').replace(/[̀-ͯ]/g, '') === key);
-  return { color: m?.color ?? null, img: m?.imagen ?? null };
+  return {
+    color: m?.color ?? null,
+    img:   m?.imagen ?? null,
+    pos:   m?.avatarPosition ?? 'center 3%',
+    scale: m?.avatarScale ?? 1,
+  };
 }
 
 interface Rec {
   id:            string;
+  agent_id:      string;
   agent_name:    string;
   agent_role:    string | null;
   title:         string;
@@ -26,6 +32,31 @@ interface Rec {
   priority:      'high' | 'medium' | 'low';
   status:        'nueva' | 'aplicada' | 'descartada' | 'expirada';
   deep_link:     string | null;
+  voice_agents?: { agent_name: string | null; features: Record<string, unknown> | null } | null;
+}
+
+// Meerkat por features.meerkat_role_id (fuente confiable, no depende del nombre).
+function meerkatByFeatures(features: Record<string, unknown> | null | undefined): { color: string | null; img: string | null; pos: string | null; scale: number | null } {
+  const id = (features as { meerkat_role_id?: string } | undefined)?.meerkat_role_id;
+  if (!id) return { color: null, img: null, pos: null, scale: null };
+  const m = MEERKAT_MAP[id as keyof typeof MEERKAT_MAP];
+  return {
+    color: m?.color ?? null,
+    img:   m?.imagen ?? null,
+    pos:   m?.avatarPosition ?? 'center 3%',
+    scale: m?.avatarScale ?? 1,
+  };
+}
+
+// Nombre a mostrar: primero el actual de voice_agents (por si se renombró),
+// después el congelado en el rec. Si es el business_name (ej. "Pneuma Studio"),
+// fallback a "Empleado" para no mostrar el nombre de la org.
+function displayName(rec: Rec): string {
+  const live = rec.voice_agents?.agent_name?.trim();
+  if (live) return live;
+  const frozen = rec.agent_name?.trim();
+  if (!frozen || frozen.includes(' · ')) return 'Empleado';
+  return frozen;
 }
 
 interface ApiResponse {
@@ -77,6 +108,7 @@ export default function InsightsSection({ token }: { token: string }) {
   const [confirming, setConfirming] = useState(false);
   const [genError,   setGenError]   = useState<string | null>(null);
   const [pending,    setPending]    = useState<Record<string, boolean>>({});
+  const [filterAgentId, setFilterAgentId] = useState<string | 'all'>('all');
 
   const load = useCallback(async () => {
     try {
@@ -149,12 +181,34 @@ export default function InsightsSection({ token }: { token: string }) {
   const grouped = data && data.recs.length > 0
     ? Object.entries(
         data.recs.reduce<Record<string, Rec[]>>((acc, r) => {
-          if (!acc[r.agent_name]) acc[r.agent_name] = [];
-          acc[r.agent_name].push(r);
+          const key = r.agent_id || displayName(r);
+          if (!acc[key]) acc[key] = [];
+          acc[key].push(r);
           return acc;
         }, {})
       )
     : [];
+
+  // Pills de filtro — un chip por empleado con recs generadas + "Todos".
+  const agentPills = grouped.map(([key, recs]) => {
+    const first    = recs[0];
+    const label    = displayName(first);
+    const mkFeat   = meerkatByFeatures(first.voice_agents?.features ?? null);
+    const mkNombre = meerkatByName(label);
+    return {
+      id:    key,
+      label,
+      color: mkFeat.color ?? mkNombre.color ?? '#6C3BFF',
+      img:   mkFeat.img   ?? mkNombre.img,
+      pos:   mkFeat.pos   ?? mkNombre.pos,
+      scale: mkFeat.scale ?? mkNombre.scale,
+      count: recs.length,
+    };
+  });
+
+  const visibleGroups = filterAgentId === 'all'
+    ? grouped
+    : grouped.filter(([key]) => key === filterAgentId);
 
   return (
     <div className="flex flex-col rounded-2xl overflow-hidden"
@@ -264,6 +318,58 @@ export default function InsightsSection({ token }: { token: string }) {
         </div>
       )}
 
+      {/* Filtro por empleado — solo si hay más de uno con recs */}
+      {agentPills.length > 1 && (
+        <div className="px-5 pt-4 pb-2 flex items-center gap-1.5 flex-wrap"
+          style={{ borderTop: '1px solid #F0EDF9', background: '#ffffff' }}>
+          <button
+            onClick={() => setFilterAgentId('all')}
+            className="text-[11px] font-semibold px-2.5 h-7 rounded-full transition-opacity hover:opacity-90"
+            style={{
+              background: filterAgentId === 'all' ? '#6C3BFF' : '#FAFAFB',
+              color:      filterAgentId === 'all' ? '#ffffff' : '#6B6480',
+              border:     filterAgentId === 'all' ? 'none'    : '1px solid #E8E3F5',
+              cursor: 'pointer',
+            }}
+          >
+            Todos ({data.recs.length})
+          </button>
+          {agentPills.map(p => {
+            const active = filterAgentId === p.id;
+            return (
+              <button
+                key={p.id}
+                onClick={() => setFilterAgentId(p.id)}
+                className="inline-flex items-center gap-1.5 text-[11px] font-semibold pl-1 pr-2.5 h-7 rounded-full transition-opacity hover:opacity-90"
+                style={{
+                  background: active ? `${p.color}18` : '#FAFAFB',
+                  color:      active ? p.color        : '#6B6480',
+                  border:     active ? `1px solid ${p.color}55` : '1px solid #E8E3F5',
+                  cursor: 'pointer',
+                }}
+              >
+                {p.img && (
+                  <span style={{ width: 20, height: 20, borderRadius: '50%', overflow: 'hidden', display: 'inline-block', flexShrink: 0, background: '#ffffff' }}>
+                    <img
+                      src={p.img}
+                      alt={p.label}
+                      style={{
+                        width: '100%', height: '100%',
+                        objectFit: 'cover',
+                        objectPosition: p.pos,
+                        transform: p.scale !== 1 ? `scale(${p.scale})` : 'none',
+                        transformOrigin: p.pos,
+                      }}
+                    />
+                  </span>
+                )}
+                {p.label} ({p.count})
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Contenido */}
       {!data || data.recs.length === 0 ? (
         <div className="px-5 py-6" style={{ borderTop: '1px solid #F0EDF9' }}>
@@ -275,41 +381,53 @@ export default function InsightsSection({ token }: { token: string }) {
         </div>
       ) : (
         <div className="flex flex-col" style={{ borderTop: '1px solid #F0EDF9' }}>
-          {grouped.map(([agentName, recs], gIdx) => {
-            const mk = meerkatByName(agentName);
-            const accent = mk.color ?? '#6C3BFF';
+          {visibleGroups.map(([key, recs], gIdx) => {
+            const first     = recs[0];
+            const label     = displayName(first);
+            // Preferimos features.meerkat_role_id; fallback a inferencia por nombre.
+            const mkFeat    = meerkatByFeatures(first.voice_agents?.features ?? null);
+            const mkNombre  = meerkatByName(label);
+            const mkColor   = mkFeat.color ?? mkNombre.color;
+            const mkImg     = mkFeat.img   ?? mkNombre.img;
+            const mkPos     = mkFeat.pos   ?? mkNombre.pos;
+            const mkScale   = mkFeat.scale ?? mkNombre.scale;
+            const accent    = mkColor ?? '#6C3BFF';
             return (
-            <div key={agentName}
-              style={{ borderBottom: gIdx === grouped.length - 1 ? 'none' : '1px solid #F0EDF9' }}>
+            <div key={key}
+              style={{ borderBottom: gIdx === visibleGroups.length - 1 ? 'none' : '1px solid #F0EDF9' }}>
               {/* Agent header con avatar del meerkat y su color */}
               <div className="flex items-center gap-2.5 px-5 py-3" style={{ background: '#FAFAFB' }}>
-                {mk.img ? (
-                  <img
-                    src={mk.img}
-                    alt={agentName}
+                {mkImg ? (
+                  <div
                     style={{
                       width: 26, height: 26, borderRadius: '50%',
-                      objectFit: 'cover', objectPosition: '50% 8%',
+                      overflow: 'hidden',
                       border: `1.5px solid ${accent}45`,
                       background: '#ffffff',
                       flexShrink: 0,
                     }}
-                  />
+                  >
+                    <img
+                      src={mkImg}
+                      alt={label}
+                      style={{
+                        width: '100%', height: '100%',
+                        objectFit: 'cover',
+                        objectPosition: mkPos,
+                        transform: mkScale !== 1 ? `scale(${mkScale})` : 'none',
+                        transformOrigin: mkPos,
+                      }}
+                    />
+                  </div>
                 ) : (
                   <div className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0"
                     style={{ background: `${accent}20`, color: accent }}>
-                    {agentName.charAt(0).toUpperCase()}
+                    {label.charAt(0).toUpperCase()}
                   </div>
                 )}
                 <span className="text-[12px] font-semibold" style={{ color: accent }}>
-                  {agentName}
+                  Sobre {label}
                 </span>
-                {recs[0]?.agent_role && (
-                  <span className="text-[11px] px-1.5 py-0.5 rounded-full font-medium"
-                    style={{ background: `${accent}12`, color: accent }}>
-                    {recs[0].agent_role}
-                  </span>
-                )}
               </div>
 
               {/* Rec rows */}

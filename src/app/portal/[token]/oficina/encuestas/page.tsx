@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { PieChart } from 'lucide-react';
 import EncuestasSection from './EncuestasSection';
+import OficinaPageHero from '../OficinaPageHero';
 
 const SURVEY_MEERKAT_IDS = ['nia', 'nelia', 'naia'];
 
@@ -36,26 +37,12 @@ export default async function EncuestasPage({ params }: Props) {
   return (
     <div id="of-encuestas" className="flex flex-col gap-5 max-w-6xl mx-auto w-full p-4 md:p-6">
 
-      {/* ── Hero ──────────────────────────────────────────────────────────── */}
-      <header className="flex items-start gap-4">
-        <div
-          className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
-          style={{ background: 'rgba(108,59,255,0.1)', border: '1px solid rgba(108,59,255,0.25)' }}
-        >
-          <PieChart size={26} style={{ color: '#6C3BFF' }} strokeWidth={2} />
-        </div>
-        <div className="flex flex-col gap-1 min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: '#9B6DFF' }}>
-            Calidad
-          </p>
-          <h1 className="text-[28px] font-bold leading-tight tracking-tight" style={{ color: '#1A0A3B' }}>
-            Encuestas de satisfacción
-          </h1>
-          <p className="text-[14px]" style={{ color: '#6B6480' }}>
-            Diseña encuestas y deja que tu equipo las aplique automáticamente al terminar cada llamada.
-          </p>
-        </div>
-      </header>
+      <OficinaPageHero
+        icon={PieChart}
+        eyebrow="Calidad"
+        title="Encuestas de satisfacción"
+        description="Diseña una vez y tu equipo aplica la encuesta al terminar cada llamada. Los resultados y hallazgos aparecen aquí."
+      />
 
       <EncuestasSection
         token={token}

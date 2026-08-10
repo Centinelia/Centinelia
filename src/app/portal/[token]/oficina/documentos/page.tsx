@@ -347,7 +347,7 @@ export default function DocumentosPage() {
                 <EmptyState
                   icon={FileText}
                   title="Sin documentos en esta categoría"
-                  description={`Pídele a ${employeeName} que genere uno desde el chat.`}
+                  description={`Pídele a ${employeeName} por chat, correo o llamada que genere uno y aparecerá aquí.`}
                 />
               </div>
             ) : (

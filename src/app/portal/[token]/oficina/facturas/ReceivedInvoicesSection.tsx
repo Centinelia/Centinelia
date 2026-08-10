@@ -51,7 +51,7 @@ const DETERMINATION_META: Record<Determination, {
     summary: 'lista para pagar',
   },
   discrepancy: {
-    label:   'Discrepancia detectada',
+    label:   'Diferencia con el proveedor',
     fg:      '#B45309',
     bg:      'rgba(245,158,11,0.10)',
     border:  'rgba(245,158,11,0.30)',
@@ -232,7 +232,7 @@ export default function ReceivedInvoicesSection({ token }: { token: string }) {
             const narrative = det === 'verified'
               ? 'Verificamos los datos y la factura está lista para que la pagues cuando quieras.'
               : det === 'discrepancy'
-                ? `Detectamos ${item.invoice_discrepancy?.toLowerCase() ?? 'una discrepancia'} y ya escribimos al proveedor pidiendo aclaración.`
+                ? `Detectamos ${item.invoice_discrepancy?.toLowerCase() ?? 'una diferencia con lo que esperábamos'} y ya escribimos al proveedor pidiendo aclaración.`
                 : `No pudimos validar todos los datos — ${item.invoice_discrepancy ?? 'falta información clave'}.`;
 
             return (

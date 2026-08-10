@@ -24,17 +24,29 @@ export interface MeerkatRole {
   personalidad:       string;       // descripción para UI (overlay de registro)
   promptPersonalidad: string;       // bloque que va directo al system prompt
   voiceId:            string | null;
+  // Override opcional del object-position para avatares circulares.
+  // Default estándar es 'center 3%' (ver [[feedback-meerkat-avatar-crop]]).
+  // Solo se define aquí cuando la composición de la foto necesita otro punto.
+  avatarPosition?:    string;
+  // Zoom extra sobre el avatar. Default 1 (usa lo que da object-fit: cover).
+  // Ej: 1.5 para acercar la cara cuando el meerkat queda muy chico.
+  avatarScale?:       number;
 }
 
 export const MEERKAT_ROLES: MeerkatRole[] = [
   {
-    id:          'nia',
-    nombre:      'Nia',
-    rol:         'Recepcionista',
-    descripcion: 'Agenda citas, captura leads y da información general',
-    imagen:      '/meerkats/nia.png',
-    color:       '#6C3BFF',
-    genero:      'F',
+    id:             'nia',
+    nombre:         'Nia',
+    rol:            'Recepcionista',
+    descripcion:    'Agenda citas, captura leads y da información general',
+    imagen:         '/meerkats/nia.png',
+    // La cara de Nia queda a la izquierda de la foto porque sostiene un libro
+    // en el lado derecho. Necesita zoom (para que el object-position en X tenga
+    // efecto) + mostrar más del lado izquierdo de la imagen para centrar la cara.
+    avatarPosition: '10% 10%',
+    avatarScale:    1.35,
+    color:          '#6C3BFF',
+    genero:         'F',
     tagline:     'Nunca se le escapa un dato',
     voiceId:     '9Godp7dNohUvXk6qp0gS',
     personalidad:
@@ -228,13 +240,16 @@ Expresiones naturales: "Con gusto le ayudo.", "Entiendo perfectamente.", "Ya que
     },
   },
   {
-    id:          'neo',
-    nombre:      'Neo',
-    rol:         'Operaciones',
-    descripcion: 'Tickets, incidentes, flujos y operación interna',
-    imagen:      '/meerkats/neo.png',
-    color:       '#06b6d4',
-    genero:      'M',
+    id:             'neo',
+    nombre:         'Neo',
+    rol:            'Operaciones',
+    descripcion:    'Tickets, incidentes, flujos y operación interna',
+    imagen:         '/meerkats/neo.png',
+    // Cara a la izquierda porque sostiene laptop a la derecha. Zoom + shift.
+    avatarPosition: '35% 8%',
+    avatarScale:    1.35,
+    color:          '#06b6d4',
+    genero:         'M',
     tagline:     'Laptop abierta, problema resuelto',
     voiceId:     'nmvA11Y688M5reLqDsVm',
     personalidad:
@@ -261,13 +276,16 @@ Expresiones naturales: "¿Desde cuándo presenta el problema?", "Le genero un fo
     },
   },
   {
-    id:          'nova',
-    nombre:      'Nova',
-    rol:         'Centro de Coordinación',
-    descripcion: 'Despacha equipos, coordina operaciones y actualiza estatus en tiempo real',
-    imagen:      '/meerkats/nova.png',
-    color:       '#ef4444',
-    genero:      'M',
+    id:             'nova',
+    nombre:         'Nova',
+    rol:            'Centro de Coordinación',
+    descripcion:    'Despacha equipos, coordina operaciones y actualiza estatus en tiempo real',
+    imagen:         '/meerkats/nova.png',
+    // Cara a la izquierda porque sostiene tablet a la derecha. Zoom + shift.
+    avatarPosition: '35% 8%',
+    avatarScale:    1.35,
+    color:          '#ef4444',
+    genero:         'M',
     tagline:     'El cerebro operativo de tu equipo en campo.',
     voiceId:     'htFfPSZGJwjBv1CL0aMD',
     personalidad:

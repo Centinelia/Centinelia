@@ -5,7 +5,6 @@ import { Brain }                        from 'lucide-react';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import LearningsSection                 from '../../LearningsSection';
 import InsightsSection                  from '../../InsightsSection';
-import { PageSection, SectionHeader }   from '@/components/portal-ui';
 import OficinaPageHero                  from '../OficinaPageHero';
 
 interface Props { params: Promise<{ token: string }> }
@@ -24,21 +23,12 @@ export default async function AprendizajesPage({ params }: Props) {
         icon={Brain}
         eyebrow="Aprendizajes"
         title="Aprendizajes del equipo"
-        description="Lo que el equipo aprende con certeza se aplica automáticamente. Aquí solo aparecen los aprendizajes inciertos que quieren tu confirmación antes de incorporarse a la memoria del equipo."
+        description="Cuando tu equipo aprende algo con certeza, lo aplica solo. Aquí aparecen los casos en los que no está seguro y te pide una confirmación rápida antes de sumarlo a la memoria del equipo."
       />
 
       <LearningsSection token={token} canApprove={canApprove} />
 
-      <PageSection
-        heading={
-          <SectionHeader
-            eyebrow="INSIGHTS"
-            title="Insights de la semana"
-          />
-        }
-      >
-        <InsightsSection token={token} />
-      </PageSection>
+      <InsightsSection token={token} />
     </div>
   );
 }

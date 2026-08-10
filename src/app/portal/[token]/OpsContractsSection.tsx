@@ -129,7 +129,7 @@ export default function OpsContractsSection({ token }: { token: string }) {
             )}
           </div>
           <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>
-            Borradores redactados por tu empleado, listos para revisar y enviar.
+            Contratos ya redactados por tu equipo. Revísalos, ajusta lo que quieras y envíalos al cliente cuando estén listos.
           </p>
         </div>
         <button onClick={() => setShowNew(v => !v)}

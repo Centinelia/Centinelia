@@ -1366,7 +1366,9 @@ export default function OutboundSection({
   };
 
   // ── Campaign handlers ─────────────────────────────────────────────────────────
+  const [confirmRunId, setConfirmRunId] = useState<string | null>(null);
   const handleRunCampaign = async (id: string) => {
+    setConfirmRunId(null);
     setRunning(id);
     setCampError('');
     try {
@@ -1942,7 +1944,7 @@ export default function OutboundSection({
                       <CampaignStatusBadge status={c.status} />
                     </div>
 
-                    {/* Action buttons or inline delete confirm */}
+                    {/* Action buttons or inline delete/run confirm */}
                     {confirmDeleteId === c.id ? (
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <span className="text-xs" style={{ color: 'var(--c-text-2)' }}>¿Eliminar?</span>
@@ -1957,11 +1959,25 @@ export default function OutboundSection({
                           No
                         </button>
                       </div>
+                    ) : confirmRunId === c.id ? (
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="text-xs" style={{ color: 'var(--c-text-2)' }}>¿Iniciar ahora? Consume minutos.</span>
+                        <button type="button" onClick={() => handleRunCampaign(c.id)}
+                          className="px-2.5 py-1 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
+                          style={{ background: '#6C3BFF', color: '#fff' }}>
+                          Sí, ejecutar
+                        </button>
+                        <button type="button" onClick={() => setConfirmRunId(null)}
+                          className="px-2.5 py-1 rounded-lg text-xs transition-opacity hover:opacity-70"
+                          style={{ color: 'var(--c-text-3)' }}>
+                          No
+                        </button>
+                      </div>
                     ) : (
                       <div className="flex items-center gap-1 flex-shrink-0">
-                        {/* Run now */}
+                        {/* Run now — pide confirmación primero */}
                         <button type="button"
-                          onClick={() => handleRunCampaign(c.id)}
+                          onClick={() => setConfirmRunId(c.id)}
                           disabled={running === c.id}
                           title="Ejecutar ahora"
                           className="p-1.5 rounded-lg transition-opacity hover:opacity-70 disabled:opacity-40"

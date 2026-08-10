@@ -433,7 +433,7 @@ function UploadZone({ token, docType, templateName, templatePath, validation, on
             <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: `${color}44`, borderTopColor: color }} />
             <p className="text-sm font-semibold" style={{ color }}>Analizando tu plantilla...</p>
             <p className="text-xs text-center max-w-sm" style={{ color: '#6B6480' }}>
-              Detectando qué texto corresponde a cada campo dinámico. Tarda ~30 segundos.
+              Identificando qué partes deben llenarse automáticamente (proveedor, monto, folio, fecha…). Tarda ~30 segundos.
             </p>
           </>
         ) : (
@@ -499,7 +499,7 @@ function AutoTemplatizePreviewModal({ data, color, docType, onConfirm, onReject 
             Detectamos {appliedFields.length} campo{appliedFields.length !== 1 ? 's' : ''} en tu plantilla
           </p>
           <p className="text-xs" style={{ color: '#9B8FB5' }}>
-            Se ve como esperabas? Confirma para guardar. Si algo salió mal, descarta y súbela con {'{{marcadores}}'} manuales.
+            ¿Se ve como esperabas? Confirma para guardar. Si algo salió mal, descarta y vuelve a subirla.
           </p>
         </div>
         <button onClick={(e) => { e.stopPropagation(); onReject(); }}
@@ -536,7 +536,7 @@ function AutoTemplatizePreviewModal({ data, color, docType, onConfirm, onReject 
           {notAppliedFields.length > 0 && (
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: '#9B8FB5' }}>
-                No aplicados ({notAppliedFields.length})
+                No pudimos reemplazar ({notAppliedFields.length})
               </p>
               <div className="flex flex-wrap gap-1">
                 {notAppliedFields.map((f, i) => (
