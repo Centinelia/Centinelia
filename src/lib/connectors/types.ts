@@ -92,15 +92,17 @@ export interface CalendarEvent {
   location?:    string;
   description?: string;
   attendees:    string[];
+  meet_link?:   string;
 }
 
 export interface CreateEventInput {
-  title:        string;
-  start:        string;
-  end:          string;
-  description?: string;
-  location?:    string;
-  attendees?:   string[];
+  title:               string;
+  start:               string;
+  end:                 string;
+  description?:        string;
+  location?:           string;
+  attendees?:          string[];
+  generate_meet_link?: boolean;
 }
 
 export interface CalendarConnector {

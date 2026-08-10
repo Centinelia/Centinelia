@@ -297,7 +297,7 @@ export async function executeListCalendarEvents(
 
 export async function executeCreateCalendarEvent(
   agentId: string,
-  input:   { title: string; start: string; end: string; description?: string; location?: string; attendees?: string[] },
+  input:   { title: string; start: string; end: string; description?: string; location?: string; attendees?: string[]; generate_meet_link?: boolean },
   supabase: SupabaseClient,
 ): Promise<ToolResult> {
   const ic = await getFileConnector(agentId, supabase);
@@ -308,7 +308,8 @@ export async function executeCreateCalendarEvent(
 
   const start = new Date(event.start).toLocaleString('es-MX', { dateStyle: 'full', timeStyle: 'short' });
   const provider = ic.integration.provider === 'gmail' ? 'Google Calendar' : 'Outlook Calendar';
-  return { ok: true, event, message: `Evento "${event.title}" creado en ${provider} para el ${start}.` };
+  const meetLine = event.meet_link ? ` Link Meet: ${event.meet_link}` : '';
+  return { ok: true, event, message: `Evento "${event.title}" creado en ${provider} para el ${start}.${meetLine}` };
 }
 
 export async function executeDeleteCalendarEvent(
