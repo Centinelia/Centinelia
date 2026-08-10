@@ -12,14 +12,28 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (password !== undefined && password.length < 8) return NextResponse.json({ error: 'La contraseña debe tener al menos 8 caracteres' }, { status: 400 });
 
   const supabase = createAdminClient();
-  const update: Record<string, string> = { portal_email: email.toLowerCase().trim() };
-  if (password) update.portal_password_hash = await hashPassword(password);
+  const portalEmail = email.toLowerCase().trim();
 
-  const { error } = await supabase
+  // Update email en el agent (per-agent)
+  const { error: agentErr } = await supabase
     .from('voice_agents')
-    .update(update)
+    .update({ portal_email: portalEmail })
     .eq('id', id);
+  if (agentErr) return NextResponse.json({ error: agentErr.message }, { status: 500 });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  // Password se guarda org-level (fuente de verdad). Dual-write al agente
+  // por retrocompat con código legacy.
+  if (password) {
+    const hash = await hashPassword(password);
+    await supabase
+      .from('organizations')
+      .update({ portal_password_hash: hash })
+      .eq('portal_email', portalEmail);
+    await supabase
+      .from('voice_agents')
+      .update({ portal_password_hash: hash })
+      .eq('id', id);
+  }
+
   return NextResponse.json({ ok: true });
 }

@@ -34,41 +34,52 @@ export async function POST(req: NextRequest) {
     const ok = await verifyPassword(password, subUser.password_hash);
     if (!ok) return NextResponse.json({ error: 'Credenciales incorrectas' }, { status: 401 });
 
-    // Route to the agent(s) the sub-user has access to.
-    // If agent_ids is set, only their assigned agents are valid targets.
-    let agentQuery = supabase.from('voice_agents').select('portal_token').eq('portal_email', subUser.account_id).limit(1);
-    const agentIds: string[] = (subUser as Record<string, unknown>).agent_ids as string[] ?? [];
-    if (agentIds.length > 0) agentQuery = agentQuery.in('id', agentIds);
-
-    const { data: targetAgent } = await agentQuery.maybeSingle();
-    if (!targetAgent?.portal_token)
+    // Route al portal — devolvemos el org token corto (canonical URL post-migración).
+    const { data: org } = await supabase
+      .from('organizations').select('portal_token').eq('portal_email', subUser.account_id).maybeSingle();
+    if (!org?.portal_token)
       return NextResponse.json({ error: 'Cuenta no encontrada' }, { status: 404 });
 
     const sessionToken = subUser.is_owner
       ? await createSession(subUser.account_id)
       : await createSubUserSession(subUser.account_id, subUser.id, subUser.modules ?? []);
 
-    const res = NextResponse.json({ token: targetAgent.portal_token });
+    const res = NextResponse.json({ token: org.portal_token });
     COOKIE_OPTS(res, sessionToken);
     return res;
   }
 
-  // ── 2. Fall back to voice_agents owner login ────────────────────────────
-  const { data: agents } = await supabase
-    .from('voice_agents')
-    .select('id, portal_token, portal_password_hash')
+  // ── 2. Fall back to organizations owner login ────────────────────────────
+  // Fuente de verdad ahora es organizations.portal_password_hash (org-level).
+  // Fallback a voice_agents.portal_password_hash por retrocompat con orgs
+  // creados antes del backfill.
+  const { data: org } = await supabase
+    .from('organizations')
+    .select('portal_token, portal_password_hash')
     .eq('portal_email', normalizedEmail)
-    .limit(1);
+    .maybeSingle();
 
-  const agent = agents?.[0];
-  if (!agent?.portal_password_hash)
+  let passwordHash: string | null = (org as { portal_password_hash?: string | null } | null)?.portal_password_hash ?? null;
+  if (!passwordHash) {
+    const { data: agents } = await supabase
+      .from('voice_agents')
+      .select('portal_password_hash')
+      .eq('portal_email', normalizedEmail)
+      .not('portal_password_hash', 'is', null)
+      .limit(1);
+    passwordHash = agents?.[0]?.portal_password_hash ?? null;
+  }
+  if (!passwordHash)
     return NextResponse.json({ error: 'Credenciales incorrectas' }, { status: 401 });
 
-  const ok = await verifyPassword(password, agent.portal_password_hash);
+  const ok = await verifyPassword(password, passwordHash);
   if (!ok) return NextResponse.json({ error: 'Credenciales incorrectas' }, { status: 401 });
 
+  if (!org?.portal_token)
+    return NextResponse.json({ error: 'Cuenta no encontrada' }, { status: 404 });
+
   const sessionToken = await createSession(normalizedEmail);
-  const res = NextResponse.json({ token: agent.portal_token });
+  const res = NextResponse.json({ token: org.portal_token });
   COOKIE_OPTS(res, sessionToken);
   return res;
 }

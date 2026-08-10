@@ -47,18 +47,30 @@ export async function POST(req: NextRequest) {
 
   const supabase = createAdminClient();
 
-  // If linking to an existing client account, inherit their portal credentials
+  // If linking to an existing client account, inherit their portal credentials.
+  // Password vive org-level (organizations.portal_password_hash); leemos de ahí
+  // primero, fallback a voice_agents legacy.
   let inheritedPortalEmail: string | null = null;
   let inheritedPasswordHash: string | null = null;
   if (rawPortalEmail) {
-    const { data: existing } = await supabase
-      .from('voice_agents')
+    const { data: existingOrg } = await supabase
+      .from('organizations')
       .select('portal_email, portal_password_hash')
       .eq('portal_email', rawPortalEmail)
-      .limit(1)
-      .single();
-    inheritedPortalEmail  = existing?.portal_email ?? rawPortalEmail;
-    inheritedPasswordHash = existing?.portal_password_hash ?? null;
+      .maybeSingle() as { data: { portal_email: string; portal_password_hash: string | null } | null };
+    inheritedPortalEmail  = existingOrg?.portal_email ?? rawPortalEmail;
+    inheritedPasswordHash = existingOrg?.portal_password_hash ?? null;
+
+    if (!inheritedPasswordHash) {
+      const { data: existingAgent } = await supabase
+        .from('voice_agents')
+        .select('portal_password_hash')
+        .eq('portal_email', rawPortalEmail)
+        .not('portal_password_hash', 'is', null)
+        .limit(1)
+        .maybeSingle();
+      inheritedPasswordHash = existingAgent?.portal_password_hash ?? null;
+    }
   }
 
   // Scrape website before insert so the Vapi assistant has it from the start
