@@ -1344,6 +1344,13 @@ export async function POST(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Invalid messages' }, { status: 400 });
   }
 
+  // Guard vs mensajes vacíos/whitespace — evita cobrar 3 ops por LLM call
+  // que no va a producir nada útil. Fix 2026-08-10.
+  const lastMsg = messages[messages.length - 1];
+  if (lastMsg?.role === 'user' && !String(lastMsg.content ?? '').trim()) {
+    return NextResponse.json({ error: 'Mensaje vacío. No se consumieron tareas.' }, { status: 400 });
+  }
+
   // Payload size guard
   if (messages.length > 50) {
     return NextResponse.json({ error: 'Too many messages' }, { status: 400 });

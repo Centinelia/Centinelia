@@ -42,17 +42,11 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (session.portalEmail && agent.portal_email && session.portalEmail !== agent.portal_email)
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
-  const ops = await consumeAiOp(agent.id, OPS_COST, { source: 'generate_kb', label: 'Generación de manual con IA' });
-  if (!ops.ok)
-    return NextResponse.json(
-      { error: `Sin tareas disponibles (${ops.used}/${ops.limit} usadas)` },
-      { status: 402 }
-    );
-
   if (!process.env.ANTHROPIC_API_KEY)
     return NextResponse.json({ error: 'API key no configurada' }, { status: 500 });
 
-  // Org-level fields come from organizations table
+  // Org-level fields come from organizations table (fetch PRIMERO para poder
+  // hacer probe de contexto antes de cobrar ops)
   const { data: org } = agent.portal_email
     ? await supabase
         .from('organizations')
@@ -60,6 +54,30 @@ export async function POST(req: NextRequest, { params }: Params) {
         .eq('portal_email', agent.portal_email)
         .single()
     : { data: null };
+
+  // Probe: si no hay NINGÚN contexto que darle al LLM, la generación va a
+  // salir genérica o inútil. Fail early sin cobrar. Fix 2026-08-10.
+  if (type === 'business') {
+    const hasContext =
+      !!org?.business_description?.trim() ||
+      !!org?.business_website?.trim() ||
+      !!org?.website_knowledge?.trim() ||
+      !!org?.business_hours ||
+      !!(agent as { first_message?: string | null }).first_message?.trim() ||
+      !!org?.knowledge_base?.trim();
+    if (!hasContext) {
+      return NextResponse.json({
+        error: 'Necesitas llenar al menos la descripción del negocio, el sitio web o los horarios para que la IA tenga contexto. No se consumieron tareas.',
+      }, { status: 422 });
+    }
+  }
+
+  const ops = await consumeAiOp(agent.id, OPS_COST, { source: 'generate_kb', label: 'Generación de manual con IA' });
+  if (!ops.ok)
+    return NextResponse.json(
+      { error: `Sin tareas disponibles (${ops.used}/${ops.limit} usadas)` },
+      { status: 402 }
+    );
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
