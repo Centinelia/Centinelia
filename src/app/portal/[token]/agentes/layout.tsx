@@ -51,7 +51,11 @@ export default async function AgentesLayout({
   const allClientAgents = clientAgents ?? [];
 
   const hasOpsAgent  = allClientAgents.some((a: any) => !!(a.role as string | null)); // eslint-disable-line @typescript-eslint/no-explicit-any
-  const showOutbound = !!(agent.features as any)?.outbound_calls; // eslint-disable-line @typescript-eslint/no-explicit-any
+  // Fix 2026-08-09: showOutbound antes solo checkeaba el agente primario
+  // (dueño del portal_token). Ahora acepta si CUALQUIER peer del equipo
+  // tiene outbound_calls activado. Mismo patrón corregido en varios lugares.
+  const showOutbound = !!(agent.features as any)?.outbound_calls // eslint-disable-line @typescript-eslint/no-explicit-any
+    || allClientAgents.some((a: any) => !!((a.features as any)?.outbound_calls)); // eslint-disable-line @typescript-eslint/no-explicit-any
   const hasStripe    = !!(agent as any).stripe_customer_id;
   const accountSerial = lookupEmail ? await getOrCreateSerial(lookupEmail).catch(() => null) : null;
 

@@ -49,7 +49,9 @@ export default async function OficinaLlamadasPage({ params, searchParams }: Prop
   const showOrders     = !!features.order_taking        || anyHas('order_taking');
   const showAppts      = !!features.appointment_booking || anyHas('appointment_booking');
   const showOutbound   = !!(features.outbound_calls)    || anyHas('outbound_calls') || agent.plan === 'pro';
-  const initOutbound   = !!(features.outbound_calls);
+  // Fix 2026-08-09: initOutbound antes solo checkeaba el primario. Ahora
+  // incluye peers (mismo bug que se corrigió en /oficina/campanas).
+  const initOutbound   = !!(features.outbound_calls)    || anyHas('outbound_calls');
   const initMissedCall = !!((agent as any).missed_call_recovery);
 
   // Fetch data conditionally based on active filter tab to avoid unnecessary queries
