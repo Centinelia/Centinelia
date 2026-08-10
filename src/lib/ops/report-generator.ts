@@ -14,7 +14,7 @@ export interface ReportDataSources {
   notion?:                  boolean;
 }
 
-export async function runReport(reportId: string): Promise<{ ok: boolean; error?: string }> {
+export async function runReport(reportId: string): Promise<{ ok: boolean; error?: string; skipped?: boolean; reason?: string }> {
   const supabase = createAdminClient();
 
   const { data: report } = await supabase
@@ -146,10 +146,10 @@ Sé directo, ejecutivo y sin relleno. Máximo 400 palabras.`;
     // ni cobrar op ni mandar correo. Marca 'skipped_empty' en el run para
     // trazabilidad. Fix 2026-08-10.
     const hasActivity =
-      (snapshot.calls?.total ?? 0) > 0 ||
-      (snapshot.leads ?? 0) > 0 ||
-      (snapshot.orders ?? 0) > 0 ||
-      (snapshot.appointments ?? 0) > 0;
+      (((snapshot.calls as { total?: number } | undefined)?.total) ?? 0) > 0 ||
+      ((snapshot.leads        as number | undefined) ?? 0) > 0 ||
+      ((snapshot.orders       as number | undefined) ?? 0) > 0 ||
+      ((snapshot.appointments as number | undefined) ?? 0) > 0;
     if (!hasActivity) {
       await supabase.from('ops_report_runs')
         .update({ status: 'skipped_empty', completed_at: new Date().toISOString() })
