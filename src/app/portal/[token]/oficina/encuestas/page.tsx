@@ -21,8 +21,11 @@ export default async function EncuestasPage({ params }: Props) {
   const cookieStore = await cookies();
   const session     = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
 
-  const canLlamadas  = !session?.isSubUser || !!(session.modules?.includes('campanas'));
-  const canEncuestas = !session?.isSubUser || !!(session.modules?.includes('of_encuestas'));
+  // 2026-08-10: Calidad unificada en Campañas. Ver campanas/page.tsx.
+  const hasCampanas  = !!(session?.modules?.includes('campanas'));
+  const hasEncuestas = !!(session?.modules?.includes('of_encuestas'));
+  const canLlamadas  = !session?.isSubUser || hasCampanas;
+  const canEncuestas = !session?.isSubUser || hasCampanas || hasEncuestas;
 
   const visibleTabs: CampanasTab[] = [];
   if (canLlamadas)  visibleTabs.push('llamadas');

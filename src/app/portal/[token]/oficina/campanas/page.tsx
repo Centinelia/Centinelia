@@ -28,8 +28,13 @@ export default async function OficinaCampanasPage({ params, searchParams }: Prop
   const cookieStore = await cookies();
   const session     = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
 
-  const canLlamadas  = !session?.isSubUser || !!(session.modules?.includes('campanas'));
-  const canEncuestas = !session?.isSubUser || !!(session.modules?.includes('of_encuestas'));
+  // 2026-08-10: Calidad se unificó en Campañas. Módulo `campanas` otorga
+  // ambos tabs. `of_encuestas` se mantiene como fallback para sub-users
+  // viejos que solo tengan ese permiso.
+  const hasCampanas  = !!(session?.modules?.includes('campanas'));
+  const hasEncuestas = !!(session?.modules?.includes('of_encuestas'));
+  const canLlamadas  = !session?.isSubUser || hasCampanas;
+  const canEncuestas = !session?.isSubUser || hasCampanas || hasEncuestas;
 
   const visibleTabs: CampanasTab[] = [];
   if (canLlamadas)  visibleTabs.push('llamadas');

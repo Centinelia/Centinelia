@@ -81,16 +81,15 @@ export const PORTAL_MODULES = [
   },
   {
     id: 'campanas', label: 'Campañas', group: 'Oficina', giros: ['all'] as string[],
-    desc: 'Programación y monitoreo de campañas de llamadas salientes con contactos y tags.',
+    desc: 'Campañas de llamadas salientes y encuestas de satisfacción post-llamada.',
   },
   {
     id: 'of_onboarding', label: 'Onboarding', group: 'Oficina', giros: ['all'] as string[],
     desc: 'Flujos de bienvenida y capacitación que tus empleados gestionan para nuevos colaboradores.',
   },
-  {
-    id: 'of_encuestas', label: 'Calidad', group: 'Oficina', giros: ['all'] as string[],
-    desc: 'Encuestas de satisfacción y recopilación de datos post-llamada para medir la calidad del servicio.',
-  },
+  // `of_encuestas` removido del picker el 2026-08-10 — Calidad ahora vive
+  // como sub-tab dentro de Campañas. El módulo sigue en el enum y en
+  // ROUTE_MODULE_MAP por retrocompat con sub-users que ya lo tengan asignado.
   // ─ OPERACIÓN — sector Gobierno / Municipio ─
   {
     id: 'of_reportes_ciudadanos', label: 'Reportes ciudadanos', group: 'Oficina', giros: ['gobierno'] as string[],
@@ -118,13 +117,19 @@ export type PortalModuleId = (typeof PORTAL_MODULES)[number]['id'];
 // Used by proxy.ts to enforce sub-user access on direct URL navigation.
 // Un value tipo string[] significa OR: el sub-user necesita AL MENOS UNO
 // (usado por /oficina/campanas que ahora unifica salientes + encuestas).
+//
+// Nota: los path keys usan los nombres visibles al usuario (empleados, equipo).
+// Los module IDs (valores) se mantienen con el nombre viejo (agentes, usuarios)
+// para retrocompat con `portal_users.modules` ya guardados en DB.
 export const ROUTE_MODULE_MAP: Record<string, string | string[]> = {
   // Portal top-level
-  'agentes':                       'agentes',
+  'empleados':                     'agentes',
+  'agentes':                       'agentes',       // legacy path — retrocompat
   'llamadas':                      'llamadas',
   'llamadas/entrantes':            'llamadas',
   'llamadas/salientes':            'llamadas',
-  'usuarios':                      'usuarios',
+  'equipo':                        'usuarios',
+  'usuarios':                      'usuarios',      // legacy path — retrocompat
   // Oficina
   'oficina':                       'oficina',
   'oficina/bandeja':               'of_bandeja',
