@@ -42,6 +42,11 @@ export async function GET(req: Request) {
       .eq('portal_email', acct.portal_email)
       .lt('minutes_reset_date', today);
     resetDate++;
+    // Limpiar flag de fallback al arrancar el nuevo ciclo (idempotente).
+    await supabase.from('organizations')
+      .update({ fallback_notified_at: null })
+      .eq('portal_email', acct.portal_email)
+      .not('fallback_notified_at', 'is', null);
   }
 
   // ── 2. Reset voice_agents standalone (sin portal_email) legacy path ──────

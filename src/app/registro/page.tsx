@@ -670,9 +670,11 @@ function RegistroInner() {
   );
 
   // Step 4 — Contact
-  const [clientFirstName, setClientFirstName] = useState('');
-  const [clientLastName,  setClientLastName]  = useState('');
-  const [clientEmail,     setClientEmail]     = useState('');
+  const [clientFirstName,  setClientFirstName]  = useState('');
+  const [clientLastName,   setClientLastName]   = useState('');
+  const [clientEmail,      setClientEmail]      = useState('');
+  const [transferWhatsapp, setTransferWhatsapp] = useState('');
+  const [useAsFallback,    setUseAsFallback]    = useState(true);
 
   // Step 4 — KYC
   const [rfc,         setRfc]         = useState('');
@@ -822,6 +824,7 @@ function RegistroInner() {
     if (!clientFirstName.trim())                           { setError('Escribe tu nombre'); return; }
     if (!clientLastName.trim())                            { setError('Escribe tu apellido'); return; }
     if (!clientEmail.trim() || !clientEmail.includes('@')) { setError('Escribe un correo electrónico válido'); return; }
+    if (!transferWhatsapp.trim())                          { setError('Escribe tu número de WhatsApp'); return; }
     if (country === 'mx') {
       const rfcClean = rfc.trim().toUpperCase().replace(/\s/g, '');
       if (rfcClean.length < 12 || rfcClean.length > 13 || !/^[A-Z&Ñ]{3,4}[0-9]{6}[A-Z0-9]{3}$/.test(rfcClean)) {
@@ -850,6 +853,8 @@ function RegistroInner() {
           agent_name:             agentName.trim() || null,
           client_name:            `${clientFirstName.trim()} ${clientLastName.trim()}`,
           client_email:           clientEmail.trim(),
+          transfer_whatsapp:      transferWhatsapp.trim(),
+          fallback_phone_number:  useAsFallback ? transferWhatsapp.trim() : null,
           meerkat_role_id:        meerkatRoleId ?? undefined,
           rfc:                    country === 'mx' ? rfc.trim().toUpperCase().replace(/\s/g, '') : undefined,
           curp:                   country === 'mx' ? curp.trim().toUpperCase().replace(/\s/g, '') : undefined,
@@ -1725,6 +1730,48 @@ function RegistroInner() {
                     <span style={{ color: 'rgba(255,255,255,0.5)', marginLeft: 6 }}>(acceso al portal)</span>
                   </label>
                   <input type="email" value={clientEmail} onChange={e => setClientEmail(e.target.value)} placeholder="tu@correo.com" style={inputStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle}>
+                    WhatsApp de contacto *
+                    <span style={{ color: 'rgba(255,255,255,0.25)', marginLeft: 6 }}>(para notificaciones del sistema)</span>
+                  </label>
+                  <div className="relative">
+                    <Smartphone size={15} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.3)' }} />
+                    <input
+                      type="tel"
+                      value={transferWhatsapp}
+                      onChange={e => setTransferWhatsapp(e.target.value)}
+                      placeholder="Ej. 8112345678"
+                      style={{ ...inputStyle, paddingLeft: 40 }}
+                    />
+                  </div>
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setUseAsFallback(v => !v)}
+                    onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setUseAsFallback(v => !v); } }}
+                    style={{
+                      display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer',
+                      padding: '10px 12px', borderRadius: 10, marginTop: 8,
+                      background: useAsFallback ? 'rgba(108,59,255,0.1)' : 'rgba(255,255,255,0.03)',
+                      border: `1px solid ${useAsFallback ? 'rgba(108,59,255,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                      transition: 'background 0.15s, border-color 0.15s',
+                    }}
+                  >
+                    <div style={{
+                      width: 16, height: 16, borderRadius: 4, flexShrink: 0, marginTop: 1,
+                      background: useAsFallback ? '#6C3BFF' : 'rgba(255,255,255,0.08)',
+                      border: `1px solid ${useAsFallback ? '#6C3BFF' : 'rgba(255,255,255,0.15)'}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      transition: 'background 0.15s',
+                    }}>
+                      {useAsFallback && <Check size={10} color="#fff" strokeWidth={3} />}
+                    </div>
+                    <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', lineHeight: 1.55, userSelect: 'none' }}>
+                      Usar este mismo número como respaldo si se agotan mis minutos. Si no lo activas, las llamadas se pausarán cuando llegues al límite.
+                    </p>
+                  </div>
                 </div>
                 {country === 'mx' && (
                   <>

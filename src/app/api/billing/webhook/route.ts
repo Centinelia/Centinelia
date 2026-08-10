@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse, after } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { FEATURE_PLAN_CONFIG, MONTHLY_CONFIG, monthlyConfigFromPriceId, nextResetDate, JORNADA_CONFIG } from '@/lib/billing/plans';
@@ -89,6 +89,15 @@ export async function POST(req: NextRequest) {
               p_reference_id: session.id ?? null,
               p_description:  `Upgrade a ${newMinutesCfg.label}: +${delta} min de diferencial`,
             });
+            after(async () => {
+              const { resetFallbackIfActive } = await import('@/lib/billing/fallback-restore');
+              const { data: agentForName } = await supabase
+                .from('voice_agents')
+                .select('business_name')
+                .eq('id', agentId)
+                .single();
+              await resetFallbackIfActive(supabase, upgradeEmail, agentForName?.business_name ?? 'tu empleado');
+            });
           } else {
             await supabase.from('minutes_ledger').insert({
               agent_id:    agentId,
@@ -132,6 +141,15 @@ export async function POST(req: NextRequest) {
           if (agent.phone_number && agent.vapi_agent_id) {
             await resumeVapiAgent(agent.phone_number, agent.vapi_agent_id);
           }
+          after(async () => {
+            const { resetFallbackIfActive } = await import('@/lib/billing/fallback-restore');
+            const { data: agentForName } = await supabase
+              .from('voice_agents')
+              .select('business_name')
+              .eq('id', agentId)
+              .single();
+            await resetFallbackIfActive(supabase, agent.portal_email, agentForName?.business_name ?? 'tu empleado');
+          });
         } else {
           await supabase.from('voice_agents')
             .update({ minutes_included: (agent?.minutes_included ?? 0) + minutes, active: true, billing_status: 'activo' })
@@ -501,6 +519,15 @@ export async function POST(req: NextRequest) {
           p_kind:         'renewal',
           p_reference_id: invoice.id ?? null,
           p_description:  `Renovación mensual: ${minutesCfg.minutes} min`,
+        });
+        after(async () => {
+          const { resetFallbackIfActive } = await import('@/lib/billing/fallback-restore');
+          const { data: agentForName } = await supabase
+            .from('voice_agents')
+            .select('business_name')
+            .eq('id', agentId)
+            .single();
+          await resetFallbackIfActive(supabase, renewalEmail, agentForName?.business_name ?? 'tu empleado');
         });
       } else {
         // Agente sin portal_email (legacy standalone) — mantiene ledger básico

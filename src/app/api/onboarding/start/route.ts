@@ -21,6 +21,7 @@ export async function POST(req: NextRequest) {
     client_name,
     client_email,
     transfer_whatsapp,
+    fallback_phone_number,
     area_code,
     jornada_type,
     meerkat_role_id,
@@ -117,7 +118,14 @@ export async function POST(req: NextRequest) {
 
     // Org-level fields go to organizations
     await supabase.from('organizations')
-      .upsert({ portal_email: email, business_description: business_description.trim() }, { onConflict: 'portal_email' });
+      .upsert({
+        portal_email:         email,
+        business_description: business_description.trim(),
+        transfer_whatsapp:    transfer_whatsapp.trim(),
+        ...(fallback_phone_number != null
+          ? { fallback_phone_number: fallback_phone_number }
+          : {}),
+      }, { onConflict: 'portal_email' });
 
     const adminWa     = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP ?? process.env.SUPPORT_WHATSAPP ?? '';
     const contactEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? 'hola@centinelia.mx';
@@ -206,7 +214,9 @@ export async function POST(req: NextRequest) {
   // Persist org-level fields + KYC data + AUP acceptance in the org record
   const kycPatch: Record<string, unknown> = {
     business_description: business_description.trim(),
+    transfer_whatsapp:    transfer_whatsapp.trim(),
   };
+  if (fallback_phone_number != null) kycPatch.fallback_phone_number = fallback_phone_number;
   if (rfc?.trim())  kycPatch.rfc  = rfc.trim().toUpperCase();
   if (curp?.trim()) kycPatch.curp = curp.trim().toUpperCase();
   if (aup_accepted) kycPatch.aup_accepted_at = new Date().toISOString();
