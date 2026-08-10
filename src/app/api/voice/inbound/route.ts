@@ -47,10 +47,21 @@ export async function POST(req: NextRequest) {
   // Check account status — suspended or terminated accounts cannot receive calls
   // También traemos los campos de calendar (org-level desde 2026-08-09).
   let orgCalendar: { calendar_type?: string | null; calendar_api_key?: string | null; calendar_event_type_id?: string | null; calendar_link?: string | null } = {};
+  const orgFallback: {
+    fallback_phone_number: string | null;
+    fallback_notified_at:  string | null;
+    minutes_reset_date:    string | null;
+    guardia_principal:     string | null;
+  } = {
+    fallback_phone_number: null,
+    fallback_notified_at:  null,
+    minutes_reset_date:    null,
+    guardia_principal:     null,
+  };
   if (typedAgent.portal_email) {
     const { data: org } = await supabase
       .from('organizations')
-      .select('account_status, suspended_until, calendar_type, calendar_api_key, calendar_event_type_id, calendar_link')
+      .select('account_status, suspended_until, calendar_type, calendar_api_key, calendar_event_type_id, calendar_link, fallback_phone_number, fallback_notified_at, minutes_reset_date, guardia_schedule')
       .eq('portal_email', typedAgent.portal_email)
       .single();
 
@@ -61,6 +72,11 @@ export async function POST(req: NextRequest) {
         calendar_event_type_id: org.calendar_event_type_id,
         calendar_link:          org.calendar_link,
       };
+
+      orgFallback.fallback_phone_number = (org?.fallback_phone_number as string | null) ?? null;
+      orgFallback.fallback_notified_at  = (org?.fallback_notified_at as string | null) ?? null;
+      orgFallback.minutes_reset_date    = (org?.minutes_reset_date as string | null) ?? null;
+      orgFallback.guardia_principal     = ((org as any)?.guardia_schedule?.principal as string | null) ?? null;
 
       const isSuspended = org.account_status === 'suspended' &&
         (!org.suspended_until || new Date(org.suspended_until) > new Date());
@@ -209,23 +225,110 @@ export async function POST(req: NextRequest) {
 
   // Enforce monthly cap — block non-owner callers when plan minutes are exhausted
   if (!isOwner && minutesIncluded > 0 && minutesUsedThisMonth >= minutesIncluded) {
+    const { isValidE164 } = await import('@/lib/billing/fallback-validate');
+    const { logRoutingTransition } = await import('@/lib/billing/routing-log');
+    const { after } = await import('next/server');
+
+    const canFallback = typedAgent.portal_email && isValidE164(orgFallback.fallback_phone_number);
+
+    if (canFallback) {
+      const fallbackNum = orgFallback.fallback_phone_number as string;
+
+      after(async () => {
+        const { notifyFallbackActivated } = await import('@/lib/billing/fallback-notify');
+        const portalUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
+        await notifyFallbackActivated(supabase, {
+          portal_email:          typedAgent.portal_email as string,
+          fallback_phone_number: fallbackNum,
+          fallback_notified_at:  orgFallback.fallback_notified_at,
+          minutes_reset_date:    orgFallback.minutes_reset_date,
+          transfer_whatsapp:     typedAgent.transfer_whatsapp ?? null,
+          guardia_principal:     orgFallback.guardia_principal,
+        }, agentName, portalUrl);
+
+        await logRoutingTransition(supabase, {
+          portal_email:     typedAgent.portal_email as string,
+          agent_id:         typedAgent.id,
+          caller_number:    phoneNumber,
+          transition:       'fallback_activated',
+          minutes_used:     minutesUsedThisMonth,
+          minutes_included: minutesIncluded,
+        });
+      });
+
+      return NextResponse.json({
+        assistant: {
+          name: 'FallbackForward',
+          model: {
+            provider: 'anthropic',
+            model:    'claude-haiku-4-5-20251001',
+            messages: [{
+              role: 'system',
+              content: 'Di exactamente la frase indicada, luego llama de inmediato a la herramienta transferir_a_dueno. No hagas preguntas ni escuches respuestas.',
+            }],
+          },
+          voice: {
+            provider: '11labs',
+            voiceId:  typedAgent.elevenlabs_voice_id ?? process.env.ELEVENLABS_DEFAULT_VOICE_ID,
+            model:    'eleven_turbo_v2_5',
+            stability:       0.45,
+            similarityBoost: 0.75,
+            style:           0.30,
+            speed:           1.05,
+            useSpeakerBoost: true,
+            optimizeStreamingLatency: 4,
+          },
+          firstMessage: 'Un momento por favor, le comunicamos.',
+          tools: [{
+            type: 'transferCall',
+            function: {
+              name: 'transferir_a_dueno',
+              description: 'Transfiere la llamada al numero de respaldo del negocio.',
+              parameters: { type: 'object', properties: {} },
+            },
+            destinations: [{
+              type:    'number',
+              number:  fallbackNum,
+              message: 'Llamada entrante a tu negocio (Centinelia sin minutos este ciclo).',
+            }],
+            messages: [{ type: 'request-start', content: 'Le comunico.' }],
+          }],
+          endCallMessage:         'Gracias.',
+          silenceTimeoutSeconds:  3,
+          maxDurationSeconds:     30,
+        },
+      });
+    }
+
+    // Sin fallback configurado -> PausedByLimit (comportamiento actual)
+    after(async () => {
+      await logRoutingTransition(supabase, {
+        portal_email:     typedAgent.portal_email as string,
+        agent_id:         typedAgent.id,
+        caller_number:    phoneNumber,
+        transition:       'no_fallback_paused',
+        minutes_used:     minutesUsedThisMonth,
+        minutes_included: minutesIncluded,
+      });
+    });
+
     const pausedMsg = `Gracias por llamar a ${typedAgent.business_name}. En este momento el servicio automatizado se encuentra temporalmente pausado. Por favor contacte al negocio directamente. Gracias.`;
     return NextResponse.json({
       assistant: {
         name: 'PausedByLimit',
         model: {
           provider: 'anthropic',
-          model: 'claude-haiku-4-5-20251001',
+          model:    'claude-haiku-4-5-20251001',
           messages: [{ role: 'system', content: 'Solo di el mensaje que se te indica y despídete. No respondas ninguna pregunta.' }],
         },
         voice: {
           provider: '11labs',
-          voiceId: typedAgent.elevenlabs_voice_id ?? process.env.ELEVENLABS_DEFAULT_VOICE_ID,
-          model: 'eleven_turbo_v2_5',
-          stability: 0.45,
+          voiceId:  typedAgent.elevenlabs_voice_id ?? process.env.ELEVENLABS_DEFAULT_VOICE_ID,
+          model:    'eleven_turbo_v2_5',
+          stability:       0.45,
           similarityBoost: 0.75,
-          style: 0.30,
-          speed: 1.05,
+          style:           0.30,
+          speed:           1.05,
           useSpeakerBoost: true,
           optimizeStreamingLatency: 4,
         },
