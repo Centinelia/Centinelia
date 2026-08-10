@@ -98,12 +98,17 @@ export async function loadCampanasData(token: string): Promise<CampanasPageData 
     : [{ count: 0 }, { count: 0 }, { count: 0 }];
 
   // ── Surveys state ──────────────────────────────────────────────────────
-  const surveyAgentName = (agent as { agent_name?: string | null }).agent_name
-    ?? (agent as { business_name?: string }).business_name
-    ?? undefined;
-  const hasSurveyAgent = allPeers.some(
+  // Buscar el PRIMER PEER cuyo rol pueda aplicar encuestas (Nia/Nelia/Naia).
+  // Antes se usaba el agente primario (dueño del portal_token), lo que
+  // producía copy tipo "Niva aplica las encuestas" aunque Niva es coordinadora
+  // sin voz. Ahora se elige de entre los peers con capability real.
+  const surveyPeer = allPeers.find(
     a => SURVEY_MEERKAT_IDS.includes(((a.features as Record<string, unknown> | null)?.meerkat_role_id as string | undefined) ?? ''),
   );
+  const surveyAgentName = ((surveyPeer as { agent_name?: string | null } | undefined)?.agent_name ?? undefined)
+    || ((surveyPeer as { business_name?: string } | undefined)?.business_name ?? undefined)
+    || 'Tu equipo';
+  const hasSurveyAgent = !!surveyPeer;
 
   // ── Minutos disponibles para modal de campañas ────────────────────────
   const { data: acctMins } = lookupEmail
