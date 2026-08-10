@@ -4,6 +4,7 @@ import { NextRequest, NextResponse }     from 'next/server';
 import { cookies }                       from 'next/headers';
 import { createAdminClient }            from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { resolveOrgFromToken } from '@/lib/portal/org-token';
 
 interface Params { params: Promise<{ token: string }> }
 
@@ -15,12 +16,9 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
   const supabase = createAdminClient();
 
-  const { data: anchor } = await supabase
-    .from('voice_agents')
-    .select('portal_email')
-    .eq('portal_token', token)
-    .single();
-  if (!anchor?.portal_email) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  const resolved = await resolveOrgFromToken(token);
+  if (!resolved?.portalEmail) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  const anchor = { portal_email: resolved.portalEmail };
   if (session.portalEmail && anchor.portal_email !== session.portalEmail)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 

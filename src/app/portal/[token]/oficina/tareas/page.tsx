@@ -1,8 +1,9 @@
 export const dynamic = 'force-dynamic';
 
-import { createAdminClient } from '@/lib/supabase/admin';
-import { getAgentAccess }    from '@/lib/portal/agent-access';
-import TareasClient          from './TareasClient';
+import { createAdminClient }     from '@/lib/supabase/admin';
+import { getAgentAccess }        from '@/lib/portal/agent-access';
+import { resolveOrgFromToken }   from '@/lib/portal/org-token';
+import TareasClient              from './TareasClient';
 
 interface Props { params: Promise<{ token: string }> }
 
@@ -10,17 +11,13 @@ export default async function TareasPage({ params }: Props) {
   const { token } = await params;
 
   const supabase = createAdminClient();
-  const { data: ag } = await supabase
-    .from('voice_agents')
-    .select('portal_email')
-    .eq('portal_token', token)
-    .single();
+  const resolved = await resolveOrgFromToken(token);
 
-  const { data: agentsRaw } = ag?.portal_email
+  const { data: agentsRaw } = resolved?.portalEmail
     ? await supabase
         .from('voice_agents')
         .select('id, agent_name, role, features')
-        .eq('portal_email', ag.portal_email)
+        .eq('portal_email', resolved.portalEmail)
         .eq('active', true)
     : { data: [] };
 

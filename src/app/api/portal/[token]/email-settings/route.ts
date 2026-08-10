@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 
 interface Params { params: Promise<{ token: string }> }
 
@@ -17,11 +18,16 @@ export async function GET(req: NextRequest, { params }: Params) {
   const { token } = await params;
   const supabase  = createAdminClient();
 
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('id, portal_email, business_name, email_from, email_logo_url, email_domain_verified, resend_domain_id, resend_dns_records')
-    .eq('portal_token', token)
-    .single();
+  const agent = await getPrimaryAgentFromToken<{
+    id: string;
+    portal_email: string | null;
+    business_name: string | null;
+    email_from: string | null;
+    email_logo_url: string | null;
+    email_domain_verified: boolean | null;
+    resend_domain_id: string | null;
+    resend_dns_records: unknown[] | null;
+  }>(token, 'id, portal_email, business_name, email_from, email_logo_url, email_domain_verified, resend_domain_id, resend_dns_records', supabase);
 
   if (!agent) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
   if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
@@ -84,11 +90,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const body      = await req.json();
   const supabase  = createAdminClient();
 
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('id, portal_email')
-    .eq('portal_token', token)
-    .single();
+  const agent = await getPrimaryAgentFromToken<{ id: string; portal_email: string | null }>(token, 'id, portal_email', supabase);
   if (!agent) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
   if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });

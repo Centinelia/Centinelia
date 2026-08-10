@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { updateVapiAssistant } from '@/lib/vapi/sync';
 import type { VoiceAgent } from '@/types/agent';
 
@@ -15,20 +16,14 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const supabase = createAdminClient();
 
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('*')
-    .eq('portal_token', token)
-    .eq('portal_email', session.portalEmail)
-    .single();
-
-  if (!agent) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+  const agent = await getPrimaryAgentFromToken<VoiceAgent>(token, '*', supabase);
+  if (!agent || agent.portal_email !== session.portalEmail) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   if (!agent.vapi_agent_id) {
     return NextResponse.json({ error: 'El agente aún no tiene un ID de Vapi asignado' }, { status: 400 });
   }
 
-  const ok = await updateVapiAssistant(agent.vapi_agent_id, agent as VoiceAgent);
+  const ok = await updateVapiAssistant(agent.vapi_agent_id, agent);
   if (!ok) return NextResponse.json({ error: 'Error al sincronizar con Vapi' }, { status: 500 });
 
   return NextResponse.json({ ok: true });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 
 interface Params { params: Promise<{ token: string }> }
 
@@ -18,8 +19,7 @@ export async function GET(req: NextRequest, { params }: Params) {
 
   const { token } = await params;
   const supabase  = createAdminClient();
-  const { data: agent } = await supabase
-    .from('voice_agents').select('features, portal_email').eq('portal_token', token).single();
+  const agent = await getPrimaryAgentFromToken<{ features: Record<string, unknown> | null; portal_email: string | null }>(token, 'features, portal_email', supabase);
   if (!agent) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
@@ -37,8 +37,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const body      = await req.json() as NotaVentaConfig;
   const supabase  = createAdminClient();
 
-  const { data: agent } = await supabase
-    .from('voice_agents').select('id, features, portal_email').eq('portal_token', token).single();
+  const agent = await getPrimaryAgentFromToken<{ id: string; features: Record<string, unknown> | null; portal_email: string | null }>(token, 'id, features, portal_email', supabase);
   if (!agent) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });

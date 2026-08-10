@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { appointmentConfirmationToClientHtml, leadFollowUpToClientHtml, type EmailBranding } from '@/lib/email/send';
 
 interface Params { params: Promise<{ token: string }> }
@@ -16,11 +17,12 @@ export async function GET(req: NextRequest, { params }: Params) {
   const type      = req.nextUrl.searchParams.get('type') ?? 'appointment';
   const supabase  = createAdminClient();
 
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('portal_email, business_name, agent_name, phone_number')
-    .eq('portal_token', token)
-    .single();
+  const agent = await getPrimaryAgentFromToken<{
+    portal_email: string | null;
+    business_name: string;
+    agent_name: string | null;
+    phone_number: string | null;
+  }>(token, 'portal_email, business_name, agent_name, phone_number', supabase);
   if (!agent) return new NextResponse('Not found', { status: 404 });
   if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
     return new NextResponse('Unauthorized', { status: 403 });

@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { resolveOrgFromToken } from '@/lib/portal/org-token';
 import PortalChatDock    from './PortalChatDock';
 import { type AgentOption } from './OpsAgentChatFab';
 import { MEERKAT_MAP } from '@/lib/portal/meerkat-roles';
@@ -13,13 +14,9 @@ export default async function TokenLayout({
   const { token } = await params;
 
   const supabase = createAdminClient();
-  const { data: account } = await supabase
-    .from('voice_agents')
-    .select('portal_email')
-    .eq('portal_token', token)
-    .single();
-
-  const portalEmail = account?.portal_email ?? null;
+  const resolved = await resolveOrgFromToken(token);
+  const portalEmail = resolved?.portalEmail ?? null;
+  const account = portalEmail ? { portal_email: portalEmail } : null;
 
   const { data: org } = portalEmail
     ? await supabase

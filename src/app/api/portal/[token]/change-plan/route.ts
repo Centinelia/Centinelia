@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { FEATURE_PLAN_CONFIG, MONTHLY_CONFIG } from '@/lib/billing/plans';
 import { setAiOpsLimit } from '@/lib/ai/ops-guard';
 import { PLAN_FEATURES } from '@/types/agent';
@@ -31,11 +32,14 @@ export async function POST(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Tier de minutos inválido' }, { status: 400 });
 
   const supabase = createAdminClient();
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('id, business_name, plan, minutes_plan, stripe_customer_id, stripe_subscription_id')
-    .eq('portal_token', token)
-    .single();
+  const agent = await getPrimaryAgentFromToken<{
+    id: string;
+    business_name: string | null;
+    plan: string | null;
+    minutes_plan: string | null;
+    stripe_customer_id: string | null;
+    stripe_subscription_id: string | null;
+  }>(token, 'id, business_name, plan, minutes_plan, stripe_customer_id, stripe_subscription_id', supabase);
 
   if (!agent) return NextResponse.json({ error: 'Agente no encontrado' }, { status: 404 });
 

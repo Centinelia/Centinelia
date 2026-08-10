@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { brandKitFromAgent } from '@/lib/brand/kit';
 import type { BrandKit } from '@/lib/brand/kit';
 
@@ -35,11 +36,7 @@ export async function getAgentForPdf(token: string): Promise<{
   const supabase = createAdminClient();
   // Los campos de branding (color, secondary, footer, website, address) viven en
   // `organizations` desde e372013. Solo logo_url y phone_number siguen en voice_agents.
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('id, portal_email, business_name, phone_number, logo_url, email_logo_url')
-    .eq('portal_token', token)
-    .single();
+  const agent = await getPrimaryAgentFromToken<{ id: string; portal_email: string | null; business_name: string; phone_number: string | null; logo_url: string | null; email_logo_url: string | null }>(token, 'id, portal_email, business_name, phone_number, logo_url, email_logo_url', supabase);
 
   if (!agent) return null;
   if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email) return null;

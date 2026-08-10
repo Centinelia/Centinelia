@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { after } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { resolveOrgFromToken } from '@/lib/portal/org-token';
 import { dispatchHumanRequestNotification } from '@/lib/human-handoff/notify';
 
 export const dynamic = 'force-dynamic';
@@ -14,21 +15,24 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const { token, id } = await params;
   const supabase = createAdminClient();
 
-  // Ownership: token → agent_id → request.agent_id
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('id')
-    .eq('portal_token', token)
-    .maybeSingle();
-  if (!agent) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  // Ownership: token → org → request.agent_id pertenece a algún peer del org
+  const resolved = await resolveOrgFromToken(token);
+  if (!resolved) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   const { data: request } = await supabase
     .from('human_requests')
-    .select('id, agent_id, source_inbox_id, source_channel, source_call_id, source_context, request_type, title, description, urgency, needed_by, status, target_email')
+    .select('id, agent_id, source_inbox_id, source_channel, source_call_id, source_context, request_type, title, description, urgency, needed_by, status, target_email, voice_agents!inner(portal_email)')
     .eq('id', id)
-    .maybeSingle();
+    .maybeSingle() as { data: {
+      id: string; agent_id: string; source_inbox_id: string | null;
+      source_channel: string | null; source_call_id: string | null;
+      source_context: string | null; request_type: string; title: string;
+      description: string; urgency: string | null; needed_by: string | null;
+      status: string; target_email: string;
+      voice_agents: { portal_email: string | null };
+    } | null };
   if (!request) return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  if (request.agent_id !== agent.id) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  if (request.voice_agents.portal_email !== resolved.portalEmail) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   if (request.status !== 'pending' && request.status !== 'escalated') {
     return NextResponse.json({ ok: true, alreadyProcessed: true, status: request.status });
   }

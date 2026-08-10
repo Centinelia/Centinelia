@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { refreshHeaders } from '@/lib/services/sheets';
 import { rateLimit, limiters } from '@/lib/ratelimit';
 
@@ -24,11 +25,7 @@ async function resolveOrg(
   if (!auth) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   const sb = createAdminClient();
-  const { data: agent } = await sb
-    .from('voice_agents')
-    .select('portal_email')
-    .eq('portal_token', token)
-    .single();
+  const agent = await getPrimaryAgentFromToken<{ portal_email: string | null }>(token, 'portal_email', sb);
   if (!agent) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   // IDOR: verify the session's org matches the token's org

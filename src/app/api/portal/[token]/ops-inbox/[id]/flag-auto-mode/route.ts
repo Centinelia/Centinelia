@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { resolveOrgFromToken } from '@/lib/portal/org-token';
 import { saveLearning } from '@/lib/ai/save-learning';
 
 export const dynamic = 'force-dynamic';
@@ -53,31 +54,27 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const { token, id } = await params;
   const supabase = createAdminClient();
 
-  // 1. Resolver agent_id vía portal_token
-  const { data: agent, error: agentErr } = await supabase
-    .from('voice_agents')
-    .select('id, portal_email')
-    .eq('portal_token', token)
-    .maybeSingle();
+  // 1. Resolve org (acepta org token o legacy voice_agents.portal_token)
+  const resolved = await resolveOrgFromToken(token);
+  if (!resolved) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
-  if (agentErr || !agent) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  }
-
-  // 2. Verificar ownership del inbox item
+  // 2. Cargar item con JOIN al agente para ownership org-scoped
   const { data: item, error: itemErr } = await supabase
     .from('ops_inbox')
-    .select('id, agent_id, auto_mode_decision, auto_mode_signals, auto_mode_flagged_at, email_subject')
+    .select('id, agent_id, auto_mode_decision, auto_mode_signals, auto_mode_flagged_at, email_subject, voice_agents!inner(portal_email)')
     .eq('id', id)
-    .maybeSingle();
+    .maybeSingle() as { data: { id: string; agent_id: string; auto_mode_decision: string | null; auto_mode_signals: unknown; auto_mode_flagged_at: string | null; email_subject: string | null; voice_agents: { portal_email: string | null } } | null; error: unknown };
 
   if (itemErr || !item) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
-  if (item.agent_id !== agent.id) {
+  if (item.voice_agents.portal_email !== resolved.portalEmail) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
+
+  // Shim para downstream (usa agent.id y agent.portal_email)
+  const agent = { id: item.agent_id, portal_email: resolved.portalEmail };
 
   // 3. Idempotencia: primer flag gana
   if (item.auto_mode_flagged_at) {

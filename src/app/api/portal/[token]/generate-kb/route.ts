@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
 import { KB_LIMITS } from '@/lib/portal/kb-limits';
 import { logLlmCall } from '@/lib/observability/llm-log';
@@ -26,11 +27,15 @@ export async function POST(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Rol requerido' }, { status: 400 });
 
   const supabase = createAdminClient();
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('id, portal_email, business_name, first_message, transfer_rules, role_knowledge_base, role_learnings')
-    .eq('portal_token', token)
-    .single();
+  const agent = await getPrimaryAgentFromToken<{
+    id: string;
+    portal_email: string | null;
+    business_name: string | null;
+    first_message: string | null;
+    transfer_rules: string | null;
+    role_knowledge_base: string | null;
+    role_learnings: string | null;
+  }>(token, 'id, portal_email, business_name, first_message, transfer_rules, role_knowledge_base, role_learnings', supabase);
   if (!agent) return NextResponse.json({ error: 'Agente no encontrado' }, { status: 404 });
 
   // IDOR guard: session must belong to the same account as the token

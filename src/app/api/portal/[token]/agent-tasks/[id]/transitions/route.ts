@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { resolveOrgFromToken } from '@/lib/portal/org-token';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,12 +16,9 @@ export async function GET(req: NextRequest, { params }: Params) {
   const supabase = createAdminClient();
 
   // Verify org access
-  const { data: acct } = await supabase
-    .from('voice_agents')
-    .select('portal_email')
-    .eq('portal_token', token)
-    .single();
-  if (!acct?.portal_email) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  const resolved = await resolveOrgFromToken(token);
+  if (!resolved?.portalEmail) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  const acct = { portal_email: resolved.portalEmail };
 
   // Verify task belongs to this org
   const { data: task } = await supabase

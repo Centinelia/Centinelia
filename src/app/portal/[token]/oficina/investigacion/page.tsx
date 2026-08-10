@@ -1,8 +1,9 @@
 export const dynamic = 'force-dynamic';
 
 import { Search } from 'lucide-react';
-import { createAdminClient } from '@/lib/supabase/admin';
-import InvestigacionSection  from './InvestigacionSection';
+import { createAdminClient }        from '@/lib/supabase/admin';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
+import InvestigacionSection         from './InvestigacionSection';
 import OficinaPageHero       from '../OficinaPageHero';
 import { MEERKAT_VOICE_DISTRIBUTION } from '@/lib/vapi/sync';
 import { MEERKAT_ROLES } from '@/lib/portal/meerkat-roles';
@@ -26,11 +27,11 @@ export default async function InvestigacionPage({ params }: Props) {
   const { token } = await params;
   const supabase  = createAdminClient();
 
-  const { data: primary } = await supabase
-    .from('voice_agents')
-    .select('portal_email, business_name, plan, minutes_plan')
-    .eq('portal_token', token)
-    .single();
+  const primary = await getPrimaryAgentFromToken<{ portal_email: string | null; business_name: string; plan: string | null; minutes_plan: string | null }>(
+    token,
+    'portal_email, business_name, plan, minutes_plan',
+    supabase,
+  );
 
   interface Researcher {
     id:              string;

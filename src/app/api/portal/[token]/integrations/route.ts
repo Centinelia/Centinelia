@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { resolveOrgFromToken } from '@/lib/portal/org-token';
 
 interface Params { params: Promise<{ token: string }> }
 
@@ -20,11 +21,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const supabase = createAdminClient();
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('portal_email')
-    .eq('portal_token', token)
-    .single();
+  const resolved = await resolveOrgFromToken(token);
+  const agent = resolved ? { portal_email: resolved.portalEmail } : null;
   if (session.portalEmail && agent?.portal_email && session.portalEmail !== agent.portal_email)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
@@ -55,7 +53,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const allowed = ['calendar_type', 'calendar_api_key', 'calendar_event_type_id', 'calendar_link', 'google_review_url'];
 
   const supabase = createAdminClient();
-  const { data: ag } = await supabase.from('voice_agents').select('portal_email').eq('portal_token', token).single();
+  const resolvedPatch = await resolveOrgFromToken(token);
+  const ag = resolvedPatch ? { portal_email: resolvedPatch.portalEmail } : null;
   if (session.portalEmail && ag?.portal_email && session.portalEmail !== ag.portal_email)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
   if (!ag?.portal_email) return NextResponse.json({ error: 'No portal_email' }, { status: 400 });

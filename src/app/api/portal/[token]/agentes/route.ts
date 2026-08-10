@@ -3,6 +3,7 @@ import { createAdminClient }             from '@/lib/supabase/admin';
 import { cookies }                       from 'next/headers';
 import { verifySession, PORTAL_COOKIE }  from '@/lib/portal/auth';
 import { MEERKAT_MAP, type MeerkatRoleId, type MeerkatRole } from '@/lib/portal/meerkat-roles';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { createVapiAssistant, resyncPeerAgents } from '@/lib/vapi/sync';
 import { stripe }                        from '@/lib/stripe';
 import { requireStripeEligible }         from '@/lib/billing/require-stripe-eligible';
@@ -143,18 +144,27 @@ export async function POST(
   if (!role) return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
 
   const supabase = createAdminClient();
-  const { data: base } = await supabase
-    .from('voice_agents')
-    .select(`
-      portal_email, portal_password_hash, client_name, client_email,
-      business_name, plan,
-      stripe_customer_id, billing_status, active, timezone,
-      organization_mission, service_definition, speech_style,
-      auto_refill_enabled, auto_refill_threshold, auto_refill_minutes,
-      minutes_reset_date, minutes_plan, minutes_included
-    `)
-    .eq('portal_token', token)
-    .single();
+  const base = await getPrimaryAgentFromToken<{
+    portal_email: string | null;
+    portal_password_hash: string | null;
+    client_name: string | null;
+    client_email: string | null;
+    business_name: string;
+    plan: string | null;
+    stripe_customer_id: string | null;
+    billing_status: string | null;
+    active: boolean | null;
+    timezone: string | null;
+    organization_mission: string | null;
+    service_definition: string | null;
+    speech_style: string | null;
+    auto_refill_enabled: boolean | null;
+    auto_refill_threshold: number | null;
+    auto_refill_minutes: number | null;
+    minutes_reset_date: string | null;
+    minutes_plan: string | null;
+    minutes_included: number | null;
+  }>(token, 'portal_email, portal_password_hash, client_name, client_email, business_name, plan, stripe_customer_id, billing_status, active, timezone, organization_mission, service_definition, speech_style, auto_refill_enabled, auto_refill_threshold, auto_refill_minutes, minutes_reset_date, minutes_plan, minutes_included', supabase);
 
   if (!base) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   if (session.portalEmail && base.portal_email && session.portalEmail !== base.portal_email)
@@ -202,7 +212,7 @@ export async function POST(
         const { recomputeOrgOpsPool } = await import('@/lib/ai/ops-guard');
         await recomputeOrgOpsPool(base.portal_email);
       }
-      return NextResponse.json({ token: newAgent.portal_token });
+      return NextResponse.json({ token: newAgent.portal_token, agent_id: newAgent.id });
     } catch (e: any) {
       console.error('Error creating agent (bypass):', e);
       return NextResponse.json({ error: e.message ?? 'Failed to create agent' }, { status: 500 });
@@ -241,8 +251,8 @@ export async function POST(
       subscription_data: {
         metadata: { agent_id: pendingAgent.id, minutes_plan: tier },
       },
-      success_url: `${appUrl}/portal/${pendingAgent.portal_token}/configurar?checkout=success`,
-      cancel_url:  `${appUrl}/portal/${token}/agentes`,
+      success_url: `${appUrl}/portal/${token}/configurar?empleado_id=${pendingAgent.id}&checkout=success`,
+      cancel_url:  `${appUrl}/portal/${token}/empleados`,
     });
 
     return NextResponse.json({ checkoutUrl: checkoutSession.url });

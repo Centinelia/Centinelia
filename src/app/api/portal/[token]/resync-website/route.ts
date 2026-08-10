@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { scrapeWebsite } from '@/lib/scrape/website';
 import { updateVapiAssistant } from '@/lib/vapi/sync';
 import { rateLimit, limiters } from '@/lib/ratelimit';
@@ -21,14 +22,8 @@ export async function POST(req: NextRequest, { params }: Params) {
   const body = await req.json().catch(() => ({}));
   const supabase = createAdminClient();
 
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('id, vapi_agent_id, portal_email, business_website')
-    .eq('portal_token', token)
-    .eq('portal_email', session.portalEmail)
-    .single();
-
-  if (!agent) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+  const agent = await getPrimaryAgentFromToken<{ id: string; vapi_agent_id: string | null; portal_email: string | null; business_website: string | null }>(token, 'id, vapi_agent_id, portal_email, business_website', supabase);
+  if (!agent || agent.portal_email !== session.portalEmail) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   const newUrl: string | null = body.url?.trim() || agent.business_website || null;
   if (!newUrl) return NextResponse.json({ error: 'No hay URL configurada' }, { status: 400 });

@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { listCivicAttachments, findReportByFolio } from '@/lib/civic/attachments';
 
 interface Params { params: Promise<{ token: string; folio: string }> }
@@ -16,8 +17,7 @@ export async function GET(req: NextRequest, { params }: Params) {
   const supabase = createAdminClient();
 
   // IDOR guard: verify folio belongs to same account as URL token
-  const { data: portalAgent } = await supabase
-    .from('voice_agents').select('id, portal_email').eq('portal_token', token).single();
+  const portalAgent = await getPrimaryAgentFromToken<{ id: string; portal_email: string | null }>(token, 'id, portal_email', supabase);
   if (!portalAgent) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
   if (auth.portalEmail && portalAgent.portal_email && auth.portalEmail !== portalAgent.portal_email)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });

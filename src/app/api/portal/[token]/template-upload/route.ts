@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import Anthropic from '@anthropic-ai/sdk';
 import mammoth from 'mammoth';
 import PizZip from 'pizzip';
@@ -110,8 +111,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const { token } = await params;
   const supabase  = createAdminClient();
 
-  const { data: agent } = await supabase
-    .from('voice_agents').select('id, features, portal_email').eq('portal_token', token).single();
+  const agent = await getPrimaryAgentFromToken<{ id: string; features: Record<string, unknown> | null; portal_email: string | null }>(token, 'id, features, portal_email', supabase);
   if (!agent) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
@@ -241,8 +241,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   const { doc_type: docType } = await req.json() as { doc_type: string };
   const supabase   = createAdminClient();
 
-  const { data: agent } = await supabase
-    .from('voice_agents').select('id, features, portal_email').eq('portal_token', token).single();
+  const agent = await getPrimaryAgentFromToken<{ id: string; features: Record<string, unknown> | null; portal_email: string | null }>(token, 'id, features, portal_email', supabase);
   if (!agent) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });

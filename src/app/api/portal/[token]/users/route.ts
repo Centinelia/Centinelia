@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE, hashPassword } from '@/lib/portal/auth';
+import { resolveOrgFromToken } from '@/lib/portal/org-token';
 import { cookies } from 'next/headers';
 
 async function getOwnerEmail(token: string): Promise<string | null> {
-  const supabase = createAdminClient();
-  const { data } = await supabase
-    .from('voice_agents').select('portal_email').eq('portal_token', token).single();
-  return data?.portal_email ?? null;
+  const resolved = await resolveOrgFromToken(token);
+  return resolved?.portalEmail ?? null;
 }
 
 async function requireUsersAccess(token: string): Promise<

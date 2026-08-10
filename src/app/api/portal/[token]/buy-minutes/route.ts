@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { stripe } from '@/lib/stripe';
 import { rateLimit, limiters } from '@/lib/ratelimit';
 
@@ -24,11 +25,12 @@ export async function POST(req: NextRequest, { params }: Params) {
   }
 
   const supabase = createAdminClient();
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('id, business_name, stripe_customer_id, portal_email')
-    .eq('portal_token', token)
-    .single();
+  const agent = await getPrimaryAgentFromToken<{
+    id: string;
+    business_name: string | null;
+    stripe_customer_id: string | null;
+    portal_email: string | null;
+  }>(token, 'id, business_name, stripe_customer_id, portal_email', supabase);
 
   if (!agent) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
   if (session.portalEmail && agent.portal_email && session.portalEmail !== agent.portal_email)

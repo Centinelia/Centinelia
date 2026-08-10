@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { getAgentAccess } from '@/lib/portal/agent-access';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { computeNextRunAt } from '@/lib/voice/campaign-scheduler';
 import type { ScheduleType } from '@/lib/voice/campaign-scheduler';
 import { canRunOutboundCampaign } from '@/lib/portal/outbound-gate';
@@ -9,13 +10,8 @@ import { canRunOutboundCampaign } from '@/lib/portal/outbound-gate';
 interface Params { params: Promise<{ token: string }> }
 
 async function getAgent(token: string, portalEmail: string) {
-  const supabase = createAdminClient();
-  const { data } = await supabase
-    .from('voice_agents')
-    .select('id, timezone, outbound_calls, features')
-    .eq('portal_token', token)
-    .eq('portal_email', portalEmail)
-    .single();
+  const data = await getPrimaryAgentFromToken<{ id: string; timezone: string | null; outbound_calls: boolean | null; features: Record<string, unknown> | null; portal_email: string | null }>(token, 'id, timezone, outbound_calls, features, portal_email');
+  if (!data || data.portal_email !== portalEmail) return null;
   return data;
 }
 

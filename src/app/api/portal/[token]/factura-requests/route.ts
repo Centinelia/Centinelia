@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,11 +15,11 @@ export async function GET(req: NextRequest, { params }: Params) {
   const { token } = await params;
   const supabase  = createAdminClient();
 
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('id, portal_email, agent_name')
-    .eq('portal_token', token)
-    .single();
+  const agent = await getPrimaryAgentFromToken<{
+    id: string;
+    portal_email: string | null;
+    agent_name: string | null;
+  }>(token, 'id, portal_email, agent_name', supabase);
   if (!agent) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   if (agent.portal_email && auth.portalEmail && agent.portal_email !== auth.portalEmail) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

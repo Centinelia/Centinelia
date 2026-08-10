@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { updateVapiAssistant } from '@/lib/vapi/sync';
 import { KB_LIMITS, FIELD_TO_LIMIT } from '@/lib/portal/kb-limits';
 import type { VoiceAgent } from '@/types/agent';
@@ -19,8 +20,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const body = await req.json();
   const supabase = createAdminClient();
 
-  const { data: agent } = await supabase
-    .from('voice_agents').select('id, vapi_agent_id, portal_email, features').eq('portal_token', token).single();
+  const agent = await getPrimaryAgentFromToken<{ id: string; vapi_agent_id: string | null; portal_email: string | null; features: Record<string, unknown> | null }>(token, 'id, vapi_agent_id, portal_email, features', supabase);
   if (!agent) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
   if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 });

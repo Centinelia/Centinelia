@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { triggerOutboundCall } from '@/lib/vapi/outbound';
 import type { VoiceAgent } from '@/types/agent';
 
@@ -15,9 +16,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const body = await req.json();
   const supabase = createAdminClient();
 
-  const { data: agent } = await supabase
-    .from('voice_agents').select('id').eq('portal_token', token).eq('portal_email', session.portalEmail).single();
+  const agent = await getPrimaryAgentFromToken<{ id: string; portal_email: string | null }>(token, 'id, portal_email', supabase);
   if (!agent) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+  if (session.portalEmail && agent.portal_email && session.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   const allowed = ['status', 'nombre', 'telefono', 'servicio', 'fecha', 'hora'];
   const update  = Object.fromEntries(Object.entries(body).filter(([k]) => allowed.includes(k)));

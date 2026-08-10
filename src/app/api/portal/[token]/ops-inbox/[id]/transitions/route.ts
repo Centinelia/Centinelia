@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,11 +16,7 @@ export async function GET(req: NextRequest, { params }: Params) {
   const supabase = createAdminClient();
 
   // Verify org access via portal_token → agent → agent's org
-  const { data: acct } = await supabase
-    .from('voice_agents')
-    .select('portal_email')
-    .eq('portal_token', token)
-    .single();
+  const acct = await getPrimaryAgentFromToken<{ portal_email: string | null }>(token, 'portal_email', supabase);
   if (!acct?.portal_email) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   // Verify inbox item belongs to an agent in this org

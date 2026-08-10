@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { createAdminClient }            from '@/lib/supabase/admin';
+import { getPrimaryAgentFromToken }     from '@/lib/portal/org-token';
 import { cookies }                      from 'next/headers';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { redirect, notFound }           from 'next/navigation';
@@ -50,11 +51,11 @@ export default async function UsuariosPage({ params }: Props) {
   const session     = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
 
   const supabase = createAdminClient();
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('portal_email, business_name, logo_url, active, billing_status, plan, stripe_customer_id, features, giro_template, minutes_included, minutes_used, ai_ops_used, ai_ops_limit')
-    .eq('portal_token', token)
-    .single();
+  const agent = await getPrimaryAgentFromToken<Record<string, any>>(
+    token,
+    'portal_email, business_name, logo_url, active, billing_status, plan, stripe_customer_id, features, giro_template, minutes_included, minutes_used, ai_ops_used, ai_ops_limit',
+    supabase,
+  );
   if (!agent) notFound();
 
   if (session?.portalEmail && agent.portal_email && agent.portal_email !== session.portalEmail)

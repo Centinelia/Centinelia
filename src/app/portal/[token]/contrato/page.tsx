@@ -1,8 +1,10 @@
 export const dynamic = 'force-dynamic';
 
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { notFound } from 'next/navigation';
 import { ContractDocument } from '@/lib/contract/template';
+import type { VoiceAgent } from '@/types/agent';
 import PrintButton from './PrintButton';
 
 interface Props {
@@ -13,11 +15,7 @@ export default async function ContratoPrintPage({ params }: Props) {
   const { token } = await params;
   const supabase  = createAdminClient();
 
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('*')
-    .eq('portal_token', token)
-    .single();
+  const agent = await getPrimaryAgentFromToken<VoiceAgent>(token, '*', supabase);
 
   if (!agent) notFound();
 

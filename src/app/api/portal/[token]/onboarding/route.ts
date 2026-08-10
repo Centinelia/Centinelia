@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { sendOnboardingWelcome, sendOnboardingStatusUpdate } from '@/lib/ops/onboarding-mailer';
 import { randomUUID } from 'crypto';
 
@@ -22,8 +23,7 @@ export async function GET(req: NextRequest, { params }: Params) {
   const { searchParams } = new URL(req.url);
   const view = searchParams.get('view') ?? 'templates';
 
-  const { data: acct } = await supabase
-    .from('voice_agents').select('id, portal_email').eq('portal_token', token).single();
+  const acct = await getPrimaryAgentFromToken<{ id: string; portal_email: string | null }>(token, 'id, portal_email', supabase);
   if (!acct) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
   if (auth.portalEmail && acct.portal_email && auth.portalEmail !== acct.portal_email)
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
@@ -58,8 +58,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const supabase  = createAdminClient();
   const body      = await req.json();
 
-  const { data: acct } = await supabase
-    .from('voice_agents').select('id, portal_email, business_name, client_email').eq('portal_token', token).single();
+  const acct = await getPrimaryAgentFromToken<{ id: string; portal_email: string | null; business_name: string; client_email: string | null }>(token, 'id, portal_email, business_name, client_email', supabase);
   if (!acct) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
   if (auth.portalEmail && acct.portal_email && auth.portalEmail !== acct.portal_email)
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
@@ -149,8 +148,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const supabase  = createAdminClient();
   const body      = await req.json();
 
-  const { data: acct } = await supabase
-    .from('voice_agents').select('id, portal_email, business_name').eq('portal_token', token).single();
+  const acct = await getPrimaryAgentFromToken<{ id: string; portal_email: string | null; business_name: string }>(token, 'id, portal_email, business_name', supabase);
   if (!acct) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
   if (auth.portalEmail && acct.portal_email && auth.portalEmail !== acct.portal_email)
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
@@ -220,8 +218,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   const supabase  = createAdminClient();
   const body      = await req.json();
 
-  const { data: acct } = await supabase
-    .from('voice_agents').select('id, portal_email').eq('portal_token', token).single();
+  const acct = await getPrimaryAgentFromToken<{ id: string; portal_email: string | null }>(token, 'id, portal_email', supabase);
   if (!acct) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
   if (auth.portalEmail && acct.portal_email && auth.portalEmail !== acct.portal_email)
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 });

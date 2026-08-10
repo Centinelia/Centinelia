@@ -1,19 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 
 export const dynamic = 'force-dynamic';
 
 interface Params { params: Promise<{ token: string }> }
 
 async function resolveAgent(token: string) {
-  const supabase = createAdminClient();
-  const { data } = await supabase
-    .from('voice_agents')
-    .select('id, portal_email, agent_name')
-    .eq('portal_token', token)
-    .single();
-  return data;
+  return getPrimaryAgentFromToken<{ id: string; portal_email: string | null; agent_name: string | null }>(token, 'id, portal_email, agent_name');
 }
 
 // GET — list documents for this agent (excludes expired)

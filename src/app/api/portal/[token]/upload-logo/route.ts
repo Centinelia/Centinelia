@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 
 interface Params { params: Promise<{ token: string }> }
 
@@ -13,14 +14,8 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const supabase = createAdminClient();
 
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('id, portal_email, business_name')
-    .eq('portal_token', token)
-    .eq('portal_email', session.portalEmail)
-    .single();
-
-  if (!agent) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+  const agent = await getPrimaryAgentFromToken<{ id: string; portal_email: string | null; business_name: string }>(token, 'id, portal_email, business_name', supabase);
+  if (!agent || agent.portal_email !== session.portalEmail) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   const formData = await req.formData();
   const file = formData.get('logo') as File | null;
@@ -68,14 +63,8 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 
   const supabase = createAdminClient();
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('id, business_name')
-    .eq('portal_token', token)
-    .eq('portal_email', session.portalEmail)
-    .single();
-
-  if (!agent) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+  const agent = await getPrimaryAgentFromToken<{ id: string; business_name: string; portal_email: string | null }>(token, 'id, business_name, portal_email', supabase);
+  if (!agent || agent.portal_email !== session.portalEmail) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   await supabase.storage.from('logos').remove([
     `${agent.id}/logo.png`, `${agent.id}/logo.jpg`,

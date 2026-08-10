@@ -2,18 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { getAgentAccess } from '@/lib/portal/agent-access';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { timingSafeCompareStrings } from '@/lib/auth/cron-auth';
 
 interface Params { params: Promise<{ token: string }> }
 
 async function getAgent(token: string, portalEmail: string) {
-  const supabase = createAdminClient();
-  const { data } = await supabase
-    .from('voice_agents')
-    .select('id, vapi_agent_id, phone_number, business_name, features')
-    .eq('portal_token', token)
-    .eq('portal_email', portalEmail)
-    .single();
+  const data = await getPrimaryAgentFromToken<{ id: string; vapi_agent_id: string | null; phone_number: string | null; business_name: string; features: Record<string, unknown> | null; portal_email: string | null }>(token, 'id, vapi_agent_id, phone_number, business_name, features, portal_email');
+  if (!data || data.portal_email !== portalEmail) return null;
   return data;
 }
 

@@ -4,17 +4,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { isValidE164 } from '@/lib/billing/fallback-validate';
 
 interface Params { params: Promise<{ token: string }> }
 
 async function resolvePortalEmail(token: string) {
   const supabase = createAdminClient();
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('portal_email')
-    .eq('portal_token', token)
-    .single();
+  const agent = await getPrimaryAgentFromToken<{ portal_email: string | null }>(token, 'portal_email', supabase);
   return { supabase, portalEmail: agent?.portal_email ?? null };
 }
 

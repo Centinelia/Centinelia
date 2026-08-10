@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { stripe } from '@/lib/stripe';
 
@@ -14,11 +15,16 @@ export async function GET(
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const supabase = createAdminClient();
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('auto_refill_enabled, auto_refill_threshold, auto_refill_minutes, auto_refill_ops_enabled, auto_refill_ops_threshold, auto_refill_ops_amount, stripe_customer_id, portal_email')
-    .eq('portal_token', token)
-    .single();
+  const agent = await getPrimaryAgentFromToken<{
+    auto_refill_enabled: boolean | null;
+    auto_refill_threshold: number | null;
+    auto_refill_minutes: number | null;
+    auto_refill_ops_enabled: boolean | null;
+    auto_refill_ops_threshold: number | null;
+    auto_refill_ops_amount: number | null;
+    stripe_customer_id: string | null;
+    portal_email: string | null;
+  }>(token, 'auto_refill_enabled, auto_refill_threshold, auto_refill_minutes, auto_refill_ops_enabled, auto_refill_ops_threshold, auto_refill_ops_amount, stripe_customer_id, portal_email', supabase);
 
   if (!agent) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   if (session.portalEmail && agent.portal_email && session.portalEmail !== agent.portal_email)
@@ -69,8 +75,7 @@ export async function PATCH(
   const supabase = createAdminClient();
 
   // IDOR guard: verify the token belongs to the session's account
-  const { data: agentCheck } = await supabase
-    .from('voice_agents').select('portal_email').eq('portal_token', token).single();
+  const agentCheck = await getPrimaryAgentFromToken<{ id: string; portal_email: string | null }>(token, 'id, portal_email', supabase);
   if (!agentCheck) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   if (session.portalEmail && agentCheck.portal_email && session.portalEmail !== agentCheck.portal_email)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
@@ -85,7 +90,7 @@ export async function PATCH(
       auto_refill_ops_threshold:  body.opsThreshold,
       auto_refill_ops_amount:     body.opsAmount,
     })
-    .eq('portal_token', token);
+    .eq('id', agentCheck.id);
 
   if (error) return NextResponse.json({ error: 'DB error' }, { status: 500 });
   return NextResponse.json({ ok: true });

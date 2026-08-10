@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { logLlmCall } from '@/lib/observability/llm-log';
 
 export const dynamic = 'force-dynamic';
@@ -37,11 +38,9 @@ export async function POST(req: NextRequest) {
 
   // Verify token is valid (no session required — onboarding is pre-auth-cookie sometimes)
   const supabase = createAdminClient();
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('id, business_name')
-    .eq('portal_token', token)
-    .single();
+  const agent = await getPrimaryAgentFromToken<{ id: string; business_name: string }>(
+    token, 'id, business_name', supabase,
+  );
 
   if (!agent) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 

@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { notFound, redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import SetupFlow from './SetupFlow';
 
@@ -17,11 +18,11 @@ export default async function SetupPage({ params }: Props) {
   const session       = await verifySession(sessionCookie);
 
   const supabase = createAdminClient();
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('id, business_name, portal_email, onboarding_completed, business_description, role, agent_name')
-    .eq('portal_token', token)
-    .single();
+  const agent = await getPrimaryAgentFromToken<{
+    id: string; business_name: string; portal_email: string | null;
+    onboarding_completed: boolean | null; business_description: string | null;
+    role: string | null; agent_name: string | null;
+  }>(token, 'id, business_name, portal_email, onboarding_completed, business_description, role, agent_name', supabase);
 
   if (!agent) notFound();
 

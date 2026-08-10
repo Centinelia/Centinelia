@@ -14,9 +14,9 @@ export async function GET(req: NextRequest, { params }: Params) {
   const { token } = await params;
 
   // IDOR check
-  const { createAdminClient } = await import('@/lib/supabase/admin');
-  const supabase = createAdminClient();
-  const { data: ag } = await supabase.from('voice_agents').select('portal_email').eq('portal_token', token).single();
+  const { resolveOrgFromToken } = await import('@/lib/portal/org-token');
+  const resolved = await resolveOrgFromToken(token);
+  const ag = resolved ? { portal_email: resolved.portalEmail } : null;
   if (auth.portalEmail && ag?.portal_email && auth.portalEmail !== ag.portal_email)
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 

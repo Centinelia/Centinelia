@@ -4,6 +4,7 @@ export const maxDuration = 60;
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
 import { refreshIfNeeded } from '@/lib/connectors';
 import type { IntegrationRow } from '@/lib/connectors';
@@ -27,12 +28,7 @@ export async function POST(
   const { token } = await params;
   const supabase  = createAdminClient();
 
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('id, agent_name, business_name, role, role_knowledge_base, portal_email')
-    .eq('portal_token', token)
-    .single();
-
+  const agent = await getPrimaryAgentFromToken<{ id: string; agent_name: string | null; business_name: string; role: string | null; role_knowledge_base: string | null; portal_email: string | null }>(token, 'id, agent_name, business_name, role, role_knowledge_base, portal_email', supabase);
   if (!agent) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   if (session.portalEmail && agent.portal_email && session.portalEmail !== agent.portal_email)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
@@ -92,26 +88,27 @@ export async function POST(
     );
   }
 
-  // Consume 5 ops
-  const opsResult = await consumeAiOp(agent.id, 5, { source: 'role_email_learning', label: 'Aprendizaje del rol desde correos' });
-  if (!opsResult.ok) {
-    return NextResponse.json({ error: 'Sin tareas disponibles para esta operación.' }, { status: 402 });
-  }
-
   // Refresh token if needed
   const accessToken = await refreshIfNeeded(integration as IntegrationRow, supabase);
 
-  // Fetch last 30 days of emails
+  // Fetch last 30 days of emails PRIMERO — cero costo LLM, solo API call
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const emails = (integration as IntegrationRow).provider === 'gmail'
     ? await fetchRecentGmail(accessToken, since)
     : await fetchRecentOutlook(accessToken, since);
 
+  // Probe: si no hay correos, devolver 422 SIN cobrar. Fix 2026-08-10.
   if (!emails.length) {
     return NextResponse.json(
-      { error: 'No se encontraron correos en los últimos 30 días.' },
+      { error: 'No se encontraron correos en los últimos 30 días. No se consumieron tareas.' },
       { status: 422 },
     );
+  }
+
+  // Consume 5 ops (solo si sí hay correos para analizar)
+  const opsResult = await consumeAiOp(agent.id, 5, { source: 'role_email_learning', label: 'Aprendizaje del rol desde correos' });
+  if (!opsResult.ok) {
+    return NextResponse.json({ error: 'Sin tareas disponibles para esta operación.' }, { status: 402 });
   }
 
   // Build email list for prompt (anonymized subjects + snippets only)

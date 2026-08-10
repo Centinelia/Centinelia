@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { resolveOrgFromToken } from '@/lib/portal/org-token';
 import { generateLLMInsights, metricKeyToDeepLink } from '@/lib/ai/insights-engine';
 import { generateRulesInsights } from '@/lib/ai/insights-rules';
 import { consumeAiOp }           from '@/lib/ai/ops-guard';
@@ -18,12 +19,8 @@ interface Params { params: Promise<{ token: string }> }
 
 async function resolveOrg(token: string) {
   const supabase = createAdminClient();
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('portal_email')
-    .eq('portal_token', token)
-    .single();
-  return { supabase, portalEmail: agent?.portal_email ?? null };
+  const resolved = await resolveOrgFromToken(token);
+  return { supabase, portalEmail: resolved?.portalEmail ?? null };
 }
 
 function currentWeekStart(): string {

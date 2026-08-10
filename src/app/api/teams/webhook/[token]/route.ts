@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import Anthropic from '@anthropic-ai/sdk';
 import { logLlmCall } from '@/lib/observability/llm-log';
 
@@ -11,12 +12,12 @@ export async function POST(req: NextRequest, { params }: Params) {
   const { token } = await params;
   const supabase  = createAdminClient();
 
-  // Look up agent by portal_token
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('id, business_name, agent_name, knowledge_base, role_knowledge_base, role, teams_user_email')
-    .eq('portal_token', token)
-    .single();
+  // Look up agent — acepta org token o legacy voice_agents.portal_token.
+  const agent = await getPrimaryAgentFromToken<{
+    id: string; business_name: string; agent_name: string | null;
+    knowledge_base: string | null; role_knowledge_base: string | null;
+    role: string | null; teams_user_email: string | null;
+  }>(token, 'id, business_name, agent_name, knowledge_base, role_knowledge_base, role, teams_user_email', supabase);
 
   if (!agent) return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
 

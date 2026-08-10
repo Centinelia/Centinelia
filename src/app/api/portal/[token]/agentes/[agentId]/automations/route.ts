@@ -4,6 +4,7 @@ import { NextRequest, NextResponse }       from 'next/server';
 import { cookies }                          from 'next/headers';
 import { createAdminClient }               from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE }    from '@/lib/portal/auth';
+import { resolveOrgFromToken }             from '@/lib/portal/org-token';
 import type { AutomationName, AutomationsConfig } from '@/types/agent';
 
 const VALID_AUTOMATIONS: AutomationName[] = ['heartbeat', 'weekly_insights', 'learn'];
@@ -36,13 +37,10 @@ async function loadAgent(token: string, agentId: string) {
 
   const supabase = createAdminClient();
 
-  // Resolve the org via the anchor agent that owns this token
-  const { data: anchor } = await supabase
-    .from('voice_agents')
-    .select('portal_email')
-    .eq('portal_token', token)
-    .single();
-  if (!anchor?.portal_email) return { agent: null, error: 'Not found', status: 404 };
+  // Resolve the org (acepta ambos formatos de token: nuevo org o legacy per-agent)
+  const resolved = await resolveOrgFromToken(token);
+  if (!resolved?.portalEmail) return { agent: null, error: 'Not found', status: 404 };
+  const anchor = { portal_email: resolved.portalEmail };
   if (session.portalEmail && anchor.portal_email !== session.portalEmail)
     return { agent: null, error: 'Unauthorized', status: 403 };
 

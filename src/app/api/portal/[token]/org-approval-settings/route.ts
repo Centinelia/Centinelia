@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,11 +12,7 @@ async function resolvePortalEmail(token: string, cookieValue: string): Promise<s
   const auth = await verifySession(cookieValue);
   if (!auth) return null;
   const supabase = createAdminClient();
-  const { data } = await supabase
-    .from('voice_agents')
-    .select('portal_email')
-    .eq('portal_token', token)
-    .single();
+  const data = await getPrimaryAgentFromToken<{ portal_email: string | null }>(token, 'portal_email', supabase);
   if (!data?.portal_email) return null;
   if (auth.portalEmail && auth.portalEmail !== data.portal_email) return null;
   return data.portal_email as string;

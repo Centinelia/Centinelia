@@ -1,21 +1,22 @@
 export const dynamic = 'force-dynamic';
 
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createAdminClient }        from '@/lib/supabase/admin';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { UserCheck } from 'lucide-react';
 import OnboardingSection     from '../../OnboardingSection';
-import MeerkatPicker         from '../../agentes/MeerkatPicker';
+import MeerkatPicker         from '../../empleados/MeerkatPicker';
 
 interface Props { params: Promise<{ token: string }> }
 
 export default async function OnboardingPage({ params }: Props) {
   const { token } = await params;
 
-  const supabase     = createAdminClient();
-  const { data: ag } = await supabase
-    .from('voice_agents')
-    .select('portal_email, plan, minutes_plan')
-    .eq('portal_token', token)
-    .single();
+  const supabase = createAdminClient();
+  const ag = await getPrimaryAgentFromToken<{ portal_email: string | null; plan: string | null; minutes_plan: string | null }>(
+    token,
+    'portal_email, plan, minutes_plan',
+    supabase,
+  );
 
   const { data: all } = ag?.portal_email
     ? await supabase.from('voice_agents').select('id, business_name, features').eq('portal_email', ag.portal_email as string)

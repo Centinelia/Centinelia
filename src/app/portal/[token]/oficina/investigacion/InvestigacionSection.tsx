@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Search, Loader2, ExternalLink, Zap, Users, TrendingUp, BookOpen, Newspaper, RefreshCw, Globe, CheckCircle, Phone } from 'lucide-react';
 import { MEERKAT_MAP } from '@/lib/portal/meerkat-roles';
-import MeerkatPicker from '../../agentes/MeerkatPicker';
+import MeerkatPicker from '../../empleados/MeerkatPicker';
 
 interface Researcher {
   id:              string;

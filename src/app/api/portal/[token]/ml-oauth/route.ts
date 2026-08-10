@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { resolveOrgFromToken } from '@/lib/portal/org-token';
 
 interface Params { params: Promise<{ token: string }> }
 
@@ -14,9 +15,9 @@ export async function GET(req: NextRequest, { params }: Params) {
   const { token } = await params;
   const supabase  = createAdminClient();
 
-  const { data: agent } = await supabase
-    .from('voice_agents').select('portal_email').eq('portal_token', token).single();
-  if (!agent?.portal_email) return NextResponse.json({ connected: false });
+  const resolved = await resolveOrgFromToken(token);
+  if (!resolved?.portalEmail) return NextResponse.json({ connected: false });
+  const agent = { portal_email: resolved.portalEmail };
   if (auth.portalEmail && agent.portal_email !== auth.portalEmail)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
@@ -42,9 +43,9 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   const { token } = await params;
   const supabase  = createAdminClient();
 
-  const { data: agent } = await supabase
-    .from('voice_agents').select('portal_email').eq('portal_token', token).single();
-  if (!agent?.portal_email) return NextResponse.json({ ok: false }, { status: 404 });
+  const resolvedDel = await resolveOrgFromToken(token);
+  if (!resolvedDel?.portalEmail) return NextResponse.json({ ok: false }, { status: 404 });
+  const agent = { portal_email: resolvedDel.portalEmail };
   if (auth.portalEmail && agent.portal_email !== auth.portalEmail)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { cookies } from 'next/headers';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,11 +23,9 @@ export async function POST(req: NextRequest) {
   const session       = await verifySession(sessionCookie);
 
   const supabase = createAdminClient();
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('id, portal_email')
-    .eq('portal_token', token)
-    .single();
+  const agent = await getPrimaryAgentFromToken<{ id: string; portal_email: string | null }>(
+    token, 'id, portal_email', supabase,
+  );
 
   if (!agent) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 

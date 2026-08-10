@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { searchMultiple, buildQueries, type ResearchType } from '@/lib/search/web';
 import { rateLimit, limiters } from '@/lib/ratelimit';
 
@@ -18,13 +19,8 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const { token } = await params;
   const supabase  = createAdminClient();
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('id')
-    .eq('portal_token', token)
-    .eq('portal_email', auth.portalEmail)
-    .single();
-  if (!agent) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+  const agent = await getPrimaryAgentFromToken<{ id: string; portal_email: string | null }>(token, 'id, portal_email', supabase);
+  if (!agent || agent.portal_email !== auth.portalEmail) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   const { topic, location = '', type = 'leads', keywords = [] } = await req.json() as {
     topic:     string;

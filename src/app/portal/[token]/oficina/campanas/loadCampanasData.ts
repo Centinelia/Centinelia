@@ -2,8 +2,9 @@
 // Ambas rutas renderizan el mismo CampanasClient (unificado con sub-tabs),
 // por eso el fetch vive aquí — evita duplicar la lógica en dos page.tsx.
 
-import { createAdminClient } from '@/lib/supabase/admin';
-import { getAgentAccess }    from '@/lib/portal/agent-access';
+import { createAdminClient }        from '@/lib/supabase/admin';
+import { getAgentAccess }           from '@/lib/portal/agent-access';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 
 const SURVEY_MEERKAT_IDS = ['nia', 'nelia', 'naia'];
 
@@ -41,8 +42,7 @@ export interface CampanasPageData {
 export async function loadCampanasData(token: string): Promise<CampanasPageData | null> {
   const supabase = createAdminClient();
 
-  const { data: agent } = await supabase
-    .from('voice_agents').select('*').eq('portal_token', token).single();
+  const agent = await getPrimaryAgentFromToken<Record<string, unknown>>(token, '*', supabase);
   if (!agent) return null;
 
   const lookupEmail = (agent as { portal_email?: string | null }).portal_email ?? null;

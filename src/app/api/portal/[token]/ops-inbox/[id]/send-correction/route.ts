@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail, agentBrandedFrom } from '@/lib/email/send';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { resolveOrgFromToken } from '@/lib/portal/org-token';
 import { checkAccount } from '@/lib/compliance/account-guard';
 
 export const dynamic = 'force-dynamic';
@@ -23,24 +24,29 @@ export async function POST(req: NextRequest, { params }: Params) {
   const { token, id } = await params;
   const supabase = createAdminClient();
 
-  // 1. Verificar agent por portal_token
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('id, portal_email, agent_name, business_name')
-    .eq('portal_token', token)
-    .maybeSingle();
-  if (!agent) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
+  // 1. Resolve org (acepta org token o legacy voice_agents.portal_token)
+  const resolved = await resolveOrgFromToken(token);
+  if (!resolved) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  if (auth.portalEmail && auth.portalEmail !== resolved.portalEmail)
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
 
-  // 2. Cargar item + verificar ownership
+  // 2. Cargar item con JOIN al agente para ownership org-scoped (permite
+  // corrección de items de CUALQUIER peer del org, no solo un agente específico).
   const { data: item } = await supabase
     .from('ops_inbox')
-    .select('id, agent_id, email_from, email_subject, auto_mode_flagged_at')
+    .select('id, agent_id, email_from, email_subject, auto_mode_flagged_at, voice_agents!inner(portal_email, agent_name, business_name)')
     .eq('id', id)
-    .maybeSingle();
+    .maybeSingle() as { data: { id: string; agent_id: string; email_from: string | null; email_subject: string | null; auto_mode_flagged_at: string | null; voice_agents: { portal_email: string | null; agent_name: string | null; business_name: string | null } } | null };
   if (!item) return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  if (item.agent_id !== agent.id) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  if (item.voice_agents.portal_email !== resolved.portalEmail)
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+
+  const agent = {
+    id:            item.agent_id,
+    portal_email:  resolved.portalEmail,
+    agent_name:    item.voice_agents.agent_name,
+    business_name: item.voice_agents.business_name,
+  };
 
   // 3. Guard: solo se puede corregir un correo que ya reportaste como mal envío
   if (!item.auto_mode_flagged_at) {

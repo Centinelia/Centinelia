@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { rateLimit, limiters } from '@/lib/ratelimit';
 import { requireStripeEligible } from '@/lib/billing/require-stripe-eligible';
 
@@ -32,11 +33,10 @@ export async function POST(req: NextRequest) {
   const priceMxn = calcPrice(minutes);
 
   const supabase = createAdminClient();
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('id, client_name, business_name, stripe_customer_id, portal_email')
-    .eq('portal_token', token)
-    .single();
+  const agent = await getPrimaryAgentFromToken<{
+    id: string; client_name: string | null; business_name: string;
+    stripe_customer_id: string | null; portal_email: string | null;
+  }>(token, 'id, client_name, business_name, stripe_customer_id, portal_email', supabase);
 
   if (!agent) return NextResponse.json({ error: 'Agente no encontrado' }, { status: 404 });
   if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)

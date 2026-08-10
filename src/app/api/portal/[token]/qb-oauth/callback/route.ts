@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +13,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
   const error   = searchParams.get('error');
 
   const appUrl    = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
-  const to = (extra: string) => `${appUrl}/portal/${token}?tab=negocio&${extra}#integraciones`;
+  const to = (extra: string) => `${appUrl}/portal/${token}?tab=organizacion&${extra}#integraciones`;
 
   if (error || !code || !realmId) {
     return NextResponse.redirect(to('error=qb_denied'));
@@ -63,11 +64,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
   } catch { /* ignore */ }
 
   const supabase = createAdminClient();
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('portal_email')
-    .eq('portal_token', token)
-    .single();
+  const agent = await getPrimaryAgentFromToken<{ portal_email: string | null }>(token, 'portal_email', supabase);
 
   if (!agent?.portal_email) {
     return NextResponse.redirect(to('error=qb_agent'));

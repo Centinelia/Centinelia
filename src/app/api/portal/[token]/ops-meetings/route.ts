@@ -1,17 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { processMeetingAudio } from '@/lib/ops/meeting-processor';
 
 interface Params { params: Promise<{ token: string }> }
 
 async function getAgentForToken(supabase: ReturnType<typeof import('@/lib/supabase/admin').createAdminClient>, token: string) {
-  const { data } = await supabase
-    .from('voice_agents')
-    .select('id, portal_email, business_name, client_email, agent_name, knowledge_base, role_knowledge_base')
-    .eq('portal_token', token)
-    .single();
-  return data;
+  return getPrimaryAgentFromToken<{ id: string; portal_email: string | null; business_name: string; client_email: string | null; agent_name: string | null; knowledge_base: string | null; role_knowledge_base: string | null }>(token, 'id, portal_email, business_name, client_email, agent_name, knowledge_base, role_knowledge_base', supabase);
 }
 
 async function getAgentIds(supabase: ReturnType<typeof import('@/lib/supabase/admin').createAdminClient>, portalEmail: string | null) {

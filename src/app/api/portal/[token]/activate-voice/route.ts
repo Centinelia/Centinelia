@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { stripe } from '@/lib/stripe';
 import { createVapiAssistant } from '@/lib/vapi/sync';
@@ -20,11 +21,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const { token } = await params;
   const supabase  = createAdminClient();
 
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('*')
-    .eq('portal_token', token)
-    .single();
+  const agent = await getPrimaryAgentFromToken<VoiceAgent>(token, '*', supabase);
 
   if (!agent) return NextResponse.json({ error: 'Agente no encontrado' }, { status: 404 });
   if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { rateLimit, limiters } from '@/lib/ratelimit';
 
 export async function POST(req: NextRequest) {
@@ -17,14 +18,16 @@ export async function POST(req: NextRequest) {
 
   // Resolve the org (portal_email) from the token. El contrato ahora vive
   // per-organizacion, no per-empleado. Ver [[contract-at-organization-level]].
-  const { data: agent, error: agentErr } = await supabase
-    .from('voice_agents')
-    .select('portal_email, client_name')
-    .eq('portal_token', token)
-    .single();
+  let agent = await getPrimaryAgentFromToken<{
+    portal_email: string | null; client_name: string | null;
+  }>(token, 'portal_email, client_name', supabase);
 
-  if (agentErr || !agent) {
-    return NextResponse.json({ error: 'Invalid token' }, { status: 404 });
+  if (!agent) {
+    // Fallback: demo/standalone puede que solo exista en voice_agents por token directo
+    const { data: legacy } = await supabase
+      .from('voice_agents').select('portal_email, client_name').eq('portal_token', token).maybeSingle();
+    if (!legacy) return NextResponse.json({ error: 'Invalid token' }, { status: 404 });
+    agent = legacy as { portal_email: string | null; client_name: string | null };
   }
 
   const acceptedAt = new Date().toISOString();

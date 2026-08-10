@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { sendEmail, bugReportHtml } from '@/lib/email/send';
 import { rateLimit, limiters } from '@/lib/ratelimit';
 
@@ -17,11 +18,13 @@ export async function POST(req: NextRequest, { params }: Params) {
   const { token } = await params;
   const supabase  = createAdminClient();
 
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('id, business_name, client_name, client_email, portal_email')
-    .eq('portal_token', token)
-    .single();
+  const agent = await getPrimaryAgentFromToken<{
+    id: string;
+    business_name: string | null;
+    client_name: string | null;
+    client_email: string | null;
+    portal_email: string | null;
+  }>(token, 'id, business_name, client_name, client_email, portal_email', supabase);
 
   if (!agent) return NextResponse.json({ error: 'Token inválido' }, { status: 404 });
   if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 
 interface Params { params: Promise<{ token: string; id: string }> }
 
@@ -13,13 +14,8 @@ export async function GET(req: NextRequest, { params }: Params) {
   const supabase = createAdminClient();
 
   // Verify portal ownership
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('id')
-    .eq('portal_token', token)
-    .eq('portal_email', session.portalEmail)
-    .single();
-  if (!agent) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+  const agent = await getPrimaryAgentFromToken<{ id: string; portal_email: string | null }>(token, 'id, portal_email', supabase);
+  if (!agent || agent.portal_email !== session.portalEmail) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   // Verify campaign belongs to this agent's client
   const { data: campaign } = await supabase

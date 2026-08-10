@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { createAdminClient }            from '@/lib/supabase/admin';
+import { getPrimaryAgentFromToken }     from '@/lib/portal/org-token';
 import { notFound, redirect }           from 'next/navigation';
 import { cookies }                      from 'next/headers';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
@@ -27,11 +28,11 @@ export default async function OficinaLayout({
   const session     = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
 
   const supabase = createAdminClient();
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('business_name, logo_url, portal_email, minutes_included, minutes_used, ai_ops_used, ai_ops_limit, stripe_customer_id, features, agent_name')
-    .eq('portal_token', token)
-    .single();
+  const agent = await getPrimaryAgentFromToken<{ business_name: string; logo_url: string | null; portal_email: string | null; minutes_included: number | null; minutes_used: number | null; ai_ops_used: number | null; ai_ops_limit: number | null; stripe_customer_id: string | null; features: Record<string, unknown> | null; agent_name: string | null }>(
+    token,
+    'business_name, logo_url, portal_email, minutes_included, minutes_used, ai_ops_used, ai_ops_limit, stripe_customer_id, features, agent_name',
+    supabase,
+  );
   if (!agent) notFound();
 
   if (session?.portalEmail && agent.portal_email && agent.portal_email !== session.portalEmail)

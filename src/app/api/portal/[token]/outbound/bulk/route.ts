@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 
 interface Params { params: Promise<{ token: string }> }
 
@@ -12,13 +13,8 @@ export async function POST(req: NextRequest, { params }: Params) {
   const session = await verifySession(cookie);
   if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('id, features')
-    .eq('portal_token', token)
-    .eq('portal_email', session.portalEmail)
-    .single();
-  if (!agent) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+  const agent = await getPrimaryAgentFromToken<{ id: string; features: Record<string, unknown> | null; portal_email: string | null }>(token, 'id, features, portal_email', supabase);
+  if (!agent || agent.portal_email !== session.portalEmail) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
   const features = (agent.features ?? {}) as Record<string, boolean>;
   if (!features.outbound_calls) {

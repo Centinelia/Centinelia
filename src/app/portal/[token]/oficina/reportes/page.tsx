@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { createAdminClient }            from '@/lib/supabase/admin';
+import { resolveOrgFromToken }          from '@/lib/portal/org-token';
 import { cookies }                      from 'next/headers';
 import { redirect }                     from 'next/navigation';
 import { BarChart2 }                    from 'lucide-react';
@@ -20,10 +21,10 @@ export default async function ReportesPage({ params }: Props) {
   if (session?.isSubUser && session.modules && !session.modules.includes('of_reportes'))
     redirect(`/portal/${token}/oficina`);
 
-  const supabase    = createAdminClient();
-  const { data: ag } = await supabase.from('voice_agents').select('portal_email').eq('portal_token', token).single();
-  const { data: all } = ag?.portal_email
-    ? await supabase.from('voice_agents').select('id, business_name, role, features').eq('portal_email', ag.portal_email)
+  const supabase = createAdminClient();
+  const resolved = await resolveOrgFromToken(token);
+  const { data: all } = resolved?.portalEmail
+    ? await supabase.from('voice_agents').select('id, business_name, role, features').eq('portal_email', resolved.portalEmail)
     : { data: [] };
 
   const agents = (all ?? []).map((a: any) => ({

@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 
 interface Params { params: Promise<{ token: string; id: string }> }
 
@@ -22,11 +23,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const supabase = createAdminClient();
 
   // Resolver la org desde el token del portal
-  const { data: portalAgent } = await supabase
-    .from('voice_agents')
-    .select('id, portal_email')
-    .eq('portal_token', token)
-    .single();
+  const portalAgent = await getPrimaryAgentFromToken<{ id: string; portal_email: string | null }>(token, 'id, portal_email', supabase);
   if (!portalAgent) return NextResponse.json({ error: 'Token inválido' }, { status: 404 });
   if (session.portalEmail && portalAgent.portal_email && session.portalEmail !== portalAgent.portal_email)
     return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { resolveOrgFromToken } from '@/lib/portal/org-token';
 import { extractBrandVoice, getBrandVoiceGuide } from '@/lib/brand/voice-guide';
 
 export const dynamic = 'force-dynamic';
@@ -8,13 +9,9 @@ export const maxDuration = 60;
 
 interface Params { params: Promise<{ token: string }> }
 
-async function resolvePortalEmail(supabase: ReturnType<typeof createAdminClient>, token: string) {
-  const { data } = await supabase
-    .from('voice_agents')
-    .select('portal_email')
-    .eq('portal_token', token)
-    .single();
-  return (data?.portal_email as string | null) ?? null;
+async function resolvePortalEmail(_supabase: ReturnType<typeof createAdminClient>, token: string) {
+  const resolved = await resolveOrgFromToken(token);
+  return resolved?.portalEmail ?? null;
 }
 
 export async function GET(req: NextRequest, { params }: Params) {

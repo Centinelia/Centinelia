@@ -23,8 +23,10 @@ export async function GET(req: NextRequest, { params }: Params) {
   // IDOR check + mutual exclusion (Gmail xor Outlook, never both)
   {
     const { createAdminClient } = await import('@/lib/supabase/admin');
+    const { resolveOrgFromToken } = await import('@/lib/portal/org-token');
     const supabase = createAdminClient();
-    const { data: ag } = await supabase.from('voice_agents').select('portal_email').eq('portal_token', token).single();
+    const resolved = await resolveOrgFromToken(token);
+    const ag = resolved ? { portal_email: resolved.portalEmail } : null;
     if (session.portalEmail && ag?.portal_email && session.portalEmail !== ag.portal_email)
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 

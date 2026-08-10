@@ -7,6 +7,7 @@ import { createElement } from 'react';
 import { renderToBuffer } from '@react-pdf/renderer';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { notionClient } from '@/lib/notion/client';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
 import { brandKitFromAgent } from '@/lib/brand/kit';
@@ -1358,11 +1359,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const supabase = createAdminClient();
 
-  const { data: accountAgent } = await supabase
-    .from('voice_agents')
-    .select('id, portal_email')
-    .eq('portal_token', token)
-    .single();
+  const accountAgent = await getPrimaryAgentFromToken<{ id: string; portal_email: string }>(token, 'id, portal_email', supabase);
   if (!accountAgent) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
 
   // IDOR guard: session must belong to the same account as the URL token
@@ -1370,11 +1367,11 @@ export async function POST(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const targetQuery = agentId
+  const targetQuery: Promise<{ data: any }> = agentId
     ? accountAgent.portal_email
-      ? supabase.from('voice_agents').select('*').eq('id', agentId).eq('portal_email', accountAgent.portal_email).single()
-      : supabase.from('voice_agents').select('*').eq('id', agentId).eq('id', accountAgent.id).single()
-    : supabase.from('voice_agents').select('*').eq('portal_token', token).single();
+      ? supabase.from('voice_agents').select('*').eq('id', agentId).eq('portal_email', accountAgent.portal_email).single() as any
+      : supabase.from('voice_agents').select('*').eq('id', agentId).eq('id', accountAgent.id).single() as any
+    : getPrimaryAgentFromToken<any>(token, '*', supabase).then(data => ({ data }));
   // Notion es org-level desde 2026-08-09 (vive en organizations, no en
   // voice_agents). Se lee en paralelo con agent y qbRow.
   const [{ data: agent }, { data: qbRow }, { data: orgNotion }] = await Promise.all([

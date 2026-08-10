@@ -1,7 +1,8 @@
 export const dynamic = 'force-dynamic';
 
-import { createAdminClient } from '@/lib/supabase/admin';
-import { getAgentAccess } from '@/lib/portal/agent-access';
+import { createAdminClient }        from '@/lib/supabase/admin';
+import { getAgentAccess }           from '@/lib/portal/agent-access';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
@@ -10,7 +11,7 @@ import type { GuardiaSchedule } from '@/lib/helpdesk/folio';
 import HelpdeskSection   from './HelpdeskSection';
 import IncidentesSection from './IncidentesSection';
 import GuardiaEditor     from './GuardiaEditor';
-import MeerkatPicker     from '../../agentes/MeerkatPicker';
+import MeerkatPicker     from '../../empleados/MeerkatPicker';
 
 interface Props { params: Promise<{ token: string }> }
 
@@ -33,8 +34,12 @@ export default async function HelpdeskPage({ params }: Props) {
     subUserName = (pu?.name as string | null) ?? null;
   }
 
-  const [{ data: agent }, access] = await Promise.all([
-    supabase.from('voice_agents').select('id, agent_name, features, portal_email, plan, minutes_plan').eq('portal_token', token).single(),
+  const [agent, access] = await Promise.all([
+    getPrimaryAgentFromToken<{ id: string; agent_name: string | null; features: Record<string, any> | null; portal_email: string | null; plan: string | null; minutes_plan: string | null }>(
+      token,
+      'id, agent_name, features, portal_email, plan, minutes_plan',
+      supabase,
+    ),
     getAgentAccess(token),
   ]);
 
@@ -291,7 +296,7 @@ export default async function HelpdeskPage({ params }: Props) {
             <p className="text-[12px] mt-4 leading-relaxed" style={{ color: '#9B8FB5' }}>
               Los técnicos, especialistas y demás personas viven en el directorio de tu organización.{' '}
               <Link
-                href={`/portal/${token}?tab=negocio&nav=directorio`}
+                href={`/portal/${token}?tab=organizacion&nav=directorio`}
                 className="font-semibold transition-opacity hover:opacity-80"
                 style={{ color: '#6C3BFF' }}
               >

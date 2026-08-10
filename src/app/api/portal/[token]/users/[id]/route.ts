@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE, hashPassword } from '@/lib/portal/auth';
+import { resolveOrgFromToken } from '@/lib/portal/org-token';
 import { cookies } from 'next/headers';
 
 async function requireUsersAccess(token: string): Promise<
   | { accountId: string; isOwner: boolean; actorUserId?: string }
   | NextResponse
 > {
-  const supabase     = createAdminClient();
-  const { data: ag } = await supabase
-    .from('voice_agents').select('portal_email').eq('portal_token', token).single();
-  const accountId = ag?.portal_email;
+  const resolved = await resolveOrgFromToken(token);
+  const accountId = resolved?.portalEmail;
   if (!accountId) return NextResponse.json({ error: 'Token inválido' }, { status: 404 });
 
   if (process.env.NODE_ENV === 'development') {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,11 +12,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
   const { token } = await params;
   const supabase  = createAdminClient();
 
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('portal_email')
-    .eq('portal_token', token)
-    .single();
+  const agent = await getPrimaryAgentFromToken<{ portal_email: string | null }>(token, 'portal_email', supabase);
 
   if (!agent?.portal_email) return NextResponse.json({ connected: false });
   if (session.portalEmail && agent.portal_email !== session.portalEmail)
@@ -44,11 +41,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ t
   const { token } = await params;
   const supabase  = createAdminClient();
 
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('portal_email')
-    .eq('portal_token', token)
-    .single();
+  const agent = await getPrimaryAgentFromToken<{ portal_email: string | null }>(token, 'portal_email', supabase);
 
   if (!agent?.portal_email) return NextResponse.json({ ok: true });
   if (session.portalEmail && agent.portal_email !== session.portalEmail)

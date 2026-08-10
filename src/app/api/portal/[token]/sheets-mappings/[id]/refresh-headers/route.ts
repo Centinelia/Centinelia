@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { refreshHeaders } from '@/lib/services/sheets';
 import { rateLimit, limiters } from '@/lib/ratelimit';
 
@@ -22,11 +23,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const sb = createAdminClient();
 
   // Verify the URL token belongs to the session's org
-  const { data: agent } = await sb
-    .from('voice_agents')
-    .select('portal_email')
-    .eq('portal_token', token)
-    .single();
+  const agent = await getPrimaryAgentFromToken<{ portal_email: string | null }>(token, 'portal_email', sb);
   if (!agent) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 403 });

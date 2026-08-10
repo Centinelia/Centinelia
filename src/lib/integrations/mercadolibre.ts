@@ -46,16 +46,12 @@ export async function getMlConnectorByToken(
   portalToken: string,
   supabase: SupabaseClient,
 ): Promise<{ connector: MercadoLibreConnector; portalEmail: string } | null> {
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('portal_email')
-    .eq('portal_token', portalToken)
-    .single();
+  const { resolveOrgFromToken } = await import('@/lib/portal/org-token');
+  const resolved = await resolveOrgFromToken(portalToken);
+  if (!resolved) return null;
 
-  if (!agent?.portal_email) return null;
-
-  const connector = await getMlConnectorByPortalEmail(agent.portal_email, supabase);
+  const connector = await getMlConnectorByPortalEmail(resolved.portalEmail, supabase);
   if (!connector) return null;
 
-  return { connector, portalEmail: agent.portal_email };
+  return { connector, portalEmail: resolved.portalEmail };
 }

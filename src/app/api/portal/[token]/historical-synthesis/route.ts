@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
 import Anthropic from '@anthropic-ai/sdk';
 import { logLlmCall } from '@/lib/observability/llm-log';
@@ -32,11 +33,14 @@ export async function POST(
   const { token } = await params;
   const supabase  = createAdminClient();
 
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('id, agent_name, business_name, role, role_knowledge_base, portal_email')
-    .eq('portal_token', token)
-    .single();
+  const agent = await getPrimaryAgentFromToken<{
+    id: string;
+    agent_name: string | null;
+    business_name: string | null;
+    role: string | null;
+    role_knowledge_base: string | null;
+    portal_email: string | null;
+  }>(token, 'id, agent_name, business_name, role, role_knowledge_base, portal_email', supabase);
 
   if (!agent) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   if (session.portalEmail && agent.portal_email && session.portalEmail !== agent.portal_email)

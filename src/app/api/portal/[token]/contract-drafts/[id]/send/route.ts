@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { sendEmail, contractToClientHtml, type EmailBranding } from '@/lib/email/send';
 import { transitionContract } from '@/lib/state-machines/contract-draft';
 
@@ -16,11 +17,17 @@ export async function POST(req: NextRequest, { params }: Params) {
   const { token, id } = await params;
   const supabase       = createAdminClient();
 
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('id, business_name, portal_email, logo_url, brand_color, business_address, business_website, email_from_address, agent_name')
-    .eq('portal_token', token)
-    .single();
+  const agent = await getPrimaryAgentFromToken<{
+    id: string;
+    business_name: string | null;
+    portal_email: string | null;
+    logo_url: string | null;
+    brand_color: string | null;
+    business_address: string | null;
+    business_website: string | null;
+    email_from_address: string | null;
+    agent_name: string | null;
+  }>(token, 'id, business_name, portal_email, logo_url, brand_color, business_address, business_website, email_from_address, agent_name', supabase);
   if (!agent) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
   if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });

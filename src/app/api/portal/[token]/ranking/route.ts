@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 
 const COLORS = ['#6C3BFF', '#9B6DFF', '#3b82f6', '#f59e0b', '#22c55e', '#a855f7', '#ef4444', '#06b6d4'];
 function agentColor(id: string) {
@@ -33,11 +34,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
   const supabase   = createAdminClient();
 
   // Resolve account
-  const { data: base } = await supabase
-    .from('voice_agents')
-    .select('portal_email')
-    .eq('portal_token', token)
-    .single();
+  const base = await getPrimaryAgentFromToken<{ portal_email: string | null }>(token, 'portal_email', supabase);
   if (!base?.portal_email) return NextResponse.json({ agents: [] });
   if (session.portalEmail && base.portal_email !== session.portalEmail)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });

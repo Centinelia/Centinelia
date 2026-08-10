@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { notFound }          from 'next/navigation';
 import { cookies }           from 'next/headers';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
@@ -87,11 +88,11 @@ export default async function OficinaHome({ params }: Props) {
   const session     = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
 
   const supabase = createAdminClient();
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('id, portal_email, business_name, agent_name, client_name')
-    .eq('portal_token', token)
-    .maybeSingle();
+  const agent = await getPrimaryAgentFromToken<{ id: string; portal_email: string; business_name: string; agent_name: string | null; client_name: string | null }>(
+    token,
+    'id, portal_email, business_name, agent_name, client_name',
+    supabase,
+  );
   if (!agent) notFound();
 
   // ─── Batch 1: siblings (para agentIds) + sub-user profile (para nombre)

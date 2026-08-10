@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { resolveOrgFromToken } from '@/lib/portal/org-token';
 import { updateVapiAssistant } from '@/lib/vapi/sync';
 import type { VoiceAgent } from '@/types/agent';
 
@@ -21,9 +22,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const supabase = createAdminClient();
 
-  const { data: tokenAgent } = await supabase
-    .from('voice_agents').select('portal_email').eq('portal_token', token).single();
-  if (!tokenAgent?.portal_email) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  const resolved = await resolveOrgFromToken(token);
+  if (!resolved?.portalEmail) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  const tokenAgent = { portal_email: resolved.portalEmail };
   if (auth.portalEmail && tokenAgent.portal_email && auth.portalEmail !== tokenAgent.portal_email)
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
@@ -96,9 +97,9 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   const { token, id } = await params;
   const supabase = createAdminClient();
 
-  const { data: tokenAgent } = await supabase
-    .from('voice_agents').select('portal_email').eq('portal_token', token).single();
-  if (!tokenAgent?.portal_email) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  const resolved = await resolveOrgFromToken(token);
+  if (!resolved?.portalEmail) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  const tokenAgent = { portal_email: resolved.portalEmail };
   if (auth.portalEmail && tokenAgent.portal_email && auth.portalEmail !== tokenAgent.portal_email)
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 

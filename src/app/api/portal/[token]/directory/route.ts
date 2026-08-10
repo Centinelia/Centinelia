@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { resolveOrgFromToken } from '@/lib/portal/org-token';
 import type { DirectoryPerson } from '@/lib/helpdesk/folio';
 
 interface Params { params: Promise<{ token: string }> }
 
-async function getOrgEmail(token: string, supabase: ReturnType<typeof createAdminClient>) {
-  const { data: agent } = await supabase
-    .from('voice_agents').select('portal_email').eq('portal_token', token).single();
-  return (agent as any)?.portal_email as string | undefined;
+async function getOrgEmail(token: string, _supabase: ReturnType<typeof createAdminClient>) {
+  const resolved = await resolveOrgFromToken(token);
+  return resolved?.portalEmail ?? undefined;
 }
 
 export async function GET(req: NextRequest, { params }: Params) {

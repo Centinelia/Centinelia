@@ -1,8 +1,9 @@
 export const dynamic = 'force-dynamic';
 
-import { createAdminClient } from '@/lib/supabase/admin';
-import { getCommsRouting }   from '@/lib/comms/routing';
-import { getAgentAccess }    from '@/lib/portal/agent-access';
+import { createAdminClient }        from '@/lib/supabase/admin';
+import { getCommsRouting }          from '@/lib/comms/routing';
+import { getAgentAccess }           from '@/lib/portal/agent-access';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { cookies }           from 'next/headers';
 import Link                  from 'next/link';
@@ -23,12 +24,12 @@ export default async function BandejaPage({ params }: Props) {
   const isItSubUser = !!(session?.isSubUser && session.modules?.includes('of_helpdesk'));
 
   // ── Agent + Access ────────────────────────────────────────────────────────
-  const [{ data: agent }, access] = await Promise.all([
-    supabase
-      .from('voice_agents')
-      .select('id, agent_name, features, guardia_schedule, directorio_interno, portal_email')
-      .eq('portal_token', token)
-      .single(),
+  const [agent, access] = await Promise.all([
+    getPrimaryAgentFromToken<{ id: string; agent_name: string | null; features: Record<string, any> | null; guardia_schedule: unknown; directorio_interno: unknown; portal_email: string | null }>(
+      token,
+      'id, agent_name, features, guardia_schedule, directorio_interno, portal_email',
+      supabase,
+    ),
     getAgentAccess(token),
   ]);
 

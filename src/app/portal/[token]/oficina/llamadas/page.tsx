@@ -1,7 +1,8 @@
 export const dynamic = 'force-dynamic';
 
-import { createAdminClient } from '@/lib/supabase/admin';
-import { notFound, redirect } from 'next/navigation';
+import { createAdminClient }        from '@/lib/supabase/admin';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
+import { notFound, redirect }       from 'next/navigation';
 import { Phone }              from 'lucide-react';
 import type { VoiceCall }    from '@/types/agent';
 import LlamadasTabs          from './LlamadasTabs';
@@ -30,8 +31,7 @@ export default async function OficinaLlamadasPage({ params, searchParams }: Prop
 
   const supabase  = createAdminClient();
 
-  const { data: agent } = await supabase
-    .from('voice_agents').select('*').eq('portal_token', token).single();
+  const agent = await getPrimaryAgentFromToken<Record<string, any>>(token, '*', supabase);
   if (!agent) notFound();
 
   const lookupEmail    = (agent as any).portal_email as string | null;

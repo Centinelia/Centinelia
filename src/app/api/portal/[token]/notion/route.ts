@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { notionClient, createCrmDatabase, createProductDatabase, getAccessiblePages } from '@/lib/notion/client';
 
 interface Params { params: Promise<{ token: string }> }
@@ -13,11 +14,7 @@ interface Params { params: Promise<{ token: string }> }
  */
 async function resolveOrg(token: string) {
   const supabase = createAdminClient();
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('id, portal_email, business_name')
-    .eq('portal_token', token)
-    .single();
+  const agent = await getPrimaryAgentFromToken<{ id: string; portal_email: string | null; business_name: string }>(token, 'id, portal_email, business_name', supabase);
   if (!agent?.portal_email) return { supabase, agent, org: null };
   const { data: org } = await supabase
     .from('organizations')
