@@ -319,7 +319,7 @@ export default function InsightsSection({ token }: { token: string }) {
       )}
 
       {/* Filtro por empleado — solo si hay más de uno con recs */}
-      {agentPills.length > 1 && (
+      {data && agentPills.length > 1 && (
         <div className="px-5 pt-4 pb-2 flex items-center gap-1.5 flex-wrap"
           style={{ borderTop: '1px solid #F0EDF9', background: '#ffffff' }}>
           <button
