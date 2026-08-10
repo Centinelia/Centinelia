@@ -61,7 +61,7 @@ export async function GET(req: Request) {
             p_amount:       totalOps,
             p_kind:         'renewal',
             p_reference_id: `cron-safety-${today}`,
-            p_description:  `Renovacion (safety-net cron): ${totalOps} tareas`,
+            p_description:  `Renovación (safety-net cron): ${totalOps} tareas`,
           });
           stripeSafetyNets++;
         }
