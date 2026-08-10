@@ -27,7 +27,6 @@ export default async function EncuestasPage({ params }: Props) {
   const visibleTabs: CampanasTab[] = [];
   if (canLlamadas)  visibleTabs.push('llamadas');
   if (canEncuestas) visibleTabs.push('encuestas');
-  visibleTabs.push('emails');
 
   return (
     <div id="of-encuestas">

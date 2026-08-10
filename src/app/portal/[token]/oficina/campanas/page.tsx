@@ -13,7 +13,6 @@ interface Props {
 
 function parseTab(value: string | undefined): CampanasTab {
   if (value === 'encuestas') return 'encuestas';
-  if (value === 'emails')    return 'emails';
   return 'llamadas';
 }
 
@@ -25,9 +24,7 @@ export default async function OficinaCampanasPage({ params, searchParams }: Prop
   if (!data) notFound();
 
   // Sub-user permissions: qué tabs puede ver este usuario.
-  // Owners tienen todos los módulos, ven todo. Sub-users solo lo que les
-  // dieron. `emails` no tiene módulo aún (feature futura), lo mostramos a
-  // todos pero disabled.
+  // Owners tienen todos los módulos, ven todo. Sub-users solo lo que les dieron.
   const cookieStore = await cookies();
   const session     = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
 
@@ -37,7 +34,6 @@ export default async function OficinaCampanasPage({ params, searchParams }: Prop
   const visibleTabs: CampanasTab[] = [];
   if (canLlamadas)  visibleTabs.push('llamadas');
   if (canEncuestas) visibleTabs.push('encuestas');
-  visibleTabs.push('emails'); // placeholder futura
 
   return (
     <div id="of-campanas">

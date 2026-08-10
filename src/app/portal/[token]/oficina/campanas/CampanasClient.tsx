@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { Megaphone, PhoneOutgoing, PieChart, Mail, Lock } from 'lucide-react';
+import { Megaphone, PhoneOutgoing, PieChart } from 'lucide-react';
 import { Card } from '@/components/portal-ui';
 import { EmptyState } from '@/components/ui/empty-state';
 import OutboundSection from '../../OutboundSection';
@@ -10,7 +10,7 @@ import EncuestasSection from '../encuestas/EncuestasSection';
 import OficinaPageHero from '../OficinaPageHero';
 
 // ── Tipos compartidos ───────────────────────────────────────────────────────
-export type CampanasTab = 'llamadas' | 'encuestas' | 'emails';
+export type CampanasTab = 'llamadas' | 'encuestas';
 
 interface OutboundAgent { id: string; agent_name: string | null; business_name: string }
 
@@ -46,10 +46,9 @@ interface Props {
   counters:     Counters;
 }
 
-const TAB_META: Record<CampanasTab, { label: string; icon: React.ElementType; description: string; enabled: boolean }> = {
-  llamadas:  { label: 'Llamadas',  icon: PhoneOutgoing, description: 'Programa a tu equipo para llamar a listas de contactos.',                enabled: true  },
-  encuestas: { label: 'Encuestas', icon: PieChart,      description: 'Encuestas de satisfacción que tu equipo aplica al terminar cada llamada.', enabled: true  },
-  emails:    { label: 'Correos',   icon: Mail,          description: 'Campañas de correo masivo. Próximamente.',                                 enabled: false },
+const TAB_META: Record<CampanasTab, { label: string; icon: React.ElementType; description: string }> = {
+  llamadas:  { label: 'Llamadas',  icon: PhoneOutgoing, description: 'Programa a tu equipo para llamar a listas de contactos.' },
+  encuestas: { label: 'Encuestas', icon: PieChart,      description: 'Encuestas de satisfacción que tu equipo aplica al terminar cada llamada.' },
 };
 
 // ── KPI compacto reutilizable ──────────────────────────────────────────────
@@ -91,9 +90,7 @@ export default function CampanasClient({ token, initialTab, visibleTabs, outboun
     ? (counters.campanasActivas > 0
         ? `${counters.campanasActivas} ${counters.campanasActivas === 1 ? 'campaña activa' : 'campañas activas'} · ${counters.contactos} contactos · ${counters.completadas} llamadas completadas esta semana.`
         : 'Programa a tu equipo para que llame a tus contactos en el horario que elijas.')
-    : tab === 'encuestas'
-      ? 'Diseña una vez y tu equipo aplica la encuesta al terminar cada llamada. Los resultados y hallazgos aparecen aquí.'
-      : 'Envía correos masivos a segmentos de tu base. Próximamente.';
+    : 'Diseña una vez y tu equipo aplica la encuesta al terminar cada llamada. Los resultados y hallazgos aparecen aquí.';
 
   return (
     <div className="flex flex-col gap-5 max-w-6xl mx-auto w-full p-4 md:p-6">
@@ -114,25 +111,20 @@ export default function CampanasClient({ token, initialTab, visibleTabs, outboun
               const meta   = TAB_META[t];
               const Icon   = meta.icon;
               const active = tab === t;
-              const disabled = !meta.enabled;
               return (
                 <button
                   key={t}
-                  onClick={() => !disabled && setTab(t)}
-                  disabled={disabled}
-                  title={disabled ? meta.description : undefined}
+                  onClick={() => setTab(t)}
                   className="flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold transition-all"
                   style={{
                     background: active ? '#1A0A3B' : '#ffffff',
-                    color:      active ? '#ffffff' : disabled ? '#9B8FB5' : '#6B6480',
+                    color:      active ? '#ffffff' : '#6B6480',
                     border:     active ? '1px solid #1A0A3B' : '1px solid #E8E3F5',
-                    cursor:     disabled ? 'not-allowed' : 'pointer',
-                    opacity:    disabled ? 0.7 : 1,
+                    cursor:     'pointer',
                   }}
                 >
                   <Icon size={14} strokeWidth={1.75} />
                   {meta.label}
-                  {disabled && <Lock size={11} strokeWidth={2} />}
                 </button>
               );
             })}
@@ -190,17 +182,6 @@ export default function CampanasClient({ token, initialTab, visibleTabs, outboun
           plan={surveys.plan}
           defaultTier={surveys.defaultTier}
         />
-      )}
-
-      {tab === 'emails' && (
-        <Card padding="md">
-          <EmptyState
-            icon={Mail}
-            title="Correos masivos — próximamente"
-            description="Estamos armando esta pieza. Cuando esté lista podrás programar campañas de correo a segmentos de tu base."
-            size="sm"
-          />
-        </Card>
       )}
     </div>
   );
