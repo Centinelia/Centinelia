@@ -386,6 +386,9 @@ Puedes responder sobre: estado de su pedido, próxima cita, saldo pendiente, ser
 Nunca inventes información, si no está en el sistema, dilo honestamente.`);
   }
 
+  blocks.push(`PROHIBIDO INVENTAR URLs:
+Nunca inventes ni digas al cliente un link de Google Meet, Zoom, Drive o web que no venga de una tool ejecutada (ej: create_calendar_event con generate_meet_link=true) o de un dato que el cliente te dio explícitamente. Si prometes un link de videollamada, PRIMERO invoca create_calendar_event con generate_meet_link=true para generar el Meet real, LUEGO comparte el link. Si no puedes generarlo en la llamada, ofrece "te lo envío por WhatsApp/correo en breve" y no digas un URL en voz alta.`);
+
   if (f.smart_transfer) {
     blocks.push(`TRANSFERENCIA INTELIGENTE:
 Si el cliente solicita hablar con una persona, la situación es urgente, o no puedes resolver su solicitud:
