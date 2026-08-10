@@ -80,7 +80,7 @@ export function BriefDelDiaCard() {
                   {totalItems}
                 </span>
               )}
-              <InfoTooltip text={"Resumen que tu equipo prepara para arrancar el día.\n\nAgrupa lo que requiere acción, lo que necesita preparación y lo que solo debes saber, basado en tus correos, tareas pendientes y actividad de los empleados.\n\nSe actualiza automático cada mañana o cuando lo pides. Cuesta 5 tareas del plan por cada actualización manual."} />
+              <InfoTooltip text={"Resumen que tu equipo prepara para arrancar el día.\n\nAgrupa lo que requiere acción, lo que necesita preparación y lo que solo debes saber, basado en tus correos, tareas pendientes y actividad de los empleados.\n\nSe actualiza automático cada mañana. Cada actualización (automática o manual) consume 5 tareas de la jornada."} />
             </div>
             {brief && (
               <p className="text-[11px] mt-0.5" style={{ color: '#9B8FB5' }}>
@@ -119,7 +119,7 @@ export function BriefDelDiaCard() {
               {preparing ? 'Preparando…' : 'Preparar ahora'}
             </button>
             <p className="text-[10px]" style={{ color: '#9B8FB5' }}>
-              Cuesta 5 tareas de tu plan.
+              Consume 5 tareas de tu jornada.
             </p>
             {error && (
               <div className="flex items-center gap-1.5 text-[11px]" style={{ color: '#ef4444' }}>
