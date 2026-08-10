@@ -116,6 +116,11 @@ export async function resetAiOps(portalEmail: string): Promise<void> {
 // Escribe en dos lugares:
 //   organizations.monthly_ops_pool  = source of truth del pool compartido
 //   voice_agents.ai_ops_limit       = valor per-agente (fallback + UI legacy)
+//
+// ⚠️ DEPRECATED behavior: esta función asume que TODOS los agentes tienen el
+// mismo tier (los uniformiza al aiOpsPerAgent). Rompe cuentas heterogéneas
+// (ej: Pneuma con Sofía 100, Noah 500, Niva 3000). Preferir recomputeOrgOpsPool
+// que respeta los tiers individuales. Ver bug 2026-08-09.
 export async function setAiOpsLimit(portalEmail: string, aiOpsPerAgent: number): Promise<void> {
   const supabase = createAdminClient();
   const { count } = await supabase
@@ -128,4 +133,22 @@ export async function setAiOpsLimit(portalEmail: string, aiOpsPerAgent: number):
     supabase.from('organizations').update({ monthly_ops_pool: poolTotal }).eq('portal_email', portalEmail),
     supabase.from('voice_agents').update({ ai_ops_limit: aiOpsPerAgent }).eq('portal_email', portalEmail),
   ]);
+}
+
+// Recalcula organizations.monthly_ops_pool sumando el ai_ops_limit de cada
+// agente activo. NO toca los ai_ops_limit individuales — respeta que cada
+// empleado tenga su propio tier. Usar después de cambios per-agente
+// (nuevo empleado, cambio de tier de uno solo, etc.).
+export async function recomputeOrgOpsPool(portalEmail: string): Promise<number> {
+  const supabase = createAdminClient();
+  const { data: agents } = await supabase
+    .from('voice_agents')
+    .select('ai_ops_limit')
+    .eq('portal_email', portalEmail)
+    .eq('active', true);
+  const total = (agents ?? []).reduce((sum: number, a) => sum + (((a as { ai_ops_limit?: number }).ai_ops_limit) ?? 0), 0);
+  await supabase.from('organizations')
+    .update({ monthly_ops_pool: total })
+    .eq('portal_email', portalEmail);
+  return total;
 }

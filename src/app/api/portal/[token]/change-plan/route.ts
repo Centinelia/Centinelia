@@ -118,10 +118,14 @@ export async function POST(req: NextRequest, { params }: Params) {
     features:         PLAN_FEATURES[newPlan],
     minutes_plan:     newTier,
     minutes_included: MONTHLY_CONFIG[newPlan][newTier].minutes,
+    ai_ops_limit:     MONTHLY_CONFIG[newPlan][newTier].aiOps,
   }).eq('id', agent.id);
 
   if (to_plan && to_plan !== currentPlan && updatedAgent?.portal_email) {
-    await setAiOpsLimit(updatedAgent.portal_email, MONTHLY_CONFIG[newPlan][newTier].aiOps);
+    // Recompute pool desde ai_ops_limit individuales (respeta tiers heterogéneos
+    // de los peers). Antes usaba setAiOpsLimit que uniformizaba a todos.
+    const { recomputeOrgOpsPool } = await import('@/lib/ai/ops-guard');
+    await recomputeOrgOpsPool(updatedAgent.portal_email);
   }
 
   return NextResponse.json({ success: true });

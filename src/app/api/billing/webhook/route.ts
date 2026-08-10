@@ -1,10 +1,11 @@
 ﻿import { NextRequest, NextResponse, after } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { FEATURE_PLAN_CONFIG, MONTHLY_CONFIG, monthlyConfigFromPriceId, nextResetDate, JORNADA_CONFIG } from '@/lib/billing/plans';
-import { resetAiOps, setAiOpsLimit } from '@/lib/ai/ops-guard';
+import { FEATURE_PLAN_CONFIG, MONTHLY_CONFIG, monthlyConfigFromPriceId, nextResetDate, JORNADA_CONFIG, NOX_MONTHLY_CONFIG } from '@/lib/billing/plans';
+import { resetAiOps, setAiOpsLimit, recomputeOrgOpsPool } from '@/lib/ai/ops-guard';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { sendEmail, paymentFailedHtml, welcomeHtml } from '@/lib/email/send';
+import { maybeNotifyRolloverLoss } from '@/lib/billing/rollover-cap-notify';
 import { pauseVapiAgent, resumeVapiAgent } from '@/lib/vapi/control';
 import { createVapiAssistant, resyncPeerAgents } from '@/lib/vapi/sync';
 import { provisionPhoneNumber } from '@/lib/vapi/provision';
@@ -98,6 +99,7 @@ export async function POST(req: NextRequest) {
                 .single();
               await resetFallbackIfActive(supabase, upgradeEmail, agentForName?.business_name ?? 'tu empleado');
             });
+            after(() => maybeNotifyRolloverLoss(supabase, { portalEmail: upgradeEmail, referenceId: session.id ?? null }));
           } else {
             await supabase.from('minutes_ledger').insert({
               agent_id:    agentId,
@@ -150,6 +152,7 @@ export async function POST(req: NextRequest) {
               .single();
             await resetFallbackIfActive(supabase, agent.portal_email, agentForName?.business_name ?? 'tu empleado');
           });
+          after(() => maybeNotifyRolloverLoss(supabase, { portalEmail: agent.portal_email!, referenceId: session.id ?? null }));
         } else {
           await supabase.from('voice_agents')
             .update({ minutes_included: (agent?.minutes_included ?? 0) + minutes, active: true, billing_status: 'activo' })
@@ -292,13 +295,47 @@ export async function POST(req: NextRequest) {
 
         if (!pendingAgent) break;
 
+        // Recalcular alloc del tier real (viene de metadata del checkout).
+        // Antes este handler solo copiaba minutes_plan y activaba, sin
+        // tocar ai_ops_limit ni minutes_included — el row quedaba con lo
+        // que sembró createPortalAgent (que usaba base.minutes_plan, no
+        // el tier elegido). Bug del 2026-08-09 que dejó Niva scale en 500 ops.
+        const newTier      = (session.metadata?.minutes_plan ?? 'starter') as MinutesTier;
+        const newJornada   = (session.metadata?.jornada_type ?? 'combinada') as JornadaType;
+        const isCoord      = !!((pendingAgent as { features?: Record<string, unknown> | null }).features as Record<string, unknown> | null)?.is_coordinator;
+        const alloc        = isCoord
+          ? { minutes: 0, aiOps: NOX_MONTHLY_CONFIG[newTier]?.aiOps ?? 500 }
+          : (JORNADA_CONFIG[newJornada]?.[newTier] ?? { minutes: 0, aiOps: 0 });
+
         await supabase.from('voice_agents').update({
           active:                 true,
           billing_status:         'activo',
           stripe_customer_id:     session.customer as string,
           stripe_subscription_id: session.subscription as string ?? null,
-          minutes_plan:           session.metadata?.minutes_plan ?? null,
+          minutes_plan:           newTier,
+          jornada_type:           newJornada,
+          minutes_included:       alloc.minutes,
+          ai_ops_limit:           alloc.aiOps,
         }).eq('id', agentId);
+
+        // Actualizar el pool org-level (minutos + ops). Sin esto el pool
+        // queda desincronizado y el portal muestra saldo viejo.
+        const activationEmail = (pendingAgent as { portal_email?: string | null }).portal_email ?? null;
+        if (activationEmail) {
+          if (alloc.minutes > 0) {
+            await supabase.rpc('apply_ledger_entry', {
+              p_portal_email: activationEmail,
+              p_agent_id:     agentId,
+              p_amount:       alloc.minutes,
+              p_kind:         'setup_new_agent',
+              p_reference_id: session.id ?? null,
+              p_description:  `Activación de nuevo empleado: +${alloc.minutes} min`,
+            });
+          }
+          // Recompute pool sumando cada agente (respeta tiers heterogéneos).
+          // NO usar setAiOpsLimit — sobreescribiría los tiers individuales.
+          await recomputeOrgOpsPool(activationEmail);
+        }
 
         const vapiId = await createVapiAssistant(pendingAgent as VoiceAgent).catch((err: unknown) => {
           // Silent fail crítico: cliente pagó, agente marcado active, pero sin vapi_agent_id
@@ -342,6 +379,7 @@ export async function POST(req: NextRequest) {
         plan:                   featurePlan,
         minutes_plan:           minutesPlan,
         jornada_type:           jornadaTypeMeta,
+        ai_ops_limit:           jornadaAlloc.aiOps,
         active:                 true,
         billing_status:         'activo',
         stripe_customer_id:     session.customer as string,
@@ -386,7 +424,9 @@ export async function POST(req: NextRequest) {
       }
 
       if (activationEmail) {
-        await setAiOpsLimit(activationEmail, jornadaAlloc.aiOps);
+        // Recompute pool desde individual ai_ops_limit (respeta tiers heterogéneos).
+        // NO usar setAiOpsLimit — sobreescribiría los tiers de los peers.
+        await recomputeOrgOpsPool(activationEmail);
       }
 
       // Re-associate Vapi assistant when reactivating
@@ -529,6 +569,7 @@ export async function POST(req: NextRequest) {
             .single();
           await resetFallbackIfActive(supabase, renewalEmail, agentForName?.business_name ?? 'tu empleado');
         });
+        after(() => maybeNotifyRolloverLoss(supabase, { portalEmail: renewalEmail, referenceId: invoice.id ?? null }));
       } else {
         // Agente sin portal_email (legacy standalone) — mantiene ledger básico
         await supabase.from('minutes_ledger').insert({

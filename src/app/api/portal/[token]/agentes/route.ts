@@ -21,6 +21,7 @@ export async function createPortalAgent({
   agentName,
   active,
   jornadaType,
+  minutesPlan,
 }: {
   base: {
     portal_email: string | null;
@@ -47,13 +48,19 @@ export async function createPortalAgent({
   agentName: string;
   active: boolean;
   jornadaType?: JornadaType;
+  // Tier explícito del nuevo empleado. Antes se leía de `base.minutes_plan`
+  // (el del primario), lo que hacía que Nueva Niva scale terminara con
+  // starter alloc si el primario no tenía tier. Fix 2026-08-10.
+  minutesPlan?: import('@/lib/billing/plans').MinutesTier;
 }) {
   const supabase      = createAdminClient();
   const newToken      = randomUUID();
   const isCoordinator = !!(role.features as any)?.is_coordinator;
   const effectiveJornada: JornadaType = isCoordinator ? 'tareas' : (jornadaType ?? 'combinada');
-  const tier          = (base.minutes_plan ?? 'starter') as import('@/lib/billing/plans').MinutesTier;
-  const alloc         = JORNADA_CONFIG[effectiveJornada][tier];
+  const tier          = (minutesPlan ?? base.minutes_plan ?? 'starter') as import('@/lib/billing/plans').MinutesTier;
+  const alloc         = isCoordinator
+    ? { minutes: 0, aiOps: NOX_MONTHLY_CONFIG[tier]?.aiOps ?? 500 }
+    : JORNADA_CONFIG[effectiveJornada][tier];
   const features      = {
     ...role.features,
     role_color:      role.color,
@@ -74,7 +81,7 @@ export async function createPortalAgent({
       jornada_type:          effectiveJornada,
       minutes_included:      alloc.minutes,
       ai_ops_limit:          alloc.aiOps,
-      minutes_plan:          base.minutes_plan,
+      minutes_plan:          tier,
       minutes_used:          0,
       minutes_reset_date:    base.minutes_reset_date,
       stripe_customer_id:    base.stripe_customer_id,
@@ -160,11 +167,41 @@ export async function POST(
 
   const agentName = agent_name?.trim() || (role.id === 'custom' ? 'Empleado' : role.nombre);
 
+  // Tier del nuevo empleado (viene del body; el frontend MeerkatPicker lo manda).
+  // Antes se leía de base.minutes_plan (el del primario) dentro de createPortalAgent,
+  // por lo que si el primario no tenía tier caía a starter — bug del 2026-08-09
+  // que dejó a Niva scale con alloc de starter (500 ops en vez de 3000).
+  const tierFromBody = (minutes_plan ?? base.minutes_plan ?? 'starter') as import('@/lib/billing/plans').MinutesTier;
+
   // ── BYPASS: create agent directly (development / pre-production) ──────────
   const bypass = process.env.BYPASS_AGENT_PAYMENT === 'true';
   if (bypass) {
     try {
-      const newAgent = await createPortalAgent({ base: base as any, role, agentName, active: true, jornadaType: jornada_type });
+      const newAgent = await createPortalAgent({ base: base as any, role, agentName, active: true, jornadaType: jornada_type, minutesPlan: tierFromBody });
+      // BYPASS también necesita actualizar el pool org-level.
+      // En prod esto lo hace el webhook Stripe; en bypass hay que llamarlo aquí.
+      if (base.portal_email) {
+        const isCoord      = !!(role.features as any)?.is_coordinator;
+        const effectiveJor: JornadaType = isCoord ? 'tareas' : (jornada_type ?? 'combinada');
+        const alloc        = isCoord
+          ? { minutes: 0, aiOps: NOX_MONTHLY_CONFIG[tierFromBody]?.aiOps ?? 500 }
+          : JORNADA_CONFIG[effectiveJor][tierFromBody];
+        if (alloc.minutes > 0) {
+          await supabase.rpc('apply_ledger_entry', {
+            p_portal_email: base.portal_email,
+            p_agent_id:     newAgent.id,
+            p_amount:       alloc.minutes,
+            p_kind:         'setup_new_agent',
+            p_reference_id: null,
+            p_description:  `Bypass: activación nuevo empleado +${alloc.minutes} min`,
+          });
+        }
+        // Recompute pool desde ai_ops_limit individuales (respeta tiers
+        // heterogéneos). El nuevo agente ya tiene su ai_ops_limit correcto
+        // sembrado por createPortalAgent (con el tier explícito).
+        const { recomputeOrgOpsPool } = await import('@/lib/ai/ops-guard');
+        await recomputeOrgOpsPool(base.portal_email);
+      }
       return NextResponse.json({ token: newAgent.portal_token });
     } catch (e: any) {
       console.error('Error creating agent (bypass):', e);
@@ -174,11 +211,11 @@ export async function POST(
 
   // ── PRODUCTION: create pending agent → Stripe Checkout ───────────────────
   try {
-    const pendingAgent = await createPortalAgent({ base: base as any, role, agentName, active: false, jornadaType: jornada_type });
+    const pendingAgent = await createPortalAgent({ base: base as any, role, agentName, active: false, jornadaType: jornada_type, minutesPlan: tierFromBody });
 
     const plan       = (base.plan ?? 'pro') as Plan;
     const planCfg    = FEATURE_PLAN_CONFIG[plan];
-    const tier       = (minutes_plan ?? base.minutes_plan ?? 'starter') as import('@/lib/billing/plans').MinutesTier;
+    const tier       = tierFromBody;
     const isCoord2        = !!(role.features as any)?.is_coordinator;
     const monthlyCfg = isCoord2 ? NOX_MONTHLY_CONFIG[tier] : MONTHLY_CONFIG[plan]?.[tier];
     const customerId      = base.stripe_customer_id ?? undefined;
