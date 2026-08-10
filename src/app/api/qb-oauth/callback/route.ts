@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { resolveOrgFromToken } from '@/lib/portal/org-token';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +18,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(`${appUrl}?error=qb_denied`);
   }
 
-  const to = (extra: string) => `${appUrl}/portal/${token}?tab=negocio&${extra}#integraciones`;
+  const to = (extra: string) => `${appUrl}/portal/${token}?tab=organizacion&${extra}#integraciones`;
 
   const clientId     = process.env.INTUIT_CLIENT_ID!;
   const clientSecret = process.env.INTUIT_CLIENT_SECRET!;
@@ -62,20 +63,15 @@ export async function GET(req: NextRequest) {
   } catch { /* ignore */ }
 
   const supabase = createAdminClient();
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('portal_email')
-    .eq('portal_token', token)
-    .single();
-
-  if (!agent?.portal_email) {
+  const resolved = await resolveOrgFromToken(token);
+  if (!resolved) {
     return NextResponse.redirect(to('error=qb_agent'));
   }
 
   await supabase
     .from('qb_integrations')
     .upsert({
-      portal_email:     agent.portal_email,
+      portal_email:     resolved.portalEmail,
       realm_id:         realmId,
       access_token,
       refresh_token,

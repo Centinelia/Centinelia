@@ -21,6 +21,9 @@ export interface ContratoRow {
   client_name: string;
   plan: string;
   portal_token: string | null;
+  /** Token canónico per-org (organizations.portal_token). Preferido sobre portal_token
+   *  legacy per-agent para URLs emitidas. Null solo si el cliente no tiene org row. */
+  org_token: string | null;
   /** Email de portal = clave del cliente. Null solo para demos/standalone legacy. */
   portal_email: string | null;
   has_custom: boolean;
@@ -216,9 +219,9 @@ export default function ContratosClient({ list, signedCount, pendingCount, custo
               </div>
 
               <div className="flex items-center gap-2 flex-shrink-0">
-                {agent.portal_token && (
+                {(agent.org_token || agent.portal_token) && (
                   <a
-                    href={`/portal/${agent.portal_token}/contrato`}
+                    href={`/portal/${agent.org_token ?? agent.portal_token}/contrato`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-50"

@@ -4,6 +4,7 @@ import { createGoogleConnector }    from './google';
 import { createMicrosoftConnector } from './microsoft';
 import { decrypt }                  from '@/lib/crypto';
 import { sendEmail, reauthRequiredHtml } from '@/lib/email/send';
+import { getOrgToken } from '@/lib/portal/org-token';
 import type { Connector } from './types';
 import type { createAdminClient } from '@/lib/supabase/admin';
 
@@ -90,7 +91,9 @@ export async function refreshIfNeeded(integration: IntegrationRow, supabase: Sup
 
     if (!integration.reauth_notified_at && agent?.portal_email) {
       const appUrl    = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
-      const portalUrl = `${appUrl}/portal/${agent.portal_token}`;
+      const orgToken  = await getOrgToken(agent.portal_email as string, supabase);
+      const tokenForUrl = orgToken ?? (agent.portal_token as string | null);
+      const portalUrl = `${appUrl}/portal/${tokenForUrl}`;
       const providerLabel = integration.provider === 'gmail' ? 'Gmail' : 'Outlook';
       await sendEmail({
         to:      agent.portal_email,

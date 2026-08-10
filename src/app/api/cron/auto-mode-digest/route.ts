@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail, shell, badge, heading, infoCard, btn } from '@/lib/email/send';
 import { resolveMeerkatFromAgent } from '@/lib/email/meerkat-identity';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
+import { getOrgToken } from '@/lib/portal/org-token';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -21,9 +22,12 @@ interface AgentInfo {
   agent_name:      string;
   business_name:   string;
   portal_token:    string;
+  portal_email:    string | null;
   client_email:    string | null;
   approval_email:  string | null;
   features:        Record<string, unknown> | null;
+  /** Populated post-fetch: canonical org token (falls back a portal_token legacy). */
+  url_token?:      string | null;
 }
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
@@ -65,11 +69,27 @@ export async function GET(req: NextRequest) {
   // 3. Resolver info de agentes en un solo query
   const { data: agents } = await supabase
     .from('voice_agents')
-    .select('id, agent_name, business_name, portal_token, client_email, approval_email, features')
+    .select('id, agent_name, business_name, portal_token, portal_email, client_email, approval_email, features')
     .in('id', Array.from(byAgent.keys()));
 
+  // Resolver org_token canónico por portalEmail (cachea para evitar N queries).
+  const orgTokenCache = new Map<string, string | null>();
+  const resolvedAgents: AgentInfo[] = [];
+  for (const a of agents ?? []) {
+    const info = { ...(a as AgentInfo) };
+    if (info.portal_email) {
+      if (!orgTokenCache.has(info.portal_email)) {
+        orgTokenCache.set(info.portal_email, await getOrgToken(info.portal_email, supabase));
+      }
+      info.url_token = orgTokenCache.get(info.portal_email) ?? info.portal_token;
+    } else {
+      info.url_token = info.portal_token;
+    }
+    resolvedAgents.push(info);
+  }
+
   const agentMap = new Map<string, AgentInfo>(
-    (agents ?? []).map(a => [a.id, a as AgentInfo]),
+    resolvedAgents.map(a => [a.id, a]),
   );
 
   // 4. Enviar digest por agente
@@ -126,7 +146,7 @@ function digestHtml(args: {
     business_name: args.agent.business_name,
     features:      args.agent.features,
   });
-  const portalUrl = `${BASE_URL}/portal/${args.agent.portal_token}/oficina/bandeja?tab=auto`;
+  const portalUrl = `${BASE_URL}/portal/${args.agent.url_token ?? args.agent.portal_token}/oficina/bandeja?tab=auto`;
   const n = args.items.length;
 
   const itemsHtml = args.items.map(it => infoCard(`

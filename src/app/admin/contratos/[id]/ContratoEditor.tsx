@@ -9,6 +9,7 @@ interface Agent {
   business_name: string;
   client_name: string;
   portal_token: string | null;
+  org_token: string | null;
   contract_text: string | null;
   contract_accepted_at: string | null;
 }
@@ -117,9 +118,9 @@ export default function ContratoEditor({ agent }: { agent: Agent }) {
             }
           </button>
 
-          {agent.portal_token && (
+          {(agent.org_token || agent.portal_token) && (
             <a
-              href={`/portal/${agent.portal_token}/contrato`}
+              href={`/portal/${agent.org_token ?? agent.portal_token}/contrato`}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-opacity hover:opacity-80"

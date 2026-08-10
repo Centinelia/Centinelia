@@ -38,11 +38,12 @@ export async function GET(req: NextRequest) {
 
   // Store token for all agents in this account
   const supabase = createAdminClient();
-  const { data: agent } = await supabase
-    .from('voice_agents').select('portal_email').eq('portal_token', state).single();
-  if (!agent?.portal_email) {
+  const { resolveOrgFromToken } = await import('@/lib/portal/org-token');
+  const resolved = await resolveOrgFromToken(state);
+  if (!resolved) {
     return NextResponse.redirect(`${appUrl}/portal/${state}?tab=integraciones&notion=error`);
   }
+  const agent = { portal_email: resolved.portalEmail };
 
   // Notion es org-level: escribimos en organizations, no en voice_agents.
   // El campo notion_workspace_id se dejó en la tabla organizations legacy o

@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { resolveOrgFromToken } from '@/lib/portal/org-token';
 
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get('token');
   if (!token) return NextResponse.json({ error: 'Missing token' }, { status: 400 });
 
-  // Verify the portal token exists
-  const supabase = createAdminClient();
-  const { data: agent } = await supabase
-    .from('voice_agents').select('id').eq('portal_token', token).single();
-  if (!agent) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  // Verify the portal token exists (acepta org token o legacy voice_agents.portal_token)
+  const resolved = await resolveOrgFromToken(token);
+  if (!resolved) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
 
   const clientId    = process.env.NOTION_CLIENT_ID!;
   const redirectUri = process.env.NOTION_REDIRECT_URI!;

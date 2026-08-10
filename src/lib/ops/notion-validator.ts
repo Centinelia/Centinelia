@@ -1,6 +1,7 @@
 import { notionClient } from '@/lib/notion/client';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail } from '@/lib/email/send';
+import { getOrgToken } from '@/lib/portal/org-token';
 
 export interface SchemaViolation {
   page_id:    string;
@@ -145,14 +146,16 @@ async function sendValidationReport(agentId: string, results: ValidationResult[]
 
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('business_name, client_email, portal_token')
+    .select('business_name, client_email, portal_email, portal_token')
     .eq('id', agentId)
     .single();
 
   if (!agent?.client_email) return;
 
   const baseUrl   = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
-  const portalUrl = agent.portal_token ? `${baseUrl}/portal/${agent.portal_token}?tab=integraciones` : baseUrl;
+  const orgToken  = agent.portal_email ? await getOrgToken(agent.portal_email as string, supabase) : null;
+  const tokenForUrl = orgToken ?? (agent.portal_token as string | null);
+  const portalUrl = tokenForUrl ? `${baseUrl}/portal/${tokenForUrl}?tab=integraciones` : baseUrl;
 
   const html = validationReportHtml({
     businessName: agent.business_name as string,

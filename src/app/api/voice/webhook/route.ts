@@ -19,6 +19,7 @@ import { addCallEntry } from '@/lib/notion/client';
 import { getMeerkatIdForAgentRow } from '@/lib/vapi/meerkat-map';
 import { resolveMeerkatVersionForAgent } from '@/lib/feature-flags/version-flag-resolver';
 import { evaluateFlagsForOrg } from '@/lib/feature-flags/all-active';
+import { getOrgToken } from '@/lib/portal/org-token';
 
 export async function POST(req: NextRequest) {
   const vapiSecret = process.env.VAPI_SERVER_SECRET;
@@ -399,19 +400,21 @@ export async function POST(req: NextRequest) {
 
       const pct    = includedAfterRefill > 0 ? (used / includedAfterRefill) * 100 : 0;
       const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
+      const orgTokenForUrl = agent?.portal_email ? await getOrgToken(agent.portal_email, supabase) : null;
+      const portalTokenForUrl = orgTokenForUrl ?? agent?.portal_token ?? null;
 
       // ── All notifications and AI tasks run after the HTTP response ─────
       after(async () => {
         // A0. Auto-refill declinada: notificar antes que el pause message para
         // que el cliente sepa distinguir "sin plan" de "Stripe rechazó tarjeta".
         if (refillAttemptFailed && agent) {
-          const refillMsg = `⚠️ *Recarga automática falló, ${agent.business_name}*\n\nIntenté recargar tus minutos pero Stripe no procesó el pago. Verifica tu método de pago en el portal antes de que el agente se pause.\n\n${appUrl}/portal/${agent.portal_token}`;
+          const refillMsg = `⚠️ *Recarga automática falló, ${agent.business_name}*\n\nIntenté recargar tus minutos pero Stripe no procesó el pago. Verifica tu método de pago en el portal antes de que el agente se pause.\n\n${appUrl}/portal/${portalTokenForUrl}`;
           if (agent.transfer_whatsapp) await sendWhatsApp(agent.transfer_whatsapp, refillMsg).catch(console.error);
           if (agent.client_email) {
             await sendEmail({
               to:      agent.client_email,
               subject: `⚠️ Recarga automática falló, ${agent.business_name}`,
-              html:    `<p>Intentamos ejecutar tu recarga automática pero Stripe rechazó el cargo.</p><p><strong>Motivo:</strong> ${refillFailError ?? 'no especificado'}</p><p>Verifica tu método de pago en el <a href="${appUrl}/portal/${agent.portal_token}">portal</a> antes de que el agente se pause.</p>`,
+              html:    `<p>Intentamos ejecutar tu recarga automática pero Stripe rechazó el cargo.</p><p><strong>Motivo:</strong> ${refillFailError ?? 'no especificado'}</p><p>Verifica tu método de pago en el <a href="${appUrl}/portal/${portalTokenForUrl}">portal</a> antes de que el agente se pause.</p>`,
             }).catch(console.error);
           }
         }
@@ -424,7 +427,7 @@ export async function POST(req: NextRequest) {
             await sendEmail({
               to:      agent.client_email,
               subject: `⚠️ Agente pausado, ${agent.business_name}`,
-              html:    minutesAlertHtml({ businessName: agent.business_name, pct: 100, used, included: includedAfterRefill, resetDate: resetDateStr, portalUrl: `${appUrl}/portal/${agent.portal_token}` }),
+              html:    minutesAlertHtml({ businessName: agent.business_name, pct: 100, used, included: includedAfterRefill, resetDate: resetDateStr, portalUrl: `${appUrl}/portal/${portalTokenForUrl}` }),
             }).catch(console.error);
           }
           return;
@@ -474,7 +477,7 @@ export async function POST(req: NextRequest) {
             await sendEmail({
               to:      agent.client_email,
               subject: `📊 Aviso: ${Math.round(pct)}% de minutos usados, ${agent.business_name}`,
-              html:    minutesAlertHtml({ businessName: agent.business_name, pct, used, included: includedAfterRefill, resetDate: resetDateStr, portalUrl: `${appUrl}/portal/${agent.portal_token}` }),
+              html:    minutesAlertHtml({ businessName: agent.business_name, pct, used, included: includedAfterRefill, resetDate: resetDateStr, portalUrl: `${appUrl}/portal/${portalTokenForUrl}` }),
             }).catch(console.error);
           }
         }

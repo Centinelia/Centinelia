@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail } from '@/lib/email/send';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
 import { logLlmCall } from '@/lib/observability/llm-log';
+import { getOrgToken } from '@/lib/portal/org-token';
 
 const anthropic = new Anthropic();
 
@@ -26,13 +27,14 @@ export async function checkExpiringContracts(): Promise<{ alerted: number }> {
 
   const { data: contracts } = await supabase
     .from('ops_contracts')
-    .select('*, voice_agents!inner(id, business_name, client_email, agent_name, knowledge_base, portal_token)')
+    .select('*, voice_agents!inner(id, business_name, client_email, agent_name, knowledge_base, portal_email, portal_token)')
     .eq('status', 'activo')
     .lte('expiry_date', maxDate.toISOString().slice(0, 10))
     .gte('expiry_date', today.toISOString().slice(0, 10));
 
   if (!contracts?.length) return { alerted: 0 };
 
+  const orgTokenCache = new Map<string, string | null>();
   let alerted = 0;
 
   for (const contract of contracts) {
@@ -64,7 +66,18 @@ export async function checkExpiringContracts(): Promise<{ alerted: number }> {
     }
 
     const baseUrl   = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
-    const portalUrl = agent.portal_token ? `${baseUrl}/portal/${agent.portal_token}?tab=oficina` : baseUrl;
+    const portalEmail = agent.portal_email as string | null;
+    let orgToken: string | null = null;
+    if (portalEmail) {
+      if (orgTokenCache.has(portalEmail)) {
+        orgToken = orgTokenCache.get(portalEmail) ?? null;
+      } else {
+        orgToken = await getOrgToken(portalEmail, supabase);
+        orgTokenCache.set(portalEmail, orgToken);
+      }
+    }
+    const tokenForUrl = orgToken ?? (agent.portal_token as string | null);
+    const portalUrl = tokenForUrl ? `${baseUrl}/portal/${tokenForUrl}?tab=oficina` : baseUrl;
     const typeLabel = TYPE_LABELS[contract.contract_type as string] ?? 'Documento';
 
     await sendEmail({

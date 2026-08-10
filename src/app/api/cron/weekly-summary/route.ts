@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail, weeklyReportHtml } from '@/lib/email/send';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
+import { getOrgToken } from '@/lib/portal/org-token';
 
 export async function GET(req: NextRequest) {
   if (!verifyCronAuth(req)) {
@@ -15,7 +16,7 @@ export async function GET(req: NextRequest) {
 
   const { data: agents } = await supabase
     .from('voice_agents')
-    .select('id, business_name, client_email, portal_token, minutes_used, minutes_included, notify_email')
+    .select('id, business_name, client_email, portal_email, portal_token, minutes_used, minutes_included, notify_email')
     .eq('active', true)
     .not('client_email', 'is', null);
 
@@ -29,10 +30,23 @@ export async function GET(req: NextRequest) {
     '4pm','5pm','6pm','7pm','8pm','9pm','10pm','11pm',
   ];
 
+  const orgTokenCache = new Map<string, string | null>();
+
   let sent = 0;
   for (const agent of agents) {
     if (!(agent.notify_email ?? true)) continue;
     if (!agent.client_email)           continue;
+
+    let orgToken: string | null = null;
+    if (agent.portal_email) {
+      if (orgTokenCache.has(agent.portal_email)) {
+        orgToken = orgTokenCache.get(agent.portal_email) ?? null;
+      } else {
+        orgToken = await getOrgToken(agent.portal_email, supabase);
+        orgTokenCache.set(agent.portal_email, orgToken);
+      }
+    }
+    const tokenForUrl = orgToken ?? agent.portal_token;
 
     const [callsRes, leadsRes, apptsRes, ordersRes] = await Promise.all([
       supabase.from('voice_calls').select('id, outcome, created_at').eq('agent_id', agent.id).gte('created_at', weekAgo),
@@ -61,7 +75,7 @@ export async function GET(req: NextRequest) {
       subject: `📊 Reporte semanal, ${agent.business_name}`,
       html:    weeklyReportHtml({
         businessName: agent.business_name,
-        portalUrl:    `${appUrl}/portal/${agent.portal_token}`,
+        portalUrl:    `${appUrl}/portal/${tokenForUrl}`,
         period,
         totalCalls:   calls.length,
         leads:        leadsRes.data?.length ?? 0,

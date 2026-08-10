@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { transitionInboxItem } from '@/lib/state-machines/inbox-item';
 import { recordHumanDecision } from '@/lib/human-gates/record';
+import { getOrgToken } from '@/lib/portal/org-token';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,11 +43,13 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('portal_token')
+    .select('portal_email, portal_token')
     .eq('id', item.agent_id)
     .single();
 
-  const portalUrl = agent?.portal_token ? `${BASE_URL}/portal/${agent.portal_token}?tab=oficina` : BASE_URL;
+  const orgToken = agent?.portal_email ? await getOrgToken(agent.portal_email as string, supabase) : null;
+  const tokenForUrl = orgToken ?? (agent?.portal_token as string | null | undefined);
+  const portalUrl = tokenForUrl ? `${BASE_URL}/portal/${tokenForUrl}?tab=oficina` : BASE_URL;
 
   return htmlPage('Rechazado', 'El elemento fue rechazado y no se enviará ninguna respuesta.', true, portalUrl);
 }

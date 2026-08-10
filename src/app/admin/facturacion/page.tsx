@@ -87,7 +87,7 @@ async function ClientesTab() {
   const { data: orgRows } = portalEmails.length
     ? await supabase
         .from('organizations')
-        .select('portal_email, contract_accepted_at, contract_ip')
+        .select('portal_email, portal_token, contract_accepted_at, contract_ip')
         .in('portal_email', portalEmails)
     : { data: [] };
   const orgMap = new Map((orgRows ?? []).map(o => [o.portal_email as string, o]));
@@ -114,6 +114,7 @@ async function ClientesTab() {
         client_name:           a.client_name,
         plan:                  a.plan,
         portal_token:          anchorAgent.portal_token,
+        org_token:             (org?.portal_token as string | null) ?? null,
         portal_email:          a.portal_email,
         has_custom:            anyCustom,
         contract_accepted_at:  (org?.contract_accepted_at as string | null) ?? null,
@@ -129,6 +130,7 @@ async function ClientesTab() {
         client_name:           a.client_name,
         plan:                  a.plan,
         portal_token:          a.portal_token,
+        org_token:             null,
         portal_email:          null,
         has_custom:            !!a.contract_text,
         contract_accepted_at:  a.contract_accepted_at ?? null,

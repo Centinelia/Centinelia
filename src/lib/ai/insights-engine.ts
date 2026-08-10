@@ -19,17 +19,17 @@ export interface InsightRec {
 // El caller debe llamar con el token del cliente para producir la URL final.
 export function metricKeyToDeepLink(metricKey: string | undefined | null, token: string): string {
   const base = `/portal/${token}`;
-  if (!metricKey) return `${base}/agentes`;
-  if (metricKey === 'escalation_rate')  return `${base}?tab=negocio#conocimiento`;
+  if (!metricKey) return `${base}/empleados`;
+  if (metricKey === 'escalation_rate')  return `${base}?tab=organizacion#conocimiento`;
   if (metricKey === 'ces_fluidez')      return `${base}/configurar?tab=knowledge#correo`;
-  if (metricKey === 'ces_comprension')  return `${base}?tab=negocio#conocimiento`;
+  if (metricKey === 'ces_comprension')  return `${base}?tab=organizacion#conocimiento`;
   if (metricKey === 'ces_naturalidad')  return `${base}/configurar?tab=knowledge`;
   if (metricKey === 'ces_conduccion')   return `${base}/configurar?tab=tools#autonomia`;
-  if (metricKey === 'ces_confianza')    return `${base}?tab=negocio#conocimiento`;
-  if (metricKey === 'ces_resolucion')   return `${base}/agentes`;
+  if (metricKey === 'ces_confianza')    return `${base}?tab=organizacion#conocimiento`;
+  if (metricKey === 'ces_resolucion')   return `${base}/empleados`;
   if (metricKey === 'self_eval')        return `${base}/configurar?tab=tools#autonomia`;
-  if (metricKey === 'goal')             return `${base}/agentes`;
-  return `${base}/agentes`;
+  if (metricKey === 'goal')             return `${base}/empleados`;
+  return `${base}/empleados`;
 }
 
 export interface CallRow {

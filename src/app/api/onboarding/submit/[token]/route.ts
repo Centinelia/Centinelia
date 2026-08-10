@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getOrgToken } from '@/lib/portal/org-token';
 
 interface Params { params: Promise<{ token: string }> }
 
@@ -53,15 +54,17 @@ export async function POST(req: NextRequest, { params }: Params) {
   // Notify agent owner
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('client_email, business_name, portal_token')
+    .select('client_email, business_name, portal_email, portal_token')
     .eq('id', instance.agent_id)
     .single();
 
   if (agent?.client_email) {
     const { sendEmail, shell, heading, infoCard, btn } = await import('@/lib/email/send');
     const baseUrl   = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
-    const portalUrl = agent.portal_token
-      ? `${baseUrl}/portal/${agent.portal_token}?tab=oficina`
+    const orgToken  = agent.portal_email ? await getOrgToken(agent.portal_email as string, supabase) : null;
+    const tokenForUrl = orgToken ?? (agent.portal_token as string | null);
+    const portalUrl = tokenForUrl
+      ? `${baseUrl}/portal/${tokenForUrl}?tab=oficina`
       : baseUrl;
 
     await sendEmail({

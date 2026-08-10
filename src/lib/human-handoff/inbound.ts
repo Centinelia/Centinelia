@@ -1,6 +1,7 @@
 // src/lib/human-handoff/inbound.ts
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail } from '@/lib/email/send';
+import { getOrgToken } from '@/lib/portal/org-token';
 import { parseReplyBody } from './parse-reply';
 import { resumeAgentAfterHumanResponse } from './resume';
 import { buildStaleReplyHtml, BASE_URL } from './auto-reply';
@@ -88,7 +89,7 @@ async function sendStaleAutoReply(request: HandoffRequestMatch, from: string): P
 
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('agent_name, portal_token')
+    .select('agent_name, portal_email, portal_token')
     .eq('id', request.agent_id)
     .single();
   if (!agent) return;
@@ -97,7 +98,9 @@ async function sendStaleAutoReply(request: HandoffRequestMatch, from: string): P
   const respondedAt = new Date(
     (full.responded_at ?? full.cancelled_at ?? full.timeout_at ?? new Date().toISOString()) as string
   );
-  const portalUrl = `${BASE_URL}/portal/${agent.portal_token as string}/requests/${request.id}`;
+  const orgToken = agent.portal_email ? await getOrgToken(agent.portal_email as string, supabase) : null;
+  const tokenForUrl = orgToken ?? (agent.portal_token as string);
+  const portalUrl = `${BASE_URL}/portal/${tokenForUrl}/requests/${request.id}`;
 
   const html = buildStaleReplyHtml({
     agentName:    agent.agent_name as string,

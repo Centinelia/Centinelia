@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { mlExchangeCode }    from '@/lib/mercadolibre/auth';
 import { encrypt }           from '@/lib/crypto';
 
@@ -19,11 +20,9 @@ export async function GET(req: NextRequest) {
     const tokens = await mlExchangeCode(code);
 
     const supabase = createAdminClient();
-    const { data: agent } = await supabase
-      .from('voice_agents')
-      .select('id, portal_email')
-      .eq('portal_token', state)
-      .single();
+    const agent = await getPrimaryAgentFromToken<{ id: string; portal_email: string | null }>(
+      state, 'id, portal_email', supabase,
+    );
 
     if (!agent) {
       return NextResponse.redirect(`${appUrl}/portal/${state}?tab=integraciones&ml=error`);

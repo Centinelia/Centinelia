@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 
 export async function GET(req: NextRequest) {
   const cookieStore = await cookies();
@@ -13,11 +14,9 @@ export async function GET(req: NextRequest) {
   if (!token) return NextResponse.json({ error: 'token requerido' }, { status: 400 });
 
   const supabase = createAdminClient();
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('stripe_customer_id, portal_email')
-    .eq('portal_token', token)
-    .single();
+  const agent = await getPrimaryAgentFromToken<{
+    stripe_customer_id: string | null; portal_email: string | null;
+  }>(token, 'stripe_customer_id, portal_email', supabase);
 
   if (!agent) return NextResponse.json({ error: 'Sin suscripción activa' }, { status: 404 });
   if (session.portalEmail && agent.portal_email && session.portalEmail !== agent.portal_email)

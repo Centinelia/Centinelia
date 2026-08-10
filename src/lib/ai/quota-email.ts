@@ -1,5 +1,6 @@
 import { sendEmail, shell, heading, infoCard, btn } from '@/lib/email/send';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getOrgToken } from '@/lib/portal/org-token';
 import type { AutomationName } from '@/types/agent';
 
 const LABELS: Record<AutomationName, string> = {
@@ -20,6 +21,7 @@ interface AgentSubset {
   ai_ops_limit:       number;
   minutes_reset_date: string | null;
   portal_token:       string | null;
+  portal_email?:      string | null;
   features:           Record<string, unknown> | null;
 }
 
@@ -36,8 +38,11 @@ export async function maybeSendQuotaEmail(agent: AgentSubset, automation: Automa
   const resetSentence = agent.minutes_reset_date
     ? `El pool se resetee el ${new Date(agent.minutes_reset_date).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}, o`
     : `El pool se resetee en el próximo ciclo, o`;
-  const portalUrl = agent.portal_token
-    ? `https://www.centinelia.mx/portal/${agent.portal_token}?tab=cuenta#comprar`
+  const supabase = createAdminClient();
+  const orgToken = agent.portal_email ? await getOrgToken(agent.portal_email, supabase) : null;
+  const tokenForUrl = orgToken ?? agent.portal_token;
+  const portalUrl = tokenForUrl
+    ? `https://www.centinelia.mx/portal/${tokenForUrl}?tab=cuenta#comprar`
     : 'https://www.centinelia.mx';
   const dateStr = new Date().toLocaleDateString('es-MX', { month: 'long', day: 'numeric' });
 
@@ -60,8 +65,6 @@ export async function maybeSendQuotaEmail(agent: AgentSubset, automation: Automa
       `<p style="color:#C8BEE8;font-size:12px;margin:20px 0 0;text-align:center">Si crees que esto es un error, respóndenos a hola@centinelia.mx.</p>`
     ),
   });
-
-  const supabase = createAdminClient();
 
   // Re-SELECT fresh features to avoid clobbering concurrent PATCH toggles
   const { data: freshAgent } = await supabase

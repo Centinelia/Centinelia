@@ -4,6 +4,7 @@ import { sendEmail } from '@/lib/email/send';
 import { transitionInboxItem } from '@/lib/state-machines/inbox-item';
 import { recordHumanDecision } from '@/lib/human-gates/record';
 import { getConnector } from '@/lib/connectors';
+import { getOrgToken } from '@/lib/portal/org-token';
 
 export const dynamic = 'force-dynamic';
 
@@ -146,7 +147,9 @@ function stripMarkdown(s: string): string {
     portalEmail: agent?.client_email ?? null,
   });
 
-  const portalUrl = agent?.portal_token ? `${BASE_URL}/portal/${agent.portal_token}?tab=oficina` : BASE_URL;
+  const orgToken = agent?.portal_email ? await getOrgToken(agent.portal_email as string, supabase) : null;
+  const tokenForUrl = orgToken ?? (agent?.portal_token as string | null | undefined);
+  const portalUrl = tokenForUrl ? `${BASE_URL}/portal/${tokenForUrl}?tab=oficina` : BASE_URL;
 
   return htmlPage(
     item.item_type === 'invoice' ? 'Factura aprobada' : 'Respuesta enviada',

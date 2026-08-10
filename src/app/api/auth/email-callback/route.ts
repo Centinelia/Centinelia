@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { gmailExchangeCode }   from '@/lib/email/gmail';
 import { outlookExchangeCode } from '@/lib/email/outlook';
 import { encrypt }             from '@/lib/crypto';
@@ -17,7 +18,7 @@ export async function GET(req: NextRequest) {
   const state        = isAgentScope ? rawState.replace(/__agent$/, '') : rawState;
 
   if (!provider || !code || !state) {
-    return NextResponse.redirect(`${appUrl}/portal/${state ?? ''}?tab=negocio&email=error#integraciones`);
+    return NextResponse.redirect(`${appUrl}/portal/${state ?? ''}?tab=organizacion&email=error#integraciones`);
   }
 
   try {
@@ -27,14 +28,12 @@ export async function GET(req: NextRequest) {
 
     const supabase = createAdminClient();
 
-    const { data: agent } = await supabase
-      .from('voice_agents')
-      .select('id, portal_email')
-      .eq('portal_token', state)
-      .single();
+    const agent = await getPrimaryAgentFromToken<{ id: string; portal_email: string | null }>(
+      state, 'id, portal_email', supabase,
+    );
 
     if (!agent) {
-      return NextResponse.redirect(`${appUrl}/portal/${state}?tab=negocio&email=error#integraciones`);
+      return NextResponse.redirect(`${appUrl}/portal/${state}?tab=organizacion&email=error#integraciones`);
     }
 
     const expiresAt       = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
@@ -83,11 +82,11 @@ export async function GET(req: NextRequest) {
 
     const successUrl = isAgentScope
       ? `${appUrl}/portal/${state}/configurar?email=connected&provider=${provider}`
-      : `${appUrl}/portal/${state}?tab=negocio&email=connected&provider=${provider}#integraciones`;
+      : `${appUrl}/portal/${state}?tab=organizacion&email=connected&provider=${provider}#integraciones`;
 
     return NextResponse.redirect(successUrl);
   } catch (err) {
     console.error('[email-callback] error:', err);
-    return NextResponse.redirect(`${appUrl}/portal/${state}?tab=negocio&email=error#integraciones`);
+    return NextResponse.redirect(`${appUrl}/portal/${state}?tab=organizacion&email=error#integraciones`);
   }
 }

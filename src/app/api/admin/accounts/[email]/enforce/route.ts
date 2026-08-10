@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getOrgToken } from '@/lib/portal/org-token';
 import {
   sendEmail,
   accountWarningHtml,
@@ -46,7 +47,9 @@ export async function POST(req: NextRequest, { params }: Params) {
   const clientName   = agent?.client_name ?? email;
   const businessName = org.name ?? email;
   const appUrl       = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.centinelia.mx';
-  const portalUrl    = agent?.portal_token ? `${appUrl}/portal/${agent.portal_token}` : appUrl;
+  const orgToken     = await getOrgToken(email, supabase);
+  const tokenForUrl  = orgToken ?? agent?.portal_token ?? null;
+  const portalUrl    = tokenForUrl ? `${appUrl}/portal/${tokenForUrl}` : appUrl;
 
   if (action === 'lift_rate_limit') {
     await supabase

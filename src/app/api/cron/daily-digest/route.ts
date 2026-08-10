@@ -19,6 +19,7 @@ import { verifyCronAuth } from '@/lib/auth/cron-auth';
 import { sendEmail } from '@/lib/email/send';
 import { dailyDigestHtml, sectionTitleForKind, summaryForEvent, type DigestSection } from '@/lib/notifications/templates';
 import type { NotificationKind } from '@/lib/notifications/queue';
+import { getOrgToken } from '@/lib/portal/org-token';
 
 export const dynamic = 'force-dynamic';
 
@@ -161,14 +162,19 @@ export async function GET(req: NextRequest) {
 
     // Envía email
     const appUrl    = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
-    const { data: portalTok } = await supabase
-      .from('voice_agents')
-      .select('portal_token')
-      .eq('portal_email', portalEmail)
-      .limit(1)
-      .maybeSingle();
-    const portalUrl = portalTok?.portal_token
-      ? `${appUrl}/portal/${portalTok.portal_token}`
+    const orgToken = await getOrgToken(portalEmail, supabase);
+    let tokenForUrl: string | null = orgToken;
+    if (!tokenForUrl) {
+      const { data: portalTok } = await supabase
+        .from('voice_agents')
+        .select('portal_token')
+        .eq('portal_email', portalEmail)
+        .limit(1)
+        .maybeSingle();
+      tokenForUrl = (portalTok?.portal_token as string | null) ?? null;
+    }
+    const portalUrl = tokenForUrl
+      ? `${appUrl}/portal/${tokenForUrl}`
       : appUrl;
 
     try {
