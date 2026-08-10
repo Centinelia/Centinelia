@@ -129,3 +129,71 @@ BEGIN
   );
 END;
 $function$;
+
+-- 7) Consumo: inserta un debit y devuelve balance actualizado
+CREATE OR REPLACE FUNCTION public.consume_pool_ops(
+  p_portal_email  text,
+  p_agent_id      uuid,
+  p_ops           int,
+  p_reference_id  text DEFAULT NULL,
+  p_description   text DEFAULT NULL
+)
+RETURNS int
+LANGUAGE plpgsql
+AS $function$
+DECLARE
+  v_desc text;
+BEGIN
+  v_desc := COALESCE(p_description, format('consumo: %s ops', p_ops));
+
+  INSERT INTO ops_ledger (
+    portal_email, agent_id, amount, kind, reference_id,
+    description, source
+  ) VALUES (
+    p_portal_email, p_agent_id, -p_ops, 'consumption', p_reference_id,
+    v_desc, 'consumption'
+  );
+
+  RETURN get_ops_pool_balance(p_portal_email);
+END;
+$function$;
+
+-- 8) Annual grant: cierra ciclo con unused_forfeited + abre nuevo con annual_grant
+CREATE OR REPLACE FUNCTION public.apply_ops_annual_grant(p_portal_email text)
+RETURNS void
+LANGUAGE plpgsql
+AS $function$
+DECLARE
+  v_unused   int;
+  v_contract uuid;
+  v_pool     int;
+BEGIN
+  v_unused := get_ops_pool_balance(p_portal_email);
+
+  IF v_unused > 0 THEN
+    INSERT INTO ops_ledger (
+      portal_email, agent_id, amount, kind, reference_id, description, source
+    ) VALUES (
+      p_portal_email, NULL, -v_unused, 'unused_forfeited', NULL,
+      format('Se pierden %s tareas no consumidas del ciclo anterior', v_unused),
+      'unused_forfeited'
+    );
+  END IF;
+
+  SELECT active_contract_id INTO v_contract
+    FROM organizations WHERE portal_email = p_portal_email;
+  IF v_contract IS NULL THEN RETURN; END IF;
+
+  SELECT monthly_ops_pool INTO v_pool
+    FROM annual_contracts WHERE id = v_contract;
+  IF v_pool IS NULL OR v_pool <= 0 THEN RETURN; END IF;
+
+  INSERT INTO ops_ledger (
+    portal_email, agent_id, amount, kind, reference_id, description, source
+  ) VALUES (
+    p_portal_email, NULL, v_pool, 'annual_grant', v_contract::text,
+    format('Grant mensual del contrato anual: %s tareas', v_pool),
+    'annual_grant'
+  );
+END;
+$function$;

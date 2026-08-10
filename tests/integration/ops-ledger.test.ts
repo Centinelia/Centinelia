@@ -105,3 +105,65 @@ describe('apply_ops_ledger_entry cap enforcement', () => {
     expect(capRows![0].amount).toBe(-30);
   });
 });
+
+describe('consume_pool_ops', () => {
+  beforeAll(cleanup);
+  afterEach(cleanup);
+
+  it('inserts consumption debit and returns new balance', async () => {
+    // Seed: apply credit +100
+    await supabase.rpc('apply_ops_ledger_entry', {
+      p_portal_email: TEST_EMAIL, p_agent_id: null, p_amount: 100,
+      p_kind: 'admin_adjustment', p_reference_id: 'seed', p_description: 'seed',
+    });
+
+    const { data: balance } = await supabase.rpc('consume_pool_ops', {
+      p_portal_email: TEST_EMAIL, p_agent_id: null, p_ops: 15,
+      p_reference_id: 'call_1', p_description: 'test consumption',
+    });
+
+    expect(balance).toBe(85);
+
+    const { data: rows } = await supabase
+      .from('ops_ledger')
+      .select('amount, kind')
+      .eq('portal_email', TEST_EMAIL)
+      .eq('reference_id', 'call_1');
+
+    expect(rows).toHaveLength(1);
+    expect(rows![0].amount).toBe(-15);
+    expect(rows![0].kind).toBe('consumption');
+  });
+});
+
+describe('apply_ops_annual_grant', () => {
+  beforeAll(cleanup);
+  afterEach(cleanup);
+
+  it('does NOT insert unused_forfeited when balance is 0', async () => {
+    // Precondición: no annual contract for TEST_EMAIL, so no grant either.
+    // Test verifies solo el branch de unused=0.
+    await supabase.rpc('apply_ops_annual_grant', { p_portal_email: TEST_EMAIL });
+    const { data: forfeit } = await supabase
+      .from('ops_ledger')
+      .select('*')
+      .eq('portal_email', TEST_EMAIL)
+      .eq('kind', 'unused_forfeited');
+    expect(forfeit).toHaveLength(0);
+  });
+
+  it('inserts unused_forfeited when balance > 0', async () => {
+    await supabase.rpc('apply_ops_ledger_entry', {
+      p_portal_email: TEST_EMAIL, p_agent_id: null, p_amount: 50,
+      p_kind: 'admin_adjustment', p_reference_id: 'seed', p_description: 'seed',
+    });
+    await supabase.rpc('apply_ops_annual_grant', { p_portal_email: TEST_EMAIL });
+    const { data: forfeit } = await supabase
+      .from('ops_ledger')
+      .select('*')
+      .eq('portal_email', TEST_EMAIL)
+      .eq('kind', 'unused_forfeited');
+    expect(forfeit).toHaveLength(1);
+    expect(forfeit![0].amount).toBe(-50);
+  });
+});
