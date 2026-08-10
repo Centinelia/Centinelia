@@ -5,7 +5,7 @@ import { FEATURE_PLAN_CONFIG, MONTHLY_CONFIG, monthlyConfigFromPriceId, nextRese
 import { resetAiOps, setAiOpsLimit, recomputeOrgOpsPool } from '@/lib/ai/ops-guard';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { sendEmail, paymentFailedHtml, welcomeHtml } from '@/lib/email/send';
-import { maybeNotifyRolloverLoss } from '@/lib/billing/rollover-cap-notify';
+import { maybeNotifyRolloverLoss, maybeNotifyPoolLoss } from '@/lib/billing/rollover-cap-notify';
 import { pauseVapiAgent, resumeVapiAgent } from '@/lib/vapi/control';
 import { createVapiAssistant, resyncPeerAgents } from '@/lib/vapi/sync';
 import { provisionPhoneNumber } from '@/lib/vapi/provision';
@@ -185,13 +185,38 @@ export async function POST(req: NextRequest) {
 
         if (!agent) break;
 
-        const newOpsLimit = ((agent.ai_ops_limit as number) ?? 0) + ops;
-        if (agent.portal_email) {
-          await supabase.from('voice_agents')
-            .update({ ai_ops_limit: newOpsLimit }).eq('portal_email', agent.portal_email);
+        const portalEmail = agent.portal_email as string | null;
+        let ledgerEnabled = false;
+        if (portalEmail) {
+          const { data: org } = await supabase
+            .from('organizations')
+            .select('ops_ledger_enabled')
+            .eq('portal_email', portalEmail)
+            .maybeSingle();
+          ledgerEnabled = !!org?.ops_ledger_enabled;
+        }
+
+        if (ledgerEnabled && portalEmail) {
+          // NEW path: escribe al ledger, cap 2x aplicado automaticamente por RPC
+          await supabase.rpc('apply_ops_ledger_entry', {
+            p_portal_email: portalEmail,
+            p_agent_id:     agentId,
+            p_amount:       ops,
+            p_kind:         'extra_ops_purchase',
+            p_reference_id: session.id ?? null,
+            p_description:  `Compra de ${ops} tareas extra`,
+          });
+          after(() => maybeNotifyPoolLoss(supabase, { portalEmail, referenceId: session.id ?? null, resource: 'ops' }));
         } else {
-          await supabase.from('voice_agents')
-            .update({ ai_ops_limit: newOpsLimit }).eq('id', agentId);
+          // LEGACY: comportamiento original — actualiza ai_ops_limit directamente
+          const newOpsLimit = ((agent.ai_ops_limit as number) ?? 0) + ops;
+          if (portalEmail) {
+            await supabase.from('voice_agents')
+              .update({ ai_ops_limit: newOpsLimit }).eq('portal_email', portalEmail);
+          } else {
+            await supabase.from('voice_agents')
+              .update({ ai_ops_limit: newOpsLimit }).eq('id', agentId);
+          }
         }
 
         break;

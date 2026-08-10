@@ -139,3 +139,20 @@ export async function maybeNotifyRolloverLoss(
     console.error('[rollover-cap-notify] error', err);
   }
 }
+
+/**
+ * Wrapper generalizado para notificar perdida de pool (minutos u ops).
+ * Para minutos: delega a maybeNotifyRolloverLoss (implementacion completa).
+ * Para ops: stub no-op hasta Task 15 — solo registra el evento en consola.
+ * En Task 15 este stub se reemplaza por la implementacion real en pool-loss-notify.ts.
+ */
+export async function maybeNotifyPoolLoss(
+  supabase: SupabaseClient,
+  params: { portalEmail: string; referenceId: string | null; resource: 'minutes' | 'ops' }
+): Promise<void> {
+  if (params.resource === 'minutes') {
+    return maybeNotifyRolloverLoss(supabase, params);
+  }
+  // Ops: no-op hasta Task 15. Log para poder auditar cuantos eventos se perderían.
+  console.log('[pool-loss-notify:stub] ops event skipped (implementation lands in Task 15)', params);
+}
