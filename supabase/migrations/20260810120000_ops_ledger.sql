@@ -31,3 +31,48 @@ CREATE TABLE IF NOT EXISTS account_ops (
 -- 3) Feature flag por org para rollout gradual
 ALTER TABLE organizations
   ADD COLUMN IF NOT EXISTS ops_ledger_enabled boolean NOT NULL DEFAULT false;
+
+-- 4) Balance = suma de todos los amounts en ledger para un portal_email
+CREATE OR REPLACE FUNCTION public.get_ops_pool_balance(p_portal_email text)
+RETURNS int
+LANGUAGE sql
+STABLE
+AS $function$
+  SELECT COALESCE(SUM(amount), 0)::int
+  FROM ops_ledger
+  WHERE portal_email = p_portal_email;
+$function$;
+
+-- 5) Cap: 2× para stripe, monthly_ops_pool del contrato para annual
+CREATE OR REPLACE FUNCTION public.get_ops_pool_cap(p_portal_email text)
+RETURNS int
+LANGUAGE plpgsql
+STABLE
+AS $function$
+DECLARE
+  v_model  text;
+  v_active_contract uuid;
+  v_pool   int;
+  v_base   int := 0;
+BEGIN
+  SELECT billing_model, active_contract_id
+    INTO v_model, v_active_contract
+    FROM organizations WHERE portal_email = p_portal_email;
+
+  IF v_model = 'annual_prepaid' THEN
+    IF v_active_contract IS NULL THEN RETURN 0; END IF;
+    SELECT monthly_ops_pool INTO v_pool
+      FROM annual_contracts WHERE id = v_active_contract;
+    RETURN COALESCE(v_pool, 0);
+  END IF;
+
+  -- Default = stripe (o unset): 2× la suma de ai_ops_limit per-agente activo
+  SELECT COALESCE(SUM(ai_ops_limit), 0)::int INTO v_base
+    FROM voice_agents
+    WHERE portal_email = p_portal_email
+      AND active = true
+      AND (billing_status = 'activo' OR billing_status IS NULL);
+
+  RETURN v_base * 2;
+END;
+$function$;
