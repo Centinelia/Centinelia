@@ -287,7 +287,7 @@ const BASE_EMAIL_TOOLS: Anthropic.Tool[] = [
   // ── Data capture (voz+chat+email según regla de 3 canales) ────────────────
   {
     name:        'crear_lead',
-    description: 'Registra al remitente (o a un prospecto mencionado en el correo) como lead cuando el email exprese interés en contratar, cotizar o probar un servicio. Visible después en Llamadas → Leads. Si ya lo registraste hace unos minutos con el mismo whatsapp o email, el sistema hace merge automatico; NO re-ejecutes para "confirmar". REGLA CRÍTICA: SIEMPRE después de crear_lead debes invocar también crear_contacto_saliente con el mismo teléfono (usa whatsapp), motivo del interés, y tags:["Lead"] para que el prospecto quede visible en Campañas y se le pueda dar seguimiento por llamada. Son dos tools en un solo turno.',
+    description: 'Registra al remitente (o a un prospecto mencionado en el correo) como lead cuando el email exprese interés en contratar, cotizar o probar un servicio. Visible después en Llamadas → Leads. Si ya lo registraste hace unos minutos con el mismo whatsapp o email, el sistema hace merge automatico; NO re-ejecutes para "confirmar". REGLA CRÍTICA: SIEMPRE después de crear_lead debes invocar también crear_contacto_saliente con el mismo teléfono (usa whatsapp) y motivo del interés, más los tags que MEJOR describan al contacto según lo que sabes de él (contenido del correo, tono, señales de urgencia). Usa tu criterio para elegir tags — piensa cómo el dueño querría segmentarlo después: nivel de interés ("Interesado", "Curioso", "En evaluación"), tipo de cliente ("B2B", "PYME", "Enterprise", "Retail"), señales de urgencia ("Urgente", "Presupuesto listo"), o categoría ("Lead", "VIP", "Cliente-actual", "Prospecto-frío"). Puedes combinar varios. Si de veras no tienes más info que el interés inicial, ["Lead"] es un fallback aceptable. Son dos tools en un solo turno.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -305,7 +305,7 @@ const BASE_EMAIL_TOOLS: Anthropic.Tool[] = [
   },
   {
     name:        'crear_contacto_saliente',
-    description: 'Agrega al prospecto a la lista de outbound para llamarle despues (aparece en Campanas del portal). Debe invocarse SIEMPRE junto con crear_lead (mismo turno) con tags:["Lead"] para que todo prospecto registrado quede también visible en Campañas. También úsala independiente cuando el correo pida seguimiento por telefono, agende una call futura, o el remitente comparta su numero explicito para que le llamen. NO la confundas con agregar_tag_contacto (esa solo etiqueta contactos que YA existen).',
+    description: 'Agrega al prospecto a la lista de outbound para llamarle despues (aparece en Campanas del portal). Debe invocarse SIEMPRE junto con crear_lead (mismo turno) para que todo prospecto registrado quede también visible en Campañas. También úsala independiente cuando el correo pida seguimiento por telefono, agende una call futura, o el remitente comparta su numero explicito para que le llamen. NO la confundas con agregar_tag_contacto (esa solo etiqueta contactos que YA existen).',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -313,7 +313,7 @@ const BASE_EMAIL_TOOLS: Anthropic.Tool[] = [
         telefono:     { type: 'string', description: 'Telefono a llamar (obligatorio)' },
         email:        { type: 'string', description: 'Correo del contacto (opcional; usa el email del remitente si aplica)' },
         motivo:       { type: 'string', description: 'Motivo o contexto de la llamada de seguimiento' },
-        tags:         { type: 'array', items: { type: 'string' }, description: 'Etiquetas para clasificar el contacto. Por convención usa ["Lead"] cuando viene junto con crear_lead. Otras: ["VIP"], ["Interesado"], ["Cliente"], etc.' },
+        tags:         { type: 'array', items: { type: 'string' }, description: 'Etiquetas para clasificar el contacto — usa TU criterio según lo que sepas del prospecto (contenido del correo, tono, señales). Piensa cómo el dueño querría segmentarlo después. Ejemplos: nivel de interés ("Interesado", "Curioso"), tipo ("B2B", "PYME", "Enterprise"), urgencia ("Urgente", "Presupuesto listo"), categoría ("Lead", "VIP", "Cliente-actual"). Puedes combinar varios. ["Lead"] es fallback aceptable si no hay más info.' },
         scheduled_at: { type: 'string', description: 'Fecha/hora ISO 8601 sugerida (opcional). Si se omite queda en pending sin agendar.' },
       },
       required: ['telefono'],
