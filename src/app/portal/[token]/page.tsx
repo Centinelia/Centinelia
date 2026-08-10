@@ -178,6 +178,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
     accountSerialRes,
     rolloverLostRes,
     opsLossRes,
+    acctOpsRes,
   ] = agent.portal_email
     ? await Promise.all([
         lookupEmail
@@ -189,7 +190,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           : Promise.resolve([] as any[]),
         supabase
           .from('organizations')
-          .select('knowledge_base, owner_profile, business_description, business_email, business_hours, business_website, website_knowledge, google_review_url, email_brand_color, brand_color_secondary, brand_website, brand_address, brand_phone, email_footer_text, billing_model, contract_accepted_at, contract_ip, contract_signer_name, multilingual, brand_voice_guide, directory, monthly_ops_pool, monthly_ops_used, fallback_phone_number')
+          .select('knowledge_base, owner_profile, business_description, business_email, business_hours, business_website, website_knowledge, google_review_url, email_brand_color, brand_color_secondary, brand_website, brand_address, brand_phone, email_footer_text, billing_model, contract_accepted_at, contract_ip, contract_signer_name, multilingual, brand_voice_guide, directory, monthly_ops_pool, monthly_ops_used, fallback_phone_number, ops_ledger_enabled')
           .eq('portal_email', agent.portal_email)
           .single()
           .then(r => r.data),
@@ -219,12 +220,19 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           .in('kind', ['rollover_cap', 'unused_forfeited'])
           .gte('created_at', cycleStartIso)
           .then(r => r.data),
+        supabase
+          .from('account_ops')
+          .select('ops_used, ops_balance, ops_included')
+          .eq('portal_email', agent.portal_email)
+          .maybeSingle()
+          .then(r => r.data),
       ])
     : [
         [] as any[],
         null,
         null,
         null as any,
+        null,
         null,
         null,
         null,
@@ -332,13 +340,22 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
     return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'long' });
   })();
 
-  // Pool compartido: organizations.monthly_ops_pool/used es source of truth.
-  // Fallback a SUM per-agente si la org es antigua sin migrar.
-  const orgPoolTotal = (orgSettings?.monthly_ops_pool as number | null) ?? null;
-  const orgPoolUsed  = (orgSettings?.monthly_ops_used as number | null) ?? null;
-  const aiOpsUsed  = orgPoolTotal != null
-    ? (orgPoolUsed ?? 0)
-    : (opsAgents ?? []).reduce((s: number, a: any) => s + (((a as any).ai_ops_used  as number) ?? 0), 0);
+  // Pool compartido:
+  //  - Si ops_ledger_enabled=true, account_ops.ops_used es source of truth
+  //    (el legacy counter se congela post-flip y no refleja consumo nuevo).
+  //  - Fallback: organizations.monthly_ops_used (path legacy).
+  //  - Fallback 2: SUM per-agente si la org es antigua sin migrar.
+  const orgPoolTotal    = (orgSettings?.monthly_ops_pool as number | null) ?? null;
+  const orgPoolUsed     = (orgSettings?.monthly_ops_used as number | null) ?? null;
+  const ledgerEnabled   = !!(orgSettings as { ops_ledger_enabled?: boolean } | null)?.ops_ledger_enabled;
+  const acctOpsUsed     = ledgerEnabled
+    ? ((acctOpsRes as { ops_used?: number | null } | null)?.ops_used as number | null | undefined)
+    : null;
+  const aiOpsUsed  = ledgerEnabled && typeof acctOpsUsed === 'number'
+    ? acctOpsUsed
+    : (orgPoolTotal != null
+        ? (orgPoolUsed ?? 0)
+        : (opsAgents ?? []).reduce((s: number, a: any) => s + (((a as any).ai_ops_used  as number) ?? 0), 0));
   const aiOpsLimit = orgPoolTotal != null
     ? orgPoolTotal
     : (opsAgents ?? []).reduce((s: number, a: any) => s + (((a as any).ai_ops_limit as number) ?? 0), 0);
