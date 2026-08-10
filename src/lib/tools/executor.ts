@@ -1643,18 +1643,27 @@ async function executeAgentToolInner(
   // teléfono en <10min contra registros pending.
   // ─────────────────────────────────────────────────────────────────────────
   if (toolName === 'crear_contacto_saliente') {
-    const args = toolInput as Record<string, string | undefined>;
-    const telefono = args.telefono?.trim();
+    const args = toolInput as Record<string, string | string[] | undefined>;
+    const telefono = typeof args.telefono === 'string' ? args.telefono.trim() : '';
     if (!telefono) {
       return { ok: false, error: 'Necesito el teléfono del contacto para agregarlo.' };
     }
+    // tags puede llegar como array o como string suelto (ej. "Lead" o "Lead,VIP")
+    const rawTags = args.tags;
+    const tags: string[] | null = Array.isArray(rawTags)
+      ? rawTags.map(t => String(t).trim()).filter(Boolean)
+      : typeof rawTags === 'string' && rawTags.trim()
+        ? rawTags.split(',').map(t => t.trim()).filter(Boolean)
+        : null;
     try {
       const upsert = await upsertOutboundContactWithDedup(supabase, {
         agentId,
-        nombre:      args.nombre ?? null,
+        nombre:      typeof args.nombre === 'string' ? args.nombre : null,
         telefono,
-        motivo:      args.motivo ?? null,
-        scheduledAt: args.scheduled_at ?? null,
+        motivo:      typeof args.motivo === 'string' ? args.motivo : null,
+        scheduledAt: typeof args.scheduled_at === 'string' ? args.scheduled_at : null,
+        email:       typeof args.email === 'string' ? args.email : null,
+        tags:        tags && tags.length > 0 ? tags : null,
         source:      ctx.channel === 'voice' ? 'llamada_entrante' : 'manual',
       });
       const message = upsert.action === 'updated'

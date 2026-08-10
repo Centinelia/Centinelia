@@ -983,7 +983,7 @@ const QB_TOOLS: Anthropic.Tool[] = [
 
 const CREAR_LEAD_TOOL: Anthropic.Tool = {
   name: 'crear_lead',
-  description: 'Registra un prospecto interesado en los servicios del negocio (aparece en Llamadas del portal). Si ya lo registraste hace unos minutos con el mismo whatsapp o email, el sistema hace merge automatico, NO re-ejecutes esta tool para "confirmar" — solo dile al dueno donde revisar.',
+  description: 'Registra un prospecto interesado en los servicios del negocio (aparece en Llamadas del portal). Si ya lo registraste hace unos minutos con el mismo whatsapp o email, el sistema hace merge automatico, NO re-ejecutes esta tool para "confirmar" — solo dile al dueno donde revisar. REGLA CRÍTICA: SIEMPRE después de crear_lead debes invocar también crear_contacto_saliente con el mismo teléfono, motivo del interés, y tags:["Lead"] para que el prospecto quede visible en Campañas y se le pueda dar seguimiento por llamada. Son dos tools en un solo turno.',
   input_schema: {
     type: 'object' as const,
     properties: {
@@ -1002,13 +1002,15 @@ const CREAR_LEAD_TOOL: Anthropic.Tool = {
 
 const CREAR_CONTACTO_SALIENTE_TOOL: Anthropic.Tool = {
   name: 'crear_contacto_saliente',
-  description: 'Agrega un contacto a la lista de outbound para llamarle despues (aparece en Campanas del portal). Usa esta tool cuando el dueno pida que un prospecto quede listado para llamada de seguimiento — NO la confundas con agregar_tag_contacto (esa solo etiqueta contactos que ya existen). Es complementaria a crear_lead: puedes llamar ambas para un mismo prospecto.',
+  description: 'Agrega un contacto a la lista de outbound para llamarle despues (aparece en Campanas del portal). Debe invocarse SIEMPRE junto con crear_lead (mismo turno) con tags:["Lead"] para que todo prospecto registrado quede también visible en Campañas. También úsala independiente cuando el dueño pida seguimiento por llamada. NO la confundas con agregar_tag_contacto (esa solo etiqueta contactos que YA existen).',
   input_schema: {
     type: 'object' as const,
     properties: {
       nombre:       { type: 'string', description: 'Nombre del contacto' },
       telefono:     { type: 'string', description: 'Telefono a llamar (obligatorio)' },
+      email:        { type: 'string', description: 'Correo del contacto (opcional)' },
       motivo:       { type: 'string', description: 'Motivo o contexto de la llamada de seguimiento' },
+      tags:         { type: 'array', items: { type: 'string' }, description: 'Etiquetas para clasificar el contacto. Por convención usa ["Lead"] cuando viene junto con crear_lead. Otras: ["VIP"], ["Interesado"], ["Cliente"], etc.' },
       scheduled_at: { type: 'string', description: 'Fecha/hora ISO 8601 sugerida (opcional). Si se omite, queda en pending sin agendar.' },
     },
     required: ['telefono'],

@@ -179,19 +179,25 @@ export async function upsertOutboundContactWithDedup(
     return { id: existingId, action: 'updated' };
   }
 
+  // scheduled_at es NOT NULL en outbound_contacts (sin default). Si el agente
+  // no dio fecha, usamos "ahora" — el cron de outbound-campaigns respeta el
+  // status 'pending' así que no dispara la llamada de inmediato.
+  // tags es NOT NULL con default '{}'; omitimos del payload cuando es null.
+  const insertPayload: Record<string, unknown> = {
+    agent_id:     input.agentId,
+    nombre:       input.nombre ?? null,
+    telefono:     input.telefono,
+    motivo:       input.motivo ?? null,
+    scheduled_at: input.scheduledAt ?? new Date().toISOString(),
+    status:       'pending',
+    source:       input.source ?? 'manual',
+    email:        input.email ?? null,
+  };
+  if (input.tags && input.tags.length > 0) insertPayload.tags = input.tags;
+
   const { data, error } = await supabase
     .from('outbound_contacts')
-    .insert({
-      agent_id:     input.agentId,
-      nombre:       input.nombre ?? null,
-      telefono:     input.telefono,
-      motivo:       input.motivo ?? null,
-      scheduled_at: input.scheduledAt ?? null,
-      status:       'pending',
-      source:       input.source ?? 'manual',
-      email:        input.email ?? null,
-      tags:         input.tags ?? null,
-    })
+    .insert(insertPayload)
     .select('id')
     .single();
 

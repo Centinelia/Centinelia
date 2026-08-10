@@ -287,7 +287,7 @@ const BASE_EMAIL_TOOLS: Anthropic.Tool[] = [
   // ── Data capture (voz+chat+email según regla de 3 canales) ────────────────
   {
     name:        'crear_lead',
-    description: 'Registra al remitente (o a un prospecto mencionado en el correo) como lead cuando el email exprese interés en contratar, cotizar o probar un servicio. Visible después en Llamadas → Leads. Si ya lo registraste hace unos minutos con el mismo whatsapp o email, el sistema hace merge automatico; NO re-ejecutes para "confirmar".',
+    description: 'Registra al remitente (o a un prospecto mencionado en el correo) como lead cuando el email exprese interés en contratar, cotizar o probar un servicio. Visible después en Llamadas → Leads. Si ya lo registraste hace unos minutos con el mismo whatsapp o email, el sistema hace merge automatico; NO re-ejecutes para "confirmar". REGLA CRÍTICA: SIEMPRE después de crear_lead debes invocar también crear_contacto_saliente con el mismo teléfono (usa whatsapp), motivo del interés, y tags:["Lead"] para que el prospecto quede visible en Campañas y se le pueda dar seguimiento por llamada. Son dos tools en un solo turno.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -305,13 +305,15 @@ const BASE_EMAIL_TOOLS: Anthropic.Tool[] = [
   },
   {
     name:        'crear_contacto_saliente',
-    description: 'Agrega al prospecto a la lista de outbound para llamarle despues (aparece en Campanas del portal). Usa cuando el correo pida seguimiento por telefono, agende una call futura, o el remitente comparta su numero explicito para que le llamen. NO la confundas con agregar_tag_contacto (esa solo etiqueta contactos que ya existen). Complementaria a crear_lead: puedes llamar ambas para un mismo prospecto.',
+    description: 'Agrega al prospecto a la lista de outbound para llamarle despues (aparece en Campanas del portal). Debe invocarse SIEMPRE junto con crear_lead (mismo turno) con tags:["Lead"] para que todo prospecto registrado quede también visible en Campañas. También úsala independiente cuando el correo pida seguimiento por telefono, agende una call futura, o el remitente comparta su numero explicito para que le llamen. NO la confundas con agregar_tag_contacto (esa solo etiqueta contactos que YA existen).',
     input_schema: {
       type: 'object' as const,
       properties: {
         nombre:       { type: 'string', description: 'Nombre del contacto' },
         telefono:     { type: 'string', description: 'Telefono a llamar (obligatorio)' },
+        email:        { type: 'string', description: 'Correo del contacto (opcional; usa el email del remitente si aplica)' },
         motivo:       { type: 'string', description: 'Motivo o contexto de la llamada de seguimiento' },
+        tags:         { type: 'array', items: { type: 'string' }, description: 'Etiquetas para clasificar el contacto. Por convención usa ["Lead"] cuando viene junto con crear_lead. Otras: ["VIP"], ["Interesado"], ["Cliente"], etc.' },
         scheduled_at: { type: 'string', description: 'Fecha/hora ISO 8601 sugerida (opcional). Si se omite queda en pending sin agendar.' },
       },
       required: ['telefono'],
