@@ -290,13 +290,17 @@ export async function POST(req: NextRequest) {
     messages:   messages.slice(-20),
   });
 
+  // Post-filter determinístico: el modelo ignora "no uses em-dashes" a veces.
+  // Reemplazo — (U+2014) y – (U+2013) por ", " para garantizar cero em-dashes.
+  const stripEmDashes = (s: string): string => s.replace(/[—–]/g, ', ');
+
   const readable = new ReadableStream({
     async start(controller) {
       try {
         for await (const chunk of stream) {
           if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
             controller.enqueue(
-              new TextEncoder().encode(`data: ${JSON.stringify({ text: chunk.delta.text })}\n\n`)
+              new TextEncoder().encode(`data: ${JSON.stringify({ text: stripEmDashes(chunk.delta.text) })}\n\n`)
             );
           }
         }

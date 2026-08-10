@@ -235,13 +235,16 @@ export async function POST(req: NextRequest) {
     messages:   messages.slice(-16),
   });
 
+  // Post-filter determinístico contra em-dashes (— y –) que el modelo emite pese al prompt.
+  const stripEmDashes = (s: string): string => s.replace(/[—–]/g, ', ');
+
   const readable = new ReadableStream({
     async start(controller) {
       try {
         for await (const chunk of stream) {
           if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
             controller.enqueue(
-              new TextEncoder().encode(`data: ${JSON.stringify({ text: chunk.delta.text })}\n\n`)
+              new TextEncoder().encode(`data: ${JSON.stringify({ text: stripEmDashes(chunk.delta.text) })}\n\n`)
             );
           }
         }

@@ -1804,8 +1804,11 @@ ${context}`;
   const readable = new ReadableStream({
     async start(controller) {
       const enc = new TextEncoder();
+      // Post-filter determinístico contra em-dashes (— y –) que Sonnet emite
+      // pese al prompt. Reemplazo por ", " para preservar la pausa semántica.
+      const stripEmDashes = (t: string): string => t.replace(/[—–]/g, ', ');
       const send = (text: string) =>
-        controller.enqueue(enc.encode(`data: ${JSON.stringify({ text })}\n\n`));
+        controller.enqueue(enc.encode(`data: ${JSON.stringify({ text: stripEmDashes(text) })}\n\n`));
 
       const runStart    = Date.now();
       const toolsCalled: { name: string; ok: boolean; error?: string }[] = [];
