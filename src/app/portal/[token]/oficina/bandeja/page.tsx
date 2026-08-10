@@ -10,6 +10,8 @@ import Link                  from 'next/link';
 import { Headphones, Settings2, Inbox, AlertTriangle, Clock } from 'lucide-react';
 import CommsRoutingEditor    from './CommsRoutingEditor';
 import OpsInboxSection       from '../../OpsInboxSection';
+import EnviadosSection       from './EnviadosSection';
+import BandejaTabs           from './BandejaTabs';
 import type { InboxAgent }   from '../../inbox/categories';
 
 interface Props { params: Promise<{ token: string }> }
@@ -208,8 +210,11 @@ export default async function BandejaPage({ params }: Props) {
         </div>
       </div>
 
-      {/* ── OpsInboxSection — lista principal (mantiene su UX interna) ─── */}
-      <OpsInboxSection token={token} agents={agents} />
+      {/* ── Tabs Recibidos / Enviados ─────────────────────────────────────── */}
+      <BandejaTabs
+        recibidos={<OpsInboxSection token={token} agents={agents} />}
+        enviados={<EnviadosSection token={token} />}
+      />
 
       {/* ── Configuración de enrutamiento (solo gobierno, colapsable) ────── */}
       {commsRouting !== null && (
