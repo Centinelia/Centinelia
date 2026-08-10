@@ -824,7 +824,7 @@ function RegistroInner() {
     if (!clientFirstName.trim())                           { setError('Escribe tu nombre'); return; }
     if (!clientLastName.trim())                            { setError('Escribe tu apellido'); return; }
     if (!clientEmail.trim() || !clientEmail.includes('@')) { setError('Escribe un correo electrónico válido'); return; }
-    if (!transferWhatsapp.trim())                          { setError('Escribe tu numero de WhatsApp'); return; }
+    if (!transferWhatsapp.trim())                          { setError('Escribe tu número de WhatsApp'); return; }
     if (country === 'mx') {
       const rfcClean = rfc.trim().toUpperCase().replace(/\s/g, '');
       if (rfcClean.length < 12 || rfcClean.length > 13 || !/^[A-Z&Ñ]{3,4}[0-9]{6}[A-Z0-9]{3}$/.test(rfcClean)) {
@@ -1769,7 +1769,7 @@ function RegistroInner() {
                       {useAsFallback && <Check size={10} color="#fff" strokeWidth={3} />}
                     </div>
                     <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', lineHeight: 1.55, userSelect: 'none' }}>
-                      Usar este mismo numero como respaldo si se agotan mis minutos. Si no lo activas, las llamadas se pausaran cuando llegues al limite.
+                      Usar este mismo número como respaldo si se agotan mis minutos. Si no lo activas, las llamadas se pausarán cuando llegues al límite.
                     </p>
                   </div>
                 </div>
