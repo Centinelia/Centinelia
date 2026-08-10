@@ -25,6 +25,8 @@ import PortalLeadsSection      from './PortalLeadsSection';
 import PortalOrdersSection     from './PortalOrdersSection';
 import PortalAppointmentsSection from './PortalAppointmentsSection';
 import BuyMinutesSection       from './BuyMinutesSection';
+import FallbackBanner          from './FallbackBanner';
+import { isValidE164, maskPhoneNumber } from '@/lib/billing/fallback-validate';
 import BuyOpsSection           from './BuyOpsSection';
 import AnnualContractCallout   from './AnnualContractCallout';
 import MinutesLedgerSection    from './MinutesLedgerSection';
@@ -152,7 +154,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           : Promise.resolve([] as any[]),
         supabase
           .from('organizations')
-          .select('knowledge_base, owner_profile, business_description, business_email, business_hours, business_website, website_knowledge, google_review_url, email_brand_color, brand_color_secondary, brand_website, brand_address, brand_phone, email_footer_text, billing_model, contract_accepted_at, contract_ip, contract_signer_name, multilingual, brand_voice_guide, directory, monthly_ops_pool, monthly_ops_used')
+          .select('knowledge_base, owner_profile, business_description, business_email, business_hours, business_website, website_knowledge, google_review_url, email_brand_color, brand_color_secondary, brand_website, brand_address, brand_phone, email_footer_text, billing_model, contract_accepted_at, contract_ip, contract_signer_name, multilingual, brand_voice_guide, directory, monthly_ops_pool, monthly_ops_used, fallback_phone_number')
           .eq('portal_email', agent.portal_email)
           .single()
           .then(r => r.data),
@@ -287,6 +289,18 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
     : (opsAgents ?? []).reduce((s: number, a: any) => s + (((a as any).ai_ops_limit as number) ?? 0), 0);
   const aiOpsPct   = aiOpsLimit > 0 ? Math.min((aiOpsUsed / aiOpsLimit) * 100, 100) : 0;
   const aiOpsColor = aiOpsPct > 90 ? '#ef4444' : aiOpsPct > 70 ? '#f59e0b' : '#22c55e';
+
+  // ── Fallback banner state ──────────────────────────────────────────────────
+  const fallbackPhoneRaw = (orgSettings as any)?.fallback_phone_number ?? null;
+  const hasFallback      = isValidE164(fallbackPhoneRaw);
+  const exhausted        = minutesIncluded > 0 && minutesUsed >= minutesIncluded;
+  const warning80        = minutesIncluded > 0 && minutesUsed >= minutesIncluded * 0.8 && !exhausted;
+  const bannerState: 'active' | 'no_fallback' | 'warning' | null =
+      exhausted && hasFallback  ? 'active'
+    : exhausted && !hasFallback ? 'no_fallback'
+    : warning80 && !hasFallback ? 'warning'
+    : null;
+  const fallbackMasked = hasFallback ? maskPhoneNumber(fallbackPhoneRaw as string) : null;
 
   const supportWhatsApp    = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP ?? '';
   const supportEmail       = process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? 'hola@centinelia.mx';
@@ -1336,6 +1350,16 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                                 <div className="flex flex-col gap-5">
                                   <div>
                                     <p className="text-xs font-semibold mb-2 tracking-wide uppercase" style={{ color: '#6B6480' }}>Minutos</p>
+                                    {bannerState && (
+                                      <div className="mb-3">
+                                        <FallbackBanner
+                                          state={bannerState}
+                                          fallbackMasked={fallbackMasked}
+                                          agentName={agentName}
+                                          configurarHref={`/portal/${token}/configurar`}
+                                        />
+                                      </div>
+                                    )}
                                     <BuyMinutesSection token={token} />
                                   </div>
                                   <div style={{ borderTop: '1px solid #E8E3F5' }} />
