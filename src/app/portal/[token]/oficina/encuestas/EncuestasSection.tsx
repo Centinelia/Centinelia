@@ -1544,35 +1544,52 @@ export default function EncuestasSection({ token, agentName, hasSurveyAgent = tr
         />
       )}
 
-      {/* No survey agent banner */}
+      {/* No survey agent banner — mismo patrón que Investigación */}
       {!hasSurveyAgent && (
         <div className="flex overflow-hidden rounded-2xl"
           style={{
-            background: '#ffffff',
-            border: '1px solid #E8E3F5',
-            boxShadow: '0 1px 2px rgba(26,10,59,0.04)',
+            background: 'linear-gradient(135deg, rgba(236,72,153,0.08) 0%, rgba(168,85,247,0.06) 60%, #ffffff 100%)',
+            border: '1px solid rgba(236,72,153,0.30)',
+            boxShadow: '0 4px 20px rgba(236,72,153,0.08)',
           }}>
-          <img src="/meerkats/nia.png" alt="Nia"
-            className="w-32 h-32 object-contain object-bottom shrink-0 self-end" />
-          <div className="flex-1 min-w-0 py-4 pr-5 pl-3 flex flex-col justify-center gap-1.5">
-            <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#9B8FB5' }}>
+          {/* Stack de imágenes: Nia (frente) + Nelia + Naia (atrás) */}
+          <div className="relative shrink-0 self-end flex items-end" style={{ width: 156, height: 144 }}>
+            <img
+              src="/meerkats/nia.png"
+              alt="Nia"
+              style={{ width: 128, height: 128, objectFit: 'contain', objectPosition: 'bottom center', position: 'absolute', bottom: 0, left: 20, zIndex: 2 }}
+            />
+            <img
+              src="/meerkats/nelia.png"
+              alt="Nelia"
+              style={{ width: 96, height: 96, objectFit: 'contain', objectPosition: 'bottom center', position: 'absolute', bottom: 0, left: 0, opacity: 0.75, zIndex: 1 }}
+            />
+            <img
+              src="/meerkats/naia.png"
+              alt="Naia"
+              style={{ width: 96, height: 96, objectFit: 'contain', objectPosition: 'bottom center', position: 'absolute', bottom: 0, right: -12, opacity: 0.6, zIndex: 0 }}
+            />
+          </div>
+
+          <div className="flex-1 min-w-0 py-5 pr-5 pl-3 flex flex-col justify-center gap-2">
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: '#DB2777', letterSpacing: '0.08em' }}>
               Calidad
             </p>
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <p className="text-[14px] font-semibold leading-snug" style={{ color: '#1A0A3B' }}>
-                Nia no está en tu equipo.
-              </p>
+            <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>
+              Contrata a Nia, Nelia o Naia
+            </h2>
+            <p className="text-[13px] leading-relaxed" style={{ color: '#6B6480' }}>
+              Ningún empleado de tu equipo tiene el perfil para aplicar encuestas al terminar las llamadas. Nia, Nelia y Naia sí traen esta habilidad y las corren automáticamente sin intervención.
+            </p>
+            <div className="mt-1">
               <MeerkatPicker
                 token={token}
                 plan={plan as 'pro'}
                 defaultTier={defaultTier as 'starter' | 'growth' | 'scale'}
                 preselect="nia"
-                triggerLabel="Contratar"
+                triggerLabel="Contratar a Nia"
               />
             </div>
-            <p className="text-[12px] leading-relaxed" style={{ color: '#6B6480' }}>
-              Sin Nia, Nelia o Naia las encuestas se aplican solo de forma manual. Estos empleados las realizan automáticamente al terminar cada llamada y registran las respuestas sin intervención.
-            </p>
           </div>
         </div>
       )}
