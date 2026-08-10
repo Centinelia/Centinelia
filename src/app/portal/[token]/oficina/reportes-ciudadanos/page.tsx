@@ -1,7 +1,8 @@
 export const dynamic = 'force-dynamic';
 
 import { ClipboardList } from 'lucide-react';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createAdminClient }        from '@/lib/supabase/admin';
+import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { getFolioConfig, getTramiteDocs } from '@/lib/civic/folio';
 import CivicReportsSection from './CivicReportsSection';
 import FolioConfigEditor from './FolioConfigEditor';
@@ -14,8 +15,11 @@ export default async function ReportesCiudadanosPage({ params }: Props) {
   const { token } = await params;
   const supabase = createAdminClient();
 
-  const { data: agent } = await supabase
-    .from('voice_agents').select('id, features').eq('portal_token', token).single();
+  const agent = await getPrimaryAgentFromToken<{ id: string; features: Record<string, unknown> | null }>(
+    token,
+    'id, features',
+    supabase,
+  );
 
   const isGobierno = ((agent as any)?.features as any)?.vertical === 'gobierno';
 
@@ -30,9 +34,9 @@ export default async function ReportesCiudadanosPage({ params }: Props) {
     <div id="of-reportes-ciudadanos" className="flex flex-col gap-5 max-w-6xl mx-auto w-full p-4 md:p-6">
       <OficinaPageHero
         icon={ClipboardList}
-        eyebrow="Reportes ciudadanos"
-        title="Reportes de ciudadanos"
-        description="Recibe, clasifica y da seguimiento a reportes ciudadanos (baches, alumbrado, agua, etc.) por teléfono, chat y correo."
+        eyebrow="Ciudadanía"
+        title="Reportes ciudadanos"
+        description="Baches, alumbrado, agua, basura y demás. Tu equipo los recibe por teléfono, chat o correo, los clasifica y les asigna folio para dar seguimiento."
       />
       {folioConfig && (
         <FolioConfigEditor token={token} initial={folioConfig} />

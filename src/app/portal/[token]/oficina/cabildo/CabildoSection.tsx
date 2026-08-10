@@ -233,7 +233,10 @@ export default function CabildoSection({ token }: { token: string }) {
       ) : docs.length === 0 ? (
         <EmptyState
           icon={FileText}
-          title={tipoF ? 'Sin documentos de ese tipo' : 'Tu empleado aún no ha generado ningún documento'}
+          title={tipoF ? 'Sin documentos de ese tipo' : 'Aún no hay documentos'}
+          description={tipoF
+            ? 'Cambia el filtro para ver otros tipos.'
+            : 'Cuando tu equipo capture una sesión (por teléfono, chat o correo), el acta o punto de acuerdo aparecerá aquí para que lo revises.'}
         />
       ) : (
         <div className="flex flex-col" style={{ borderTop: '1px solid #F0EDF9' }}>

@@ -338,7 +338,7 @@ export default function CivicReportsSection({ token, tramiteDocs }: { token: str
         <div>
           <div className="flex items-baseline gap-2">
             <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>
-              Reportes ciudadanos
+              Folios recibidos
             </h2>
             {reports.length > 0 && (
               <span className="text-[13px] font-medium tabular-nums" style={{ color: '#9B8FB5' }}>
