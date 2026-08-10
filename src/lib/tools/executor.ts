@@ -1628,8 +1628,10 @@ async function executeAgentToolInner(
         ? `Ya tenías a ${args.nombre ?? 'este prospecto'} registrado hace unos minutos; actualicé sus datos en Llamadas.`
         : `Lead de ${args.nombre ?? 'nuevo prospecto'} registrado. Visible en Llamadas.`;
       return { ok: true, message };
-    } catch {
-      return { ok: false, error: 'No se pudo registrar el lead.' };
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      console.error('[executor:crear_lead] failed', { agentId, portalEmail, args, err });
+      return { ok: false, error: `No se pudo registrar el lead: ${detail}` };
     }
   }
 
@@ -1659,8 +1661,10 @@ async function executeAgentToolInner(
         ? `Ya tenía a ${args.nombre ?? 'este contacto'} en la lista de salientes; actualicé sus datos.`
         : `${args.nombre ?? 'Contacto'} agregado a la lista de salientes. Aparece en Campañas.`;
       return { ok: true, message };
-    } catch {
-      return { ok: false, error: 'No se pudo agregar el contacto saliente.' };
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      console.error('[executor:crear_contacto_saliente] failed', { agentId, portalEmail, args, err });
+      return { ok: false, error: `No se pudo agregar el contacto saliente: ${detail}` };
     }
   }
 

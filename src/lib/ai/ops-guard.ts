@@ -132,6 +132,68 @@ export async function consumeAiOp(agentId: string, count = 1, meta?: OpsMeta): P
   return { ok: row.ok, used: row.ops_used, limit: row.ops_limit };
 }
 
+// Refunda ops al pool cuando un tool call falla. El LLM ya consumió tokens
+// (Anthropic ya cobró) así que el cobro inicial no se refunda, pero SÍ el costo
+// de la iteración específica que terminó en error — de lo contrario el cliente
+// paga varias veces por un flow que nunca produjo nada útil.
+//
+// Se llama desde agent-chat/route.ts después de executeAgentTool cuando el
+// resultado devuelve ok:false. Best-effort: si el escribir al ledger falla,
+// no hace throw.
+export async function refundOps(agentId: string, count: number, meta?: OpsMeta): Promise<void> {
+  if (count <= 0) return;
+  try {
+    const supabase = createAdminClient();
+    const { data: agentRow } = await supabase
+      .from('voice_agents')
+      .select('portal_email, ai_ops_used')
+      .eq('id', agentId)
+      .maybeSingle();
+    const portalEmail = (agentRow?.portal_email as string | null) ?? null;
+
+    let ledgerEnabled = false;
+    if (portalEmail) {
+      const { data: orgRow } = await supabase
+        .from('organizations')
+        .select('ops_ledger_enabled')
+        .eq('portal_email', portalEmail)
+        .maybeSingle();
+      ledgerEnabled = !!orgRow?.ops_ledger_enabled;
+    }
+
+    if (ledgerEnabled && portalEmail) {
+      await supabase.rpc('apply_ops_ledger_entry', {
+        p_portal_email: portalEmail,
+        p_agent_id:     agentId,
+        p_amount:       count,
+        p_kind:         'refund',
+        p_reference_id: meta?.reference_id ?? null,
+        p_description:  meta?.label ? `Reembolso: ${meta.label}` : 'Reembolso por error en tool',
+      });
+    } else {
+      // Legacy path: decrementar ai_ops_used (bounded a 0)
+      const currentUsed = (agentRow?.ai_ops_used as number) ?? 0;
+      const newUsed = Math.max(0, currentUsed - count);
+      await supabase.from('voice_agents').update({ ai_ops_used: newUsed }).eq('id', agentId);
+      if (portalEmail) {
+        // Reflejar en organizations.monthly_ops_used también (paridad con consumo)
+        const { data: orgUsedRow } = await supabase
+          .from('organizations')
+          .select('monthly_ops_used')
+          .eq('portal_email', portalEmail)
+          .maybeSingle();
+        const orgUsed = (orgUsedRow?.monthly_ops_used as number) ?? 0;
+        await supabase
+          .from('organizations')
+          .update({ monthly_ops_used: Math.max(0, orgUsed - count) })
+          .eq('portal_email', portalEmail);
+      }
+    }
+  } catch (err) {
+    console.error('[refundOps] failed silently', { agentId, count, meta, err });
+  }
+}
+
 // Resetea el contador de ops del ciclo. Se llama en renovación mensual
 // (billing webhook + cron reset-ops-pool). Resetea tanto el contador de la
 // org (source of truth) como el per-agente (atribución).

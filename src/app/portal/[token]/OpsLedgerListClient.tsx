@@ -1,6 +1,6 @@
 'use client';
 
-import { RefreshCw, RotateCcw, Zap, CreditCard, SlidersHorizontal, BatteryCharging, TrendingDown, X, Download } from 'lucide-react';
+import { RefreshCw, RotateCcw, Zap, CreditCard, SlidersHorizontal, BatteryCharging, TrendingDown, X, Download, Undo2 } from 'lucide-react';
 
 export type OpsLedgerKind =
   | 'renewal'
@@ -12,7 +12,8 @@ export type OpsLedgerKind =
   | 'rollover_cap'
   | 'annual_grant'
   | 'unused_forfeited'
-  | 'consumption';
+  | 'consumption'
+  | 'refund';
 
 export interface OpsLedgerEntry {
   id:          string;
@@ -34,6 +35,7 @@ const KIND_META: Record<OpsLedgerKind, { iconKey: string; color: string; label: 
   annual_grant:       { iconKey: 'refresh',       color: '#10B981', label: 'Grant mensual (contrato)' },
   unused_forfeited:   { iconKey: 'trending-down', color: '#B45309', label: 'No consumido' },
   consumption:        { iconKey: 'rotate',        color: '#6B7280', label: 'Consumo' },
+  refund:             { iconKey: 'undo',          color: '#10B981', label: 'Reembolso por error' },
 };
 
 function renderIcon(iconKey: string) {
@@ -46,6 +48,7 @@ function renderIcon(iconKey: string) {
     case 'battery':      return <BatteryCharging size={11} />;
     case 'trending-down': return <TrendingDown size={11} />;
     case 'x':            return <X size={11} />;
+    case 'undo':         return <Undo2 size={11} />;
     default:             return null;
   }
 }
