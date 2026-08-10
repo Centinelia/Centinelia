@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createHash } from 'crypto';
 import Anthropic from '@anthropic-ai/sdk';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
@@ -7,7 +8,8 @@ import { logLlmCall } from '@/lib/observability/llm-log';
 export const dynamic    = 'force-dynamic';
 export const maxDuration = 60;
 
-const LANDING_URL = 'https://www.centinelia.mx';
+const LANDING_URL   = 'https://www.centinelia.mx';
+const LANDING_HASH_KEY = 'sync_sales_kb_landing_hash';
 
 async function scrapeLanding(): Promise<string> {
   const res = await fetch(LANDING_URL, {
@@ -40,6 +42,26 @@ export async function GET(req: NextRequest) {
     landingText = await scrapeLanding();
   } catch (err) {
     return NextResponse.json({ error: `Scrape failed: ${String(err)}` }, { status: 500 });
+  }
+
+  const supabase = createAdminClient();
+  const force = req.nextUrl.searchParams.get('force') === '1';
+
+  const landingHash = createHash('sha256').update(landingText).digest('hex');
+  const { data: hashRow } = await supabase
+    .from('platform_settings')
+    .select('value')
+    .eq('key', LANDING_HASH_KEY)
+    .maybeSingle();
+  const previousHash = hashRow?.value ?? null;
+
+  if (!force && previousHash === landingHash) {
+    console.log('[sync-sales-kb] SKIP — landing content unchanged since last run');
+    return NextResponse.json({
+      ok: true,
+      skipped_reason: 'landing_content_unchanged',
+      scraped_chars: landingText.length,
+    });
   }
 
   const today = new Date().toLocaleDateString('es-MX', {
@@ -93,8 +115,6 @@ Responde con este formato exacto:
     return NextResponse.json({ error: 'Extraction returned empty' }, { status: 500 });
   }
 
-  const supabase = createAdminClient();
-
   const records = [
     {
       key:   'kb_sales',
@@ -103,6 +123,10 @@ Responde con este formato exacto:
     {
       key:   'kb_portal',
       value: extracted,
+    },
+    {
+      key:   LANDING_HASH_KEY,
+      value: landingHash,
     },
   ];
 

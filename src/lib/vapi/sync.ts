@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { buildSystemPrompt } from '@/lib/voice/prompt-builder';
 import type { VoiceAgent } from '@/types/agent';
@@ -734,7 +735,12 @@ async function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], pee
 // ─── Exported sync functions ──────────────────────────────────────────────────
 
 // Internal: sync one agent without triggering cascade (prevents infinite loops)
-async function syncAgentToVapi(vapiAssistantId: string, agent: VoiceAgent, learnings?: AgentLearnings | null): Promise<boolean> {
+async function syncAgentToVapi(
+  vapiAssistantId: string,
+  agent:           VoiceAgent,
+  learnings?:      AgentLearnings | null,
+  opts?:           { force?: boolean },
+): Promise<boolean> {
   // Guard: coordinadores nunca deben ir a Vapi. Si tienen vapi_agent_id es
   // leftover — limpiamos la DB y skip (no-op silencioso, no es error).
   if (isNonVoiceRole(agent)) {
@@ -757,16 +763,39 @@ async function syncAgentToVapi(vapiAssistantId: string, agent: VoiceAgent, learn
   const resolvedLearnings = learnings !== undefined
     ? learnings
     : await fetchConversationalLearnings();
+  const payload           = await buildVapiAssistant(enrichedAgent, toolIds, peers, resolvedLearnings);
+  const body              = JSON.stringify(payload);
+
+  // Content-hash cache: skip PATCH si el payload es identico al ultimo enviado.
+  // Ver handoff_anti_waste_infra_pendiente.md. Bypass con opts.force cuando
+  // side-effects (rotacion de tools, refresh de tokens server-side) requieran
+  // forzar el sync aunque el hash no haya cambiado.
+  const payloadHash = createHash('sha256').update(body).digest('hex');
+  if (!opts?.force && agent.vapi_last_payload_hash === payloadHash) {
+    return true;
+  }
+
   const res = await fetch(`${VAPI_URL}/assistant/${vapiAssistantId}`, {
     method: 'PATCH',
     headers: headers(),
-    body: JSON.stringify(await buildVapiAssistant(enrichedAgent, toolIds, peers, resolvedLearnings)),
+    body,
   });
   if (!res.ok) {
     const errText = await res.text();
     console.error('Vapi syncAgent error:', errText);
     throw new Error(errText);
   }
+
+  try {
+    const supabase = createAdminClient();
+    await supabase
+      .from('voice_agents')
+      .update({ vapi_last_payload_hash: payloadHash })
+      .eq('id', agent.id);
+  } catch (err) {
+    console.error('[vapi] failed to persist vapi_last_payload_hash:', err);
+  }
+
   return true;
 }
 
@@ -848,7 +877,7 @@ export async function createVapiAssistant(agent: VoiceAgent): Promise<string | n
 export async function updateVapiAssistant(
   vapiAssistantId: string,
   agent:           VoiceAgent,
-  opts?:           { syncPeers?: boolean },
+  opts?:           { syncPeers?: boolean; force?: boolean },
 ): Promise<boolean> {
   if (isNonVoiceRole(agent)) {
     console.warn('[vapi] refusing updateVapiAssistant for non-voice role', {
@@ -858,7 +887,7 @@ export async function updateVapiAssistant(
     return false;
   }
   // throws if Vapi rejects — callers should catch
-  await syncAgentToVapi(vapiAssistantId, agent);
+  await syncAgentToVapi(vapiAssistantId, agent, undefined, { force: opts?.force });
   const syncPeers = opts?.syncPeers ?? true;
   if (syncPeers) {
     // Fire-and-forget: push the updated tool list to all sibling agents

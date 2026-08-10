@@ -110,6 +110,7 @@ export interface VoiceAgent {
   phone_number: string;           // número Twilio/Vapi asignado
   vapi_agent_id?: string;
   vapi_phone_number_id?: string;  // ID del número Vapi asignado (necesario para outbound)
+  vapi_last_payload_hash?: string | null;
   elevenlabs_voice_id?: string;
   plan: Plan;
   features: AgentFeatures;

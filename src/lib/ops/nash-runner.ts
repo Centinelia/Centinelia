@@ -21,6 +21,13 @@ const MODEL           = 'claude-sonnet-4-6';
 const MAX_ITERATIONS  = 8;
 const MAX_TOKENS      = 4096;
 const NASH_PORTAL     = 'hola@centinelia.mx';
+const NASH_LAST_RUN_KEY = 'nash_last_run_at';
+// Nunca miramos más atrás que esta ventana. Alinea con el default del tool
+// revisar_incidentes_plataforma (days=7). Si Nash lleva más de 7 días sin
+// correr y no hay signals frescos, no rescatamos backlog viejo.
+const NASH_MAX_LOOKBACK_MS = 7 * 86_400_000;
+// Stale threshold para bandeja escalada (>24h). Copia local del criterio en el executor.
+const NASH_STALE_INBOX_HOURS = 24;
 
 // ── Tool schemas exclusivas de Nash (F2 + F3) ─────────────────────────────────
 // Copia local intencional. Los mismos schemas están duplicados en agent-chat
@@ -148,6 +155,86 @@ REGLAS DE COPY (críticas para toda comunicación que generes):
 - Firmas de correo/mensajes al cliente: "Nash, Centinelia interno" (sin em-dash prefijo).`;
 }
 
+// ── Anti-waste probe ──────────────────────────────────────────────────────────
+// Check barato ANTES del loop LLM: si no hay nada nuevo desde la última corrida
+// de Nash Y no hay incidentes en pending_verification, skip. Cada iteración del
+// cron gasta al menos 1 LLM call de Sonnet aunque no haya trabajo — este probe
+// evita ese gasto en periodos tranquilos. Ver handoff_anti_waste_infra_pendiente.
+
+type SupabaseAdmin = ReturnType<typeof createAdminClient>;
+
+async function getNashLastRunAt(supabase: SupabaseAdmin): Promise<Date | null> {
+  const { data } = await supabase
+    .from('platform_settings')
+    .select('value')
+    .eq('key', NASH_LAST_RUN_KEY)
+    .maybeSingle();
+  if (!data?.value) return null;
+  const ts = new Date(data.value);
+  return Number.isFinite(ts.getTime()) ? ts : null;
+}
+
+async function setNashLastRunAt(supabase: SupabaseAdmin, at: Date): Promise<void> {
+  const { error } = await supabase
+    .from('platform_settings')
+    .upsert({ key: NASH_LAST_RUN_KEY, value: at.toISOString() }, { onConflict: 'key' });
+  if (error) console.error('[nash-runner] failed to persist nash_last_run_at:', error.message);
+}
+
+export interface NashSignalCheck {
+  hasWork:              boolean;
+  reason:               string;
+  bug_reports:          number;
+  error_logs:           number;
+  escalated_stale:      number;
+  failed_handoffs:      number;
+  failed_tasks:         number;
+  pending_verification: number;
+}
+
+export async function hasNewSignalsForNash(
+  supabase: SupabaseAdmin,
+  since:    Date,
+): Promise<NashSignalCheck> {
+  const sinceIso = since.toISOString();
+  const staleIso = new Date(Date.now() - NASH_STALE_INBOX_HOURS * 3_600_000).toISOString();
+
+  // Cuentas en paralelo — head:true no descarga filas, solo el count.
+  const [bug, llm, inbox, hf, tasks, pending] = await Promise.all([
+    supabase.from('tool_call_log').select('id', { count: 'exact', head: true })
+      .eq('tool_name', 'reportar_falla').gte('created_at', sinceIso),
+    supabase.from('llm_call_log').select('id', { count: 'exact', head: true })
+      .not('error', 'is', null).gte('created_at', sinceIso),
+    supabase.from('ops_inbox').select('id', { count: 'exact', head: true })
+      .eq('status', 'escalated').lt('updated_at', staleIso),
+    supabase.from('handoff_failed_responses').select('id', { count: 'exact', head: true })
+      .is('resolved_at', null).gte('created_at', sinceIso),
+    supabase.from('agent_tasks').select('id', { count: 'exact', head: true })
+      .eq('status', 'failed').gte('updated_at', sinceIso),
+    supabase.from('platform_incidents').select('id', { count: 'exact', head: true })
+      .in('status', ['sent_to_claude_code', 'awaiting_verification']),
+  ]);
+
+  const counts = {
+    bug_reports:          bug.count     ?? 0,
+    error_logs:           llm.count     ?? 0,
+    escalated_stale:      inbox.count   ?? 0,
+    failed_handoffs:      hf.count      ?? 0,
+    failed_tasks:         tasks.count   ?? 0,
+    pending_verification: pending.count ?? 0,
+  };
+
+  const totalNew = counts.bug_reports + counts.error_logs + counts.escalated_stale
+                 + counts.failed_handoffs + counts.failed_tasks;
+  const hasWork  = totalNew > 0 || counts.pending_verification > 0;
+
+  const reason = hasWork
+    ? `new=${totalNew} pending_verification=${counts.pending_verification}`
+    : 'no_new_signals_and_no_pending_verification';
+
+  return { hasWork, reason, ...counts };
+}
+
 // ── Runner ────────────────────────────────────────────────────────────────────
 
 export interface NashRunResult {
@@ -182,7 +269,28 @@ export async function runNashMonitor(): Promise<NashRunResult> {
     return { ok: true, skipped_reason: 'nash_cron_enabled=false (opt-in requerido)' };
   }
 
-  // 2) LLM loop
+  // 2) Anti-waste probe: skip LLM loop si no hay señales nuevas desde la
+  // última corrida real de Nash. Kill switch: features.nash_probe_bypass=true
+  // fuerza el loop aunque el probe diga que no hay trabajo.
+  if (features.nash_probe_bypass !== true) {
+    const lastRunAt = await getNashLastRunAt(supabase);
+    const since = lastRunAt
+      ? new Date(Math.max(lastRunAt.getTime(), Date.now() - NASH_MAX_LOOKBACK_MS))
+      : new Date(Date.now() - NASH_MAX_LOOKBACK_MS);
+    const probe = await hasNewSignalsForNash(supabase, since);
+    if (!probe.hasWork) {
+      // Marcamos last_run_at aunque hayamos hecho skip: la próxima ejecución
+      // del cron mide desde ahora, no re-cuenta los mismos 7 días.
+      await setNashLastRunAt(supabase, new Date());
+      return {
+        ok: true,
+        skipped_reason: `no_new_signals (${probe.reason})`,
+        latency_ms: Date.now() - started,
+      };
+    }
+  }
+
+  // 3) LLM loop
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const system = buildSystemPrompt(nash as { agent_name: string | null });
   const messages: Anthropic.MessageParam[] = [
@@ -284,6 +392,10 @@ export async function runNashMonitor(): Promise<NashRunResult> {
     messages.push({ role: 'assistant', content: resp.content });
     messages.push({ role: 'user',      content: toolResults });
   }
+
+  // Marca fin de corrida real (para que el probe del siguiente cron mida
+  // desde este punto). No bloquea la respuesta si falla.
+  await setNashLastRunAt(supabase, new Date());
 
   return {
     ok:                  true,
