@@ -33,7 +33,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const portalEmail  = agent.portal_email ?? null;
   const ledgerAmount = action === 'credit' ? amount : -amount;
-  const description  = reason?.trim() || (action === 'credit' ? `Credito manual: +${amount} tareas` : `Descuento manual: -${amount} tareas`);
+  const description  = reason?.trim() || (action === 'credit' ? `Crédito manual: +${amount} tareas` : `Descuento manual: −${amount} tareas`);
 
   if (portalEmail) {
     const { data: org } = await supabase
