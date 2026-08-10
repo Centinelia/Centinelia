@@ -1506,20 +1506,45 @@ CATEGORÍAS:
   const portalUrl = `${baseUrl}/portal/${portalToken}/oficina/bandeja`;
   const notifyTo  = approvalEmail || ownerEmail;
 
+  // Helper: log auto-reply al outbound_emails para que aparezca en tab Enviados.
+  // Antes solo se marcaba ops_inbox.sent_at pero no había registro en outbound_emails,
+  // así el owner no veía las auto-respuestas en la tab Enviados aunque semánticamente
+  // son correos que salieron del sistema (bug UX 2026-08-10).
+  const logAutoReplyToOutbound = async (body: string, extraCategory?: string | null) => {
+    try {
+      await supabase.from('outbound_emails').insert({
+        agent_id:     agentId,
+        portal_email: portalEmail ?? '',
+        to_email:     emailFrom,
+        cc_email:     null,
+        reply_to:     null,
+        subject:      emailSubject.startsWith('Re: ') ? emailSubject : `Re: ${emailSubject}`,
+        body,
+        provider:     'auto_reply',
+        ok:           true,
+        meta:         extraCategory ? { category: extraCategory, source: 'inbox-processor' } : { source: 'inbox-processor' },
+      });
+    } catch { /* best-effort */ }
+  };
+
   if (finalStatus === 'info_requested' && result.requestToSender && sendReplyFn) {
     try {
-      await sendReplyFn(stripMarkdown(result.requestToSender));
+      const body = stripMarkdown(result.requestToSender);
+      await sendReplyFn(body);
       if (item?.id) {
         await supabase.from('ops_inbox').update({ sent_at: new Date().toISOString() }).eq('id', item.id);
       }
+      void logAutoReplyToOutbound(body, 'info_requested');
     } catch (err) {
       console.error('[ops/inbox-processor] info_requested send failed:', err);
     }
 
   } else if (finalStatus === 'auto_replied' && result.draft && sendReplyFn && item) {
     try {
-      await sendReplyFn(stripMarkdown(result.draft));
+      const body = stripMarkdown(result.draft);
+      await sendReplyFn(body);
       await supabase.from('ops_inbox').update({ sent_at: new Date().toISOString() }).eq('id', item.id);
+      void logAutoReplyToOutbound(body, result.category ?? null);
       // Encola al digest diario (no urgente).
       if (portalEmail) {
         const { queueNotificationEvent } = await import('@/lib/notifications/queue');
