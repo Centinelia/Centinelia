@@ -85,16 +85,7 @@ export async function GET(req: NextRequest) {
     // Skip si esta cuenta ya llegó al cap
     if (activeCountByOrg[orgEmail] >= MAX_ACTIVE_INSIGHTS_PER_ORG) continue;
 
-    // Ops guard — LLM costs 3 ops, rules costs 0
-    const cost = mode === 'rules' ? 0 : 3;
-    if (cost > 0) {
-      const ops = await consumeAiOp(agent.id, cost, { source: 'weekly_insights', label: 'Insights semanales (cron)' });
-      if (!ops.ok) {
-        await maybeSendQuotaEmail(agent, 'weekly_insights');
-        continue;
-      }
-    }
-
+    // Fetch calls PRIMERO — cero costo LLM, solo queries
     const [thisRes, prevRes] = await Promise.all([
       supabase
         .from('voice_calls')
@@ -111,6 +102,20 @@ export async function GET(req: NextRequest) {
 
     const calls     = thisRes.data ?? [];
     const prevCalls = prevRes.data ?? [];
+
+    // Probe: si este agente no tuvo NINGUNA llamada en las últimas 2 semanas,
+    // no hay nada que analizar. Skip sin cobrar. Fix 2026-08-10.
+    if (calls.length === 0 && prevCalls.length === 0) continue;
+
+    // Ops guard — LLM costs 3 ops, rules costs 0
+    const cost = mode === 'rules' ? 0 : 3;
+    if (cost > 0) {
+      const ops = await consumeAiOp(agent.id, cost, { source: 'weekly_insights', label: 'Insights semanales (cron)' });
+      if (!ops.ok) {
+        await maybeSendQuotaEmail(agent, 'weekly_insights');
+        continue;
+      }
+    }
 
     let recs: InsightRec[] = [];
     if (mode === 'llm') {

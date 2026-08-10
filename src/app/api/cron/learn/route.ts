@@ -191,12 +191,6 @@ export async function GET(req: NextRequest) {
     if (!integration) { skippedNoEmail++; continue; }
 
     try {
-      const ops = await consumeAiOp(agent.id, 40, { source: 'learn', label: 'Aprendizaje continuo del negocio' }); // learn is heavy (multi-source)
-      if (!ops.ok) {
-        await maybeSendQuotaEmail(agent, 'learn');
-        continue;
-      }
-
       const accessToken = await refreshIfNeeded(integration, supabase);
       const agentTimezone = agent.timezone ?? 'America/Monterrey';
 
@@ -207,6 +201,17 @@ export async function GET(req: NextRequest) {
           : fetchRecentOutlook(accessToken, since),
         getAgentActivityWindow(agent.id, since.toISOString(), LEARN_CAPS, { includeCivic: false }),
       ]);
+
+      // Probe primero: si NO hay data nueva desde la última corrida, no
+      // llamar al LLM ni cobrar 40 ops. Fix 2026-08-10.
+      const totalSources = emails.length + activity.calls.length + activity.docs.length + activity.tasks.length;
+      if (totalSources === 0) continue;
+
+      const ops = await consumeAiOp(agent.id, 40, { source: 'learn', label: 'Aprendizaje continuo del negocio' }); // learn is heavy (multi-source)
+      if (!ops.ok) {
+        await maybeSendQuotaEmail(agent, 'learn');
+        continue;
+      }
 
       const extracted = await extractLearnings({
         businessName: agent.business_name,

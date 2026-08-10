@@ -67,14 +67,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Consume ops
-    const opsResult = await consumeAiOp(agent.id, 5, { source: 'heartbeat', label: 'Check-in automático diario' });
-    if (!opsResult.ok) {
-      await maybeSendQuotaEmail(agent, 'heartbeat');
-      continue;
-    }
-
-    // Fetch multi-source activity window
+    // Fetch multi-source activity window (queries, no LLM — safe pre-cobro)
     const windowMs  = cfg.frequency === 'weekly' ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
     const windowISO = new Date(now.getTime() - windowMs).toISOString();
 
@@ -82,6 +75,25 @@ export async function GET(req: NextRequest) {
     const isGobierno = vertical === 'gobierno';
     const activity = await getAgentActivityWindow(agent.id, windowISO, HEARTBEAT_CAPS, { includeCivic: isGobierno });
     const activityBlocks = renderActivityBlocks(activity, agent.timezone ?? 'America/Monterrey');
+
+    // Probe: si no hubo NADA que reportar en el periodo, marcar como corrido
+    // y skip sin cobrar. Fix 2026-08-10.
+    const totalActivity =
+      activity.calls.length + activity.emails.length + activity.docs.length +
+      activity.tasks.length + activity.appts.length + activity.civic.length;
+    if (totalActivity === 0) {
+      await supabase.from('voice_agents')
+        .update({ heartbeat_last_run_at: now.toISOString() })
+        .eq('id', agent.id);
+      continue;
+    }
+
+    // Consume ops (solo si sí hay data para reportar)
+    const opsResult = await consumeAiOp(agent.id, 5, { source: 'heartbeat', label: 'Check-in automático diario' });
+    if (!opsResult.ok) {
+      await maybeSendQuotaEmail(agent, 'heartbeat');
+      continue;
+    }
 
     const periodLabel = cfg.frequency === 'weekly' ? 'los últimos 7 días' : 'hoy';
     const taskLine = cfg.task?.trim()

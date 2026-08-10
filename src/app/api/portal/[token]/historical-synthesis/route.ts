@@ -46,14 +46,9 @@ export async function POST(
   if (session.portalEmail && agent.portal_email && session.portalEmail !== agent.portal_email)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
-  // Consume 6 ops for batch analysis
-  const opsResult = await consumeAiOp(agent.id, 6, { source: 'historical_synthesis', label: 'Síntesis del historial de llamadas' });
-  if (!opsResult.ok) {
-    return NextResponse.json({ error: 'Sin tareas disponibles para esta operación.' }, { status: 402 });
-  }
-
   const since60 = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
 
+  // Fetch PRIMERO — cero costo LLM, solo queries
   const [callsRes, learningsRes] = await Promise.all([
     supabase
       .from('voice_calls')
@@ -75,10 +70,17 @@ export async function POST(
   const calls     = callsRes.data    ?? [];
   const learnings = learningsRes.data ?? [];
 
+  // Probe: menos de 5 llamadas → devolver 422 SIN cobrar. Fix 2026-08-10.
   if (calls.length < 5) {
     return NextResponse.json({
-      error: 'Se necesitan al menos 5 llamadas para generar un análisis significativo.',
+      error: 'Se necesitan al menos 5 llamadas para generar un análisis significativo. No se consumieron tareas.',
     }, { status: 422 });
+  }
+
+  // Consume 6 ops for batch analysis (solo si sí hay data suficiente)
+  const opsResult = await consumeAiOp(agent.id, 6, { source: 'historical_synthesis', label: 'Síntesis del historial de llamadas' });
+  if (!opsResult.ok) {
+    return NextResponse.json({ error: 'Sin tareas disponibles para esta operación.' }, { status: 402 });
   }
 
   // Build call summary lines
