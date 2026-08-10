@@ -31,7 +31,7 @@ export async function resetFallbackIfActive(
     fallback_phone_number: (org.fallback_phone_number as string | null) ?? '',
     fallback_notified_at:  org.fallback_notified_at as string,
     minutes_reset_date:    (org.minutes_reset_date as string | null) ?? null,
-    transfer_whatsapp:     null,
+    transfer_whatsapp:     (org.transfer_whatsapp as string | null) ?? null,
     guardia_principal:     ((org as any).guardia_schedule?.principal as string | null) ?? null,
   }, agentName);
 
