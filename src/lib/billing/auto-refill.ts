@@ -78,6 +78,10 @@ export async function executeAutoRefill(
     if (agent.phone_number && agent.vapi_agent_id) {
       await resumeVapiAgent(agent.phone_number, agent.vapi_agent_id);
     }
+    if (agent.portal_email) {
+      const { resetFallbackIfActive } = await import('./fallback-restore');
+      await resetFallbackIfActive(supabase, agent.portal_email, agent.business_name ?? 'tu empleado');
+    }
   } else {
     const { data: cur } = await supabase.from('voice_agents').select('minutes_included').eq('id', agentId).single();
     await supabase.from('voice_agents')
