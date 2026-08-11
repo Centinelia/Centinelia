@@ -951,9 +951,14 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                       </Link>
                     )}
 
-                    {/* Salientes en cola */}
+                    {/* Salientes en cola — rutea a Campañas (donde vive el
+                        pipeline de contactos por llamar), no a /llamadas
+                        (historial de llamadas ya hechas). Bug 2026-08-11:
+                        el link etiquetado "Ver campañas" abría el log de
+                        llamadas donde el pending contact no aparece porque
+                        aún no se marcó — usuario veía página vacía. */}
                     {salientesEnCola > 0 && (
-                      <Link href={`/portal/${token}/oficina/llamadas?filtro=salientes`}
+                      <Link href={`/portal/${token}/oficina/campanas`}
                         className="flex items-center gap-3 px-4 py-3 rounded-xl no-underline transition-all hover:translate-x-0.5"
                         style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
                         <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
