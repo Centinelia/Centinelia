@@ -6,6 +6,7 @@ import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { gmailExchangeCode }   from '@/lib/email/gmail';
 import { outlookExchangeCode } from '@/lib/email/outlook';
 import { encrypt }             from '@/lib/crypto';
+import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 
 export async function GET(req: NextRequest) {
   const appUrl   = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
@@ -34,6 +35,13 @@ export async function GET(req: NextRequest) {
 
     if (!agent) {
       return NextResponse.redirect(`${appUrl}/portal/${state}?tab=organizacion&email=error#integraciones`);
+    }
+
+    // CSRF gate — sesión del portal matchea state.portalEmail. Ver Scope C3 MEDIUM.
+    const cookie  = req.cookies.get(PORTAL_COOKIE)?.value ?? '';
+    const session = await verifySession(cookie);
+    if (!session || (agent.portal_email && session.portalEmail !== agent.portal_email)) {
+      return NextResponse.redirect(`${appUrl}/portal/${state}?tab=organizacion&email=csrf#integraciones`);
     }
 
     const expiresAt       = new Date(Date.now() + tokens.expires_in * 1000).toISOString();

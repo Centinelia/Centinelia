@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { resolveOrgFromToken } from '@/lib/portal/org-token';
+import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,6 +18,15 @@ export async function GET(req: NextRequest) {
   if (error || !code || !realmId || !token) {
     return NextResponse.redirect(`${appUrl}?error=qb_denied`);
   }
+
+  // CSRF defense: OAuth callback llega vía navegación GET del browser del user,
+  // con cookie sameSite=lax. Si attacker robó el portal_token pero no tiene
+  // sesión activa del portal en ese browser → rechazamos. Prevenir escenario
+  // "attacker inicia OAuth QB desde SU browser con state=portal_token de la
+  // víctima → sobrescribe credenciales QB del cliente con las suyas".
+  // Ver Scope C3 MEDIUM (OAuth CSRF).
+  const cookie  = req.cookies.get(PORTAL_COOKIE)?.value ?? '';
+  const session = await verifySession(cookie);
 
   const to = (extra: string) => `${appUrl}/portal/${token}?tab=organizacion&${extra}#integraciones`;
 
@@ -66,6 +76,12 @@ export async function GET(req: NextRequest) {
   const resolved = await resolveOrgFromToken(token);
   if (!resolved) {
     return NextResponse.redirect(to('error=qb_agent'));
+  }
+
+  // Verify session matches state.portalEmail (CSRF gate — ver comment arriba).
+  if (!session || session.portalEmail !== resolved.portalEmail) {
+    console.warn('[qb-callback] CSRF gate rechazó callback', { hasSession: !!session, sessionEmail: session?.portalEmail, tokenEmail: resolved.portalEmail });
+    return NextResponse.redirect(to('error=qb_csrf'));
   }
 
   await supabase

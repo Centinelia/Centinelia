@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 
 export async function GET(req: NextRequest) {
   const code  = req.nextUrl.searchParams.get('code');
@@ -43,6 +44,15 @@ export async function GET(req: NextRequest) {
   if (!resolved) {
     return NextResponse.redirect(`${appUrl}/portal/${state}?tab=integraciones&notion=error`);
   }
+
+  // CSRF gate — sesión del portal debe matchear el state.portalEmail.
+  // Ver Scope C3 MEDIUM.
+  const cookie  = req.cookies.get(PORTAL_COOKIE)?.value ?? '';
+  const session = await verifySession(cookie);
+  if (!session || session.portalEmail !== resolved.portalEmail) {
+    return NextResponse.redirect(`${appUrl}/portal/${state}?tab=integraciones&notion=csrf`);
+  }
+
   const agent = { portal_email: resolved.portalEmail };
 
   // Notion es org-level: escribimos en organizations, no en voice_agents.

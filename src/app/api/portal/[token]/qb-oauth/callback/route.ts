@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
+import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -68,6 +69,16 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
 
   if (!agent?.portal_email) {
     return NextResponse.redirect(to('error=qb_agent'));
+  }
+
+  // CSRF gate — verificar sesión activa del portal matchea el token. Sin esto,
+  // attacker con portal_token completa OAuth con su propio realm y sobrescribe
+  // credenciales QB del cliente. Ver Scope C3 MEDIUM.
+  const cookie  = req.cookies.get(PORTAL_COOKIE)?.value ?? '';
+  const session = await verifySession(cookie);
+  if (!session || session.portalEmail !== agent.portal_email) {
+    console.warn('[qb-callback portal] CSRF gate rechazó', { hasSession: !!session, sessionEmail: session?.portalEmail, tokenEmail: agent.portal_email });
+    return NextResponse.redirect(to('error=qb_csrf'));
   }
 
   await supabase
