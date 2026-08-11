@@ -146,6 +146,7 @@ const TOOL_HUMAN_LABEL: Record<string, string> = {
   sheets_actualizar_fila:   'actualizar fila existente en un Google Sheet',
   sheets_leer:              'leer contenido de un Google Sheet',
   sheets_buscar:            'buscar filas en un Google Sheet por texto',
+  buscar_producto:          'consultar catálogo Notion por SKU/nombre (precio real, no inventado)',
 };
 
 function peerToolCapabilities(peer: TeamPeer): string[] {
@@ -224,19 +225,19 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
   // El goal-loop de delegar_tarea corre en Sonnet y ejecuta solicitar_factura
   // confiablemente. Si la org no tiene peer fiscal, Sofia hace fallback a
   // crear_lead con datos capturados + escalación manual.
-  nia:   ['crear_lead', 'crear_contacto_saliente', 'agendar_cita', 'registrar_pedido', 'buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'registrar_encuesta', 'buscar_documento_oficina', 'buscar_correo_enviado', 'consultar_agente', 'delegar_tarea', 'reportar_falla', 'marcar_no_llamar', 'agregar_tag_contacto'],
+  nia:   ['crear_lead', 'crear_contacto_saliente', 'agendar_cita', 'registrar_pedido', 'buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'registrar_encuesta', 'buscar_documento_oficina', 'buscar_correo_enviado', 'buscar_producto', 'consultar_agente', 'delegar_tarea', 'reportar_falla', 'marcar_no_llamar', 'agregar_tag_contacto'],
   // Noah — ventas: vendedor oficial. Sin crear_documento por diseño (delega
   // a Nico/Niva para propuestas formales), pero puede buscar y reenviar
   // cotizaciones previas. Tiene extraer_voz_del_cliente + extraer_tono_de_marca
   // para hablar como la empresa y con el lenguaje real del cliente. Exclusiva:
   // read_url — investiga sitios de prospectos a fondo antes de llamar.
-  noah:  ['crear_lead', 'crear_contacto_saliente', 'registrar_pedido', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'buscar_en_web', 'read_url', 'search_leads', 'solicitar_factura', 'buscar_documento_oficina', 'buscar_correo_enviado', 'enviar_documento_oficina', 'analizar_publicaciones_ml', 'crear_publicacion_ml', 'actualizar_publicacion_ml', 'ver_metricas_ml', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'consultar_agente', 'reportar_falla', 'agregar_tag_contacto', 'generar_propuesta_comercial', 'generar_cotizacion', 'generar_one_pager', 'generar_correo_estructurado', 'generar_pitch_deck', 'generar_reporte_metricas_excel'],
+  noah:  ['crear_lead', 'crear_contacto_saliente', 'registrar_pedido', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'buscar_en_web', 'read_url', 'search_leads', 'solicitar_factura', 'buscar_documento_oficina', 'buscar_correo_enviado', 'buscar_producto', 'enviar_documento_oficina', 'analizar_publicaciones_ml', 'crear_publicacion_ml', 'actualizar_publicacion_ml', 'ver_metricas_ml', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'consultar_agente', 'reportar_falla', 'agregar_tag_contacto', 'generar_propuesta_comercial', 'generar_cotizacion', 'generar_one_pager', 'generar_correo_estructurado', 'generar_pitch_deck', 'generar_reporte_metricas_excel'],
   // Nico — cobranza y fiscal: sigue facturas + emite CFDIs + reenvía comprobantes
   // + reportes de ingresos (P&L).
-  nico:  ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'enviar_correo', 'crear_documento', 'buscar_documento_oficina', 'buscar_correo_enviado', 'enviar_documento_oficina', 'solicitar_factura', 'consultar_factura', 'qb_consultar_facturas', 'qb_buscar_cliente', 'qb_registrar_pago', 'qb_crear_factura', 'qb_reporte_ingresos', 'reportar_falla', 'agregar_tag_contacto', 'generar_correo_estructurado'],
+  nico:  ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'enviar_correo', 'crear_documento', 'buscar_documento_oficina', 'buscar_correo_enviado', 'buscar_producto', 'enviar_documento_oficina', 'solicitar_factura', 'consultar_factura', 'qb_consultar_facturas', 'qb_buscar_cliente', 'qb_registrar_pago', 'qb_crear_factura', 'qb_reporte_ingresos', 'reportar_falla', 'agregar_tag_contacto', 'generar_correo_estructurado'],
   // Nelia — servicio al cliente: postventa. Ahora puede reenviar docs previos
   // y ver insights de voz del cliente para responder mejor.
-  nelia: ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'registrar_encuesta', 'enviar_correo', 'buscar_archivo', 'buscar_documento_oficina', 'buscar_correo_enviado', 'enviar_documento_oficina', 'extraer_voz_del_cliente', 'consultar_agente', 'reportar_falla', 'agregar_tag_contacto', 'generar_one_pager', 'generar_correo_estructurado', 'generar_reporte_metricas_excel'],
+  nelia: ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'registrar_encuesta', 'enviar_correo', 'buscar_archivo', 'buscar_documento_oficina', 'buscar_correo_enviado', 'buscar_producto', 'enviar_documento_oficina', 'extraer_voz_del_cliente', 'consultar_agente', 'reportar_falla', 'agregar_tag_contacto', 'generar_one_pager', 'generar_correo_estructurado', 'generar_reporte_metricas_excel'],
   // Neo — helpdesk IT: sin cambios, no maneja docs comerciales.
   neo:   ['crear_ticket', 'consultar_incidentes', 'buscar_directorio', 'buscar_archivo', 'leer_archivo', 'delegar_tarea', 'consultar_agente', 'reportar_falla'],
   // Nara — municipal: ahora puede aplicar encuestas de satisfacción también.
@@ -244,7 +245,7 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
   // Naia — onboarding.
   naia:  ['iniciar_onboarding', 'agendar_cita', 'buscar_cliente', 'registrar_encuesta', 'enviar_correo', 'crear_documento', 'buscar_documento_oficina', 'buscar_correo_enviado', 'enviar_documento_oficina', 'list_calendar_events', 'create_calendar_event', 'delete_calendar_event', 'buscar_archivo', 'leer_archivo', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'reportar_falla', 'generar_correo_estructurado'],
   // Nova — recuperación / retención.
-  nova:  ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'crear_ticket', 'crear_documento', 'buscar_documento_oficina', 'buscar_correo_enviado', 'enviar_documento_oficina', 'extraer_voz_del_cliente', 'delegar_tarea', 'consultar_agente', 'buscar_en_web', 'reportar_falla'],
+  nova:  ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'crear_ticket', 'crear_documento', 'buscar_documento_oficina', 'buscar_correo_enviado', 'buscar_producto', 'enviar_documento_oficina', 'extraer_voz_del_cliente', 'delegar_tarea', 'consultar_agente', 'buscar_en_web', 'reportar_falla'],
   // Nox — coordinador director. Ahora también consulta estado de facturas.
   nox:   ['consultar_agente', 'delegar_tarea', 'enviar_correo', 'llamar_a', 'crear_documento', 'buscar_documento_oficina', 'buscar_correo_enviado', 'enviar_documento_oficina', 'create_file', 'create_contract_draft', 'buscar_archivo', 'leer_archivo', 'save_to_drive', 'organize_files', 'list_calendar_events', 'create_calendar_event', 'delete_calendar_event', 'qb_consultar_facturas', 'consultar_factura', 'verificar_gasto_recurrente', 'extraer_voz_del_cliente', 'sheets_agregar_fila', 'sheets_actualizar_fila', 'sheets_leer', 'sheets_buscar', 'reportar_falla'],
   // Niva — directora general. Visión estratégica: desempeño del equipo,
@@ -398,6 +399,13 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
     case 'iniciar_onboarding': return { type: 'function', function: { name: 'iniciar_onboarding', description: 'Inicia el proceso de onboarding para un nuevo empleado, cliente o proveedor. Envía automáticamente el correo de bienvenida con los pasos a seguir.', parameters: { type: 'object', properties: { contact_name: { type: 'string', description: 'Nombre completo del contacto a registrar en el onboarding' }, contact_email: { type: 'string', description: 'Correo electrónico del contacto' }, template_name: { type: 'string', description: 'Nombre de la plantilla de onboarding a usar (opcional; si no se indica, se usa la primera disponible)' } }, required: ['contact_name', 'contact_email'] } }, server: server('exec/iniciar-onboarding') };
 
     case 'reportar_falla': return toVapiToolDef(TOOL_SCHEMAS['reportar_falla'], server);
+
+    // buscar_producto — registry lo marca como voice/chat/email pero voice
+    // estaba AUSENTE en buildToolDef. Sofia/Noah durante llamada NO podía
+    // consultar SKU/precio del catálogo Notion → riesgo alto de fabricar
+    // precios (viola regla ANTI-FABRICACIÓN). Ver Scope B Agent 1 gap #6.
+    case 'buscar_producto':
+      return { type: 'function', function: { name: 'buscar_producto', description: 'Busca un producto o servicio en el catálogo de Notion del negocio por SKU o nombre. ÚSALA SIEMPRE antes de mencionar precios al llamante — nunca inventes cifras. Devuelve nombre, SKU, precio formateado y descripción.', parameters: { type: 'object', properties: { query: { type: 'string', description: 'SKU exacto o nombre parcial del producto/servicio a buscar.' } }, required: ['query'] } }, server: server('exec/buscar_producto') };
 
     case 'marcar_no_llamar': return { type: 'function', function: { name: 'marcar_no_llamar', description: 'Marca un número de teléfono como "no volver a llamar". Úsala inmediatamente cuando el ciudadano diga que no quiere recibir más llamadas ("no me llamen", "quítenme de la lista", "no me interesa"). Los futuros crons de llamadas salientes respetarán esta marca. Después de llamar esta herramienta, termina la llamada con cortesía sin insistir.', parameters: { type: 'object', properties: { telefono: { type: 'string', description: 'Número de teléfono del ciudadano tal como está en el sistema (con o sin lada). Se normaliza automáticamente en el servidor.' }, motivo: { type: 'string', description: 'Motivo breve de la solicitud (ej: "no interesado", "número equivocado", "ya no vive aquí"). Opcional.' } }, required: ['telefono'] } }, server: server('marcar-no-llamar') };
 
