@@ -28,6 +28,10 @@ export async function POST(req: NextRequest) {
     rfc,
     curp,
     aup_accepted,
+    // D-M2: campos que el formulario mandaba pero /start ignoraba silencioso.
+    // country: MX vs otros — necesario para analytics + gate features KYC.
+    // Ver Scope D1 F8 "Datos capturados que NO llegan a DB".
+    country,
   } = await req.json();
 
   const meerkat = (meerkat_role_id && meerkat_role_id !== 'custom')
@@ -217,6 +221,7 @@ export async function POST(req: NextRequest) {
     transfer_whatsapp:    transfer_whatsapp.trim(),
   };
   if (fallback_phone_number != null) kycPatch.fallback_phone_number = fallback_phone_number;
+  if (country && ['mx', 'us', 'ca', 'es'].includes(String(country))) kycPatch.country = String(country);
   if (rfc?.trim())  kycPatch.rfc  = rfc.trim().toUpperCase();
   if (curp?.trim()) kycPatch.curp = curp.trim().toUpperCase();
   if (aup_accepted) kycPatch.aup_accepted_at = new Date().toISOString();
