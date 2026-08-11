@@ -113,11 +113,29 @@ export async function POST(req: NextRequest) {
       } catch (err) {
         void logLlmCall({ source: 'voice_llm', model: params.model, usage: { input_tokens: 0, output_tokens: 0 }, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err) });
         console.error('[voice/llm] stream error:', err);
-        // Emit error inline como SSE para que Vapi no cuelgue esperando [DONE]
-        const msg = err instanceof Error ? err.message : String(err);
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-          error: { message: msg, type: 'stream_error' },
-        })}\n\n`));
+        // Fallback pre-canned: emitir un mensaje hablable para que Vapi lo
+        // reproduzca en vez de cortar el stream con "error" (que causaba
+        // silencio de 8-30s + hangup). El modelo delta cambia según OpenAI
+        // format: {choices:[{delta:{content:"..."}, index:0}]}.
+        // ANTES: emitíamos {error:...} sin content → Vapi no sabe qué decir.
+        // Ver Scope C1 CRIT #3.
+        const fallbackText = 'Perdón, tuve un problema de conexión. ¿Puedes repetirme lo último?';
+        const chunkObj = {
+          id:      `chatcmpl-fallback-${Date.now()}`,
+          object:  'chat.completion.chunk',
+          created: Math.floor(Date.now() / 1000),
+          model:   model,
+          choices: [{ index: 0, delta: { role: 'assistant', content: fallbackText }, finish_reason: null }],
+        };
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunkObj)}\n\n`));
+        const stopObj = {
+          id:      chunkObj.id,
+          object:  'chat.completion.chunk',
+          created: chunkObj.created,
+          model:   model,
+          choices: [{ index: 0, delta: {}, finish_reason: 'stop' }],
+        };
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(stopObj)}\n\n`));
         controller.enqueue(encoder.encode('data: [DONE]\n\n'));
       } finally {
         controller.close();
