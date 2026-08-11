@@ -26,22 +26,36 @@ export default async function SetupPage({ params }: Props) {
 
   if (!agent) notFound();
 
-  // Check si ya hay password: org primero, fallback voice_agents.
+  // Check si ya hay password. organizations es la SINGLE SOURCE OF TRUTH.
+  // ANTES: dual-write con voice_agents.portal_password_hash. Si el hash quedaba
+  // en voice_agents pero no en organizations (backfill parcial, race post-fix),
+  // page redirigía a /login → user llegaba por welcome, veía LOGIN sin haber
+  // creado password → loop cerrado sin forgot-password. Fix: single source.
+  // Los agentes legacy con hash en voice_agents se backfillean silenciosamente
+  // al org row para migración progresiva. Ver Scope D2 HIGH-3.
   const { data: org } = await supabase
     .from('organizations')
     .select('portal_password_hash')
     .eq('portal_email', resolved.portalEmail)
     .maybeSingle() as { data: { portal_password_hash: string | null } | null };
 
-  let alreadyRegistered = !!org?.portal_password_hash;
-  if (!alreadyRegistered) {
+  if (!org?.portal_password_hash) {
     const { data: legacy } = await supabase
       .from('voice_agents').select('portal_password_hash')
       .eq('portal_email', resolved.portalEmail)
       .not('portal_password_hash', 'is', null).limit(1).maybeSingle() as { data: { portal_password_hash: string | null } | null };
-    alreadyRegistered = !!legacy?.portal_password_hash;
+    if (legacy?.portal_password_hash) {
+      // Backfill al org (single source). No bloquea la UI: si el update falla,
+      // caemos al setup igual — mejor eso que loop cerrado por dual-write bug.
+      await supabase
+        .from('organizations')
+        .update({ portal_password_hash: legacy.portal_password_hash })
+        .eq('portal_email', resolved.portalEmail);
+      redirect(`/portal/login?from=/portal/${resolved.orgToken}`);
+    }
+  } else {
+    redirect(`/portal/login?from=/portal/${resolved.orgToken}`);
   }
-  if (alreadyRegistered) redirect(`/portal/login?from=/portal/${resolved.orgToken}`);
 
   return (
     <SetupForm
