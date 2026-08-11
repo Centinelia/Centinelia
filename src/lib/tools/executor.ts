@@ -1720,7 +1720,16 @@ async function executeAgentToolInner(
       if (invoice) pay.Line = [{ Amount: monto, LinkedTxn: [{ TxnId: invoice.Id, TxnType: 'Invoice' }] }];
       const res  = await qb.post('/payment', pay);
       const fmt  = (n: number) => n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
-      return { ok: true, pago_id: res?.Payment?.Id, cliente: customer.DisplayName, monto: fmt(monto), factura: invoice?.DocNumber ?? null };
+      // A-F8 silent success: si el usuario NO especificó factura_numero, el
+      // pago se auto-aplica a la más antigua pendiente. Antes: response no
+      // avisaba cuál se aplicó → confusión ("¿a cuál factura fue?"). Ahora
+      // mensaje explícito distingue "auto-aplicó a #X" vs "aplicó a #Y (pedida)".
+      const message = invoice
+        ? factura_numero
+          ? `Pago de ${fmt(monto)} de ${customer.DisplayName} aplicado a factura #${invoice.DocNumber}.`
+          : `Pago de ${fmt(monto)} de ${customer.DisplayName} AUTO-APLICADO a factura #${invoice.DocNumber} (la más antigua pendiente porque no se especificó número). Confirma con el cliente si era la correcta.`
+        : `Pago de ${fmt(monto)} de ${customer.DisplayName} registrado SIN aplicar a factura (${customer.DisplayName} no tiene facturas pendientes). Queda como crédito.`;
+      return { ok: true, pago_id: res?.Payment?.Id, cliente: customer.DisplayName, monto: fmt(monto), factura: invoice?.DocNumber ?? null, auto_applied: !factura_numero && !!invoice, message };
     } catch (err) { await refundQbPago('exception'); return { ok: false, error: String(err) }; }
   }
 
