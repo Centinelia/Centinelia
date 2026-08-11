@@ -219,6 +219,7 @@ export async function POST(req: NextRequest) {
   const fromRaw  = params.get('From') ?? '';  // 'whatsapp:+521234567890'
   const toRaw    = params.get('To')   ?? '';  // 'whatsapp:+14155238886'
   const msgBody  = (params.get('Body') ?? '').trim();
+  const messageSid = params.get('MessageSid') ?? params.get('SmsMessageSid') ?? '';
 
   if (!fromRaw || !toRaw || !msgBody) {
     return NextResponse.json({ ok: true });
@@ -228,6 +229,22 @@ export async function POST(req: NextRequest) {
   const agentWaNumber  = toRaw.replace('whatsapp:', '');
 
   const supabase = createAdminClient();
+
+  // Dedupe: Twilio reintenta hasta 11 veces si no recibe 200 en <15s. El
+  // handler hace LLM call (~2-5s) + externos → timeout probable bajo carga.
+  // Sin este gate, retry = 2-N respuestas idénticas al cliente WA, 2-N leads,
+  // 2-N cobros de op, 2-N sendWhatsApp al owner. Ver Scope C3 CRIT-1.
+  if (messageSid) {
+    const { data: inserted } = await supabase
+      .from('webhook_events')
+      .insert({ source: 'twilio_wa', event_id: messageSid, metadata: { from: customerNumber, to: agentWaNumber } })
+      .select('event_id')
+      .maybeSingle();
+    if (!inserted) {
+      // Duplicate (constraint hit) — ya procesado. Retornar 200 para que Twilio no reintente más.
+      return NextResponse.json({ ok: true, deduped: true });
+    }
+  }
 
   // 1. Find the WhatsApp agent by wa_phone_number, joining voice_agents for full feature set
   const { data: agentRow } = await supabase

@@ -20,14 +20,21 @@ interface StoredAttachment {
 }
 
 export async function POST(req: NextRequest) {
+  // Auth: rechazar 503 si env vacío (antes: accept-all → prompt injection en Nash).
+  // Ver Scope C3 CRIT-4.
+  const configuredSecret = process.env.EMAIL_INBOUND_SECRET;
+  if (!configuredSecret) {
+    console.error('[email/inbound] EMAIL_INBOUND_SECRET not set — rejecting');
+    return NextResponse.json({ error: 'Server misconfigured' }, { status: 503 });
+  }
   const secret = req.nextUrl.searchParams.get('secret');
-  if (process.env.EMAIL_INBOUND_SECRET && secret !== process.env.EMAIL_INBOUND_SECRET) {
+  if (secret !== configuredSecret) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const contentType = req.headers.get('content-type') ?? '';
 
-  let to = '', from = '', subject = '', text = '';
+  let to = '', from = '', subject = '', text = '', headers = '';
   const rawAttachments: { name: string; buf: Buffer; type: string }[] = [];
 
   if (contentType.includes('multipart/form-data')) {
@@ -36,6 +43,7 @@ export async function POST(req: NextRequest) {
     from    = (form.get('from')    as string) ?? '';
     subject = (form.get('subject') as string) ?? '';
     text    = (form.get('text')    as string) ?? '';
+    headers = (form.get('headers') as string) ?? '';
 
     const count = parseInt((form.get('attachments') as string) ?? '0', 10);
     for (let i = 1; i <= Math.min(count, 5); i++) {
@@ -53,12 +61,29 @@ export async function POST(req: NextRequest) {
     from    = body.from    ?? '';
     subject = body.subject ?? '';
     text    = body.text    ?? '';
+    headers = body.headers ?? '';
   }
 
   const token = parseToToken(to);
   if (!token) return NextResponse.json({ ok: true });
 
   const supabase = createAdminClient();
+
+  // Dedupe por Message-ID (SendGrid Parse lo pasa en `headers`). Sin este
+  // gate, retry SendGrid = Nash procesa el mismo correo N veces + gasto LLM
+  // N× + posible respuesta duplicada al cliente. Ver Scope C3 CRIT-4.
+  const messageIdMatch = headers.match(/^Message-I[dD]:\s*<?([^>\s]+)>?/m);
+  const messageId = messageIdMatch?.[1] ?? null;
+  if (messageId) {
+    const { data: inserted } = await supabase
+      .from('webhook_events')
+      .insert({ source: 'email_inbound', event_id: messageId, metadata: { from, to, subject } })
+      .select('event_id')
+      .maybeSingle();
+    if (!inserted) {
+      return NextResponse.json({ ok: true, deduped: true });
+    }
+  }
 
   // Helper: upload attachments to human-request-files bucket (handoff path only)
   async function uploadHandoffAttachments(requestId: string, agentId: string): Promise<HandoffAttachment[]> {

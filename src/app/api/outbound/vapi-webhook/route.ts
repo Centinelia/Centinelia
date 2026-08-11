@@ -38,6 +38,19 @@ export async function POST(req: NextRequest) {
 
   const supabase = createAdminClient();
 
+  // Dedupe: sin este gate, retry Vapi cobraba minutos 2× vía consume_pool_minutes
+  // (RPC no tiene ON CONFLICT). Ver Scope C3 CRIT-2.
+  {
+    const { data: inserted } = await supabase
+      .from('webhook_events')
+      .insert({ source: 'vapi_outbound', event_id: call.id, metadata: { type, endedReason: call.endedReason ?? null } })
+      .select('event_id')
+      .maybeSingle();
+    if (!inserted) {
+      return NextResponse.json({ ok: true, deduped: true });
+    }
+  }
+
   const { data: outboundCall } = await supabase
     .from('outbound_calls')
     .select('*, voice_agents(phone_number, timezone)')

@@ -13,6 +13,24 @@ export async function POST(req: NextRequest, { params }: Params) {
   const { token } = await params;
   const supabase  = createAdminClient();
 
+  // Auth HMAC del outgoing webhook Teams (opt-in): si TEAMS_WEBHOOK_SECRET está
+  // seteado, exigir Authorization: HMAC <base64> con HMAC-SHA256 del body.
+  // ANTES: solo autenticaba por token URL. Attacker con token knock (o log
+  // leak) podía spam a Claude burning ops del cliente. Ver Scope C3 CRIT-3.
+  const teamsSecret = process.env.TEAMS_WEBHOOK_SECRET;
+  const rawBody = await req.text();
+  if (teamsSecret) {
+    const authHeader = req.headers.get('authorization') ?? '';
+    const provided = authHeader.startsWith('HMAC ') ? authHeader.slice(5) : '';
+    const { createHmac, timingSafeEqual } = await import('crypto');
+    const expected = createHmac('sha256', Buffer.from(teamsSecret, 'base64')).update(rawBody, 'utf8').digest('base64');
+    const expectedBuf = Buffer.from(expected);
+    const providedBuf = Buffer.from(provided);
+    if (providedBuf.length !== expectedBuf.length || !timingSafeEqual(providedBuf, expectedBuf)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+  }
+
   // Look up agent — acepta org token o legacy voice_agents.portal_token.
   const agent = await getPrimaryAgentFromToken<{
     id: string; business_name: string; agent_name: string | null;
@@ -28,16 +46,34 @@ export async function POST(req: NextRequest, { params }: Params) {
     sender_email?:   string;
     conversation_id: string;
     chat_type?:      string;
+    activity_id?:    string;      // outgoing webhook Teams incluye body.id (activity_id)
   };
 
   try {
-    body = await req.json();
+    body = JSON.parse(rawBody);
   } catch {
     return NextResponse.json({ error: 'JSON inválido' }, { status: 400 });
   }
 
   if (!body.message?.trim() || !body.conversation_id) {
     return NextResponse.json({ error: 'Faltan campos: message, conversation_id' }, { status: 400 });
+  }
+
+  // Dedupe: MS Teams retry = 2× reply al usuario + 2× cobro op. Usa activity_id
+  // si viene; fallback a hash(conversation_id+sender+timestamp+message). Ver
+  // Scope C3 CRIT-3.
+  const { createHash } = await import('crypto');
+  const eventId = body.activity_id
+    ?? createHash('sha256').update(`${body.conversation_id}|${body.sender_email ?? ''}|${body.message}`).digest('hex').slice(0, 32);
+  {
+    const { data: inserted } = await supabase
+      .from('webhook_events')
+      .insert({ source: 'teams', event_id: eventId, metadata: { conversation_id: body.conversation_id, sender_email: body.sender_email ?? null } })
+      .select('event_id')
+      .maybeSingle();
+    if (!inserted) {
+      return NextResponse.json({ ok: true, deduped: true });
+    }
   }
 
   // Skip messages sent by the agent user herself (avoids infinite loop)
