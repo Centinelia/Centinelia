@@ -108,6 +108,15 @@ export async function dispatchEmail(input: DispatchInput): Promise<DispatchResul
   const ruleResult = tryRules(input.message, agents);
   if (ruleResult) return finalize(ruleResult, input.orgEmail);
 
+  // Thread continuity: si el remitente ya nos escribió antes y le respondió
+  // el meerkat X, prefiere asignarlo de nuevo a X. Antes: reply de un thread
+  // saliente iniciado por Niva se asignaba a Noah (fallback Sonnet) porque el
+  // LLM leía el body sin contexto del histórico. Bug reportado 2026-08-10:
+  // "Aprobe hace unos minutos a Niva pero Noah contestó al ultimo correo de
+  // Niva". Solo aplica cuando el meerkat original sigue activo en el roster.
+  const threadResult = await tryThreadContinuity(input.message, agents, input.portalEmail, supabase);
+  if (threadResult) return finalize(threadResult, input.orgEmail);
+
   // Metering: la llamada Sonnet consume 1 op. Se cobra al pivote (típicamente
   // el primer agente activo). Si la cuenta está sin quota, saltamos el LLM y
   // caemos al fallback directo — evita cargar operaciones no cobradas.
@@ -231,6 +240,48 @@ function tryRules(msg: DispatchInput['message'], agents: DispatchAgent[]): Parti
     }
   }
 
+  return null;
+}
+
+// ─── Thread continuity ───────────────────────────────────────────────────
+// Si el remitente ya recibió un correo saliente de un meerkat activo en los
+// últimos 60 días, prefiere asignarle el reply al mismo meerkat. Ventana
+// larga: los threads B2B pueden reactivarse semanas después. Excluimos
+// bandejas catch-all obvias (hola@/contacto@) para no propagar mismatches.
+
+async function tryThreadContinuity(
+  msg:         DispatchInput['message'],
+  agents:      DispatchAgent[],
+  portalEmail: string,
+  supabase:    SupabaseClient,
+): Promise<PartialResult | null> {
+  const fromAddr = (msg.from.match(/<([^>]+)>/)?.[1] ?? msg.from).trim().toLowerCase();
+  if (!fromAddr || fromAddr.length < 5) return null;
+
+  const since = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: sent } = await supabase
+    .from('outbound_emails')
+    .select('agent_id, created_at')
+    .eq('portal_email', portalEmail)
+    .eq('to_email', fromAddr)
+    .eq('ok', true)
+    .gte('created_at', since)
+    .order('created_at', { ascending: false })
+    .limit(5);
+
+  if (!sent?.length) return null;
+
+  const activeAgentIds = new Set(agents.map(a => a.id));
+  for (const row of sent as Array<{ agent_id: string | null }>) {
+    if (row.agent_id && activeAgentIds.has(row.agent_id)) {
+      return {
+        agentId:    row.agent_id,
+        assignedBy: 'rule',
+        confidence: 0.9,
+        metadata:   { rule: `thread_continuity:${fromAddr}` },
+      };
+    }
+  }
   return null;
 }
 

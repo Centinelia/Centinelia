@@ -1818,6 +1818,14 @@ ${context}`;
 
           const toolResults: Array<{ type: 'tool_result'; tool_use_id: string; content: string }> = [];
 
+          // Refund policy multi-tool: el cobro de ops es POR ITERACIÓN
+          // (iterCharge se cobra 1 vez cuando arranca el turno del LLM,
+          // no por cada tool call). Si N tools corren en paralelo y M fallan,
+          // refundeamos proporcional (M/N * iterCharge) — sin esto un turno
+          // con 3 tools donde 2 fallan refundaba 2*iterCharge = double-refund.
+          const failedNamesInTurn: string[] = [];
+          const totalToolsInTurn = pendingToolCalls.length;
+
           for (const call of pendingToolCalls) {
             // El chat del portal viene del owner con sesión verificada por cookie.
             // Auto-inyectamos caller_verified=true para consult_agent / delegate_task
@@ -1852,15 +1860,10 @@ ${context}`;
                 : {}),
             });
 
-            // Refund cuando el tool call devuelve ok:false. El cobro por LLM
-            // tokens ya sucedió (Anthropic no reembolsa) pero al menos devolvemos
-            // al cliente los ops de la iteración wasted. Best-effort, no bloquea.
+            // Solo acumular — el refund proporcional se emite después del loop
+            // para no double-refund cuando corren N tools en paralelo.
             if ((toolResult as { ok?: boolean })?.ok === false) {
-              const iterCharge = callCount === 1 ? 3 : 2;
-              void refundOps(agent.id as string, iterCharge, {
-                source: 'agent_chat_refund',
-                label:  `Tool "${call.name}" fallo`,
-              });
+              failedNamesInTurn.push(call.name);
             }
 
             // Debug SSE: qué le regresamos al LLM. Útil para diagnosticar cuando
@@ -1886,6 +1889,21 @@ ${context}`;
 
           // Extend conversation con el turno completo: assistant con todos los
           // tool_use + user con todos los tool_result correspondientes.
+          // Refund proporcional post-loop. iterCharge se cobra 1 vez por turno
+          // (3 el primero, 2 los siguientes). Si de N tools fallaron M, devolvemos
+          // Math.round(iterCharge * M/N). Solo refund si todos fallaron (M==N)
+          // recibe iterCharge completo — de lo contrario partial credit.
+          if (failedNamesInTurn.length > 0 && totalToolsInTurn > 0) {
+            const iterCharge = callCount === 1 ? 3 : 2;
+            const refund = Math.max(1, Math.round(iterCharge * failedNamesInTurn.length / totalToolsInTurn));
+            void refundOps(agent.id as string, refund, {
+              source: 'agent_chat_refund',
+              label:  failedNamesInTurn.length === totalToolsInTurn
+                ? `Turno completo fallo: ${failedNamesInTurn.join(', ')}`
+                : `${failedNamesInTurn.length}/${totalToolsInTurn} tools fallaron: ${failedNamesInTurn.join(', ')}`,
+            });
+          }
+
           conversationMessages = [
             ...conversationMessages,
             { role: 'assistant' as const, content: assistantBlocks as Anthropic.ContentBlock[] },

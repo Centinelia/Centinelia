@@ -55,18 +55,34 @@ export default async function OficinaLayout({
   // per-agente. Un solo query paralelo evita 2 roundtrips.
   const { data: orgPool } = lookupEmail
     ? await supabase.from('organizations')
-        .select('monthly_ops_pool, monthly_ops_used, logo_url')
+        .select('monthly_ops_pool, monthly_ops_used, logo_url, ops_ledger_enabled')
         .eq('portal_email', lookupEmail)
         .maybeSingle()
     : { data: null };
   const orgLogoUrl = (orgPool?.logo_url as string | null) ?? null;
-  let aiOpsUsed  = (orgPool?.monthly_ops_used as number | null) ?? 0;
+  // Ver [[deuda-metrica-rollover-perdido]] y page.tsx (ID #47/#59): cuando
+  // ops_ledger_enabled=true el legacy `organizations.monthly_ops_used` se
+  // congela post-flip; account_ops.ops_used es source of truth. Sin este
+  // check el sidebar del layout muestra el contador viejo y el card
+  // principal (fijo en page.tsx) muestra el real → divergen.
+  const ledgerEnabled = !!(orgPool as { ops_ledger_enabled?: boolean } | null)?.ops_ledger_enabled;
+  const { data: acctOps } = ledgerEnabled && lookupEmail
+    ? await supabase.from('account_ops')
+        .select('ops_used')
+        .eq('portal_email', lookupEmail)
+        .maybeSingle()
+    : { data: null };
+  let aiOpsUsed  = ledgerEnabled && typeof (acctOps as { ops_used?: number } | null)?.ops_used === 'number'
+    ? ((acctOps as { ops_used: number }).ops_used)
+    : ((orgPool?.monthly_ops_used as number | null) ?? 0);
   let aiOpsLimit = (orgPool?.monthly_ops_pool as number | null) ?? 0;
   if (!orgPool?.monthly_ops_pool) {
     const { data: opsAgents } = lookupEmail
       ? await supabase.from('voice_agents').select('ai_ops_used, ai_ops_limit').eq('portal_email', lookupEmail)
       : { data: null };
-    aiOpsUsed  = ((opsAgents ?? []) as any[]).reduce((s, a) => s + ((a.ai_ops_used  as number) ?? 0), 0);
+    if (!ledgerEnabled) {
+      aiOpsUsed = ((opsAgents ?? []) as any[]).reduce((s, a) => s + ((a.ai_ops_used  as number) ?? 0), 0);
+    }
     aiOpsLimit = ((opsAgents ?? []) as any[]).reduce((s, a) => s + ((a.ai_ops_limit as number) ?? 0), 0);
   }
   const hasStripe  = !!(agent as any).stripe_customer_id;
