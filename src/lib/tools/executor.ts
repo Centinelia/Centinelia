@@ -2741,5 +2741,107 @@ async function executeAgentToolInner(
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // A-F7 Nova despacho de campo
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'asignar_unidad_campo') {
+    const args = toolInput as { service_description?: string; location?: string; priority?: string; unidad_nombre?: string; unidad_telefono?: string; eta_minutes?: number; requested_by_name?: string; requested_by_phone?: string; notes?: string };
+    if (!args.service_description?.trim()) return { ok: false, error: 'service_description es requerido.' };
+    const priority = ['baja','media','alta','critica'].includes(args.priority ?? '') ? args.priority : 'media';
+    const status   = args.unidad_nombre?.trim() ? 'asignado' : 'pendiente';
+    const { data, error } = await supabase.from('dispatch_assignments').insert({
+      agent_id:            agentId,
+      portal_email:        portalEmail,
+      service_description: args.service_description.trim(),
+      location:            args.location?.trim() ?? null,
+      priority,
+      unidad_nombre:       args.unidad_nombre?.trim() ?? null,
+      unidad_telefono:     args.unidad_telefono?.trim() ?? null,
+      status,
+      requested_by_name:   args.requested_by_name?.trim() ?? null,
+      requested_by_phone:  args.requested_by_phone?.trim() ?? null,
+      eta_minutes:         typeof args.eta_minutes === 'number' ? args.eta_minutes : null,
+      notes:               args.notes?.trim() ?? null,
+    }).select('id').single();
+    if (error) return { ok: false, error: error.message };
+    return {
+      ok: true,
+      id: data?.id,
+      status,
+      message: status === 'asignado'
+        ? `Asignación registrada. ${args.unidad_nombre} atenderá ${args.service_description}${args.eta_minutes ? ` (ETA ${args.eta_minutes} min)` : ''}.`
+        : `Servicio registrado como pendiente. Falta asignar unidad.`,
+    };
+  }
+
+  if (toolName === 'consultar_unidades_disponibles') {
+    const args = toolInput as { status?: string; limit?: number };
+    const filterStatus = ['pendiente','asignado','en_ruta','completado'].includes(args.status ?? '') ? args.status : null;
+    let q = supabase
+      .from('dispatch_assignments')
+      .select('id, service_description, location, priority, unidad_nombre, status, eta_minutes, created_at')
+      .eq('portal_email', portalEmail)
+      .order('created_at', { ascending: false })
+      .limit(Math.min(args.limit ?? 20, 50));
+    if (filterStatus) q = q.eq('status', filterStatus);
+    const { data, error } = await q;
+    if (error) return { ok: false, error: error.message };
+    return { ok: true, count: (data ?? []).length, assignments: data ?? [] };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // A-F7 Naia RRHH real
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'registrar_falta' || toolName === 'solicitar_permiso' || toolName === 'verificar_incidencia') {
+    const args = toolInput as { employee_name?: string; record_type?: string; start_date?: string; end_date?: string; reason?: string };
+    if (!args.employee_name?.trim()) return { ok: false, error: 'employee_name es requerido.' };
+    if (!args.start_date?.match(/^\d{4}-\d{2}-\d{2}$/)) return { ok: false, error: 'start_date debe ser YYYY-MM-DD.' };
+    const recordType = toolName === 'registrar_falta' ? 'falta'
+                     : toolName === 'verificar_incidencia' ? 'incidencia'
+                     : (['vacaciones','permiso'].includes(args.record_type ?? '') ? args.record_type! : 'permiso');
+    if (recordType === 'permiso' || recordType === 'vacaciones') {
+      if (!args.end_date?.match(/^\d{4}-\d{2}-\d{2}$/)) return { ok: false, error: 'end_date debe ser YYYY-MM-DD para permisos/vacaciones.' };
+    }
+    if (toolName === 'verificar_incidencia' && !args.reason?.trim()) {
+      return { ok: false, error: 'reason es requerido para incidencia.' };
+    }
+    const { data, error } = await supabase.from('hr_records').insert({
+      agent_id:       agentId,
+      portal_email:   portalEmail,
+      employee_name:  args.employee_name.trim(),
+      record_type:    recordType,
+      start_date:     args.start_date,
+      end_date:       args.end_date ?? null,
+      reason:         args.reason?.trim() ?? null,
+      status:         'registrada',
+    }).select('id').single();
+    if (error) return { ok: false, error: error.message };
+    return {
+      ok: true,
+      id: data?.id,
+      message: `${recordType[0].toUpperCase()}${recordType.slice(1)} registrada para ${args.employee_name}${args.end_date ? ` del ${args.start_date} al ${args.end_date}` : ` el ${args.start_date}`}. Estado: registrada (pendiente de aprobación).`,
+    };
+  }
+
+  if (toolName === 'consultar_vacaciones') {
+    const args = toolInput as { employee_name?: string; record_type?: string };
+    if (!args.employee_name?.trim()) return { ok: false, error: 'employee_name es requerido.' };
+    const yearAgo = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    let q = supabase
+      .from('hr_records')
+      .select('id, record_type, start_date, end_date, reason, status, created_at')
+      .eq('portal_email', portalEmail)
+      .ilike('employee_name', args.employee_name.trim())
+      .gte('start_date', yearAgo)
+      .order('start_date', { ascending: false })
+      .limit(50);
+    if (args.record_type && args.record_type !== 'todos' && ['falta','vacaciones','permiso','incidencia'].includes(args.record_type)) {
+      q = q.eq('record_type', args.record_type);
+    }
+    const { data, error } = await q;
+    if (error) return { ok: false, error: error.message };
+    return { ok: true, count: (data ?? []).length, records: data ?? [] };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   return { ok: false, error: `Herramienta desconocida: ${toolName}` };
 }

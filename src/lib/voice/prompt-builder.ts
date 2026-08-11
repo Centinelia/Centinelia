@@ -633,7 +633,7 @@ Esta es tu base de conocimiento específica para tu función como ${agent.role}.
 Cuando alguien reporte un problema técnico o de sistemas, sigue estos pasos en orden:
 
 1. CONSULTA INCIDENTES ACTIVOS primero con consultar_incidentes.
-   Si hay un incidente que ya explica el problema, informa al ${usted ? 'ciudadano/usuario' : 'ciudadano/usuario'} con el mensaje de estado registrado y NO crees un ticket duplicado.
+   Si hay un incidente que ya explica el problema, informa al ${usted ? 'usuario interno' : 'compañero'} con el mensaje de estado registrado y NO crees un ticket duplicado.
 
 2. CREA EL TICKET con crear_ticket si no hay incidente activo.
    Captura con claridad: qué pasó, desde cuándo, qué área o sistema afecta, y qué tan urgente es para quien llama.
