@@ -999,6 +999,34 @@ CATEGORÍAS:
           required: ['monto'],
         },
       });
+      // Niva por correo — voice y chat ya tenían estas dos. Owner responde
+      // "aprueba el gasto de X por $Y" por email → hoy Niva no podía dejar
+      // audit trail. Ver Scope B Agent 1 gap #7.
+      tools.push({
+        name: 'revisar_desempeno_equipo',
+        description: 'Devuelve un resumen del desempeño del equipo (llamadas, tareas completadas/fallidas, documentos, correos, ops usadas, desglosado por empleado). Exclusiva de directores. Úsala cuando el correo del dueño pregunte "cómo va el equipo", "resumen del mes", "quién está haciendo qué", etc.',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            periodo: { type: 'string', enum: ['hoy', 'esta_semana', 'este_mes', 'ultima_semana', 'ultimo_mes', 'ultimos_30_dias'], description: 'Ventana temporal. Default esta_semana.' },
+          },
+          required: [],
+        },
+      });
+      tools.push({
+        name: 'aprobar_gasto',
+        description: 'Registra la aprobación (o rechazo) de un gasto operativo. Deja audit trail. Exclusiva de directores. Úsala cuando el dueño escriba por correo "aprueba X gasto de $Y" o similar. Invoca evaluar_limite_gasto ANTES para decidir con datos.',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            concepto:      { type: 'string', description: 'Concepto del gasto.' },
+            monto:         { type: 'number', description: 'Monto en MXN.' },
+            justificacion: { type: 'string', description: 'Razón de la aprobación o rechazo (opcional).' },
+            status:        { type: 'string', enum: ['approved', 'rejected'], description: 'approved (default) o rejected.' },
+          },
+          required: ['concepto', 'monto'],
+        },
+      });
     }
 
     // Fiscal tools — gated a roles Sonnet-safe. Nia bandeja SE EXCLUYE
