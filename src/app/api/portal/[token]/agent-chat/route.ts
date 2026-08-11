@@ -1723,11 +1723,21 @@ ${context}`;
 
           const __acT = Date.now();
           const __acM = 'claude-sonnet-4-6';
+          // Prompt caching: el system prompt es enorme (~10-15k tokens) y
+          // estable dentro de una sesión de chat. Cache breakpoint al final
+          // del system + al final de tools → primer call escribe (1.25x input),
+          // resto lee a 0.1x. TTL 5 min cubre casi toda conversación.
+          const systemText = callCount === 1 ? systemWithAlert : system;
+          const cachedTools = sessionTools.length
+            ? sessionTools.map((t, i) => i === sessionTools.length - 1
+                ? { ...t, cache_control: { type: 'ephemeral' as const } }
+                : t)
+            : sessionTools;
           const stream = client.messages.stream({
             model:      __acM,
             max_tokens: 2048,
-            system:     callCount === 1 ? systemWithAlert : system,
-            tools:      sessionTools,
+            system:     [{ type: 'text', text: systemText, cache_control: { type: 'ephemeral' } }],
+            tools:      cachedTools,
             // Fuerza buscar_documento_oficina en la primera call cuando detectamos
             // intent de "generar X". Elimina la posibilidad de que el LLM narre
             // "reviso si hay previo" sin invocar la tool.

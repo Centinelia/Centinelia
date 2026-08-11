@@ -283,10 +283,13 @@ export async function POST(req: NextRequest) {
 
   const __t = Date.now();
   const __m = 'claude-haiku-4-5-20251001';
+  // Prompt caching: el system prompt de Nash es grande (~4-5k tokens) y
+  // 100% estático por request. Cache breakpoint garantiza que después de la
+  // primera pregunta en cada ventana de 5 min, las siguientes lean a 0.1x.
   const stream = client.messages.stream({
     model:      __m,
     max_tokens: 1024,
-    system,
+    system:     [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
     messages:   messages.slice(-20),
   });
 

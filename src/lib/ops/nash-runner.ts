@@ -318,11 +318,18 @@ export async function runNashMonitor(): Promise<NashRunResult> {
     const t0 = Date.now();
     let resp: Anthropic.Message;
     try {
+      // Prompt caching: system prompt (~3800 tokens) + 6 tools son idénticos
+      // en cada iteración del loop y en cada corrida del cron. Cache breakpoint
+      // al final del system y al final de tools → primer LLM call de cada
+      // ejecución escribe (1.25x), las siguientes 2-8 iteraciones leen a 0.1x.
+      const cachedNashTools = NASH_TOOLS.map((t, i) => i === NASH_TOOLS.length - 1
+        ? { ...t, cache_control: { type: 'ephemeral' as const } }
+        : t);
       resp = await client.messages.create({
         model:      MODEL,
         max_tokens: MAX_TOKENS,
-        system,
-        tools:      NASH_TOOLS,
+        system:     [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
+        tools:      cachedNashTools,
         messages,
       });
     } catch (err) {

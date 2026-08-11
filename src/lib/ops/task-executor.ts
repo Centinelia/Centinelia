@@ -423,11 +423,16 @@ export async function executeTask(params: {
     const __tetM = 'claude-haiku-4-5-20251001';
     let response;
     try {
+      // Prompt caching: systemPrompt (~5k tokens) + DELEGATION_TOOLS estables
+      // por task-loop. Cachear con TTL 5min reduce input cost ~90% en iters 2+.
+      const cachedDelegTools = DELEGATION_TOOLS.map((t, idx) => idx === DELEGATION_TOOLS.length - 1
+        ? { ...t, cache_control: { type: 'ephemeral' as const } }
+        : t);
       response = await client.messages.create({
         model:      __tetM,
         max_tokens: 1024,
-        system:     systemPrompt,
-        tools:      DELEGATION_TOOLS,
+        system:     [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
+        tools:      cachedDelegTools,
         messages,
       });
       void logLlmCall({ source: 'task', model: __tetM, usage: response.usage, agentId: targetAgent.id, portalEmail: targetAgent.portal_email ?? null, latencyMs: Date.now() - __tetT, meta: { taskId, iter: i } });

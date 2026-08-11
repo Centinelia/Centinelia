@@ -228,10 +228,13 @@ export async function POST(req: NextRequest) {
 
   const __t = Date.now();
   const __m = 'claude-haiku-4-5-20251001';
+  // Prompt caching: el system prompt de Noah es ~3.5-5k tokens y estático.
+  // Prospectos que hacen múltiples preguntas en el chat de landing
+  // aprovechan cache (leer a 0.1x en vez de 1x en input).
   const stream = client.messages.stream({
     model:      __m,
     max_tokens: 800,
-    system,
+    system:     [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
     messages:   messages.slice(-16),
   });
 
