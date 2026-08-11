@@ -1221,7 +1221,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       ? supabase.from('organizations').select('notion_access_token, notion_db_id, notion_products_db_id').eq('portal_email', accountAgent.portal_email).maybeSingle()
       : Promise.resolve({ data: null }),
     accountAgent.portal_email
-      ? supabase.from('organizations').select('business_email, business_phone, business_website, brand_address, email_footer_text').eq('portal_email', accountAgent.portal_email).maybeSingle()
+      ? supabase.from('organizations').select('business_email, brand_phone, business_website, brand_website, brand_address, email_footer_text').eq('portal_email', accountAgent.portal_email).maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
   if (!agent) return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
@@ -1509,12 +1509,14 @@ export async function POST(req: NextRequest, { params }: Params) {
   const todayEs      = nowForPrompt.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   const dateBlock    = `## Fecha actual\nHoy es ${todayEs} (${todayIso}). USA este año en cualquier fecha que redactes — no repitas años pasados.`;
 
-  const orgC = orgContact as { business_email?: string | null; business_phone?: string | null; business_website?: string | null; brand_address?: string | null; email_footer_text?: string | null } | null;
+  const orgC = orgContact as { business_email?: string | null; brand_phone?: string | null; business_website?: string | null; brand_website?: string | null; brand_address?: string | null; email_footer_text?: string | null } | null;
   const contactLines: string[] = [];
-  if (orgC?.business_email)   contactLines.push(`- Correo: ${orgC.business_email}`);
-  if (orgC?.business_phone)   contactLines.push(`- Teléfono: ${orgC.business_phone}`);
-  if (orgC?.business_website) contactLines.push(`- Sitio web: ${orgC.business_website}`);
-  if (orgC?.brand_address)    contactLines.push(`- Dirección: ${orgC.brand_address}`);
+  const contactEmail = orgC?.business_email || accountAgent.portal_email;
+  const contactSite  = orgC?.business_website || orgC?.brand_website;
+  if (contactEmail)         contactLines.push(`- Correo: ${contactEmail}`);
+  if (orgC?.brand_phone)    contactLines.push(`- Teléfono: ${orgC.brand_phone}`);
+  if (contactSite)          contactLines.push(`- Sitio web: ${contactSite}`);
+  if (orgC?.brand_address)  contactLines.push(`- Dirección: ${orgC.brand_address}`);
   const contactBlock = contactLines.length > 0
     ? `## Datos de contacto de tu empresa\nSIEMPRE que redactes un correo, cotización, contrato o firma para un cliente, incluye estos datos al final para que puedan contactarnos:\n${contactLines.join('\n')}`
     : '';
