@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
+import { claimCronRun, releaseCronRun } from '@/lib/cron/lock';
 import { processHandoffReply, type HandoffAttachment } from '@/lib/human-handoff/inbound';
 import { sendEmail, shell } from '@/lib/email/send';
 
@@ -44,6 +45,9 @@ export async function GET(req: NextRequest) {
   }
 
   const supabase = createAdminClient();
+  // Atomic claim — deploy race dobla reply humano (Scope C2 HIGH).
+  const claim = await claimCronRun(supabase, 'retry-failed-handoffs', 10 * 60 * 1000);
+  if (!claim.ok) return NextResponse.json({ ok: true, skipped: claim.reason });
   const now = new Date();
 
   // Cola: pendientes cuyo próximo intento ya venció. Cap 20 por corrida.
@@ -154,6 +158,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  await releaseCronRun(supabase, 'retry-failed-handoffs');
   return NextResponse.json(results);
 }
 

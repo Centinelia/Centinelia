@@ -7,6 +7,7 @@ import { generateRulesInsights }                from '@/lib/ai/insights-rules';
 import { consumeAiOp }                          from '@/lib/ai/ops-guard';
 import { maybeSendQuotaEmail }                  from '@/lib/ai/quota-email';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
+import { claimCronRun, releaseCronRun } from '@/lib/cron/lock';
 
 const MAX_ACTIVE_INSIGHTS_PER_ORG = 3;
 const DEDUP_WINDOW_DAYS = 14;
@@ -23,6 +24,9 @@ export async function GET(req: NextRequest) {
   }
 
   const supabase    = createAdminClient();
+  // Atomic claim — deploy race Monday 7am doblaba recs + 2× consumeAiOp(3) por agente.
+  const claim = await claimCronRun(supabase, 'weekly-insights', 60 * 60 * 1000);
+  if (!claim.ok) return NextResponse.json({ ok: true, skipped: claim.reason });
   const weekStart   = currentWeekStart();
   const now         = new Date();
   const weekAgo     = new Date(now.getTime() - 7  * 24 * 60 * 60 * 1000).toISOString();
@@ -202,5 +206,6 @@ export async function GET(req: NextRequest) {
       .eq('id', agent.id);
   }
 
+  await releaseCronRun(supabase, 'weekly-insights');
   return NextResponse.json({ ok: true, weekStart, totalRecs });
 }

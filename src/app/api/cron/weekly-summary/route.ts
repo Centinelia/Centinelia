@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail, weeklyReportHtml } from '@/lib/email/send';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
 import { getOrgToken } from '@/lib/portal/org-token';
+import { claimCronRun, releaseCronRun } from '@/lib/cron/lock';
 
 export async function GET(req: NextRequest) {
   if (!verifyCronAuth(req)) {
@@ -12,6 +13,9 @@ export async function GET(req: NextRequest) {
   }
 
   const supabase = createAdminClient();
+  // Atomic claim — deploy race Monday 14:00 UTC doblaba email a cada cliente.
+  const claim = await claimCronRun(supabase, 'weekly-summary', 30 * 60 * 1000); // 30min window
+  if (!claim.ok) return NextResponse.json({ ok: true, skipped: claim.reason });
   const appUrl   = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
 
   const { data: agents } = await supabase
@@ -129,5 +133,6 @@ export async function GET(req: NextRequest) {
     sent++;
   }
 
+  await releaseCronRun(supabase, 'weekly-summary');
   return NextResponse.json({ ok: true, sent });
 }

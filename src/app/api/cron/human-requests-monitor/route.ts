@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { sendReminderNotification, sendEscalationNotification } from '@/lib/human-handoff/notify';
 import { resumeAgentAfterHumanResponse } from '@/lib/human-handoff/resume';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
+import { claimCronRun, releaseCronRun } from '@/lib/cron/lock';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -13,6 +14,9 @@ export async function GET(req: NextRequest) {
   }
 
   const supabase = createAdminClient();
+  // Atomic claim — deploy race dobla reminder email al owner. Scope C2 HIGH.
+  const claim = await claimCronRun(supabase, 'human-requests-monitor', 60 * 60 * 1000);
+  if (!claim.ok) return NextResponse.json({ ok: true, skipped: claim.reason });
   const now = new Date();
   // F10: umbrales más agresivos. Aplica [[feedback-empleados-inteligentes]]:
   // si el empleado escaló al humano, que el humano se entere rápido y
@@ -98,5 +102,6 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  await releaseCronRun(supabase, 'human-requests-monitor');
   return NextResponse.json(results);
 }

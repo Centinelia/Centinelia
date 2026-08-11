@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
+import { claimCronRun, releaseCronRun } from '@/lib/cron/lock';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
 
@@ -39,6 +40,9 @@ export async function GET(req: NextRequest) {
   }
 
   const supabase = createAdminClient();
+  // Atomic claim — deploy race dobla delegar_tarea (2× ops charge). Scope C2 HIGH.
+  const claim = await claimCronRun(supabase, 'scheduled-tasks', 10 * 60 * 1000);
+  if (!claim.ok) return NextResponse.json({ ok: true, skipped: claim.reason });
   const now      = new Date().toISOString();
 
   const { data: due } = await supabase
@@ -54,6 +58,7 @@ export async function GET(req: NextRequest) {
   const ok     = results.filter(r => r.status === 'fulfilled').length;
   const failed = results.length - ok;
 
+  await releaseCronRun(supabase, 'scheduled-tasks');
   return NextResponse.json({ ok: true, ran: ok, failed });
 }
 
