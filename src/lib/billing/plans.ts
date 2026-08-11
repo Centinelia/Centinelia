@@ -97,11 +97,18 @@ export const NOX_MONTHLY_CONFIG: Record<MinutesTier, MonthlyPlanConfig> = {
   enterprise: { label: 'Empresarial',      minutes: 0, aiOps:    0, mxn: 0,     priceId: () => '' },
 };
 
-export function monthlyConfigFromPriceId(priceId: string): { plan: Plan; tier: MinutesTier; cfg: MonthlyPlanConfig } | null {
+export function monthlyConfigFromPriceId(priceId: string): { plan: Plan; tier: MinutesTier; cfg: MonthlyPlanConfig; isCoordinator: boolean } | null {
   for (const [plan, tiers] of Object.entries(MONTHLY_CONFIG) as [Plan, Record<MinutesTier, MonthlyPlanConfig>][]) {
     for (const [tier, cfg] of Object.entries(tiers) as [MinutesTier, MonthlyPlanConfig][]) {
-      if (cfg.priceId && cfg.priceId() === priceId) return { plan, tier, cfg };
+      if (cfg.priceId && cfg.priceId() === priceId) return { plan, tier, cfg, isCoordinator: false };
     }
+  }
+  // Nox/Niva coordinators: sus price IDs (STRIPE_NOX_*) NO estaban aquí — resultado:
+  // invoice.payment_succeeded llegaba con price=STRIPE_NOX_STARTER, retornaba null,
+  // break → resetAiOps NO se ejecutaba → cliente Nox pagaba $2,997/mes y no recibía
+  // tareas después del primer mes. Ver Scope D1 CRIT-1.
+  for (const [tier, cfg] of Object.entries(NOX_MONTHLY_CONFIG) as [MinutesTier, MonthlyPlanConfig][]) {
+    if (cfg.priceId && cfg.priceId() === priceId) return { plan: 'pro', tier, cfg, isCoordinator: true };
   }
   return null;
 }

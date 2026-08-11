@@ -695,14 +695,27 @@ export async function POST(req: NextRequest) {
       const monthlyMatch = monthlyConfigFromPriceId(priceId);
       if (!agentId || !monthlyMatch) break;
 
-      const { tier: minutesPlan, cfg: minutesCfg } = monthlyMatch;
+      const { tier: minutesPlan } = monthlyMatch;
 
+      // Fetch completo del agente para resolver la asignación real (jornada + coordinator).
+      // ANTES: usábamos minutesCfg.minutes/aiOps de MONTHLY_CONFIG.pro que está STALE
+      // post-refactor JORNADA. Un cliente jornada='tareas' tier growth: MONTHLY dice
+      // 600 min / 200 ops, JORNADA real dice 0 min / 1200 ops. Cliente perdía 1000
+      // tareas por mes silenciosamente. Nox coordinator ni siquiera matcheaba
+      // MONTHLY_CONFIG (STRIPE_NOX_*) — recibía 0 minutos + 0 ops en cada renewal.
+      // Ver Scope C3 gap #5 + D1 CRIT-1.
       const { data: prevAgent } = await supabase
         .from('voice_agents')
-        .select('portal_email, minutes_used, minutes_included')
+        .select('portal_email, minutes_used, minutes_included, plan, jornada_type, features')
         .eq('id', agentId)
         .single();
       const renewalEmail = prevAgent?.portal_email ?? null;
+      const meerkatRoleId = (prevAgent?.features as { meerkat_role_id?: string } | null | undefined)?.meerkat_role_id;
+      const alloc = resolveTierAllocation(
+        prevAgent?.jornada_type as 'combinada' | 'minutos' | 'tareas' | undefined,
+        meerkatRoleId,
+        minutesPlan,
+      );
 
       // Actualizar tier + reactivar SOLO este agente (granularidad per-empleado).
       // No tocamos minutes_included aquí — el pool vive en account_minutes vía ledger.
@@ -712,7 +725,7 @@ export async function POST(req: NextRequest) {
         billing_status:       'activo',
         grace_period_ends_at: null,
         ...(renewalEmail ? {} : {
-          minutes_included:   minutesCfg.minutes,
+          minutes_included:   alloc.minutes,
           minutes_used:       0,
           minutes_reset_date: nextResetDate(),
         }),
@@ -720,15 +733,19 @@ export async function POST(req: NextRequest) {
 
       // Renovación: insertar credit al ledger.
       // apply_ledger_entry aplica el cap 2x automáticamente (rollover_cap si sobra).
+      // Nox coordinator: alloc.minutes=0 (correcto, sin voz) — la RPC se llama pero
+      // no hace nada (amount=0). Filtramos con guard para evitar row negativa spuria.
       if (renewalEmail) {
-        await supabase.rpc('apply_ledger_entry', {
-          p_portal_email: renewalEmail,
-          p_agent_id:     agentId,
-          p_amount:       minutesCfg.minutes,
-          p_kind:         'renewal',
-          p_reference_id: invoice.id ?? null,
-          p_description:  `Renovación mensual: ${minutesCfg.minutes} min`,
-        });
+        if (alloc.minutes > 0) {
+          await supabase.rpc('apply_ledger_entry', {
+            p_portal_email: renewalEmail,
+            p_agent_id:     agentId,
+            p_amount:       alloc.minutes,
+            p_kind:         'renewal',
+            p_reference_id: invoice.id ?? null,
+            p_description:  `Renovación mensual: ${alloc.minutes} min`,
+          });
+        }
         after(async () => {
           const { resetFallbackIfActive } = await import('@/lib/billing/fallback-restore');
           const { data: agentForName } = await supabase
@@ -739,12 +756,12 @@ export async function POST(req: NextRequest) {
           await resetFallbackIfActive(supabase, renewalEmail, agentForName?.business_name ?? 'tu empleado');
         });
         after(() => maybeNotifyRolloverLoss(supabase, { portalEmail: renewalEmail, referenceId: invoice.id ?? null }));
-      } else {
+      } else if (alloc.minutes > 0) {
         // Agente sin portal_email (legacy standalone) — mantiene ledger básico
         await supabase.from('minutes_ledger').insert({
           agent_id:    agentId,
-          amount:      minutesCfg.minutes,
-          description: `Renovación mensual, ${minutesCfg.minutes} minutos`,
+          amount:      alloc.minutes,
+          description: `Renovación mensual, ${alloc.minutes} minutos`,
           source:      'renovacion',
           kind:        'renewal',
         });
@@ -753,28 +770,17 @@ export async function POST(req: NextRequest) {
       // Reset AI ops counter on monthly renewal (legacy path — se mantiene)
       if (renewalEmail) await resetAiOps(renewalEmail);
 
-      // Ops credit via ledger en renovacion (ADICIONAL al resetAiOps legacy arriba)
-      if (renewalEmail) {
-        const { data: agentForOps } = await supabase
-          .from('voice_agents')
-          .select('plan, minutes_plan')
-          .eq('id', agentId)
-          .single();
-        const opsConfig = agentForOps?.plan && agentForOps?.minutes_plan
-          ? MONTHLY_CONFIG[agentForOps.plan as Plan]?.[agentForOps.minutes_plan as MinutesTier]
-          : undefined;
-        const opsAmount = opsConfig?.aiOps ?? 0;
-        if (opsAmount > 0) {
-          await creditOpsToPool(supabase, {
-            portalEmail: renewalEmail,
-            agentId:     agentId,
-            amount:      opsAmount,
-            kind:        'renewal',
-            referenceId: invoice.id ?? null,
-            description: `Renovacion mensual: ${opsAmount} tareas`,
-          });
-          after(() => maybeNotifyPoolLoss(supabase, { portalEmail: renewalEmail, referenceId: invoice.id ?? null, resource: 'ops' }));
-        }
+      // Ops credit via ledger en renovacion (ADICIONAL al resetAiOps legacy arriba).
+      if (renewalEmail && alloc.aiOps > 0) {
+        await creditOpsToPool(supabase, {
+          portalEmail: renewalEmail,
+          agentId:     agentId,
+          amount:      alloc.aiOps,
+          kind:        'renewal',
+          referenceId: invoice.id ?? null,
+          description: `Renovacion mensual: ${alloc.aiOps} tareas`,
+        });
+        after(() => maybeNotifyPoolLoss(supabase, { portalEmail: renewalEmail, referenceId: invoice.id ?? null, resource: 'ops' }));
       }
 
       // Re-associate Vapi solo para el agente cuya sub renovó (granularidad per-empleado).
