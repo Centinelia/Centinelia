@@ -13,7 +13,12 @@ export type OpsLedgerKind =
   | 'annual_grant'
   | 'unused_forfeited'
   | 'consumption'
-  | 'refund';
+  | 'refund'
+  | 'plan_downgrade'
+  | 'plan_upgrade'
+  | 'dispute_chargeback'
+  | 'invoice_voided'
+  | 'reconciliacion';
 
 export interface OpsLedgerEntry {
   id:          string;
@@ -36,6 +41,11 @@ const KIND_META: Record<OpsLedgerKind, { iconKey: string; color: string; label: 
   unused_forfeited:   { iconKey: 'trending-down', color: '#B45309', label: 'No consumido' },
   consumption:        { iconKey: 'rotate',        color: '#6B7280', label: 'Consumo' },
   refund:             { iconKey: 'undo',          color: '#10B981', label: 'Reembolso por error' },
+  plan_downgrade:     { iconKey: 'trending-down', color: '#f59e0b', label: 'Downgrade de plan' },
+  plan_upgrade:       { iconKey: 'zap',           color: '#10B981', label: 'Upgrade de plan' },
+  dispute_chargeback: { iconKey: 'x',             color: '#dc2626', label: 'Chargeback (dispute)' },
+  invoice_voided:     { iconKey: 'undo',          color: '#B45309', label: 'Factura anulada' },
+  reconciliacion:     { iconKey: 'sliders',       color: '#6B7280', label: 'Reconciliación' },
 };
 
 function renderIcon(iconKey: string) {

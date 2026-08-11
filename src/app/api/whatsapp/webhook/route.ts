@@ -8,6 +8,7 @@ import { checkAccount } from '@/lib/compliance/account-guard';
 import { logLlmCall } from '@/lib/observability/llm-log';
 import type { WAMessage, WACapturedLead } from '@/types/whatsapp-agent';
 import type { VoiceAgent } from '@/types/agent';
+import { consumeAiOp, refundOps } from '@/lib/ai/ops-guard';
 
 export const dynamic = 'force-dynamic';
 
@@ -301,6 +302,10 @@ export async function POST(req: NextRequest) {
   let claudeReply = '';
   let capturedLead: WACapturedLead | null = null;
 
+  // Fix N6 audit 2026-08-10: cobrar 1 op por respuesta WhatsApp (antes silent).
+  // Refund si el LLM falla — el cliente no debe pagar por errores nuestros.
+  const waOpsCharge = await consumeAiOp(agent.id as string, 1, { source: 'whatsapp_reply', label: 'Respuesta WhatsApp' });
+
   try {
     const __waT = Date.now();
     const __waM = 'claude-haiku-4-5-20251001';
@@ -469,6 +474,10 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     console.error('wa/webhook: Claude error', err);
     claudeReply = 'Lo siento, hubo un problema procesando tu mensaje. Por favor intenta nuevamente.';
+    // Fix N6: refund op si el LLM falló — cliente no debe pagar por errores.
+    if (waOpsCharge.ok) {
+      void refundOps(agent.id as string, 1, { label: 'Respuesta WhatsApp (fallo LLM)' });
+    }
   }
 
   if (!claudeReply) {

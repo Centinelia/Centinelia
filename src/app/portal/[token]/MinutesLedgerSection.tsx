@@ -24,13 +24,13 @@ export default async function MinutesLedgerSection({
       .select('id, created_at, amount, description, source')
       .eq('agent_id', agentId)
       .order('created_at', { ascending: false })
-      .limit(200),
+      .limit(2000),
     supabase
       .from('voice_calls')
       .select('id, created_at, duration_seconds, caller_number')
       .eq('agent_id', agentId)
       .order('created_at', { ascending: false })
-      .limit(500),
+      .limit(5000),
   ]);
 
   const credits: Omit<Entry, 'balance'>[] = (ledgerRes.data ?? []).map(r => ({

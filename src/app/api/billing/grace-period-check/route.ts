@@ -4,6 +4,7 @@ import { pauseVapiAgent } from '@/lib/vapi/control';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { sendEmail, agentPausedHtml } from '@/lib/email/send';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
+import { alertCronPartialFailure } from '@/lib/cron/alert-partial-failure';
 
 export async function GET(req: NextRequest) {
   if (!verifyCronAuth(req)) {
@@ -33,30 +34,69 @@ export async function GET(req: NextRequest) {
   const nonStripeSet = new Set((nonStripeOrgs ?? []).map(o => o.portal_email));
 
   const paused: string[] = [];
+  const errors: string[] = [];
+  // Considerar solo los que pertenecen a stripe (no skipped)
+  const eligibleAgents = (agents ?? []).filter(a => !(a.portal_email && nonStripeSet.has(a.portal_email)));
 
-  for (const agent of agents ?? []) {
-    if (agent.portal_email && nonStripeSet.has(agent.portal_email)) continue;
-    await supabase.from('voice_agents').update({ active: false }).eq('id', agent.id);
+  for (const agent of eligibleAgents) {
+    try {
+      // Fix T6 audit 2026-08-10: re-read state antes de pause. Race: cron leyó
+      // snapshot hace ~1s, webhook invoice.payment_succeeded pudo haber corrido
+      // en ese lapso reseteando billing_status='activo'. Sin este re-check
+      // pausaríamos un agente que ya pagó.
+      const { data: agentNow } = await supabase
+        .from('voice_agents')
+        .select('billing_status, grace_period_ends_at, active')
+        .eq('id', agent.id)
+        .maybeSingle();
+      const stillEligible = agentNow?.billing_status === 'pago_fallido'
+        && agentNow?.active === true
+        && agentNow?.grace_period_ends_at
+        && new Date(agentNow.grace_period_ends_at as string).toISOString() <= now;
+      if (!stillEligible) continue;
 
-    if (agent.phone_number) await pauseVapiAgent(agent.phone_number);
+      await supabase.from('voice_agents').update({ active: false }).eq('id', agent.id);
 
-    if (agent.transfer_whatsapp) {
-      await sendWhatsApp(
-        agent.transfer_whatsapp,
-        `📴 *Agente pausado, ${agent.business_name}*\n\nEl período de gracia venció sin recibir el pago. Tu agente de voz ha sido pausado.\n\nActualiza tu método de pago para reactivar el servicio.`
-      ).catch(console.error);
+      // Fix M-c audit 2026-08-10: ledger row del pause por grace period expirado.
+      await supabase.from('minutes_ledger').insert({
+        portal_email: agent.portal_email ?? null,
+        agent_id:     agent.id,
+        amount:       0,
+        description:  `Agente pausado · grace period de pago expirado`,
+        source:       'ajuste',
+        kind:         'auto_paused',
+        reference_id: `grace_expired_${agent.id}_${Date.now()}`,
+      });
+
+      if (agent.phone_number) await pauseVapiAgent(agent.phone_number);
+
+      if (agent.transfer_whatsapp) {
+        await sendWhatsApp(
+          agent.transfer_whatsapp,
+          `📴 *Agente pausado, ${agent.business_name}*\n\nEl período de gracia venció sin recibir el pago. Tu agente de voz ha sido pausado.\n\nActualiza tu método de pago para reactivar el servicio.`
+        ).catch(console.error);
+      }
+
+      if (agent.client_email) {
+        await sendEmail({
+          to: agent.client_email,
+          subject: `📴 Agente pausado, ${agent.business_name}`,
+          html: agentPausedHtml(agent.business_name),
+        }).catch(console.error);
+      }
+
+      paused.push(agent.id);
+    } catch (err) {
+      errors.push(`${agent.id}: ${err instanceof Error ? err.message : String(err)}`);
     }
-
-    if (agent.client_email) {
-      await sendEmail({
-        to: agent.client_email,
-        subject: `📴 Agente pausado, ${agent.business_name}`,
-        html: agentPausedHtml(agent.business_name),
-      }).catch(console.error);
-    }
-
-    paused.push(agent.id);
   }
 
-  return NextResponse.json({ paused, count: paused.length });
+  await alertCronPartialFailure(supabase, {
+    cronName:  'grace-period-check',
+    expected:  eligibleAgents.length,
+    processed: paused.length,
+    errors,
+  });
+
+  return NextResponse.json({ paused, count: paused.length, errors: errors.length });
 }

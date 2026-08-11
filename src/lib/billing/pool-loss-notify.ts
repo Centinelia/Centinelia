@@ -169,6 +169,23 @@ export async function maybeNotifyPoolLoss(
     }
   } catch (err) {
     console.error('[pool-loss-notify] error', err);
+    // Persistir en platform_incidents para que Nash detecte y escale. Evita
+    // que un fallo silencioso de sendEmail deje al cliente sin aviso de pérdida.
+    try {
+      const message = err instanceof Error ? err.message : String(err);
+      await supabase.from('platform_incidents').insert({
+        title:                 `Fallo notif pérdida ${params.resource} — ${params.portalEmail}`,
+        description:           `maybeNotifyPoolLoss falló para portal_email=${params.portalEmail} referenceId=${params.referenceId ?? 'null'} resource=${params.resource}: ${message}`,
+        priority:              'high',
+        source:                'error_log',
+        source_id:             params.referenceId ?? null,
+        affected_portal_email: params.portalEmail,
+        status:                'open',
+        assigned_to:           'nash',
+      });
+    } catch (writeErr) {
+      console.error('[pool-loss-notify] no pude escribir platform_incidents', writeErr);
+    }
   }
 }
 

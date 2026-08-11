@@ -62,6 +62,40 @@ export async function POST(req: NextRequest) {
 
   const supabase = createAdminClient();
 
+  // Idempotency gate (fix C3 audit 2026-08-10). Stripe reintenta webhooks; sin
+  // este check un retry de `invoice.payment_succeeded` acreditaría minutos dos
+  // veces al ledger. Insertamos event.id como PK — ON CONFLICT DO NOTHING nos
+  // dice si ya se procesó. Ver migrations/20260810_stripe_webhook_events_idempotency.sql
+  {
+    // Extraer identifiers auxiliares para debugging del ledger de eventos.
+    const eventObj = event.data.object as unknown as Record<string, unknown>;
+    const sessionId = event.type.startsWith('checkout.session.') ? (eventObj.id as string | undefined) : undefined;
+    const subscriptionId = ((eventObj.subscription as string | undefined) ?? (event.type.startsWith('customer.subscription.') ? (eventObj.id as string | undefined) : undefined)) ?? null;
+    const portalEmailMeta = (((eventObj.metadata as Record<string, unknown> | undefined)?.portal_email as string | undefined) ?? null);
+
+    const { data: inserted, error: insertErr } = await supabase
+      .from('stripe_webhook_events')
+      .insert({
+        event_id:        event.id,
+        event_type:      event.type,
+        session_id:      sessionId ?? null,
+        subscription_id: subscriptionId,
+        portal_email:    portalEmailMeta,
+      })
+      .select('event_id')
+      .maybeSingle();
+
+    if (insertErr && insertErr.code === '23505') {
+      // Duplicate key — evento ya procesado. Retornar 200 para que Stripe deje de reintentar.
+      return NextResponse.json({ ok: true, deduped: true });
+    }
+    if (insertErr) {
+      // Cualquier otro error DB: log y proceder (mejor procesar dos veces que perder un evento).
+      console.error('[stripe-webhook] insertErr en stripe_webhook_events', { code: insertErr.code, event_id: event.id, err: insertErr.message });
+    }
+    void inserted;
+  }
+
   switch (event.type) {
     case 'checkout.session.completed': {
       const session = event.data.object as Stripe.Checkout.Session;
@@ -248,6 +282,22 @@ export async function POST(req: NextRequest) {
           ledgerEnabled = !!org?.ops_ledger_enabled;
         }
 
+        // Idempotency capa 2 (belt-and-suspenders): el gate top-level
+        // (stripe_webhook_events) ya deduplicó por event.id. Este check
+        // adicional protege contra el caso raro de que Stripe emita 2 eventos
+        // DIFERENTES (event.id distinto) para el mismo checkout — visto en
+        // ambientes de test cuando se resimula un pago.
+        if (session.id && ledgerEnabled && portalEmail) {
+          const { data: dup } = await supabase
+            .from('ops_ledger')
+            .select('id')
+            .eq('portal_email', portalEmail)
+            .eq('kind', 'extra_ops_purchase')
+            .eq('reference_id', session.id)
+            .maybeSingle();
+          if (dup) { break; }
+        }
+
         if (ledgerEnabled && portalEmail) {
           // NEW path: escribe al ledger, cap 2x aplicado automaticamente por RPC
           await supabase.rpc('apply_ops_ledger_entry', {
@@ -260,14 +310,28 @@ export async function POST(req: NextRequest) {
           });
           after(() => maybeNotifyPoolLoss(supabase, { portalEmail, referenceId: session.id ?? null, resource: 'ops' }));
         } else {
-          // LEGACY: comportamiento original — actualiza ai_ops_limit directamente
+          // LEGACY: sin ledger, aplica al agente ESPECÍFICO que compró (nunca
+          // homogenizar tiers de peers). Luego recompute el pool org-level para
+          // que quede consistente con la suma real de tiers heterogéneos.
           const newOpsLimit = ((agent.ai_ops_limit as number) ?? 0) + ops;
+          await supabase.from('voice_agents')
+            .update({ ai_ops_limit: newOpsLimit }).eq('id', agentId);
           if (portalEmail) {
-            await supabase.from('voice_agents')
-              .update({ ai_ops_limit: newOpsLimit }).eq('portal_email', portalEmail);
-          } else {
-            await supabase.from('voice_agents')
-              .update({ ai_ops_limit: newOpsLimit }).eq('id', agentId);
+            await recomputeOrgOpsPool(portalEmail);
+            // Marker de idempotencia para legacy path (sin ledger).
+            if (session.id) {
+              await supabase.from('platform_incidents').insert({
+                title:                 `Crédito extra_ops legacy — ${ops} tareas`,
+                description:            `Aplicado a agent_id=${agentId} vía checkout ${session.id}. Marker de idempotencia.`,
+                priority:              'low',
+                source:                'extra_ops_credit',
+                source_id:             session.id,
+                affected_portal_email: portalEmail,
+                status:                'resolved',
+                assigned_to:           'nash',
+                resolution:            `+${ops} tareas aplicadas correctamente.`,
+              });
+            }
           }
         }
 
@@ -806,9 +870,202 @@ export async function POST(req: NextRequest) {
       break;
     }
 
+    // ─────────────────────────────────────────────────────────────────────
+    // Refund / dispute / void handlers (fix C5 audit 2026-08-10)
+    // Antes: 0 handlers. Un refund en Stripe = cliente conservaba minutos/ops
+    // sin registro. Auditor Municipio: "aquí hay ingreso reembolsado pero el
+    // ledger dice consumido, ¿fraude?".
+    // Ahora: cada evento inserta ledger negativo con kind explícito y crea
+    // platform_incident para revisión humana (los cases financieros no se
+    // procesan silenciosamente).
+    // ─────────────────────────────────────────────────────────────────────
+    case 'charge.refunded': {
+      const charge = event.data.object as Stripe.Charge;
+      // charge.invoice existe en runtime (Stripe API) pero no en los tipos actuales.
+      const chargeInvoiceRaw = (charge as unknown as { invoice?: string | { id?: string } }).invoice;
+      const invoiceId = typeof chargeInvoiceRaw === 'string' ? chargeInvoiceRaw : (chargeInvoiceRaw?.id ?? null);
+      // Fix T4 audit 2026-08-10: Stripe soporta partial refunds. Antes reversábamos
+      // 100% del credit original incluso si refund fue solo 50%. Ahora calculamos
+      // fracción real = amount_refunded / original_amount.
+      const refundFraction = charge.amount > 0
+        ? Math.min(1, (charge.amount_refunded ?? 0) / charge.amount)
+        : 1;
+      await handleFinancialReversal(supabase, {
+        kind:          'refund',
+        priority:      'high',
+        referenceId:   invoiceId,
+        chargeId:      charge.id,
+        amountRefunded: (charge.amount_refunded ?? 0) / 100,
+        currency:      charge.currency,
+        fraction:      refundFraction,
+        title:         `Refund Stripe${refundFraction < 1 ? ' PARCIAL' : ''} — ${(charge.amount_refunded ?? 0) / 100} ${charge.currency?.toUpperCase()}`,
+        description:   `charge=${charge.id} invoice=${invoiceId ?? 'n/a'} amount_refunded=${(charge.amount_refunded ?? 0) / 100} de ${charge.amount / 100} ${charge.currency} (${(refundFraction * 100).toFixed(1)}%). Cliente reembolsado; reversión proporcional aplicada.`,
+      });
+      break;
+    }
+    case 'charge.dispute.created': {
+      const dispute = event.data.object as Stripe.Dispute;
+      const chargeId = typeof dispute.charge === 'string' ? dispute.charge : (dispute.charge?.id ?? null);
+      let invoiceId: string | null = null;
+      if (chargeId) {
+        try {
+          const ch = await stripe.charges.retrieve(chargeId);
+          const chInvoiceRaw = (ch as unknown as { invoice?: string | { id?: string } }).invoice;
+          invoiceId = typeof chInvoiceRaw === 'string' ? chInvoiceRaw : (chInvoiceRaw?.id ?? null);
+        } catch (err) {
+          console.error('[stripe-webhook] no pude retrieve charge para dispute', err);
+        }
+      }
+      await handleFinancialReversal(supabase, {
+        kind:          'dispute_chargeback',
+        priority:      'critical',
+        referenceId:   invoiceId,
+        chargeId:      chargeId,
+        amountRefunded: (dispute.amount ?? 0) / 100,
+        currency:      dispute.currency,
+        title:         `Dispute Stripe (${dispute.reason ?? 'n/a'}) — ${(dispute.amount ?? 0) / 100} ${dispute.currency?.toUpperCase()}`,
+        description:   `dispute=${dispute.id} charge=${chargeId ?? 'n/a'} reason=${dispute.reason ?? 'n/a'} status=${dispute.status ?? 'n/a'} amount=${(dispute.amount ?? 0) / 100} ${dispute.currency}. Requiere evidencia en Stripe y decisión sobre revertir el consumo.`,
+      });
+      break;
+    }
+    case 'invoice.voided': {
+      const invoice = event.data.object as Stripe.Invoice;
+      await handleFinancialReversal(supabase, {
+        kind:          'invoice_voided',
+        priority:      'high',
+        referenceId:   invoice.id ?? null,
+        chargeId:      null,
+        amountRefunded: (invoice.amount_paid ?? 0) / 100,
+        currency:      invoice.currency,
+        title:         `Invoice Stripe anulado — ${(invoice.amount_paid ?? 0) / 100} ${invoice.currency?.toUpperCase()}`,
+        description:   `invoice=${invoice.id} anulado. Si tenía pago aplicado (${(invoice.amount_paid ?? 0) / 100}), el ledger asociado necesita reversión manual.`,
+      });
+      break;
+    }
+    case 'charge.dispute.closed': {
+      // Fix T5 audit 2026-08-10: dispute lifecycle. Si ganamos (status='won'),
+      // debemos revertir la reversal que hicimos en dispute.created. Si perdimos,
+      // la reversal se queda (dinero perdido + minutos revertidos = correcto).
+      const dispute = event.data.object as Stripe.Dispute;
+      const chargeId = typeof dispute.charge === 'string' ? dispute.charge : (dispute.charge?.id ?? null);
+      let invoiceId: string | null = null;
+      if (chargeId) {
+        try {
+          const ch = await stripe.charges.retrieve(chargeId);
+          const chInvoiceRaw = (ch as unknown as { invoice?: string | { id?: string } }).invoice;
+          invoiceId = typeof chInvoiceRaw === 'string' ? chInvoiceRaw : (chInvoiceRaw?.id ?? null);
+        } catch (err) {
+          console.error('[stripe-webhook] no pude retrieve charge para dispute.closed', err);
+        }
+      }
+      const won = dispute.status === 'won';
+      // Crear incident con verdicto para revisión manual — no auto-revierte la
+      // reversal (decisión humana con contexto business).
+      await supabase.from('platform_incidents').insert({
+        title:                 `Dispute cerrada (${dispute.status}) — ${(dispute.amount ?? 0) / 100} ${dispute.currency?.toUpperCase()}`,
+        description:           `dispute=${dispute.id} charge=${chargeId ?? 'n/a'} status=${dispute.status ?? 'n/a'} reason=${dispute.reason ?? 'n/a'}\n\n${won ? '✅ GANAMOS: la reversal previa (dispute_chargeback) debería REVERTIRSE. Insertar ledger positivo compensando el negativo original con reference_id=' + (invoiceId ?? 'n/a') : '❌ PERDIMOS: la reversal queda. Dinero perdido en la dispute + minutos ya revertidos = estado correcto.'}\n\nInvoice: ${invoiceId ?? 'n/a'}. Requiere validación manual antes de tocar cache.`,
+        priority:              won ? 'high' : 'med',
+        source:                'error_log',
+        source_id:             dispute.id,
+        affected_portal_email: null,
+        status:                'open',
+        assigned_to:           'owner',
+      });
+      break;
+    }
+
     default:
       break;
   }
 
   return NextResponse.json({ ok: true });
+}
+
+// Auxiliar C5: inserta ledger negativo (si hay referencia detectable) + crea
+// platform_incident para revisión humana. Diseñado conservador: nunca borra
+// automáticamente saldo consumido sin evidencia — deja constancia y espera
+// decisión de Nazre o Nash. Municipio quiere ver la reversión, no vacilaciones.
+async function handleFinancialReversal(
+  supabase: ReturnType<typeof createAdminClient>,
+  args: {
+    kind:            'refund' | 'dispute_chargeback' | 'invoice_voided';
+    priority:        'med' | 'high' | 'critical';
+    referenceId:     string | null;
+    chargeId:        string | null;
+    amountRefunded:  number;
+    currency:        string | null | undefined;
+    title:           string;
+    description:     string;
+    fraction?:       number;   // 0..1, default 1 (full reversal). Fix T4 audit: partial refunds.
+  }
+): Promise<void> {
+  let portalEmailHit: string | null = null;
+  let matchedMinutes = 0;
+  let matchedOps = 0;
+  const fraction = Math.max(0, Math.min(1, args.fraction ?? 1));
+
+  // Buscar en ambos ledgers por reference_id para reconstruir qué se acreditó.
+  if (args.referenceId) {
+    const { data: minRows } = await supabase
+      .from('minutes_ledger')
+      .select('portal_email, agent_id, amount')
+      .eq('reference_id', args.referenceId);
+    let totalMinCredits = 0;
+    for (const r of (minRows ?? [])) {
+      if ((r.amount ?? 0) > 0) totalMinCredits += (r.amount as number);
+      if (!portalEmailHit && r.portal_email) portalEmailHit = r.portal_email as string;
+    }
+    matchedMinutes = Math.floor(totalMinCredits * fraction);   // Proporcional al fraction del refund
+    const { data: opsRows } = await supabase
+      .from('ops_ledger')
+      .select('portal_email, agent_id, amount')
+      .eq('reference_id', args.referenceId);
+    let totalOpsCredits = 0;
+    for (const r of (opsRows ?? [])) {
+      if ((r.amount ?? 0) > 0) totalOpsCredits += (r.amount as number);
+      if (!portalEmailHit && r.portal_email) portalEmailHit = r.portal_email as string;
+    }
+    matchedOps = Math.floor(totalOpsCredits * fraction);
+
+    // Reference_id compuesto para partial refunds (evita UNIQUE collision con
+    // el reversal completo previo si Stripe manda 2 partial refunds sobre el
+    // mismo invoice).
+    const reversalRef = fraction < 1
+      ? `${args.referenceId}_partial_${Math.round(fraction * 100)}pct_${Date.now()}`
+      : args.referenceId;
+
+    // Insertar rows negativos para audit trail (no revierte cache — eso es
+    // decisión humana en el incident).
+    if (matchedMinutes > 0 && portalEmailHit) {
+      await supabase.from('minutes_ledger').insert({
+        portal_email: portalEmailHit,
+        amount:       -matchedMinutes,
+        description:  `[REVERSION PENDIENTE] ${args.title}${fraction < 1 ? ` (${(fraction * 100).toFixed(1)}% de ${totalMinCredits} min)` : ''}`,
+        source:       args.kind,
+        kind:         args.kind,
+        reference_id: reversalRef,
+      });
+    }
+    if (matchedOps > 0 && portalEmailHit) {
+      await supabase.from('ops_ledger').insert({
+        portal_email: portalEmailHit,
+        amount:       -matchedOps,
+        description:  `[REVERSION PENDIENTE] ${args.title}${fraction < 1 ? ` (${(fraction * 100).toFixed(1)}% de ${totalOpsCredits} tareas)` : ''}`,
+        source:       args.kind,
+        kind:         args.kind,
+        reference_id: reversalRef,
+      });
+    }
+  }
+
+  await supabase.from('platform_incidents').insert({
+    title:                 args.title,
+    description:           `${args.description}\n\nMatch en ledgers por reference_id=${args.referenceId ?? 'n/a'}: minutos=${matchedMinutes} tareas=${matchedOps} portal_email=${portalEmailHit ?? 'no encontrado'}. Se insertaron rows negativos en ledger como [REVERSION PENDIENTE]. Revisar y confirmar/revertir cache manual.`,
+    priority:              args.priority,
+    source:                'error_log',
+    source_id:             args.chargeId ?? args.referenceId,
+    affected_portal_email: portalEmailHit,
+    status:                'open',
+    assigned_to:           'owner',
+  });
 }

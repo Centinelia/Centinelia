@@ -80,6 +80,10 @@ export const PORTAL_MODULES = [
     desc: 'Historial de llamadas entrantes y salientes, grabaciones y transcripciones.',
   },
   {
+    id: 'of_contactos', label: 'Contactos', group: 'Oficina', giros: ['all'] as string[],
+    desc: 'Directorio de contactos: importar CSV/Notion/Sheets, tags y segmentación. Se usa desde campañas, encuestas y escalaciones.',
+  },
+  {
     id: 'campanas', label: 'Campañas', group: 'Oficina', giros: ['all'] as string[],
     desc: 'Campañas de llamadas salientes y encuestas de satisfacción post-llamada.',
   },
@@ -146,6 +150,11 @@ export const ROUTE_MODULE_MAP: Record<string, string | string[]> = {
   'oficina/reportes-ciudadanos':   'of_reportes_ciudadanos',
   'oficina/cabildo':               'of_cabildo',
   'oficina/llamadas':              'llamadas',
+  // Contactos salió de Campañas el 2026-08-10 — ahora es página propia
+  // porque es asset transversal (campañas, encuestas, escalaciones, CRM).
+  // Sub-user necesita `of_contactos` O `campanas` (retrocompat con quien
+  // ya podía manejar contactos dentro del tab viejo).
+  'oficina/contactos':             ['of_contactos', 'campanas'],
   // Unificado 2026-08-09: /oficina/campanas agrupa salientes + encuestas
   // (+ correos futuro). Sub-user necesita CUALQUIERA de los dos módulos.
   'oficina/campanas':              ['campanas', 'of_encuestas'],

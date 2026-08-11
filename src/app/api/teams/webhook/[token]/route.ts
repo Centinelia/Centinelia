@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import Anthropic from '@anthropic-ai/sdk';
 import { logLlmCall } from '@/lib/observability/llm-log';
+import { consumeAiOp, refundOps } from '@/lib/ai/ops-guard';
 
 const anthropic = new Anthropic();
 
@@ -93,6 +94,8 @@ export async function POST(req: NextRequest, { params }: Params) {
   let reply = '';
   const __t = Date.now();
   const __m = 'claude-haiku-4-5-20251001';
+  // Fix N6 audit: cobrar 1 op por respuesta Teams (antes silent).
+  const teamsCharge = await consumeAiOp(agent.id, 1, { source: 'teams_reply', label: 'Respuesta Microsoft Teams' });
   try {
     const msg = await anthropic.messages.create({
       model:      __m,
@@ -105,6 +108,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   } catch (err) {
     void logLlmCall({ source: 'teams_webhook', model: __m, usage: { input_tokens: 0, output_tokens: 0 }, agentId: agent.id, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err) });
     console.error('[teams-webhook] Claude error:', err);
+    if (teamsCharge.ok) void refundOps(agent.id, 1, { label: 'Respuesta Teams (fallo LLM)' });
     return NextResponse.json({ error: 'Error generando respuesta' }, { status: 500 });
   }
 

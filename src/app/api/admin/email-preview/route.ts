@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
+import { isAdmin } from '@/lib/admin/auth';
 import {
   weeklyReportHtml,
   welcomeHtml,
@@ -72,6 +73,7 @@ const TEMPLATES: Record<string, () => string> = {
 };
 
 export async function GET(req: NextRequest) {
+  if (!(await isAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const template = req.nextUrl.searchParams.get('t') ?? 'reauth-gmail';
   const fn = TEMPLATES[template];
 

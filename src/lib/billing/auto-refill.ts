@@ -34,11 +34,12 @@ export async function executeAutoRefill(
   const pm  = pms.data[0];
   if (!pm) return { ok: false, error: 'no_payment_method' };
 
-  // Idempotency key: one charge per agent per hour-window.
-  // Retries within the same hour reuse the key → Stripe returns the original
-  // result instead of creating a second PaymentIntent.
+  // Idempotency key: one charge per agent per DAY-window (antes era por hora,
+  // pero un cliente cruzando umbral 2 veces en misma hora podía disparar 2
+  // cargos si Stripe cambiaba de intent — bug H5 audit). Con ventana diaria,
+  // cualquier disparo repetido en el día reusa la key.
   const now    = new Date();
-  const window = `${now.getUTCFullYear()}${now.getUTCMonth()}${now.getUTCDate()}${now.getUTCHours()}`;
+  const window = `${now.getUTCFullYear()}${String(now.getUTCMonth() + 1).padStart(2, '0')}${String(now.getUTCDate()).padStart(2, '0')}`;
   const idempotencyKey = `auto_refill_${agentId}_${window}`;
 
   // Off-session charge — does NOT redirect the customer
@@ -63,41 +64,64 @@ export async function executeAutoRefill(
 
   if (pi.status !== 'succeeded') return { ok: false, error: `pi_status_${pi.status}` };
 
-  // Credit the minutes via ledger (respeta cap 2x, trigger refresca cache).
-  if (agent.portal_email) {
-    await supabase.rpc('apply_ledger_entry', {
-      p_portal_email: agent.portal_email,
-      p_agent_id:     agentId,
-      p_amount:       minutes,
-      p_kind:         'auto_refill',
-      p_reference_id: pi.id ?? null,
-      p_description:  `Auto-recarga ${minutes} min · $${amountMxn.toLocaleString('es-MX')} MXN`,
-    });
-    // Reactivar solo el agente que se recargó (granularidad per-empleado)
-    await supabase.from('voice_agents')
-      .update({ active: true, billing_status: 'activo' }).eq('id', agentId);
-    if (agent.phone_number && agent.vapi_agent_id) {
-      await resumeVapiAgent(agent.phone_number, agent.vapi_agent_id);
-    }
+  // Fix T3 audit 2026-08-10: envolver ledger credit en try/catch. Si Stripe
+  // charge OK + ledger fail = dinero cobrado sin acreditar (fraud risk crítico).
+  // Ahora: platform_incident URGENT si divergen, evita throw silencioso.
+  try {
     if (agent.portal_email) {
-      const { resetFallbackIfActive } = await import('./fallback-restore');
-      await resetFallbackIfActive(supabase, agent.portal_email, agent.business_name ?? 'tu empleado');
+      const { error: ledErr } = await supabase.rpc('apply_ledger_entry', {
+        p_portal_email: agent.portal_email,
+        p_agent_id:     agentId,
+        p_amount:       minutes,
+        p_kind:         'auto_refill',
+        p_reference_id: pi.id ?? null,
+        p_description:  `Auto-recarga ${minutes} min · $${amountMxn.toLocaleString('es-MX')} MXN`,
+      });
+      if (ledErr) throw ledErr;
+      // Reactivar solo el agente que se recargó (granularidad per-empleado)
+      await supabase.from('voice_agents')
+        .update({ active: true, billing_status: 'activo' }).eq('id', agentId);
+      if (agent.phone_number && agent.vapi_agent_id) {
+        await resumeVapiAgent(agent.phone_number, agent.vapi_agent_id);
+      }
+      if (agent.portal_email) {
+        const { resetFallbackIfActive } = await import('./fallback-restore');
+        await resetFallbackIfActive(supabase, agent.portal_email, agent.business_name ?? 'tu empleado');
+      }
+    } else {
+      const { data: cur } = await supabase.from('voice_agents').select('minutes_included').eq('id', agentId).single();
+      await supabase.from('voice_agents')
+        .update({ minutes_included: (cur?.minutes_included ?? 0) + minutes, active: true, billing_status: 'activo' })
+        .eq('id', agentId);
+      if (agent.phone_number && agent.vapi_agent_id) {
+        await resumeVapiAgent(agent.phone_number, agent.vapi_agent_id);
+      }
+      const { error: ledInsErr } = await supabase.from('minutes_ledger').insert({
+        agent_id:    agentId,
+        amount:      minutes,
+        description: `Auto-recarga ${minutes} min · $${amountMxn.toLocaleString('es-MX')} MXN`,
+        source:      'auto_recarga',
+        kind:        'auto_refill',
+      });
+      if (ledInsErr) throw ledInsErr;
     }
-  } else {
-    const { data: cur } = await supabase.from('voice_agents').select('minutes_included').eq('id', agentId).single();
-    await supabase.from('voice_agents')
-      .update({ minutes_included: (cur?.minutes_included ?? 0) + minutes, active: true, billing_status: 'activo' })
-      .eq('id', agentId);
-    if (agent.phone_number && agent.vapi_agent_id) {
-      await resumeVapiAgent(agent.phone_number, agent.vapi_agent_id);
-    }
-    await supabase.from('minutes_ledger').insert({
-      agent_id:    agentId,
-      amount:      minutes,
-      description: `Auto-recarga ${minutes} min · $${amountMxn.toLocaleString('es-MX')} MXN`,
-      source:      'auto_recarga',
-      kind:        'auto_refill',
+  } catch (ledErr) {
+    // MONEY-CRITICAL: charge succeeded (pi.status='succeeded') but ledger failed.
+    // Insert URGENT incident para reconciliación manual + return error al caller
+    // (fire-and-forget en caller no debe silenciar esto).
+    const errMsg = ledErr instanceof Error ? ledErr.message : String(ledErr);
+    console.error('[auto-refill] MONEY LEAK — charge OK but ledger failed', { agentId, pi_id: pi.id, err: errMsg });
+    await supabase.from('platform_incidents').insert({
+      title:                 `🚨 AUTO-REFILL MONEY LEAK — Charge ${pi.id} OK pero ledger falló`,
+      description:           `Stripe cobró $${amountMxn.toLocaleString('es-MX')} MXN al cliente pero la escritura al ledger falló.\nAgent: ${agentId}\nPaymentIntent: ${pi.id}\nMinutos que debieron acreditarse: ${minutes}\nError: ${errMsg}\n\nAcción manual: verificar si hay que aplicar ledger manualmente o refund en Stripe.`,
+      priority:              'critical',
+      source:                'error_log',
+      source_id:             pi.id ?? null,
+      affected_portal_email: agent.portal_email ?? null,
+      status:                'open',
+      assigned_to:           'owner',
     });
+    return { ok: false, error: `ledger_failed_after_charge: ${errMsg}` };
   }
 
   return { ok: true, minutesAdded: minutes };
@@ -132,8 +156,10 @@ export async function executeAutoRefillOps(
   const pm  = pms.data[0];
   if (!pm) return { ok: false, error: 'no_payment_method' };
 
+  // Ventana diaria (ver comentario en executeAutoRefill arriba). Evita doble
+  // cargo cuando el umbral se cruza varias veces el mismo día.
   const now    = new Date();
-  const window = `${now.getUTCFullYear()}${now.getUTCMonth()}${now.getUTCDate()}${now.getUTCHours()}`;
+  const window = `${now.getUTCFullYear()}${String(now.getUTCMonth() + 1).padStart(2, '0')}${String(now.getUTCDate()).padStart(2, '0')}`;
   const idempotencyKey = `auto_refill_ops_${agentId}_${window}`;
 
   let pi;
@@ -157,39 +183,59 @@ export async function executeAutoRefillOps(
 
   if (pi.status !== 'succeeded') return { ok: false, error: `pi_status_${pi.status}` };
 
-  // Credit ops via ledger (respeta cap, trigger refresca cache) when enabled;
-  // otherwise fall back to legacy direct update on ai_ops_limit.
+  // Fix T3 audit 2026-08-10: envolver ledger credit en try/catch. Charge OK +
+  // ledger fail = fraud risk (dinero cobrado sin acreditar). Platform_incident
+  // URGENT si divergen.
   const currentLimit = (agent.ai_ops_limit as number) ?? 0;
-  if (agent.portal_email) {
-    const { data: org } = await supabase
-      .from('organizations')
-      .select('ops_ledger_enabled')
-      .eq('portal_email', agent.portal_email)
-      .maybeSingle();
+  try {
+    if (agent.portal_email) {
+      const { data: org } = await supabase
+        .from('organizations')
+        .select('ops_ledger_enabled')
+        .eq('portal_email', agent.portal_email)
+        .maybeSingle();
 
-    if (org?.ops_ledger_enabled) {
-      await supabase.rpc('apply_ops_ledger_entry', {
-        p_portal_email: agent.portal_email,
-        p_agent_id:     agentId,
-        p_amount:       ops,
-        p_kind:         'auto_refill_ops',
-        p_reference_id: pi.id ?? null,
-        p_description:  `Auto-recarga ${ops} tareas · $${amountMxn.toLocaleString('es-MX')} MXN`,
-      });
-      await maybeNotifyPoolLoss(supabase, { portalEmail: agent.portal_email, referenceId: pi.id ?? null, resource: 'ops' });
+      if (org?.ops_ledger_enabled) {
+        const { error: ledErr } = await supabase.rpc('apply_ops_ledger_entry', {
+          p_portal_email: agent.portal_email,
+          p_agent_id:     agentId,
+          p_amount:       ops,
+          p_kind:         'auto_refill_ops',
+          p_reference_id: pi.id ?? null,
+          p_description:  `Auto-recarga ${ops} tareas · $${amountMxn.toLocaleString('es-MX')} MXN`,
+        });
+        if (ledErr) throw ledErr;
+        await maybeNotifyPoolLoss(supabase, { portalEmail: agent.portal_email, referenceId: pi.id ?? null, resource: 'ops' });
+      } else {
+        // LEGACY: update directo a ai_ops_limit
+        const { error: updErr } = await supabase
+          .from('voice_agents')
+          .update({ ai_ops_limit: currentLimit + ops })
+          .eq('portal_email', agent.portal_email);
+        if (updErr) throw updErr;
+      }
     } else {
-      // LEGACY: update directo a ai_ops_limit
-      await supabase
+      // LEGACY: sin portal_email, update por agentId
+      const { error: updErr } = await supabase
         .from('voice_agents')
         .update({ ai_ops_limit: currentLimit + ops })
-        .eq('portal_email', agent.portal_email);
+        .eq('id', agentId);
+      if (updErr) throw updErr;
     }
-  } else {
-    // LEGACY: sin portal_email, update por agentId
-    await supabase
-      .from('voice_agents')
-      .update({ ai_ops_limit: currentLimit + ops })
-      .eq('id', agentId);
+  } catch (ledErr) {
+    const errMsg = ledErr instanceof Error ? ledErr.message : String(ledErr);
+    console.error('[auto-refill-ops] MONEY LEAK — charge OK but ledger failed', { agentId, pi_id: pi.id, err: errMsg });
+    await supabase.from('platform_incidents').insert({
+      title:                 `🚨 AUTO-REFILL-OPS MONEY LEAK — Charge ${pi.id} OK pero ledger falló`,
+      description:           `Stripe cobró $${amountMxn.toLocaleString('es-MX')} MXN pero ledger falló.\nAgent: ${agentId}\nPaymentIntent: ${pi.id}\nOps que debieron acreditarse: ${ops}\nError: ${errMsg}`,
+      priority:              'critical',
+      source:                'error_log',
+      source_id:             pi.id ?? null,
+      affected_portal_email: agent.portal_email ?? null,
+      status:                'open',
+      assigned_to:           'owner',
+    });
+    return { ok: false, error: `ledger_failed_after_charge: ${errMsg}` };
   }
 
   return { ok: true, opsAdded: ops };

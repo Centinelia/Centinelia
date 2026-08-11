@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isAdmin } from '@/lib/admin/auth';
 import { getOrgToken } from '@/lib/portal/org-token';
 import {
   sendEmail,
@@ -11,6 +12,7 @@ import {
 interface Params { params: Promise<{ email: string }> }
 
 export async function POST(req: NextRequest, { params }: Params) {
+  if (!(await isAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { email: rawEmail } = await params;
   const email = decodeURIComponent(rawEmail).toLowerCase().trim();
 

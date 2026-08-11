@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { Megaphone, PhoneOutgoing, PieChart } from 'lucide-react';
+import { Megaphone, PhoneOutgoing, PieChart, Users } from 'lucide-react';
 import { Card } from '@/components/portal-ui';
 import { EmptyState } from '@/components/ui/empty-state';
 import OutboundSection from '../../OutboundSection';
@@ -86,9 +87,10 @@ export default function CampanasClient({ token, initialTab, visibleTabs, outboun
   }, [tab, pathname, router, searchParams]);
 
   // ── Hero dinámico según tab activo ────────────────────────────────────────
+  // Contactos ya no vive aquí (2026-08-10) — su propia página en /oficina/contactos.
   const heroDescription = tab === 'llamadas'
     ? (counters.campanasActivas > 0
-        ? `${counters.campanasActivas} ${counters.campanasActivas === 1 ? 'campaña activa' : 'campañas activas'} · ${counters.contactos} contactos · ${counters.completadas} llamadas completadas esta semana.`
+        ? `${counters.campanasActivas} ${counters.campanasActivas === 1 ? 'campaña activa' : 'campañas activas'} · ${counters.completadas} llamadas completadas esta semana.`
         : 'Programa a tu equipo para que llame a tus contactos en el horario que elijas.')
     : 'Diseña una vez y tu equipo aplica la encuesta al terminar cada llamada. Los resultados y hallazgos aparecen aquí.';
 
@@ -100,6 +102,21 @@ export default function CampanasClient({ token, initialTab, visibleTabs, outboun
         eyebrow="Campañas"
         title="Acciones masivas hacia tus clientes"
         description={heroDescription}
+        right={
+          <Link
+            href={`/portal/${token}/oficina/contactos`}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-semibold transition-all"
+            style={{
+              background: '#ffffff',
+              border:     '1px solid #E8E3F5',
+              color:      '#6C3BFF',
+              boxShadow:  '0 1px 2px rgba(26,10,59,0.04)',
+            }}
+          >
+            <Users size={13} strokeWidth={2} />
+            Ver contactos
+          </Link>
+        }
       />
 
       {/* Sub-tabs — solo aparece si hay más de una visible */}
@@ -133,9 +150,8 @@ export default function CampanasClient({ token, initialTab, visibleTabs, outboun
 
       {/* KPI strip — solo se muestra en tab llamadas (encuestas tiene su propio dashboard interno) */}
       {tab === 'llamadas' && (
-        <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <section className="grid grid-cols-3 gap-3">
           <KpiInline label="Campañas activas"  value={counters.campanasActivas} accent="#A855F7" />
-          <KpiInline label="Contactos"          value={counters.contactos}      accent="#6C3BFF" />
           <KpiInline label="Llamadas hoy"       value={counters.llamadasHoy}    accent="#F59E0B" />
           <KpiInline label="Completadas 7 días" value={counters.completadas}    accent="#22C55E" />
         </section>
@@ -167,8 +183,8 @@ export default function CampanasClient({ token, initialTab, visibleTabs, outboun
             initialContacts={outbound.contacts as never[]}
             initialCampaigns={outbound.campaigns as never[]}
             agents={outbound.agents}
-            initialTab="contactos"
-            show="both"
+            initialTab="campanas"
+            show="campanas"
             minutesRemaining={outbound.minutesRemaining}
           />
         )

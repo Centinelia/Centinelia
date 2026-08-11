@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
+import { consumeAiOp } from '@/lib/ai/ops-guard';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,6 +45,10 @@ export async function GET(req: NextRequest) {
 
   let updated = 0;
   const errors: string[] = [];
+  // Fix N4 audit 2026-08-10: cobrar 1 op por call evaluado (CES+SE cuentan como 1
+  // op total; el batch API es 50% off vs sync así que subsidiamos suavemente).
+  // Set evita doble cargo si mismo callId tiene CES + SE en el mismo batch.
+  const chargedCallIds = new Set<string>();
 
   for (const b of batches) {
     try {
@@ -66,6 +71,27 @@ export async function GET(req: NextRequest) {
         const text  = first.type === 'text' ? first.text.trim() : '';
         const parsed = extractJson(text);
         if (!parsed) continue;
+
+        // Cobrar 1 op al agente dueño de esta llamada (una vez por callId por batch).
+        if (!chargedCallIds.has(callId)) {
+          chargedCallIds.add(callId);
+          try {
+            const { data: callRow } = await supabase
+              .from('voice_calls')
+              .select('agent_id')
+              .eq('id', callId)
+              .maybeSingle();
+            if (callRow?.agent_id) {
+              await consumeAiOp(callRow.agent_id as string, 1, {
+                source: 'batch_eval',
+                label:  'Evaluación CES + auto-evaluación (batch)',
+                context: `call_id=${callId}`,
+              });
+            }
+          } catch (chargeErr) {
+            console.error('[batch-eval-retrieve] cobro de op falló', chargeErr);
+          }
+        }
 
         if (isCes) {
           // Sanitize CES data

@@ -1329,6 +1329,11 @@ async function executeAgentToolInner(
     const cCtx  = (toolInput.contexto as string | undefined) ?? '';
     if (!cRol || !cTask) return { ok: false, error: 'Parámetros insuficientes.' };
 
+    // Cobra 1 op upfront por la consulta al compañero. Iteraciones adicionales
+    // dentro del loop de investigación (hasta 4 más) se cobran por iteración.
+    const consultBaseOps = await consumeAiOp(agentId, 1, { source: 'consult_agent', label: 'Consulta a compañero especialista' });
+    if (!consultBaseOps.ok) return { ok: false, error: 'Sin operaciones disponibles para consultar al compañero.' };
+
     const { data: sibs } = await supabase.from('voice_agents').select('id, agent_name, role, knowledge_base, role_knowledge_base').eq('portal_email', portalEmail).eq('active', true).neq('id', agentId);
     if (!sibs?.length) return { ok: false, error: 'No hay otros agentes disponibles.' };
 
@@ -1363,6 +1368,12 @@ async function executeAgentToolInner(
 
     try {
       for (let ct = 0; ct < 5; ct++) {
+        // Iteraciones adicionales (past first) cobran 1 op cada una. Si no hay
+        // saldo, corta el loop y devuelve la mejor respuesta acumulada.
+        if (ct > 0) {
+          const iterOps = await consumeAiOp(agentId, 1, { source: 'consult_agent', label: `Consulta a compañero (iter ${ct + 1})` });
+          if (!iterOps.ok) break;
+        }
         const __t = Date.now();
         const __m = 'claude-haiku-4-5-20251001';
         let resp;

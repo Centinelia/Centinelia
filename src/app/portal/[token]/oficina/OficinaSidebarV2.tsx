@@ -20,7 +20,7 @@ import {
   ArrowLeft, Search, CreditCard, FolderOpen,
   ClipboardList, Gavel, Headphones, PieChart, Brain,
   ChevronDown, ChevronRight, Phone, LayoutTemplate, CalendarClock,
-  Inbox, FileSignature, Receipt, Megaphone,
+  Inbox, FileSignature, Receipt, Megaphone, Users,
 } from 'lucide-react';
 
 interface NavItem {
@@ -71,6 +71,9 @@ const NAV_SECTIONS: NavSection[] = [
     group: 'PERSONAS',
     items: [
       { href: '/llamadas',   moduleId: 'llamadas',      label: 'Llamadas',   icon: Phone,     badgeKey: '' },
+      // Contactos vive fuera de Campañas (2026-08-10) — es asset transversal.
+      // Retrocompat: sub-users con `campanas` también entran.
+      { href: '/contactos',  moduleId: 'of_contactos',  moduleIdOr: 'campanas',     label: 'Contactos', icon: Users,     badgeKey: '' },
       // Campañas unifica salientes + encuestas (+ correos futuro). Accesible
       // con permiso `campanas` O `of_encuestas` — la UI muestra solo las tabs
       // permitidas al sub-user (ver CampanasClient.visibleTabs).

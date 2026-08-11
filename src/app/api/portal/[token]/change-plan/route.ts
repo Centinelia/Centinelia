@@ -117,19 +117,80 @@ export async function POST(req: NextRequest, { params }: Params) {
     .eq('id', agent.id)
     .single();
 
+  // Deltas de tier (fix H8 audit 2026-08-10). Antes overwrite silencioso sin
+  // registro en ledger; auditor Municipio no podía explicar por qué el ceiling
+  // bajó de 1200 a 300. Ahora emite ledger `plan_change` con delta explícito.
+  const oldMinutes = MONTHLY_CONFIG[currentPlan]?.[currentTier]?.minutes ?? 0;
+  const newMinutes = MONTHLY_CONFIG[newPlan][newTier].minutes;
+  const oldOps     = MONTHLY_CONFIG[currentPlan]?.[currentTier]?.aiOps   ?? 0;
+  const newOps     = MONTHLY_CONFIG[newPlan][newTier].aiOps;
+  const minutesDelta = newMinutes - oldMinutes;
+  const opsDelta     = newOps - oldOps;
+  const changeLabel  = `${currentPlan}/${currentTier} → ${newPlan}/${newTier}`;
+  const changeKind   = (minutesDelta < 0 || opsDelta < 0) ? 'plan_downgrade' : 'plan_upgrade';
+
   await supabase.from('voice_agents').update({
     plan:             newPlan,
     features:         PLAN_FEATURES[newPlan],
     minutes_plan:     newTier,
-    minutes_included: MONTHLY_CONFIG[newPlan][newTier].minutes,
-    ai_ops_limit:     MONTHLY_CONFIG[newPlan][newTier].aiOps,
+    minutes_included: newMinutes,
+    ai_ops_limit:     newOps,
   }).eq('id', agent.id);
 
-  if (to_plan && to_plan !== currentPlan && updatedAgent?.portal_email) {
-    // Recompute pool desde ai_ops_limit individuales (respeta tiers heterogéneos
-    // de los peers). Antes usaba setAiOpsLimit que uniformizaba a todos.
+  const portalEmail = updatedAgent?.portal_email as string | null;
+
+  // Minutes ledger: audit trail del cambio de tier. Delta puede ser + o -.
+  // Ceiling nuevo se aplica inmediatamente en refresh_pool_cache siguiente.
+  if (minutesDelta !== 0) {
+    if (portalEmail) {
+      const { error: ledErr } = await supabase.rpc('apply_ledger_entry', {
+        p_portal_email: portalEmail,
+        p_agent_id:     agent.id,
+        p_amount:       minutesDelta,
+        p_kind:         changeKind,
+        p_reference_id: `plan_change_${agent.id}_${Date.now()}`,
+        p_description:  `Cambio de plan ${changeLabel} · ${minutesDelta >= 0 ? '+' : ''}${minutesDelta} min`,
+      });
+      if (ledErr) console.error('[change-plan] apply_ledger_entry falló', ledErr);
+    } else {
+      await supabase.from('minutes_ledger').insert({
+        agent_id:    agent.id,
+        amount:      minutesDelta,
+        description: `Cambio de plan ${changeLabel} · ${minutesDelta >= 0 ? '+' : ''}${minutesDelta} min`,
+        source:      changeKind,   // 'plan_downgrade' | 'plan_upgrade' — label bonito en UI
+        kind:        changeKind,
+      });
+    }
+  }
+
+  // Ops ledger paralelo (solo si org tiene ops_ledger habilitado).
+  if (opsDelta !== 0 && portalEmail) {
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('ops_ledger_enabled')
+      .eq('portal_email', portalEmail)
+      .maybeSingle();
+    if (org?.ops_ledger_enabled) {
+      const { error: opsLedErr } = await supabase.rpc('apply_ops_ledger_entry', {
+        p_portal_email: portalEmail,
+        p_agent_id:     agent.id,
+        p_amount:       opsDelta,
+        p_kind:         changeKind,
+        p_reference_id: `plan_change_${agent.id}_${Date.now()}`,
+        p_description:  `Cambio de plan ${changeLabel} · ${opsDelta >= 0 ? '+' : ''}${opsDelta} tareas`,
+      });
+      if (opsLedErr) console.error('[change-plan] apply_ops_ledger_entry falló', opsLedErr);
+    }
+  }
+
+  // Recompute pool de ops SIEMPRE (no solo cuando cambia plan). Un cambio de
+  // tier también cambia ai_ops_limit del agente y por tanto la suma org-level.
+  if (portalEmail) {
     const { recomputeOrgOpsPool } = await import('@/lib/ai/ops-guard');
-    await recomputeOrgOpsPool(updatedAgent.portal_email);
+    await recomputeOrgOpsPool(portalEmail);
+    // Refresh minutes cache para reflejar el nuevo minutes_included del plan.
+    const { error: refreshErr } = await supabase.rpc('refresh_pool_cache', { p_portal_email: portalEmail });
+    if (refreshErr) console.error('[change-plan] refresh_pool_cache falló', refreshErr);
   }
 
   return NextResponse.json({ success: true });

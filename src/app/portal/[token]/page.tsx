@@ -1509,15 +1509,25 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     <div style={{ borderTop: '1px solid #F0EDF9' }}>
                       <div className="relative">
                         <div className="overflow-y-auto" style={{ maxHeight: '640px' }}>
-                          {agent.portal_email ? (
-                            <HistorialConsumoSection
-                              portalEmail={agent.portal_email as string}
-                              agentIds={allClientAgents.length > 0 ? allClientAgents.map(a => a.id) : [agent.id]}
-                              minutesIncluded={minutesIncluded}
-                              callerNames={callerNames}
-                            />
+                          {/* Fix M-e audit 2026-08-10: sub-users solo ven detalle de consumo si
+                              tienen el módulo 'cuenta'. Owner siempre. Evita leak de billing
+                              a colaboradores que solo deberían ver operación. */}
+                          {(!session?.isSubUser || (session.modules ?? []).includes('cuenta')) ? (
+                            agent.portal_email ? (
+                              <HistorialConsumoSection
+                                portalEmail={agent.portal_email as string}
+                                agentIds={allClientAgents.length > 0 ? allClientAgents.map(a => a.id) : [agent.id]}
+                                minutesIncluded={minutesIncluded}
+                                callerNames={callerNames}
+                                token={token}
+                              />
+                            ) : (
+                              <MinutesLedgerSection agentId={agent.id} minutesIncluded={minutesIncluded} minutesUsed={minutesUsed} callerNames={callerNames} />
+                            )
                           ) : (
-                            <MinutesLedgerSection agentId={agent.id} minutesIncluded={minutesIncluded} minutesUsed={minutesUsed} callerNames={callerNames} />
+                            <div className="px-5 py-8 text-center text-[12px]" style={{ color: '#6B6480' }}>
+                              El detalle de consumo lo administra el dueño de la cuenta.
+                            </div>
                           )}
                         </div>
                         <div className="absolute bottom-0 left-0 right-0 h-10 pointer-events-none"
@@ -1526,8 +1536,8 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     </div>
                   </div>
 
-                  {/* Historial de tareas (ops_ledger) */}
-                  {agent.portal_email && (
+                  {/* Historial de tareas (ops_ledger) — solo owner o sub-user con 'cuenta' */}
+                  {agent.portal_email && (!session?.isSubUser || (session.modules ?? []).includes('cuenta')) && (
                     <OpsLedgerSection
                       portalEmail={agent.portal_email}
                       token={token}

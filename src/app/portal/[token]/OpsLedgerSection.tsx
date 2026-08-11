@@ -14,7 +14,7 @@ export default async function OpsLedgerSection({
     .select('id, created_at, amount, description, kind')
     .eq('portal_email', portalEmail)
     .order('created_at', { ascending: false })
-    .limit(500);
+    .limit(5000);
 
   let running = 0;
   const chronological = [...(rows ?? [])].reverse();

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isAdmin } from '@/lib/admin/auth';
 
 const OUTCOME_LABELS: Record<string, string> = {
   lead_created:       'Lead',
@@ -15,6 +16,8 @@ const OUTCOME_LABELS: Record<string, string> = {
 function esc(v: string) { return `"${v.replace(/"/g, '""')}"`; }
 
 export async function GET(req: NextRequest) {
+  // Fix U2 audit 2026-08-10: expose PII (caller_number + summaries) sin auth.
+  if (!(await isAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const period = req.nextUrl.searchParams.get('period');
   const days   = period ? parseInt(period) : undefined;
   const since  = days ? new Date(Date.now() - days * 86400000).toISOString() : undefined;

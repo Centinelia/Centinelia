@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isAdmin } from '@/lib/admin/auth';
 import { PLAN_MINUTES, PLAN_CONCURRENT_CALLS } from '@/types/agent';
 import { createVapiAssistant, assignAssistantToPhone, resyncPeerAgents } from '@/lib/vapi/sync';
 import { scrapeWebsite } from '@/lib/scrape/website';
@@ -21,6 +22,10 @@ function stripSensitive<T extends Record<string, unknown>>(row: T): Omit<T, type
 }
 
 export async function GET() {
+  // Fix U1 audit 2026-08-10: sin este gate CUALQUIERA listaba todos los agentes
+  // + PII de clientes (business_name, phone, knowledge_base). Route expuesto públicamente.
+  if (!(await isAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from('voice_agents')
@@ -33,6 +38,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  if (!(await isAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const body = await req.json();
   const {
     client_name, client_email, business_name, business_description,

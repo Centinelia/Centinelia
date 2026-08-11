@@ -225,6 +225,16 @@ export async function POST(req: NextRequest) {
     .from('organizations')
     .upsert({ portal_email: email, ...kycPatch }, { onConflict: 'portal_email' });
 
+  // Fix P8 audit 2026-08-10: LFPDPPP proof of consent. Log ip+ts+versiones aceptadas.
+  const { logConsent } = await import('@/lib/legal/consent-log');
+  await logConsent(supabase, {
+    portalEmail: email,
+    agentId:     agent.id,
+    actorType:   'anon_registrant',
+    ipAddress:   req.headers.get('x-forwarded-for') ?? req.headers.get('x-real-ip'),
+    userAgent:   req.headers.get('user-agent'),
+  });
+
   const customer = await stripe.customers.create({
     name:     `${client_name.trim()}, ${business_name.trim()}`,
     email,

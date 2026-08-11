@@ -62,6 +62,14 @@ function extractEmailAddress(raw: string): string {
 const PROMO_SENDER_REGEX = /@(promociones?|promo|marketing|newsletter|noreply|no-reply|notifications?|hello|hi|team|info|hola|ofertas?|deals?|updates?|aviso|avisos|notice|market|em|news|newsletters?)\./i;
 const BULK_SENDER_REGEX  = /@.*\.(mailchimp|sendgrid|constantcontact|hubspot|marketo|braze|iterable|klaviyo|convertkit)\./i;
 
+// Sub-dominios transaccionales / de engagement de SaaS: `engage.canva.com`,
+// `notify.slack.com`, `mail.notion.so`, `updates.linkedin.com`, etc. Casi
+// siempre son notificaciones producto — no requieren respuesta humana.
+// Requiere `@<subdominio>.<algo>.<tld>` (3+ partes) para no matchear
+// `foo@mail.com` (dominio raíz de un servicio de correo). Añadido 2026-08-10
+// tras Canva engage.canva.com escapándose al pipeline LLM.
+const NOTIFICATION_SUBDOMAIN_REGEX = /@(engage|engagement|notify|notification|notifications|notice|alerts?|updates?|update|digest|digests|transactional|mailer|mail|send|sender|ses|email|em|news|newsletter|community|social|reminders?|reply)\.[a-z0-9-]+\.[a-z]{2,}(\.[a-z]{2,})?$/i;
+
 // Dominios de bulk mail / newsletters que casi nunca son de negocio real.
 const BULK_MAIL_DOMAIN_REGEX = /@([a-z0-9-]+\.)?(substack|mailchi|beehiiv|revue|convertkit|buttondown|ghost|kajabi)\.(com|net|org|io)$/i;
 
@@ -156,6 +164,13 @@ export function quickClassifyEmail(input: QuickClassifyInput): QuickClassifyResu
     if (rx.test(from)) {
       return { category: 'auto_notification', reason: `remitente automático (${from})` };
     }
+  }
+
+  // 1b. Sub-dominio transaccional (engage.canva.com, notify.slack.com,
+  //     mail.notion.so, updates.linkedin.com, etc.) — no importa el local-part.
+  //     Estos son sistemas de engagement/notificación producto.
+  if (NOTIFICATION_SUBDOMAIN_REGEX.test(from)) {
+    return { category: 'auto_notification', reason: `subdominio de notificaciones (${from})` };
   }
 
   // 2. Recibos / confirmaciones automáticas por asunto

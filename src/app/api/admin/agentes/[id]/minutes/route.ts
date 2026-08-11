@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isAdmin } from '@/lib/admin/auth';
 
 interface Params { params: Promise<{ id: string }> }
 
@@ -8,6 +9,12 @@ interface Params { params: Promise<{ id: string }> }
 // set_used → sets minutes_used to exact value (correction)
 
 export async function POST(req: NextRequest, { params }: Params) {
+  // Fix T1 audit 2026-08-10: sin este gate CUALQUIERA podía tampering ledger
+  // (endpoint expuesto sin auth). El route paralelo de ops ya lo tenía.
+  if (!(await isAdmin())) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { id } = await params;
   const { action, amount, reason } = await req.json() as {
     action: 'credit' | 'debit' | 'set_used';
@@ -20,6 +27,20 @@ export async function POST(req: NextRequest, { params }: Params) {
   }
 
   const supabase = createAdminClient();
+
+  // Fix T9 audit 2026-08-10: alertar ajustes >500 min para review. Sirve como
+  // sanity check contra typo (10 vs 100) y como registro de acciones grandes.
+  if (amount > 500) {
+    await supabase.from('platform_incidents').insert({
+      title:       `Admin adjustment grande — ${action} ${amount} min`,
+      description: `Admin aplicó ajuste manual de ${amount} min (action=${action}) al agente ${id}. Reason: ${reason ?? '—'}. Revisar por posible error de entrada.`,
+      priority:    'high',
+      source:      'error_log',
+      source_id:   `admin_adj_min_${id}_${Date.now()}`,
+      status:      'open',
+      assigned_to: 'owner',
+    });
+  }
 
   const { data: agent } = await supabase
     .from('voice_agents')

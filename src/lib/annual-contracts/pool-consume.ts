@@ -129,12 +129,27 @@ export interface PoolPassthroughResult {
 // Descuenta N minutos del pool de la org. Retorna consumed=false si la org
 // no está en annual_prepaid (caller sigue con path Stripe). Si consumed=true,
 // caller NO debe descontar del voice_agent (ya se descontó del pool).
+//
+// AUDIT TRAIL (fix C1 audit 2026-08-10): además de UPDATE del counter, escribe
+// row en `minutes_ledger` con kind='call' para que Municipio pueda reconstruir
+// el consumo llamada por llamada. Antes: solo UPDATE del counter, cero
+// trazabilidad. `callId` viene de vapi_call_id y sirve de reference_id.
+// `agentId` opcional para mostrar qué empleado atendió la llamada.
 export async function consumePoolMinutes(
   portalEmail: string,
   minutes: number,
-  supabase?: Supabase,
+  supabaseOrOpts?: Supabase | { supabase?: Supabase; callId?: string | null; agentId?: string | null },
+  legacyOpts?: { callId?: string | null; agentId?: string | null },
 ): Promise<PoolConsumeResult | PoolPassthroughResult> {
-  const sb = supabase ?? createAdminClient();
+  // Compat con firma vieja: consumePoolMinutes(email, min, sbInstance)
+  const isSupabase = supabaseOrOpts != null && typeof (supabaseOrOpts as Supabase).from === 'function';
+  const sb: Supabase = isSupabase
+    ? (supabaseOrOpts as Supabase)
+    : ((supabaseOrOpts as { supabase?: Supabase })?.supabase ?? createAdminClient());
+  const opts = isSupabase ? (legacyOpts ?? {}) : ((supabaseOrOpts as { callId?: string | null; agentId?: string | null }) ?? {});
+  const callId  = opts.callId  ?? null;
+  const agentId = opts.agentId ?? null;
+
   const snap = await getPoolSnapshot(portalEmail, sb);
   if (!snap) {
     // Chequea si el modelo es expired (aún así no aplica pool)
@@ -146,35 +161,35 @@ export async function consumePoolMinutes(
     return { consumed: false, billing_model: ((org?.billing_model as BillingModel) ?? 'stripe') === 'expired' ? 'expired' : 'stripe' };
   }
 
-  const prev  = snap.monthly_minutes_used;
-  const next  = prev + minutes;
-  const pool  = snap.monthly_minutes_pool;
-
-  // Overage acumulado: sólo lo que exceda del pool contribuye al overage.
-  const prevOverBy   = Math.max(0, prev  - pool);
-  const nextOverBy   = Math.max(0, next  - pool);
-  const overageDelta = nextOverBy - prevOverBy;
-
-  const newOverage = snap.overage_minutes + overageDelta;
-
-  await sb.from('organizations')
-    .update({
-      monthly_minutes_used: next,
-      overage_minutes:      newOverage,
-    })
-    .eq('portal_email', portalEmail);
-
-  const pctPrev = pool > 0 ? (prev / pool) * 100 : 0;
-  const pctNext = pool > 0 ? (next / pool) * 100 : 0;
+  // Fix N9 audit 2026-08-10: RPC atómica con FOR UPDATE lock + ledger dentro
+  // de misma transacción. Elimina race UPDATE/UPDATE + garantiza rollback
+  // del counter si el ledger INSERT falla por UNIQUE (idempotency retry).
+  const { data: rpcRow, error: rpcErr } = await sb.rpc('consume_pool_minutes_annual', {
+    p_portal_email: portalEmail,
+    p_agent_id:     agentId,
+    p_minutes:      minutes,
+    p_call_id:      callId,
+  });
+  if (rpcErr) {
+    console.error('[pool-consume] consume_pool_minutes_annual RPC failed', { portalEmail, callId, err: rpcErr.message });
+    throw rpcErr;
+  }
+  const row = (Array.isArray(rpcRow) ? rpcRow[0] : rpcRow) as {
+    minutes_used_after: number;
+    minutes_pool:       number;
+    overage_after:      number;
+    crossed_100:        boolean;
+    crossed_120:        boolean;
+  };
 
   return {
     consumed:              true,
     billing_model:         'annual_prepaid',
-    minutes_used_after:    next,
-    minutes_pool:          pool,
-    overage_after:         newOverage,
-    crossed_100_threshold: pctPrev < 100 && pctNext >= 100,
-    crossed_120_threshold: pctPrev < 120 && pctNext >= 120,
+    minutes_used_after:    row.minutes_used_after,
+    minutes_pool:          row.minutes_pool,
+    overage_after:         row.overage_after,
+    crossed_100_threshold: !!row.crossed_100,
+    crossed_120_threshold: !!row.crossed_120,
   };
 }
 

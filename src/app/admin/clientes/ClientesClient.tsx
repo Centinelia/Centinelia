@@ -343,6 +343,20 @@ export default function ClientesClient({
                   <span className="hidden sm:inline"> Editar</span>
                 </Link>
 
+                {/* Consumo detallado (fix N1 audit — vista audit-ready) */}
+                {client.portal_email && (
+                  <Link
+                    href={`/admin/consumo/${encodeURIComponent(client.portal_email)}`}
+                    onClick={e => e.stopPropagation()}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-colors hover:bg-gray-50 flex-shrink-0"
+                    style={{ background: '#FFFFFF', color: '#6C3BFF', border: '1px solid #E5E7EB' }}
+                    title="Ver consumo detallado con filtros de fecha + export CSV"
+                  >
+                    <span>📊</span>
+                    <span className="hidden sm:inline"> Consumo</span>
+                  </Link>
+                )}
+
                 {/* Acceso al portal (nivel cliente) */}
                 <button
                   type="button"

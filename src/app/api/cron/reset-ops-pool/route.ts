@@ -3,6 +3,8 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
 import { MONTHLY_CONFIG } from '@/lib/billing/plans';
 import type { Plan, MinutesTier } from '@/lib/billing/plans';
+import { alertCronPartialFailure } from '@/lib/cron/alert-partial-failure';
+import { todayInMexico } from '@/lib/billing/tz';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +14,9 @@ export async function GET(req: Request) {
   }
 
   const supabase = createAdminClient();
-  const today    = new Date().toISOString().slice(0, 10);
+  // Timezone-aware (fix H4 audit): "today" en México, no UTC. Boundary correcto
+  // para clientes al borde del mes calendario.
+  const today    = todayInMexico();
   const nextResetDate = new Date();
   nextResetDate.setDate(nextResetDate.getDate() + 30);
   const nextResetIso = nextResetDate.toISOString().slice(0, 10);
@@ -84,6 +88,14 @@ export async function GET(req: Request) {
       errors.push(`${email}: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
+
+  const totalProcessed = annualGrants + stripeSafetyNets + legacyResets;
+  await alertCronPartialFailure(supabase, {
+    cronName:  'reset-ops-pool',
+    expected:  due?.length ?? 0,
+    processed: totalProcessed,
+    errors,
+  });
 
   return NextResponse.json({
     ok:              true,

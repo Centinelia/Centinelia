@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isAdmin } from '@/lib/admin/auth';
 import type { VoiceAgent } from '@/types/agent';
 import { buildSystemPrompt } from '@/lib/voice/prompt-builder';
 import { VAPI_VOICE_MAX_TOKENS } from '@/lib/constants';
@@ -7,6 +8,7 @@ import { VAPI_VOICE_MAX_TOKENS } from '@/lib/constants';
 export const dynamic = 'force-dynamic';
 
 export async function POST() {
+  if (!(await isAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const supabase = createAdminClient();
   const { data: agents, error } = await supabase
     .from('voice_agents')

@@ -7,8 +7,19 @@ import { createAdminClient } from '@/lib/supabase/admin';
 const NO_ANSWER_REASONS = ['no-answer', 'voicemail', 'machine_detected', 'busy', 'failed'];
 
 export async function POST(req: NextRequest) {
+  // Fix T8 audit 2026-08-10: reject si secret no seteado + timing-safe compare.
   const vapiSecret = process.env.VAPI_SERVER_SECRET;
-  if (vapiSecret && req.nextUrl.searchParams.get('secret') !== vapiSecret) {
+  if (!vapiSecret) {
+    console.error('[outbound/vapi-webhook] VAPI_SERVER_SECRET not set — rejecting');
+    return NextResponse.json({ error: 'Server misconfigured' }, { status: 503 });
+  }
+  const headerSecret = req.headers.get('x-vapi-secret') ?? '';
+  const querySecret  = req.nextUrl.searchParams.get('secret') ?? '';
+  const { timingSafeEqual } = await import('crypto');
+  const secretBuf = Buffer.from(vapiSecret);
+  const headerMatch = headerSecret.length === vapiSecret.length && timingSafeEqual(Buffer.from(headerSecret), secretBuf);
+  const queryMatch  = querySecret.length  === vapiSecret.length && timingSafeEqual(Buffer.from(querySecret),  secretBuf);
+  if (!headerMatch && !queryMatch) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -89,15 +100,67 @@ export async function POST(req: NextRequest) {
     }
 
   } else {
-    // Call was answered — mark completed
+    // Call was answered — mark completed + CHARGE MINUTES (fix N2 audit 2026-08-10).
+    // Antes: outbound calls jamás escribían minutes_ledger — consumo invisible al
+    // cliente, imposible reconciliar para Municipio. Ahora replicamos el flow del
+    // voice/webhook (inbound) para outbound: calc duration → skip si <3s →
+    // consumePoolMinutes (annual) o consume_pool_minutes RPC (stripe).
+    const rawStartedAt = call.startedAt;
+    const rawEndedAt   = call.endedAt;
+    const startedAtMs  = rawStartedAt ? new Date(rawStartedAt).getTime() : 0;
+    const endedAtMs    = rawEndedAt   ? new Date(rawEndedAt).getTime()   : 0;
+    // Fix T2 audit 2026-08-10: Math.max clamp evita negativos por Vapi clock skew.
+    const durationSec  = Math.max(0, startedAtMs && endedAtMs ? Math.round((endedAtMs - startedAtMs) / 1000) : 0);
+    const shouldChargeMinutes = durationSec >= 3;
+    const minutes = shouldChargeMinutes ? (Math.ceil(durationSec / 60) || 1) : 0;
+
     await supabase
       .from('outbound_calls')
       .update({
         status: 'completed',
         outcome: 'other',
         completed_at: new Date().toISOString(),
+        duration_sec: durationSec,
       })
       .eq('id', outboundCall.id);
+
+    // Escribir ledger + descontar del pool. Busca portal_email + billing_model del agente.
+    if (shouldChargeMinutes && outboundCall.agent_id) {
+      const { data: agentBilling } = await supabase
+        .from('voice_agents')
+        .select('portal_email')
+        .eq('id', outboundCall.agent_id)
+        .maybeSingle();
+      const portalEmail = agentBilling?.portal_email as string | null;
+
+      if (portalEmail) {
+        const { consumePoolMinutes } = await import('@/lib/annual-contracts/pool-consume');
+        const pool = await consumePoolMinutes(portalEmail, minutes, {
+          callId:  call.id ?? null,
+          agentId: outboundCall.agent_id as string,
+        });
+        if (!pool.consumed) {
+          // Cliente stripe: usa el RPC event-sourced (mismo camino que voice/webhook).
+          await supabase.rpc('consume_pool_minutes', {
+            p_portal_email: portalEmail,
+            p_agent_id:     outboundCall.agent_id,
+            p_minutes:      minutes,
+            p_call_id:      call.id ?? null,
+          });
+        }
+      } else {
+        // Standalone/legacy (sin portal_email): incrementa contador + ledger directo.
+        await supabase.rpc('increment_minutes_used', { agent_id: outboundCall.agent_id, minutes });
+        await supabase.from('minutes_ledger').insert({
+          agent_id:     outboundCall.agent_id,
+          amount:       -minutes,
+          description:  `Llamada saliente · ${minutes} min`,
+          source:       'llamada_saliente',
+          kind:         'call',
+          reference_id: call.id ?? null,
+        });
+      }
+    }
 
     if (outboundCall.contact_id) {
       const { transitionOutboundContact } = await import('@/lib/state-machines/outbound-contact');
@@ -106,7 +169,7 @@ export async function POST(req: NextRequest) {
         toStatus: 'completed',
         actor:    'vapi_webhook',
         reason:   'answered_and_completed',
-        metadata: { ended_reason: endedReason },
+        metadata: { ended_reason: endedReason, duration_sec: durationSec, minutes_charged: minutes },
       });
     }
 

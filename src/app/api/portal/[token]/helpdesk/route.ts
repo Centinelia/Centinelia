@@ -7,6 +7,7 @@ import { ticketEmailHtml } from '@/lib/ops/approval-email';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { cookies } from 'next/headers';
 import { classifyTicket } from '@/lib/helpdesk/classify';
+import { consumeAiOp } from '@/lib/ai/ops-guard';
 
 export async function GET(
   req: NextRequest,
@@ -77,6 +78,8 @@ export async function POST(
   let classifiedCategoria = body.categoria;
   let classifiedPrioridad = body.prioridad;
   if (!classifiedCategoria || !classifiedPrioridad) {
+    // Fix N6 audit: cobrar 1 op por clasificación LLM del ticket (antes silent).
+    await consumeAiOp(access.primaryId, 1, { source: 'helpdesk_classify', label: 'Clasificación de ticket helpdesk' });
     const inferred = await classifyTicket({ titulo: body.titulo, descripcion: body.descripcion ?? null });
     classifiedCategoria = classifiedCategoria ?? inferred.categoria;
     classifiedPrioridad = classifiedPrioridad ?? inferred.prioridad;

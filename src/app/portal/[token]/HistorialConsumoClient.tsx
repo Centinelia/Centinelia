@@ -8,7 +8,7 @@ import {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type LedgerSource = 'renovacion' | 'rollover' | 'extra_compra' | 'activacion' | 'ajuste' | 'llamada' | 'llamada_saliente' | 'auto_recarga';
+export type LedgerSource = 'renovacion' | 'rollover' | 'extra_compra' | 'activacion' | 'ajuste' | 'llamada' | 'llamada_saliente' | 'auto_recarga' | 'plan_downgrade' | 'plan_upgrade' | 'refund' | 'dispute_chargeback' | 'invoice_voided' | 'reconciliacion' | 'backfill';
 
 export interface MinutesEntry {
   id:          string;
@@ -35,14 +35,21 @@ export interface TaskEntry {
 // ─── Config ───────────────────────────────────────────────────────────────────
 
 const MIN_SOURCE_META: Record<LedgerSource, { iconKey: string; color: string; label: string }> = {
-  renovacion:       { iconKey: 'refresh',        color: '#6C3BFF', label: 'Renovación' },
-  rollover:         { iconKey: 'rotate',         color: '#a855f7', label: 'Rollover' },
-  extra_compra:     { iconKey: 'zap',            color: '#f59e0b', label: 'Compra extra' },
-  activacion:       { iconKey: 'card',           color: '#3b82f6', label: 'Activación' },
-  ajuste:           { iconKey: 'sliders',        color: '#22c55e', label: 'Ajuste' },
-  llamada:          { iconKey: 'phone_in',       color: '#3b82f6', label: 'Llamada entrante' },
-  llamada_saliente: { iconKey: 'phone_out',      color: '#f59e0b', label: 'Llamada saliente' },
-  auto_recarga:     { iconKey: 'battery',        color: '#6C3BFF', label: 'Auto-recarga' },
+  renovacion:         { iconKey: 'refresh',        color: '#6C3BFF', label: 'Renovación' },
+  rollover:           { iconKey: 'rotate',         color: '#a855f7', label: 'Rollover' },
+  extra_compra:       { iconKey: 'zap',            color: '#f59e0b', label: 'Compra extra' },
+  activacion:         { iconKey: 'card',           color: '#3b82f6', label: 'Activación' },
+  ajuste:             { iconKey: 'sliders',        color: '#22c55e', label: 'Ajuste' },
+  llamada:            { iconKey: 'phone_in',       color: '#3b82f6', label: 'Llamada entrante' },
+  llamada_saliente:   { iconKey: 'phone_out',      color: '#f59e0b', label: 'Llamada saliente' },
+  auto_recarga:       { iconKey: 'battery',        color: '#6C3BFF', label: 'Auto-recarga' },
+  plan_downgrade:     { iconKey: 'rotate',         color: '#f59e0b', label: 'Downgrade de plan' },
+  plan_upgrade:       { iconKey: 'zap',            color: '#22c55e', label: 'Upgrade de plan' },
+  refund:             { iconKey: 'sliders',        color: '#22c55e', label: 'Reembolso' },
+  dispute_chargeback: { iconKey: 'sliders',        color: '#dc2626', label: 'Chargeback' },
+  invoice_voided:     { iconKey: 'sliders',        color: '#B45309', label: 'Factura anulada' },
+  reconciliacion:     { iconKey: 'sliders',        color: '#6B7280', label: 'Reconciliación' },
+  backfill:           { iconKey: 'card',           color: '#3b82f6', label: 'Backfill histórico' },
 };
 
 const TRIGGER_META: Record<string, { iconKey: string; color: string; label: string }> = {
@@ -96,10 +103,12 @@ export default function HistorialConsumoClient({
   minutes,
   tasks,
   callerNames = {},
+  token,
 }: {
   minutes:      MinutesEntry[];
   tasks:        TaskEntry[];
   callerNames?: Record<string, string>;
+  token:        string;
 }) {
   const [tab, setTab] = useState<'minutos' | 'tareas'>('minutos');
   const [fromDate, setFromDate] = useState<string>('');
@@ -172,6 +181,26 @@ export default function HistorialConsumoClient({
                 {r.label}
               </button>
             ))}
+            {/* Export CSV — respeta el filtro de fechas activo del UI (fix N3
+                audit). Sin filtros = historial completo. Minutes incluye
+                duración exacta + minutos cobrados para auditar el redondeo. */}
+            <a
+              href={(() => {
+                const base = tab === 'minutos'
+                  ? `/api/portal/${token}/minutes-ledger.csv`
+                  : `/api/portal/${token}/ops-ledger.csv`;
+                const qs = new URLSearchParams();
+                if (fromDate) qs.set('from', fromDate);
+                if (toDate)   qs.set('to',   toDate);
+                return qs.toString() ? `${base}?${qs.toString()}` : base;
+              })()}
+              download
+              className="text-[11px] px-2.5 py-1 rounded-full font-medium transition-colors ml-1"
+              style={{ background: '#ffffff', color: '#1A0A3B', border: '1px solid #E8E3F5' }}
+              title={`Descargar CSV de ${tab === 'minutos' ? 'minutos' : 'tareas'}${hasFilters ? ' (rango filtrado)' : ' (completo)'}`}
+            >
+              Exportar CSV{hasFilters ? ' (rango)' : ''}
+            </a>
           </div>
         </div>
 
@@ -213,8 +242,72 @@ export default function HistorialConsumoClient({
       ) : tab === 'minutos' ? (
         <MinutesList entries={filteredMinutes} callerNames={callerNames} />
       ) : (
-        <TasksList entries={filteredTasks} />
+        <>
+          <OpsBreakdown entries={filteredTasks} />
+          <TasksList entries={filteredTasks} />
+        </>
       )}
+    </div>
+  );
+}
+
+// Resumen de tareas por herramienta (fix C13 audit). Responde "¿por qué N
+// tareas?" al auditor Municipio: agrupa por título (que ya es el label
+// legible del source) y muestra el total consumido en el rango filtrado.
+function OpsBreakdown({ entries }: { entries: TaskEntry[] }) {
+  const summary = useMemo(() => {
+    const byTitle = new Map<string, number>();
+    let total = 0;
+    for (const e of entries) {
+      byTitle.set(e.title, (byTitle.get(e.title) ?? 0) + e.opsUsed);
+      total += e.opsUsed;
+    }
+    const allSorted = Array.from(byTitle.entries()).sort((a, b) => b[1] - a[1]);
+    const TOP_N = 8;
+    const sorted = allSorted.slice(0, TOP_N);
+    const rest = allSorted.slice(TOP_N);
+    // Fix M-b audit 2026-08-10: agrupar herramientas después del top 8 en "Otros"
+    // para que auditor Municipio no pierda visibilidad de tools menores.
+    const othersSum = rest.reduce((s, [, v]) => s + v, 0);
+    return { total, sorted, othersCount: rest.length, othersSum };
+  }, [entries]);
+
+  if (summary.total === 0) return null;
+
+  return (
+    <div className="px-5 py-3" style={{ borderBottom: '1px solid #F0EDF9', background: '#FAFAFB' }}>
+      <div className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: '#9B8FB5' }}>
+        Consumo por herramienta · {summary.total} tareas en este rango
+      </div>
+      <div className="flex flex-col gap-1">
+        {summary.sorted.map(([title, count]) => {
+          const pct = summary.total > 0 ? (count / summary.total) * 100 : 0;
+          return (
+            <div key={title} className="flex items-center gap-2">
+              <div className="flex-1 min-w-0 text-[11px] truncate" style={{ color: '#1A0A3B' }}>{title}</div>
+              <div className="w-24 h-1.5 rounded-full overflow-hidden" style={{ background: '#E8E3F5' }}>
+                <div style={{ width: `${pct}%`, height: '100%', background: '#10B981' }} />
+              </div>
+              <div className="text-[11px] tabular-nums font-semibold w-12 text-right" style={{ color: '#1A0A3B' }}>
+                {count}
+              </div>
+            </div>
+          );
+        })}
+        {summary.othersCount > 0 && (
+          <div className="flex items-center gap-2 opacity-70">
+            <div className="flex-1 min-w-0 text-[11px] truncate italic" style={{ color: '#6B6480' }}>
+              Otros ({summary.othersCount} {summary.othersCount === 1 ? 'herramienta' : 'herramientas'})
+            </div>
+            <div className="w-24 h-1.5 rounded-full overflow-hidden" style={{ background: '#E8E3F5' }}>
+              <div style={{ width: `${summary.total > 0 ? (summary.othersSum / summary.total) * 100 : 0}%`, height: '100%', background: '#9CA3AF' }} />
+            </div>
+            <div className="text-[11px] tabular-nums font-semibold w-12 text-right" style={{ color: '#6B6480' }}>
+              {summary.othersSum}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -356,8 +449,12 @@ function TasksList({ entries }: { entries: TaskEntry[] }) {
 
 function filterByDate<T extends { date: string }>(items: T[], from: string, to: string): T[] {
   if (!from && !to) return items;
-  const fromTs = from ? new Date(from + 'T00:00:00').getTime() : -Infinity;
-  const toTs   = to   ? new Date(to   + 'T23:59:59').getTime() :  Infinity;
+  // Fix N7 audit 2026-08-10: interpretar fechas en tz México (UTC-6, sin DST).
+  // Antes usaba `new Date('YYYY-MM-DDT00:00:00')` que asume tz local del browser
+  // → auditor en tz diferente veía datos desalineados vs lo que muestra el UI.
+  // Con offset explícito -06:00 el rango cuadra con lo que Municipio ve en su reloj.
+  const fromTs = from ? new Date(from + 'T00:00:00-06:00').getTime() : -Infinity;
+  const toTs   = to   ? new Date(to   + 'T23:59:59-06:00').getTime() :  Infinity;
   return items.filter(e => {
     const t = new Date(e.date).getTime();
     return t >= fromTs && t <= toTs;

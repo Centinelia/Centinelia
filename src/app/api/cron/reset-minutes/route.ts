@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { nextResetDate } from '@/lib/billing/plans';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
+import { alertCronPartialFailure } from '@/lib/cron/alert-partial-failure';
+import { todayInMexico, nextResetDateInMexico } from '@/lib/billing/tz';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,8 +16,10 @@ export async function GET(req: Request) {
   }
 
   const supabase = createAdminClient();
-  const today    = new Date().toISOString().slice(0, 10);
-  const nextDate = nextResetDate();
+  // Timezone-aware: cliente mexicano ve el día calendario según su reloj local,
+  // no UTC (fix H3 audit). Evita boundary de ±1 día en accounts al borde.
+  const today    = todayInMexico();
+  const nextDate = nextResetDateInMexico();
 
   // ── 1. Refresh cache de todas las cuentas Stripe ──────────────────────────
   const { data: allAccounts } = await supabase
@@ -31,22 +34,28 @@ export async function GET(req: Request) {
 
   let refreshed = 0;
   let resetDate = 0;
-  for (const acct of allAccounts ?? []) {
-    if (nonStripeSet.has(acct.portal_email as string)) continue;
-    // Refresca cache desde ledger (balance, cap, used_30d).
-    await supabase.rpc('refresh_pool_cache', { p_portal_email: acct.portal_email });
-    refreshed++;
-    // Si el reset_date pasó, avanzarlo al siguiente ciclo (metadata solamente).
-    await supabase.from('account_minutes')
-      .update({ minutes_reset_date: nextDate })
-      .eq('portal_email', acct.portal_email)
-      .lt('minutes_reset_date', today);
-    resetDate++;
-    // Limpiar flag de fallback al arrancar el nuevo ciclo (idempotente).
-    await supabase.from('organizations')
-      .update({ fallback_notified_at: null })
-      .eq('portal_email', acct.portal_email)
-      .not('fallback_notified_at', 'is', null);
+  const errors: string[] = [];
+  // Accounts a procesar = todos menos non-stripe.
+  const stripeAccounts = (allAccounts ?? []).filter(a => !nonStripeSet.has(a.portal_email as string));
+  for (const acct of stripeAccounts) {
+    try {
+      // Refresca cache desde ledger (balance, cap, used_30d).
+      await supabase.rpc('refresh_pool_cache', { p_portal_email: acct.portal_email });
+      refreshed++;
+      // Si el reset_date pasó, avanzarlo al siguiente ciclo (metadata solamente).
+      await supabase.from('account_minutes')
+        .update({ minutes_reset_date: nextDate })
+        .eq('portal_email', acct.portal_email)
+        .lt('minutes_reset_date', today);
+      resetDate++;
+      // Limpiar flag de fallback al arrancar el nuevo ciclo (idempotente).
+      await supabase.from('organizations')
+        .update({ fallback_notified_at: null })
+        .eq('portal_email', acct.portal_email)
+        .not('fallback_notified_at', 'is', null);
+    } catch (err) {
+      errors.push(`${acct.portal_email}: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 
   // ── 2. Reset voice_agents standalone (sin portal_email) legacy path ──────
@@ -70,7 +79,15 @@ export async function GET(req: Request) {
     agentReset++;
   }
 
-  console.log(`[reset-minutes] Refreshed: ${refreshed}, Reset dates: ${resetDate}, Agentes legacy: ${agentReset}`);
+  console.log(`[reset-minutes] Refreshed: ${refreshed}, Reset dates: ${resetDate}, Agentes legacy: ${agentReset}, Errores: ${errors.length}`);
+
+  // Alerta si hubo procesamiento parcial (H13 fix). No block la respuesta.
+  await alertCronPartialFailure(supabase, {
+    cronName:  'reset-minutes',
+    expected:  stripeAccounts.length,
+    processed: refreshed,
+    errors,
+  });
 
   return NextResponse.json({
     ok:                true,
@@ -78,5 +95,6 @@ export async function GET(req: Request) {
     accounts_refreshed: refreshed,
     reset_dates:       resetDate,
     agents_legacy:     agentReset,
+    errors:            errors.length,
   });
 }

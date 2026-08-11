@@ -23,6 +23,19 @@ export async function POST(req: NextRequest, { params }: Params) {
   }
 
   const supabase = createAdminClient();
+
+  // Fix T9 audit 2026-08-10: alertar ajustes >1000 tareas para review manual.
+  if (amount > 1000) {
+    await supabase.from('platform_incidents').insert({
+      title:       `Admin adjustment grande — ${action} ${amount} tareas`,
+      description: `Admin aplicó ajuste manual de ${amount} tareas (action=${action}) al agente ${id}. Reason: ${reason ?? '—'}. Revisar por posible error de entrada.`,
+      priority:    'high',
+      source:      'error_log',
+      source_id:   `admin_adj_ops_${id}_${Date.now()}`,
+      status:      'open',
+      assigned_to: 'owner',
+    });
+  }
   const { data: agent } = await supabase
     .from('voice_agents')
     .select('portal_email, ai_ops_used, ai_ops_limit')

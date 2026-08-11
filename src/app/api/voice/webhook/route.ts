@@ -22,30 +22,23 @@ import { evaluateFlagsForOrg } from '@/lib/feature-flags/all-active';
 import { getOrgToken } from '@/lib/portal/org-token';
 
 export async function POST(req: NextRequest) {
+  // Fix T8 audit 2026-08-10: hardening Vapi webhook auth.
+  // Antes: if (vapiSecret) — si env no seteado, ACEPTABA cualquier POST.
+  //        String comparison sin timing-safe. Query param secret loggable en URLs.
+  // Ahora: rechaza si secret no seteado + timingSafeEqual + header-only preferido.
   const vapiSecret = process.env.VAPI_SERVER_SECRET;
-  const headerSecret = req.headers.get('x-vapi-secret');
-  const querySecret  = req.nextUrl.searchParams.get('secret');
-
-  // Debug logging temporal — pre-piloto Monterrey. Quitar después.
-  console.log('[voice/webhook] AUTH DEBUG', {
-    hasEnvSecret: !!vapiSecret,
-    envSecretLen: vapiSecret?.length ?? 0,
-    envSecretFirst4: vapiSecret?.slice(0, 4) ?? null,
-    hasHeaderSecret: !!headerSecret,
-    headerSecretLen: headerSecret?.length ?? 0,
-    headerSecretFirst4: headerSecret?.slice(0, 4) ?? null,
-    hasQuerySecret: !!querySecret,
-    querySecretLen: querySecret?.length ?? 0,
-    querySecretFirst4: querySecret?.slice(0, 4) ?? null,
-    headerMatch: headerSecret === vapiSecret,
-    queryMatch: querySecret === vapiSecret,
-    url: req.nextUrl.pathname + req.nextUrl.search.slice(0, 60),
-  });
-
-  if (vapiSecret) {
-    if (headerSecret !== vapiSecret && querySecret !== vapiSecret) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  if (!vapiSecret) {
+    console.error('[voice/webhook] VAPI_SERVER_SECRET not set — rejecting all requests');
+    return NextResponse.json({ error: 'Server misconfigured' }, { status: 503 });
+  }
+  const headerSecret = req.headers.get('x-vapi-secret') ?? '';
+  const querySecret  = req.nextUrl.searchParams.get('secret') ?? '';
+  const { timingSafeEqual } = await import('crypto');
+  const secretBuf = Buffer.from(vapiSecret);
+  const headerMatch = headerSecret.length === vapiSecret.length && timingSafeEqual(Buffer.from(headerSecret), secretBuf);
+  const queryMatch  = querySecret.length  === vapiSecret.length && timingSafeEqual(Buffer.from(querySecret),  secretBuf);
+  if (!headerMatch && !queryMatch) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const body = await req.json();
@@ -150,7 +143,10 @@ export async function POST(req: NextRequest) {
       const rawEndedAt   = call?.endedAt   ?? message.endedAt;
       const startedAt    = rawStartedAt ? new Date(rawStartedAt).getTime() : 0;
       const endedAt      = rawEndedAt   ? new Date(rawEndedAt).getTime()   : 0;
-      const durationSeconds = startedAt && endedAt ? Math.round((endedAt - startedAt) / 1000) : 0;
+      // Fix T2 audit 2026-08-10: Math.max clamp evita negativos si Vapi manda
+      // endedAt<startedAt (clock skew / data corruption). Antes se insertaba
+      // duration_seconds negativo en voice_calls → portal/aggregations rotos.
+      const durationSeconds = Math.max(0, startedAt && endedAt ? Math.round((endedAt - startedAt) / 1000) : 0);
 
       const analysis     = message.analysis ?? call?.analysis ?? null;
       const structured   = analysis?.structuredData ?? null;
@@ -286,7 +282,14 @@ export async function POST(req: NextRequest) {
         break;
       }
 
-      const minutes = Math.ceil(durationSeconds / 60) || 1;
+      // Llamadas unanswered (duration <=5s por outcome-normalize línea 158) NO
+      // cobran minutos ni escriben ledger de consumo — evita cobrar por drops
+      // pre-conexión (auditor Municipio: "esta llamada no conectó, ¿por qué se
+      // cobró?"). Se preserva el row en voice_calls con duration_seconds real
+      // para audit trail. Si en el futuro queremos un ledger row explícito
+      // kind='unanswered_call' con amount=0, hacerlo en apply_ledger_entry.
+      const shouldChargeMinutes = outcome !== 'unanswered' && durationSeconds >= 3;
+      const minutes = shouldChargeMinutes ? (Math.ceil(durationSeconds / 60) || 1) : 0;
 
       // 3. Fetch agent once — covers minutes critical path + all deferred notifications
       const { data: _agent } = await supabase
@@ -305,8 +308,8 @@ export async function POST(req: NextRequest) {
       let resetDateStr = '';
       let poolConsumed = false;   // annual → skip auto-pause + minutes-alert emails
 
-      if (agent?.portal_email) {
-        const pool = await consumePoolMinutes(agent.portal_email, minutes);
+      if (shouldChargeMinutes && agent?.portal_email) {
+        const pool = await consumePoolMinutes(agent.portal_email, minutes, { callId: call?.id ?? null, agentId: resolvedAgentId });
         if (pool.consumed) {
           poolConsumed = true;
           used     = pool.minutes_used_after;
@@ -338,12 +341,30 @@ export async function POST(req: NextRequest) {
             resetDateStr = new Date(acct.minutes_reset_date + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long' });
           }
         }
-      } else {
+      } else if (shouldChargeMinutes) {
         await supabase.rpc('increment_minutes_used', { agent_id: resolvedAgentId, minutes });
         used     = (agent?.minutes_used     ?? 0) + minutes;
         included = agent?.minutes_included ?? 0;
         if (agent?.minutes_reset_date) {
           resetDateStr = new Date(agent.minutes_reset_date + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long' });
+        }
+      } else {
+        // Unanswered: fetch snapshot para downstream (auto-pause guard needs `included`)
+        // sin incrementar. Cero cambios de estado.
+        if (agent?.portal_email) {
+          const { data: acct } = await supabase
+            .from('account_minutes')
+            .select('minutes_used, minutes_included, minutes_reset_date')
+            .eq('portal_email', agent.portal_email)
+            .maybeSingle();
+          used     = acct?.minutes_used     ?? 0;
+          included = acct?.minutes_included ?? 0;
+          if (acct?.minutes_reset_date) {
+            resetDateStr = new Date(acct.minutes_reset_date + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long' });
+          }
+        } else {
+          used     = agent?.minutes_used     ?? 0;
+          included = agent?.minutes_included ?? 0;
         }
       }
 
@@ -396,6 +417,19 @@ export async function POST(req: NextRequest) {
           await supabase.from('voice_agents').update({ active: false }).eq('id', resolvedAgentId);
           if (agent.phone_number) await pauseVapiAgent(agent.phone_number);
         }
+
+        // Fix M-c audit 2026-08-10: audit trail explícito del state change.
+        // Antes: pause era silent en el ledger — auditor veía consumo y luego
+        // gap sin explicación. Ahora ledger row amount=0 kind='auto_paused'.
+        await supabase.from('minutes_ledger').insert({
+          portal_email: agent.portal_email ?? null,
+          agent_id:     resolvedAgentId,
+          amount:       0,
+          description:  `Agente pausado automáticamente · ${used}/${includedAfterRefill} min consumidos`,
+          source:       'ajuste',
+          kind:         'auto_paused',
+          reference_id: call?.id ? `pause_${call.id}` : null,
+        });
       }
 
       const pct    = includedAfterRefill > 0 ? (used / includedAfterRefill) * 100 : 0;
@@ -522,6 +556,22 @@ export async function POST(req: NextRequest) {
         }
 
         const callerIsInternal = callerNumberIsInternal || passphraseUsed;
+
+        // Fix T7 audit 2026-08-10: log passphrase bypass a platform_incidents.
+        // Sin este log, un passphrase leaked se explota indefinidamente sin
+        // visibilidad. Nazre + Nash pueden revisar bypasses sospechosos.
+        if (passphraseUsed) {
+          await supabase.from('platform_incidents').insert({
+            title:                 `Passphrase bypass — ${agent?.business_name ?? 'desconocido'}`,
+            description:           `Un caller usó el owner_passphrase durante la llamada. Duration: ${durationSeconds}s. Caller: ${callerNumber ?? 'privado'}. Call ID: ${call?.id ?? 'n/a'}. Si este número no coincide con el owner conocido, revisar posible fuga del passphrase.`,
+            priority:              'med',
+            source:                'error_log',
+            source_id:             call?.id ?? null,
+            affected_portal_email: agent?.portal_email ?? null,
+            status:                'open',
+            assigned_to:           'owner',
+          });
+        }
 
         // Auto-tag por outcome (Fase E): agrega el tag correspondiente al
         // contacto de outbound_contacts si existe uno con este teléfono.

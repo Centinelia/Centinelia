@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isAdmin } from '@/lib/admin/auth';
 import { updateVapiAssistant } from '@/lib/vapi/sync';
 import { DEMO_INSTRUCTIONS } from '@/lib/demo/instructions';
 import type { VoiceAgent } from '@/types/agent';
 
 export async function POST() {
+  if (!(await isAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const agentId = process.env.DEMO_AGENT_ID;
   if (!agentId) {
     return NextResponse.json({ error: 'DEMO_AGENT_ID no configurado' }, { status: 500 });
