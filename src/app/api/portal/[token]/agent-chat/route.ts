@@ -777,6 +777,43 @@ const CONSULTAR_BILLING_ORG_TOOL: Anthropic.Tool = {
   },
 };
 
+// pedir_a_humano — universal, todos los empleados pueden escalar al humano.
+// Voice ya lo tenía (sync.ts:406), email también (inbox-processor). En chat
+// portal estaba AUSENTE — Niva/Nox halucinaban "listo, escalado" sin crear
+// row en human_requests, bypasseando el anti-abuse counter. CRITICAL fix.
+// Ver [[handoff-audits-pending-scopes]] Scope B Agent 1 gap #5 + silent-failure #1.
+const PEDIR_A_HUMANO_TOOL: Anthropic.Tool = {
+  name: 'pedir_a_humano',
+  description: `Pide a un humano del equipo del negocio: info que no tienes, una acción física, o confirmación de una decisión importante.
+
+Úsala CUANDO:
+- Necesitas datos/archivos que no están en Drive ni puedes obtener con otras tools
+- Requiere una acción FÍSICA que solo un humano puede hacer (revisar stock, firmar documento en papel)
+- Requiere aprobación de una decisión que excede tu autoridad
+
+Para llamadas telefónicas:
+- Si tienes minutos disponibles Y toda la info → usa trigger_outbound_call, NO pidas a humano
+- Solo pide llamada a humano si: sin minutos, cliente pidió humano, o conversación delicada
+
+NO la uses para:
+- Info obtenible con search_files, buscar_en_web, o QB
+- Cosas que puede hacer otro agente (usa delegate_task)
+- Llamadas que puedes hacer tú (usa trigger_outbound_call primero)`,
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      type:         { type: 'string', enum: ['info', 'action', 'approval'] },
+      target:       { type: 'string', enum: ['approver', 'owner', 'specific'] },
+      target_email: { type: 'string' },
+      title:        { type: 'string' },
+      description:  { type: 'string' },
+      urgency:      { type: 'string', enum: ['baja', 'media', 'alta'] },
+      needed_by:    { type: 'string' },
+    },
+    required: ['type', 'target', 'title', 'description'],
+  },
+};
+
 // Migrated to registry: src/lib/tools/schemas.ts
 const REPORT_ISSUE_TOOL: Anthropic.Tool = toAnthropicTool(TOOL_SCHEMAS['reportar_falla']);
 
@@ -992,6 +1029,7 @@ const ALL_TOOLS = [
   CONSULTAR_INCIDENTES_TOOL,
   BUSCAR_DIRECTORIO_TOOL,
   INICIAR_ONBOARDING_TOOL,
+  PEDIR_A_HUMANO_TOOL,
 ];
 
 // Maps voice tool names → chat tool names (null = no chat implementation yet)
@@ -1056,8 +1094,9 @@ const VOICE_TO_CHAT: Record<string, string | null> = {
   sheets_actualizar_fila:     'sheets_actualizar_fila',
   sheets_leer:                'sheets_leer',
   sheets_buscar:              'sheets_buscar',
-  marcar_no_llamar:          null,  // voice-only (no aplica a chat)
+  marcar_no_llamar:          null,  // voice-only (no aplica a chat portal — owner no habla con clientes por chat)
   agregar_tag_contacto:      'agregar_tag_contacto',
+  pedir_a_humano:            'pedir_a_humano',
 };
 
 // Chat tool name → Anthropic.Tool object
@@ -1080,6 +1119,7 @@ const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
   sheets_leer:                SHEETS_LEER_TOOL,
   sheets_buscar:              SHEETS_BUSCAR_TOOL,
   agregar_tag_contacto:      AGREGAR_TAG_CONTACTO_TOOL,
+  pedir_a_humano:            PEDIR_A_HUMANO_TOOL,
   create_file:               CREATE_FILE_TOOL,
   save_to_drive:             SAVE_TO_DRIVE_TOOL,
   organize_files:            ORGANIZE_FILES_TOOL,
@@ -1161,6 +1201,14 @@ function getToolsForRole(meerkatId: string | null, qbConnected: boolean, notionP
     if (!notionProductsConnected && chatName === 'buscar_producto') continue;
     const tool = CHAT_TOOL_BY_NAME[chatName];
     if (tool) { tools.push(tool); seen.add(chatName); }
+  }
+  // pedir_a_humano es universal — cualquier empleado debe poder escalar al
+  // humano sin importar su rol. La MEERKAT_VOICE_DISTRIBUTION no la declara
+  // per-rol, así que la agregamos como default. Sin esto, chat de Niva/Nox
+  // halucinaba "listo, escalado" sin crear human_requests.
+  if (!seen.has('pedir_a_humano')) {
+    tools.push(PEDIR_A_HUMANO_TOOL);
+    seen.add('pedir_a_humano');
   }
   return tools;
 }
