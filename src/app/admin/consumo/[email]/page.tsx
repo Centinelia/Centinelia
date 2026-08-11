@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { isAdmin } from '@/lib/admin/auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { logAdminAccess } from '@/lib/admin/access-log';
+import { labelBilling } from '@/lib/admin/consumo-labels';
 import ConsumoClient from './ConsumoClient';
 
 export const dynamic = 'force-dynamic';
@@ -158,9 +159,9 @@ export default async function AdminConsumoPage({ params, searchParams }: Params 
   return (
     <div className="min-h-screen p-6" style={{ background: '#FAFBFF', color: '#1A0A3B' }}>
       <div className="mb-4">
-        <Link href="/admin/clientes" className="text-[12px] opacity-70 hover:opacity-100">← Clientes</Link>
-        <h1 className="text-2xl font-bold mt-2">Consumo · {orgName}</h1>
-        <p className="text-[13px] opacity-70">{portalEmail} · billing_model: {billingModel}</p>
+        <Link href="/admin/consumo" className="text-[12px] opacity-70 hover:opacity-100">← Consumo de todos los clientes</Link>
+        <h1 className="text-2xl font-bold mt-2">{orgName}</h1>
+        <p className="text-[13px] opacity-70">{portalEmail} · Facturación: {labelBilling(billingModel)}</p>
       </div>
       <ConsumoClient
         entries={entries}

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   Search, ChevronDown, Settings, KeyRound,
-  Eye, EyeOff, Check, X, Plus, Users, Pencil, Bot, AlertTriangle,
+  Eye, EyeOff, Check, X, Plus, Users, Pencil, Bot, AlertTriangle, BarChart3,
 } from 'lucide-react';
 import MinutesAdjuster from '../agentes/[id]/MinutesAdjuster';
 import TasksAdjuster from '../agentes/[id]/TasksAdjuster';
@@ -352,7 +352,7 @@ export default function ClientesClient({
                     style={{ background: '#FFFFFF', color: '#6C3BFF', border: '1px solid #E5E7EB' }}
                     title="Ver consumo detallado con filtros de fecha + export CSV"
                   >
-                    <span>📊</span>
+                    <BarChart3 size={11} />
                     <span className="hidden sm:inline"> Consumo</span>
                   </Link>
                 )}

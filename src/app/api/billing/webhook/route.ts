@@ -963,7 +963,7 @@ export async function POST(req: NextRequest) {
       // reversal (decisión humana con contexto business).
       await supabase.from('platform_incidents').insert({
         title:                 `Dispute cerrada (${dispute.status}) — ${(dispute.amount ?? 0) / 100} ${dispute.currency?.toUpperCase()}`,
-        description:           `dispute=${dispute.id} charge=${chargeId ?? 'n/a'} status=${dispute.status ?? 'n/a'} reason=${dispute.reason ?? 'n/a'}\n\n${won ? '✅ GANAMOS: la reversal previa (dispute_chargeback) debería REVERTIRSE. Insertar ledger positivo compensando el negativo original con reference_id=' + (invoiceId ?? 'n/a') : '❌ PERDIMOS: la reversal queda. Dinero perdido en la dispute + minutos ya revertidos = estado correcto.'}\n\nInvoice: ${invoiceId ?? 'n/a'}. Requiere validación manual antes de tocar cache.`,
+        description:           `dispute=${dispute.id} charge=${chargeId ?? 'n/a'} status=${dispute.status ?? 'n/a'} reason=${dispute.reason ?? 'n/a'}\n\n${won ? '[GANAMOS] La reversal previa (dispute_chargeback) debería REVERTIRSE. Insertar ledger positivo compensando el negativo original con reference_id=' + (invoiceId ?? 'n/a') : '[PERDIMOS] La reversal queda. Dinero perdido en la dispute + minutos ya revertidos = estado correcto.'}\n\nInvoice: ${invoiceId ?? 'n/a'}. Requiere validación manual antes de tocar cache.`,
         priority:              won ? 'high' : 'med',
         source:                'error_log',
         source_id:             dispute.id,

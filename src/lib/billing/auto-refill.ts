@@ -112,7 +112,7 @@ export async function executeAutoRefill(
     const errMsg = ledErr instanceof Error ? ledErr.message : String(ledErr);
     console.error('[auto-refill] MONEY LEAK — charge OK but ledger failed', { agentId, pi_id: pi.id, err: errMsg });
     await supabase.from('platform_incidents').insert({
-      title:                 `🚨 AUTO-REFILL MONEY LEAK — Charge ${pi.id} OK pero ledger falló`,
+      title:                 `[URGENTE] Auto-refill money leak — Charge ${pi.id} OK pero ledger falló`,
       description:           `Stripe cobró $${amountMxn.toLocaleString('es-MX')} MXN al cliente pero la escritura al ledger falló.\nAgent: ${agentId}\nPaymentIntent: ${pi.id}\nMinutos que debieron acreditarse: ${minutes}\nError: ${errMsg}\n\nAcción manual: verificar si hay que aplicar ledger manualmente o refund en Stripe.`,
       priority:              'critical',
       source:                'error_log',
@@ -226,7 +226,7 @@ export async function executeAutoRefillOps(
     const errMsg = ledErr instanceof Error ? ledErr.message : String(ledErr);
     console.error('[auto-refill-ops] MONEY LEAK — charge OK but ledger failed', { agentId, pi_id: pi.id, err: errMsg });
     await supabase.from('platform_incidents').insert({
-      title:                 `🚨 AUTO-REFILL-OPS MONEY LEAK — Charge ${pi.id} OK pero ledger falló`,
+      title:                 `[URGENTE] Auto-refill-ops money leak — Charge ${pi.id} OK pero ledger falló`,
       description:           `Stripe cobró $${amountMxn.toLocaleString('es-MX')} MXN pero ledger falló.\nAgent: ${agentId}\nPaymentIntent: ${pi.id}\nOps que debieron acreditarse: ${ops}\nError: ${errMsg}`,
       priority:              'critical',
       source:                'error_log',

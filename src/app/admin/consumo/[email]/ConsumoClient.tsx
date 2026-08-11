@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { labelKind } from '@/lib/admin/consumo-labels';
 import type { LedgerEntry } from './page';
 
 interface Props {
@@ -99,11 +100,11 @@ export default function ConsumoClient({ entries, fromDate, toDate, kindFilter, c
               className="text-[12px] px-3 py-2 rounded-md" style={{ border: '1px solid #E8E3F5' }} />
           </div>
           <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider mb-1 opacity-60">Kind</label>
+            <label className="block text-[10px] font-bold uppercase tracking-wider mb-1 opacity-60">Tipo de movimiento</label>
             <select value={kind} onChange={e => setKind(e.target.value)}
               className="text-[12px] px-3 py-2 rounded-md" style={{ border: '1px solid #E8E3F5' }}>
-              <option value="">Todos</option>
-              {uniqueKinds.map(k => <option key={k} value={k}>{k}</option>)}
+              <option value="">Todos los movimientos</option>
+              {uniqueKinds.map(k => <option key={k} value={k}>{labelKind(k)}</option>)}
             </select>
           </div>
           <button onClick={applyFilters}
@@ -142,33 +143,31 @@ export default function ConsumoClient({ entries, fromDate, toDate, kindFilter, c
         <table className="w-full text-[12px]">
           <thead style={{ background: '#FAFAFB' }}>
             <tr>
-              <th className="p-2 text-left">Fecha (MX)</th>
+              <th className="p-2 text-left">Fecha</th>
               <th className="p-2 text-left">Recurso</th>
-              <th className="p-2 text-left">Kind</th>
+              <th className="p-2 text-left">Tipo de movimiento</th>
               <th className="p-2 text-right">Monto</th>
-              <th className="p-2 text-right">Saldo</th>
-              <th className="p-2 text-left">Fuente</th>
-              <th className="p-2 text-left">Referencia</th>
+              <th className="p-2 text-right">Saldo acumulado</th>
+              <th className="p-2 text-left">Referencia técnica</th>
               <th className="p-2 text-left">Descripción</th>
             </tr>
           </thead>
           <tbody>
             {summary.entries.length === 0 && (
-              <tr><td colSpan={8} className="p-4 text-center opacity-60">Sin entradas en este rango</td></tr>
+              <tr><td colSpan={7} className="p-4 text-center opacity-60">Sin movimientos en este rango</td></tr>
             )}
             {summary.entries.map(e => (
               <tr key={e.id} style={{ borderTop: '1px solid #F0EDF9' }}>
                 <td className="p-2 tabular-nums">{fmtDateTime(e.created_at)}</td>
                 <td className="p-2">
                   {e.ledger_type.startsWith('minutes') ? 'Minutos' : 'Tareas'}
-                  {e.archived && <span className="ml-1 text-[10px] opacity-60">(archivado)</span>}
+                  {e.archived && <span className="ml-1 text-[10px] opacity-60">(histórico)</span>}
                 </td>
-                <td className="p-2 font-mono text-[11px]">{e.kind}</td>
+                <td className="p-2">{labelKind(e.kind)}</td>
                 <td className="p-2 text-right tabular-nums font-semibold" style={{ color: e.amount < 0 ? '#dc2626' : '#16a34a' }}>
                   {e.amount > 0 ? '+' : ''}{e.amount}
                 </td>
                 <td className="p-2 text-right tabular-nums opacity-70">{(e as { balance: number }).balance}</td>
-                <td className="p-2 opacity-70">{e.source ?? '—'}</td>
                 <td className="p-2 font-mono text-[10px] opacity-70">{e.reference_id ?? '—'}</td>
                 <td className="p-2 opacity-80">{e.description ?? '—'}</td>
               </tr>
@@ -178,8 +177,8 @@ export default function ConsumoClient({ entries, fromDate, toDate, kindFilter, c
       </div>
 
       <p className="text-[10px] opacity-60">
-        Fechas mostradas en zona horaria México (UTC-6). El CSV exporta con timestamps ISO 8601 (UTC).
-        Incluye rows archivadas (retention 7 años).
+        Fechas mostradas en zona horaria México. El CSV descargable incluye timestamps completos (UTC).
+        Aparecen tanto los movimientos actuales como los que ya fueron archivados (se conservan 7 años por retención legal).
       </p>
     </div>
   );
@@ -193,11 +192,11 @@ function SummaryCard({ title, total, byKind, unit }: { title: string; total: num
       <div className="text-2xl font-bold mt-1 tabular-nums" style={{ color: total < 0 ? '#dc2626' : '#16a34a' }}>
         {total > 0 ? '+' : ''}{total} {unit}
       </div>
-      <div className="text-[10px] opacity-60 mt-1">Balance neto en rango</div>
+      <div className="text-[10px] opacity-60 mt-1">Cambio neto en este rango</div>
       <div className="mt-3 flex flex-col gap-1">
         {kinds.map(([k, v]) => (
           <div key={k} className="flex justify-between text-[11px]">
-            <span className="font-mono">{k}</span>
+            <span>{labelKind(k)}</span>
             <span className="tabular-nums font-semibold" style={{ color: v < 0 ? '#dc2626' : '#16a34a' }}>
               {v > 0 ? '+' : ''}{v}
             </span>
