@@ -113,12 +113,17 @@ export async function searchOfficeDocuments(args: SearchArgs): Promise<OfficeDoc
   }));
 }
 
-/** Formatea la lista para el LLM (texto compacto por documento). */
+/** Formatea la lista para el LLM (texto compacto por documento).
+ * A-F6: expone document_id completo (UUID) para que el modelo pueda pasarlo
+ * a enviar_documento_oficina(document_id=…). ANTES: `d.id.slice(0, 8)` con
+ * "…" truncado — Haiku voice leía del message y pasaba UUID truncado →
+ * .eq('id', 'a3b4c5d6') retornaba null → "documento no encontrado".
+ * Ver Scope A A3 CRIT #3 chain step B. */
 export function formatDocsForAgent(docs: OfficeDocSummary[]): string {
   if (!docs.length) return 'No encontré documentos que coincidan.';
   return docs.map((d, i) => {
     const parts = [
-      `${i + 1}. "${d.title}"${d.folio ? ` (folio ${d.folio})` : ` (id: ${d.id.slice(0, 8)}…)`}`,
+      `${i + 1}. "${d.title}"${d.folio ? ` (folio ${d.folio})` : ''} (document_id: ${d.id})`,
       d.kind ? `tipo: ${d.kind}` : null,
       `creado: ${new Date(d.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}`,
       d.expires_at ? `vence: ${new Date(d.expires_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}` : null,

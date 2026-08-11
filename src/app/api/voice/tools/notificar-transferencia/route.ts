@@ -36,20 +36,36 @@ export async function POST(req: NextRequest) {
     .eq('id', agent_id)
     .single();
 
-  if (agent?.transfer_whatsapp) {
-    const msg = [
-      `📞 *Transferencia entrante, ${agent.business_name}*`,
-      nombre  ? `👤 Cliente: ${nombre}`  : null,
-      `📋 Motivo: ${motivo}`,
-      resumen ? `📝 ${resumen}`          : null,
-      `⏱️ El cliente está en línea ahora.`,
-    ].filter(Boolean).join('\n');
+  // A-F6 fix silent failure: si no hay transfer_whatsapp, la tool ANTES decía
+  // "Notificación enviada" pero no mandaba nada — Nico/quien reciba la
+  // transferencia no sabía que llamaba nadie. Ver Scope A A3 M2 silent success.
+  if (!agent?.transfer_whatsapp) {
+    return reply(
+      'Aviso: no hay número de WhatsApp configurado para notificar a quien recibe la transferencia. Puedes transferir de todos modos, pero la persona atenderá sin contexto previo. Considera capturar el motivo con crear_lead antes de transferir para dejar registro.',
+      { transfer_number: agent?.transfer_number ?? null, notified: false },
+      false,
+    );
+  }
 
-    await sendWhatsApp(agent.transfer_whatsapp, msg);
+  const msg = [
+    `📞 *Transferencia entrante, ${agent.business_name}*`,
+    nombre  ? `👤 Cliente: ${nombre}`  : null,
+    `📋 Motivo: ${motivo}`,
+    resumen ? `📝 ${resumen}`          : null,
+    `⏱️ El cliente está en línea ahora.`,
+  ].filter(Boolean).join('\n');
+
+  const waOk = await sendWhatsApp(agent.transfer_whatsapp, msg);
+  if (!waOk) {
+    return reply(
+      'Intenté enviar el aviso por WhatsApp pero falló. Puedes transferir de todos modos, pero la persona atenderá sin contexto.',
+      { transfer_number: agent?.transfer_number ?? null, notified: false },
+      false,
+    );
   }
 
   return reply(
     'Notificación enviada. Le transfiero ahora.',
-    { transfer_number: agent?.transfer_number ?? null },
+    { transfer_number: agent?.transfer_number ?? null, notified: true },
   );
 }
