@@ -114,31 +114,51 @@ class GoogleEmail implements EmailConnector {
     return '';
   }
 
-  async send(to: string, subject: string, body: string, attachment?: Attachment, fromEmail?: string): Promise<void> {
+  async send(to: string, subject: string, body: string, attachment?: Attachment, fromEmail?: string, htmlBody?: string): Promise<void> {
     const encodedSubject = encodeHeaderRFC2047(subject);
     let raw: string;
     if (attachment) {
-      const boundary = `centinelia_${Date.now()}`;
+      const outer = `mixed_${Date.now()}`;
+      const alt   = `alt_${Date.now()}`;
+      const altPart = htmlBody
+        ? [
+            `Content-Type: multipart/alternative; boundary="${alt}"`, '',
+            `--${alt}`, 'Content-Type: text/plain; charset=utf-8', '', body, '',
+            `--${alt}`, 'Content-Type: text/html; charset=utf-8', '', htmlBody, '',
+            `--${alt}--`,
+          ]
+        : ['Content-Type: text/plain; charset=utf-8', '', body];
       raw = [
         'MIME-Version: 1.0',
         `To: ${to}`,
         ...(fromEmail ? [`From: ${fromEmail}`] : []),
         `Subject: ${encodedSubject}`,
-        `Content-Type: multipart/mixed; boundary="${boundary}"`,
+        `Content-Type: multipart/mixed; boundary="${outer}"`,
         '',
-        `--${boundary}`,
-        'Content-Type: text/plain; charset=utf-8',
+        `--${outer}`,
+        ...altPart,
         '',
-        body,
-        '',
-        `--${boundary}`,
+        `--${outer}`,
         `Content-Type: ${attachment.mimeType}`,
         `Content-Disposition: attachment; filename="${attachment.filename}"`,
         'Content-Transfer-Encoding: base64',
         '',
         attachment.content.toString('base64'),
         '',
-        `--${boundary}--`,
+        `--${outer}--`,
+      ].join('\r\n');
+    } else if (htmlBody) {
+      const alt = `alt_${Date.now()}`;
+      raw = [
+        'MIME-Version: 1.0',
+        `To: ${to}`,
+        ...(fromEmail ? [`From: ${fromEmail}`] : []),
+        `Subject: ${encodedSubject}`,
+        `Content-Type: multipart/alternative; boundary="${alt}"`,
+        '',
+        `--${alt}`, 'Content-Type: text/plain; charset=utf-8', '', body, '',
+        `--${alt}`, 'Content-Type: text/html; charset=utf-8', '', htmlBody, '',
+        `--${alt}--`,
       ].join('\r\n');
     } else {
       const headers = [`To: ${to}`, ...(fromEmail ? [`From: ${fromEmail}`] : []), `Subject: ${encodedSubject}`, 'Content-Type: text/plain; charset=utf-8'];
@@ -510,10 +530,39 @@ class GoogleCalendar implements CalendarConnector {
       body:    JSON.stringify(body),
     });
     if (!res.ok) return null;
-    const e = await res.json();
-    const meetLink = e.conferenceData?.entryPoints?.find(
+    let e = await res.json();
+    // conferenceData.createRequest es asíncrono: la primera respuesta puede
+    // traer status.statusCode='pending' con un entryPoint provisional que aún
+    // NO existe en Meet (Google devuelve "verifica el código" si el receptor
+    // hace click antes de que se materialice). Chequeamos status y re-GET
+    // hasta 3 veces con backoff corto. Si termina 'failure' o sigue pending,
+    // devolvemos meet_link=undefined para que el meerkat sepa que falló y no
+    // envíe un URL roto al cliente.
+    if (wantsMeet && e?.conferenceData?.createRequest?.status?.statusCode !== 'success') {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        await new Promise(r => setTimeout(r, 700 + attempt * 500));
+        const check = await fetch(
+          `${GCAL}/calendars/primary/events/${e.id}?conferenceDataVersion=1`,
+          { headers: this.h() },
+        );
+        if (!check.ok) break;
+        e = await check.json();
+        const status = e?.conferenceData?.createRequest?.status?.statusCode as string | undefined;
+        if (status === 'success') break;
+        if (status === 'failure') break;
+      }
+    }
+    const meetStatus = e?.conferenceData?.createRequest?.status?.statusCode as string | undefined;
+    const rawMeetLink = e.conferenceData?.entryPoints?.find(
       (ep: { entryPointType?: string; uri?: string }) => ep.entryPointType === 'video'
     )?.uri as string | undefined;
+    // Solo aceptamos el link si la conferencia fue creada exitosamente.
+    // Si status es undefined pero el evento no pidió Meet, aceptamos el link
+    // que venga (evento existente con Meet ya asociado). Cuando pedimos Meet
+    // explícito exigimos statusCode='success'.
+    const meetLink = wantsMeet
+      ? (meetStatus === 'success' ? rawMeetLink : undefined)
+      : rawMeetLink;
     return {
       id:          e.id,
       title:       e.summary ?? input.title,
