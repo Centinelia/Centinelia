@@ -690,6 +690,26 @@ export async function POST(req: NextRequest) {
               phone_number:          provisioned.phoneNumber,
               vapi_phone_number_id:  provisioned.vapiPhoneId ?? null,
             }).eq('id', agentId);
+            // Notify client si la lada solicitada no estaba disponible y le
+            // asignamos una diferente (D-M3 / Scope D1 F6). Antes: silencioso,
+            // cliente MTY recibía número GDL sin aviso.
+            if (provisioned.ladaFallback && agent.client_email && provisioned.requestedLada) {
+              const { sendEmail, shell, heading, badge } = await import('@/lib/email/send');
+              await sendEmail({
+                to:      agent.client_email,
+                subject: `Sobre tu número de teléfono (lada ${provisioned.requestedLada} no disponible)`,
+                html:    shell(`
+                  ${badge('Aviso', '#FFB627')}
+                  ${heading('Tu número quedó con otra lada')}
+                  <p style="color:#C8BEE8;font-size:14px;line-height:1.7;margin:0 0 16px">
+                    Pediste un número de la lada <b>${provisioned.requestedLada}</b>, pero en este momento no había disponibilidad. Te asignamos <b>${provisioned.phoneNumber}</b> para que puedas empezar a operar sin retraso.
+                  </p>
+                  <p style="color:#C8BEE8;font-size:14px;line-height:1.7;margin:0 0 16px">
+                    Si quieres cambiar a un número de tu lada preferida cuando haya inventario, respóndenos este correo y te avisamos apenas se libere uno.
+                  </p>
+                `),
+              }).catch(console.error);
+            }
           }
         }
 

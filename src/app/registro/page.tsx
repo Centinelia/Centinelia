@@ -717,6 +717,62 @@ function RegistroInner() {
     return () => document.removeEventListener('keydown', handler);
   }, [step, meerkatRoleId, overlayOpen]);
 
+  // D-M3: preservar state en localStorage. ANTES: cancel Stripe → regreso a
+  // /registro?canceled=1 con TODO el state en useState perdido → user debía
+  // re-elegir meerkat + re-teclear negocio + RFC/CURP. Drop-off masivo.
+  // Ver Scope D1 F4.
+  const FORM_STORAGE_KEY = 'centinelia_registro_v1';
+  // Hidratar al mount SI hay data guardada y URL no forza otra cosa.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = localStorage.getItem(FORM_STORAGE_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw) as Record<string, unknown>;
+      // No sobrescribir si URL trae role/plan/tier explícito (deep-link intent).
+      if (!rawRole && typeof saved.meerkatRoleId === 'string') setMeerkatRoleId(saved.meerkatRoleId as MeerkatRoleId);
+      if (!rawPlan && typeof saved.plan === 'string')          setPlan(saved.plan as FormPlan);
+      if (!rawTier && typeof saved.tier === 'string')          setTier(saved.tier as FormTier);
+      if (typeof saved.jornada === 'string')          setJornada(saved.jornada as 'combinada' | 'minutos' | 'tareas');
+      if (typeof saved.businessName === 'string')     setBusinessName(saved.businessName);
+      if (typeof saved.businessDesc === 'string')     setBusinessDesc(saved.businessDesc);
+      if (typeof saved.businessPhone === 'string')    setBusinessPhone(saved.businessPhone);
+      if (typeof saved.giro === 'string')             setGiro(saved.giro as Giro);
+      if (typeof saved.country === 'string')          setCountry(saved.country as Country);
+      if (typeof saved.cityLada === 'string')         setCityLada(saved.cityLada);
+      if (typeof saved.agentName === 'string' && saved.agentName) setAgentName(saved.agentName);
+      if (typeof saved.clientFirstName === 'string')  setClientFirstName(saved.clientFirstName);
+      if (typeof saved.clientLastName === 'string')   setClientLastName(saved.clientLastName);
+      if (typeof saved.clientEmail === 'string')      setClientEmail(saved.clientEmail);
+      if (typeof saved.transferWhatsapp === 'string') setTransferWhatsapp(saved.transferWhatsapp);
+      if (typeof saved.useAsFallback === 'boolean')   setUseAsFallback(saved.useAsFallback);
+      if (typeof saved.rfc === 'string')              setRfc(saved.rfc);
+      if (typeof saved.curp === 'string')             setCurp(saved.curp);
+      // step: solo si el user avanzó (>= 2). Si canceled=1, arrancamos donde
+      // dejó (típicamente Step 4 tras checkout).
+      const searchParams = new URLSearchParams(window.location.search);
+      if (searchParams.get('canceled') === '1' && typeof saved.step === 'number' && saved.step >= 2 && saved.step <= 4) {
+        setStep(saved.step as 1 | 2 | 3 | 4);
+        setError('Cancelaste el pago. Tus datos siguen aquí — puedes continuar cuando quieras.');
+      }
+    } catch { /* localStorage corrupto o disabled, ignoramos */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // Persistir en cada cambio (debounced no necesario — writes son baratos).
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (submitted) return; // no persist post-submit
+    try {
+      localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify({
+        meerkatRoleId, plan, tier, jornada,
+        businessName, businessDesc, businessPhone, giro, country, cityLada, agentName,
+        clientFirstName, clientLastName, clientEmail, transferWhatsapp, useAsFallback,
+        rfc, curp,
+        step,
+      }));
+    } catch { /* localStorage disabled */ }
+  }, [meerkatRoleId, plan, tier, jornada, businessName, businessDesc, businessPhone, giro, country, cityLada, agentName, clientFirstName, clientLastName, clientEmail, transferWhatsapp, useAsFallback, rfc, curp, step, submitted]);
+
   // Chat widget effects — Step 3
   useEffect(() => {
     if (step === 3 && selectedMeerkat) {
@@ -863,6 +919,11 @@ function RegistroInner() {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? 'Ocurrió un error'); return; }
+      // Al éxito, limpiamos el localStorage — el user va a Stripe checkout,
+      // no queremos que si vuelve a /registro después de pagar vea el form
+      // pre-llenado (confusión: "¿otra cuenta?"). Cancel path (regreso a
+      // /registro?canceled=1) NO limpia, mantiene el estado para retry.
+      try { if (typeof window !== 'undefined') localStorage.removeItem(FORM_STORAGE_KEY); } catch { /* ignore */ }
       if (data.empresarial) { setSubmitted(true); return; }
       window.location.href = data.url;
     } catch {

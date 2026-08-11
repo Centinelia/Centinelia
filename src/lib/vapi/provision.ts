@@ -25,12 +25,20 @@ async function searchTwilioNumbers(areaCode?: string): Promise<string[]> {
   return (available_phone_numbers ?? []).map((n: any) => n.phone_number as string);
 }
 
-async function buyTwilioNumber(areaCode?: string): Promise<string | null> {
+async function buyTwilioNumber(areaCode?: string): Promise<{ number: string; ladaFallback: boolean } | null> {
   const sid = process.env.TWILIO_ACCOUNT_SID!;
 
-  // Try requested area code first, then fall back to any MX number
-  let candidates = areaCode ? await searchTwilioNumbers(areaCode) : [];
+  // Try requested area code first, then fall back to any MX number.
+  // ladaFallback=true si el cliente pidió una lada específica pero cayó al
+  // general MX pool → notify caller. Antes: silent fallback, cliente MTY (81)
+  // podía recibir número GDL (33) sin aviso. Ver Scope D1 F6.
+  let candidates: string[] = [];
+  let ladaFallback = false;
+  if (areaCode) {
+    candidates = await searchTwilioNumbers(areaCode);
+  }
   if (!candidates.length) {
+    if (areaCode) ladaFallback = true;
     candidates = await searchTwilioNumbers(); // no area code filter
   }
   if (!candidates.length) {
@@ -64,7 +72,8 @@ async function buyTwilioNumber(areaCode?: string): Promise<string | null> {
   }
 
   const data = await buyRes.json();
-  return (data.phone_number as string) ?? null;
+  const number = data.phone_number as string | undefined;
+  return number ? { number, ladaFallback } : null;
 }
 
 async function importToVapi(phoneNumber: string): Promise<string | null> {
@@ -130,8 +139,10 @@ async function assignAssistant(vapiPhoneId: string, vapiAssistantId: string, con
 }
 
 export interface ProvisionResult {
-  phoneNumber: string;
-  vapiPhoneId: string | null;
+  phoneNumber:   string;
+  vapiPhoneId:   string | null;
+  ladaFallback:  boolean;   // true si el número no matchea el areaCode pedido
+  requestedLada: string | null;
 }
 
 /**
@@ -140,18 +151,20 @@ export interface ProvisionResult {
  * 2. Import it into Vapi (Vapi auto-configures the Twilio webhook)
  * 3. Assign the Vapi assistant
  *
- * Returns { phoneNumber, vapiPhoneId } on success, null on failure.
+ * Returns { phoneNumber, vapiPhoneId, ladaFallback } on success, null on failure.
+ * ladaFallback=true → caller debe notificar al cliente que su lada no estaba
+ * disponible y le asignamos otra (Scope D1 F6).
  */
 export async function provisionPhoneNumber(vapiAssistantId: string, areaCode?: string, concurrencyLimit?: number): Promise<ProvisionResult | null> {
-  const phoneNumber = await buyTwilioNumber(areaCode);
-  if (!phoneNumber) return null;
+  const bought = await buyTwilioNumber(areaCode);
+  if (!bought) return null;
 
-  const vapiPhoneId = await importToVapi(phoneNumber);
+  const vapiPhoneId = await importToVapi(bought.number);
   if (!vapiPhoneId) {
-    console.error('provision: number bought but Vapi import failed:', phoneNumber);
-    return { phoneNumber, vapiPhoneId: null };
+    console.error('provision: number bought but Vapi import failed:', bought.number);
+    return { phoneNumber: bought.number, vapiPhoneId: null, ladaFallback: bought.ladaFallback, requestedLada: areaCode ?? null };
   }
 
   await assignAssistant(vapiPhoneId, vapiAssistantId, concurrencyLimit);
-  return { phoneNumber, vapiPhoneId };
+  return { phoneNumber: bought.number, vapiPhoneId, ladaFallback: bought.ladaFallback, requestedLada: areaCode ?? null };
 }
