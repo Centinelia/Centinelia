@@ -27,8 +27,21 @@ type SupabaseClient = ReturnType<typeof createAdminClient>;
 
 export async function getConnector(integration: IntegrationRow, supabase: SupabaseClient): Promise<Connector> {
   const accessToken = await refreshIfNeeded(integration, supabase);
+  // Callback para que el connector reporte 401/403 mid-call (access_token
+  // expiró silenciosamente o OAuth fue revocado desde myaccount.google.com).
+  // Sin esto, fetchUnread devolvía [] indistinguible de "no correos hoy".
+  // Ver Scope C1 CRIT #2. Reutiliza el mismo path de refreshIfNeeded catch
+  // (marca needs_reauth + notifica al owner una sola vez).
+  const onAuthError = integration.provider === 'gmail'
+    ? async () => {
+        if (integration.id?.startsWith('org:')) return;
+        await supabase.from('email_integrations')
+          .update({ needs_reauth: true })
+          .eq('id', integration.id);
+      }
+    : undefined;
   return integration.provider === 'gmail'
-    ? createGoogleConnector(accessToken)
+    ? createGoogleConnector(accessToken, onAuthError)
     : createMicrosoftConnector(accessToken);
 }
 

@@ -14,11 +14,20 @@ function encodeHeaderRFC2047(value: string): string {
 
 // ── Email ─────────────────────────────────────────────────────────────────────
 
+export type GoogleAuthErrorCallback = (details: { status: number; where: string }) => void | Promise<void>;
+
 class GoogleEmail implements EmailConnector {
-  constructor(private tok: string) {}
+  constructor(private tok: string, private onAuthError?: GoogleAuthErrorCallback) {}
 
   private h(): Record<string, string> {
     return { Authorization: `Bearer ${this.tok}` };
+  }
+
+  private async triggerAuthErrorIfNeeded(res: Response, where: string): Promise<void> {
+    if ((res.status === 401 || res.status === 403) && this.onAuthError) {
+      try { await this.onAuthError({ status: res.status, where }); }
+      catch (err) { console.error('[google/onAuthError] callback threw:', err); }
+    }
   }
 
   async fetchUnread(since: Date, folder: 'inbox' | 'spam' = 'inbox'): Promise<EmailMessage[]> {
@@ -29,7 +38,13 @@ class GoogleEmail implements EmailConnector {
       `${GMAIL}/messages?q=${encodeURIComponent(query)}&maxResults=20`,
       { headers: this.h() },
     );
-    if (!res.ok) return [];
+    if (!res.ok) {
+      // Diferenciar 401/403 (OAuth revocado o token expirado sin refresh) del
+      // resto. ANTES: `[]` silencioso indistinguible de "no correos hoy".
+      // Owner nunca sabía que la cuenta se desconectó. Ver Scope C1 CRIT #2.
+      await this.triggerAuthErrorIfNeeded(res, 'fetchUnread');
+      return [];
+    }
     const list = await res.json();
     const ids: string[] = (list.messages ?? []).map((m: { id: string }) => m.id);
     if (!ids.length) return [];
@@ -596,10 +611,10 @@ class GoogleCalendar implements CalendarConnector {
 
 // ── Factory ───────────────────────────────────────────────────────────────────
 
-export function createGoogleConnector(accessToken: string): Connector {
+export function createGoogleConnector(accessToken: string, onAuthError?: GoogleAuthErrorCallback): Connector {
   return {
     provider: 'google',
-    email:    new GoogleEmail(accessToken),
+    email:    new GoogleEmail(accessToken, onAuthError),
     files:    new GoogleFiles(accessToken),
     contacts: new GoogleContacts(accessToken),
     calendar: new GoogleCalendar(accessToken),
