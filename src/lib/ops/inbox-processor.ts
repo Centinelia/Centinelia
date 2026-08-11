@@ -139,6 +139,11 @@ const BASE_EMAIL_TOOLS: Anthropic.Tool[] = [
     input_schema: { type: 'object' as const, properties: { fuente: { type: 'string', enum: ['calls','emails','tickets','all'] }, dias: { type: 'number' }, min_muestras: { type: 'number' } }, required: [] },
   },
   {
+    name:        'extraer_tono_de_marca',
+    description: 'Extrae la guía de tono de marca desde muestras (correos previos, docs, contenido web). Úsala cuando el correo del owner pida "revisa el tono que usamos" o "sugiere cómo respondería nuestra marca". Registry lo marca en los 3 canales; email quedó atrás.',
+    input_schema: { type: 'object' as const, properties: { samples: { type: 'array', items: { type: 'string' } }, source: { type: 'string', enum: ['emails', 'docs', 'web', 'all'] }, limit: { type: 'number' } }, required: [] },
+  },
+  {
     name:        'read_url',
     description: 'Lee el contenido de una URL específica (no redes sociales). Úsala para leer sitios web o documentos en línea mencionados en el email.',
     input_schema: { type: 'object' as const, properties: { url: { type: 'string' }, purpose: { type: 'string' } }, required: ['url'] },
