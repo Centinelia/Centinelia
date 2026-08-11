@@ -425,14 +425,15 @@ export async function POST(req: NextRequest) {
   // usamos el portal_email como fallback confiable para el correo del dueño.
   const { data: orgRow } = await supabase
     .from('organizations')
-    .select('knowledge_base, business_email, business_phone, business_website, brand_address, email_footer_text')
+    .select('knowledge_base, business_email, brand_phone, business_website, brand_website, brand_address, email_footer_text')
     .eq('portal_email', caller.portal_email)
     .maybeSingle();
   const orgKb    = (orgRow?.knowledge_base as string | null) ?? null;
   const orgContactRow = orgRow as {
     business_email?:    string | null;
-    business_phone?:    string | null;
+    brand_phone?:       string | null;
     business_website?:  string | null;
+    brand_website?:     string | null;
     brand_address?:     string | null;
     email_footer_text?: string | null;
   } | null;
@@ -604,9 +605,11 @@ export async function POST(req: NextRequest) {
   promptLines.push('', '## Fecha actual', `Hoy es ${todayEs} (${todayIso}). USA este año en cualquier fecha que redactes — no repitas años pasados.`);
 
   const contactLines: string[] = [];
-  if (orgContactRow?.business_email)   contactLines.push(`- Correo: ${orgContactRow.business_email}`);
-  if (orgContactRow?.business_phone)   contactLines.push(`- Teléfono: ${orgContactRow.business_phone}`);
-  if (orgContactRow?.business_website) contactLines.push(`- Sitio web: ${orgContactRow.business_website}`);
+  const contactEmail = orgContactRow?.business_email || caller.portal_email;
+  const contactSite  = orgContactRow?.business_website || orgContactRow?.brand_website;
+  if (contactEmail)                    contactLines.push(`- Correo: ${contactEmail}`);
+  if (orgContactRow?.brand_phone)      contactLines.push(`- Teléfono: ${orgContactRow.brand_phone}`);
+  if (contactSite)                     contactLines.push(`- Sitio web: ${contactSite}`);
   if (orgContactRow?.brand_address)    contactLines.push(`- Dirección: ${orgContactRow.brand_address}`);
   if (contactLines.length > 0) {
     promptLines.push(

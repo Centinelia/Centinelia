@@ -357,22 +357,25 @@ export async function executeTask(params: {
   if (targetAgent.portal_email) {
     const { data: orgContact } = await supabase
       .from('organizations')
-      .select('business_email, business_phone, business_website, brand_address, email_footer_text')
+      .select('business_email, brand_phone, business_website, brand_website, brand_address, email_footer_text')
       .eq('portal_email', targetAgent.portal_email)
       .maybeSingle();
 
+    const oc = orgContact as { business_email?: string | null; brand_phone?: string | null; business_website?: string | null; brand_website?: string | null; brand_address?: string | null; email_footer_text?: string | null } | null;
     const contactLines: string[] = [];
-    if ((orgContact as { business_email?: string | null })?.business_email)   contactLines.push(`- Correo: ${(orgContact as { business_email?: string }).business_email}`);
-    if ((orgContact as { business_phone?: string | null })?.business_phone)   contactLines.push(`- Teléfono: ${(orgContact as { business_phone?: string }).business_phone}`);
-    if ((orgContact as { business_website?: string | null })?.business_website) contactLines.push(`- Sitio web: ${(orgContact as { business_website?: string }).business_website}`);
-    if ((orgContact as { brand_address?: string | null })?.brand_address)     contactLines.push(`- Dirección: ${(orgContact as { brand_address?: string }).brand_address}`);
+    const contactEmail = oc?.business_email || targetAgent.portal_email;
+    const contactSite  = oc?.business_website || oc?.brand_website;
+    if (contactEmail)      contactLines.push(`- Correo: ${contactEmail}`);
+    if (oc?.brand_phone)   contactLines.push(`- Teléfono: ${oc.brand_phone}`);
+    if (contactSite)       contactLines.push(`- Sitio web: ${contactSite}`);
+    if (oc?.brand_address) contactLines.push(`- Dirección: ${oc.brand_address}`);
 
     if (contactLines.length > 0) {
       promptLines.push('', '## Datos de contacto de tu empresa', 'SIEMPRE que redactes un correo, cotización, contrato o firma para un cliente, incluye estos datos al final para que puedan contactarnos:', contactLines.join('\n'));
     }
 
-    if ((orgContact as { email_footer_text?: string | null })?.email_footer_text?.trim()) {
-      promptLines.push('', '## Firma de correos por default', (orgContact as { email_footer_text: string }).email_footer_text.trim());
+    if (oc?.email_footer_text?.trim()) {
+      promptLines.push('', '## Firma de correos por default', oc.email_footer_text.trim());
     }
   }
 

@@ -82,15 +82,17 @@ Estamos en el año ${currentYear}. USA este año en cualquier fecha que mencione
     try {
       const { data: orgContact } = await supabase
         .from('organizations')
-        .select('business_email, business_phone, business_website, brand_address')
+        .select('business_email, brand_phone, business_website, brand_website, brand_address')
         .eq('portal_email', orgId)
         .maybeSingle();
-      const orgC = orgContact as { business_email?: string | null; business_phone?: string | null; business_website?: string | null; brand_address?: string | null } | null;
+      const orgC = orgContact as { business_email?: string | null; brand_phone?: string | null; business_website?: string | null; brand_website?: string | null; brand_address?: string | null } | null;
       const contactLines: string[] = [];
-      if (orgC?.business_email)   contactLines.push(`- Correo: ${orgC.business_email}`);
-      if (orgC?.business_phone)   contactLines.push(`- Teléfono: ${orgC.business_phone}`);
-      if (orgC?.business_website) contactLines.push(`- Sitio web: ${orgC.business_website}`);
-      if (orgC?.brand_address)    contactLines.push(`- Dirección: ${orgC.brand_address}`);
+      const contactEmail = orgC?.business_email || orgId;
+      const contactSite  = orgC?.business_website || orgC?.brand_website;
+      if (contactEmail)         contactLines.push(`- Correo: ${contactEmail}`);
+      if (orgC?.brand_phone)    contactLines.push(`- Teléfono: ${orgC.brand_phone}`);
+      if (contactSite)          contactLines.push(`- Sitio web: ${contactSite}`);
+      if (orgC?.brand_address)  contactLines.push(`- Dirección: ${orgC.brand_address}`);
       if (contactLines.length > 0) {
         blocks.push(`DATOS DE CONTACTO DE TU EMPRESA:
 Si el cliente pregunta cómo contactarnos, dale estos datos. Si vas a redactar o dictar un correo, incluye estos datos al final:

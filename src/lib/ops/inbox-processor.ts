@@ -526,15 +526,17 @@ export async function processInboxEmail(params: {
       const { createAdminClient: createAdminClient2 } = await import('@/lib/supabase/admin');
       const { data: orgContact } = await createAdminClient2()
         .from('organizations')
-        .select('business_email, business_phone, business_website, brand_address')
+        .select('business_email, brand_phone, business_website, brand_website, brand_address')
         .eq('portal_email', portalEmail)
         .maybeSingle();
-      const orgC = orgContact as { business_email?: string | null; business_phone?: string | null; business_website?: string | null; brand_address?: string | null } | null;
+      const orgC = orgContact as { business_email?: string | null; brand_phone?: string | null; business_website?: string | null; brand_website?: string | null; brand_address?: string | null } | null;
       const contactLines: string[] = [];
-      if (orgC?.business_email)   contactLines.push(`- Correo: ${orgC.business_email}`);
-      if (orgC?.business_phone)   contactLines.push(`- Teléfono: ${orgC.business_phone}`);
-      if (orgC?.business_website) contactLines.push(`- Sitio web: ${orgC.business_website}`);
-      if (orgC?.brand_address)    contactLines.push(`- Dirección: ${orgC.brand_address}`);
+      const contactEmail = orgC?.business_email || portalEmail;
+      const contactSite  = orgC?.business_website || orgC?.brand_website;
+      if (contactEmail)         contactLines.push(`- Correo: ${contactEmail}`);
+      if (orgC?.brand_phone)    contactLines.push(`- Teléfono: ${orgC.brand_phone}`);
+      if (contactSite)          contactLines.push(`- Sitio web: ${contactSite}`);
+      if (orgC?.brand_address)  contactLines.push(`- Dirección: ${orgC.brand_address}`);
       if (contactLines.length > 0) {
         contextBlocks.push(`# Datos de contacto de tu empresa\nSIEMPRE que redactes un draft o firma, incluye estos datos al final para que el remitente pueda contactarnos:\n${contactLines.join('\n')}`);
       }
