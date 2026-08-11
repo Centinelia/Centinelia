@@ -14,21 +14,37 @@ const NOAH_GREEN_TINT  = 'rgba(34,197,94,0.22)';
 const NOAH_AVATAR_SRC  = '/meerkats/noah.png';
 
 function NoahAvatar({ size }: { size: number }) {
+  // noah.png es retrato completo (cuerpo + teléfono + corbata). La cara ocupa
+  // solo ~15% del alto, así que objectFit:cover con position no basta para
+  // enfocar la cara en un círculo chico. Envolvemos en overflow:hidden y
+  // renderizamos la imagen a ~3x del contenedor, desplazada para que la
+  // cara quede centrada en el círculo.
   return (
-    <img
-      src={NOAH_AVATAR_SRC}
-      alt="Noah"
-      width={size}
-      height={size}
+    <div
       style={{
         width:          size,
         height:         size,
         borderRadius:   '50%',
-        objectFit:      'cover',
-        objectPosition: 'center 3%',
+        overflow:       'hidden',
         display:        'block',
+        position:       'relative',
+        background:     '#FAFBFF',
       }}
-    />
+    >
+      <img
+        src={NOAH_AVATAR_SRC}
+        alt="Noah"
+        style={{
+          position:  'absolute',
+          left:      '50%',
+          top:       '0%',
+          width:     `${size * 2.6}px`,
+          height:    'auto',
+          transform: 'translate(-50%, -8%)',
+          display:   'block',
+        }}
+      />
+    </div>
   );
 }
 
