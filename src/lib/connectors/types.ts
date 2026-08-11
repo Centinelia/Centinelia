@@ -54,7 +54,7 @@ export interface ReplyParams {
 
 export interface EmailConnector {
   fetchUnread(since: Date, folder?: 'inbox' | 'spam'): Promise<EmailMessage[]>;
-  send(to: string, subject: string, body: string, attachment?: Attachment, fromEmail?: string): Promise<void>;
+  send(to: string, subject: string, body: string, attachment?: Attachment, fromEmail?: string, htmlBody?: string): Promise<void>;
   sendReply(params: ReplyParams): Promise<void>;
   markRead(messageId: string): Promise<void>;
   unmarkSpam?(messageId: string): Promise<void>;

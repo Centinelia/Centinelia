@@ -43,10 +43,12 @@ class MicrosoftEmail implements EmailConnector {
     });
   }
 
-  async send(to: string, subject: string, body: string, attachment?: Attachment, fromEmail?: string): Promise<void> {
+  async send(to: string, subject: string, body: string, attachment?: Attachment, fromEmail?: string, htmlBody?: string): Promise<void> {
     const message: Record<string, unknown> = {
       subject,
-      body:         { contentType: 'Text', content: body },
+      body:         htmlBody
+        ? { contentType: 'HTML', content: htmlBody }
+        : { contentType: 'Text', content: body },
       toRecipients: [{ emailAddress: { address: to } }],
       ...(fromEmail ? { from: { emailAddress: { address: fromEmail } } } : {}),
     };

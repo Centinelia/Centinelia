@@ -172,8 +172,8 @@ export async function executeSendEmail(
       if (dl) attachment = { filename: attFileName ?? 'adjunto', content: dl.buffer, mimeType: dl.contentType };
     }
     try {
-      await ic.conn.email.send(to, subject, body, attachment, sendFrom);
-      if (cc) await ic.conn.email.send(cc, subject, body, undefined, sendFrom);
+      await ic.conn.email.send(to, subject, body, attachment, sendFrom, htmlBody);
+      if (cc) await ic.conn.email.send(cc, subject, body, undefined, sendFrom, htmlBody);
       sent = true;
     } catch { /* fall through to Resend */ }
   }
@@ -399,6 +399,17 @@ export async function executeCreateCalendarEvent(
 
   const start = new Date(event.start).toLocaleString('es-MX', { dateStyle: 'full', timeStyle: 'short' });
   const provider = ic.integration.provider === 'gmail' ? 'Google Calendar' : 'Outlook Calendar';
+  // Si el modelo pidió Meet explícito pero el connector NO devolvió link, la
+  // creación de la conferencia falló. Devolvemos error para que el meerkat
+  // NO envíe correos prometiendo Meet inexistente. Retry: intentar de nuevo
+  // sin generate_meet_link (evento ya creado) o pedir Meet fuera de banda.
+  if (input.generate_meet_link === true && !event.meet_link) {
+    return {
+      ok: false,
+      event,
+      error: `create_calendar_event_meet_failed: El evento "${event.title}" se creó en ${provider} para el ${start}, PERO Google no pudo generar el link de Meet (status pending/failure tras reintentos). NO envíes correos prometiendo Meet. Opciones: (1) informa al usuario que agende el Meet manualmente desde el calendario, (2) elimina el evento con delete_calendar_event event_id="${event.id}" y reintenta, (3) crea el evento sin generate_meet_link y pide a un humano crear la sala.`,
+    };
+  }
   const meetLine = event.meet_link ? ` Link Meet: ${event.meet_link}` : '';
   return { ok: true, event, message: `Evento "${event.title}" creado en ${provider} para el ${start}.${meetLine}` };
 }
