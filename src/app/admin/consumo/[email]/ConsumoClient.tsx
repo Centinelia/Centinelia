@@ -144,12 +144,12 @@ export default function ConsumoClient({ entries, fromDate, toDate, kindFilter, c
           <thead style={{ background: '#FAFAFB' }}>
             <tr>
               <th className="p-2 text-left">Fecha</th>
-              <th className="p-2 text-left">Recurso</th>
-              <th className="p-2 text-left">Tipo de movimiento</th>
-              <th className="p-2 text-right">Monto</th>
-              <th className="p-2 text-right">Saldo acumulado</th>
-              <th className="p-2 text-left">Referencia técnica</th>
-              <th className="p-2 text-left">Descripción</th>
+              <th className="p-2 text-left">Qué es</th>
+              <th className="p-2 text-left">Movimiento</th>
+              <th className="p-2 text-right">Cambio</th>
+              <th className="p-2 text-right">Saldo</th>
+              <th className="p-2 text-left">Detalle</th>
+              <th className="p-2 text-left opacity-40">ID de origen</th>
             </tr>
           </thead>
           <tbody>
@@ -168,8 +168,8 @@ export default function ConsumoClient({ entries, fromDate, toDate, kindFilter, c
                   {e.amount > 0 ? '+' : ''}{e.amount}
                 </td>
                 <td className="p-2 text-right tabular-nums opacity-70">{(e as { balance: number }).balance}</td>
-                <td className="p-2 font-mono text-[10px] opacity-70">{e.reference_id ?? '—'}</td>
                 <td className="p-2 opacity-80">{e.description ?? '—'}</td>
+                <td className="p-2 font-mono text-[10px] opacity-40" title="Identificador interno del sistema que originó el movimiento (llamada Vapi, factura Stripe, etc.). Sirve para auditoría técnica.">{e.reference_id ?? '—'}</td>
               </tr>
             ))}
           </tbody>
@@ -177,8 +177,9 @@ export default function ConsumoClient({ entries, fromDate, toDate, kindFilter, c
       </div>
 
       <p className="text-[10px] opacity-60">
-        Fechas mostradas en zona horaria México. El CSV descargable incluye timestamps completos (UTC).
-        Aparecen tanto los movimientos actuales como los que ya fueron archivados (se conservan 7 años por retención legal).
+        Fechas en horario de México. Los rojos son consumo, los verdes son cargas o compras.
+        Aparecen todos los movimientos vigentes y los ya archivados (guardamos 7 años por ley).
+        El ID de origen solo sirve para auditoría técnica — puedes ignorarlo si estás revisando billing.
       </p>
     </div>
   );
