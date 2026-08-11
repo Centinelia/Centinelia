@@ -15,6 +15,21 @@ interface OutboundEmail {
   sent_at:     string;
 }
 
+// Convierte markdown básico a HTML seguro (bold, italic, links, auto-URL).
+// Mismo espíritu que el conversor en executeSendEmail — así el preview del
+// portal se ve como se verá el correo real en Gmail.
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function mdToHtml(s: string): string {
+  let out = escapeHtml(s);
+  out = out.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer" style="color:#6C3BFF;text-decoration:underline">$1</a>');
+  out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  out = out.replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
+  out = out.replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g, '$1<a href="$2" target="_blank" rel="noreferrer" style="color:#6C3BFF;text-decoration:underline">$2</a>');
+  return out.replace(/\n/g, '<br>');
+}
+
 function fmtWhen(iso: string): string {
   const d = new Date(iso);
   const now = new Date();
@@ -149,12 +164,11 @@ export default function EnviadosSection({ token }: { token: string }) {
                 </div>
                 {open && (
                   <div
-                    className="mt-3 p-3 rounded-lg text-[12px] whitespace-pre-wrap"
-                    style={{ background: '#FAFAFB', border: '1px solid #F0EDF9', color: '#1A0A3B', maxHeight: 400, overflowY: 'auto' }}
+                    className="mt-3 p-3 rounded-lg text-[12px]"
+                    style={{ background: '#FAFAFB', border: '1px solid #F0EDF9', color: '#1A0A3B', maxHeight: 400, overflowY: 'auto', lineHeight: 1.6 }}
                     onClick={ev => ev.stopPropagation()}
-                  >
-                    {e.body}
-                  </div>
+                    dangerouslySetInnerHTML={{ __html: mdToHtml(e.body) }}
+                  />
                 )}
               </li>
             );

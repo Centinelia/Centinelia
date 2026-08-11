@@ -87,11 +87,51 @@ async function getFileConnector(agentId: string, supabase: SupabaseClient) {
   return { integration: synthetic, conn };
 }
 
+// Detecta si un correo menciona Google Meet pero omite o falsifica el link.
+// Bloquea el envío para forzar al modelo a incluir el meet_link real que
+// devolvió create_calendar_event. Sin este guardrail server-side el modelo
+// sigue diciendo "te llegará por separado" o pega URL base sin código.
+function detectInvalidMeetReference(body: string): { invalid: boolean; reason?: string } {
+  const mentionsMeet = /\b(google\s*meet|meet\.google\.com)\b/i.test(body);
+  if (!mentionsMeet) return { invalid: false };
+  // URL válida de Meet: meet.google.com/aaa-aaaa-aaa (código real).
+  // Base sola (meet.google.com/ o meet.google.com) es placeholder, no vale.
+  const validMeetRe = /https?:\/\/meet\.google\.com\/[a-z0-9]{3,5}-[a-z0-9]{3,5}-[a-z0-9]{3,5}/i;
+  if (validMeetRe.test(body)) return { invalid: false };
+  // Menciona Meet pero no tiene URL válida.
+  const promiseLater = /(te enviar[eé]|llegar[aá]|por separado|invitaci[oó]n del calendario|se incluir[aá]|en tu invitaci[oó]n)/i.test(body);
+  if (promiseLater) {
+    return {
+      invalid: true,
+      reason: 'El body promete el link de Meet por separado o en la invitación del calendario. INCLUYE el meet_link real (formato meet.google.com/xxx-yyyy-zzz) que devolvió create_calendar_event literal en el body. Ejemplo: "Link de Google Meet: https://meet.google.com/abc-defg-hij".',
+    };
+  }
+  const hasBaseUrl = /meet\.google\.com\/?(?![a-z0-9])/i.test(body);
+  if (hasBaseUrl) {
+    return {
+      invalid: true,
+      reason: 'El body incluye "meet.google.com" pero sin código de reunión (xxx-yyyy-zzz). Usa el meet_link COMPLETO que devolvió create_calendar_event (ej: https://meet.google.com/abc-defg-hij), no la URL base sola.',
+    };
+  }
+  return {
+    invalid: true,
+    reason: 'El body menciona Google Meet pero no incluye la URL completa (formato meet.google.com/xxx-yyyy-zzz). Si create_calendar_event devolvió meet_link, copia esa URL literal.',
+  };
+}
+
 export async function executeSendEmail(
   input:    SendEmailInput,
   supabase: SupabaseClient,
 ): Promise<ToolResult> {
   const { agentId, to, subject, body, businessName, cc, replyTo, attFileId, attFileName, attMimeType } = input;
+
+  // Guardrail server-side: correos que prometen Meet pero omiten link real
+  // se rechazan y devuelven error al modelo para forzar retry con el URL
+  // completo. Sin esto el modelo sigue escribiendo "te llegará por separado".
+  const meetCheck = detectInvalidMeetReference(body);
+  if (meetCheck.invalid) {
+    return { ok: false, error: `send_email_invalid_meet_link: ${meetCheck.reason}` };
+  }
 
   // Convertir markdown básico a HTML — meerkats escriben con **bold**, *italic*,
   // [text](url) natural y sin conversión los caracteres salen literal en el
