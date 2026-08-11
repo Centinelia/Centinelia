@@ -100,6 +100,16 @@ export async function POST(req: NextRequest) {
     case 'checkout.session.completed': {
       const session = event.data.object as Stripe.Checkout.Session;
 
+      // Reference_id CANÓNICO para todos los credits de este checkout.
+      // ANTES: usábamos session.id → charge.refunded/dispute.created buscaban por
+      // charge.invoice = invoice.id → matchedMinutes/matchedOps = 0 → chargeback
+      // pasaba sin revertir credit (cliente conservaba minutos + ops gratis).
+      // Ahora: preferimos session.invoice (=invoice.id) que es lo que Stripe
+      // liga al charge; fallback a session.id si Stripe no adjuntó invoice.
+      // Ver Scope D1 CRIT-2.
+      const invoiceRef = typeof session.invoice === 'string' ? session.invoice : (session.invoice as Stripe.Invoice | null | undefined)?.id ?? null;
+      const primaryRef: string | null = invoiceRef ?? session.id ?? null;
+
       // Plan upgrade: setup fee paid → update subscription + features
       if (session.metadata?.type === 'plan_upgrade') {
         const agentId       = session.metadata?.agent_id;
@@ -165,7 +175,7 @@ export async function POST(req: NextRequest) {
               p_agent_id:     agentId,
               p_amount:       delta,
               p_kind:         'renewal',
-              p_reference_id: session.id ?? null,
+              p_reference_id: primaryRef,
               p_description:  `Upgrade a ${newMinutesCfg.label}: +${delta} min de diferencial`,
             });
             after(async () => {
@@ -177,7 +187,7 @@ export async function POST(req: NextRequest) {
                 .single();
               await resetFallbackIfActive(supabase, upgradeEmail, agentForName?.business_name ?? 'tu empleado');
             });
-            after(() => maybeNotifyRolloverLoss(supabase, { portalEmail: upgradeEmail, referenceId: session.id ?? null }));
+            after(() => maybeNotifyRolloverLoss(supabase, { portalEmail: upgradeEmail, referenceId: primaryRef }));
           } else {
             await supabase.from('minutes_ledger').insert({
               agent_id:    agentId,
@@ -196,10 +206,10 @@ export async function POST(req: NextRequest) {
             agentId:     agentId,
             amount:      opsDelta,
             kind:        'renewal',
-            referenceId: session.id ?? null,
+            referenceId: primaryRef,
             description: `Upgrade a ${newMinutesCfg.label}: +${opsDelta} tareas de diferencial`,
           });
-          after(() => maybeNotifyPoolLoss(supabase, { portalEmail: upgradeEmail, referenceId: session.id ?? null, resource: 'ops' }));
+          after(() => maybeNotifyPoolLoss(supabase, { portalEmail: upgradeEmail, referenceId: primaryRef, resource: 'ops' }));
         }
         break;
       }
@@ -224,7 +234,7 @@ export async function POST(req: NextRequest) {
             p_agent_id:     agentId,
             p_amount:       minutes,
             p_kind:         'extra_purchase',
-            p_reference_id: session.id ?? null,
+            p_reference_id: primaryRef,
             p_description:  `Compra de ${minutes} min extra`,
           });
           // Reactivar solo este agente (granularidad per-empleado)
@@ -243,7 +253,7 @@ export async function POST(req: NextRequest) {
               .single();
             await resetFallbackIfActive(supabase, agent.portal_email, agentForName?.business_name ?? 'tu empleado');
           });
-          after(() => maybeNotifyRolloverLoss(supabase, { portalEmail: agent.portal_email!, referenceId: session.id ?? null }));
+          after(() => maybeNotifyRolloverLoss(supabase, { portalEmail: agent.portal_email!, referenceId: primaryRef }));
         } else {
           await supabase.from('voice_agents')
             .update({ minutes_included: (agent?.minutes_included ?? 0) + minutes, active: true, billing_status: 'activo' })
@@ -310,10 +320,10 @@ export async function POST(req: NextRequest) {
             p_agent_id:     agentId,
             p_amount:       ops,
             p_kind:         'extra_ops_purchase',
-            p_reference_id: session.id ?? null,
+            p_reference_id: primaryRef,
             p_description:  `Compra de ${ops} tareas extra`,
           });
-          after(() => maybeNotifyPoolLoss(supabase, { portalEmail, referenceId: session.id ?? null, resource: 'ops' }));
+          after(() => maybeNotifyPoolLoss(supabase, { portalEmail, referenceId: primaryRef, resource: 'ops' }));
         } else {
           // LEGACY: sin ledger, aplica al agente ESPECÍFICO que compró (nunca
           // homogenizar tiers de peers). Luego recompute el pool org-level para
@@ -408,7 +418,7 @@ export async function POST(req: NextRequest) {
                 p_agent_id:     agentId,
                 p_amount:       alloc.minutes,
                 p_kind:         'jornada_change',
-                p_reference_id: session.id ?? null,
+                p_reference_id: primaryRef,
                 p_description:  `Cambio a jornada combinada: +${alloc.minutes} min`,
               });
             }
@@ -474,7 +484,7 @@ export async function POST(req: NextRequest) {
               p_agent_id:     agentId,
               p_amount:       alloc.minutes,
               p_kind:         'setup_new_agent',
-              p_reference_id: session.id ?? null,
+              p_reference_id: primaryRef,
               p_description:  `Activación de nuevo empleado: +${alloc.minutes} min`,
             });
           }
@@ -486,7 +496,7 @@ export async function POST(req: NextRequest) {
               agentId:     agentId,
               amount:      opsForNew,
               kind:        'setup_new_agent',
-              referenceId: session.id ?? null,
+              referenceId: primaryRef,
               description: `Activación de nuevo empleado: +${opsForNew} tareas`,
             });
           }
@@ -567,7 +577,7 @@ export async function POST(req: NextRequest) {
           p_agent_id:     agentId,
           p_amount:       jornadaAlloc.minutes,
           p_kind:         'setup_new_agent',
-          p_reference_id: session.id ?? null,
+          p_reference_id: primaryRef,
           p_description:  `Activación de nuevo empleado: +${jornadaAlloc.minutes} min`,
         });
       } else if (!activationEmail) {
@@ -589,7 +599,7 @@ export async function POST(req: NextRequest) {
             agentId:     agentId,
             amount:      jornadaAlloc.aiOps,
             kind:        'setup_new_agent',
-            referenceId: session.id ?? null,
+            referenceId: primaryRef,
             description: `Activación de nuevo empleado: +${jornadaAlloc.aiOps} tareas`,
           });
         }
