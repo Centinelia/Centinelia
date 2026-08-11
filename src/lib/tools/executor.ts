@@ -93,6 +93,16 @@ export interface AgentToolContext {
   sourceInboxId?: string;
   /** Source Vapi call id — used by pedir_a_humano for voice channel tracking. */
   sourceCallId?:  string;
+  /** Requester identity when el chat/email viene de portal_users (sub-user).
+   * ANTES: tool calls desde sub-user chat se ejecutaban como si fueran el owner
+   * → sub-user invocaba aprobar_gasto/qb_crear_factura/etc. sin gate. También
+   * audit trail (agent_tasks, ops_ledger) confundía owner con sub-user.
+   * Ahora las tools money-critical pueden verificar isSubUser + modules antes
+   * de ejecutar (voice channel deja estos undefined, sin cambio). Ver Scope
+   * D3 HIGH-2. */
+  requesterIsSubUser?: boolean;
+  requesterUserId?:    string;
+  requesterModules?:   string[];
 }
 
 async function fetchPeerAgent(agentId: string, portalEmail: string, supabase: SupabaseClient) {
@@ -571,6 +581,15 @@ async function executeAgentToolInner(
   // trigger_outbound_call
   // ─────────────────────────────────────────────────────────────────────────
   if (toolName === 'trigger_outbound_call') {
+    // Sub-user gate: llamadas salientes vacían el pool del owner. Sub-user
+    // chatteando con Nia no debe dispararlas sin módulo llamadas/campanas.
+    // Ver Scope D3 HIGH-2.
+    if (ctx.requesterIsSubUser) {
+      const mods = ctx.requesterModules ?? [];
+      if (!mods.includes('llamadas') && !mods.includes('campanas')) {
+        return { ok: false, error: 'No tienes permiso para iniciar llamadas salientes. Pide al dueño de la cuenta que te habilite el módulo "llamadas" o "campanas".' };
+      }
+    }
     const phone  = toolInput.phone_number as string;
     const name   = (toolInput.contact_name as string | null) ?? undefined;
     const motivo = toolInput.message as string;
@@ -1690,6 +1709,12 @@ async function executeAgentToolInner(
   // aprobar_gasto — exclusiva de Niva (directora general)
   // ─────────────────────────────────────────────────────────────────────────
   if (toolName === 'aprobar_gasto') {
+    // Sub-user gate: aprobar gasto es una acción de director (Niva) que deja
+    // audit trail comprometiendo presupuesto. Sub-user sin `negocio` no debe
+    // aprobar en nombre del owner. Ver Scope D3 HIGH-2.
+    if (ctx.requesterIsSubUser && !(ctx.requesterModules ?? []).includes('negocio')) {
+      return { ok: false, error: 'Solo el dueño (o un sub-usuario con permiso "negocio") puede aprobar gastos.' };
+    }
     const { recordExpenseApproval } = await import('@/lib/ops/director-tools');
     const args = toolInput as { concepto?: string; monto?: number; justificacion?: string; status?: 'approved' | 'rejected' };
     if (!args.concepto || typeof args.monto !== 'number') {

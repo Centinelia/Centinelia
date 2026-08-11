@@ -1911,6 +1911,12 @@ ${context}`;
                 userContext:  lastUserText(conversationMessages),
                 cookieHeader: req.cookies.get(PORTAL_COOKIE)?.value,
                 readUrlCount: readUrlCountRef,
+                channel:      'chat',
+                // Propagar identity para gates dentro de tools money-critical
+                // (aprobar_gasto, qb_crear_factura, trigger_outbound_call, etc.).
+                requesterIsSubUser: auth.isSubUser,
+                requesterUserId:    auth.userId,
+                requesterModules:   auth.modules,
               }
             );
 

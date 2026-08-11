@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { requirePortalAccess } from '@/lib/portal/access';
 import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { triggerOutboundCall } from '@/lib/vapi/outbound';
 import { checkAccount } from '@/lib/compliance/account-guard';
@@ -8,9 +8,10 @@ import { checkAccount } from '@/lib/compliance/account-guard';
 interface Params { params: Promise<{ token: string }> }
 
 export async function POST(req: NextRequest, { params }: Params) {
-  const cookie  = req.cookies.get(PORTAL_COOKIE)?.value ?? '';
-  const session = await verifySession(cookie);
-  if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+  // Gate llamadas bulk (bulk=500 contactos con 1 request). Ver Scope D3 CRIT-3.
+  const gate = await requirePortalAccess(req, { module: ['llamadas', 'campanas'] });
+  if (!gate.ok) return gate.response;
+  const session = gate.session;
 
   const { token } = await params;
   const supabase  = createAdminClient();

@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { requirePortalAccess } from '@/lib/portal/access';
 import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { isValidE164 } from '@/lib/billing/fallback-validate';
 
@@ -39,9 +40,11 @@ export async function GET(_req: NextRequest, { params }: Params) {
 // PATCH — update org name, logo_url, multilingual, or fallback_phone_number
 export async function PATCH(req: NextRequest, { params }: Params) {
   const { token } = await params;
-  const cookieStore = await cookies();
-  const session = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // Gate: modificar org (nombre, logo, fallback, multilingual) requiere módulo
+  // 'negocio' para sub-users. Ver Scope D3 HIGH-1.
+  const gate = await requirePortalAccess(req, { module: 'negocio' });
+  if (!gate.ok) return gate.response;
+  const session = gate.session;
 
   const body = await req.json() as {
     name?: string;

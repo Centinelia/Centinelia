@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { requirePortalAccess } from '@/lib/portal/access';
 import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 
 interface Params { params: Promise<{ token: string }> }
@@ -9,9 +9,11 @@ export async function POST(req: NextRequest, { params }: Params) {
   const { token } = await params;
   const supabase = createAdminClient();
 
-  const cookie  = req.cookies.get(PORTAL_COOKIE)?.value ?? '';
-  const session = await verifySession(cookie);
-  if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+  // Gate llamadas salientes — vacía el pool del owner. Sub-user necesita
+  // módulo 'llamadas' o 'campanas'. Ver Scope D3 CRIT-3.
+  const gate = await requirePortalAccess(req, { module: ['llamadas', 'campanas'] });
+  if (!gate.ok) return gate.response;
+  const session = gate.session;
 
   const agent = await getPrimaryAgentFromToken<{ id: string; features: Record<string, unknown> | null; portal_email: string | null }>(token, 'id, features, portal_email', supabase);
   if (!agent || agent.portal_email !== session.portalEmail) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });

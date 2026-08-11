@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { requirePortalAccess } from '@/lib/portal/access';
 import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { updateVapiAssistant } from '@/lib/vapi/sync';
 import { KB_LIMITS, FIELD_TO_LIMIT } from '@/lib/portal/kb-limits';
@@ -12,9 +12,12 @@ interface Params { params: Promise<{ token: string }> }
 const ORG_FIELDS = new Set(['knowledge_base', 'business_hours', 'business_description', 'business_email', 'owner_passphrase', 'owner_profile', 'guardia_schedule']);
 
 export async function PATCH(req: NextRequest, { params }: Params) {
-  const cookie = req.cookies.get(PORTAL_COOKIE)?.value ?? '';
-  const auth   = await verifySession(cookie);
-  if (!auth) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+  // Gate: sub-user necesita módulo 'agentes' (config voz/prompts/trust_stage).
+  // ORG_FIELDS (knowledge_base, owner_passphrase, guardia_schedule) requiere
+  // también 'negocio' — se enforce después de leer el body. Ver Scope D3 CRIT-2 + HIGH-1.
+  const gate = await requirePortalAccess(req, { module: 'agentes' });
+  if (!gate.ok) return gate.response;
+  const auth = gate.session;
 
   const { token } = await params;
   const body = await req.json();
@@ -24,6 +27,15 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (!agent) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
   if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+
+  // Second gate: si el body toca ORG_FIELDS (knowledge_base, owner_passphrase,
+  // guardia_schedule, etc.) sub-user también necesita 'negocio'. Sin este
+  // gate, sub-user con solo 'agentes' podía sobrescribir owner_passphrase y
+  // bloquear al owner. Ver Scope D3 HIGH-1.
+  const touchesOrg = Object.keys(body).some(k => ORG_FIELDS.has(k));
+  if (touchesOrg && auth.isSubUser && !(auth.modules ?? []).includes('negocio')) {
+    return NextResponse.json({ error: 'Editar datos de la organización (conocimiento, contraseña, guardia, horarios) requiere permiso "negocio".' }, { status: 403 });
+  }
 
   // Keys stored inside the features JSONB column — merge instead of flat update
   const featureJsonKeys = ['outbound_calls', 'outbound_role', 'role_color', 'avatar', 'check_spam_folder', 'invoicing_email'];
