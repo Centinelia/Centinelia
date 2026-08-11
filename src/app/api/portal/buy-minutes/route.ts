@@ -1,8 +1,7 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { requirePortalAccess } from '@/lib/portal/access';
 import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { rateLimit, limiters } from '@/lib/ratelimit';
 import { requireStripeEligible } from '@/lib/billing/require-stripe-eligible';
@@ -21,9 +20,10 @@ export async function POST(req: NextRequest) {
   const rl = await rateLimit(req, limiters.payment);
   if (rl) return rl;
 
-  const cookieStore = await cookies();
-  const auth = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
-  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // Owner-only: compra de minutos con la tarjeta del owner. Ver Scope D3 CRIT-1.
+  const gate = await requirePortalAccess(req, { ownerOnly: true });
+  if (!gate.ok) return gate.response;
+  const auth = gate.session;
 
   const { token, minutes } = await req.json() as { token: string; minutes: number };
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { requirePortalAccess } from '@/lib/portal/access';
 import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { stripe } from '@/lib/stripe';
@@ -52,9 +53,12 @@ export async function PATCH(
   { params }: { params: Promise<{ token: string }> },
 ) {
   const { token } = await params;
-  const cookieStore = await cookies();
-  const session = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // Owner-only: auto-refill dispara cargos automáticos con la tarjeta del
+  // owner cuando cruza threshold. Sub-user no debe activarlo/desactivarlo
+  // ni ajustar el monto. Ver Scope D3 CRIT-1.
+  const gate = await requirePortalAccess(req, { ownerOnly: true });
+  if (!gate.ok) return gate.response;
+  const session = gate.session;
 
   const body = await req.json() as {
     enabled: boolean; threshold: number; minutes: number;

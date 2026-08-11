@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { requirePortalAccess } from '@/lib/portal/access';
 import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { FEATURE_PLAN_CONFIG, MONTHLY_CONFIG, resolveTierAllocation } from '@/lib/billing/plans';
 import { setAiOpsLimit } from '@/lib/ai/ops-guard';
@@ -20,9 +19,12 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const { token } = await params;
 
-  const cookieStore = await cookies();
-  const auth = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
-  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // Owner-only: cambiar plan mueve a la cuenta a un plan más caro (o más
+  // barato con downgrade) usando la tarjeta del owner. Sub-user no debe
+  // poder hacerlo aunque tenga módulo `cuenta`. Ver Scope D3 CRIT-1.
+  const gate = await requirePortalAccess(req, { ownerOnly: true });
+  if (!gate.ok) return gate.response;
+  const auth = gate.session;
 
   const { to_plan, to_minutes_tier } = await req.json() as { to_plan?: Plan; to_minutes_tier?: MinutesTier };
 
