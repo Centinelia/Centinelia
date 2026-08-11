@@ -388,18 +388,23 @@ export default function SubUserManager({ token, initialUsers, accountGiro, accou
   };
   const cancelEdit = () => { setEditId(null); setError(''); };
 
+  const [inviteSent, setInviteSent] = useState<string | null>(null);
   const handleAdd = async () => {
-    if (!newEmail.trim() || !newPassword.trim()) { setError('Correo y contraseña son requeridos'); return; }
-    setSaving(true); setError('');
+    if (!newEmail.trim()) { setError('El correo es requerido'); return; }
+    setSaving(true); setError(''); setInviteSent(null);
     try {
-      const res = await fetch(`/api/portal/${token}/users`, {
+      // D-Q5: Invite flow. El sub-usuario recibe email con link donde elige
+      // su propia contraseña. Reemplaza el flow legacy donde el owner tenía
+      // que pasar la password por WhatsApp. Legacy POST /users sigue vivo
+      // por retrocompat pero UI ya no lo usa. Ver Scope D3 R-3.
+      const res = await fetch(`/api/portal/${token}/users/invite`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: newEmail.trim(), name: newName.trim() || undefined, password: newPassword, modules: newModules }),
+        body: JSON.stringify({ email: newEmail.trim(), name: newName.trim() || undefined, modules: newModules }),
       });
-      if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Error al crear usuario'); return; }
-      const { user } = await res.json();
-      setUsers(u => [...u, user]);
-      setShowAdd(false); setNewEmail(''); setNewName(''); setNewPassword(''); setNewModules([]);
+      if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Error al enviar invitación'); return; }
+      setInviteSent(newEmail.trim());
+      setNewEmail(''); setNewName(''); setNewPassword(''); setNewModules([]);
+      // No cerramos el panel — el user confirma con el mensaje "invitación enviada"
     } finally { setSaving(false); }
   };
 
@@ -509,9 +514,11 @@ export default function SubUserManager({ token, initialUsers, accountGiro, accou
               </FieldGroup>
             </div>
 
-            <FieldGroup label="Contraseña inicial" required hint="Mínimo 8 caracteres. El usuario podrá cambiarla al iniciar sesión.">
-              <PasswordField value={newPassword} onChange={setNewPassword} placeholder="Mínimo 8 caracteres" />
-            </FieldGroup>
+            {inviteSent && (
+              <div className="rounded-lg px-3 py-2.5 text-sm" style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.28)', color: '#15803D' }}>
+                ✓ Invitación enviada a <b>{inviteSent}</b>. Recibirá un correo con un link para elegir su contraseña. Expira en 7 días.
+              </div>
+            )}
 
             <FieldGroup label="Secciones con acceso" hint="Selecciona qué áreas del portal podrá ver este usuario.">
               <ModuleSelector selected={newModules} onChange={setNewModules} accountGiro={accountGiro} />
@@ -530,7 +537,7 @@ export default function SubUserManager({ token, initialUsers, accountGiro, accou
                 className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-semibold transition-opacity hover:opacity-90"
                 style={{ background: '#6C3BFF', color: '#fff', border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1, boxShadow: '0 4px 12px rgba(108,59,255,0.25)' }}
               >
-                {saving ? 'Guardando…' : (<><Plus size={13} /> Crear colaborador</>)}
+                {saving ? 'Enviando…' : (<><Plus size={13} /> Enviar invitación</>)}
               </button>
             </div>
           </div>
