@@ -5,11 +5,20 @@ const GRAPH = 'https://graph.microsoft.com/v1.0';
 
 // ── Email ─────────────────────────────────────────────────────────────────────
 
+export type MicrosoftAuthErrorCallback = (details: { status: number; where: string }) => void | Promise<void>;
+
 class MicrosoftEmail implements EmailConnector {
-  constructor(private tok: string) {}
+  constructor(private tok: string, private onAuthError?: MicrosoftAuthErrorCallback) {}
 
   private h(): Record<string, string> {
     return { Authorization: `Bearer ${this.tok}` };
+  }
+
+  private async triggerAuthErrorIfNeeded(res: Response, where: string): Promise<void> {
+    if ((res.status === 401 || res.status === 403) && this.onAuthError) {
+      try { await this.onAuthError({ status: res.status, where }); }
+      catch (err) { console.error('[microsoft/onAuthError] callback threw:', err); }
+    }
   }
 
   async fetchUnread(since: Date, folder: 'inbox' | 'spam' = 'inbox'): Promise<EmailMessage[]> {
@@ -18,7 +27,12 @@ class MicrosoftEmail implements EmailConnector {
     const select     = 'id,conversationId,subject,from,body,receivedDateTime';
     const url        = `${GRAPH}/me/mailFolders/${folderName}/messages?$filter=${encodeURIComponent(filter)}&$select=${select}&$top=20&$orderby=receivedDateTime desc`;
     const res = await fetch(url, { headers: this.h() });
-    if (!res.ok) return [];
+    if (!res.ok) {
+      // Ver Scope C1 CRIT #2 (patrón F13). MS Graph 401/403 = token revocado
+      // o consent removido desde admin.microsoft.com → set needs_reauth.
+      await this.triggerAuthErrorIfNeeded(res, 'fetchUnread');
+      return [];
+    }
     const data = await res.json();
     return (data.value ?? []).map((m: {
       id: string;
@@ -304,10 +318,10 @@ function stripHtml(html: string): string {
 
 // ── Factory ───────────────────────────────────────────────────────────────────
 
-export function createMicrosoftConnector(accessToken: string): Connector {
+export function createMicrosoftConnector(accessToken: string, onAuthError?: MicrosoftAuthErrorCallback): Connector {
   return {
     provider: 'microsoft',
-    email:    new MicrosoftEmail(accessToken),
+    email:    new MicrosoftEmail(accessToken, onAuthError),
     files:    new MicrosoftFiles(accessToken),
     calendar: new MicrosoftCalendar(accessToken),
   };

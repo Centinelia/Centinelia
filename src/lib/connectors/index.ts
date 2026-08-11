@@ -32,17 +32,15 @@ export async function getConnector(integration: IntegrationRow, supabase: Supaba
   // Sin esto, fetchUnread devolvía [] indistinguible de "no correos hoy".
   // Ver Scope C1 CRIT #2. Reutiliza el mismo path de refreshIfNeeded catch
   // (marca needs_reauth + notifica al owner una sola vez).
-  const onAuthError = integration.provider === 'gmail'
-    ? async () => {
-        if (integration.id?.startsWith('org:')) return;
-        await supabase.from('email_integrations')
-          .update({ needs_reauth: true })
-          .eq('id', integration.id);
-      }
-    : undefined;
+  const onAuthError = async () => {
+    if (integration.id?.startsWith('org:')) return;
+    await supabase.from('email_integrations')
+      .update({ needs_reauth: true })
+      .eq('id', integration.id);
+  };
   return integration.provider === 'gmail'
     ? createGoogleConnector(accessToken, onAuthError)
-    : createMicrosoftConnector(accessToken);
+    : createMicrosoftConnector(accessToken, onAuthError);
 }
 
 export async function refreshIfNeeded(integration: IntegrationRow, supabase: SupabaseClient): Promise<string> {
