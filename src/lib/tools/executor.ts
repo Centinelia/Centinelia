@@ -35,7 +35,7 @@ import { fillDocxTemplate, convertDocxToPdf } from '@/lib/documents/template-fil
 import { sendEmail, bugReportHtml } from '@/lib/email/send';
 import { sendOnboardingWelcome } from '@/lib/ops/onboarding-mailer';
 import { randomUUID } from 'crypto';
-import { consumeAiOp } from '@/lib/ai/ops-guard';
+import { consumeAiOp, refundOps } from '@/lib/ai/ops-guard';
 import {
   enhanceTextContent, enhanceSlidesContent,
   peerReviewText, peerReviewSlides, isCriticalDocument,
@@ -1592,17 +1592,37 @@ async function executeAgentToolInner(
   if (toolName === 'qb_crear_factura') {
     const opsCheck = await consumeAiOp(agentId, 1, { source: 'tool_execution', label: 'Ejecución de herramienta interna' });
     if (!opsCheck.ok) return { ok: false, error: 'Sin tareas disponibles para crear la factura.' };
+    // Refund on any downstream failure: la op se cobró antes de saber si el
+    // handler completaría (QB desconectado, cliente inexistente, throw del SDK).
+    // Ver Scope B Agent 2 money-critical gaps.
+    const refundQbFactura = (reason: string) => refundOps(agentId, 1, { source: 'tool_execution', label: `Refund qb_crear_factura: ${reason}` });
+    // Verifier adversarial: qb_crear_factura crea CFDI real en la contabilidad
+    // del cliente (destructivo, money-critical). policies.ts declara
+    // verifyStrategy='external' pero el executor no lo aplicaba. Ver
+    // Scope B Agent 2 verifier-desconectado.
+    const { verifyDestructiveAction } = await import('@/lib/tools/verifier');
+    const verdictFactura = await verifyDestructiveAction({
+      action:          'creación de factura en QuickBooks (destructivo)',
+      target:          String(toolInput.cliente_nombre ?? ''),
+      reason:          `Descripción: ${String(toolInput.descripcion ?? '')} — Monto: ${String(toolInput.monto ?? '')} MXN`,
+      businessContext: (agent.knowledge_base as string | null) ?? null,
+      currentIsoDate:  new Date().toISOString(),
+    });
+    if (!verdictFactura.safe) {
+      await refundQbFactura('verifier_blocked');
+      return { ok: false, error: `Verificador bloqueó la factura: ${verdictFactura.concern ?? 'preocupación no especificada'}. Confirma el cliente/monto/descripción con el owner o pide aprobación.` };
+    }
     const qb = await getQBClient(portalEmail, supabase);
-    if (!qb) return { ok: false, error: 'QuickBooks no está conectado.' };
+    if (!qb) { await refundQbFactura('qb_not_connected'); return { ok: false, error: 'QuickBooks no está conectado.' }; }
     try {
       const { cliente_nombre, descripcion, monto, fecha_vencimiento } = toolInput as { cliente_nombre?: string; descripcion?: string; monto?: number; fecha_vencimiento?: string };
-      if (!cliente_nombre?.trim()) return { ok: false, error: 'cliente_nombre es requerido para crear factura.' };
-      if (!descripcion?.trim())    return { ok: false, error: 'descripcion es requerida.' };
-      if (typeof monto !== 'number' || monto <= 0) return { ok: false, error: 'monto (número > 0) es requerido.' };
+      if (!cliente_nombre?.trim()) { await refundQbFactura('missing_cliente_nombre'); return { ok: false, error: 'cliente_nombre es requerido para crear factura.' }; }
+      if (!descripcion?.trim())    { await refundQbFactura('missing_descripcion'); return { ok: false, error: 'descripcion es requerida.' }; }
+      if (typeof monto !== 'number' || monto <= 0) { await refundQbFactura('invalid_monto'); return { ok: false, error: 'monto (número > 0) es requerido.' }; }
       const safe     = cliente_nombre.replace(/'/g, '');
       const custData = await qb.query(`SELECT Id, DisplayName FROM Customer WHERE DisplayName LIKE '%${safe}%' MAXRESULTS 1`);
       const customer = custData?.QueryResponse?.Customer?.[0];
-      if (!customer) return { ok: false, error: `Cliente "${cliente_nombre}" no encontrado.` };
+      if (!customer) { await refundQbFactura('customer_not_found'); return { ok: false, error: `Cliente "${cliente_nombre}" no encontrado.` }; }
       const itemData = await qb.query(`SELECT Id, Name FROM Item WHERE Type = 'Service' MAXRESULTS 1`);
       const item     = itemData?.QueryResponse?.Item?.[0];
       const line     = item ? { DetailType: 'SalesItemLineDetail', Amount: monto, Description: descripcion, SalesItemLineDetail: { ItemRef: { value: item.Id, name: item.Name }, UnitPrice: monto, Qty: 1 } } : { DetailType: 'DescriptionOnlyLine', Amount: monto, Description: descripcion, DescriptionOnlyLineDetail: {} };
@@ -1612,22 +1632,23 @@ async function executeAgentToolInner(
       const inv  = res?.Invoice;
       const fmt  = (n: number) => n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
       return { ok: true, factura_id: inv?.Id, numero: inv?.DocNumber, cliente: customer.DisplayName, monto: fmt(monto), descripcion };
-    } catch (err) { return { ok: false, error: String(err) }; }
+    } catch (err) { await refundQbFactura('exception'); return { ok: false, error: String(err) }; }
   }
 
   if (toolName === 'qb_registrar_pago') {
     const opsCheck = await consumeAiOp(agentId, 1, { source: 'tool_execution', label: 'Ejecución de herramienta interna' });
     if (!opsCheck.ok) return { ok: false, error: 'Sin tareas disponibles para registrar el pago.' };
+    const refundQbPago = (reason: string) => refundOps(agentId, 1, { source: 'tool_execution', label: `Refund qb_registrar_pago: ${reason}` });
     const qb = await getQBClient(portalEmail, supabase);
-    if (!qb) return { ok: false, error: 'QuickBooks no está conectado.' };
+    if (!qb) { await refundQbPago('qb_not_connected'); return { ok: false, error: 'QuickBooks no está conectado.' }; }
     try {
       const { cliente_nombre, monto, factura_numero } = toolInput as { cliente_nombre?: string; monto?: number; factura_numero?: string };
-      if (!cliente_nombre?.trim()) return { ok: false, error: 'cliente_nombre es requerido para registrar pago.' };
-      if (typeof monto !== 'number' || monto <= 0) return { ok: false, error: 'monto (número > 0) es requerido.' };
+      if (!cliente_nombre?.trim()) { await refundQbPago('missing_cliente_nombre'); return { ok: false, error: 'cliente_nombre es requerido para registrar pago.' }; }
+      if (typeof monto !== 'number' || monto <= 0) { await refundQbPago('invalid_monto'); return { ok: false, error: 'monto (número > 0) es requerido.' }; }
       const safe     = cliente_nombre.replace(/'/g, '');
       const custData = await qb.query(`SELECT Id, DisplayName FROM Customer WHERE DisplayName LIKE '%${safe}%' MAXRESULTS 1`);
       const customer = custData?.QueryResponse?.Customer?.[0];
-      if (!customer) return { ok: false, error: `Cliente "${cliente_nombre}" no encontrado.` };
+      if (!customer) { await refundQbPago('customer_not_found'); return { ok: false, error: `Cliente "${cliente_nombre}" no encontrado.` }; }
       const invFilter = factura_numero ? `AND DocNumber = '${factura_numero}'` : `AND Balance > '0' ORDER BY DueDate ASC`;
       const invData   = await qb.query(`SELECT Id, DocNumber, Balance FROM Invoice WHERE CustomerRef = '${customer.Id}' ${invFilter} MAXRESULTS 1`);
       const invoice   = invData?.QueryResponse?.Invoice?.[0];
@@ -1636,7 +1657,7 @@ async function executeAgentToolInner(
       const res  = await qb.post('/payment', pay);
       const fmt  = (n: number) => n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
       return { ok: true, pago_id: res?.Payment?.Id, cliente: customer.DisplayName, monto: fmt(monto), factura: invoice?.DocNumber ?? null };
-    } catch (err) { return { ok: false, error: String(err) }; }
+    } catch (err) { await refundQbPago('exception'); return { ok: false, error: String(err) }; }
   }
 
   if (toolName === 'qb_reporte_ingresos') {
@@ -2418,6 +2439,12 @@ async function executeAgentToolInner(
     if (!opsResult.ok) {
       return { ok: false, error: 'Sin operaciones disponibles este mes. Compra más o espera al ciclo siguiente.' };
     }
+    // Refund helper — Scope B Agent 2 silent-failure: creativity cobraba 3-6
+    // ops antes de buildDeck/buildReport/generateStructuredContent y NO
+    // reversaba si fallaba. Owner perdía ops sin recibir PDF.
+    const refundCreativity = async (reason: string) => {
+      await refundOps(agentId, opsCost, { source: 'tool_execution', label: `Refund ${toolName}: ${reason}` });
+    };
 
     // ── pitch deck ──────────────────────────────────────────────────────────
     if (toolName === 'generar_pitch_deck') {
@@ -2438,7 +2465,7 @@ async function executeAgentToolInner(
         contactEmail:   (org?.invoicing_email as string | null) ?? (agent.client_email as string | null) ?? portalEmail,
         contactPhone:   (agent.transfer_whatsapp as string | null) ?? (agent.phone_number as string | null) ?? null,
       }, supabase);
-      if (!result.ok) return result;
+      if (!result.ok) { await refundCreativity(result.error ?? 'buildDeck_failed'); return result; }
       return { ...result, message: `Pitch deck generado: ${result.filename}.\n\nEnlace de descarga (válido 1 hora):\n${result.url}` };
     }
 
@@ -2448,7 +2475,7 @@ async function executeAgentToolInner(
       const windowDays: 7 | 30 = rawWindow === 30 || rawWindow === '30' ? 30 : 7;
       const { buildReport } = await import('@/lib/creativity/report-builder');
       const result = await buildReport(meerkatId as 'noah' | 'nara' | 'nelia', windowDays, { id: agentId, agentName, portalEmail }, supabase);
-      if (!result.ok) return result;
+      if (!result.ok) { await refundCreativity(result.error ?? 'buildReport_failed'); return result; }
       return { ...result, message: `Reporte generado con hojas: ${result.sheets.join(', ')}.\n\nEnlace de descarga (válido 1 hora):\n${result.url}` };
     }
 
@@ -2487,11 +2514,13 @@ async function executeAgentToolInner(
 
     if (toolName === 'generar_correo_estructurado') {
       const { draftEmail } = await import('@/lib/creativity/email-drafter');
-      return await draftEmail(content, { id: agentId, agent_name: agentName }, supabase);
+      const emailResult = await draftEmail(content, { id: agentId, agent_name: agentName }, supabase);
+      if (!emailResult.ok) { await refundCreativity(emailResult.error ?? 'draftEmail_failed'); }
+      return emailResult;
     } else {
       const { buildDocument } = await import('@/lib/creativity/document-builder');
       const result = await buildDocument(kind as 'propuesta' | 'cotizacion' | 'one_pager', content, { id: agentId, agent_name: agentName, portal_email: portalEmail }, supabase);
-      if (!result.ok) return result;
+      if (!result.ok) { await refundCreativity(result.error ?? 'buildDocument_failed'); return result; }
       return { ...result, message: `Documento generado: ${content.title}.\n\nEnlace de descarga (válido 1 hora):\n${result.url}` };
     }
   }

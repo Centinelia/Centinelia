@@ -16,12 +16,16 @@ export async function POST(
   req:     NextRequest,
   { params }: { params: Promise<{ toolName: string }> },
 ) {
-  if (!requireVapiAuth(req)) return NextResponse.json({ result: 'No autorizado.' });
+  // Auth fail: HTTP 401 (no 200 con "No autorizado" que Vapi verbalizaba al
+  // llamante). Vapi legítimo siempre firma bien; un 401 solo ocurre en tráfico
+  // no-Vapi (probe/ataque) donde queremos rechazar duro. Ver Scope B Agent 2
+  // silent-failure "Voice `exec` swallows errors".
+  if (!requireVapiAuth(req)) return NextResponse.json({ error: 'No autorizado.' }, { status: 401 });
 
   const { toolName } = await params;
   const { searchParams } = new URL(req.url);
   const agent_id = searchParams.get('agent_id');
-  if (!agent_id) return NextResponse.json({ result: 'Error de configuración: agent_id requerido.' });
+  if (!agent_id) return NextResponse.json({ result: 'Error de configuración: agent_id requerido.' }, { status: 400 });
 
   const body = await req.json().catch(() => ({}));
   const toolInput = (body.toolCallList?.[0]?.function?.arguments ?? body) as Record<string, unknown>;
@@ -62,6 +66,10 @@ export async function POST(
     return NextResponse.json({ result: msg });
   } catch (err) {
     console.error(`[voice/exec/${toolName}] error:`, err);
-    return NextResponse.json({ result: `Error al ejecutar la acción: ${String(err)}` });
+    // NO exponer stack trace / mensaje raw de err — antes Vapi verbalizaba
+    // "Error al ejecutar la acción: TypeError: cannot read property x…" al
+    // cliente. Devolvemos HTTP 200 con message user-friendly (el modelo lo
+    // ve como tool_result y puede decidir reintentar, delegar o escalar).
+    return NextResponse.json({ result: 'No pude completar esa acción por un problema técnico. Intenta de otra forma o dime cómo prefieres continuar.' });
   }
 }
