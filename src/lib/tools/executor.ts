@@ -1658,6 +1658,21 @@ async function executeAgentToolInner(
     const opsCheck = await consumeAiOp(agentId, 1, { source: 'tool_execution', label: 'Ejecución de herramienta interna' });
     if (!opsCheck.ok) return { ok: false, error: 'Sin tareas disponibles para registrar el pago.' };
     const refundQbPago = (reason: string) => refundOps(agentId, 1, { source: 'tool_execution', label: `Refund qb_registrar_pago: ${reason}` });
+    // Verifier adversarial: qb_registrar_pago crea Payment row en QB del owner
+    // (destructivo, afecta libro de cuentas + reconciliation bancaria). Aplica
+    // mismo patrón que qb_crear_factura post-F12. Ver Scope B verifier gap.
+    const { verifyDestructiveAction } = await import('@/lib/tools/verifier');
+    const verdictPago = await verifyDestructiveAction({
+      action:          'registrar pago recibido en QuickBooks (destructivo)',
+      target:          String(toolInput.cliente_nombre ?? ''),
+      reason:          `Monto: ${String(toolInput.monto ?? '')} MXN — Factura ${toolInput.factura_numero ? `#${toolInput.factura_numero}` : '(auto-aplica a más antigua pendiente)'}`,
+      businessContext: (agent.knowledge_base as string | null) ?? null,
+      currentIsoDate:  new Date().toISOString(),
+    });
+    if (!verdictPago.safe) {
+      await refundQbPago('verifier_blocked');
+      return { ok: false, error: `Verificador bloqueó el registro del pago: ${verdictPago.concern ?? 'preocupación no especificada'}. Confirma cliente/monto/factura con el owner o pide aprobación.` };
+    }
     const qb = await getQBClient(portalEmail, supabase);
     if (!qb) { await refundQbPago('qb_not_connected'); return { ok: false, error: 'QuickBooks no está conectado.' }; }
     try {
