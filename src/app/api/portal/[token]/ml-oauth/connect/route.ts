@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { mlAuthUrl } from '@/lib/mercadolibre/auth';
+import { issueOAuthState } from '@/lib/oauth/state';
 
 interface Params { params: Promise<{ token: string }> }
 
@@ -20,5 +21,12 @@ export async function GET(req: NextRequest, { params }: Params) {
   if (auth.portalEmail && ag?.portal_email && auth.portalEmail !== ag.portal_email)
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
-  return NextResponse.redirect(mlAuthUrl(token));
+  // A-D3: nonce + cookie
+  const redirect       = NextResponse.redirect('');
+  const stateWithNonce = issueOAuthState(redirect, 'ml', token);
+  const final          = NextResponse.redirect(mlAuthUrl(stateWithNonce));
+  for (const c of redirect.cookies.getAll()) {
+    final.cookies.set(c.name, c.value, { path: '/', maxAge: 15 * 60, httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' });
+  }
+  return final;
 }

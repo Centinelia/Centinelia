@@ -7,6 +7,7 @@ import { gmailExchangeCode }   from '@/lib/email/gmail';
 import { outlookExchangeCode } from '@/lib/email/outlook';
 import { encrypt }             from '@/lib/crypto';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { verifyOAuthState, clearOAuthState } from '@/lib/oauth/state';
 
 export async function GET(req: NextRequest) {
   const appUrl   = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
@@ -14,13 +15,23 @@ export async function GET(req: NextRequest) {
   const code      = req.nextUrl.searchParams.get('code');
   const rawState  = req.nextUrl.searchParams.get('state') ?? '';
 
-  // __agent suffix means per-agent connect from configurar page
-  const isAgentScope = rawState.endsWith('__agent');
-  const state        = isAgentScope ? rawState.replace(/__agent$/, '') : rawState;
-
-  if (!provider || !code || !state) {
-    return NextResponse.redirect(`${appUrl}/portal/${state ?? ''}?tab=organizacion&email=error#integraciones`);
+  if (!provider || !code || !rawState) {
+    return NextResponse.redirect(`${appUrl}/portal/?tab=organizacion&email=error#integraciones`);
   }
+
+  // A-D3: verify nonce cookie. verifyOAuthState devuelve portalToken (con
+  // sufijo __agent si aplica). Legacy state (sin .nonce) se acepta con warning.
+  const stateCheck = verifyOAuthState(req, provider, rawState);
+  if (!stateCheck.ok || !stateCheck.portalToken) {
+    console.warn('[email-callback] OAuth state nonce mismatch:', stateCheck.reason);
+    return NextResponse.redirect(`${appUrl}/portal/?tab=organizacion&email=csrf_nonce#integraciones`);
+  }
+  if (stateCheck.legacy) {
+    console.warn('[email-callback] OAuth state legacy format (rollout in progress)');
+  }
+  const portalTokenFromState = stateCheck.portalToken;
+  const isAgentScope         = portalTokenFromState.endsWith('__agent');
+  const state                = isAgentScope ? portalTokenFromState.replace(/__agent$/, '') : portalTokenFromState;
 
   try {
     const tokens = provider === 'gmail'
@@ -92,7 +103,9 @@ export async function GET(req: NextRequest) {
       ? `${appUrl}/portal/${state}/configurar?email=connected&provider=${provider}`
       : `${appUrl}/portal/${state}?tab=organizacion&email=connected&provider=${provider}#integraciones`;
 
-    return NextResponse.redirect(successUrl);
+    const successRes = NextResponse.redirect(successUrl);
+    clearOAuthState(successRes);
+    return successRes;
   } catch (err) {
     console.error('[email-callback] error:', err);
     return NextResponse.redirect(`${appUrl}/portal/${state}?tab=organizacion&email=error#integraciones`);

@@ -1,15 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { verifyOAuthState, clearOAuthState } from '@/lib/oauth/state';
 
 export async function GET(req: NextRequest) {
-  const code  = req.nextUrl.searchParams.get('code');
-  const state = req.nextUrl.searchParams.get('state'); // portal_token
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
+  const code     = req.nextUrl.searchParams.get('code');
+  const rawState = req.nextUrl.searchParams.get('state') ?? '';
+  const appUrl   = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
 
-  if (!code || !state) {
-    return NextResponse.redirect(`${appUrl}/portal/${state}?tab=integraciones&notion=error`);
+  if (!code || !rawState) {
+    return NextResponse.redirect(`${appUrl}/portal/?tab=integraciones&notion=error`);
   }
+
+  // A-D3: verify nonce cookie
+  const stateCheck = verifyOAuthState(req, 'notion', rawState);
+  if (!stateCheck.ok || !stateCheck.portalToken) {
+    console.warn('[notion-callback] OAuth state nonce mismatch:', stateCheck.reason);
+    return NextResponse.redirect(`${appUrl}/portal/?tab=integraciones&notion=csrf_nonce`);
+  }
+  const state = stateCheck.portalToken;
 
   // Exchange code for access token
   const clientId     = process.env.NOTION_CLIENT_ID!;
@@ -68,5 +77,7 @@ export async function GET(req: NextRequest) {
       notion_products_db_id: null,
     }, { onConflict: 'portal_email' });
 
-  return NextResponse.redirect(`${appUrl}/portal/${state}?tab=integraciones&notion=connected`);
+  const successRes = NextResponse.redirect(`${appUrl}/portal/${state}?tab=integraciones&notion=connected`);
+  clearOAuthState(successRes);
+  return successRes;
 }

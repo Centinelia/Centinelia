@@ -2,29 +2,35 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { resolveOrgFromToken } from '@/lib/portal/org-token';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { verifyOAuthState, clearOAuthState } from '@/lib/oauth/state';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
 
-  const code    = searchParams.get('code');
-  const realmId = searchParams.get('realmId');
-  const token   = searchParams.get('state');
-  const error   = searchParams.get('error');
+  const code     = searchParams.get('code');
+  const realmId  = searchParams.get('realmId');
+  const rawState = searchParams.get('state') ?? '';
+  const error    = searchParams.get('error');
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
 
-  if (error || !code || !realmId || !token) {
+  if (error || !code || !realmId || !rawState) {
     return NextResponse.redirect(`${appUrl}?error=qb_denied`);
   }
 
+  // A-D3: verify nonce cookie (complementa CSRF gate por session match).
+  const stateCheck = verifyOAuthState(req, 'qb', rawState);
+  if (!stateCheck.ok || !stateCheck.portalToken) {
+    console.warn('[qb-callback top] OAuth state nonce mismatch:', stateCheck.reason);
+    return NextResponse.redirect(`${appUrl}?error=qb_csrf_nonce`);
+  }
+  const token = stateCheck.portalToken;
+
   // CSRF defense: OAuth callback llega vía navegación GET del browser del user,
   // con cookie sameSite=lax. Si attacker robó el portal_token pero no tiene
-  // sesión activa del portal en ese browser → rechazamos. Prevenir escenario
-  // "attacker inicia OAuth QB desde SU browser con state=portal_token de la
-  // víctima → sobrescribe credenciales QB del cliente con las suyas".
-  // Ver Scope C3 MEDIUM (OAuth CSRF).
+  // sesión activa del portal en ese browser → rechazamos.
   const cookie  = req.cookies.get(PORTAL_COOKIE)?.value ?? '';
   const session = await verifySession(cookie);
 
@@ -96,5 +102,7 @@ export async function GET(req: NextRequest) {
       updated_at:       new Date().toISOString(),
     }, { onConflict: 'portal_email' });
 
-  return NextResponse.redirect(to('success=qb'));
+  const successRes = NextResponse.redirect(to('success=qb'));
+  clearOAuthState(successRes);
+  return successRes;
 }

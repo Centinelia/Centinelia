@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { resolveOrgFromToken } from '@/lib/portal/org-token';
+import { issueOAuthState } from '@/lib/oauth/state';
 
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get('token');
@@ -12,12 +13,20 @@ export async function GET(req: NextRequest) {
   const clientId    = process.env.NOTION_CLIENT_ID!;
   const redirectUri = process.env.NOTION_REDIRECT_URI!;
 
+  // A-D3: nonce + cookie
+  const redirect       = NextResponse.redirect('');
+  const stateWithNonce = issueOAuthState(redirect, 'notion', token);
+
   const url = new URL('https://api.notion.com/v1/oauth/authorize');
   url.searchParams.set('client_id',     clientId);
   url.searchParams.set('response_type', 'code');
   url.searchParams.set('owner',         'user');
   url.searchParams.set('redirect_uri',  redirectUri);
-  url.searchParams.set('state',         token);
+  url.searchParams.set('state',         stateWithNonce);
 
-  return NextResponse.redirect(url.toString());
+  const final = NextResponse.redirect(url.toString());
+  for (const c of redirect.cookies.getAll()) {
+    final.cookies.set(c.name, c.value, { path: '/', maxAge: 15 * 60, httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' });
+  }
+  return final;
 }

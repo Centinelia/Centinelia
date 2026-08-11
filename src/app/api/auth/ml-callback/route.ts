@@ -6,16 +6,25 @@ import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { mlExchangeCode }    from '@/lib/mercadolibre/auth';
 import { encrypt }           from '@/lib/crypto';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { verifyOAuthState, clearOAuthState } from '@/lib/oauth/state';
 
 export async function GET(req: NextRequest) {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
-  const code   = req.nextUrl.searchParams.get('code');
-  const state  = req.nextUrl.searchParams.get('state'); // portal_token
-  const error  = req.nextUrl.searchParams.get('error');
+  const appUrl   = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
+  const code     = req.nextUrl.searchParams.get('code');
+  const rawState = req.nextUrl.searchParams.get('state') ?? '';
+  const error    = req.nextUrl.searchParams.get('error');
 
-  if (error || !code || !state) {
-    return NextResponse.redirect(`${appUrl}/portal/${state ?? ''}?tab=integraciones&ml=error`);
+  if (error || !code || !rawState) {
+    return NextResponse.redirect(`${appUrl}/portal/?tab=integraciones&ml=error`);
   }
+
+  // A-D3: verify nonce cookie
+  const stateCheck = verifyOAuthState(req, 'ml', rawState);
+  if (!stateCheck.ok || !stateCheck.portalToken) {
+    console.warn('[ml-callback] OAuth state nonce mismatch:', stateCheck.reason);
+    return NextResponse.redirect(`${appUrl}/portal/?tab=integraciones&ml=csrf_nonce`);
+  }
+  const state = stateCheck.portalToken;
 
   try {
     const tokens = await mlExchangeCode(code);
@@ -53,9 +62,9 @@ export async function GET(req: NextRequest) {
       }, { onConflict: 'portal_email,provider' });
     }
 
-    return NextResponse.redirect(
-      `${appUrl}/portal/${state}?tab=integraciones&ml=connected`,
-    );
+    const successRes = NextResponse.redirect(`${appUrl}/portal/${state}?tab=integraciones&ml=connected`);
+    clearOAuthState(successRes);
+    return successRes;
   } catch (err) {
     console.error('[ml-callback] error:', err);
     return NextResponse.redirect(`${appUrl}/portal/${state}?tab=integraciones&ml=error`);
