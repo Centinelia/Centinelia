@@ -438,6 +438,19 @@ export async function POST(req: NextRequest) {
       const portalTokenForUrl = orgTokenForUrl ?? agent?.portal_token ?? null;
 
       // ── All notifications and AI tasks run after the HTTP response ─────
+      // D-L1 tracking: registrar el work en voice_call_pending_work para
+      // detectar si Vercel corta antes de completar (30s ceiling). Cron
+      // rescue-voice-webhook-work escala al owner via Nash si queda stuck.
+      const pendingWorkCallId = (call?.id as string | undefined) ?? crypto.randomUUID();
+      await supabase.from('voice_call_pending_work').upsert({
+        call_id:      pendingWorkCallId,
+        agent_id:     agentId,
+        portal_email: agent?.portal_email ?? null,
+        started_at:   new Date().toISOString(),
+        processed_at: null,
+        status:       'pending',
+        metadata:     { outcome, duration_seconds: durationSeconds },
+      }, { onConflict: 'call_id' });
       after(async () => {
         // A0. Auto-refill declinada: notificar antes que el pause message para
         // que el cliente sepa distinguir "sin plan" de "Stripe rechazó tarjeta".
@@ -843,6 +856,12 @@ export async function POST(req: NextRequest) {
             isCallback:     true,
           }).catch(err => console.error('[webhook] missed_call_recovery failed:', err));
         }
+
+        // Mark work as done — si Vercel corta antes de este UPDATE, la row
+        // queda pending y el cron rescue escalará.
+        await supabase.from('voice_call_pending_work')
+          .update({ status: 'done', processed_at: new Date().toISOString() })
+          .eq('call_id', pendingWorkCallId);
       });
 
       break;
