@@ -23,15 +23,28 @@ export async function GET(req: NextRequest, { params: _params }: Params) {
   const toIso   = toParam   ? `${toParam}T23:59:59-06:00`   : null;
 
   const supabase = createAdminClient();
-  let query = supabase
-    .from('ops_ledger')
-    .select('id, created_at, amount, kind, source, reference_id, description')
-    .eq('portal_email', session.portalEmail)
-    .order('created_at', { ascending: true })
-    .order('id', { ascending: true });   // Fix B2 audit: stable tie-breaker
-  if (fromIso) query = query.gte('created_at', fromIso);
-  if (toIso)   query = query.lte('created_at', toIso);
-  const { data: rows } = await query;
+  // Union live + archive: cliente accede a retention 7 años (misma paridad
+  // que el admin). Ver [[feedback-audit-read-path-fidelity]].
+  const buildQuery = (table: string) => {
+    let q = supabase
+      .from(table)
+      .select('id, created_at, amount, kind, source, reference_id, description')
+      .eq('portal_email', session.portalEmail)
+      .order('created_at', { ascending: true })
+      .order('id', { ascending: true });
+    if (fromIso) q = q.gte('created_at', fromIso);
+    if (toIso)   q = q.lte('created_at', toIso);
+    return q;
+  };
+  const [liveRes, archiveRes] = await Promise.all([
+    buildQuery('ops_ledger'),
+    buildQuery('ops_ledger_archive'),
+  ]);
+  const rows = [...(liveRes.data ?? []), ...(archiveRes.data ?? [])]
+    .sort((a, b) => {
+      const t = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      return t !== 0 ? t : String(a.id).localeCompare(String(b.id));
+    });
 
   const header = 'fecha,cantidad,tipo,fuente,referencia,descripcion\n';
   // Fix B1 audit 2026-08-10: CSV injection guard.

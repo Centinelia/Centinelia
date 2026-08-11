@@ -125,26 +125,34 @@ export async function maybeNotifyPoolLoss(
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
     const portalUrl = `${appUrl}/portal/${primaryToken}?tab=cuenta#comprar`;
 
-    const subject = `[Aviso] ${lostThisCycle} ${unitPlur} no acumulados en ${businessName}`;
+    // Unificar copy subject vs body — antes: subject decía "60 no acumulados"
+    // (lostThisCycle=todo el ciclo) mientras body decía "20 que sobraron"
+    // (lostThisEvent=una operación). Cliente pensaba que las cifras se
+    // contradecían. Ahora ambas cifras aparecen explicadas juntas.
+    const cycleGreater = lostThisCycle > lostThisEvent;
+    const subject = cycleGreater
+      ? `[Aviso] ${lostThisCycle} ${unitPlur} descartados en este ciclo — ${businessName}`
+      : `[Aviso] ${lostThisEvent} ${unitPlur} descartados por cap 2× — ${businessName}`;
     const body = [
       heading(`No pudimos guardar todas tus ${unitPlur} este ciclo`),
-      badge(`${lostThisCycle} ${unitPlur} descartados`, '#B45309'),
+      badge(`${lostThisEvent} ${unitPlur} descartados en esta operación`, '#B45309'),
       infoCard(
-        `El abono mas reciente a tu cuenta hubiera dejado tu saldo por encima del ` +
-        `<strong>limite de acumulacion (2x tu plan base)</strong>. Los ${lostThisEvent} ${unitPlur} que sobraron ` +
-        `en esta operacion no se sumaron, para evitar acumulacion indefinida.`
+        `En esta operación se descartaron <strong>${lostThisEvent} ${unitPlur}</strong> porque tu saldo ` +
+        `hubiera rebasado el <strong>límite de acumulación (2× tu plan base)</strong>.` +
+        (cycleGreater
+          ? ` En total en este ciclo has perdido <strong>${lostThisCycle} ${unitPlur}</strong> por el mismo motivo.`
+          : ``)
       ),
-      sectionLabel('¿Por que pasa esto?'),
+      sectionLabel('¿Por qué pasa esto?'),
       infoCard(
-        `El cap 2x existe para que tu saldo no crezca sin fin cuando no consumes tu plan. ` +
-        `Si tu balance actual + las nuevas ${unitPlur} supera el doble de tu plan mensual, ` +
-        `el exceso se descarta.`
+        `El cap 2× mantiene el saldo acumulado proporcional a tu plan mensual: si tu balance actual + las nuevas ` +
+        `${unitPlur} supera el doble de tu plan, el exceso no se guarda. Así el saldo no crece sin límite cuando no se consume.`
       ),
-      sectionLabel('¿Que puedes hacer?'),
+      sectionLabel('¿Qué puedes hacer?'),
       infoCard(
-        `<strong>1. Upgrade de plan:</strong> un plan mas grande sube el cap y te deja acumular mas saldo.<br/>` +
-        `<strong>2. Consume mas:</strong> los ${unitPlur} existen para gastarse — activa mas automatizaciones o campanas salientes.<br/>` +
-        `<strong>3. Revisa recargas automaticas:</strong> si estan activas y no las usas, considera desactivarlas para no perder saldo.`
+        `<strong>1. Sube de plan:</strong> un plan más grande sube el cap y te deja acumular más saldo cuando no consumes.<br/>` +
+        `<strong>2. Revisa si tu plan actual sobra:</strong> si pierdes saldo cada ciclo, considera bajar de tier al plan que realmente usas.<br/>` +
+        `<strong>3. Revisa recargas automáticas:</strong> si están activas y no las necesitas, desactívalas para no acumular saldo que después se pierde.`
       ),
       btn('Ver mi plan y opciones', portalUrl),
     ].join('');

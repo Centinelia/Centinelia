@@ -455,13 +455,23 @@ export async function POST(req: NextRequest) {
 
         // A. Pause notifications — skip everything else when paused
         if (agentWasPaused && agent) {
-          const pauseMsg = `⚠️ *Límite de minutos alcanzado, ${agent.business_name}*\n\nTu agente de voz ha sido *pausado automáticamente* al haber utilizado los ${includedAfterRefill} minutos de tu plan.\n\nContacta a tu asesor de Centinelia para reactivar el servicio o adquirir minutos adicionales.`;
+          // Paridad con el email `minutesAlertHtml`: menciona que las tareas
+          // de oficina siguen funcionando aunque las llamadas estén pausadas.
+          // Antes: WA no lo decía → cliente creía que TODO estaba caído.
+          const pauseMsg = [
+            `⚠️ *Llamadas pausadas, ${agent.business_name}*`,
+            '',
+            `Consumiste los ${includedAfterRefill} minutos de tu plan. Las llamadas están pausadas hasta que compres minutos extra o renueves.`,
+            'Las tareas de oficina siguen funcionando normalmente.',
+            '',
+            `Reactiva desde tu portal: ${appUrl}/portal/${portalTokenForUrl}?tab=cuenta`,
+          ].join('\n');
           if (agent.transfer_whatsapp) await sendWhatsApp(agent.transfer_whatsapp, pauseMsg).catch(console.error);
           if (agent.client_email) {
             await sendEmail({
               to:      agent.client_email,
               subject: `⚠️ Agente pausado, ${agent.business_name}`,
-              html:    minutesAlertHtml({ businessName: agent.business_name, pct: 100, used, included: includedAfterRefill, resetDate: resetDateStr, portalUrl: `${appUrl}/portal/${portalTokenForUrl}` }),
+              html:    minutesAlertHtml({ businessName: agent.business_name, pct: 100, used, included: includedAfterRefill, resetDate: resetDateStr, portalUrl: `${appUrl}/portal/${portalTokenForUrl}`, jornadaType: (agent.jornada_type as 'combinada' | 'minutos' | 'tareas' | undefined) }),
             }).catch(console.error);
           }
           return;
@@ -503,15 +513,40 @@ export async function POST(req: NextRequest) {
         }
 
         // C. 80% usage warning — solo para Stripe. Annual usa E4 (interno a Nazre) al 100/120%.
+        // Re-fetch account_minutes justo antes de emitir para que WA/email
+        // muestren los mismos números que el portal (evita drift por rollover_cap
+        // o auto-refill que llegó entre consume y notify). Ver
+        // [[feedback-audit-read-path-fidelity]].
         const pctBefore = includedAfterRefill > 0 ? ((used - minutes) / includedAfterRefill) * 100 : 0;
         if (!poolConsumed && agent?.active && pct >= 80 && pctBefore < 80) {
-          const warnMsg = `📊 *Aviso de minutos, ${agent.business_name}*\n\nHas usado el *${Math.round(pct)}%* de tus ${includedAfterRefill} minutos incluidos (${used} usados).\n\nContacta a tu asesor de Centinelia si necesitas ampliar tu plan antes de que el agente se pause automáticamente.`;
+          let notifyUsed     = used;
+          let notifyIncluded = includedAfterRefill;
+          if (agent.portal_email) {
+            const { data: freshAcct } = await supabase
+              .from('account_minutes')
+              .select('minutes_used, minutes_included')
+              .eq('portal_email', agent.portal_email)
+              .maybeSingle();
+            if (freshAcct) {
+              notifyUsed     = (freshAcct.minutes_used     as number | null) ?? notifyUsed;
+              notifyIncluded = (freshAcct.minutes_included as number | null) ?? notifyIncluded;
+            }
+          }
+          const notifyPct = notifyIncluded > 0 ? (notifyUsed / notifyIncluded) * 100 : pct;
+          const warnMsg = [
+            `📊 *Aviso de minutos, ${agent.business_name}*`,
+            '',
+            `Has usado el *${Math.round(notifyPct)}%* de tus ${notifyIncluded} minutos incluidos (${notifyUsed} usados).`,
+            '',
+            'Puedes ampliar tu plan o comprar minutos extra desde tu portal antes de que las llamadas se pausen automáticamente.',
+            'Las tareas de oficina siguen funcionando aunque las llamadas lleguen al límite.',
+          ].join('\n');
           if (agent.transfer_whatsapp) await sendWhatsApp(agent.transfer_whatsapp, warnMsg).catch(console.error);
           if (agent.client_email) {
             await sendEmail({
               to:      agent.client_email,
-              subject: `📊 Aviso: ${Math.round(pct)}% de minutos usados, ${agent.business_name}`,
-              html:    minutesAlertHtml({ businessName: agent.business_name, pct, used, included: includedAfterRefill, resetDate: resetDateStr, portalUrl: `${appUrl}/portal/${portalTokenForUrl}` }),
+              subject: `📊 Aviso: ${Math.round(notifyPct)}% de minutos usados, ${agent.business_name}`,
+              html:    minutesAlertHtml({ businessName: agent.business_name, pct: notifyPct, used: notifyUsed, included: notifyIncluded, resetDate: resetDateStr, portalUrl: `${appUrl}/portal/${portalTokenForUrl}`, jornadaType: (agent.jornada_type as 'combinada' | 'minutos' | 'tareas' | undefined) }),
             }).catch(console.error);
           }
         }

@@ -31,6 +31,40 @@ export async function GET(req: NextRequest) {
   ];
 
   const orgTokenCache = new Map<string, string | null>();
+  // Cache de pool por portal_email — el reporte semanal debe mostrar los
+  // números del pool (source of truth post-migración), no los per-agente
+  // que quedaron stale. Ver [[feedback-audit-read-path-fidelity]]: cliente
+  // veía "0 de 0 min" en el email semanal aunque su pool tuviera minutos.
+  const poolCache = new Map<string, { minutesUsed: number; minutesIncluded: number }>();
+  async function getPoolMinutes(portalEmail: string): Promise<{ minutesUsed: number; minutesIncluded: number }> {
+    const cached = poolCache.get(portalEmail);
+    if (cached) return cached;
+    const { data: acctMins } = await supabase
+      .from('account_minutes')
+      .select('minutes_used, minutes_included')
+      .eq('portal_email', portalEmail)
+      .maybeSingle();
+    // Fallback ladder: pool > 0 → pool; else SUM per-agente activos; else 0.
+    let minutesIncluded = 0;
+    let minutesUsed     = 0;
+    if (typeof acctMins?.minutes_included === 'number' && acctMins.minutes_included > 0) {
+      minutesIncluded = acctMins.minutes_included;
+      minutesUsed     = acctMins.minutes_used ?? 0;
+    } else {
+      const { data: peers } = await supabase
+        .from('voice_agents')
+        .select('minutes_used, minutes_included')
+        .eq('portal_email', portalEmail)
+        .eq('active', true);
+      const sumInc = (peers ?? []).reduce((s, a: any) => s + ((a.minutes_included as number) ?? 0), 0);
+      const sumUsed = (peers ?? []).reduce((s, a: any) => s + ((a.minutes_used as number) ?? 0), 0);
+      minutesIncluded = sumInc;
+      minutesUsed     = sumUsed;
+    }
+    const val = { minutesUsed, minutesIncluded };
+    poolCache.set(portalEmail, val);
+    return val;
+  }
 
   let sent = 0;
   for (const agent of agents) {
@@ -70,6 +104,11 @@ export async function GET(req: NextRequest) {
     const fmt       = (d: Date) => d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
     const period    = `${fmt(weekStart)} – ${fmt(today)}`;
 
+    // Fetch pool minutes (org-scoped) o fallback a per-agent para standalone
+    const poolMins = agent.portal_email
+      ? await getPoolMinutes(agent.portal_email)
+      : { minutesUsed: agent.minutes_used ?? 0, minutesIncluded: agent.minutes_included ?? 0 };
+
     await sendEmail({
       to:      agent.client_email,
       subject: `📊 Reporte semanal, ${agent.business_name}`,
@@ -81,8 +120,8 @@ export async function GET(req: NextRequest) {
         leads:        leadsRes.data?.length ?? 0,
         appointments: apptsRes.data?.length ?? 0,
         orders:       ordersRes.data?.length ?? 0,
-        minutesUsed:  agent.minutes_used   ?? 0,
-        minutesTotal: agent.minutes_included ?? 0,
+        minutesUsed:  poolMins.minutesUsed,
+        minutesTotal: poolMins.minutesIncluded,
         peakHour,
       }),
     }).catch(console.error);

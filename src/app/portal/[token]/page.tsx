@@ -20,7 +20,6 @@ import { redirect } from 'next/navigation';
 import PortalLogout            from './PortalLogout';
 import HashScrollHighlight     from './HashScrollHighlight';
 import BrandKitEditor          from './BrandKitEditor';
-import EmailSettings            from './EmailSettings';
 import SheetsMappingsSection    from './configurar/SheetsMappingsSection';
 import PortalLeadsSection      from './PortalLeadsSection';
 import PortalOrdersSection     from './PortalOrdersSection';
@@ -31,7 +30,6 @@ import { isValidE164, maskPhoneNumber } from '@/lib/billing/fallback-validate';
 import BuyOpsSection           from './BuyOpsSection';
 import AnnualContractCallout   from './AnnualContractCallout';
 import MinutesLedgerSection    from './MinutesLedgerSection';
-import OpsLedgerSection        from './OpsLedgerSection';
 import HistorialConsumoSection from './HistorialConsumoSection';
 import CallCard                from './CallCard';
 import DownloadCallsCSV        from './DownloadCallsCSV';
@@ -49,7 +47,6 @@ import OwnerProfileEditor     from './OwnerProfileEditor';
 import WebsiteSyncButton      from './WebsiteSyncButton';
 import ReviewLinkEditor       from './ReviewLinkEditor';
 import BusinessHoursEditor    from './BusinessHoursEditor';
-import MultilingualToggle     from './MultilingualToggle';
 import BrandVoiceEditor       from './BrandVoiceEditor';
 import OutboundSection           from './OutboundSection';
 import AutoRefillSection         from './AutoRefillSection';
@@ -66,6 +63,7 @@ import AccountSerialBadge       from './AccountSerialBadge';
 import CuentaUsageTabsCard      from './CuentaUsageTabsCard';
 import { BriefDelDiaCard }      from './BriefDelDiaCard';
 import { getOrCreateSerial }    from '@/lib/portal/serial';
+import { computePoolStatus }    from '@/lib/portal/pool-status';
 import type { OutboundCall }     from './PortalOutboundSection';
 import type { ContactOutbound } from './PortalContactsSection';
 
@@ -179,6 +177,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
     rolloverLostRes,
     opsLossRes,
     acctOpsRes,
+    planCreditsThisCycleRes,
   ] = agent.portal_email
     ? await Promise.all([
         lookupEmail
@@ -202,7 +201,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           .then(r => r.data),
         supabase
           .from('voice_agents')
-          .select('id, ai_ops_used, ai_ops_limit')
+          .select('id, ai_ops_used, ai_ops_limit, minutes_used, minutes_included, active')
           .eq('portal_email', agent.portal_email)
           .then(r => r.data),
         getOrCreateSerial(agent.portal_email).catch(() => null),
@@ -226,12 +225,26 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           .eq('portal_email', agent.portal_email)
           .maybeSingle()
           .then(r => r.data),
+        // Plan base histórico del ciclo actual: suma de renewal + plan_upgrade
+        // + plan_downgrade del ciclo. Antes se usaba MINUTES_TIER_CONFIG[current]
+        // que refleja el plan post-upgrade, no el que estaba activo al inicio.
+        // Cliente que hizo upgrade mid-cycle veía "500 base + 200 anterior"
+        // cuando en realidad fue "300 del plan viejo + 200 anterior + 200 del
+        // upgrade". Ver [[feedback-audit-read-path-fidelity]].
+        supabase
+          .from('minutes_ledger')
+          .select('amount, kind')
+          .eq('portal_email', agent.portal_email)
+          .in('kind', ['renewal', 'renovacion', 'plan_upgrade', 'plan_downgrade'])
+          .gte('created_at', cycleStartIso)
+          .then(r => r.data),
       ])
     : [
         [] as any[],
         null,
         null,
         null as any,
+        null,
         null,
         null,
         null,
@@ -321,44 +334,51 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const hasStripe     = !!agent.stripe_customer_id;
   const agentName  = agent.agent_name?.trim() || 'Centinelia';
 
-  // Minutes: account-level pool when portal_email exists, per-agent for demo/standalone
-  // (acctMins ya fue fetcheado en Batch 1 arriba)
-  const minutesIncluded = acctMins?.minutes_included ?? agent.minutes_included ?? 0;
-  const minutesUsed     = acctMins?.minutes_used     ?? agent.minutes_used     ?? 0;
-  const minutesResetDate = acctMins?.minutes_reset_date ?? agent.minutes_reset_date ?? null;
+  // Pool status via helper — src/lib/portal/pool-status.ts. Fuente única de
+  // verdad para minutos y tareas: TODAS las vistas del portal usan el mismo
+  // fallback ladder. Ver [[feedback-audit-read-path-fidelity]].
+  const poolStatus = computePoolStatus({
+    acctMins,
+    orgSettings,
+    acctOps:     acctOpsRes as { ops_used?: number | null; ops_included?: number | null } | null,
+    peerAgents:  (opsAgents ?? []) as any[],
+    agentFallback: agent as any,
+  });
+  const {
+    minutesIncluded, minutesUsed, minutesRemain, minutesResetDate,
+    aiOpsUsed, aiOpsLimit,
+  } = poolStatus;
 
   const minutesPct      = minutesIncluded > 0 ? Math.min((minutesUsed / minutesIncluded) * 100, 100) : 0;
   const minutesColor    = minutesPct > 90 ? '#ef4444' : minutesPct > 70 ? '#f59e0b' : '#22c55e';
-  const minutesRemain   = Math.max(0, minutesIncluded - minutesUsed);
-  const planBaseMinutes = agent.minutes_plan ? (MINUTES_TIER_CONFIG[agent.minutes_plan as MinutesTier]?.minutes ?? minutesIncluded) : minutesIncluded;
+  // planBaseMinutes: preferir la suma de credits del ciclo actual (fuente
+  // histórica) que refleja renewals + upgrades/downgrades ejecutados este ciclo.
+  // Fallback a MINUTES_TIER_CONFIG[current] cuando no hay ledger populado.
+  const planCreditsSum = ((planCreditsThisCycleRes ?? []) as Array<{ amount: number }>).reduce(
+    (s, r) => s + Math.max(0, r.amount ?? 0), 0);
+  const planBaseFromTier = agent.minutes_plan
+    ? (MINUTES_TIER_CONFIG[agent.minutes_plan as MinutesTier]?.minutes ?? minutesIncluded)
+    : minutesIncluded;
+  const planBaseMinutes = planCreditsSum > 0 ? planCreditsSum : planBaseFromTier;
   const rolloverMinutes = Math.max(0, minutesIncluded - planBaseMinutes);
   const resetDate = (() => {
     if (!minutesResetDate) return 'N/A';
-    const d = new Date(minutesResetDate + 'T00:00:00');
+    // Formatear en tz del agente (default America/Monterrey). Antes: `new Date`
+    // sin zona interpretaba en tz del server (UTC) y luego formateaba en 'es-MX'
+    // → cliente en Tijuana o Cancún veía off-by-one entre "renueva el X" y el
+    // reset real. Ver [[feedback-audit-read-path-fidelity]].
+    const agentTz = (agent as { timezone?: string | null }).timezone ?? 'America/Monterrey';
+    const d = new Date(minutesResetDate + 'T12:00:00'); // mediodía evita edge de DST
     const today = new Date(); today.setHours(0, 0, 0, 0);
     while (d < today) d.setMonth(d.getMonth() + 1);
-    return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'long' });
+    try {
+      return new Intl.DateTimeFormat('es-MX', { day: 'numeric', month: 'long', timeZone: agentTz }).format(d);
+    } catch {
+      // Fallback si el timezone es inválido/desconocido.
+      return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'long' });
+    }
   })();
 
-  // Pool compartido:
-  //  - Si ops_ledger_enabled=true, account_ops.ops_used es source of truth
-  //    (el legacy counter se congela post-flip y no refleja consumo nuevo).
-  //  - Fallback: organizations.monthly_ops_used (path legacy).
-  //  - Fallback 2: SUM per-agente si la org es antigua sin migrar.
-  const orgPoolTotal    = (orgSettings?.monthly_ops_pool as number | null) ?? null;
-  const orgPoolUsed     = (orgSettings?.monthly_ops_used as number | null) ?? null;
-  const ledgerEnabled   = !!(orgSettings as { ops_ledger_enabled?: boolean } | null)?.ops_ledger_enabled;
-  const acctOpsUsed     = ledgerEnabled
-    ? ((acctOpsRes as { ops_used?: number | null } | null)?.ops_used as number | null | undefined)
-    : null;
-  const aiOpsUsed  = ledgerEnabled && typeof acctOpsUsed === 'number'
-    ? acctOpsUsed
-    : (orgPoolTotal != null
-        ? (orgPoolUsed ?? 0)
-        : (opsAgents ?? []).reduce((s: number, a: any) => s + (((a as any).ai_ops_used  as number) ?? 0), 0));
-  const aiOpsLimit = orgPoolTotal != null
-    ? orgPoolTotal
-    : (opsAgents ?? []).reduce((s: number, a: any) => s + (((a as any).ai_ops_limit as number) ?? 0), 0);
   const aiOpsPct   = aiOpsLimit > 0 ? Math.min((aiOpsUsed / aiOpsLimit) * 100, 100) : 0;
   const aiOpsColor = aiOpsPct > 90 ? '#ef4444' : aiOpsPct > 70 ? '#f59e0b' : '#22c55e';
 
@@ -1244,27 +1264,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     </div>
                   </div>
 
-                  <div id="idioma" style={{ scrollMarginTop: 80 }}>
-                    <div className="flex flex-col rounded-2xl overflow-hidden"
-                      style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 2px rgba(26,10,59,0.04)' }}>
-                      <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
-                        <div>
-                          <div className="flex items-baseline gap-2">
-                            <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>Idioma de atención</h2>
-                            <InfoTooltip text="Configuración global. Por default tus empleados atienden en español. Actívalo si también recibes llamadas en inglés." />
-                          </div>
-                        </div>
-                      </div>
-                      <div className="px-5 py-4" style={{ borderTop: '1px solid #F0EDF9' }}>
-                        <MultilingualToggle token={token} initial={!!(orgSettings as any)?.multilingual} />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div id="dominio-correo" style={{ scrollMarginTop: 80 }}>
-                    <EmailSettings token={token} />
-                  </div>
-
                   <div id="sheets-crm" style={{ scrollMarginTop: 80 }}>
                     <SheetsMappingsSection token={token} />
                   </div>
@@ -1326,24 +1325,28 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5 items-start">
+              <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-5 items-start">
 
                 {/* ── Col 1: Consumo promedio + Uso + Compras + Recarga + Contratos ── */}
-                <div className="flex flex-col gap-5" id="minutos">
+                <div className="flex flex-col gap-5 min-w-0" id="minutos">
 
-                  {/* Consumo promedio — toggle Minutos ↔ Tareas */}
+                  {/* Consumo promedio — toggle Minutos ↔ Tareas.
+                      Guard `> 0`: sin él, un pool en 0 (Solo Tareas o edge case
+                      previo al fix del fallback ladder) hacía que cualquier
+                      consumo disparara monthHighlight=true → número en rojo
+                      con connotación de peligro sin razón. */}
                   <ConsumoPromedioCard
                     minutos={allCalls.length > 0 ? {
                       perDay:   avgMinPerDay,
                       perWeek:  avgMinPerWeek,
                       perMonth: `${avgMinPerMonth}`,
-                      monthHighlight: avgMinPerMonth > minutesIncluded * 0.9,
+                      monthHighlight: minutesIncluded > 0 && avgMinPerMonth > minutesIncluded * 0.9,
                     } : undefined}
                     tareas={aiOpsLimit > 0 ? {
                       perDay:   avgOpsPerDay,
                       perWeek:  avgOpsPerWeek,
                       perMonth: avgOpsPerMonth,
-                      monthHighlight: avgOpsPerMonth > aiOpsLimit * 0.9,
+                      monthHighlight: aiOpsLimit > 0 && avgOpsPerMonth > aiOpsLimit * 0.9,
                     } : undefined}
                   />
 
@@ -1384,6 +1387,20 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                             {rolloverLostThisCycle > 0 && (
                               <p className="text-[11px] mt-1" style={{ color: '#B45309' }}>
                                 {rolloverLostThisCycle} min no acumulados este ciclo por límite de rollover (2× de tu plan base).
+                              </p>
+                            )}
+                            {/* Chip auto-recarga: cliente sabe que Stripe cargará
+                                automático cuando el saldo baje. Antes no había
+                                indicador en la card principal — cliente se
+                                sorprendía con cargo "no esperado" en Stripe. */}
+                            {((agent as { auto_refill_enabled?: boolean | null }).auto_refill_enabled ?? false) && (
+                              <p className="text-[11px] mt-1 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full"
+                                style={{ background: 'rgba(108,59,255,0.08)', color: '#6C3BFF', border: '1px solid rgba(108,59,255,0.18)' }}>
+                                <span style={{ fontSize: 10 }}>⚡</span>
+                                Auto-recarga activa
+                                {((agent as { auto_refill_minutes?: number | null }).auto_refill_minutes ?? 0) > 0
+                                  ? ` · ${(agent as { auto_refill_minutes?: number | null }).auto_refill_minutes} min cuando baje del umbral`
+                                  : ''}
                               </p>
                             )}
                           </div>
@@ -1536,13 +1553,12 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     </div>
                   </div>
 
-                  {/* Historial de tareas (ops_ledger) — solo owner o sub-user con 'cuenta' */}
-                  {agent.portal_email && (!session?.isSubUser || (session.modules ?? []).includes('cuenta')) && (
-                    <OpsLedgerSection
-                      portalEmail={agent.portal_email}
-                      token={token}
-                    />
-                  )}
+                  {/* OpsLedgerSection retirada 2026-08-11: los movimientos de saldo
+                      de tareas (grants, refunds, rollover_cap, unused_forfeited,
+                      cambios de plan) ahora se muestran unificados dentro de
+                      Historial > tab Tareas, arriba del OpsBreakdown/TasksList.
+                      Ver [[feedback-audit-read-path-fidelity]] — evita que el
+                      cliente vea dos verdades paralelas para el mismo dato. */}
                 </div>
 
                 {/* ── Col 2: Reporte mensual (hero) + Términos de servicio ── */}

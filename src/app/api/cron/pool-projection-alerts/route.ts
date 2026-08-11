@@ -98,19 +98,53 @@ export async function GET(req: NextRequest) {
     const daysSinceReset = Math.max(1, Math.floor((now.getTime() - resetDate.getTime()) / 86400000));
     if (daysSinceReset < MIN_DAYS_TO_PROJECT) continue;
 
-    // Fin del ciclo = reset + 30 días (aprox mes billing)
-    const cycleEnd = new Date(resetDate.getTime() + 30 * 86400000);
-    const daysInCycle = 30;
+    // Fin del ciclo = reset + 1 mes calendario (más preciso que +30d fijo).
+    const cycleEnd = new Date(resetDate); cycleEnd.setMonth(cycleEnd.getMonth() + 1);
+    const daysInCycle = Math.max(1, Math.round((cycleEnd.getTime() - resetDate.getTime()) / 86400000));
     const daysLeftInCycle = Math.max(0, Math.ceil((cycleEnd.getTime() - now.getTime()) / 86400000));
 
-    // Pool total = suma per-agente (misma fuente que /ops-alerts).
-    // Nota: account_minutes es fuente pooled más precisa, pero per-agente
-    // funciona bien para orgs con 1 agente y da estimado razonable para orgs
-    // con varios.
-    const minutesUsed     = list.reduce((s, a) => s + (a.minutes_used ?? 0), 0);
-    const minutesIncluded = list.reduce((s, a) => s + (a.minutes_included ?? 0), 0);
-    const opsUsed         = list.reduce((s, a) => s + (a.ai_ops_used ?? 0), 0);
-    const opsLimit        = list.reduce((s, a) => s + (a.ai_ops_limit ?? 0), 0);
+    // Pool source of truth: account_minutes + organizations (o account_ops si
+    // ledger enabled). Antes se sumaba per-agente que quedó stale post-migración
+    // — la alerta se disparaba con números que no coincidían con lo que el
+    // cliente ve en portal. Ver [[feedback-audit-read-path-fidelity]].
+    const [acctMinsRes, orgRes] = await Promise.all([
+      supabase.from('account_minutes')
+        .select('minutes_used, minutes_included')
+        .eq('portal_email', portalEmail)
+        .maybeSingle(),
+      supabase.from('organizations')
+        .select('monthly_ops_pool, monthly_ops_used, ops_ledger_enabled')
+        .eq('portal_email', portalEmail)
+        .maybeSingle(),
+    ]);
+    const acctMins = acctMinsRes.data;
+    const org      = orgRes.data as { monthly_ops_pool?: number | null; monthly_ops_used?: number | null; ops_ledger_enabled?: boolean | null } | null;
+    const ledgerEnabled = !!org?.ops_ledger_enabled;
+    const orgPoolTotal  = (org?.monthly_ops_pool as number | null) ?? null;
+    const orgPoolUsed   = (org?.monthly_ops_used as number | null) ?? null;
+
+    let acctOpsUsed: number | null = null;
+    if (ledgerEnabled) {
+      const { data: acctOps } = await supabase.from('account_ops')
+        .select('ops_used').eq('portal_email', portalEmail).maybeSingle();
+      acctOpsUsed = (acctOps as { ops_used?: number | null } | null)?.ops_used ?? null;
+    }
+
+    const activePeers = list;
+    const minutesIncluded = (typeof acctMins?.minutes_included === 'number' && acctMins.minutes_included > 0)
+      ? acctMins.minutes_included
+      : activePeers.reduce((s, a) => s + (a.minutes_included ?? 0), 0);
+    const minutesUsed = (typeof acctMins?.minutes_included === 'number' && acctMins.minutes_included > 0)
+      ? (acctMins.minutes_used ?? 0)
+      : activePeers.reduce((s, a) => s + (a.minutes_used ?? 0), 0);
+    const opsLimit = orgPoolTotal != null
+      ? orgPoolTotal
+      : activePeers.reduce((s, a) => s + (a.ai_ops_limit ?? 0), 0);
+    const opsUsed = (ledgerEnabled && typeof acctOpsUsed === 'number')
+      ? acctOpsUsed
+      : orgPoolTotal != null
+        ? (orgPoolUsed ?? 0)
+        : activePeers.reduce((s, a) => s + (a.ai_ops_used ?? 0), 0);
 
     const projections: Projection[] = [];
 

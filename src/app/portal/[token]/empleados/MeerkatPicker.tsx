@@ -4,7 +4,7 @@ import { useState }                                              from 'react';
 import { useRouter }                                             from 'next/navigation';
 import { Plus, X, Check, ArrowLeft, Clock, Zap, Phone }         from 'lucide-react';
 import { PUBLIC_MEERKAT_ROLES, type MeerkatRole, type MeerkatRoleId }  from '@/lib/portal/meerkat-roles';
-import { JORNADA_CONFIG }                                        from '@/lib/billing/plans';
+import { JORNADA_CONFIG, FEATURE_PLAN_CONFIG, MONTHLY_CONFIG, MINUTES_TIER_CONFIG } from '@/lib/billing/plans';
 import type { JornadaType }                                      from '@/types/agent';
 
 type Plan        = 'pro';
@@ -16,16 +16,27 @@ export type MeerkatRec = {
   allCaps: { label: string; color: string }[];
 };
 
+// Source of truth: plans.ts para precio + minutos base. Labels visibles al
+// cliente ("Media Jornada" etc) se mantienen locales — MONTHLY_CONFIG.label
+// usa "Esencial/Profesional/Avanzado" que es la nomenclatura interna Stripe,
+// no la que la landing muestra.
 const SETUP_FEE: Record<Plan, number> = {
-  pro:       14990,
+  pro: FEATURE_PLAN_CONFIG.pro.setupFee,
+};
+
+const TIER_HUMAN_LABEL: Record<MinutesTier, string> = {
+  starter: 'Media Jornada',
+  growth:  'Jornada Completa',
+  scale:   'Alta Demanda',
 };
 
 const JORNADAS: Record<Plan, { tier: MinutesTier; label: string; minutes: number; mxn: number }[]> = {
-  pro: [
-    { tier: 'starter', label: 'Media Jornada',    minutes: 300,  mxn: 2997  },
-    { tier: 'growth',  label: 'Jornada Completa', minutes: 600,  mxn: 5994  },
-    { tier: 'scale',   label: 'Alta Demanda',     minutes: 1200, mxn: 11988 },
-  ],
+  pro: (['starter', 'growth', 'scale'] as MinutesTier[]).map(tier => ({
+    tier,
+    label:   TIER_HUMAN_LABEL[tier],
+    minutes: MINUTES_TIER_CONFIG[tier].minutes,
+    mxn:     MONTHLY_CONFIG.pro[tier].mxn,
+  })),
 };
 
 function fmt(n: number) {

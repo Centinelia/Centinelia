@@ -66,10 +66,15 @@ Después, jornada mensual según volumen:
 
 Todos los precios + IVA 16%. Sin contratos de permanencia. La jornada se aumenta o reduce cuando la operación cambie, desde el portal.
 
-**Sabores de jornada** — 3 variantes según el mix que le acomode al negocio:
-- **Combinada** (default): mezcla minutos + tareas balanceados como muestra la tabla.
-- **Solo minutos:** más peso a voz (llamadas), menos oficina.
-- **Solo tareas:** más peso a oficina (correos, documentos), sin llamadas.
+**Sabores de jornada** — 3 variantes según el mix que le acomode al negocio (mismo precio por tier):
+
+| Sabor | Media Jornada | Jornada Completa | Alta Demanda |
+|-------|---------------|------------------|--------------|
+| Combinada (default) | 300 min + 120 tareas | 600 min + 220 tareas | 1,200 min + 320 tareas |
+| Solo minutos | 500 min + 20 tareas | 1,000 min + 20 tareas | 2,000 min + 20 tareas |
+| Solo tareas | 500 tareas (0 min) | 1,200 tareas (0 min) | 3,000 tareas (0 min) |
+
+Se elige al contratar y se puede cambiar desde el portal.
 
 **Ejemplo primer cobro** (incorporación + primer mes, con IVA):
 - Media Jornada: ~$20,864
@@ -88,9 +93,12 @@ Las tareas son el recurso que consumen los empleados cuando hacen trabajo de ofi
 **Auto-topup opcional:** el owner puede activar que se cobren tareas automáticas cuando bajen de X.
 
 ## Saldo adicional (compra puntual desde el portal)
-- 100 min: $1,200 MXN + 35 tareas de regalo
-- 200 min: $2,400 MXN + 70 tareas de regalo
-- Personalizado: $12 MXN/min + 35 tareas por cada 100 min comprados
+- Paquete 100 min: $1,200 MXN
+- Paquete 200 min: $2,400 MXN
+- Personalizado por minuto: $12 MXN/min
+- Tareas extra por paquete o cantidad libre (ver Cuenta → Comprar tareas).
+
+Todos los precios + IVA 16%. Los minutos comprados se acreditan al momento y reactivan al empleado si estaba pausado por límite.
 
 ## La Oficina — consola de trabajo del portal
 

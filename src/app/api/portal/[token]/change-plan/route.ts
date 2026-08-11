@@ -4,7 +4,7 @@ import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
-import { FEATURE_PLAN_CONFIG, MONTHLY_CONFIG } from '@/lib/billing/plans';
+import { FEATURE_PLAN_CONFIG, MONTHLY_CONFIG, resolveTierAllocation } from '@/lib/billing/plans';
 import { setAiOpsLimit } from '@/lib/ai/ops-guard';
 import { PLAN_FEATURES } from '@/types/agent';
 import type { Plan } from '@/types/agent';
@@ -37,9 +37,11 @@ export async function POST(req: NextRequest, { params }: Params) {
     business_name: string | null;
     plan: string | null;
     minutes_plan: string | null;
+    jornada_type: string | null;
+    features: Record<string, unknown> | null;
     stripe_customer_id: string | null;
     stripe_subscription_id: string | null;
-  }>(token, 'id, business_name, plan, minutes_plan, stripe_customer_id, stripe_subscription_id', supabase);
+  }>(token, 'id, business_name, plan, minutes_plan, jornada_type, features, stripe_customer_id, stripe_subscription_id', supabase);
 
   if (!agent) return NextResponse.json({ error: 'Agente no encontrado' }, { status: 404 });
 
@@ -117,13 +119,20 @@ export async function POST(req: NextRequest, { params }: Params) {
     .eq('id', agent.id)
     .single();
 
-  // Deltas de tier (fix H8 audit 2026-08-10). Antes overwrite silencioso sin
-  // registro en ledger; auditor Municipio no podía explicar por qué el ceiling
-  // bajó de 1200 a 300. Ahora emite ledger `plan_change` con delta explícito.
-  const oldMinutes = MONTHLY_CONFIG[currentPlan]?.[currentTier]?.minutes ?? 0;
-  const newMinutes = MONTHLY_CONFIG[newPlan][newTier].minutes;
-  const oldOps     = MONTHLY_CONFIG[currentPlan]?.[currentTier]?.aiOps   ?? 0;
-  const newOps     = MONTHLY_CONFIG[newPlan][newTier].aiOps;
+  // Deltas de tier (fix H8 audit 2026-08-10 + fix drift MONTHLY_CONFIG vs
+  // JORNADA_CONFIG 2026-08-11). Antes se leía MONTHLY_CONFIG.aiOps (100/200/300)
+  // que quedó stale post-refactor jornadas — un cliente en jornada `tareas`
+  // recibía +100 tareas cuando debería recibir +700. Ahora usa el resolver
+  // que devuelve la asignación real (JORNADA_CONFIG o NOX_MONTHLY_CONFIG).
+  // Ver [[feedback-audit-read-path-fidelity]].
+  const meerkatRoleId  = ((agent.features as Record<string, unknown> | null)?.meerkat_role_id as string | undefined) ?? undefined;
+  const jornadaType    = (agent.jornada_type as 'combinada' | 'minutos' | 'tareas' | null) ?? undefined;
+  const oldAlloc = resolveTierAllocation(jornadaType, meerkatRoleId, currentTier);
+  const newAlloc = resolveTierAllocation(jornadaType, meerkatRoleId, newTier);
+  const oldMinutes = oldAlloc.minutes;
+  const newMinutes = newAlloc.minutes;
+  const oldOps     = oldAlloc.aiOps;
+  const newOps     = newAlloc.aiOps;
   const minutesDelta = newMinutes - oldMinutes;
   const opsDelta     = newOps - oldOps;
   const changeLabel  = `${currentPlan}/${currentTier} → ${newPlan}/${newTier}`;

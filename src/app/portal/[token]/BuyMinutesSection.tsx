@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
+import { MINUTES_RATE_EXTRA } from '@/lib/billing/plans';
 
-const PRICE_PER_MIN = 12;
+const PRICE_PER_MIN = MINUTES_RATE_EXTRA;
 const IVA = 0.16;
 
 const PACKAGES = [

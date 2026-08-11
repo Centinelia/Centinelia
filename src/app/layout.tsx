@@ -118,9 +118,12 @@ const softwareSchema = {
     areaServed: 'MX',
   },
   offers: [
-    { '@type': 'Offer', name: 'Empleado Centinelia — Media Jornada', price: '2997', priceCurrency: 'MXN', description: '300 minutos/mes, 100 operaciones IA, empleado digital activo 24/7. Instalacion unica $14,990 MXN.' },
-    { '@type': 'Offer', name: 'Empleado Centinelia — Jornada Completa', price: '5994', priceCurrency: 'MXN', description: '600 minutos/mes, 200 operaciones IA, empleado digital activo 24/7. Plan mas popular.' },
-    { '@type': 'Offer', name: 'Empleado Centinelia — Alta Demanda', price: '11988', priceCurrency: 'MXN', description: '1,200 minutos/mes, 300 operaciones IA, para operaciones de alto volumen.' },
+    // NOTA: mantener sincronizado con JORNADA_CONFIG.combinada en
+    // src/lib/billing/plans.ts (source of truth). Rich snippets de Google
+    // muestran estas cifras; si divergen del producto real, expone a queja.
+    { '@type': 'Offer', name: 'Empleado Centinelia — Media Jornada', price: '2997', priceCurrency: 'MXN', description: '300 minutos/mes, 120 tareas de oficina, empleado digital activo 24/7. Instalacion unica $14,990 MXN.' },
+    { '@type': 'Offer', name: 'Empleado Centinelia — Jornada Completa', price: '5994', priceCurrency: 'MXN', description: '600 minutos/mes, 220 tareas de oficina, empleado digital activo 24/7. Plan mas popular.' },
+    { '@type': 'Offer', name: 'Empleado Centinelia — Alta Demanda', price: '11988', priceCurrency: 'MXN', description: '1,200 minutos/mes, 320 tareas de oficina, para operaciones de alto volumen.' },
   ],
   featureList: [
     'Empleados de IA especializados por rol (Nia, Noah, Nara, Nelia, Nico, Neo, Naia, Nova y mas)',

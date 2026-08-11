@@ -49,7 +49,7 @@ export async function GET(req: NextRequest, { params }: Params) {
   const from = new Date(year, month - 1, 1).toISOString();
   const to   = new Date(year, month, 0, 23, 59, 59).toISOString();
 
-  const [callsRes, acctRes, agentsRes, tasksRes] = await Promise.all([
+  const [callsRes, acctRes, agentsRes, tasksRes, orgRes, acctOpsRes] = await Promise.all([
     supabase.from('voice_calls')
       .select('outcome, duration_seconds, created_at')
       .eq('agent_id', ctx.agent.id as string)
@@ -71,13 +71,41 @@ export async function GET(req: NextRequest, { params }: Params) {
           .eq('portal_email', ctx.agent.portal_email as string)
           .gte('created_at', from).lte('created_at', to)
       : Promise.resolve({ data: [] }),
+    // Org pool y ledger flag para leer tareas del pool real (evita per-agent stale).
+    ctx.agent.portal_email
+      ? supabase.from('organizations')
+          .select('monthly_ops_pool, monthly_ops_used, ops_ledger_enabled')
+          .eq('portal_email', ctx.agent.portal_email as string)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    ctx.agent.portal_email
+      ? supabase.from('account_ops')
+          .select('ops_used')
+          .eq('portal_email', ctx.agent.portal_email as string)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
   ]);
 
   const calls = callsRes.data ?? [];
   const acct  = (acctRes as any).data;
   const agentsAgg = ((agentsRes as any).data ?? []) as { id: string; agent_name?: string | null; business_name?: string | null; ai_ops_used?: number; ai_ops_limit?: number }[];
-  const tasksUsed  = agentsAgg.reduce((s, a) => s + (a.ai_ops_used  ?? 0), 0);
-  const tasksTotal = agentsAgg.reduce((s, a) => s + (a.ai_ops_limit ?? 0), 0);
+  // Tasks: fuente pool org-level (con ledger si está enabled). Antes se sumaba
+  // per-agente (ai_ops_used/limit) que quedó stale post-ledger flip — cliente
+  // veía cifras distintas en portal y PDF descargado. Ver
+  // [[feedback-audit-read-path-fidelity]].
+  const org           = (orgRes as any).data as { monthly_ops_pool?: number | null; monthly_ops_used?: number | null; ops_ledger_enabled?: boolean | null } | null;
+  const acctOps       = (acctOpsRes as any).data as { ops_used?: number | null } | null;
+  const ledgerEnabled = !!org?.ops_ledger_enabled;
+  const orgPoolTotal  = (org?.monthly_ops_pool as number | null) ?? null;
+  const orgPoolUsed   = (org?.monthly_ops_used as number | null) ?? null;
+  const tasksTotal = orgPoolTotal != null
+    ? orgPoolTotal
+    : agentsAgg.reduce((s, a) => s + (a.ai_ops_limit ?? 0), 0);
+  const tasksUsed = (ledgerEnabled && typeof acctOps?.ops_used === 'number')
+    ? acctOps.ops_used
+    : orgPoolTotal != null
+      ? (orgPoolUsed ?? 0)
+      : agentsAgg.reduce((s, a) => s + (a.ai_ops_used ?? 0), 0);
 
   // Tasks breakdown
   const tasksData = ((tasksRes as any).data ?? []) as { status: string; trigger_type: string | null; assigned_to: string | null; goal_met: boolean | null; current_iteration: number | null }[];

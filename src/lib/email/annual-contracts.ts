@@ -4,6 +4,7 @@
 
 import { shell, badge, heading, infoCard, btn, sectionLabel, progressBar } from './send';
 import type { AnnualContract } from '@/types/annual-contract';
+import { todayInMexico } from '@/lib/billing/tz';
 
 const BASE_URL   = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
 const ADMIN_MAIL = 'hola@centinelia.mx';
@@ -20,6 +21,11 @@ function fmtMXN(n: number): string {
   return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(n);
 }
 
+/**
+ * NOTE: `fromISO` debe venir en tz México (usar `todayInMexico()` de
+ * `@/lib/billing/tz`) — no `new Date().toISOString().slice(0,10)` que da la
+ * fecha en UTC y produce off-by-one en Monterrey al borde del día.
+ */
 function daysBetween(fromISO: string, toISO: string): number {
   const a = new Date(fromISO + 'T00:00:00Z').getTime();
   const b = new Date(toISO   + 'T00:00:00Z').getTime();
@@ -38,7 +44,7 @@ export interface E1Input {
 
 export function annualContractActivatedHtml(opts: E1Input): string {
   const c = opts.contract;
-  const daysToExpiry = daysBetween(new Date().toISOString().slice(0, 10), c.end_date);
+  const daysToExpiry = daysBetween(todayInMexico(), c.end_date);
   const greeting = opts.clientContactName ? `Hola, ${escapeHtml(opts.clientContactName)}` : 'Hola';
   const employees = opts.employeesList.length
     ? opts.employeesList.map(e => `<li style="color:#F1EEFF;font-size:14px;line-height:1.7;margin:0 0 4px">${escapeHtml(e)}</li>`).join('')
@@ -92,7 +98,7 @@ export function annualContractRenewalReminderHtml(opts: E2Input): string {
   const accent = isUrgent ? '#EF4444' : '#FBBF24';
   const badgeLabel = isUrgent ? 'Renovación urgente · 15 días' : 'Renovación · 60 días';
 
-  const daysToExpiry = daysBetween(new Date().toISOString().slice(0, 10), c.end_date);
+  const daysToExpiry = daysBetween(todayInMexico(), c.end_date);
 
   const usagePct = c.monthly_minutes_pool > 0 ? Math.round((opts.avgMinutesUsed / c.monthly_minutes_pool) * 100) : 0;
 

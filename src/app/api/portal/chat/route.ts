@@ -56,8 +56,6 @@ Contenida en 5 sub-tabs: **Perfil · Identidad · Operación · Directorio · In
 - **Tono de marca:** guía de voz que los empleados usan al escribir (correos, documentos, mensajes).
 - **Sitio web y reseñas:** URL del negocio + link de reseñas de Google.
 - **Horario de atención:** días y horas en que los empleados atienden llamadas. Fuera de horario no atienden. El teléfono del owner (número de transferencia o WhatsApp) siempre se atiende 24/7 sin importar el horario.
-- **Idioma de atención:** español, inglés, multi.
-- **Correos automáticos a tus clientes:** dominio de correo para que los empleados respondan con la dirección del negocio (requiere DNS setup).
 - **Tu CRM en Google Sheets:** integración para sincronizar leads/llamadas/citas a una hoja del negocio.
 - **Personas de la organización (Directorio):** contactos internos del negocio a quienes los empleados pueden transferir o escalar. Incluye guardia (rotación de responsables por semana).
 - **Integraciones:** Cal.com (agenda directa en llamada), Google/Outlook Calendar, Notion CRM, Google Drive / OneDrive, Mercado Libre, Microsoft Teams.
@@ -165,7 +163,7 @@ Los minutos (llamadas de voz) y las tareas (trabajo de oficina) son 2 recursos i
 - Al 100% de minutos, los empleados se pausan y no atienden llamadas. Al 100% de tareas, el empleado no puede ejecutar más acciones de oficina.
 - **Rollover con cap 2×:** lo no usado se acumula al siguiente ciclo, pero con límite de 2× el pool mensual. Lo que rebase se pierde (llamado "rollover perdido").
 - **Auto-refill de tareas (opcional):** el owner puede activar auto-topup — cuando el pool baja de X, se cobran automáticamente Y tareas extra. Se configura en Cuenta.
-- **Compra manual de minutos** (Cuenta → Uso del mes): 100 min $1,200 MXN + 35 tareas de regalo · 200 min $2,400 MXN + 70 tareas · personalizado $12/min + 35 tareas por cada 100 min.
+- **Compra manual de minutos** (Cuenta → Uso del mes): paquete 100 min $1,200 MXN · paquete 200 min $2,400 MXN · personalizado a $12/min. Tareas extra se compran aparte (Cuenta → Comprar tareas). Todos los precios + IVA.
 - Los minutos comprados se acreditan de inmediato y reactivan a los empleados si estaban pausados.
 
 ---
@@ -184,12 +182,17 @@ Precios en MXN + IVA (16%). Incorporación: pago único al contratar.
 - **Empleado Centinelia:** $14,990 incorporación · jornada mensual desde $2,997/mes.
 - **Empresarial:** cotización personalizada para multisucursal, alto volumen o integraciones custom.
 
-Jornadas mensuales (Empleado Centinelia):
-- **Media Jornada:** 300 min + 100 tareas → $2,997/mes (≈5 llamadas/día).
-- **Jornada Completa:** 600 min + 200 tareas → $5,994/mes (≈10 llamadas/día).
-- **Alta Demanda:** 1,200 min + 300 tareas → $11,988/mes (≈20 llamadas/día).
+Jornadas mensuales (Empleado Centinelia) — sabor **Combinada** (default):
+- **Media Jornada:** 300 min + 120 tareas → $2,997/mes (≈5 llamadas/día).
+- **Jornada Completa:** 600 min + 220 tareas → $5,994/mes (≈10 llamadas/día).
+- **Alta Demanda:** 1,200 min + 320 tareas → $11,988/mes (≈20 llamadas/día).
 
-También hay 3 sabores de jornada según el uso: **Combinada** (minutos + tareas), **Solo minutos** (más voz, menos oficina), **Solo tareas** (más oficina, sin voz). Se configura al elegir jornada.
+3 sabores de jornada (mismo precio por tier, distribución distinta):
+- **Combinada** (default) — como arriba.
+- **Solo minutos** — Media 500 min/20 tareas · Completa 1,000 min/20 tareas · Alta 2,000 min/20 tareas.
+- **Solo tareas** — Media 500 tareas/0 min · Completa 1,200 tareas/0 min · Alta 3,000 tareas/0 min.
+
+Coordinadores (Nox, Niva) usan automáticamente el sabor Solo tareas — no tienen voz.
 
 Para cambiar: Cuenta → Plan y consumo → portal de Stripe. O contactar soporte.
 

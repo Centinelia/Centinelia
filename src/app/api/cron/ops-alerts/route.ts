@@ -37,11 +37,12 @@ interface Agent {
 }
 
 interface Account {
-  portalEmail: string;
-  agents:      Agent[];
-  poolUsed:    number;
-  poolLimit:   number;
-  pct:         number;
+  portalEmail:   string;
+  agents:        Agent[];
+  poolUsed:      number;
+  poolLimit:     number;
+  pct:           number;
+  ledgerEnabled: boolean; // si true, per-agent counters están stale → oculta breakdown
 }
 
 export async function GET(req: NextRequest) {
@@ -70,8 +71,35 @@ export async function GET(req: NextRequest) {
   const now = Date.now();
   const overThreshold: Account[] = [];
   for (const [portalEmail, list] of byAccount) {
-    const poolUsed  = list.reduce((s, a) => s + (a.ai_ops_used  ?? 0), 0);
-    const poolLimit = list.reduce((s, a) => s + (a.ai_ops_limit ?? 0), 0);
+    // Pool source of truth: organizations + account_ops (si ledger enabled).
+    // Antes se sumaba per-agente que quedó stale post-migración ledger — el
+    // alert 80% se disparaba con números viejos y la tabla per-agente mostraba
+    // "Nia consumió 340 tareas" cuando el portal decía 15. Ver
+    // [[feedback-audit-read-path-fidelity]].
+    const { data: org } = await supabase.from('organizations')
+      .select('monthly_ops_pool, monthly_ops_used, ops_ledger_enabled')
+      .eq('portal_email', portalEmail)
+      .maybeSingle();
+    const ledgerEnabled = !!(org as { ops_ledger_enabled?: boolean } | null)?.ops_ledger_enabled;
+    const orgPoolTotal  = ((org as { monthly_ops_pool?: number | null } | null)?.monthly_ops_pool as number | null) ?? null;
+    const orgPoolUsed   = ((org as { monthly_ops_used?: number | null } | null)?.monthly_ops_used as number | null) ?? null;
+
+    let acctOpsUsed: number | null = null;
+    if (ledgerEnabled) {
+      const { data: acctOps } = await supabase.from('account_ops')
+        .select('ops_used').eq('portal_email', portalEmail).maybeSingle();
+      acctOpsUsed = (acctOps as { ops_used?: number | null } | null)?.ops_used ?? null;
+    }
+
+    const poolLimit = orgPoolTotal != null
+      ? orgPoolTotal
+      : list.reduce((s, a) => s + (a.ai_ops_limit ?? 0), 0);
+    const poolUsed = (ledgerEnabled && typeof acctOpsUsed === 'number')
+      ? acctOpsUsed
+      : orgPoolTotal != null
+        ? (orgPoolUsed ?? 0)
+        : list.reduce((s, a) => s + (a.ai_ops_used ?? 0), 0);
+
     if (poolLimit <= 0) continue;
     if (poolUsed < THRESHOLD * poolLimit) continue;
 
@@ -89,6 +117,7 @@ export async function GET(req: NextRequest) {
       poolUsed,
       poolLimit,
       pct: (poolUsed / poolLimit) * 100,
+      ledgerEnabled,
     });
   }
 
@@ -113,11 +142,13 @@ export async function GET(req: NextRequest) {
     const alertColor = pct >= 90 ? '#F87171' : '#FBBF24';
 
     // Reset date: earliest across agents (they should share one but be safe).
+    // Parseo con `T00:00:00` para que el server UTC no interprete la fecha
+    // como medianoche UTC = día anterior en México (off-by-one).
     const resetDates = account.agents.map(a => a.minutes_reset_date).filter(Boolean) as string[];
     resetDates.sort();
     const resetIso = resetDates[0] ?? null;
     const resetStr = resetIso
-      ? new Date(resetIso).toLocaleDateString('es-MX', { day: 'numeric', month: 'long' })
+      ? new Date(resetIso + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long' })
       : 'el próximo ciclo';
 
     // Business label for the header subtitle.
@@ -215,7 +246,11 @@ export async function GET(req: NextRequest) {
         <p style="color:#F1EEFF;font-size:14px;line-height:1.7;margin:0 0 12px">Tus <strong style="color:#F1EEFF">${teamSize} ${teamSize === 1 ? 'empleado' : 'empleados'}</strong> comparten un pool mensual de <strong style="color:#F1EEFF">${account.poolLimit}</strong> tareas. Cada tarea es una acción de fondo: revisar tu bandeja, generar reportes semanales, aprender de conversaciones nuevas, etc.</p>
         <p style="color:#F1EEFF;font-size:14px;line-height:1.7;margin:0">Cuando el pool llegue al 100%, las tareas de fondo se pausan automáticamente hasta que compres tareas extras o llegue la renovación del <strong style="color:#F1EEFF">${resetStr}</strong>.</p>
       `) +
-      (topConsumers.length > 1
+      // Breakdown per-agent SOLO si NO estamos en ledger mode. Cuando
+      // ops_ledger_enabled=true, voice_agents.ai_ops_used se congela post-flip
+      // y mostrar el top-N sería mentir. Mejor no mostrar la sección que
+      // mostrar cifras stale. Ver [[feedback-audit-read-path-fidelity]].
+      (topConsumers.length > 1 && !account.ledgerEnabled
         ? infoCard(`
             ${sectionLabel('Quiénes están consumiendo más')}
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">

@@ -14,6 +14,7 @@ import SubUserManager                   from './SubUserManager';
 import AccountSerialBadge               from '../AccountSerialBadge';
 import { getOrCreateSerial }            from '@/lib/portal/serial';
 import { PageContainer } from '@/components/portal-ui';
+import { loadPoolStatus }               from '@/lib/portal/pool-status';
 
 interface Props { params: Promise<{ token: string }> }
 
@@ -66,29 +67,10 @@ export default async function UsuariosPage({ params }: Props) {
   if (!canManageUsers) redirect(`/portal/${token}?tab=inicio`);
   const isOwnerSession = !session?.isSubUser;
 
-  const { data: acctMins } = agent.portal_email
-    ? await supabase.from('account_minutes').select('minutes_used, minutes_included').eq('portal_email', agent.portal_email).single()
-    : { data: null };
-  const minutesIncluded = (acctMins?.minutes_included ?? (agent as any).minutes_included ?? 0) as number;
-  const minutesUsed     = (acctMins?.minutes_used ?? (agent as any).minutes_used ?? 0) as number;
-  const minutesRemain   = Math.max(0, minutesIncluded - minutesUsed);
-
-  // Pool compartido: prefiere org-level, cae a SUM per-agente si no está migrada.
-  const { data: orgPool } = agent.portal_email
-    ? await supabase.from('organizations')
-        .select('monthly_ops_pool, monthly_ops_used')
-        .eq('portal_email', agent.portal_email)
-        .maybeSingle()
-    : { data: null };
-  let aiOpsUsed  = (orgPool?.monthly_ops_used as number | null) ?? 0;
-  let aiOpsLimit = (orgPool?.monthly_ops_pool as number | null) ?? 0;
-  if (!orgPool?.monthly_ops_pool) {
-    const { data: opsAgents } = agent.portal_email
-      ? await supabase.from('voice_agents').select('ai_ops_used, ai_ops_limit').eq('portal_email', agent.portal_email)
-      : { data: null };
-    aiOpsUsed  = ((opsAgents ?? []) as any[]).reduce((s, a) => s + ((a.ai_ops_used  as number) ?? 0), 0);
-    aiOpsLimit = ((opsAgents ?? []) as any[]).reduce((s, a) => s + ((a.ai_ops_limit as number) ?? 0), 0);
-  }
+  // Pool status via helper — ver src/lib/portal/pool-status.ts. Cubre bug
+  // de fallback ladder + falta de check ops_ledger_enabled.
+  const { minutesIncluded, minutesUsed, minutesRemain, aiOpsUsed, aiOpsLimit } =
+    await loadPoolStatus(supabase, agent.portal_email, agent as any);
 
   const { data: existingUsers } = agent.portal_email
     ? await supabase

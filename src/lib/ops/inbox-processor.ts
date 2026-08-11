@@ -951,6 +951,17 @@ CATEGORÍAS:
           required: ['incidente_id'],
         },
       });
+      tools.push({
+        name: 'consultar_billing_org',
+        description: 'Uso exclusivo de Nash. Estado billing REAL de una org (minutos y tareas usados/disponibles del pool, ciclo, modelo de facturación, empleados con su jornada). ÚSALA SIEMPRE que el owner pregunte por cifras de una cuenta — es la única forma de responder sin inventar números.',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            portal_email: { type: 'string' },
+          },
+          required: ['portal_email'],
+        },
+      });
     }
 
     // Director tools — Niva usa evaluar_limite_gasto + verificar_gasto_recurrente

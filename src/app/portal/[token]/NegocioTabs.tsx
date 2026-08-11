@@ -33,8 +33,6 @@ const ANCHOR_TO_TAB: Record<string, string> = {
   'tono-de-marca': 'identidad',
   sitio:           'identidad',
   horarios:        'operacion',
-  idioma:          'operacion',
-  'dominio-correo': 'operacion',
   'sheets-crm':    'operacion',
   directorio:      'directorio',
   integraciones:   'integraciones',

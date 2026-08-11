@@ -85,8 +85,6 @@ export function buildPortalNav(input: BuildNavInput): NavGroup[] {
       { label: 'Tono de marca',                   anchor: 'tono-de-marca' },
       { label: 'Sitio web y reseñas',             anchor: 'sitio' },
       { label: 'Horario de atención',             anchor: 'horarios' },
-      { label: 'Idioma de atención',              anchor: 'idioma' },
-      { label: 'Correos automáticos a tus clientes', anchor: 'dominio-correo' },
       { label: 'Tu CRM en Google Sheets',         anchor: 'sheets-crm' },
       { label: 'Personas de la organización',     anchor: 'directorio' },
       { label: 'Integraciones',                   anchor: 'integraciones' },

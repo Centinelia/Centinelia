@@ -6,9 +6,10 @@ import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { rateLimit, limiters } from '@/lib/ratelimit';
 import { requireStripeEligible } from '@/lib/billing/require-stripe-eligible';
+import { MINUTES_RATE_EXTRA } from '@/lib/billing/plans';
 
 const FIXED_PACKAGES: Record<number, number> = { 100: 1200, 200: 2400 };
-const PRICE_PER_MIN = 12;
+const PRICE_PER_MIN = MINUTES_RATE_EXTRA;
 const IVA = 0.16;
 
 function calcPrice(minutes: number): number {

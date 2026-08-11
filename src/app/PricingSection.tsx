@@ -73,9 +73,9 @@ const JORNADA_TIERS: Record<JornadaId, { id: string; label: string; subtitle: st
     { id: 'scale',   label: 'Alta Demanda',     subtitle: 'Máximos minutos disponibles.',                minutes: 2000, ops: 20, price: 11988, callsPerDay: 33 },
   ],
   tareas: [
-    { id: 'starter', label: 'Media Jornada',    subtitle: 'Sin llamadas: solo inteligencia y tareas.',   minutes: 0, ops: 270,  price: 2997  },
-    { id: 'growth',  label: 'Jornada Completa', subtitle: 'Para equipos con alta carga de tareas.',      minutes: 0, ops: 520,  price: 5994,  popular: true },
-    { id: 'scale',   label: 'Alta Demanda',     subtitle: 'Automatización de alto volumen.',             minutes: 0, ops: 1020, price: 11988 },
+    { id: 'starter', label: 'Media Jornada',    subtitle: 'Sin llamadas: solo inteligencia y tareas.',   minutes: 0, ops: 500,  price: 2997  },
+    { id: 'growth',  label: 'Jornada Completa', subtitle: 'Para equipos con alta carga de tareas.',      minutes: 0, ops: 1200, price: 5994,  popular: true },
+    { id: 'scale',   label: 'Alta Demanda',     subtitle: 'Automatización de alto volumen.',             minutes: 0, ops: 3000, price: 11988 },
   ],
 };
 
@@ -303,6 +303,10 @@ export default function PricingSection() {
       <AnimatedSection>
         <p className="text-xs my-4 text-center" style={{ color: 'rgba(255,255,255,0.35)' }}>
           Aumenta o reduce la jornada cuando tu operación cambie.
+          <br className="hidden sm:inline" />
+          <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.28)' }}>
+            Los coordinadores (Nox, Niva) usan automáticamente la tarifa Solo tareas — no atienden llamadas.
+          </span>
         </p>
       </AnimatedSection>
 

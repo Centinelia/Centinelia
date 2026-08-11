@@ -11,6 +11,7 @@ import PortalShell                      from '../PortalShell';
 import NotificationBell                 from '../NotificationBell';
 import PortalFooter                     from '../PortalFooter';
 import { getOrCreateSerial }            from '@/lib/portal/serial';
+import { loadPoolStatus }               from '@/lib/portal/pool-status';
 
 export default async function AgentesLayout({
   children,
@@ -60,31 +61,12 @@ export default async function AgentesLayout({
   const hasStripe    = !!(agent as any).stripe_customer_id;
   const accountSerial = lookupEmail ? await getOrCreateSerial(lookupEmail).catch(() => null) : null;
 
-  // Usage data
-  const { data: acctMins } = lookupEmail
-    ? await supabase.from('account_minutes').select('minutes_used, minutes_included').eq('portal_email', lookupEmail).single()
-    : { data: null };
-  const minutesIncluded = (acctMins?.minutes_included ?? (agent as any).minutes_included ?? 0) as number;
-  const minutesUsed     = (acctMins?.minutes_used     ?? (agent as any).minutes_used     ?? 0) as number;
-  const minutesRemain   = Math.max(0, minutesIncluded - minutesUsed);
-
-  // Source of truth: organizations.monthly_ops_pool / monthly_ops_used
-  // (fallback a SUM per-agente si la org es antigua sin migrar).
-  const { data: orgPool } = lookupEmail
-    ? await supabase.from('organizations')
-        .select('monthly_ops_pool, monthly_ops_used')
-        .eq('portal_email', lookupEmail)
-        .maybeSingle()
-    : { data: null };
-  let aiOpsUsed  = (orgPool?.monthly_ops_used as number | null) ?? 0;
-  let aiOpsLimit = (orgPool?.monthly_ops_pool as number | null) ?? 0;
-  if (!orgPool?.monthly_ops_pool) {
-    const { data: opsAgents } = lookupEmail
-      ? await supabase.from('voice_agents').select('ai_ops_used, ai_ops_limit').eq('portal_email', lookupEmail)
-      : { data: null };
-    aiOpsUsed  = ((opsAgents ?? []) as any[]).reduce((s, a) => s + (((a as any).ai_ops_used  as number) ?? 0), 0);
-    aiOpsLimit = ((opsAgents ?? []) as any[]).reduce((s, a) => s + (((a as any).ai_ops_limit as number) ?? 0), 0);
-  }
+  // Pool status via helper — ver src/lib/portal/pool-status.ts. Cubre el
+  // bug de fallback ladder (`??` sobre 0) + falta de check ops_ledger_enabled
+  // que este layout tenía antes (mostraba `monthly_ops_used` legacy congelado
+  // post-flip).
+  const { minutesIncluded, minutesUsed, minutesRemain, aiOpsUsed, aiOpsLimit } =
+    await loadPoolStatus(supabase, lookupEmail, agent as any);
 
   const mainColumn = (
     <div className="flex-1 min-w-0 flex flex-col">

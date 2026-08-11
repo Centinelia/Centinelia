@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
 
   const { data: agents, error } = await supabase
     .from('voice_agents')
-    .select('id, business_name, client_email, transfer_whatsapp, phone_number, portal_email')
+    .select('id, business_name, client_email, transfer_whatsapp, phone_number, portal_email, jornada_type')
     .eq('billing_status', 'pago_fallido')
     .lte('grace_period_ends_at', now)
     .eq('active', true);
@@ -81,7 +81,7 @@ export async function GET(req: NextRequest) {
         await sendEmail({
           to: agent.client_email,
           subject: `📴 Agente pausado, ${agent.business_name}`,
-          html: agentPausedHtml(agent.business_name),
+          html: agentPausedHtml(agent.business_name, (agent.jornada_type as 'combinada' | 'minutos' | 'tareas' | undefined)),
         }).catch(console.error);
       }
 

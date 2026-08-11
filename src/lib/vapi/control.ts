@@ -15,14 +15,14 @@ async function findPhoneNumberId(number: string): Promise<string | null> {
 }
 
 export async function pauseVapiAgent(phoneNumber: string): Promise<void> {
-  if (!phoneNumber) return;
-  const id = await findPhoneNumberId(phoneNumber);
-  if (!id) return;
-  await fetch(`${VAPI_URL}/phone-number/${id}`, {
-    method:  'PATCH',
-    headers: headers(),
-    body:    JSON.stringify({ assistantId: null }),
-  });
+  // NO-OP intencional (2026-08-11). Antes: PATCH { assistantId: null } al
+  // phone number — Vapi rechazaba llamadas sin assistant y el llamante
+  // escuchaba silencio. Ahora la pausa efectiva vive en DB (active=false)
+  // y `/api/voice/inbound` detecta ese estado + responde con un mensaje
+  // explicativo. Dejamos el assistantId asignado para que Vapi siga
+  // enrutando calls al serverUrl. Ver [[feedback-audit-read-path-fidelity]].
+  void phoneNumber;
+  return;
 }
 
 export async function resumeVapiAgent(phoneNumber: string, assistantId: string): Promise<void> {

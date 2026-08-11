@@ -27,11 +27,15 @@ export async function POST(req: NextRequest) {
   const supabase = createAdminClient();
 
   // Find the agent assigned to this phone number
+  // Find the agent assigned to this phone number. NO filtramos por active=true
+  // aquí: si active=false (pool agotado, pausa manual, pago fallido), aún
+  // queremos responder algo al llamante en vez de silencio. Ver
+  // [[feedback-audit-read-path-fidelity]] Parte B — cliente final del cliente
+  // llamaba y no escuchaba nada, no sabía si el número era el correcto.
   const { data: agent, error } = await supabase
     .from('voice_agents')
     .select('*')
     .eq('phone_number', vapiPhoneNumber)
-    .eq('active', true)
     .single();
 
   if (error || !agent) {
@@ -43,6 +47,44 @@ export async function POST(req: NextRequest) {
 
   const typedAgent = agent as VoiceAgent;
   const agentName  = typedAgent.agent_name?.trim() || 'Centinelia';
+
+  // Agente pausado → mensaje explicativo al llamante + colgar. Antes el
+  // llamante escuchaba silencio y no sabía por qué. Cubre pausa manual, pausa
+  // por pool agotado sin fallback config, y grace period vencido.
+  if (typedAgent.active === false) {
+    const businessName = typedAgent.business_name ?? 'nuestra oficina';
+    const transferNum  = (typedAgent.transfer_number ?? '').trim();
+    const reasonPhrase = (typedAgent as unknown as { billing_status?: string }).billing_status === 'pago_fallido'
+      ? 'temporalmente por una situación administrativa'
+      : 'en este momento';
+    const pausedMsg = transferNum
+      ? `Gracias por llamar a ${businessName}. No podemos atenderte por este número ${reasonPhrase}. Por favor comunícate al ${transferNum} o intenta más tarde. Gracias.`
+      : `Gracias por llamar a ${businessName}. No podemos atenderte por este número ${reasonPhrase}. Por favor intenta más tarde o contáctanos por otros medios. Gracias.`;
+    return NextResponse.json({
+      assistant: {
+        name: 'AgentPaused',
+        model: {
+          provider: 'anthropic',
+          model:    'claude-haiku-4-5-20251001',
+          messages: [{ role: 'system', content: 'Solo di el mensaje que se te indica y despídete. NO respondas ninguna pregunta ni improvises. Si el llamante insiste, repite brevemente el mensaje y termina la llamada.' }],
+        },
+        voice: {
+          provider: '11labs',
+          voiceId:  typedAgent.elevenlabs_voice_id ?? process.env.ELEVENLABS_DEFAULT_VOICE_ID,
+          model:    'eleven_turbo_v2_5',
+          stability:       0.45,
+          similarityBoost: 0.75,
+          style:           0.30,
+          speed:           1.05,
+          useSpeakerBoost: true,
+          optimizeStreamingLatency: 4,
+        },
+        firstMessage: pausedMsg,
+        endCallAfterSilenceSeconds: 5,
+        maxDurationSeconds:         45,
+      },
+    });
+  }
 
   // Check account status — suspended or terminated accounts cannot receive calls
   // También traemos los campos de calendar (org-level desde 2026-08-09).
@@ -462,7 +504,15 @@ Esta llamada proviene de ${memberName}, ${memberRole} de ${typedAgent.business_n
     qbConnected = !!qbRow?.realm_id;
   }
 
-  const systemPrompt = await buildSystemPrompt(typedAgent, null, typedAgent.portal_email ?? undefined, supabase) + (teamCallerContext || callerContext) + memoryContext + surveyPrompt +
+  // Grace period context — el empleado necesita saber que el negocio está en
+  // período de gracia por pago fallido, sin exponerlo al llamante. Afecta cómo
+  // escala + evita prometer continuidad más allá del grace window. Ver
+  // [[feedback-audit-read-path-fidelity]] Parte B.
+  const gracePeriodContext = (typedAgent as unknown as { billing_status?: string }).billing_status === 'pago_fallido'
+    ? `\n\nAVISO INTERNO — NO comuniques esto al llamante: La cuenta con Centinelia está en período de gracia por pago fallido. Si el llamante requiere continuidad importante (contrato de largo plazo, servicio recurrente, seguimiento en varios días), NO prometas nada que dependa de continuidad más allá de 3 días. Después de la llamada, el dueño ya recibió aviso por su cuenta.`
+    : '';
+
+  const systemPrompt = await buildSystemPrompt(typedAgent, null, typedAgent.portal_email ?? undefined, supabase) + (teamCallerContext || callerContext) + memoryContext + surveyPrompt + gracePeriodContext +
     (minsLow ? `\n\nAVISO INTERNO: Al inicio de esta llamada, antes de atender cualquier solicitud, avisa al dueño que le quedan ${minutesRemain} minutos este mes (de ${minutesIncluded} incluidos). Dilo de forma natural y breve, en una sola frase. Ejemplo: "Por cierto, te quedan ${minutesRemain} minutos este mes, puedes comprar más desde el portal." Luego atiende su solicitud normalmente.` : '');
   const tools = await buildTools(typedAgent, qbConnected, orgCalendar);
 

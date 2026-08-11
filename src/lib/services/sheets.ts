@@ -335,7 +335,17 @@ export async function appendRow(
       }
     }
 
-    const unknownKeys = dataKeys.filter(k => !headers.includes(k));
+    let unknownKeys = dataKeys.filter(k => !headers.includes(k));
+    // Auto-refresh once when data keys don't match — customer likely renamed
+    // or added a column in Sheets after setup. Removes the need for the manual
+    // "Actualizar columnas" button in the common case.
+    if (unknownKeys.length > 0) {
+      const refreshResult = await refreshHeaders(mappingId);
+      if (refreshResult.ok && refreshResult.data.headers.length > 0) {
+        headers = refreshResult.data.headers;
+        unknownKeys = dataKeys.filter(k => !headers.includes(k));
+      }
+    }
     if (unknownKeys.length > 0) {
       return {
         ok: false,

@@ -2,14 +2,27 @@ import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { resumeVapiAgent } from '@/lib/vapi/control';
 import { maybeNotifyPoolLoss } from '@/lib/billing/rollover-cap-notify';
+import { MINUTES_RATE_EXTRA } from '@/lib/billing/plans';
 
 const FIXED_PACKAGES: Record<number, number> = { 100: 1200, 200: 2400 };
-const PRICE_PER_MIN = 12;
+const PRICE_PER_MIN = MINUTES_RATE_EXTRA;
 const IVA = 0.16;
 
 function calcPrice(minutes: number): number {
   const base = FIXED_PACKAGES[minutes] ?? minutes * PRICE_PER_MIN;
   return Math.round(base * (1 + IVA));
+}
+
+/**
+ * Description con breakdown IVA para el ledger. Antes decía "$1,392 MXN"
+ * (total con IVA) pero el recibo Stripe muestra "$1,200 + IVA" — cliente
+ * ve dos cifras distintas para el mismo cargo y piensa que hubo error.
+ */
+function refillDescription(kind: 'min' | 'tareas', amount: number, totalMxn: number): string {
+  const baseMxn = Math.round(totalMxn / (1 + IVA));
+  const ivaMxn  = totalMxn - baseMxn;
+  const unit = kind === 'min' ? 'min' : 'tareas';
+  return `Auto-recarga ${amount} ${unit} · $${baseMxn.toLocaleString('es-MX')} + IVA $${ivaMxn.toLocaleString('es-MX')} = $${totalMxn.toLocaleString('es-MX')} MXN`;
 }
 
 export async function executeAutoRefill(
@@ -75,7 +88,7 @@ export async function executeAutoRefill(
         p_amount:       minutes,
         p_kind:         'auto_refill',
         p_reference_id: pi.id ?? null,
-        p_description:  `Auto-recarga ${minutes} min · $${amountMxn.toLocaleString('es-MX')} MXN`,
+        p_description:  refillDescription('min', minutes, amountMxn),
       });
       if (ledErr) throw ledErr;
       // Reactivar solo el agente que se recargó (granularidad per-empleado)
@@ -99,7 +112,7 @@ export async function executeAutoRefill(
       const { error: ledInsErr } = await supabase.from('minutes_ledger').insert({
         agent_id:    agentId,
         amount:      minutes,
-        description: `Auto-recarga ${minutes} min · $${amountMxn.toLocaleString('es-MX')} MXN`,
+        description: refillDescription('min', minutes, amountMxn),
         source:      'auto_recarga',
         kind:        'auto_refill',
       });
@@ -202,7 +215,7 @@ export async function executeAutoRefillOps(
           p_amount:       ops,
           p_kind:         'auto_refill_ops',
           p_reference_id: pi.id ?? null,
-          p_description:  `Auto-recarga ${ops} tareas · $${amountMxn.toLocaleString('es-MX')} MXN`,
+          p_description:  refillDescription('tareas', ops, amountMxn),
         });
         if (ledErr) throw ledErr;
         await maybeNotifyPoolLoss(supabase, { portalEmail: agent.portal_email, referenceId: pi.id ?? null, resource: 'ops' });

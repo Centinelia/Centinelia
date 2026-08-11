@@ -91,13 +91,10 @@ const AGENT_TYPES: {
   },
 ];
 
-const MINUTE_TIERS: {
-  id: string; label: string; subtitle: string; minutes: number; ops: number; price: number; callsPerDay: number; popular?: boolean;
-}[] = [
-  { id: 'starter', label: 'Media Jornada',    subtitle: 'Ideal para organizaciones pequeñas.',          minutes: 300,  ops: 100, price: 2997,  callsPerDay: 5  },
-  { id: 'growth',  label: 'Jornada Completa', subtitle: 'Ideal para la mayoría de las organizaciones.', minutes: 600,  ops: 200, price: 5994,  callsPerDay: 10, popular: true },
-  { id: 'scale',   label: 'Alta Demanda',     subtitle: 'Ideal para operaciones con alto volumen.',  minutes: 1200, ops: 300, price: 11988, callsPerDay: 20 },
-];
+// MINUTE_TIERS eliminado 2026-08-11: landmine con ops 100/200/300 stale
+// (real es 120/220/320 según JORNADA_CONFIG.combinada). La landing renderiza
+// PricingSection.tsx que lee de plans.ts en runtime. Ver
+// [[feedback-audit-read-path-fidelity]].
 
 const DIFFERENTIATORS = [
   {

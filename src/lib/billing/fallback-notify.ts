@@ -36,9 +36,13 @@ export async function notifyFallbackActivated(
   const to = resolveDestination(org);
   if (!to) return;
 
+  // El pool de minutos es org-level, no per-agente. Antes decía "minutos de
+  // ${agentName}" — cliente en org multi-empleado pensaba "solo Nia" cuando
+  // en realidad TODOS los empleados de voz están pausados.
+  void agentName;
   const body =
-    `Se agotaron tus minutos de ${agentName} este ciclo. ` +
-    `Las llamadas entrantes van a ${maskPhoneNumber(org.fallback_phone_number)} hasta que recargues. ` +
+    `Se agotaron los minutos del pool de tu oficina este ciclo — todos tus empleados de voz están pausados. ` +
+    `Las llamadas entrantes van a ${maskPhoneNumber(org.fallback_phone_number)} hasta que recargues. Las tareas de oficina siguen funcionando. ` +
     `Recarga aquí: ${portalUrl}/facturacion`;
 
   try {
@@ -61,8 +65,11 @@ export async function notifyFallbackRestored(
 ): Promise<void> {
   const to = resolveDestination(org);
   if (!to) return;
+  // El pool es org-level: cuando recarga, todos los empleados vuelven, no
+  // solo el que dio nombre a la notificación anterior.
+  void agentName;
   try {
-    await sendWhatsApp(to, `Recargado. Las llamadas vuelven a ${agentName}.`);
+    await sendWhatsApp(to, `Recargado. Las llamadas entrantes vuelven a tu oficina normalmente.`);
   } catch (err) {
     console.warn('[fallback-notify] restored failed:', (err as Error).message);
   }

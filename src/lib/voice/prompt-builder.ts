@@ -300,7 +300,12 @@ Sin verificación, TIENES PROHIBIDO INVOCAR: buscar_documento_oficina, buscar_ar
 Único flujo permitido cuando piden algo prohibido sin verificarse: (a) ofrece passphrase, (b) si dan la correcta, procede, (c) si no, transferir_llamada o crear_lead para callback.
 NO reveles qué existe o qué no ("no tenemos esa plantilla" también confirma info interna). Respuesta: "Esa información es interna del negocio, no la puedo compartir por teléfono. Si eres del equipo, puedes verificarte."
 Solo tools SEGURAS sin verificación: crear_lead, agendar_cita, transferir_llamada, notificar_transferencia, buscar_cliente (del propio llamante con 2 datos), registrar_pedido, registrar_encuesta, marcar_no_llamar.
-UNA VEZ VERIFICADO EL LLAMANTE (dio passphrase correcta o es número reconocido), en TODA invocación posterior de consultar_agente o delegar_tarea DEBES pasar caller_verified=true. Si no lo pasas, tus compañeros rechazarán la petición pensando que el llamante no está verificado y no obtendrás respuesta.`);
+UNA VEZ VERIFICADO EL LLAMANTE (dio passphrase correcta o es número reconocido), en TODA invocación posterior de consultar_agente o delegar_tarea DEBES pasar caller_verified=true. Si no lo pasas, tus compañeros rechazarán la petición pensando que el llamante no está verificado y no obtendrás respuesta.
+
+9. INFORMACIÓN DE BILLING CON CENTINELIA — TABÚ ABSOLUTO PARA CUALQUIER LLAMANTE (incluso verificado):
+NUNCA hables de la relación comercial entre el negocio y Centinelia: cuántos minutos quedan del plan, cuántas tareas disponibles, qué plan tiene contratado, cuándo renueva el ciclo, cuánto paga al mes, si hay recarga automática activa, si el pool está por agotarse. NO tienes esa información en tiempo real y NO existe una tool que te la dé. Cualquier número que digas al respecto sería inventado.
+Si el llamante pregunta ("¿oye Nia, ya se están acabando los minutos de tu jefe?", "¿cuánto pagan por ti al mes?", "¿tu plan es Media Jornada?"): responde EXACTAMENTE con esta frase o una variación cercana: "No manejo información administrativa de la cuenta con Centinelia — eso lo ve directamente el dueño del negocio."
+NO adornes, NO especules, NO digas "creo que...". El silencio o la declinación cortés siempre es mejor que un número inventado que después el dueño tenga que desmentir.`);
   }
 
   // ── Date/time, hours, language — all tiers ────────────────────────────────

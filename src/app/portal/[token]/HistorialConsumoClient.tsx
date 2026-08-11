@@ -3,12 +3,13 @@
 import { useMemo, useState } from 'react';
 import {
   RefreshCw, RotateCcw, Zap, CreditCard, Phone, PhoneIncoming, PhoneOutgoing, SlidersHorizontal, BatteryCharging,
-  Bot, Mail, FileText, Calendar, Search, ClipboardList, X,
+  Bot, Mail, FileText, Calendar, Search, ClipboardList, X, TrendingDown, Undo2,
 } from 'lucide-react';
+import type { OpsLedgerEntry, OpsLedgerKind } from './OpsLedgerListClient';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type LedgerSource = 'renovacion' | 'rollover' | 'extra_compra' | 'activacion' | 'ajuste' | 'llamada' | 'llamada_saliente' | 'auto_recarga' | 'plan_downgrade' | 'plan_upgrade' | 'refund' | 'dispute_chargeback' | 'invoice_voided' | 'reconciliacion' | 'backfill';
+export type LedgerSource = 'renovacion' | 'rollover' | 'extra_compra' | 'activacion' | 'ajuste' | 'llamada' | 'llamada_saliente' | 'auto_recarga' | 'plan_downgrade' | 'plan_upgrade' | 'refund' | 'dispute_chargeback' | 'invoice_voided' | 'reconciliacion' | 'backfill' | 'auto_pausado';
 
 export interface MinutesEntry {
   id:          string;
@@ -17,6 +18,10 @@ export interface MinutesEntry {
   description: string;
   source:      LedgerSource;
   balance:     number;
+  /** Cuando true, el caller_number pertenece al dueño/equipo interno
+   *  (transfer_number, transfer_whatsapp, o algún team_numbers entry).
+   *  Renderiza chip "Interno" para distinguir prueba interna vs tráfico real. */
+  isInternal?: boolean;
 }
 
 export interface TaskEntry {
@@ -50,6 +55,7 @@ const MIN_SOURCE_META: Record<LedgerSource, { iconKey: string; color: string; la
   invoice_voided:     { iconKey: 'sliders',        color: '#B45309', label: 'Factura anulada' },
   reconciliacion:     { iconKey: 'sliders',        color: '#6B7280', label: 'Reconciliación' },
   backfill:           { iconKey: 'card',           color: '#3b82f6', label: 'Backfill histórico' },
+  auto_pausado:       { iconKey: 'x',              color: '#B45309', label: 'Empleado pausado (auto)' },
 };
 
 const TRIGGER_META: Record<string, { iconKey: string; color: string; label: string }> = {
@@ -81,8 +87,11 @@ function renderIcon(iconKey: string, size = 14) {
     case 'calendar':  return <Calendar size={size} />;
     case 'search':    return <Search size={size} />;
     case 'doc':       return <FileText size={size} />;
-    case 'clipboard': return <ClipboardList size={size} />;
-    default:          return null;
+    case 'clipboard':     return <ClipboardList size={size} />;
+    case 'trending-down': return <TrendingDown size={size} />;
+    case 'x':             return <X size={size} />;
+    case 'undo':          return <Undo2 size={size} />;
+    default:              return null;
   }
 }
 
@@ -102,13 +111,19 @@ function fmtMonth(iso: string) {
 export default function HistorialConsumoClient({
   minutes,
   tasks,
-  callerNames = {},
+  opsBalanceMovements = [],
+  truncationBanner    = null,
+  callerNames         = {},
   token,
 }: {
-  minutes:      MinutesEntry[];
-  tasks:        TaskEntry[];
-  callerNames?: Record<string, string>;
-  token:        string;
+  minutes:              MinutesEntry[];
+  tasks:                TaskEntry[];
+  opsBalanceMovements?: OpsLedgerEntry[];
+  /** Cuando el ledger tiene más rows que las mostradas en UI, avisa al cliente
+   *  para que descargue el CSV (que devuelve TODO, incluyendo archive 7 años). */
+  truncationBanner?:    { limit: number; totalMinutes: number; totalTasks: number } | null;
+  callerNames?:         Record<string, string>;
+  token:                string;
 }) {
   const [tab, setTab] = useState<'minutos' | 'tareas'>('minutos');
   const [fromDate, setFromDate] = useState<string>('');
@@ -116,6 +131,10 @@ export default function HistorialConsumoClient({
 
   const filteredMinutes = useMemo(() => filterByDate(minutes, fromDate, toDate), [minutes, fromDate, toDate]);
   const filteredTasks   = useMemo(() => filterByDate(tasks,   fromDate, toDate), [tasks,   fromDate, toDate]);
+  const filteredOpsBalance = useMemo(
+    () => filterByDate(opsBalanceMovements, fromDate, toDate),
+    [opsBalanceMovements, fromDate, toDate],
+  );
   const active = tab === 'minutos' ? filteredMinutes : filteredTasks;
   const total  = tab === 'minutos' ? minutes.length  : tasks.length;
 
@@ -220,6 +239,24 @@ export default function HistorialConsumoClient({
           </div>
         </div>
 
+        {truncationBanner && (
+          <div className="rounded-lg px-3 py-2 text-[11px] flex items-start gap-2"
+            style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', color: '#B45309' }}>
+            <span style={{ fontSize: 14, lineHeight: 1 }}>ⓘ</span>
+            <span>
+              Estás viendo los últimos {truncationBanner.limit.toLocaleString('es-MX')} movimientos.
+              {' '}
+              {tab === 'minutos' && truncationBanner.totalMinutes > truncationBanner.limit
+                ? `Total real en minutos: ${truncationBanner.totalMinutes.toLocaleString('es-MX')}. `
+                : ''}
+              {tab === 'tareas' && truncationBanner.totalTasks > truncationBanner.limit
+                ? `Total real en tareas: ${truncationBanner.totalTasks.toLocaleString('es-MX')}. `
+                : ''}
+              Descarga el CSV para el historial completo (incluye retención de 7 años).
+            </span>
+          </div>
+        )}
+
         {hasFilters && (
           <div className="flex items-center justify-between">
             <span className="text-[11px] tabular-nums" style={{ color: '#6B6480' }}>
@@ -243,10 +280,75 @@ export default function HistorialConsumoClient({
         <MinutesList entries={filteredMinutes} callerNames={callerNames} />
       ) : (
         <>
+          <OpsBalanceMovements entries={filteredOpsBalance} />
           <OpsBreakdown entries={filteredTasks} />
           <TasksList entries={filteredTasks} />
         </>
       )}
+    </div>
+  );
+}
+
+// Movimientos de saldo del pool de tareas (grants, refunds, rollover_cap,
+// unused_forfeited, cambios de plan). Se muestran arriba de la actividad
+// por herramienta para que el cliente vea el panorama completo — antes
+// vivían en OpsLedgerSection aislada y el cliente no podía reconciliar.
+const OPS_BALANCE_META: Record<OpsLedgerKind, { iconKey: string; color: string; label: string }> = {
+  renewal:            { iconKey: 'refresh',       color: '#10B981', label: 'Renovación' },
+  extra_ops_purchase: { iconKey: 'zap',           color: '#f59e0b', label: 'Compra extra' },
+  auto_refill_ops:    { iconKey: 'battery',       color: '#3b82f6', label: 'Auto-recarga' },
+  setup_new_agent:    { iconKey: 'card',          color: '#3b82f6', label: 'Nuevo empleado' },
+  jornada_change:     { iconKey: 'sliders',       color: '#3b82f6', label: 'Cambio de jornada' },
+  admin_adjustment:   { iconKey: 'sliders',       color: '#6B7280', label: 'Ajuste' },
+  rollover_cap:       { iconKey: 'x',             color: '#B45309', label: 'Descartado (cap 2×)' },
+  annual_grant:       { iconKey: 'refresh',       color: '#10B981', label: 'Grant mensual (contrato)' },
+  unused_forfeited:   { iconKey: 'trending-down', color: '#B45309', label: 'No consumido' },
+  consumption:        { iconKey: 'rotate',        color: '#6B7280', label: 'Consumo agregado' },
+  refund:             { iconKey: 'undo',          color: '#10B981', label: 'Reembolso' },
+  plan_downgrade:     { iconKey: 'trending-down', color: '#f59e0b', label: 'Downgrade de plan' },
+  plan_upgrade:       { iconKey: 'zap',           color: '#10B981', label: 'Upgrade de plan' },
+  dispute_chargeback: { iconKey: 'x',             color: '#dc2626', label: 'Chargeback' },
+  invoice_voided:     { iconKey: 'undo',          color: '#B45309', label: 'Factura anulada' },
+  reconciliacion:     { iconKey: 'sliders',       color: '#6B7280', label: 'Reconciliación' },
+};
+
+function OpsBalanceMovements({ entries }: { entries: OpsLedgerEntry[] }) {
+  // Filtra `consumption` (ya se muestra granular en TasksList) para no duplicar
+  // el ruido. Solo eventos de balance (grants, refunds, losses, cambios de plan).
+  const balanceOnly = entries.filter(e => e.kind !== 'consumption');
+  if (balanceOnly.length === 0) return null;
+  return (
+    <div className="px-5 py-3" style={{ borderBottom: '1px solid #F0EDF9' }}>
+      <div className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: '#9B8FB5' }}>
+        Movimientos de saldo · {balanceOnly.length} evento{balanceOnly.length === 1 ? '' : 's'}
+      </div>
+      <ul className="divide-y" style={{ borderColor: '#F5F2FB' }}>
+        {balanceOnly.map(e => {
+          const meta = OPS_BALANCE_META[e.kind] ?? OPS_BALANCE_META.admin_adjustment;
+          return (
+            <li key={e.id} className="py-2 flex items-center gap-2.5">
+              <div className="flex-shrink-0 flex items-center justify-center rounded-full w-6 h-6"
+                style={{ background: `${meta.color}18`, color: meta.color }}>
+                {renderIcon(meta.iconKey, 11)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[12px] font-semibold" style={{ color: meta.color }}>{meta.label}</p>
+                {e.description && (
+                  <p className="text-[11px] mt-0.5 truncate" style={{ color: '#6B7280' }}>{e.description}</p>
+                )}
+                <p className="text-[10px] mt-0.5" style={{ color: '#9CA3AF' }}>{fmtDate(e.date)}</p>
+              </div>
+              <div className="text-right flex-shrink-0">
+                <p className="text-[13px] font-bold tabular-nums"
+                  style={{ color: e.amount >= 0 ? '#10B981' : '#B45309' }}>
+                  {e.amount >= 0 ? '+' : ''}{e.amount}
+                </p>
+                <p className="text-[10px] tabular-nums" style={{ color: '#9CA3AF' }}>saldo {e.balance}</p>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }
@@ -346,6 +448,15 @@ function MinutesList({ entries, callerNames }: { entries: MinutesEntry[]; caller
                       style={{ background: `${meta.color}12`, color: meta.color }}>
                       {meta.label}
                     </span>
+                    {e.isInternal && (
+                      <span
+                        className="text-[10px] px-1.5 py-0.5 rounded font-semibold"
+                        style={{ background: 'rgba(107,114,128,0.12)', color: '#4B5563' }}
+                        title="Llamada del dueño o equipo interno (número reconocido) — no cliente externo"
+                      >
+                        Interno
+                      </span>
+                    )}
                     {callerName && (
                       <span className="text-[11px] tabular-nums" style={{ color: '#9B8FB5' }}>
                         {e.description}

@@ -29,15 +29,30 @@ export async function GET(req: NextRequest, { params: _params }: Params) {
   const toIso   = toParam   ? `${toParam}T23:59:59-06:00`   : null;
 
   const supabase = createAdminClient();
-  let query = supabase
-    .from('minutes_ledger')
-    .select('id, created_at, amount, kind, source, reference_id, description')
-    .eq('portal_email', session.portalEmail)
-    .order('created_at', { ascending: true })
-    .order('id', { ascending: true });   // Fix B2 audit: stable tie-breaker por id
-  if (fromIso) query = query.gte('created_at', fromIso);
-  if (toIso)   query = query.lte('created_at', toIso);
-  const { data: rows } = await query;
+  // Union live + archive: la retention 7 años vive en `minutes_ledger_archive`
+  // tras la migración `voice_calls_archive` (audit T10). El admin ya leía ambas;
+  // el cliente sólo veía live y perdía histórico post-purge. Ver
+  // [[feedback-audit-read-path-fidelity]].
+  const buildQuery = (table: string) => {
+    let q = supabase
+      .from(table)
+      .select('id, created_at, amount, kind, source, reference_id, description')
+      .eq('portal_email', session.portalEmail)
+      .order('created_at', { ascending: true })
+      .order('id', { ascending: true });   // Fix B2 audit: stable tie-breaker por id
+    if (fromIso) q = q.gte('created_at', fromIso);
+    if (toIso)   q = q.lte('created_at', toIso);
+    return q;
+  };
+  const [liveRes, archiveRes] = await Promise.all([
+    buildQuery('minutes_ledger'),
+    buildQuery('minutes_ledger_archive'),
+  ]);
+  const rows = [...(liveRes.data ?? []), ...(archiveRes.data ?? [])]
+    .sort((a, b) => {
+      const t = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      return t !== 0 ? t : String(a.id).localeCompare(String(b.id));
+    });
 
   // Fetch call durations for reference_ids that look like Vapi call IDs.
   // reference_id de kind='call' corresponde a vapi_call_id — permite mostrar

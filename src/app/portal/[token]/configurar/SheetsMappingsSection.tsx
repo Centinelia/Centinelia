@@ -6,10 +6,11 @@ import {
   Plus,
   Trash2,
   RefreshCw,
-  WifiOff,
   ChevronDown,
   Loader2,
+  ExternalLink,
 } from 'lucide-react';
+import Link from 'next/link';
 import EmptyState from '@/components/ui/empty-state';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -32,12 +33,12 @@ interface Spreadsheet {
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const RESERVED_PURPOSES = [
-  { value: 'clientes',     label: 'Clientes' },
-  { value: 'leads',        label: 'Leads' },
-  { value: 'bitacoras',    label: 'Bitácoras' },
-  { value: 'oc',           label: 'Órdenes de compra' },
-  { value: 'cajas_chicas', label: 'Cajas chicas' },
-  { value: 'custom',       label: 'Personalizado' },
+  { value: 'leads',        label: 'Leads',              description: 'Cada lead nuevo se agrega como fila' },
+  { value: 'clientes',     label: 'Clientes',           description: 'Base de datos consultable por el empleado' },
+  { value: 'bitacoras',    label: 'Bitácoras',          description: 'Registro de actividades por proyecto u obra' },
+  { value: 'oc',           label: 'Órdenes de compra',  description: 'OCs para consultar y capturar' },
+  { value: 'cajas_chicas', label: 'Cajas chicas',       description: 'Gastos menores y comprobantes' },
+  { value: 'custom',       label: 'Otro (le pones nombre)', description: 'Un uso propio que no cabe arriba' },
 ] as const;
 
 type PurposeValue = (typeof RESERVED_PURPOSES)[number]['value'];
@@ -45,6 +46,10 @@ type PurposeValue = (typeof RESERVED_PURPOSES)[number]['value'];
 function purposeLabel(purpose: string, customLabel: string | null): string {
   if (purpose === 'custom' && customLabel) return customLabel;
   return RESERVED_PURPOSES.find(p => p.value === purpose)?.label ?? purpose;
+}
+
+function purposeDescription(purpose: PurposeValue): string {
+  return RESERVED_PURPOSES.find(p => p.value === purpose)?.description ?? '';
 }
 
 // ─── Sub-component: MappingRow ────────────────────────────────────────────────
@@ -133,7 +138,7 @@ function MappingRow({
           )}
           {localHeaders.length === 0 && (
             <p className="text-[11px] mt-2 italic" style={{ color: '#9B8FB5' }}>
-              Sin columnas detectadas. Usa "Actualizar columnas".
+              Aún sin detectar las columnas de tu hoja.
             </p>
           )}
         </div>
@@ -144,7 +149,7 @@ function MappingRow({
             type="button"
             onClick={handleRefresh}
             disabled={refreshing}
-            title="Actualizar columnas"
+            title="Volver a leer las columnas — sólo hace falta si renombraste o agregaste columnas en tu hoja"
             className="p-1.5 rounded-lg transition-opacity hover:opacity-70"
             style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#6B6480' }}
           >
@@ -253,22 +258,17 @@ function AddMappingForm({
   };
 
   if (sheetsError === 'google_no_conectado') {
+    // Este estado ya no debería aparecer aquí (el card padre gatea antes de
+    // abrir el form), pero se mantiene como safety net si la conexión se cae
+    // entre el mount del card y el click de "Agregar hoja".
     return (
       <div
         className="px-5 py-4"
         style={{ borderTop: '1px solid #F0EDF9', background: 'rgba(245,158,11,0.06)' }}
       >
-        <div className="flex items-start gap-2.5">
-          <WifiOff size={14} style={{ color: '#f59e0b', marginTop: 2, flexShrink: 0 }} />
-          <div>
-            <p className="text-[13px] font-semibold" style={{ color: '#1A0A3B' }}>
-              Google no conectado
-            </p>
-            <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>
-              Conecta Google Workspace en la sección de Integraciones de la Oficina para acceder a tus sheets.
-            </p>
-          </div>
-        </div>
+        <p className="text-[13px]" style={{ color: '#6B6480' }}>
+          Se perdió la conexión con Google. Recarga la página y vuelve a intentar.
+        </p>
         <button
           type="button"
           onClick={onCancel}
@@ -299,7 +299,7 @@ function AddMappingForm({
       {/* Purpose */}
       <div>
         <label className="text-[12px] mb-1 block font-medium" style={{ color: '#6B6480' }}>
-          Propósito
+          ¿Qué se va a guardar aquí?
         </label>
         <div className="relative">
           <select
@@ -315,6 +315,11 @@ function AddMappingForm({
           </select>
           <ChevronDown size={13} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" style={{ color: '#9B8FB5' }} />
         </div>
+        {purpose !== 'custom' && (
+          <p className="text-[11px] mt-1" style={{ color: '#9B8FB5' }}>
+            {purposeDescription(purpose)}
+          </p>
+        )}
       </div>
 
       {/* Custom label */}
@@ -338,11 +343,11 @@ function AddMappingForm({
       {/* Spreadsheet picker */}
       <div>
         <label className="text-[12px] mb-1 block font-medium" style={{ color: '#6B6480' }}>
-          Spreadsheet
+          Archivo de Google Sheets
         </label>
         {sheetsLoading ? (
           <div className="flex items-center gap-2 text-[12px]" style={{ color: '#6B6480' }}>
-            <Loader2 size={13} className="animate-spin" /> Cargando sheets...
+            <Loader2 size={13} className="animate-spin" /> Cargando tus archivos...
           </div>
         ) : (
           <div className="relative">
@@ -353,7 +358,7 @@ function AddMappingForm({
               className="w-full appearance-none rounded-lg px-3 py-2 pr-8 text-[13px] outline-none"
               style={inputStyle}
             >
-              <option value="">Elige un spreadsheet</option>
+              <option value="">Elige un archivo</option>
               {spreadsheets.map(s => (
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}
@@ -366,11 +371,11 @@ function AddMappingForm({
       {/* Tab picker */}
       <div>
         <label className="text-[12px] mb-1 block font-medium" style={{ color: '#6B6480' }}>
-          Hoja (tab)
+          Pestaña dentro del archivo
         </label>
         {tabsLoading ? (
           <div className="flex items-center gap-2 text-[12px]" style={{ color: '#6B6480' }}>
-            <Loader2 size={13} className="animate-spin" /> Cargando hojas...
+            <Loader2 size={13} className="animate-spin" /> Cargando pestañas...
           </div>
         ) : (
           <div className="relative">
@@ -383,7 +388,7 @@ function AddMappingForm({
               style={inputStyle}
             >
               <option value="">
-                {!selectedSpreadsheet ? 'Elige un spreadsheet primero' : 'Elige una hoja'}
+                {!selectedSpreadsheet ? 'Elige un archivo primero' : 'Elige una pestaña'}
               </option>
               {tabs.map(t => (
                 <option key={t} value={t}>{t}</option>
@@ -393,6 +398,23 @@ function AddMappingForm({
           </div>
         )}
       </div>
+
+      {/* Preview — qué va a pasar una vez configurado */}
+      {selectedSpreadsheet && selectedTab && (
+        <div
+          className="rounded-lg p-3 text-[11px]"
+          style={{ background: 'rgba(108,59,255,0.05)', border: '1px solid rgba(108,59,255,0.15)' }}
+        >
+          <p className="font-semibold mb-1" style={{ color: '#1A0A3B' }}>
+            Qué va a pasar:
+          </p>
+          <p style={{ color: '#6B6480', lineHeight: 1.6 }}>
+            Leeremos la fila 1 de <strong>{selectedTab}</strong> como nombres de columnas.
+            Cuando tu empleado guarde datos aquí, mapeará cada dato a su columna por nombre.
+            Si después renombras o agregas columnas en la hoja, el empleado las detecta solo — no tienes que sincronizar a mano.
+          </p>
+        </div>
+      )}
 
       {saveError && (
         <p className="text-[12px]" style={{ color: '#ef4444' }}>{saveError}</p>
@@ -439,6 +461,8 @@ export default function SheetsMappingsSection({ token }: Props) {
   const [loadError, setLoadError]           = useState(false);
   const [showAddForm, setShowAddForm]       = useState(false);
   const [spreadsheetsMap, setSpreadsheetsMap] = useState<Map<string, string>>(new Map());
+  // null = still checking; true/false = known state
+  const [googleConnected, setGoogleConnected] = useState<boolean | null>(null);
 
   const loadMappings = useCallback(async () => {
     setLoading(true);
@@ -455,16 +479,22 @@ export default function SheetsMappingsSection({ token }: Props) {
     }
   }, [token]);
 
-  // Fetch spreadsheet names once for human-readable display in MappingRow
+  // Fetch spreadsheet names once for human-readable display in MappingRow +
+  // detecta si Google Workspace está conectado a nivel card (gate el UI antes
+  // de que el usuario intente el flow de agregar).
   useEffect(() => {
     fetch(`/api/portal/${token}/sheets/spreadsheets`)
       .then(r => r.json())
       .then(d => {
-        if (d.error === 'google_no_conectado') return; // degraded: keep empty map
+        if (d.error === 'google_no_conectado') {
+          setGoogleConnected(false);
+          return;
+        }
+        setGoogleConnected(true);
         const list: Spreadsheet[] = d.spreadsheets ?? [];
         setSpreadsheetsMap(new Map(list.map(s => [s.id, s.name])));
       })
-      .catch(() => { /* degraded: keep empty map */ });
+      .catch(() => { setGoogleConnected(false); });
   }, [token]);
 
   useEffect(() => { loadMappings(); }, [loadMappings]);
@@ -484,7 +514,7 @@ export default function SheetsMappingsSection({ token }: Props) {
           <div>
             <div className="flex items-baseline gap-2">
               <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>
-                Tu CRM en Google Sheets
+                Guardar copia en Google Sheets
               </h2>
               {mappings.length > 0 && (
                 <span className="text-[13px] font-medium tabular-nums" style={{ color: '#9B8FB5' }}>
@@ -493,10 +523,10 @@ export default function SheetsMappingsSection({ token }: Props) {
               )}
             </div>
             <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>
-              Cada lead, cita o pedido que tu empleado capture se guarda automáticamente en la hoja de Google que le indiques. También lee de ahí cuando el cliente pregunta por su pedido o cita agendada. Es como conectar Centinelia a tu CRM sin migrar nada.
+              Conecta hojas de Google Sheets a tu operación. Los leads que capture tu empleado se agregan como fila; y para clientes, órdenes de compra, bitácoras y cajas chicas puede consultar y agregar registros en la hoja que le indiques. Útil si ya llevas tu control en Sheets y no quieres migrar.
             </p>
           </div>
-          {!loading && mappings.length > 0 && !showAddForm && (
+          {googleConnected && !loading && mappings.length > 0 && !showAddForm && (
             <div className="flex items-center gap-1.5">
               <button
                 id="sheets-add-btn"
@@ -517,20 +547,44 @@ export default function SheetsMappingsSection({ token }: Props) {
         </div>
 
         {/* Body */}
-        {loading ? (
+        {googleConnected === false ? (
+          /* Gate: sin Google conectado, un solo CTA claro en vez de form roto */
+          <div style={{ borderTop: '1px solid #F0EDF9' }}>
+            <EmptyState
+              icon={Sheet}
+              title="Primero conecta Google"
+              description="Para leer y guardar en tus Sheets, tu empleado necesita acceso a Google Workspace. Se autoriza una sola vez desde Integraciones."
+              size="sm"
+              action={
+                <Link
+                  href={`/portal/${token}?tab=integraciones`}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold transition-opacity hover:opacity-90"
+                  style={{
+                    background: '#6C3BFF',
+                    color: '#fff',
+                    boxShadow: '0 1px 2px rgba(108,59,255,0.24)',
+                  }}
+                >
+                  <ExternalLink size={13} />
+                  Ir a Integraciones
+                </Link>
+              }
+            />
+          </div>
+        ) : loading || googleConnected === null ? (
           <div
             className="px-5 py-6 flex items-center gap-2 text-[13px]"
             style={{ borderTop: '1px solid #F0EDF9', color: '#6B6480' }}
           >
             <Loader2 size={15} className="animate-spin" />
-            Cargando hojas configuradas...
+            Cargando...
           </div>
         ) : mappings.length === 0 && !showAddForm ? (
           <div style={{ borderTop: '1px solid #F0EDF9' }}>
             <EmptyState
               icon={Sheet}
-              title="Sin hojas configuradas"
-              description="Agrega la primera hoja para que el empleado pueda leer y escribir datos directamente en Google Sheets."
+              title="Aún no hay ninguna hoja conectada"
+              description="Agrega la primera hoja y elige qué se va a guardar ahí (leads, clientes, órdenes de compra, etc)."
               size="sm"
               action={
                 <div className="flex flex-col items-center gap-2">
@@ -580,7 +634,7 @@ export default function SheetsMappingsSection({ token }: Props) {
         )}
 
         {/* Add form (rendered as sub-section with divider) */}
-        {showAddForm && (
+        {showAddForm && googleConnected && (
           <AddMappingForm
             token={token}
             onSaved={() => { setShowAddForm(false); loadMappings(); }}

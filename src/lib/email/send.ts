@@ -517,20 +517,45 @@ export function minutesAlertHtml(opts: {
   included:     number;
   resetDate:    string;
   portalUrl:    string;
+  /**
+   * `combinada` (default) — plan mixto minutos + tareas. Muestra "las tareas de
+   *   oficina siguen funcionando" al pausar.
+   * `minutos`  — solo voz, sin tareas de oficina. Omite la frase (cliente no
+   *   contrató tareas y confunde).
+   * `tareas`   — solo tareas, sin voz. Este email NO debería enviarse; se
+   *   incluye por defensa pero muestra copy neutro sin "tareas siguen".
+   */
+  jornadaType?: 'combinada' | 'minutos' | 'tareas';
+  /** Plan base en minutos (para distinguir de rollover cuando aplique). */
+  planBaseMinutes?: number;
 }) {
   const isPaused   = opts.pct >= 100;
   const alertColor = isPaused ? '#F87171' : '#FBBF24';
-  const bodyText   = isPaused
-    ? `Se agotaron los ${opts.included} minutos del ciclo. <strong style="color:#F87171">Tu oficina fue pausada</strong> y tus empleados no pueden recibir ni hacer más llamadas hasta que compres minutos adicionales o amplíes tu plan. Las tareas de oficina siguen funcionando.`
-    : `Tu oficina lleva <strong style="color:#FBBF24">${opts.used} de ${opts.included} minutos</strong> del ciclo. Si tus empleados agotan el resto antes del ${opts.resetDate}, dejarán de recibir y hacer llamadas hasta el próximo ciclo. Puedes comprar minutos adicionales o ampliar tu plan.`;
+  const jornada    = opts.jornadaType ?? 'combinada';
+
+  // Frase "tareas siguen funcionando" solo en combinada (donde existe oficina).
+  const tasksStillLine = jornada === 'combinada' ? ' Las tareas de oficina siguen funcionando.' : '';
+
+  // Distingue plan base vs rollover si aplica (cliente ve "140" y piensa "yo
+  // contraté 100" — ahora ve el desglose).
+  const rollover = opts.planBaseMinutes && opts.planBaseMinutes > 0
+    ? Math.max(0, opts.included - opts.planBaseMinutes)
+    : 0;
+  const includedLabel = rollover > 0 && opts.planBaseMinutes
+    ? `${opts.planBaseMinutes} base + ${rollover} del ciclo anterior = ${opts.included}`
+    : `${opts.included}`;
+
+  const bodyText = isPaused
+    ? `Se agotaron los ${includedLabel} minutos del ciclo. <strong style="color:#F87171">Las llamadas están pausadas</strong> y tus empleados no pueden recibir ni hacer más llamadas hasta que compres minutos adicionales o amplíes tu plan.${tasksStillLine}`
+    : `Tu oficina lleva <strong style="color:#FBBF24">${opts.used} de ${includedLabel} minutos</strong> del ciclo. Si tus empleados agotan los ${Math.max(0, opts.included - opts.used)} restantes antes del ${opts.resetDate}, dejarán de recibir y hacer llamadas hasta el próximo ciclo. Puedes comprar minutos adicionales o ampliar tu plan.`;
 
   return shell(`
-    ${badge(isPaused ? 'Oficina pausada' : `${Math.round(opts.pct)}% de minutos usados`, alertColor)}
+    ${badge(isPaused ? 'Llamadas pausadas' : `${Math.round(opts.pct)}% de minutos usados`, alertColor)}
     ${heading(opts.businessName)}
     ${infoCard(`
       ${sectionLabel('Consumo del plan')}
       ${progressBar(opts.pct, alertColor)}
-      <p style="color:${C.sub};font-size:13px;margin:10px 0 0"><strong style="color:${C.text}">${opts.used}</strong> de ${opts.included} min <span style="color:${alertColor};font-weight:700">· ${Math.round(opts.pct)}%</span></p>
+      <p style="color:${C.sub};font-size:13px;margin:10px 0 0"><strong style="color:${C.text}">${opts.used}</strong> de ${includedLabel} min <span style="color:${alertColor};font-weight:700">· ${Math.round(opts.pct)}%</span></p>
       <p style="color:${C.mute};font-size:12px;margin:6px 0 0">Se renueva el ${opts.resetDate}</p>
     `, true)}
     <p style="color:${C.sub};font-size:14px;line-height:1.7;margin:20px 0 24px">${bodyText}</p>
@@ -541,13 +566,21 @@ export function minutesAlertHtml(opts: {
 
 // ── Agent paused ──────────────────────────────────────────────────────────────
 
-export function agentPausedHtml(businessName: string) {
+export function agentPausedHtml(businessName: string, jornadaType?: 'combinada' | 'minutos' | 'tareas') {
+  // Ajusta copy por jornada: cliente `solo_minutos` no tiene tareas, cliente
+  // `solo_tareas` no tiene llamadas. Evita mencionar servicios que nunca contrató.
+  const jornada = jornadaType ?? 'combinada';
+  const pausedScope = jornada === 'minutos'
+    ? 'tus empleados no pueden recibir llamadas'
+    : jornada === 'tareas'
+      ? 'tus empleados no pueden completar tareas'
+      : 'tus empleados no pueden recibir llamadas ni completar tareas';
   return shell(`
     ${badge('Oficina pausada', '#F87171')}
     ${heading(businessName)}
     <p style="color:${C.sub};font-size:14px;line-height:1.7;margin:0">
       El período de gracia de 3 días venció sin recibir el pago de tu suscripción Centinelia.
-      <strong style="color:${C.text}">Tu oficina fue pausada</strong> y tus empleados no pueden recibir llamadas ni completar tareas hasta que el pago se regularice.
+      <strong style="color:${C.text}">Tu oficina fue pausada</strong> y ${pausedScope} hasta que el pago se regularice.
       Actualiza tu método de pago desde el portal o escríbenos a
       <a href="mailto:hola@centinelia.mx" style="color:${C.accent};text-decoration:none">hola@centinelia.mx</a>.
     </p>

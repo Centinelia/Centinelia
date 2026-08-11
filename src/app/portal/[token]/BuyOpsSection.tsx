@@ -100,7 +100,7 @@ export default function BuyOpsSection({ token }: { token: string }) {
             </span>
           </div>
           <span className="text-[11px] tabular-nums" style={{ color: '#6B6480' }}>
-            ${PRICE_PER_OP}/tarea + IVA
+            ${PRICE_PER_OP}/tarea + IVA <span style={{ color: '#9B8FB5' }}>· sin descuento por volumen</span>
           </span>
         </button>
       </div>

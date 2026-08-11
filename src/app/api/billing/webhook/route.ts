@@ -1,7 +1,7 @@
 ﻿import { NextRequest, NextResponse, after } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { FEATURE_PLAN_CONFIG, MONTHLY_CONFIG, monthlyConfigFromPriceId, nextResetDate, JORNADA_CONFIG, NOX_MONTHLY_CONFIG } from '@/lib/billing/plans';
+import { FEATURE_PLAN_CONFIG, MONTHLY_CONFIG, monthlyConfigFromPriceId, nextResetDate, JORNADA_CONFIG, NOX_MONTHLY_CONFIG, resolveTierAllocation } from '@/lib/billing/plans';
 import { resetAiOps, setAiOpsLimit, recomputeOrgOpsPool } from '@/lib/ai/ops-guard';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { sendEmail, paymentFailedHtml, welcomeHtml } from '@/lib/email/send';
@@ -129,27 +129,32 @@ export async function POST(req: NextRequest) {
         const newMinutesCfg = MONTHLY_CONFIG[toPlan][toMinutesPlan];
         const { data: prevForUpgrade } = await supabase
           .from('voice_agents')
-          .select('minutes_used, minutes_included, minutes_plan, portal_email')
+          .select('minutes_used, minutes_included, minutes_plan, portal_email, jornada_type, features')
           .eq('id', agentId)
           .single();
         const upgradeEmail = prevForUpgrade?.portal_email ?? null;
 
-        // Delta = new tier minutes - old tier minutes (solo el diferencial se acredita)
+        // Delta = new tier alloc - old tier alloc, resuelto por jornada/coordinator
+        // (fix drift MONTHLY_CONFIG vs JORNADA_CONFIG 2026-08-11). Antes se leía
+        // MONTHLY_CONFIG.aiOps (100/200/300) que quedó stale — un cliente en
+        // jornada `tareas` recibía +100 tareas cuando debería recibir +700.
+        // Ver [[feedback-audit-read-path-fidelity]].
+        const upgradeMeerkatRoleId = ((prevForUpgrade?.features as Record<string, unknown> | null)?.meerkat_role_id as string | undefined) ?? undefined;
+        const upgradeJornada       = (prevForUpgrade?.jornada_type as 'combinada' | 'minutos' | 'tareas' | null) ?? undefined;
         const prevTier    = prevForUpgrade?.minutes_plan as MinutesTier | null;
-        const prevTierMin = prevTier ? (MONTHLY_CONFIG[toPlan][prevTier]?.minutes ?? 0) : 0;
-        const delta       = Math.max(0, newMinutesCfg.minutes - prevTierMin);
+        const prevAlloc   = prevTier ? resolveTierAllocation(upgradeJornada, upgradeMeerkatRoleId, prevTier) : { minutes: 0, aiOps: 0 };
+        const newAlloc    = resolveTierAllocation(upgradeJornada, upgradeMeerkatRoleId, toMinutesPlan);
+        const delta       = Math.max(0, newAlloc.minutes - prevAlloc.minutes);
+        const opsDelta    = Math.max(0, newAlloc.aiOps   - prevAlloc.aiOps);
 
-        // Ops delta para upgrade
-        const prevOpsPer  = prevTier ? (MONTHLY_CONFIG[toPlan][prevTier]?.aiOps ?? 0) : 0;
-        const newOpsPer   = newMinutesCfg.aiOps ?? 0;
-        const opsDelta    = Math.max(0, newOpsPer - prevOpsPer);
-
-        // Actualizar tier del agente
+        // Actualizar tier del agente. Para standalone (sin portal_email) usar
+        // newAlloc.minutes (respeta jornada/coordinator) en vez de MONTHLY_CONFIG
+        // que daría 300/600/1200 incluso a coordinators sin voz.
         await supabase.from('voice_agents').update({
           plan:         toPlan,
           features:     PLAN_FEATURES[toPlan],
           minutes_plan: toMinutesPlan,
-          ...(upgradeEmail ? {} : { minutes_included: newMinutesCfg.minutes }),
+          ...(upgradeEmail ? {} : { minutes_included: newAlloc.minutes }),
         }).eq('id', agentId);
 
         // Credit al pool via ledger (cap 2x recalculado con el nuevo tier)

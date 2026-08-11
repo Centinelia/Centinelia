@@ -97,19 +97,27 @@ const CATEGORIES = [
     items: [
       {
         q: '¿Cuanto cuesta Centinelia?',
-        a: 'Hay un plan: Empleado Centinelia (instalacion unica $14,990 MXN) con tres tiers de minutos: Media Jornada $2,997/mes (300 min), Jornada Completa $5,994/mes (600 min), Alta Demanda $11,988/mes (1,200 min). Plan Empresarial bajo cotizacion para multiples sucursales.',
+        a: 'Empleado Centinelia (instalacion unica $14,990 MXN) con tres tiers de jornada: Media Jornada $2,997/mes, Jornada Completa $5,994/mes, Alta Demanda $11,988/mes. La distribucion de minutos y tareas por tier depende del sabor de jornada (ver "¿Que son las jornadas?"). Plan Empresarial bajo cotizacion para multiples sucursales.',
       },
       {
         q: '¿Que incluye la cuota de instalacion?',
         a: 'La configuracion inicial del agente: personalizacion de voz, carga de informacion de la organización, configuracion de flujos (citas, pedidos, transferencias), pruebas y ajustes antes de activar. Es un pago unico, no se cobra de nuevo a menos que la organización cambie radicalmente.',
       },
       {
+        q: '¿Que son las jornadas? (Combinada, Solo minutos, Solo tareas)',
+        a: 'Cada tier tiene 3 sabores al mismo precio, para ajustar el mix minutos vs tareas segun tu operacion. Combinada (default) mezcla ambos; Solo minutos maximiza voz sin oficina; Solo tareas maximiza oficina sin voz. Distribucion exacta: — Combinada: Media 300 min + 120 tareas, Completa 600 min + 220 tareas, Alta 1,200 min + 320 tareas. — Solo minutos: Media 500 min + 20 tareas, Completa 1,000 min + 20 tareas, Alta 2,000 min + 20 tareas. — Solo tareas: Media 500 tareas + 0 min, Completa 1,200 tareas + 0 min, Alta 3,000 tareas + 0 min. Los coordinadores (Nox, Niva) usan automaticamente Solo tareas, no tienen voz.',
+      },
+      {
+        q: '¿Que son las tareas?',
+        a: 'Cada accion de oficina que ejecuta un empleado consume 1 tarea del pool mensual: procesar un correo entrante, generar un documento (PDF/Word/Excel/PowerPoint), transcribir una junta, hacer una investigacion, revisar un contrato, clasificar una factura. El pool es org-level (todos los empleados de la cuenta comparten) y se reinicia cada mes en la fecha de contratacion.',
+      },
+      {
         q: '¿Que son los minutos incluidos?',
-        a: 'Cada tier incluye minutos de llamada al mes: Media Jornada 300 min, Jornada Completa 600 min, Alta Demanda 1,200 min. Cada minuto de llamada (entrante o saliente) consume del saldo mensual. Los minutos adicionales fuera del tier se compran en paquetes desde el portal.',
+        a: 'Cada llamada entrante o saliente consume minutos del pool mensual (redondeados hacia arriba: una llamada de 2:15 cuesta 3 min). Distribucion por tier depende del sabor de jornada elegido (ver arriba). Los minutos adicionales fuera del plan se compran en paquetes desde el portal.',
       },
       {
         q: '¿Que pasa con los minutos no usados?',
-        a: 'Los minutos no usados acumulan al mes siguiente hasta un maximo del doble de tu tier. Si tienes 300 min en Media Jornada y solo usas 100, el siguiente mes empiezas con 500 min (300 incluidos + 200 acumulados). Al llegar al tope, los excedentes se pierden.',
+        a: 'Los minutos y tareas no usados acumulan al mes siguiente hasta un maximo del doble de tu tier (cap 2x). Si tienes 300 min en Media Jornada Combinada y solo usas 100, el siguiente mes empiezas con 500 min (300 incluidos + 200 acumulados). Al llegar al tope, los excedentes se pierden — el portal te avisa por correo cuando esto ocurre.',
       },
       {
         q: '¿Hay contrato de permanencia?',

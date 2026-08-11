@@ -21,44 +21,75 @@ export default async function MinutesLedgerSection({
   const [ledgerRes, callsRes] = await Promise.all([
     supabase
       .from('minutes_ledger')
-      .select('id, created_at, amount, description, source')
+      .select('id, created_at, amount, description, source, kind, reference_id')
       .eq('agent_id', agentId)
       .order('created_at', { ascending: false })
       .limit(2000),
+    // Solo para enrichment + fallback legacy (llamadas sin ledger row).
+    // Ver [[feedback-audit-read-path-fidelity]] — antes se derivaban debits
+    // desde voice_calls Y también del ledger → double counting.
     supabase
       .from('voice_calls')
-      .select('id, created_at, duration_seconds, caller_number')
+      .select('id, created_at, duration_seconds, caller_number, outcome')
       .eq('agent_id', agentId)
       .order('created_at', { ascending: false })
       .limit(5000),
   ]);
 
-  const credits: Omit<Entry, 'balance'>[] = (ledgerRes.data ?? []).map(r => ({
-    id:          r.id,
-    date:        r.created_at,
-    amount:      r.amount,
-    description: r.description,
-    source:      (r.source as Source) ?? 'ajuste',
-  }));
+  // Lookup para enriquecer ledger rows con caller_number
+  const voiceCallMap: Record<string, string> = {};
+  for (const c of (callsRes.data ?? [])) {
+    voiceCallMap[c.id] = c.caller_number?.trim() || 'Número privado';
+  }
 
-  const debits: Omit<Entry, 'balance'>[] = (callsRes.data ?? []).map(c => {
-    const mins   = Math.max(1, Math.ceil(c.duration_seconds / 60));
-    const caller = c.caller_number?.trim() || 'Número privado';
-    return {
-      id:          c.id,
-      date:        c.created_at,
-      amount:      -mins,
-      description: `${caller} · ${mins} min`,
-      source:      'llamada' as Source,
-    };
-  });
+  // Ledger: split por signo, enriquecer rows kind='call' con caller_number
+  const credits: Omit<Entry, 'balance'>[] = [];
+  const debits:  Omit<Entry, 'balance'>[] = [];
+  const ledgerCallRefIds = new Set<string>();
+  for (const r of ledgerRes.data ?? []) {
+    const amount = r.amount;
+    const kind   = (r as any).kind as string | null;
+    const refId  = (r as any).reference_id as string | null;
+    let description = r.description;
+    let entrySource: Source = (r.source as Source) ?? 'ajuste';
+    if (kind === 'call' && refId) {
+      ledgerCallRefIds.add(refId);
+      if (voiceCallMap[refId]) {
+        const mins = Math.abs(amount);
+        description = `${voiceCallMap[refId]} · ${mins} min`;
+        entrySource = 'llamada' as Source;
+      }
+    }
+    const entry = { id: r.id, date: r.created_at, amount, description, source: entrySource };
+    if (amount >= 0) credits.push(entry);
+    else debits.push(entry);
+  }
 
-  // Seed activation entry if ledger is empty pero hay plan
-  if (credits.length === 0 && minutesIncluded > 0) {
-    const firstDate = debits.length > 0 ? debits[debits.length - 1].date : new Date().toISOString();
+  // Fallback legacy: llamadas sin ledger row, con guards (no unanswered, >=3s)
+  const legacyDebits: Omit<Entry, 'balance'>[] = (callsRes.data ?? [])
+    .filter(c => {
+      const durSec = c.duration_seconds ?? 0;
+      const outcome = (c as any).outcome as string | null;
+      return !ledgerCallRefIds.has(c.id) && durSec >= 3 && outcome !== 'unanswered';
+    })
+    .map(c => {
+      const mins   = Math.max(1, Math.ceil(c.duration_seconds / 60));
+      const caller = c.caller_number?.trim() || 'Número privado';
+      return {
+        id:          c.id,
+        date:        c.created_at,
+        amount:      -mins,
+        description: `${caller} · ${mins} min`,
+        source:      'llamada' as Source,
+      };
+    });
+  debits.push(...legacyDebits);
+
+  // Seed inicial: solo si NO hay ni credit ni debit (evita sobre-acreditar).
+  if (credits.length === 0 && debits.length === 0 && minutesIncluded > 0) {
     credits.push({
       id:          'initial-plan',
-      date:        firstDate,
+      date:        new Date().toISOString(),
       amount:      minutesIncluded,
       description: `Plan incluido, ${minutesIncluded} minutos`,
       source:      'activacion' as Source,

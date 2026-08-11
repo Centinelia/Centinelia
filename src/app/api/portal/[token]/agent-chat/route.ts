@@ -765,6 +765,18 @@ const VERIFICAR_FIX_TOOL: Anthropic.Tool = {
   },
 };
 
+const CONSULTAR_BILLING_ORG_TOOL: Anthropic.Tool = {
+  name: 'consultar_billing_org',
+  description: 'Uso exclusivo de Nash. Devuelve estado billing REAL de una org: minutos y tareas usados/disponibles del pool, ciclo de reset, modelo de facturación (stripe / annual_prepaid), flag ledger, y lista de empleados con su jornada. Úsala SIEMPRE que el owner pregunte por cifras de una cuenta ("¿cuánto llevan?", "¿ya se les están acabando los minutos a X?", "estado del cliente Y") — es la única forma de responder sin inventar números. Nunca reportes cifras al owner sin haber invocado esta tool primero.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      portal_email: { type: 'string', description: 'portal_email de la organización a consultar (el email del portal cliente, NO el negocio).' },
+    },
+    required: ['portal_email'],
+  },
+};
+
 // Migrated to registry: src/lib/tools/schemas.ts
 const REPORT_ISSUE_TOOL: Anthropic.Tool = toAnthropicTool(TOOL_SCHEMAS['reportar_falla']);
 
@@ -1108,6 +1120,7 @@ const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
   enviar_a_claude_code:          ENVIAR_A_CLAUDE_CODE_TOOL,
   escalar_al_owner:              ESCALAR_AL_OWNER_TOOL,
   verificar_fix:                 VERIFICAR_FIX_TOOL,
+  consultar_billing_org:         CONSULTAR_BILLING_ORG_TOOL,
 };
 
 // Nash-only tools — nunca en ALL_TOOLS, se agregan condicionalmente cuando
@@ -1119,6 +1132,7 @@ const NASH_TOOLS: Anthropic.Tool[] = [
   ENVIAR_A_CLAUDE_CODE_TOOL,
   ESCALAR_AL_OWNER_TOOL,
   VERIFICAR_FIX_TOOL,
+  CONSULTAR_BILLING_ORG_TOOL,
 ];
 
 function getToolsForRole(meerkatId: string | null, qbConnected: boolean, notionProductsConnected: boolean): Anthropic.Tool[] {

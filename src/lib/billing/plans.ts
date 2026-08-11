@@ -18,15 +18,17 @@ export const FEATURE_PLAN_CONFIG: Record<Plan, FeaturePlanConfig> = {
 };
 
 // ─── Monthly plans (minutes only + IVA, no platform base fee) ────────────────
-// Minutes: $9.99 MXN/min in-plan · $12.99 MXN/min extra · +16% IVA on total
-// Starter 300min = $2,997 | Growth 600min = $5,994 | Scale 1,200min = $11,988
+// Minutes in-plan efectivos (jornada / min incluido): 300min $2,997 = $9.99/min.
+// Minutos extra (compra puntual + auto-refill): $12/min pre-IVA — este es el
+// precio que el cliente ve y paga en BuyMinutesSection / AutoRefillSection /
+// api/portal/buy-minutes. IVA 16% aparte. NO cambiar sin sincronizar los 3.
 
 export const PLAN_BASE_MXN: Record<Plan, number> = {
   pro:       0,
 };
 
 export const MINUTES_RATE_IN_PLAN = 9.99;
-export const MINUTES_RATE_EXTRA   = 12.99;
+export const MINUTES_RATE_EXTRA   = 12;
 
 export interface MonthlyPlanConfig {
   label:     string;
@@ -113,5 +115,29 @@ export function nextResetDate(): string {
   const d = new Date();
   d.setMonth(d.getMonth() + 1, 1);
   return d.toISOString().slice(0, 10);
+}
+
+// ─── Resolver de asignación real (source of truth por agente) ────────────────
+// Un cliente en jornada `tareas` que compra tier growth recibe 1200 tareas,
+// no 200 como decía MONTHLY_CONFIG.pro (que está stale post-refactor jornadas).
+// Este helper devuelve la asignación real según el modelo del agente:
+//   - coordinator (Nox/Niva) → NOX_MONTHLY_CONFIG (tareas-only)
+//   - resto                  → JORNADA_CONFIG[jornada_type ?? 'combinada']
+// Usar SIEMPRE este helper en change-plan, billing/webhook plan_upgrade,
+// UpgradePlanSection, y cualquier código que necesite {minutes, aiOps} de
+// un tier específico. Nunca leer MONTHLY_CONFIG[plan][tier].aiOps directo.
+export function resolveTierAllocation(
+  jornadaType:   'combinada' | 'minutos' | 'tareas' | undefined,
+  meerkatRoleId: string | undefined,
+  tier:          MinutesTier,
+): { minutes: number; aiOps: number } {
+  const isCoordinator = meerkatRoleId === 'nox' || meerkatRoleId === 'niva';
+  if (isCoordinator) {
+    const cfg = NOX_MONTHLY_CONFIG[tier];
+    return { minutes: cfg.minutes, aiOps: cfg.aiOps };
+  }
+  const jornada = jornadaType ?? 'combinada';
+  const alloc = JORNADA_CONFIG[jornada][tier];
+  return { minutes: alloc.minutes, aiOps: alloc.aiOps };
 }
 

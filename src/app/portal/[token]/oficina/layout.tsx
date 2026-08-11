@@ -11,6 +11,7 @@ import OficinaSidebarV2                 from './OficinaSidebarV2';
 import OficinaHeaderDark                from './OficinaHeaderDark';
 import OficinaMobileNav                 from './OficinaMobileNav';
 import PortalFooter                     from '../PortalFooter';
+import { loadPoolStatus }               from '@/lib/portal/pool-status';
 
 // Next.js 15 generates Promise<unknown> for nested layout params;
 // use Promise<any> so the type is compatible at the call site.
@@ -42,49 +43,19 @@ export default async function OficinaLayout({
   // agentes/page.tsx para el detalle del bug.
   const lookupEmail = session?.portalEmail || agent.portal_email || null;
 
-  // Usage data — account-level pool
-  const { data: acctMins } = lookupEmail
-    ? await supabase.from('account_minutes').select('minutes_used, minutes_included').eq('portal_email', lookupEmail).single()
-    : { data: null };
-  const minutesIncluded = (acctMins?.minutes_included ?? (agent as any).minutes_included ?? 0) as number;
-  const minutesUsed     = (acctMins?.minutes_used     ?? (agent as any).minutes_used     ?? 0) as number;
-  const minutesRemain   = Math.max(0, minutesIncluded - minutesUsed);
-
-  // Pool compartido + logo org-level. Ver [[feedback-integraciones-org-level]]:
-  // toda config del negocio (logo, marca, pool) vive en organizations, no
-  // per-agente. Un solo query paralelo evita 2 roundtrips.
-  const { data: orgPool } = lookupEmail
-    ? await supabase.from('organizations')
-        .select('monthly_ops_pool, monthly_ops_used, logo_url, ops_ledger_enabled')
-        .eq('portal_email', lookupEmail)
-        .maybeSingle()
-    : { data: null };
-  const orgLogoUrl = (orgPool?.logo_url as string | null) ?? null;
-  // Ver [[deuda-metrica-rollover-perdido]] y page.tsx (ID #47/#59): cuando
-  // ops_ledger_enabled=true el legacy `organizations.monthly_ops_used` se
-  // congela post-flip; account_ops.ops_used es source of truth. Sin este
-  // check el sidebar del layout muestra el contador viejo y el card
-  // principal (fijo en page.tsx) muestra el real → divergen.
-  const ledgerEnabled = !!(orgPool as { ops_ledger_enabled?: boolean } | null)?.ops_ledger_enabled;
-  const { data: acctOps } = ledgerEnabled && lookupEmail
-    ? await supabase.from('account_ops')
-        .select('ops_used')
-        .eq('portal_email', lookupEmail)
-        .maybeSingle()
-    : { data: null };
-  let aiOpsUsed  = ledgerEnabled && typeof (acctOps as { ops_used?: number } | null)?.ops_used === 'number'
-    ? ((acctOps as { ops_used: number }).ops_used)
-    : ((orgPool?.monthly_ops_used as number | null) ?? 0);
-  let aiOpsLimit = (orgPool?.monthly_ops_pool as number | null) ?? 0;
-  if (!orgPool?.monthly_ops_pool) {
-    const { data: opsAgents } = lookupEmail
-      ? await supabase.from('voice_agents').select('ai_ops_used, ai_ops_limit').eq('portal_email', lookupEmail)
-      : { data: null };
-    if (!ledgerEnabled) {
-      aiOpsUsed = ((opsAgents ?? []) as any[]).reduce((s, a) => s + ((a.ai_ops_used  as number) ?? 0), 0);
-    }
-    aiOpsLimit = ((opsAgents ?? []) as any[]).reduce((s, a) => s + ((a.ai_ops_limit as number) ?? 0), 0);
-  }
+  // Pool status (minutos + tareas) — fuente única de verdad. Ver
+  // [[feedback-audit-read-path-fidelity]] y src/lib/portal/pool-status.ts:
+  // este helper centraliza el fallback ladder para que TODAS las vistas del
+  // portal muestren los mismos números. También necesitamos logo_url org-level
+  // aparte, así que lo pedimos con un query dedicado.
+  const [poolStatus, { data: orgMeta }] = await Promise.all([
+    loadPoolStatus(supabase, lookupEmail, agent as any),
+    lookupEmail
+      ? supabase.from('organizations').select('logo_url').eq('portal_email', lookupEmail).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+  const { minutesIncluded, minutesUsed, minutesRemain, aiOpsUsed, aiOpsLimit } = poolStatus;
+  const orgLogoUrl = (orgMeta?.logo_url as string | null) ?? null;
   const hasStripe  = !!(agent as any).stripe_customer_id;
   const vertical   = ((agent as any).features as any)?.vertical as string | undefined;
   const modules    = session?.isSubUser ? (session.modules ?? []) : undefined;

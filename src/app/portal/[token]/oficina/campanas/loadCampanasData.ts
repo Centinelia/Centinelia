@@ -5,6 +5,7 @@
 import { createAdminClient }        from '@/lib/supabase/admin';
 import { getAgentAccess }           from '@/lib/portal/agent-access';
 import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
+import { loadPoolStatus }           from '@/lib/portal/pool-status';
 
 const SURVEY_MEERKAT_IDS = ['nia', 'nelia', 'naia'];
 
@@ -111,14 +112,11 @@ export async function loadCampanasData(token: string): Promise<CampanasPageData 
   const hasSurveyAgent = !!surveyPeer;
 
   // ── Minutos disponibles para modal de campañas ────────────────────────
-  const { data: acctMins } = lookupEmail
-    ? await supabase.from('account_minutes')
-        .select('minutes_used, minutes_included')
-        .eq('portal_email', lookupEmail).single()
-    : { data: null };
-  const minutesIncluded = (acctMins?.minutes_included ?? (agent as { minutes_included?: number }).minutes_included ?? 0) as number;
-  const minutesUsed     = (acctMins?.minutes_used     ?? (agent as { minutes_used?: number }).minutes_used     ?? 0) as number;
-  const minutesRemaining = Math.max(0, minutesIncluded - minutesUsed);
+  // Ver src/lib/portal/pool-status.ts — fuente única de verdad. Antes este
+  // loader podía mostrar "0 min disponibles" para orgs con pool en 0 pero
+  // con empleados individuales con minutos, bloqueando lanzar campañas.
+  const { minutesRemain: minutesRemaining } =
+    await loadPoolStatus(supabase, lookupEmail, agent as any);
 
   return {
     agent: {
