@@ -65,7 +65,10 @@ export async function GET(req: NextRequest) {
         description:  `Agente pausado · grace period de pago expirado`,
         source:       'ajuste',
         kind:         'auto_paused',
-        reference_id: `grace_expired_${agent.id}_${Date.now()}`,
+        // Date-idempotent (Scope C2 medium): Date.now() creaba row nuevo por
+        // corrida, race entre 2 lambdas duplicaba audit-trail. Ahora usamos
+        // fecha del día (YYYY-MM-DD) → un solo row por agente por día.
+        reference_id: `grace_expired_${agent.id}_${new Date().toISOString().slice(0, 10)}`,
       });
 
       if (agent.phone_number) await pauseVapiAgent(agent.phone_number);

@@ -1617,6 +1617,9 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
       <HashScrollHighlight />
       <div className="min-h-screen relative flex flex-col" style={{ background: 'var(--c-bg)', color: 'var(--c-text)', overflowX: 'clip' }}>
         <div style={{ position: 'absolute', width: 900, height: 500, top: -320, left: '50%', transform: 'translateX(-50%)', background: 'radial-gradient(ellipse, rgba(108,59,255,0.13) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
+        {/* Copy leak fix (Scope D3): sub-user sin módulo 'cuenta' NO debe ver
+            los KPIs de billing (minutes/ops) en el header. Ocultamos pasando
+            0/0 (PortalShell decide si renderizar según valores). */}
         <PortalShell
           token={token}
           businessName={agent.business_name}
@@ -1625,10 +1628,10 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           showOutbound={showOutbound || agent.plan === 'pro'}
           isOwner={isOwner}
           modules={modules}
-          minutesRemain={minutesRemain}
-          minutesIncluded={minutesIncluded}
-          aiOpsUsed={aiOpsUsed}
-          aiOpsLimit={aiOpsLimit}
+          minutesRemain={isOwner || modules.includes('cuenta') ? minutesRemain : 0}
+          minutesIncluded={isOwner || modules.includes('cuenta') ? minutesIncluded : 0}
+          aiOpsUsed={isOwner || modules.includes('cuenta') ? aiOpsUsed : 0}
+          aiOpsLimit={isOwner || modules.includes('cuenta') ? aiOpsLimit : 0}
           hasStripe={hasStripe}
           accountSerial={accountSerial}
           headerActions={
