@@ -886,17 +886,41 @@ export async function createVapiAssistant(agent: VoiceAgent): Promise<string | n
   const enrichedAgent = await enrichWithOrgData(agent);
   const peers   = await fetchTeamPeers(enrichedAgent);
   const toolIds = await createVapiTools(enrichedAgent, peers);
-  const res = await fetch(`${VAPI_URL}/assistant`, {
-    method: 'POST',
-    headers: headers(),
-    body: JSON.stringify(await buildVapiAssistant(enrichedAgent, toolIds, peers)),
-  });
-  if (!res.ok) {
-    console.error('Vapi createAssistant error:', await res.text());
-    return null;
+  const body    = JSON.stringify(await buildVapiAssistant(enrichedAgent, toolIds, peers));
+
+  // Retry con backoff exponencial. ANTES: single-shot → cualquier 5xx
+  // transient de Vapi o timeout de red durante onboarding dejaba al cliente
+  // pagado sin vapi_agent_id (fallback email a hola@ pero cliente activo con
+  // vapi_agent_id=NULL). Ver Scope D2 RACE 3 / D1 F3.
+  const MAX_ATTEMPTS = 3;
+  let lastErr = '';
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const res = await fetch(`${VAPI_URL}/assistant`, {
+        method: 'POST',
+        headers: headers(),
+        body,
+        signal: AbortSignal.timeout(20_000),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.id) return data.id;
+        lastErr = `Vapi createAssistant sin id en response`;
+      } else {
+        const text = await res.text().catch(() => '');
+        lastErr = `Vapi createAssistant HTTP ${res.status}: ${text.slice(0, 300)}`;
+        // 4xx no retry (payload malo), solo 5xx / network
+        if (res.status < 500) break;
+      }
+    } catch (err) {
+      lastErr = `Vapi createAssistant threw: ${err instanceof Error ? err.message : String(err)}`;
+    }
+    if (attempt < MAX_ATTEMPTS) {
+      await new Promise(r => setTimeout(r, 300 * Math.pow(2, attempt - 1)));  // 300ms, 600ms
+    }
   }
-  const data = await res.json();
-  return data.id ?? null;
+  console.error(`[vapi] createAssistant failed after ${MAX_ATTEMPTS} attempts:`, lastErr);
+  return null;
   // Callers must save the returned ID to DB and then call resyncPeerAgents()
 }
 

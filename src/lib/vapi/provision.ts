@@ -68,24 +68,37 @@ async function buyTwilioNumber(areaCode?: string): Promise<string | null> {
 }
 
 async function importToVapi(phoneNumber: string): Promise<string | null> {
-  const res = await fetch(`${VAPI_URL}/phone-number`, {
-    method:  'POST',
-    headers: vapiHeaders(),
-    body: JSON.stringify({
-      provider:         'twilio',
-      number:           phoneNumber,
-      twilioAccountSid: process.env.TWILIO_ACCOUNT_SID,
-      twilioAuthToken:  process.env.TWILIO_AUTH_TOKEN,
-    }),
+  // Retry 3× con backoff. Vapi import puede fallar por 5xx transient — sin
+  // retry, cliente pagó pero su phone_number quedaba sin vapi_phone_number_id
+  // (llamadas rechazadas). Ver Scope D1 F3.
+  const body = JSON.stringify({
+    provider:         'twilio',
+    number:           phoneNumber,
+    twilioAccountSid: process.env.TWILIO_ACCOUNT_SID,
+    twilioAuthToken:  process.env.TWILIO_AUTH_TOKEN,
   });
-
-  if (!res.ok) {
-    console.error('provision: Vapi import failed', await res.text());
-    return null;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const res = await fetch(`${VAPI_URL}/phone-number`, {
+        method:  'POST',
+        headers: vapiHeaders(),
+        body,
+        signal:  AbortSignal.timeout(15_000),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.id) return data.id as string;
+      } else {
+        const text = await res.text().catch(() => '');
+        console.error(`provision: Vapi import HTTP ${res.status} (attempt ${attempt}):`, text);
+        if (res.status < 500) return null; // 4xx no retry
+      }
+    } catch (err) {
+      console.error(`provision: Vapi import threw (attempt ${attempt}):`, err);
+    }
+    if (attempt < 3) await new Promise(r => setTimeout(r, 300 * Math.pow(2, attempt - 1)));
   }
-
-  const data = await res.json();
-  return (data.id as string) ?? null;
+  return null;
 }
 
 async function assignAssistant(vapiPhoneId: string, vapiAssistantId: string, concurrencyLimit?: number): Promise<boolean> {
@@ -96,13 +109,24 @@ async function assignAssistant(vapiPhoneId: string, vapiAssistantId: string, con
   const patch: Record<string, unknown> = { assistantId: vapiAssistantId, serverUrl };
   if (concurrencyLimit !== undefined) patch.concurrencyLimit = concurrencyLimit;
 
-  const res = await fetch(`${VAPI_URL}/phone-number/${vapiPhoneId}`, {
-    method:  'PATCH',
-    headers: vapiHeaders(),
-    body:    JSON.stringify(patch),
-  });
-  if (!res.ok) console.error('provision: assign assistant failed', await res.text());
-  return res.ok;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const res = await fetch(`${VAPI_URL}/phone-number/${vapiPhoneId}`, {
+        method:  'PATCH',
+        headers: vapiHeaders(),
+        body:    JSON.stringify(patch),
+        signal:  AbortSignal.timeout(15_000),
+      });
+      if (res.ok) return true;
+      const text = await res.text().catch(() => '');
+      console.error(`provision: assign assistant HTTP ${res.status} (attempt ${attempt}):`, text);
+      if (res.status < 500) return false;
+    } catch (err) {
+      console.error(`provision: assign assistant threw (attempt ${attempt}):`, err);
+    }
+    if (attempt < 3) await new Promise(r => setTimeout(r, 300 * Math.pow(2, attempt - 1)));
+  }
+  return false;
 }
 
 export interface ProvisionResult {
