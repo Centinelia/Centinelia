@@ -14,12 +14,15 @@ export default async function SetupPage({ params }: Props) {
 
   const supabase = createAdminClient();
 
-  // Business name para display: primer agente activo.
+  // Business name para display: primer agente (cualquier estado). ANTES:
+  // .eq('active', true) → race con webhook. User pagaba, redirect success_url
+  // llegaba antes que webhook active el agente → active=false → notFound() 404.
+  // Ver Scope D2 RACE 1. Ahora tomamos cualquier row del org; el webhook la
+  // activará en background sin bloquear el setup.
   const { data: agent } = await supabase
     .from('voice_agents')
     .select('business_name')
     .eq('portal_email', resolved.portalEmail)
-    .eq('active', true)
     .order('created_at', { ascending: true })
     .limit(1)
     .maybeSingle();

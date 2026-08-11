@@ -431,15 +431,19 @@ export function weeklyReportHtml(opts: {
 
 // ── Welcome ───────────────────────────────────────────────────────────────────
 
-export function welcomeHtml(opts: { businessName: string; setupUrl: string }) {
+export function welcomeHtml(opts: { businessName: string; setupUrl: string; agentName?: string | null; meerkatId?: string | null }) {
+  const nameForCopy = opts.agentName?.trim() || 'tu empleado digital';
+  // ANTES: copy genérico "tu empleado" sin nombre + "en las próximas horas
+  // asignaremos tu número" (misleading — en 90% de casos son ~90s). Ver
+  // Scope D2 copy gaps. Ahora personalizamos con el nombre del meerkat.
   return shell(`
     ${badge('Bienvenido a Centinelia', '#9B6DFF')}
-    ${heading('Tu empleado estará listo pronto', opts.businessName)}
+    ${heading(`${nameForCopy} ya forma parte de tu equipo`, opts.businessName)}
     <p style="color:${C.sub};font-size:14px;line-height:1.7;margin:0 0 16px">
-      Tu pago fue procesado exitosamente. En las próximas horas asignaremos tu número de teléfono dedicado y te avisaremos por WhatsApp cuando tu empleado esté en línea.
+      Tu pago fue procesado exitosamente. Ahora estamos preparando el número de teléfono dedicado de ${nameForCopy}. Suele estar listo en unos minutos y te avisaremos por WhatsApp cuando pueda tomar tu primera llamada.
     </p>
     <p style="color:${C.sub};font-size:14px;line-height:1.7;margin:0 0 24px">
-      Mientras tanto, configura tu acceso al portal para monitorear tus llamadas, leads y minutos:
+      Mientras tanto, configura tu acceso al portal para monitorear llamadas, leads y minutos:
     </p>
     ${btn('Acceder a mi portal →', opts.setupUrl)}
     <div style="height:16px"></div>
@@ -447,7 +451,7 @@ export function welcomeHtml(opts: { businessName: string; setupUrl: string }) {
       ${sectionLabel('¿Qué sigue?')}
       <p style="color:${C.sub};font-size:13px;line-height:1.8;margin:0">
         1. Configura tu contraseña en el portal<br>
-        2. Recibe tu número de teléfono (próximas horas)<br>
+        2. Recibe el número asignado a ${nameForCopy} (unos minutos)<br>
         3. Comparte el número con tus clientes y empieza a recibir llamadas 24/7
       </p>
     `, true)}

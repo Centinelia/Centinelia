@@ -9,6 +9,7 @@ import { maybeNotifyRolloverLoss, maybeNotifyPoolLoss } from '@/lib/billing/roll
 import { pauseVapiAgent, resumeVapiAgent } from '@/lib/vapi/control';
 import { createVapiAssistant, resyncPeerAgents } from '@/lib/vapi/sync';
 import { provisionPhoneNumber } from '@/lib/vapi/provision';
+import { getOrgToken } from '@/lib/portal/org-token';
 import type { VoiceAgent } from '@/types/agent';
 import { PLAN_FEATURES, PLAN_CONCURRENT_CALLS } from '@/types/agent';
 import type { Plan, JornadaType } from '@/types/agent';
@@ -625,6 +626,26 @@ export async function POST(req: NextRequest) {
         const appUrl    = process.env.NEXT_PUBLIC_APP_URL!;
         const adminWa   = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP ?? process.env.SUPPORT_WHATSAPP ?? '';
 
+        // Welcome email PRIMERO — antes de provisioning para que llegue aunque
+        // Vercel corte la función después (Twilio buy + Vapi import puede
+        // tardar >10s en Hobby → welcome se perdía). Usar org token (nuevo
+        // canonical, no legacy per-agent que forzaba 301 redirect en proxy).
+        // Ver Scope D2 CRIT 1 + CRIT 2.
+        const orgToken = fullAgent.portal_email ? await getOrgToken(fullAgent.portal_email, supabase) : null;
+        if (agent.client_email && orgToken) {
+          const meerkatId = (fullAgent.features as { meerkat_role_id?: string } | null | undefined)?.meerkat_role_id ?? null;
+          await sendEmail({
+            to:      agent.client_email,
+            subject: `¡Bienvenido a Centinelia! Tu empleado ${(agent.agent_name as string | null) ?? 'digital'} está listo`,
+            html:    welcomeHtml({
+              businessName: agent.business_name,
+              setupUrl:     `${appUrl}/portal/${orgToken}/setup`,
+              agentName:    (agent.agent_name as string | null) ?? null,
+              meerkatId,
+            }),
+          }).catch(console.error);
+        }
+
         // 1. Create Vapi assistant
         let vapiId = fullAgent.vapi_agent_id ?? null;
         if (!vapiId) {
@@ -648,20 +669,6 @@ export async function POST(req: NextRequest) {
               vapi_phone_number_id:  provisioned.vapiPhoneId ?? null,
             }).eq('id', agentId);
           }
-        }
-
-        const portalToken = (agent as any).portal_token as string | null;
-
-        // 3. Send welcome email
-        if (agent.client_email && portalToken) {
-          await sendEmail({
-            to:      agent.client_email,
-            subject: '¡Bienvenido a Centinelia! Tu agente de voz está listo',
-            html:    welcomeHtml({
-              businessName: agent.business_name,
-              setupUrl:     `${appUrl}/portal/${portalToken}/setup`,
-            }),
-          }).catch(console.error);
         }
 
         // 4. Notify admin
