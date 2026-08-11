@@ -93,9 +93,31 @@ export async function executeSendEmail(
 ): Promise<ToolResult> {
   const { agentId, to, subject, body, businessName, cc, replyTo, attFileId, attFileName, attMimeType } = input;
 
+  // Convertir markdown básico a HTML — meerkats escriben con **bold**, *italic*,
+  // [text](url) natural y sin conversión los caracteres salen literal en el
+  // correo (bug UX 2026-08-10: Niva mandó "**Detalles de la reunión:**" y el
+  // destinatario vio los asteriscos crudos). Orden: escape HTML → links →
+  // bold → italic → auto-link URLs sueltas.
+  const escapeHtml = (s: string) => s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  const mdToHtml = (s: string) => {
+    let out = escapeHtml(s);
+    // [text](url) — enlaces explícitos
+    out = out.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" style="color:#1a73e8;text-decoration:underline">$1</a>');
+    // **bold**
+    out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    // *italic* (evita conflicto con **bold** — ya fueron reemplazados)
+    out = out.replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
+    // Auto-link URLs sueltas (no dentro de <a> ya)
+    out = out.replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g, '$1<a href="$2" style="color:#1a73e8;text-decoration:underline">$2</a>');
+    return out;
+  };
+
   const htmlBody = `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;font-size:14px;line-height:1.7;color:#1a1a1a;max-width:600px;margin:0 auto;padding:24px">
-    ${body.split('\n').map(p => p.trim() ? `<p style="margin:0 0 12px">${p}</p>` : '<br>').join('')}
-    <p style="color:#666;font-size:12px;margin-top:24px;border-top:1px solid #eee;padding-top:12px">— ${businessName}</p>
+    ${body.split('\n').map(p => p.trim() ? `<p style="margin:0 0 12px">${mdToHtml(p)}</p>` : '<br>').join('')}
+    <p style="color:#666;font-size:12px;margin-top:24px;border-top:1px solid #eee;padding-top:12px">— ${escapeHtml(businessName)}</p>
   </body></html>`;
 
   let attachment: Attachment | undefined;

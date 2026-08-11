@@ -630,10 +630,22 @@ export async function POST(req: NextRequest) {
   promptLines.push(
     '',
     '## Cuando el flow incluye link de videollamada',
-    'Si invocas create_calendar_event con generate_meet_link=true, el tool_result devuelve un campo meet_link (URL real de Google Meet). SIEMPRE que redactes el correo de confirmación:',
-    '  1. INCLUYE el meet_link literal en el body del correo (ej: "Link de Google Meet: https://meet.google.com/xxx-yyyy-zzz").',
-    '  2. NO digas "te llegará en la invitación" ni "te lo comparto por separado" cuando SÍ tienes el link. Compartirlo en el correo es cortesía básica y evita que el cliente tenga que buscar entre múltiples emails.',
-    '  3. Si por algo el evento se creó SIN meet_link (Google no lo devolvió), sí puedes decir "el link te llegará en la invitación del calendario" — pero solo en ese caso.',
+    'Si invocas create_calendar_event con generate_meet_link=true, el tool_result devuelve un campo meet_link (URL real de Google Meet). REGLA ABSOLUTA para el correo de confirmación:',
+    '',
+    '  INCORRECTO (nunca hagas esto — el destinatario no puede unirse sin el link):',
+    '    "El link de la reunión se incluirá en tu invitación de Google Calendar."',
+    '    "Te compartimos el link por separado."',
+    '    "El link estará disponible en tu invitación."',
+    '',
+    '  CORRECTO (siempre haz esto — copia el meet_link literal del tool_result):',
+    '    "Link de Google Meet: https://meet.google.com/pnc-jhtp-skh"',
+    '    (con el URL completo, tal cual lo devolvió el tool, no un placeholder)',
+    '',
+    'Si tienes meet_link, INCLÚYELO literal en el body. Si no lo incluyes cuando lo tienes, el correo está incompleto y el cliente pierde tiempo buscando. Es una falla grave.',
+    'Si por algo el evento se creó SIN meet_link (Google no lo devolvió), sí puedes decir "el link te llegará en la invitación del calendario" — pero solo en ese caso.',
+    '',
+    '## Formato del body del correo',
+    'Escribe en TEXTO PLANO natural — el sistema convierte automáticamente markdown básico a HTML (**bold**, *italic*, [texto](url)). Puedes usar **negrita** para enfatizar campos importantes; el destinatario los verá con formato correcto. Pon URLs sueltas (ej. https://meet.google.com/xxx-yyyy-zzz) — el sistema las convierte automáticamente en enlaces clickeables. NO uses tablas markdown ni HTML crudo (solo negrita, itálica y links son soportados).',
   );
   if (target.role_knowledge_base?.trim()) {
     promptLines.push('', '## Conocimiento de tu rol', target.role_knowledge_base.trim());
