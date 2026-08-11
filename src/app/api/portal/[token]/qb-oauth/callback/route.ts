@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { verifyOAuthState, clearOAuthState } from '@/lib/oauth/state';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,15 +10,27 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
   const { token }      = await params;
   const { searchParams } = req.nextUrl;
 
-  const code    = searchParams.get('code');
-  const realmId = searchParams.get('realmId');
-  const error   = searchParams.get('error');
+  const code       = searchParams.get('code');
+  const realmId    = searchParams.get('realmId');
+  const stateParam = searchParams.get('state') ?? '';
+  const error      = searchParams.get('error');
 
   const appUrl    = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
   const to = (extra: string) => `${appUrl}/portal/${token}?tab=organizacion&${extra}#integraciones`;
 
   if (error || !code || !realmId) {
     return NextResponse.redirect(to('error=qb_denied'));
+  }
+
+  // D-Q4: verify nonce cookie matches state URL. Rollout gradual: legacy=true
+  // (state sin .nonce) se acepta con warning; strict enforcement after N days.
+  const stateCheck = verifyOAuthState(req, 'qb', stateParam);
+  if (!stateCheck.ok) {
+    console.warn('[qb-callback portal] OAuth state nonce mismatch:', stateCheck.reason);
+    return NextResponse.redirect(to('error=qb_csrf_nonce'));
+  }
+  if (stateCheck.legacy) {
+    console.warn('[qb-callback portal] OAuth state legacy format (no nonce) — rollout in progress');
   }
 
   const clientId     = process.env.INTUIT_CLIENT_ID!;
@@ -93,5 +106,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
       updated_at:       new Date().toISOString(),
     }, { onConflict: 'portal_email' });
 
-  return NextResponse.redirect(to('success=qb'));
+  const successRes = NextResponse.redirect(to('success=qb'));
+  clearOAuthState(successRes);
+  return successRes;
 }
