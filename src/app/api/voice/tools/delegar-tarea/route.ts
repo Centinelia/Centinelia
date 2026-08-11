@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { TOOL_SCHEMAS, toAnthropicTool } from '@/lib/tools/schemas';
 import { requireVapiAuth } from '@/lib/vapi/auth';
 import {
   requiresPlanApproval, generateTaskPlan, generatePlanApprovalToken, orgAutoApprovesPlans, orgAlwaysRequiresApproval,
@@ -187,6 +188,16 @@ const DELEGATION_TOOLS: Anthropic.Tool[] = [
       required: ['cliente_nombre','cliente_rfc','cliente_email','uso_cfdi','forma_pago','metodo_pago','items'],
     },
   },
+  // Migrated to registry: src/lib/tools/schemas.ts (calendar + drive + search).
+  // Sin estas, meerkats delegados no podían agendar reuniones con Meet real
+  // (bug 2026-08-10: Niva delegada por Sofia dijo "no tengo Google Calendar API"
+  // porque este DELEGATION_TOOLS no incluía create_calendar_event).
+  toAnthropicTool(TOOL_SCHEMAS['list_calendar_events']),
+  toAnthropicTool(TOOL_SCHEMAS['create_calendar_event']),
+  toAnthropicTool(TOOL_SCHEMAS['delete_calendar_event']),
+  toAnthropicTool(TOOL_SCHEMAS['save_to_drive']),
+  toAnthropicTool(TOOL_SCHEMAS['buscar_documento_oficina']),
+  toAnthropicTool(TOOL_SCHEMAS['buscar_correo_enviado']),
   {
     name:        'tarea_completada',
     description: 'Señala que la tarea fue completada. Llama a esta herramienta cuando hayas terminado TODAS las acciones necesarias.',
@@ -217,6 +228,16 @@ async function executeToolOnAgent(
     crear_documento:           'crear-documento',
     extraer_voz_del_cliente:   'extraer-voz-del-cliente',
     solicitar_factura:         'solicitar-factura',
+    // Registry-migrated tools van al executor genérico exec/<name> (paridad
+    // con chat: mismo handler, mismo behavior). Incluye calendar + drive +
+    // search para que meerkats delegados puedan agendar Meet real, guardar
+    // en Drive, buscar docs/correos previos.
+    list_calendar_events:      'exec/list_calendar_events',
+    create_calendar_event:     'exec/create_calendar_event',
+    delete_calendar_event:     'exec/delete_calendar_event',
+    save_to_drive:             'exec/save_to_drive',
+    buscar_documento_oficina:  'buscar-documento-oficina',
+    buscar_correo_enviado:     'exec/buscar_correo_enviado',
   };
 
   const routePath = routeMap[toolName];
@@ -365,8 +386,21 @@ export async function POST(req: NextRequest) {
   }
   if (!siblings?.length) return fail('No hay otros agentes disponibles en el equipo.');
 
-  const target = [...siblings]
-    .sort((a, b) => matchScore(agente, b) - matchScore(agente, a))[0] as SiblingAgent;
+  // Fuzzy match del nombre/rol contra el equipo. Threshold >=2 evita matches
+  // silenciosos a agentes de nombre parecido pero incorrecto (bug 2026-08-10:
+  // Sofia delegó a "Nova" que no existe en Pneuma; el sistema matcheó a Niva
+  // sin avisar. Ahora falla explícito listando el equipo real).
+  const scored = siblings
+    .map(s => ({ s, score: matchScore(agente, s) }))
+    .sort((a, b) => b.score - a.score);
+  const bestScore = scored[0]?.score ?? 0;
+  if (bestScore < 2) {
+    const teamList = siblings
+      .map(s => `${s.agent_name}${s.role ? ` (${s.role})` : ''}`)
+      .join(', ');
+    return fail(`No encontré a "${agente}" en tu equipo. Los meerkats disponibles son: ${teamList}. Vuelve a llamar delegar_tarea con el nombre exacto de uno.`);
+  }
+  const target = scored[0].s as SiblingAgent;
 
   const targetMeerkat = ((target.features as Record<string, unknown> | null)?.meerkat_role_id as string | null) ?? 'unknown';
 
@@ -534,6 +568,7 @@ export async function POST(req: NextRequest) {
     '- Cuando termines TODAS las acciones necesarias, llama a tarea_completada con un resumen de lo que hiciste.',
     '- No llames a tarea_completada antes de haber ejecutado las acciones.',
     '- AUDITORÍA ANTES DE COMPLETAR: Antes de llamar tarea_completada, revisa el resultado contra el brief original y el criterio de éxito si existe. Confirma que cumples lo pedido con datos verificados. Si algo quedó incierto o asumiste, dilo explícitamente en el resumen en vez de presentarlo como resuelto.',
+    '- NO ALUCINES TU TOOL LIST: Nunca digas "no tengo esa tool" o "esa integración no está disponible" sin haberla INTENTADO invocar primero. Si el modelo cree que le falta una tool, primero llama la tool — el sistema devolverá un error concreto si de verdad no está disponible. Enumerar tu tool list en respuestas narrativas (ej: "las tools que tengo son X, Y, Z") es alucinación: describe solo lo que hiciste, no lo que crees tener.',
     '- ADJUNTAR ARCHIVOS: Si el brief menciona un archivo, plantilla, documento o file_id que debes enviar, ES OBLIGATORIO adjuntarlo. Flujo correcto:',
     '   1. Si tienes el file_id explícito en el brief, úsalo directo en enviar_correo con attachment_file_id + attachment_file_name + attachment_mime_type.',
     '   2. Si el brief solo dice "envía la plantilla X" sin file_id, PRIMERO invoca buscar_archivo para localizar el archivo real, LUEGO envía el correo con los 3 campos de attachment.',
