@@ -238,8 +238,10 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
   // Nelia — servicio al cliente: postventa. Ahora puede reenviar docs previos
   // y ver insights de voz del cliente para responder mejor.
   nelia: ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'registrar_encuesta', 'enviar_correo', 'buscar_archivo', 'buscar_documento_oficina', 'buscar_correo_enviado', 'buscar_producto', 'enviar_documento_oficina', 'extraer_voz_del_cliente', 'consultar_agente', 'reportar_falla', 'agregar_tag_contacto', 'generar_one_pager', 'generar_correo_estructurado', 'generar_reporte_metricas_excel'],
-  // Neo — helpdesk IT: sin cambios, no maneja docs comerciales.
-  neo:   ['crear_ticket', 'consultar_incidentes', 'buscar_directorio', 'buscar_archivo', 'leer_archivo', 'delegar_tarea', 'consultar_agente', 'reportar_falla'],
+  // Neo — helpdesk IT. `llamar_a` agregado: el prompt-builder helpdesk paso 4
+  // dice "LLAMA AL RESPONSABLE con llamar_a" — sin la tool Neo halucinaba
+  // "avisé al técnico". Ver Scope A A1 top CRITICAL #1.
+  neo:   ['crear_ticket', 'consultar_incidentes', 'buscar_directorio', 'buscar_archivo', 'leer_archivo', 'llamar_a', 'delegar_tarea', 'consultar_agente', 'reportar_falla'],
   // Nara — municipal: ahora puede aplicar encuestas de satisfacción también.
   nara:  ['create_civic_report', 'lookup_civic_report', 'update_civic_report', 'buscar_cliente', 'registrar_encuesta', 'notificar_transferencia', 'transferir_llamada', 'delegar_tarea', 'consultar_agente', 'reportar_falla', 'generar_reporte_metricas_excel'],
   // Naia — onboarding.
@@ -247,11 +249,18 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
   // Nova — recuperación / retención.
   nova:  ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'crear_ticket', 'crear_documento', 'buscar_documento_oficina', 'buscar_correo_enviado', 'buscar_producto', 'enviar_documento_oficina', 'extraer_voz_del_cliente', 'delegar_tarea', 'consultar_agente', 'buscar_en_web', 'reportar_falla'],
   // Nox — coordinador director. Ahora también consulta estado de facturas.
-  nox:   ['consultar_agente', 'delegar_tarea', 'enviar_correo', 'llamar_a', 'crear_documento', 'buscar_documento_oficina', 'buscar_correo_enviado', 'enviar_documento_oficina', 'create_file', 'create_contract_draft', 'buscar_archivo', 'leer_archivo', 'save_to_drive', 'organize_files', 'list_calendar_events', 'create_calendar_event', 'delete_calendar_event', 'qb_consultar_facturas', 'consultar_factura', 'verificar_gasto_recurrente', 'extraer_voz_del_cliente', 'sheets_agregar_fila', 'sheets_actualizar_fila', 'sheets_leer', 'sheets_buscar', 'reportar_falla'],
+  // pedir_a_humano agregado — el prompt de Nox instruye escalar al owner
+  // cuando la decisión excede autonomía (aprobación de gasto grande, cambio
+  // de política). Ver Scope A A1 CRITICAL #3.
+  nox:   ['consultar_agente', 'delegar_tarea', 'enviar_correo', 'llamar_a', 'crear_documento', 'buscar_documento_oficina', 'buscar_correo_enviado', 'enviar_documento_oficina', 'create_file', 'create_contract_draft', 'buscar_archivo', 'leer_archivo', 'save_to_drive', 'organize_files', 'list_calendar_events', 'create_calendar_event', 'delete_calendar_event', 'qb_consultar_facturas', 'consultar_factura', 'verificar_gasto_recurrente', 'extraer_voz_del_cliente', 'sheets_agregar_fila', 'sheets_actualizar_fila', 'sheets_leer', 'sheets_buscar', 'pedir_a_humano', 'reportar_falla'],
   // Niva — directora general. Visión estratégica: desempeño del equipo,
   // aprobación de gastos, insights de marca/cliente. Delega ejecución fiscal
   // a Nico. Sin qb_crear_factura/qb_reporte_ingresos (los movimos a Nico).
-  niva:  ['consultar_agente', 'delegar_tarea', 'enviar_correo', 'llamar_a', 'crear_documento', 'buscar_documento_oficina', 'buscar_correo_enviado', 'enviar_documento_oficina', 'create_file', 'save_to_drive', 'buscar_en_web', 'search_leads', 'list_calendar_events', 'create_calendar_event', 'qb_consultar_facturas', 'qb_buscar_cliente', 'qb_registrar_pago', 'solicitar_factura', 'consultar_factura', 'analizar_publicaciones_ml', 'ver_metricas_ml', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'revisar_desempeno_equipo', 'aprobar_gasto', 'evaluar_limite_gasto', 'verificar_gasto_recurrente', 'reportar_falla'],
+  // Niva — directora. pedir_a_humano agregado: prompt instruye "escala al
+  // dueño con pedir_a_humano" cuando gasto excede presupuesto o caso raro.
+  // Sin la tool, halucinaba "ya escalé al dueño" sin crear human_requests.
+  // Ver Scope A A1 CRITICAL #3.
+  niva:  ['consultar_agente', 'delegar_tarea', 'enviar_correo', 'llamar_a', 'crear_documento', 'buscar_documento_oficina', 'buscar_correo_enviado', 'enviar_documento_oficina', 'create_file', 'save_to_drive', 'buscar_en_web', 'search_leads', 'list_calendar_events', 'create_calendar_event', 'qb_consultar_facturas', 'qb_buscar_cliente', 'qb_registrar_pago', 'solicitar_factura', 'consultar_factura', 'analizar_publicaciones_ml', 'ver_metricas_ml', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'revisar_desempeno_equipo', 'aprobar_gasto', 'evaluar_limite_gasto', 'verificar_gasto_recurrente', 'pedir_a_humano', 'reportar_falla'],
 };
 
 type ToolDef = Record<string, unknown>;

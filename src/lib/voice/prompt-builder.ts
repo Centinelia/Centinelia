@@ -54,6 +54,11 @@ export async function buildSystemPrompt(
   const meerkatRoleId  = agent.features.meerkat_role_id as MeerkatRoleId | undefined;
   const meerkat        = meerkatRoleId ? MEERKAT_MAP[meerkatRoleId] : null;
   const isCoordinator  = meerkatRoleId ? (COORDINATOR_ROLE_IDS as readonly string[]).includes(meerkatRoleId) : false;
+  // A-F1: canIssueInvoice = tiene solicitar_factura en MEERKAT_VOICE_DISTRIBUTION.
+  // Sin este flag, Noah/Nico/Niva recibían "no tienes la herramienta solicitar_factura"
+  // pese a tenerla → delegaban a sí mismos en loop. Ver Scope A A1 CRITICAL #2.
+  // Nox intencional NO tiene solicitar_factura (delega ejecución fiscal a Nico).
+  const canIssueInvoice = meerkatRoleId ? ['noah', 'nico', 'niva'].includes(meerkatRoleId) : false;
   const isF            = meerkat?.genero === 'F';
 
   const autoTier: PromptTier   = MEERKAT_PROMPT_TIER[meerkatRoleId ?? ''] ?? 'full';
@@ -442,7 +447,11 @@ ${agent.transfer_rules?.trim() ? '' : 'Transfiere solo cuando el cliente lo soli
   // pedir_a_humano — paridad con email (F7). Sin este bloque el LLM ve la
   // tool en el schema pero no sabe cuándo usarla en llamada → cae en decir
   // "no sé" o inventar. Ver [[feedback-empleados-inteligentes]].
-  if (!isCoordinator && f.human_handoff_enabled !== false && stage >= 2) {
+  // A-F1: gate `!isCoordinator` removido. Nox/Niva/Nash tras Scope A tienen
+  // la tool en distribución; sin el bloque de guidance, halucinaban "ya
+  // escalé al dueño" sin invocarla (Scope A A1 CRITICAL #3). El bloque
+  // aplica igual — "el equipo del negocio" para coordinators = el owner.
+  if (f.human_handoff_enabled !== false && stage >= 2) {
     blocks.push(`ESCALACIÓN AL EQUIPO INTERNO — CUANDO NO PUEDES RESOLVER SOLO:
 
 Tienes la tool pedir_a_humano para pedir ayuda al equipo del negocio cuando el llamante espera algo específico y tú no tienes cómo dárselo. Es tu red de seguridad para no mentir, no inventar, ni transferir por default.
@@ -475,7 +484,25 @@ PROHIBIDO ABSOLUTO:
 - Prometer un callback "en 5 minutos" o dar un plazo específico que no puedes garantizar. Di "el equipo te contactará hoy" o "esta semana" según urgencia real.`);
   }
 
-  if (!isCoordinator) {
+  if (canIssueInvoice) {
+    blocks.push(`FACTURACIÓN FISCAL — TÚ PUEDES EMITIR:
+Tienes la herramienta solicitar_factura. Cuando el cliente pida factura, recopila los 6 datos y llama solicitar_factura directamente (NO delegues, NO uses crear_lead).
+
+SECUENCIA:
+1. Cliente pide factura → "Con gusto, necesito unos datos".
+2. Recopila uno por uno: razón social, RFC, correo, uso CFDI, forma de pago, método (contado/crédito), y descripción + cantidad + precio del servicio.
+3. Confirma cada dato con el cliente antes de continuar.
+4. INVOCA solicitar_factura con los 6 datos + items[].
+5. Solo cuando la tool devuelva ok, dile al cliente "Ya quedó tu solicitud. El equipo la emite y te la envía por correo hoy mismo." NO digas "ya se emitió" — el humano la timbra.
+
+MANEJO DE RFC INVÁLIDO:
+- Si solicitar_factura rechaza el RFC, dile al cliente "El RFC no pasa el formato SAT. ¿Me lo puedes verificar?"
+- Si no lo tiene a la mano, captura los datos con crear_lead + notes "PENDIENTE DE FACTURA. Falta: RFC correcto."
+
+PROHIBIDO:
+- Decir "ya la emití" o "el sistema la timbró" — es humano.
+- Inventar RFCs o aceptar formato inválido.`);
+  } else if (!isCoordinator) {
     blocks.push(`FACTURACIÓN FISCAL — TÚ NO EMITES FACTURAS, LAS DELEGAS:
 No tienes la herramienta solicitar_factura. Las facturas SIEMPRE las procesa un compañero especialista (Noah, Nico, Nox u otro con capacidad fiscal). Tu único trabajo es recopilar los datos y delegar.
 
