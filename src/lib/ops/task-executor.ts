@@ -430,6 +430,10 @@ export async function executeTask(params: {
   let qaExhausted  = false;
   let qaCycles     = 0;
   const loopStart  = Date.now();
+  // Track qué tools se ejecutaron REALMENTE durante este task. Se usa en
+  // tarea_completada para validar que las acciones prometidas en el resultado
+  // (envié correo, agendé cita, etc.) sí se ejecutaron con tools reales.
+  const executedToolNames = new Set<string>();
 
   // Extra iterations to accommodate QA retry loops
   outer: for (let i = 0; i < MAX_ITER * (MAX_QA_CYCLES + 1); i++) {
@@ -479,6 +483,35 @@ export async function executeTask(params: {
       if (block.name === 'tarea_completada') {
         const resultado = (block.input as { resultado: string }).resultado;
 
+        // Anti-mentira: valida que las acciones prometidas en el resultado
+        // realmente se ejecutaron (no solo se narraron). Bug 2026-08-10:
+        // Niva dijo "correo enviado exitosamente" sin haber invocado
+        // enviar_correo ni una vez. Rechazar y forzar al modelo a ejecutar.
+        const lowerResultado = resultado.toLowerCase();
+        const promiseCheckers: Array<{ pattern: RegExp; requiredTools: string[]; label: string }> = [
+          { pattern: /correo (?:enviad[oa]|de confirmaci[oó]n enviad|se envi[oó]|env[ií]e|envi[eé] el correo|mand[eé]|mandad[oa])|env[ií]e (?:el )?correo|enviamos (?:el )?correo|env[ií] correo/i, requiredTools: ['enviar_correo', 'send_email'], label: 'enviar correo' },
+          { pattern: /cita (?:agend[aeo]|agendada|reservada|creada)|agend[eé] (?:la )?cita/i, requiredTools: ['agendar_cita', 'create_calendar_event'], label: 'agendar cita' },
+          { pattern: /evento (?:cread[oa]|agendad[oa]|en el calendario)|cre[eé] (?:el )?evento/i, requiredTools: ['create_calendar_event'], label: 'crear evento en calendario' },
+          { pattern: /lead (?:cread[oa]|registrad[oa])|registr[eé] (?:el )?lead/i, requiredTools: ['crear_lead'], label: 'crear lead' },
+          { pattern: /documento (?:gener[aeo]|cread[oa])|gener[eé] (?:el )?documento/i, requiredTools: ['crear_documento', 'create_document'], label: 'crear documento' },
+          { pattern: /(?:llam[eé]|hice la llamada|call realizada)/i, requiredTools: ['llamar_a', 'trigger_outbound_call'], label: 'hacer llamada' },
+        ];
+        const unfulfilledPromises: string[] = [];
+        for (const check of promiseCheckers) {
+          if (check.pattern.test(lowerResultado)) {
+            const executed = check.requiredTools.some(t => executedToolNames.has(t));
+            if (!executed) unfulfilledPromises.push(`${check.label} (ninguna de ${check.requiredTools.join('/')} fue invocada con éxito en este task)`);
+          }
+        }
+        if (unfulfilledPromises.length > 0) {
+          toolResults.push({
+            type:        'tool_result',
+            tool_use_id: block.id,
+            content: `NO puedes completar la tarea todavía. Tu resultado dice que hiciste estas acciones pero el sistema NO detectó los tool calls correspondientes:\n\n${unfulfilledPromises.map(p => `- ${p}`).join('\n')}\n\nDos opciones:\n1. Si de verdad NO hiciste esas acciones: invoca los tools que faltan AHORA (ej: enviar_correo con to/subject/body si prometiste enviar correo) y luego vuelve a llamar tarea_completada.\n2. Si SÍ intentaste esas acciones pero fallaron: describe HONESTAMENTE en tu resultado que fallaron, con la razón concreta del error que recibiste. NO narres éxitos que no ocurrieron.\n\nMentir en tarea_completada rompe la confianza del dueño y del cliente final.`,
+          });
+          break; // continue loop so model retries
+        }
+
         // QA cycles exhausted — work was rejected MAX_QA_CYCLES times, fail the task
         if (noxActive && qaCycles >= MAX_QA_CYCLES) {
           finalResult  = resultado;
@@ -521,6 +554,11 @@ export async function executeTask(params: {
       }
 
       const toolResult = await executeToolOnAgent(block.name, block.input as Record<string, unknown>, targetAgent.id);
+      // Track SOLO tools que ejecutaron con éxito (no errores). Se usa en
+      // tarea_completada para validar contra las mentiras del modelo (dice
+      // "envié correo" sin haber invocado enviar_correo).
+      const okMatch = /^\{"ok":\s*true|"ok":\s*true/.test(toolResult) || !/error/i.test(toolResult);
+      if (okMatch) executedToolNames.add(block.name);
       if (!hitDone) finalResult = `${block.name}: ${toolResult}`;
       toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: toolResult });
     }
