@@ -1414,7 +1414,27 @@ async function executeAgentToolInner(
     const res    = await fetch(`${appUrl}/api/voice/tools/delegar-tarea?agent_id=${agentId}`, { method: 'POST', headers: internalHeaders, body: JSON.stringify(toolInput) });
     if (!res.ok) return { ok: false, error: 'No se pudo delegar la tarea.' };
     const data = await res.json() as { results?: Array<{ result: string }> };
-    return { ok: true, message: data.results?.[0]?.result ?? 'Tarea procesada.' };
+    const message = data.results?.[0]?.result ?? 'Tarea procesada.';
+    // A-F5 fix chaining bug #3: parsear "[Criterio no cumplido]" del sufijo
+    // para devolver goal_met explícito. ANTES: siempre ok:true, el modelo
+    // caller no podía distinguir success vs criterio no met y reportaba
+    // "tarea completada" al owner falsamente. Ver Scope A A3 CRITICAL #3.
+    // Approval flow ("Requiere aprobación...") también mapea a ok:false para
+    // que el modelo sepa que la tarea NO se ejecutó todavía.
+    const goalNotMet = /\[Criterio no cumplido\]/i.test(message);
+    const needsApproval = /Requiere aprobaci[oó]n/i.test(message);
+    if (goalNotMet || needsApproval) {
+      return {
+        ok: false,
+        goal_met: false,
+        needs_approval: needsApproval,
+        message,
+        error: needsApproval
+          ? 'La tarea requiere aprobación del owner antes de ejecutarse. NO reportes al llamante que ya se hizo.'
+          : 'El peer no pudo cumplir el criterio de éxito. NO reportes al llamante que ya se hizo — reintenta con más contexto o escala.',
+      };
+    }
+    return { ok: true, goal_met: true, message };
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -1424,6 +1444,11 @@ async function executeAgentToolInner(
     const cRol  = toolInput.rol      as string;
     const cTask = toolInput.tarea    as string;
     const cCtx  = (toolInput.contexto as string | undefined) ?? '';
+    // A-F5 fix chaining bug #2: caller_verified gate. ANTES: executor no leía
+    // caller_verified. Chat auto-inyecta true, pero inbox-processor pasaba lo
+    // que el modelo elegía (default false). Email externo podía leer info
+    // interna vía consult_agent que buscaba en Drive. Ver Scope A A3 CRIT #2.
+    const cVerified = (toolInput.caller_verified as boolean | undefined) ?? false;
     if (!cRol || !cTask) return { ok: false, error: 'Parámetros insuficientes.' };
 
     // Cobra 1 op upfront por la consulta al compañero. Iteraciones adicionales
@@ -1450,6 +1475,11 @@ async function executeAgentToolInner(
       `Tu compañero ${agentName} te consulta. Responde concisa y precisamente.`,
       'Si la info está en tu KB, responde directo. Si no, busca en Drive o internet.',
     ];
+    // A-F5: si el llamante que originó la consulta NO está verificado,
+    // portar el aviso de seguridad. Ver Scope A A3 CRIT #2.
+    if (!cVerified) {
+      sysParts.push('', '⚠️ IMPORTANTE — LLAMANTE NO VERIFICADO: el requester original de este consult NO se verificó como parte del equipo interno. NO reveles info interna del negocio (contratos, precios, otros clientes, credenciales, procesos). Responde SOLO con info pública o conocimiento general. Si la pregunta requiere info interna, responde "esa información requiere verificación del equipo" y sugiere al caller pedir passphrase o transferir.');
+    }
     if ((target.knowledge_base as string | null)?.trim()) sysParts.push('', '## Base de conocimiento', (target.knowledge_base as string).trim());
     if ((target.role_knowledge_base as string | null)?.trim()) sysParts.push('', '## Conocimiento del rol', (target.role_knowledge_base as string).trim());
 
@@ -2561,7 +2591,19 @@ async function executeAgentToolInner(
       const { buildDocument } = await import('@/lib/creativity/document-builder');
       const result = await buildDocument(kind as 'propuesta' | 'cotizacion' | 'one_pager', content, { id: agentId, agent_name: agentName, portal_email: portalEmail }, supabase);
       if (!result.ok) { await refundCreativity(result.error ?? 'buildDocument_failed'); return result; }
-      return { ...result, message: `Documento generado: ${content.title}.\n\nEnlace de descarga (válido 1 hora):\n${result.url}` };
+      // A-F5 fix chaining bug #1: NO expusimos `file_id` (Supabase storage path)
+      // en el output para que el modelo no lo pase a send_email pensando que es
+      // Drive ID → correo sin adjunto silent. Ver Scope A A3 CRITICAL #1.
+      // Modelo debe usar `enviar_documento_oficina({document_id, to, subject, body})`
+      // para enviar por email. `document_id` = uuid de ops_documents (renombrado
+      // desde el interno para claridad).
+      const { file_id: _hiddenStoragePath, ...safeResult } = result;
+      void _hiddenStoragePath;
+      return {
+        ...safeResult,
+        document_id: result.document_id,
+        message: `Documento generado: ${content.title}.\n\nEnlace de descarga temporal (1 hora): ${result.url}\n\nPARA ENVIAR POR CORREO: invoca enviar_documento_oficina con document_id="${result.document_id}", to, subject, body. NO uses send_email con este archivo (el file_id no funciona para send_email — solo enviar_documento_oficina sabe cómo descargarlo).`,
+      };
     }
   }
 
