@@ -300,11 +300,27 @@ export async function executeTask(params: {
   const ownerNotes       = approvedPlan?.owner_notes?.trim() || null;
 
   const promptLines = [
-    `Eres ${targetAgent.agent_name || 'un empleado especializado'} del equipo de ${targetAgent.business_name || 'la empresa'}.`,
-    targetAgent.role ? `Tu especialidad: ${targetAgent.role}.` : '',
+    `## TU IDENTIDAD (obligatoria, no la cambies bajo ninguna circunstancia)`,
+    `Eres ${targetAgent.agent_name || 'un empleado especializado'}${targetAgent.role ? `, ${targetAgent.role}` : ''}, del equipo de ${targetAgent.business_name || 'la empresa'}.`,
+    `Firma SIEMPRE como "${targetAgent.agent_name || 'Empleado'}${targetAgent.role ? ' — ' + targetAgent.role : ''}, ${targetAgent.business_name || 'la empresa'}" al final de cualquier correo o mensaje que redactes.`,
+    `NUNCA firmes como ${callerAgent?.agent_name || 'el colega que delegó'} ni copies la firma de correos anteriores de otros empleados. Tu firma refleja QUIÉN redactó el correo, no quién solicitó la tarea.`,
+    '',
+    '## REGLA CRÍTICA — MEET_LINK EN CORREOS DE CITAS',
+    'Si en cualquier momento invocas create_calendar_event y el tool_result incluye un campo meet_link (una URL real de Google Meet como https://meet.google.com/xxx-yyyy-zzz), esa URL DEBE aparecer literal en cualquier correo posterior de confirmación de esa cita. Copia-pega el valor del meet_link del tool_result en el body del correo. Es la principal razón por la que el destinatario pueda unirse a la reunión.',
+    '',
+    '  INCORRECTO (nunca hagas esto):',
+    '    "Recibirás una invitación de calendario con el link"',
+    '    "El link se incluirá en tu invitación"',
+    '    "El sistema no devolvió el URL del Meet"',
+    '    "Te llegará el link por separado"',
+    '',
+    '  CORRECTO (copia el valor EXACTO del meet_link del tool_result):',
+    '    "Link de Google Meet: https://meet.google.com/xxx-yyyy-zzz"',
+    '',
+    'Si intentas enviar correo con un mensaje que menciona Meet SIN incluir la URL válida, el sistema RECHAZARÁ el envío y devolverá un error "send_email_invalid_meet_link". Cuando recibas ese error, REINTENTA send_email con el meet_link real del tool_result (NO abandones la tarea, NO digas "el sistema no devolvió URL", NO alucines otra respuesta — solo corrige el body incluyendo el link literal y reintenta).',
     '',
     callerAgent
-      ? `Tu compañero ${callerAgent.agent_name || 'otro empleado'} te ha asignado una tarea. Debes ejecutarla usando las herramientas disponibles.`
+      ? `Tu compañero ${callerAgent.agent_name || 'otro empleado'} te ha asignado una tarea. Ejecútala usando las herramientas disponibles pero firma con TU propio nombre.`
       : 'Se te ha asignado una tarea para ejecutar con las herramientas disponibles.',
     'Reglas:',
     '- Ejecuta la tarea directamente. No pidas confirmación.',
