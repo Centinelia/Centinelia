@@ -17,13 +17,20 @@ export async function GET(req: NextRequest) {
   const supabase = createAdminClient();
   const now = new Date().toISOString();
 
-  // Find campaigns whose next_run_at has arrived
+  // ATOMIC CLAIM: deploy race Vercel HH:00 doblaba llamadas Vapi (usuarios
+  // recibían 2 llamadas idénticas, cargos duplicados). El UPDATE...RETURNING
+  // marca last_run_at=now como "in-progress" antes de iterar contactos; una
+  // segunda invocación concurrente no matchea porque last_run_at ya está fresh.
+  // Ver Scope C2 CRIT-1.
+  const claimCutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
   const { data: dueCampaigns } = await supabase
     .from('outbound_campaigns')
-    .select('*, voice_agents(*)')
+    .update({ last_run_at: now })
     .eq('status', 'active')
     .lte('next_run_at', now)
-    .not('next_run_at', 'is', null);
+    .not('next_run_at', 'is', null)
+    .or(`last_run_at.is.null,last_run_at.lt.${claimCutoff}`)
+    .select('*, voice_agents(*)');
 
   if (!dueCampaigns?.length) {
     return NextResponse.json({ ok: true, ran: 0 });
