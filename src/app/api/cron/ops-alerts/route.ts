@@ -18,6 +18,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail, shell, heading, badge, infoCard, btn, sectionLabel } from '@/lib/email/send';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
+import { claimCronRun, releaseCronRun } from '@/lib/cron/lock';
 
 const THRESHOLD     = 0.8;                  // 80% del pool compartido
 const RATE_LIMIT_MS = 7 * 24 * 60 * 60 * 1000;
@@ -51,6 +52,8 @@ export async function GET(req: NextRequest) {
   }
 
   const supabase = createAdminClient();
+  const claim = await claimCronRun(supabase, 'ops-alerts', 4 * 60 * 60 * 1000);
+  if (!claim.ok) return NextResponse.json({ ok: true, skipped: claim.reason });
 
   const { data: agents } = await supabase
     .from('voice_agents')
@@ -290,6 +293,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  await releaseCronRun(supabase, 'ops-alerts');
   return NextResponse.json({
     ok: true,
     accounts_alerted: overThreshold.length,

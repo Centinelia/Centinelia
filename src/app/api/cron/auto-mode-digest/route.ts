@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail, shell, badge, heading, infoCard, btn } from '@/lib/email/send';
 import { resolveMeerkatFromAgent } from '@/lib/email/meerkat-identity';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
+import { claimCronRun, releaseCronRun } from '@/lib/cron/lock';
 import { getOrgToken } from '@/lib/portal/org-token';
 
 export const dynamic = 'force-dynamic';
@@ -38,6 +39,8 @@ export async function GET(req: NextRequest) {
   }
 
   const supabase = createAdminClient();
+  const claim = await claimCronRun(supabase, 'auto-mode-digest', 45 * 60 * 1000);
+  if (!claim.ok) return NextResponse.json({ ok: true, skipped: claim.reason });
 
   // 1. Items auto-enviados en las últimas 24h sin digest todavía
   const { data: items, error: itemsErr } = await supabase
@@ -134,6 +137,7 @@ export async function GET(req: NextRequest) {
       .in('id', successIds);
   }
 
+  await releaseCronRun(supabase, 'auto-mode-digest');
   return NextResponse.json({ agents_notified: byAgent.size, emails_sent: emailsSent });
 }
 

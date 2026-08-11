@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
 import { maybeSendQuotaEmail } from '@/lib/ai/quota-email';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
+import { claimCronRun, releaseCronRun } from '@/lib/cron/lock';
 import { collectBriefData } from '@/lib/nox/brief-collector';
 import { renderBrief } from '@/lib/nox/brief-renderer';
 import { deliverBrief } from '@/lib/nox/brief-deliverer';
@@ -22,6 +23,8 @@ export async function GET(req: NextRequest) {
   }
 
   const supabase = createAdminClient();
+  const claim = await claimCronRun(supabase, 'nox-brief', 45 * 60 * 1000);
+  if (!claim.ok) return NextResponse.json({ ok: true, skipped: claim.reason });
   const now      = new Date();
 
   const { data: noxAgents, error } = await supabase
@@ -151,5 +154,6 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  await releaseCronRun(supabase, 'nox-brief');
   return NextResponse.json({ ok: true, ran });
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
+import { claimCronRun, releaseCronRun } from '@/lib/cron/lock';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
 
 export const dynamic = 'force-dynamic';
@@ -33,6 +34,10 @@ export async function GET(req: NextRequest) {
   }
 
   const supabase = createAdminClient();
+  // Sin lock, deploy race + crash mid-loop → doble ops charge per callId
+  // (chargedCallIds Set solo en memoria per invocation). Ver Scope C2 HIGH #5.
+  const claim = await claimCronRun(supabase, 'batch-eval-retrieve', 25 * 60 * 1000);
+  if (!claim.ok) return NextResponse.json({ ok: true, skipped: claim.reason });
 
   const { data: batches } = await supabase
     .from('anthropic_batches')
@@ -130,5 +135,6 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  await releaseCronRun(supabase, 'batch-eval-retrieve');
   return NextResponse.json({ ok: true, updated, errors });
 }

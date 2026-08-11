@@ -24,6 +24,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail, shell, heading, badge, infoCard, btn, sectionLabel } from '@/lib/email/send';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
+import { claimCronRun, releaseCronRun } from '@/lib/cron/lock';
 
 const OVERSHOOT_THRESHOLD = 1.05;  // 5% overshoot para gatillar alerta
 const MIN_DAYS_TO_PROJECT = 3;
@@ -58,6 +59,9 @@ export async function GET(req: NextRequest) {
   }
 
   const supabase = createAdminClient();
+  const claim = await claimCronRun(supabase, 'pool-projection-alerts', 4 * 60 * 60 * 1000);
+  if (!claim.ok) return NextResponse.json({ ok: true, skipped: claim.reason });
+
   const { data: agents } = await supabase
     .from('voice_agents')
     .select('id, agent_name, business_name, client_email, portal_email, portal_token, minutes_used, minutes_included, ai_ops_used, ai_ops_limit, minutes_reset_date, features')
@@ -255,5 +259,6 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  await releaseCronRun(supabase, 'pool-projection-alerts');
   return NextResponse.json({ ok: true, checked: byAccount.size, alerted: emailed });
 }

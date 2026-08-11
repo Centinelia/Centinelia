@@ -16,6 +16,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
+import { claimCronRun, releaseCronRun } from '@/lib/cron/lock';
 import { sendEmail } from '@/lib/email/send';
 import { dailyDigestHtml, sectionTitleForKind, summaryForEvent, type DigestSection } from '@/lib/notifications/templates';
 import type { NotificationKind } from '@/lib/notifications/queue';
@@ -34,6 +35,8 @@ export async function GET(req: NextRequest) {
   }
 
   const supabase = createAdminClient();
+  const claim = await claimCronRun(supabase, 'daily-digest', 45 * 60 * 1000);
+  if (!claim.ok) return NextResponse.json({ ok: true, skipped: claim.reason });
   const now = new Date();
 
   // Fetch orgs que quieren notificaciones (al menos un agente con notify_email=true).
@@ -200,6 +203,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  await releaseCronRun(supabase, 'daily-digest');
   return NextResponse.json({ ok: true, processed: byOrg.size, sent, skipped });
 }
 

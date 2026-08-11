@@ -11,6 +11,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail, shell, badge, heading, infoCard, btn } from '@/lib/email/send';
 import { resolveMeerkatFromAgent } from '@/lib/email/meerkat-identity';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
+import { claimCronRun, releaseCronRun } from '@/lib/cron/lock';
 import { getOrgToken } from '@/lib/portal/org-token';
 
 export const dynamic = 'force-dynamic';
@@ -47,6 +48,8 @@ export async function GET(req: NextRequest) {
   }
 
   const supabase = createAdminClient();
+  const claim = await claimCronRun(supabase, 'spam-review-digest', 45 * 60 * 1000);
+  if (!claim.ok) return NextResponse.json({ ok: true, skipped: claim.reason });
 
   // 1. Correos marcados spam en últimas 24h sin digest todavía
   const { data: items, error: itemsErr } = await supabase
@@ -161,6 +164,7 @@ export async function GET(req: NextRequest) {
   const allIds = items.map(i => i.id as string);
   await supabase.from('ops_inbox').update({ digest_sent_at: new Date().toISOString() }).in('id', allIds);
 
+  await releaseCronRun(supabase, 'spam-review-digest');
   return NextResponse.json({
     agents_notified: byAgent.size,
     emails_sent:     emailsSent,
