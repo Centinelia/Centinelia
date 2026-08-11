@@ -115,12 +115,13 @@ export async function GET(req: NextRequest) {
         if (archErr) { errors.push(`agent ${agentId} ai_ops_log archive: ${archErr.message}`); continue; }
       }
 
-      // Fix T10 audit 2026-08-10: archivar voice_calls antes del DELETE cascade.
-      // Preserva agent_id, duración, phone, timestamps, outcome (no transcript full
-      // — decisión de scope: audit billing sí, contenido conversación no).
+      // Fix T10 audit 2026-08-10 + excepción 1 fix: archivar voice_calls con
+      // transcript + recording_url para retention 7 años (vs. Vapi default 12mo).
+      // Si Municipio pide transcript hace 2 años → lo tenemos. Audio via recording_url
+      // depende de Vapi; si expira, al menos texto queda.
       const { data: callRows } = await supabase
         .from('voice_calls')
-        .select('id, agent_id, vapi_call_id, caller_number, duration_seconds, outcome, cost_usd, summary, created_at')
+        .select('id, agent_id, vapi_call_id, caller_number, duration_seconds, outcome, cost_usd, summary, transcript, recording_url, created_at')
         .eq('agent_id', agentId);
       if (callRows && callRows.length > 0) {
         const rowsToArchive = callRows.map((r: Record<string, unknown>) => ({
@@ -133,6 +134,8 @@ export async function GET(req: NextRequest) {
           outcome:           r.outcome,
           cost_usd:          r.cost_usd,
           summary:           r.summary,
+          transcript:        r.transcript,
+          recording_url:     r.recording_url,
           created_at:        r.created_at,
         }));
         const { error: archErr } = await supabase.from('voice_calls_archive').upsert(rowsToArchive, { onConflict: 'original_id', ignoreDuplicates: true });
