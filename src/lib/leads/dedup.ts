@@ -159,10 +159,65 @@ async function findRecentOutboundDuplicate(
   return data?.[0]?.id ?? null;
 }
 
+// Rechaza phones que en realidad son emails o strings sin dígitos. El cron de
+// outbound intenta marcar y falla silencioso si el "número" es "cliente@x.com".
+// El modelo a veces mete el email en telefono cuando el cliente sólo dio uno de
+// los dos — mejor rechazar temprano y forzar retry con datos correctos.
+function validatePhoneOrThrow(telefono: string, email?: string | null): string {
+  const t = telefono.trim();
+  if (t.length === 0) {
+    throw new Error('outbound_contact_invalid_phone: telefono vacío. Sin número no se puede marcar. Si sólo tienes email, guarda como lead (crear_lead) en vez de contacto saliente.');
+  }
+  if (/@/.test(t)) {
+    const suggestion = email ? '' : ` El valor "${t}" parece ser email — pásalo en el campo email y consigue un teléfono real, o usa crear_lead si no hay número disponible.`;
+    throw new Error(`outbound_contact_invalid_phone: telefono contiene "@" (parece email, no número).${suggestion}`);
+  }
+  const digitCount = (t.match(/\d/g) ?? []).length;
+  if (digitCount < 7) {
+    throw new Error(`outbound_contact_invalid_phone: telefono "${t}" tiene menos de 7 dígitos, no es un número marcable. Consigue el número completo con lada o usa crear_lead.`);
+  }
+  return t;
+}
+
+// Verifica que el agente tenga capability outbound_calls. Si no, intenta
+// re-routear al peer con outbound_calls activo (típicamente el vendedor Noah).
+// El pending contact debe vivir bajo el agente que va a marcarlo; asignarlo a
+// Sofía (recepcionista) rompe el flow: la cron no la marca porque no tiene
+// outbound habilitado y el usuario ve pendings zombie en /campanas.
+async function ensureOutboundAgent(supabase: SupabaseClient, requestedAgentId: string): Promise<string> {
+  const { data: reqAgent } = await supabase
+    .from('voice_agents')
+    .select('id, portal_email, features')
+    .eq('id', requestedAgentId)
+    .maybeSingle();
+  if (!reqAgent) return requestedAgentId; // agente no existe: dejamos que el insert falle con FK
+  const hasOutbound = !!((reqAgent.features as Record<string, unknown> | null)?.outbound_calls);
+  if (hasOutbound) return requestedAgentId;
+
+  const portalEmail = reqAgent.portal_email as string | null;
+  if (!portalEmail) {
+    throw new Error(`outbound_contact_no_outbound_agent: el agente que llamó no tiene outbound_calls habilitado y no se pudo buscar peer. Activa outbound en Configurar > empleado.`);
+  }
+  const { data: peers } = await supabase
+    .from('voice_agents')
+    .select('id, agent_name, features')
+    .eq('portal_email', portalEmail)
+    .eq('active', true);
+  const outboundPeer = (peers ?? []).find(p => !!((p.features as Record<string, unknown> | null)?.outbound_calls));
+  if (!outboundPeer) {
+    throw new Error(`outbound_contact_no_outbound_agent: ningún empleado de la organización tiene outbound_calls activo. Activa outbound en Configurar > empleado > Llamadas salientes antes de registrar contactos para llamar.`);
+  }
+  return outboundPeer.id as string;
+}
+
 export async function upsertOutboundContactWithDedup(
   supabase: SupabaseClient,
   input:    OutboundContactInput,
 ): Promise<OutboundContactUpsertResult> {
+  const normalizedPhone = validatePhoneOrThrow(input.telefono, input.email ?? null);
+  const targetAgentId   = await ensureOutboundAgent(supabase, input.agentId);
+  input = { ...input, telefono: normalizedPhone, agentId: targetAgentId };
+
   const existingId = await findRecentOutboundDuplicate(supabase, input.agentId, input.telefono);
 
   if (existingId) {
