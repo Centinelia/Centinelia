@@ -649,7 +649,7 @@ async function buildTools(agent: VoiceAgent, qbConnected = false, orgCalendar: O
           name: 'agendar_cita_externa',
           description: hasCalComApi
             ? 'Confirma y registra la cita en el calendario. Llama DESPUÉS de consultar_disponibilidad y de que el cliente haya elegido un horario disponible. No uses fechas u horas que no estén en la lista de disponibles.'
-            : 'Registra la cita del cliente y envía el link de reserva por WhatsApp para que confirme.',
+            : 'Registra los datos de la cita en el sistema y confirma verbalmente con el cliente en la llamada. Si hay link de reserva configurado, menciónalo. El owner recibe aviso por WhatsApp automáticamente. No prometas ningún envío automático al cliente (correo o WhatsApp): esa parte no está automatizada sin Cal.com API.',
           parameters: {
             type: 'object',
             properties: {

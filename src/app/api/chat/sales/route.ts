@@ -122,7 +122,7 @@ Cuando pides un documento (propuesta, presentación, carta, reporte), el emplead
 ## Integraciones disponibles
 
 - **Cal.com:** agenda directamente durante la llamada, en tiempo real.
-- **Google Calendar / Outlook Calendar:** captura datos y manda link de reserva por WhatsApp; agenda y consulta eventos.
+- **Google Calendar / Outlook Calendar:** el empleado consulta disponibilidad y registra la cita. Si hay Cal.com API conectado, se agenda directamente en el calendario y Cal.com envía la confirmación al cliente por correo. Sin Cal.com, el empleado confirma verbalmente en la llamada y el owner recibe aviso por WhatsApp. La confirmación al cliente por WhatsApp aún no está disponible (en roadmap).
 - **Notion CRM:** sincroniza leads, llamadas, datos. Los empleados consultan listas de Notion para tomar decisiones.
 - **Google Sheets:** CRM en Sheets de la organización (sincroniza leads/llamadas/citas).
 - **Google Drive / OneDrive:** guarda, busca, lee y organiza archivos.
