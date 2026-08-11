@@ -72,7 +72,13 @@ export async function POST(
   if (!body.email || !body.password)
     return NextResponse.json({ error: 'Email y contraseña son requeridos' }, { status: 400 });
 
+  // Validaciones que faltaban (Scope D3 BUG-5, BUG-6):
   const email = body.email.toLowerCase().trim();
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  if (!EMAIL_RE.test(email))
+    return NextResponse.json({ error: 'Correo con formato inválido.' }, { status: 400 });
+  if (body.password.length < 8)
+    return NextResponse.json({ error: 'La contraseña debe tener al menos 8 caracteres.' }, { status: 400 });
   if (email === check.accountId)
     return NextResponse.json({ error: 'No puedes crear un sub-usuario con el mismo correo del propietario' }, { status: 400 });
 

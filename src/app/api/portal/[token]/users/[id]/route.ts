@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE, hashPassword } from '@/lib/portal/auth';
+import { invalidateSubUserCache } from '@/lib/portal/access';
 import { resolveOrgFromToken } from '@/lib/portal/org-token';
 import { cookies } from 'next/headers';
 
@@ -93,6 +94,10 @@ export async function PATCH(
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!data) return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
 
+  // Invalidar cache de freshness para que el próximo request del sub-user
+  // vea sus nuevos modules (sin esperar 30s de TTL). Ver Scope D3 Race R-1.
+  invalidateSubUserCache(id);
+
   // Sync a organizations.directory si cambió el nombre.
   if ('name' in body && !data.is_owner) {
     const { upsertPortalUserInDirectory } = await import('@/lib/portal/directory');
@@ -122,6 +127,10 @@ export async function DELETE(
     .eq('is_owner', false); // guardarraíl adicional: nunca borrar al owner
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Invalidar cache de freshness — próximo request del ex-sub-user recibirá
+  // "cuenta removida del equipo" en vez de aceptar su JWT (Scope D3 Race R-2).
+  invalidateSubUserCache(id);
 
   // Sync a organizations.directory: quitar la entrada auto-creada.
   const { removePortalUserFromDirectory } = await import('@/lib/portal/directory');
