@@ -425,10 +425,17 @@ export async function POST(req: NextRequest) {
   // usamos el portal_email como fallback confiable para el correo del dueño.
   const { data: orgRow } = await supabase
     .from('organizations')
-    .select('knowledge_base')
+    .select('knowledge_base, business_email, business_phone, business_website, brand_address, email_footer_text')
     .eq('portal_email', caller.portal_email)
     .maybeSingle();
   const orgKb    = (orgRow?.knowledge_base as string | null) ?? null;
+  const orgContactRow = orgRow as {
+    business_email?:    string | null;
+    business_phone?:    string | null;
+    business_website?:  string | null;
+    brand_address?:     string | null;
+    email_footer_text?: string | null;
+  } | null;
   const ownerEmail = caller.portal_email;
 
   // ── Plan-then-approve gate ────────────────────────────────────────────────
@@ -587,6 +594,44 @@ export async function POST(req: NextRequest) {
   if (orgKb?.trim()) {
     promptLines.push('', '## Base de conocimiento', orgKb.trim());
   }
+
+  // Fecha ISO actual + datos de contacto de la org — sin esto el modelo alucina
+  // años viejos y datos ficticios (bug 2026-08-10: Niva delegada por Sofia
+  // puso contact@pneumastudio.com y www.pneumastudio.com — ambos inventados).
+  const nowForPrompt = new Date();
+  const todayIso     = nowForPrompt.toISOString().slice(0, 10);
+  const todayEs      = nowForPrompt.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  promptLines.push('', '## Fecha actual', `Hoy es ${todayEs} (${todayIso}). USA este año en cualquier fecha que redactes — no repitas años pasados.`);
+
+  const contactLines: string[] = [];
+  if (orgContactRow?.business_email)   contactLines.push(`- Correo: ${orgContactRow.business_email}`);
+  if (orgContactRow?.business_phone)   contactLines.push(`- Teléfono: ${orgContactRow.business_phone}`);
+  if (orgContactRow?.business_website) contactLines.push(`- Sitio web: ${orgContactRow.business_website}`);
+  if (orgContactRow?.brand_address)    contactLines.push(`- Dirección: ${orgContactRow.brand_address}`);
+  if (contactLines.length > 0) {
+    promptLines.push(
+      '',
+      '## Datos de contacto de tu empresa',
+      'SIEMPRE que redactes un correo, cotización, contrato o firma para un cliente, incluye estos datos al final para que puedan contactarnos. NO inventes correos ni URLs; usa EXACTAMENTE los valores de abajo:',
+      contactLines.join('\n'),
+    );
+  }
+  if (orgContactRow?.email_footer_text?.trim()) {
+    promptLines.push('', '## Firma de correos por default', orgContactRow.email_footer_text.trim());
+  }
+
+  // Regla anti-hallucination de links: cuando create_calendar_event devuelve
+  // meet_link, DEBE incluirse literal en el correo. Antes Niva puso "el link
+  // te llegará en la invitación del calendario" en vez de compartirlo (bug
+  // 2026-08-10).
+  promptLines.push(
+    '',
+    '## Cuando el flow incluye link de videollamada',
+    'Si invocas create_calendar_event con generate_meet_link=true, el tool_result devuelve un campo meet_link (URL real de Google Meet). SIEMPRE que redactes el correo de confirmación:',
+    '  1. INCLUYE el meet_link literal en el body del correo (ej: "Link de Google Meet: https://meet.google.com/xxx-yyyy-zzz").',
+    '  2. NO digas "te llegará en la invitación" ni "te lo comparto por separado" cuando SÍ tienes el link. Compartirlo en el correo es cortesía básica y evita que el cliente tenga que buscar entre múltiples emails.',
+    '  3. Si por algo el evento se creó SIN meet_link (Google no lo devolvió), sí puedes decir "el link te llegará en la invitación del calendario" — pero solo en ese caso.',
+  );
   if (target.role_knowledge_base?.trim()) {
     promptLines.push('', '## Conocimiento de tu rol', target.role_knowledge_base.trim());
   }
