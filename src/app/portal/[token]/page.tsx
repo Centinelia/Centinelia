@@ -1628,10 +1628,10 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           showOutbound={showOutbound || agent.plan === 'pro'}
           isOwner={isOwner}
           modules={modules}
-          minutesRemain={isOwner || modules.includes('cuenta') ? minutesRemain : 0}
-          minutesIncluded={isOwner || modules.includes('cuenta') ? minutesIncluded : 0}
-          aiOpsUsed={isOwner || modules.includes('cuenta') ? aiOpsUsed : 0}
-          aiOpsLimit={isOwner || modules.includes('cuenta') ? aiOpsLimit : 0}
+          minutesRemain={isOwner || (modules ?? []).includes('cuenta') ? minutesRemain : 0}
+          minutesIncluded={isOwner || (modules ?? []).includes('cuenta') ? minutesIncluded : 0}
+          aiOpsUsed={isOwner || (modules ?? []).includes('cuenta') ? aiOpsUsed : 0}
+          aiOpsLimit={isOwner || (modules ?? []).includes('cuenta') ? aiOpsLimit : 0}
           hasStripe={hasStripe}
           accountSerial={accountSerial}
           headerActions={
