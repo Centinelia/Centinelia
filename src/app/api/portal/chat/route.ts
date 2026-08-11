@@ -291,8 +291,8 @@ export async function POST(req: NextRequest) {
   });
 
   // Post-filter determinístico: el modelo ignora "no uses em-dashes" a veces.
-  // Reemplazo — (U+2014) y – (U+2013) por ", " para garantizar cero em-dashes.
-  const stripEmDashes = (s: string): string => s.replace(/[—–]/g, ', ');
+  // Cubre todos los unicode dash-like (— – ‒ ― − ⸺ ⸻) además del guion largo.
+  const stripEmDashes = (s: string): string => s.replace(/[‒–—―−⸺⸻]/g, ', ');
 
   const readable = new ReadableStream({
     async start(controller) {

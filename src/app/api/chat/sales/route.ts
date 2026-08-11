@@ -235,8 +235,9 @@ export async function POST(req: NextRequest) {
     messages:   messages.slice(-16),
   });
 
-  // Post-filter determinístico contra em-dashes (— y –) que el modelo emite pese al prompt.
-  const stripEmDashes = (s: string): string => s.replace(/[—–]/g, ', ');
+  // Post-filter determinístico contra em/en-dashes (todos los unicode dash-like
+  // que Claude emite pese al prompt). Cubre — – ‒ ― − ⸺ ⸻ además del guion largo.
+  const stripEmDashes = (s: string): string => s.replace(/[‒–—―−⸺⸻]/g, ', ');
 
   const readable = new ReadableStream({
     async start(controller) {

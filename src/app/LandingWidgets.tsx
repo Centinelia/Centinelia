@@ -64,7 +64,7 @@ type Message = { role: 'user' | 'assistant'; content: string };
 
 const WELCOME: Message = {
   role:    'assistant',
-  content: '¡Hola! Soy Noah, empleado de ventas de Centinelia.\n\nCuéntame de tu negocio y te digo si nuestros empleados digitales te sirven — cuánto ahorras, qué haría cada uno por ti, si el pricing te encaja. ¿Qué haces?',
+  content: '¡Hola! Soy Noah, empleado de ventas de Centinelia.\n\nCuéntame de tu negocio y te digo si nuestros empleados digitales te sirven: cuánto ahorras, qué haría cada uno por ti, si el pricing te encaja. ¿Qué haces?',
 };
 
 const QUICK_QUESTIONS = [

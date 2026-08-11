@@ -346,7 +346,7 @@ export default function OpsAgentChatFab({ token, agents }: Props) {
               <span className="text-xs" style={{ color: '#6B6480' }}>En línea</span>
               <span className="flex items-center gap-0.5 text-xs" style={{ color: '#6B6480' }}>
                 <Zap size={9} style={{ color: '#9B6DFF' }} />
-                3–13 tareas/msg
+                3 a 13 tareas/msg
               </span>
               <button
                 onClick={() => setOpen(false)}
