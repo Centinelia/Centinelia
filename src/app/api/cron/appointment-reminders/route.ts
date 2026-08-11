@@ -33,8 +33,30 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: true, sent: 0 });
   }
 
-  // Appointment reminders via WhatsApp to customers are disabled.
-  // Future: send reminders via email or outbound call.
+  // Appointment reminders via WhatsApp to customers are disabled (templates
+  // sin aprobar en WhatsApp Business API). Cuando se reactiven, invocar
+  // sendReminder(appointment) que envía + marca reminder_sent=true. Sin ese
+  // UPDATE, filter WHERE reminder_sent=false devolvería el mismo appointment
+  // MAÑANA otra vez y el cliente recibiría reminder duplicado 24h después.
+  // Ver Scope C2 "appointment-reminders latent bug".
+  //
+  // Actualmente stub: NO envía, NO marca. Comportamiento preservado.
+  // Al reactivar: descomentar el bloque abajo y agregar sendWhatsApp/sendEmail.
+  //
+  // async function sendReminder(app: typeof appointments[number]): Promise<boolean> {
+  //   const msg = `Recordatorio: ${app.servicio ?? 'tu cita'} mañana a las ${app.hora}`;
+  //   const ok = await sendWhatsApp(app.telefono!, msg);
+  //   if (ok) {
+  //     await supabase.from('appointments_voice')
+  //       .update({ reminder_sent: true, reminder_sent_at: new Date().toISOString() })
+  //       .eq('id', app.id);
+  //   }
+  //   return ok;
+  // }
+  // let sent = 0;
+  // for (const app of appointments) { if (await sendReminder(app)) sent++; }
+  // return NextResponse.json({ ok: true, sent, total: appointments.length, date: tomorrowISO });
+
   console.log(`appointment-reminders cron: ${appointments.length} pending for ${tomorrowISO}, skipped (WA disabled)`);
   return NextResponse.json({ ok: true, sent: 0, total: appointments.length, date: tomorrowISO });
 }
