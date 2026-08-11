@@ -67,11 +67,19 @@ export async function consumeAiOp(agentId: string, count = 1, meta?: OpsMeta): P
       .eq('portal_email', portalEmail)
       .maybeSingle();
 
-    after(async () => {
+    // Compliance Municipio 7-year retention: ai_ops_log DEBE persistir cada op.
+    // ANTES: after() → Vercel podía cortar la función antes de completar el
+    // INSERT → row perdida indistinguible de row nunca ocurrida. Ledger es
+    // source of truth pero ai_ops_log_archive queda con huecos vs ledger.
+    // Ver Scope C2 compliance gap. Ahora es sync (fire-and-await con log-only
+    // error si falla — nunca romper el flow del user por el log).
+    try {
       await supabase
         .from('ai_ops_log')
         .insert({ agent_id: agentId, portal_email: portalEmail, ...logPayload });
-    });
+    } catch (err) {
+      console.error('[ops-guard] ai_ops_log insert failed (audit gap):', err);
+    }
 
     // Balance <=0 = agotado; los grants nuevos vienen del cron
     return {
@@ -108,11 +116,13 @@ export async function consumeAiOp(agentId: string, count = 1, meta?: OpsMeta): P
 
   if (row.ok && row.account_email) {
     const accountEmail = row.account_email;
-    after(async () => {
+    try {
       await supabase
         .from('ai_ops_log')
         .insert({ agent_id: agentId, portal_email: accountEmail, ...logPayload });
-    });
+    } catch (err) {
+      console.error('[ops-guard] ai_ops_log insert failed (audit gap):', err);
+    }
 
     const remaining = row.ops_limit - row.ops_used;
     const prevRemaining = remaining + count;
