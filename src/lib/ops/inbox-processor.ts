@@ -364,6 +364,27 @@ NO la uses para:
       required: ['type', 'target', 'title', 'description'],
     },
   },
+  // Reutilización de docs previos generados en Oficina — evita regenerar y
+  // duplicar en Drive. Chat ya lo tenía; email quedó atrás. Ver
+  // [[handoff-audits-pending-scopes]] Scope B, Agent 1 gap #4.
+  toAnthropicTool(TOOL_SCHEMAS['buscar_documento_oficina']),
+  toAnthropicTool(TOOL_SCHEMAS['enviar_documento_oficina']),
+  // marcar_no_llamar en email: cliente responde al correo "no me llamen" y el
+  // empleado debe poder ejecutar la baja sin escalar. En chat portal es null
+  // intencional (VOICE_TO_CHAT), pero en bandeja SÍ aplica — regulatorio
+  // LFPDPPP. Description quita la parte voice-only ("termina la llamada").
+  {
+    name:        'marcar_no_llamar',
+    description: 'Marca un número como "no volver a llamar" cuando el remitente pide explícitamente que dejen de contactarlo por teléfono ("no me llamen", "quítenme de la lista", "no me interesa"). Los futuros crons de llamadas salientes respetarán esta marca. Usa el teléfono del remitente si aparece en el correo o lo tienes en outbound_contacts.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        telefono: { type: 'string', description: 'Número de teléfono del ciudadano (con o sin lada). Se normaliza automáticamente.' },
+        motivo:   { type: 'string', description: 'Motivo breve de la baja (ej: "solicitud por correo", "no interesado"). Opcional.' },
+      },
+      required: ['telefono'],
+    },
+  },
 ];
 
 const QB_EMAIL_TOOLS: Anthropic.Tool[] = [
@@ -980,6 +1001,63 @@ CATEGORÍAS:
       });
     }
 
+    // Fiscal tools — gated a roles Sonnet-safe. Nia bandeja SE EXCLUYE
+    // intencionalmente porque corre con Haiku 4.5 (línea 1181) y en voz
+    // halucinaba tool calls fiscales (ver sync.ts:221-226 sobre solicitar_factura
+    // removida de Nia voice). Nia-bandeja debe delegar_tarea a Nico/Nox/Noah.
+    // Roles fiscales: nico (cobranza/CFDI), noah (ventas cierra facturas),
+    // nox (coordinador), niva (director). 'custom' entra por opt-in del owner.
+    const FISCAL_ROLES = new Set(['nico', 'noah', 'nox', 'niva', 'custom']);
+    if (inboxMeerkatId && FISCAL_ROLES.has(inboxMeerkatId)) {
+      tools.push({
+        name: 'solicitar_factura',
+        description: 'Registra una solicitud de factura CFDI cuando el cliente pide su comprobante fiscal por correo. Recolecta primero TODOS los datos necesarios (RFC, uso CFDI, forma/método de pago, items con precio_unitario en MXN sin IVA). Si algún dato falta, pídelo en la respuesta antes de invocar la tool. El equipo humano de facturación emite el CFDI en el sistema fiscal del negocio (Solución Factible, CONTPAQ, Aspel, etc.) — NO lo timbramos aquí. NO uses create_document con template_type=factura para esto: eso genera un PDF sin validez fiscal.',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            cliente_nombre:    { type: 'string', description: 'Razón social o nombre completo tal como aparece en la constancia de situación fiscal.' },
+            cliente_rfc:       { type: 'string', description: 'RFC del receptor. 12 chars persona moral, 13 chars persona física.' },
+            cliente_email:     { type: 'string', description: 'Correo donde el cliente quiere recibir el CFDI. Confirma antes de guardar.' },
+            cliente_telefono:  { type: 'string' },
+            cliente_direccion: { type: 'string', description: 'Domicilio fiscal (opcional).' },
+            uso_cfdi:          { type: 'string', description: 'Uso CFDI del receptor (G03, G01, D01, P01, S01, etc.). PREGUNTA al cliente cuál usar — no adivines.' },
+            forma_pago:        { type: 'string', description: 'Forma de pago SAT (01, 02, 03, 04, 28, 99). PREGUNTA cómo pagó.' },
+            metodo_pago:       { type: 'string', enum: ['PUE', 'PPD'], description: 'PUE contado, PPD crédito/diferido. PREGUNTA cuál aplica.' },
+            condiciones_pago:  { type: 'string' },
+            items: {
+              type: 'array',
+              description: 'Conceptos a facturar. precio_unitario en MXN SIN IVA.',
+              items: {
+                type: 'object',
+                properties: {
+                  descripcion:     { type: 'string' },
+                  cantidad:        { type: 'number' },
+                  precio_unitario: { type: 'number' },
+                  unidad:          { type: 'string' },
+                },
+                required: ['descripcion', 'cantidad', 'precio_unitario'],
+              },
+            },
+            incluir_iva: { type: 'boolean', description: 'Incluir IVA 16%. Default true.' },
+            notes:       { type: 'string', description: 'Notas internas para el equipo de facturación.' },
+          },
+          required: ['cliente_nombre', 'cliente_rfc', 'cliente_email', 'uso_cfdi', 'forma_pago', 'metodo_pago', 'items'],
+        },
+      });
+      tools.push({
+        name: 'consultar_factura',
+        description: 'Consulta estado de una solicitud de factura CFDI. Úsala cuando un cliente pregunte por correo "¿ya me emitieron mi factura?" o para verificar si una solicitud está pendiente / emitida.',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            cliente_rfc:    { type: 'string', description: 'RFC exacto del cliente (recomendado).' },
+            cliente_nombre: { type: 'string', description: 'Nombre parcial del cliente si no tienes RFC.' },
+            request_id:     { type: 'string', description: 'ID exacto de la solicitud si lo tienes.' },
+          },
+        },
+      });
+    }
+
     // verificar_gasto_recurrente — disponible para cualquier meerkat que procese
     // facturas de proveedor (Nox por qb_consultar_facturas, y todos los agentes
     // que analicen invoice items en bandeja). Empleado la invoca al recibir
@@ -1013,6 +1091,24 @@ CATEGORÍAS:
           data:                 { type: 'object', additionalProperties: true, description: 'Objeto {columna: valor} con encabezados del Sheet.' },
         },
         required: ['purpose', 'data'],
+      },
+    });
+    // sheets_actualizar_fila: correo "actualiza estado del cliente X a cerrado"
+    // hoy caía en sheets_agregar_fila (duplicando) o no se ejecutaba. Voice y
+    // chat ya lo tenían. Ver Scope B Agent 1 gap #9.
+    tools.push({
+      name: 'sheets_actualizar_fila',
+      description: 'Actualiza una fila EXISTENTE en el Google Sheet configurado, buscando por una columna y valor exacto. Úsala cuando el correo pida modificar un registro ya guardado (ej. "cambia el estado del cliente X a cerrado", "actualiza el teléfono del lead Y"). NO uses sheets_agregar_fila para modificar — duplica el registro.',
+      input_schema: {
+        type: 'object' as const,
+        properties: {
+          purpose:              { type: 'string', enum: sheetsPurposeEnum },
+          custom_purpose_label: { type: 'string' },
+          match_by:             { type: 'string', description: 'Nombre de la columna por la que buscar el registro (ej. "email", "telefono", "id").' },
+          match_value:          { type: 'string', description: 'Valor a encontrar en esa columna.' },
+          data:                 { type: 'object', additionalProperties: true, description: 'Objeto {columna: nuevo_valor} con los campos a actualizar.' },
+        },
+        required: ['purpose', 'match_by', 'match_value', 'data'],
       },
     });
     tools.push({
