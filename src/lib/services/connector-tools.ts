@@ -95,27 +95,26 @@ function detectInvalidMeetReference(body: string): { invalid: boolean; reason?: 
   const mentionsMeet = /\b(google\s*meet|meet\.google\.com)\b/i.test(body);
   if (!mentionsMeet) return { invalid: false };
   // URL válida de Meet: meet.google.com/aaa-aaaa-aaa (código real).
-  // Base sola (meet.google.com/ o meet.google.com) es placeholder, no vale.
   const validMeetRe = /https?:\/\/meet\.google\.com\/[a-z0-9]{3,5}-[a-z0-9]{3,5}-[a-z0-9]{3,5}/i;
   if (validMeetRe.test(body)) return { invalid: false };
-  // Menciona Meet pero no tiene URL válida.
-  const promiseLater = /(te enviar[eé]|llegar[aá]|por separado|invitaci[oó]n del calendario|se incluir[aá]|en tu invitaci[oó]n)/i.test(body);
-  if (promiseLater) {
-    return {
-      invalid: true,
-      reason: 'El body promete el link de Meet por separado o en la invitación del calendario. INCLUYE el meet_link real (formato meet.google.com/xxx-yyyy-zzz) que devolvió create_calendar_event literal en el body. Ejemplo: "Link de Google Meet: https://meet.google.com/abc-defg-hij".',
-    };
-  }
+  // Aceptamos también el phrasing alternativo: "abre la invitación de Google
+  // Calendar y usa el botón Unirse con Meet". En cuentas @gmail.com personales
+  // el link crudo del Meet muestra "verifica el código" para invitados externos
+  // hasta que el host materializa la sala desde Calendar. La ruta segura para
+  // el invitado es abrir el email de invitación que envía Google Calendar (con
+  // sendUpdates=all) y hacer click en el botón "Unirse con Google Meet" ahí.
+  const validAltPhrasing = /(invitaci[oó]n (?:de|del) (?:google )?calendar|bot[oó]n .{0,20}unirse|abre .{0,50}calendar|(revisa|abre) tu (invitaci[oó]n|calendario))/i.test(body);
+  if (validAltPhrasing) return { invalid: false };
   const hasBaseUrl = /meet\.google\.com\/?(?![a-z0-9])/i.test(body);
   if (hasBaseUrl) {
     return {
       invalid: true,
-      reason: 'El body incluye "meet.google.com" pero sin código de reunión (xxx-yyyy-zzz). Usa el meet_link COMPLETO que devolvió create_calendar_event (ej: https://meet.google.com/abc-defg-hij), no la URL base sola.',
+      reason: 'El body incluye "meet.google.com" pero sin código de reunión. Dos opciones válidas: (A) pega el meet_link COMPLETO que devolvió create_calendar_event, ej: "Link: https://meet.google.com/abc-defg-hij"; o (B) usa la ruta segura para invitados: "Recibirás una invitación de Google Calendar por correo — ábrela y usa el botón Unirse con Google Meet". No dejes la URL base sola.',
     };
   }
   return {
     invalid: true,
-    reason: 'El body menciona Google Meet pero no incluye la URL completa (formato meet.google.com/xxx-yyyy-zzz). Si create_calendar_event devolvió meet_link, copia esa URL literal.',
+    reason: 'El body menciona Google Meet pero no incluye ni la URL completa ni la referencia a la invitación de Calendar. Dos opciones válidas: (A) pega el meet_link literal que devolvió create_calendar_event; o (B) escribe: "Recibirás una invitación de Google Calendar — ábrela y usa el botón Unirse con Google Meet ahí".',
   };
 }
 
@@ -410,8 +409,16 @@ export async function executeCreateCalendarEvent(
       error: `create_calendar_event_meet_failed: El evento "${event.title}" se creó en ${provider} para el ${start}, PERO Google no pudo generar el link de Meet (status pending/failure tras reintentos). NO envíes correos prometiendo Meet. Opciones: (1) informa al usuario que agende el Meet manualmente desde el calendario, (2) elimina el evento con delete_calendar_event event_id="${event.id}" y reintenta, (3) crea el evento sin generate_meet_link y pide a un humano crear la sala.`,
     };
   }
-  const meetLine = event.meet_link ? ` Link Meet: ${event.meet_link}` : '';
-  return { ok: true, event, message: `Evento "${event.title}" creado en ${provider} para el ${start}.${meetLine}` };
+  // Cuando hay meet_link Y attendees, Google envió email de invitación al
+  // attendee (sendUpdates=all). En cuentas @gmail.com personales el link
+  // crudo del Meet puede mostrar "verifica el código" si el invitado abre
+  // antes que el host materialice la sala; el botón "Unirse con Meet" en el
+  // email de Calendar SÍ funciona. Guiamos al meerkat a la ruta segura:
+  // incluir AMBOS (link crudo por si tiene Workspace + phrasing alterno).
+  const meetGuidance = event.meet_link
+    ? ` Link Meet: ${event.meet_link} — IMPORTANTE al redactar correos: incluye este link Y agrega también "Recibirás una invitación de Google Calendar por correo, ábrela y usa el botón 'Unirse con Google Meet' si el link no abre directo". Google ya envió el invite al attendee automáticamente.`
+    : '';
+  return { ok: true, event, message: `Evento "${event.title}" creado en ${provider} para el ${start}.${meetGuidance}` };
 }
 
 export async function executeDeleteCalendarEvent(

@@ -521,8 +521,18 @@ class GoogleCalendar implements CalendarConnector {
         },
       };
     }
-    const url = wantsMeet
-      ? `${GCAL}/calendars/primary/events?conferenceDataVersion=1`
+    // sendUpdates=all → Google envía email de invitación de Calendar a los
+    // attendees. Ese email trae el botón "Unirse con Google Meet" que SÍ
+    // materializa la sala aun en cuentas @gmail.com personales (donde el
+    // link crudo del Meet muestra "verifica el código" si el invitado abre
+    // antes que el host). Sin esto el attendee no recibe el invite y la única
+    // ruta al Meet es el link crudo problemático.
+    const params = new URLSearchParams();
+    if (wantsMeet) params.set('conferenceDataVersion', '1');
+    if (input.attendees?.length) params.set('sendUpdates', 'all');
+    const qs = params.toString();
+    const url = qs
+      ? `${GCAL}/calendars/primary/events?${qs}`
       : `${GCAL}/calendars/primary/events`;
     const res = await fetch(url, {
       method:  'POST',
