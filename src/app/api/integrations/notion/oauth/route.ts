@@ -14,19 +14,16 @@ export async function GET(req: NextRequest) {
   const redirectUri = process.env.NOTION_REDIRECT_URI!;
 
   // A-D3: nonce + cookie
-  const redirect       = NextResponse.redirect('');
-  const stateWithNonce = issueOAuthState(redirect, 'notion', token);
+  const oauth = issueOAuthState('notion', token);
 
   const url = new URL('https://api.notion.com/v1/oauth/authorize');
   url.searchParams.set('client_id',     clientId);
   url.searchParams.set('response_type', 'code');
   url.searchParams.set('owner',         'user');
   url.searchParams.set('redirect_uri',  redirectUri);
-  url.searchParams.set('state',         stateWithNonce);
+  url.searchParams.set('state',         oauth.state);
 
   const final = NextResponse.redirect(url.toString());
-  for (const c of redirect.cookies.getAll()) {
-    final.cookies.set(c.name, c.value, { path: '/', maxAge: 15 * 60, httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' });
-  }
+  final.cookies.set(oauth.cookieName, oauth.cookieValue, oauth.cookieOptions);
   return final;
 }

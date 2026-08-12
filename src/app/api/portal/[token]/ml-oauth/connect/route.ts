@@ -22,11 +22,8 @@ export async function GET(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   // A-D3: nonce + cookie
-  const redirect       = NextResponse.redirect('');
-  const stateWithNonce = issueOAuthState(redirect, 'ml', token);
-  const final          = NextResponse.redirect(mlAuthUrl(stateWithNonce));
-  for (const c of redirect.cookies.getAll()) {
-    final.cookies.set(c.name, c.value, { path: '/', maxAge: 15 * 60, httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' });
-  }
+  const oauth = issueOAuthState('ml', token);
+  const final = NextResponse.redirect(mlAuthUrl(oauth.state));
+  final.cookies.set(oauth.cookieName, oauth.cookieValue, oauth.cookieOptions);
   return final;
 }

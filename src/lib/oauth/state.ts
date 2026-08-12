@@ -31,20 +31,45 @@ import { randomBytes } from 'crypto';
 const COOKIE_NAME = 'oauth_state';
 const TTL_SECONDS = 15 * 60;
 
+/**
+ * Genera nonce + prepara el par para el response. El caller construye su
+ * response final (typically NextResponse.redirect(providerUrl)) y luego llama
+ * res.cookies.set() con el cookie devuelto.
+ *
+ * QA-6 fix: antes tomábamos una response existente para setear la cookie,
+ * lo cual forzaba `NextResponse.redirect('')` con URL vacío como placeholder
+ * — y URL vacío es inválido → 500. Ahora retornamos el pair, el caller aplica.
+ */
+export interface IssuedOAuthState {
+  state:        string;                     // formato "portalToken.nonce" — usar en state URL
+  cookieName:   string;
+  cookieValue:  string;
+  cookieOptions: {
+    httpOnly: true;
+    secure:   boolean;
+    sameSite: 'lax';
+    path:     string;
+    maxAge:   number;
+  };
+}
+
 export function issueOAuthState(
-  res:         NextResponse,
   provider:    string,
   portalToken: string,
-): string {
+): IssuedOAuthState {
   const nonce = randomBytes(24).toString('base64url');
-  res.cookies.set(COOKIE_NAME, `${provider}:${nonce}`, {
-    httpOnly: true,
-    secure:   process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path:     '/',
-    maxAge:   TTL_SECONDS,
-  });
-  return `${portalToken}.${nonce}`;
+  return {
+    state:       `${portalToken}.${nonce}`,
+    cookieName:  COOKIE_NAME,
+    cookieValue: `${provider}:${nonce}`,
+    cookieOptions: {
+      httpOnly: true,
+      secure:   process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path:     '/',
+      maxAge:   TTL_SECONDS,
+    },
+  };
 }
 
 export interface VerifyResult {

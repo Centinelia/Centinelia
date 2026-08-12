@@ -48,20 +48,14 @@ export async function GET(req: NextRequest, { params }: Params) {
   }
 
   // scope=agent → per-agent connect from configurar page; encodes in state.
-  // A-D3: además nonce en cookie httpOnly. Formato final:
-  //   state = `${baseToken}${scopeSuffix}.${nonce}`
-  // El callback extrae con verifyOAuthState (que hace split por '.') → deja
-  // baseToken+__agent como portalToken retornado.
+  // A-D3: nonce en cookie httpOnly. Formato: `${baseToken}${scopeSuffix}.${nonce}`
   const scope     = req.nextUrl.searchParams.get('scope');
   const baseToken = scope === 'agent' ? `${token}__agent` : token;
-  const redirect  = NextResponse.redirect(''); // placeholder para cookie
-  const stateWithNonce = issueOAuthState(redirect, provider, baseToken);
+  const oauth     = issueOAuthState(provider, baseToken);
   const url = provider === 'gmail'
-    ? gmailAuthUrl(stateWithNonce)
-    : outlookAuthUrl(stateWithNonce);
+    ? gmailAuthUrl(oauth.state)
+    : outlookAuthUrl(oauth.state);
   const final = NextResponse.redirect(url);
-  for (const c of redirect.cookies.getAll()) {
-    final.cookies.set(c.name, c.value, { path: '/', maxAge: 15 * 60, httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' });
-  }
+  final.cookies.set(oauth.cookieName, oauth.cookieValue, oauth.cookieOptions);
   return final;
 }

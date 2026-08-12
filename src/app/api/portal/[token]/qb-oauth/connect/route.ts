@@ -28,26 +28,17 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
     const appUrl      = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
     const redirectUri = `${appUrl}/api/qb-oauth/callback`;
 
-    // D-Q4: nonce en state URL + cookie httpOnly. Callback verifica match
-    // para prevenir OAuth CSRF donde attacker fabrica un callback con state
-    // legítimo pero code propio (para sobrescribir credentials del user).
-    const redirect = NextResponse.redirect(''); // placeholder for cookie setter
-    const stateWithNonce = issueOAuthState(redirect, 'qb', token);
+    // D-Q4: nonce en state URL + cookie httpOnly. Callback verifica match.
+    const oauth = issueOAuthState('qb', token);
     const authParams = new URLSearchParams({
       client_id:     clientId,
       redirect_uri:  redirectUri,
       response_type: 'code',
       scope:         'com.intuit.quickbooks.accounting',
-      state:         stateWithNonce,
+      state:         oauth.state,
     });
-
-    const final = NextResponse.redirect(
-      `https://appcenter.intuit.com/connect/oauth2?${authParams.toString()}`
-    );
-    // Copiar cookies del redirect placeholder al final
-    for (const c of redirect.cookies.getAll()) {
-      final.cookies.set(c.name, c.value, { path: '/', maxAge: 15 * 60, httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' });
-    }
+    const final = NextResponse.redirect(`https://appcenter.intuit.com/connect/oauth2?${authParams.toString()}`);
+    final.cookies.set(oauth.cookieName, oauth.cookieValue, oauth.cookieOptions);
     return final;
   } catch (err) {
     console.error('QB connect: unexpected error', err);
