@@ -86,12 +86,16 @@ alter table organizations add column invoicing_test_mode bool default true;
 alter table organizations add column invoicing_allow_agent_cancellation bool default false;
 alter table organizations add column invoicing_limits jsonb default '{
   "monto_max_mxn": 50000,
-  "requires_prior_invoice": true,
   "blocked_uso_cfdi": ["D01","D02","D03","D04","D05","D06","D07","D08","D09","D10"],
-  "block_new_rfc_first_hours": 24,
   "max_stamps_per_day": 50,
   "max_stamps_per_hour_per_rfc": 3
 }';
+  -- monto_max_mxn: default sugerido, editable por el usuario en config.
+  --                Sin monto tope hard del sistema.
+  -- blocked_uso_cfdi: usos personales (D0X) van a humano por default.
+  -- rate limits: anti-abuso (agente enloqueciendo o cliente spammeando).
+  -- NO bloqueamos por "RFC nuevo" ni exigimos factura previa —
+  -- clientes nuevos legítimamente piden factura el mismo día.
 ```
 
 ### 4.2 Extensiones a `factura_requests`
@@ -428,12 +432,11 @@ Sección "Configuración" (visible solo si conectado):
 - CSD: upload .cer + .key + password. Botón "Reemplazar CSD" incrementa version
 - Modo: [Pruebas (sandbox)] / [Producción]
 - Toggle: *¿Permitir que tu empleado solicite cancelación de facturas?* [Sí/No] (default No)
-- Guardrails:
-  - Monto máximo por CFDI auto (default $50,000)
-  - Requerir factura previa al mismo RFC (default Sí)
-  - Usos CFDI bloqueados para auto (default: todos los D0X)
-  - Máx CFDI por hora al mismo RFC (default 3)
-  - Máx CFDI por día (default 50)
+- Guardrails (editables):
+  - Monto máximo por CFDI auto (default sugerido $50,000; sin tope hard del sistema)
+  - Usos CFDI bloqueados para auto (default: todos los D0X deducciones personales)
+  - Máx CFDI por hora al mismo RFC (default 3, anti-abuso)
+  - Máx CFDI por día (default 50, anti-abuso)
 - Botón "Desconectar" (confirm modal, revierte a modo humano)
 
 ### 9.2 `/portal/[token]/oficina/facturas` — rediseño mínimo
@@ -486,31 +489,10 @@ export async function evaluateGuardrails(
   if (limits.blocked_uso_cfdi.includes(req.uso_cfdi))
     reasons.push(`uso CFDI ${req.uso_cfdi} bloqueado para auto`);
 
-  if (limits.requires_prior_invoice) {
-    const { count } = await supabase
-      .from('factura_requests')
-      .select('id', { count: 'exact', head: true })
-      .eq('portal_email', org.portal_email)
-      .eq('cliente_rfc', req.cliente_rfc)
-      .eq('status', 'stamped');
-    if ((count ?? 0) === 0)
-      reasons.push(`RFC ${req.cliente_rfc} sin factura previa`);
-  }
+  // Nota: NO bloqueamos por "RFC nuevo" ni exigimos factura previa —
+  // clientes nuevos legítimamente piden factura el mismo día.
 
-  if (limits.block_new_rfc_first_hours > 0) {
-    const { data: firstSeen } = await supabase
-      .from('factura_requests')
-      .select('created_at')
-      .eq('portal_email', org.portal_email)
-      .eq('cliente_rfc', req.cliente_rfc)
-      .order('created_at', { ascending: true })
-      .limit(1)
-      .maybeSingle();
-    if (firstSeen && Date.now() - Date.parse(firstSeen.created_at) < limits.block_new_rfc_first_hours * 3600 * 1000)
-      reasons.push(`RFC nuevo (< ${limits.block_new_rfc_first_hours}h desde primer contacto)`);
-  }
-
-  // Rate limits
+  // Rate limits (anti-abuso)
   const hourAgo = new Date(Date.now() - 3600 * 1000).toISOString();
   const { count: perHour } = await supabase
     .from('factura_requests')
