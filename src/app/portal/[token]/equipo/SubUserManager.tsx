@@ -490,7 +490,7 @@ export default function SubUserManager({ token, initialUsers, accountGiro, accou
                   Nuevo colaborador
                 </p>
                 <p className="text-[11px]" style={{ color: '#6B6480' }}>
-                  Configura correo, contraseña inicial y las secciones a las que tendrá acceso.
+                  Envía una invitación al correo del colaborador. El sub-usuario recibirá un link donde elige su propia contraseña. Selecciona las secciones a las que tendrá acceso.
                 </p>
               </div>
             </div>
