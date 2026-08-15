@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Calendar, Mail, MessageSquare, ShoppingCart, ChevronDown, Check, Users, DollarSign, Plug, Sparkles } from 'lucide-react';
+import Link from 'next/link';
+import { Calendar, Mail, MessageSquare, ShoppingCart, ChevronDown, Check, Users, DollarSign, Plug, Sparkles, FileText, ChevronRight } from 'lucide-react';
 import type { Plan } from '@/types/agent';
 
 import IntegrationsSection  from './IntegrationsSection';
@@ -20,6 +21,7 @@ interface NotionStatus { connected: boolean }
 interface EmailStatus  { provider: 'gmail' | 'outlook'; email?: string }
 interface MLStatus     { connected: boolean; nickname: string | null }
 interface QBStatus     { connected: boolean; company_name: string | null }
+interface SFStatus     { connected: boolean }
 interface HubStatus    {
   cal:        CalStatus | null;
   notion:     NotionStatus | null;
@@ -27,6 +29,7 @@ interface HubStatus    {
   teamsEmail: string | null;
   ml:         MLStatus | null;
   qb:         QBStatus | null;
+  sf:         SFStatus | null;
 }
 
 /* ── provider icons (for workspace callout) ─────────────────────────────── */
@@ -156,6 +159,14 @@ const RowIcons = {
       <rect width="48" height="48" rx="8" fill="#2CA01C" />
       <circle cx="24" cy="24" r="13" fill="#fff" />
       <path d="M18 18v12M18 24h8a4 4 0 010 8h-8" stroke="#2CA01C" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </svg>
+  ),
+  solucion_factible: (
+    <svg width="18" height="18" viewBox="0 0 48 48" fill="none">
+      <rect width="48" height="48" rx="8" fill="#1A56DB" />
+      <rect x="12" y="10" width="24" height="28" rx="3" fill="#fff" fillOpacity=".2" />
+      <rect x="14" y="12" width="20" height="24" rx="2" fill="#fff" />
+      <path d="M18 19h12M18 24h12M18 29h7" stroke="#1A56DB" strokeWidth="2" strokeLinecap="round" />
     </svg>
   ),
 };
@@ -441,7 +452,7 @@ interface Props {
 
 export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }: Props) {
   const [status, setStatus] = useState<HubStatus>({
-    cal: null, notion: null, emails: [], teamsEmail: null, ml: null, qb: null,
+    cal: null, notion: null, emails: [], teamsEmail: null, ml: null, qb: null, sf: null,
   });
   const [statusLoaded, setStatusLoaded] = useState(false);
 
@@ -455,7 +466,8 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
       hasOpsAgent
         ? fetch(`/api/portal/${token}/teams`).then(r => r.json()).catch(() => null)
         : Promise.resolve(null),
-    ]).then(([calData, notionData, emailData, mlData, qbData, teamsData]) => {
+      fetch(`/api/portal/${token}/invoicing/config`).then(r => r.json()).catch(() => null),
+    ]).then(([calData, notionData, emailData, mlData, qbData, teamsData, sfData]) => {
       setStatus({
         cal:        calData    ?? null,
         notion:     notionData ?? null,
@@ -463,6 +475,7 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
         teamsEmail: teamsData?.teams_user_email ?? null,
         ml:         mlData    ?? null,
         qb:         qbData    ?? null,
+        sf:         sfData    ?? null,
       });
       setStatusLoaded(true);
     });
@@ -506,8 +519,9 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
     { id: 'calendario',  label: 'Calendario',  connected: !!calViaEmail || !!status.cal?.calendar_type },
     { id: 'crm',      label: 'Conocimiento del cliente', connected: !!status.notion?.connected },
     ...(hasOpsAgent ? [{ id: 'mensajeria', label: 'Mensajería', connected: !!status.teamsEmail }] : []),
-    { id: 'comercio',  label: 'Comercio',   connected: !!status.ml?.connected },
-    { id: 'finanzas',  label: 'Finanzas',   connected: !!status.qb?.connected },
+    { id: 'comercio',    label: 'Comercio',    connected: !!status.ml?.connected },
+    { id: 'finanzas',    label: 'Finanzas',    connected: !!status.qb?.connected },
+    { id: 'facturacion', label: 'Facturación', connected: !!status.sf?.connected },
   ];
 
   /* ── build capability rows ──────────────────────────────────────────── */
@@ -519,7 +533,8 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
     label: string;
     subtitle?: string;
     connected: boolean;
-    children: React.ReactNode;
+    href?: string;
+    children?: React.ReactNode;
   };
 
   const rows: CapRow[] = [
@@ -624,6 +639,18 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
       connected: !!status.qb?.connected,
       children: <QuickBooksSection token={token} />,
     },
+    {
+      key: 'solucion_factible',
+      icon: <FileText size={16} style={{ color: '#1A56DB' }} />,
+      connectedIcon: RowIcons.solucion_factible,
+      label: 'Facturación CFDI',
+      subtitle: status.sf?.connected
+        ? 'Solucion Factible · Timbrado CFDI 4.0'
+        : 'Solucion Factible · Timbrado CFDI 4.0',
+      connected: !!status.sf?.connected,
+      href: `/portal/${token}/oficina/integraciones/solucion-factible`,
+      children: undefined,
+    },
   ];
 
   return (
@@ -663,19 +690,52 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
         </div>
 
         <div className="flex flex-col" style={{ borderTop: '1px solid #F0EDF9' }}>
-          {rows.map((r, idx) => (
-            <CapabilityRow
-              key={r.key}
-              icon={r.icon}
-              connectedIcon={r.connectedIcon}
-              label={r.label}
-              subtitle={r.subtitle}
-              connected={r.connected}
-              isLast={idx === rows.length - 1}
-            >
-              {r.children}
-            </CapabilityRow>
-          ))}
+          {rows.map((r, idx) => {
+            const isLast = idx === rows.length - 1;
+            if (r.href) {
+              const displayIcon = r.connected && r.connectedIcon ? r.connectedIcon : r.icon;
+              return (
+                <Link
+                  key={r.key}
+                  href={r.href}
+                  className="flex items-center gap-3 px-5 py-4 transition-colors no-underline"
+                  style={{ borderBottom: isLast ? 'none' : '1px solid #F0EDF9', textDecoration: 'none' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = '#FAFAFB'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'transparent'; }}
+                >
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
+                    {displayIcon}
+                  </div>
+                  <div className="flex flex-col flex-1 min-w-0">
+                    <span className="text-[13px] font-semibold" style={{ color: '#1A0A3B', lineHeight: 1.3 }}>
+                      {r.label}
+                    </span>
+                    {r.subtitle && (
+                      <span className="text-[12px] truncate" style={{ color: '#6B6480', marginTop: 1, lineHeight: 1.3 }}>
+                        {r.subtitle}
+                      </span>
+                    )}
+                  </div>
+                  <StatusDot on={r.connected} />
+                  <ChevronRight size={14} style={{ color: '#9B8FB5', flexShrink: 0 }} />
+                </Link>
+              );
+            }
+            return (
+              <CapabilityRow
+                key={r.key}
+                icon={r.icon}
+                connectedIcon={r.connectedIcon}
+                label={r.label}
+                subtitle={r.subtitle}
+                connected={r.connected}
+                isLast={isLast}
+              >
+                {r.children}
+              </CapabilityRow>
+            );
+          })}
         </div>
       </div>
     </div>

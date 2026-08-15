@@ -4,6 +4,24 @@ import { getAgentByToken } from '@/lib/portal/org-token';
 
 export const dynamic = 'force-dynamic';
 
+export async function GET(_req: NextRequest, ctx: { params: Promise<{ token: string }> }) {
+  const { token } = await ctx.params;
+  const agent = await getAgentByToken<{ portal_email: string }>(token, 'portal_email');
+  if (!agent) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+
+  const supabase = createAdminClient();
+  const { data } = await supabase.from('organizations')
+    .select('invoicing_provider, invoicing_rfc_emisor, invoicing_razon_social')
+    .eq('portal_email', agent.portal_email)
+    .single();
+
+  return NextResponse.json({
+    connected:      !!data?.invoicing_provider,
+    rfc_emisor:     data?.invoicing_rfc_emisor ?? null,
+    razon_social:   data?.invoicing_razon_social ?? null,
+  });
+}
+
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ token: string }> }) {
   const { token } = await ctx.params;
   const agent = await getAgentByToken<{ portal_email: string }>(token, 'portal_email');
