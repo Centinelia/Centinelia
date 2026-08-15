@@ -435,7 +435,11 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
     // "actionable": el humano puede aprobar/rechazar/editar el borrador.
     // Incluye info_requested — son drafts donde Nash pidió más info al cliente
     // y el humano debe validar antes de que salga.
-    const isPending   = item.status === 'pending' || item.status === 'info_requested';
+    const isPending       = item.status === 'pending' || item.status === 'info_requested';
+    // info_requested = decisión explícita del empleado de escalar al humano
+    // (no es un "no supe procesar"). Los botones deben aparecer siempre, sin
+    // importar el trustStage ni si auto_mode_decision está lleno.
+    const isInfoRequested = item.status === 'info_requested';
 
     return (
       <div
@@ -545,17 +549,17 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
                     (auto_mode_decision='human'). Si es edge case sin decision, mostramos
                     banner "el empleado no pudo procesar" en vez de botones falsos.
                 Ver [[feedback-empleados-inteligentes]] + audit sesión post-F2. */}
-            {isPending && trustStage === 1 && (
+            {isPending && !isInfoRequested && trustStage === 1 && (
               <div className="mt-2 px-3 py-2.5 rounded-lg text-xs" style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#6B6480' }}>
                 Modo Observador — el empleado solo triage. Tú redactas la respuesta desde tu correo.
               </div>
             )}
-            {isPending && trustStage === 3 && !item.auto_mode_decision && (
+            {isPending && !isInfoRequested && trustStage === 3 && !item.auto_mode_decision && (
               <div className="mt-2 px-3 py-2.5 rounded-lg text-xs" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', color: '#92400E' }}>
                 El empleado no pudo procesar este correo automáticamente. Revísalo y responde desde tu correo, o baja al modo Supervisado si prefieres siempre aprobar borradores.
               </div>
             )}
-            {isPending && (trustStage === 2 || (trustStage === 3 && item.auto_mode_decision === 'human')) && (() => {
+            {isPending && (isInfoRequested || trustStage === 2 || (trustStage === 3 && item.auto_mode_decision === 'human')) && (() => {
               const wasEdited = !!draftEdits[item.id] && draftEdits[item.id].trim() !== (item.ai_draft ?? '').trim();
               return (
                 <div className="flex gap-2 mt-2">
