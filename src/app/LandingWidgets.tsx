@@ -36,9 +36,10 @@ function NoahAvatar({ size }: { size: number }) {
           position:  'absolute',
           left:      '50%',
           top:       '50%',
-          width:     `${size * 3}px`,
+          width:     `${size * 1.4}px`,
+          maxWidth:  'none',
           height:    'auto',
-          transform: 'translate(-52%, -13%)',
+          transform: 'translate(-51%, -18%)',
           display:   'block',
         }}
       />
