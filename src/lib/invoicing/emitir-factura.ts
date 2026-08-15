@@ -187,18 +187,20 @@ export async function emitirFacturaAuto(
   }).eq('id', requestId);
 
   // Audit log
-  await supabase.from('policy_audit_log').insert({
-    agent_id: req.agent_id,
-    capability: 'cfdi_timbrado',
-    action: 'stamped',
-    status: 'completed',
-    details: {
-      uuid: result.uuid,
-      total: req.total,
-      cliente_rfc: req.cliente_rfc,
-      test_mode: org.invoicing_test_mode,
-    },
-  });
+  if (req.agent_id) {
+    await supabase.from('policy_audit_log').insert({
+      agent_id: req.agent_id,
+      capability: 'cfdi_timbrado',
+      action: 'stamped',
+      status: 'completed',
+      details: {
+        uuid: result.uuid,
+        total: req.total,
+        cliente_rfc: req.cliente_rfc,
+        test_mode: org.invoicing_test_mode,
+      },
+    });
+  }
 
   // Email al cliente (best effort)
   // sendEmail accepts content as base64 string — convert Buffers accordingly
