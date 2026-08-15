@@ -8,6 +8,7 @@
 import type { createAdminClient } from '@/lib/supabase/admin';
 import { isValidRfc, normalizeRfc, USO_CFDI, FORMA_PAGO, METODO_PAGO, usoCfdiLabel, formaPagoLabel, metodoPagoLabel } from './cfdi-catalog';
 import { sendEmail } from '@/lib/email/send';
+import { resolveInvoicingPath, emitirFacturaAuto } from '@/lib/invoicing/emitir-factura';
 
 type SupabaseClient = ReturnType<typeof createAdminClient>;
 
@@ -48,13 +49,17 @@ export interface SolicitarFacturaCtx {
 }
 
 export interface SolicitarFacturaResult {
-  ok:      boolean;
+  ok:           boolean;
   request_id?:  string;
   target_email?: string;
   subtotal?:    number;
   iva?:         number;
   total?:       number;
   error?:       string;
+  path?:        'human' | 'auto';
+  outcome?:     'stamped' | 'failed' | 'retrying';
+  uuid?:        string;
+  folio_corto?: string;
 }
 
 export async function solicitarFactura(
@@ -123,7 +128,28 @@ export async function solicitarFactura(
     return { ok: false, error: 'No pude registrar la solicitud. Intenta de nuevo.' };
   }
 
-  // Notification email (fire and forget, don't block user)
+  // Bifurcación: delegar a emitirFacturaAuto si el org tiene PAC configurado
+  const invoicingPath = await resolveInvoicingPath(ctx.portalEmail, ctx.supabase);
+
+  if (invoicingPath === 'auto') {
+    const auto = await emitirFacturaAuto(row.id, ctx.supabase);
+    if (auto.outcome === 'stamped') {
+      return {
+        ok: true, request_id: row.id, target_email: ctx.invoicingEmail,
+        subtotal, iva, total, path: 'auto', outcome: 'stamped',
+        uuid: auto.uuid, folio_corto: auto.folioCorto,
+      };
+    }
+    if (auto.outcome === 'retrying') {
+      return {
+        ok: true, request_id: row.id, target_email: ctx.invoicingEmail,
+        subtotal, iva, total, path: 'auto', outcome: 'retrying',
+      };
+    }
+    // 'failed' → cae al flujo humano (email) abajo con guardrail_reason ya guardado
+  }
+
+  // Flujo humano (existente): manda email al responsable de facturación
   const targetEmail = ctx.invoicingEmail ?? ctx.portalEmail;
   if (targetEmail) {
     // Resolve portal_token for the deep link. Any agent under the same
@@ -149,7 +175,7 @@ export async function solicitarFactura(
     }).catch(err => console.error('[solicitar_factura] email dispatch failed:', err));
   }
 
-  return { ok: true, request_id: row.id, target_email: targetEmail, subtotal, iva, total };
+  return { ok: true, request_id: row.id, target_email: targetEmail, subtotal, iva, total, path: 'human' };
 }
 
 function round2(n: number): number { return Math.round(n * 100) / 100; }
