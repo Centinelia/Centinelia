@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import {
   FileText, Clock, CheckCircle, XCircle, Copy, Check, Receipt,
-  Download, RefreshCw, AlertTriangle, Stamp, Ban, Loader2, Archive,
+  Download, RefreshCw, AlertTriangle, Stamp, Ban, Loader2, Archive, Search, X,
 } from 'lucide-react';
 import { EmptyState as PortalEmptyState } from '@/components/portal-ui';
 import ReceivedInvoicesSection from './ReceivedInvoicesSection';
@@ -208,6 +208,10 @@ export default function FacturasPage() {
   const [pacConnected, setPacConnected] = useState(false);
   // Cancellation modal (for stamped/issued invoices)
   const [cancelTarget, setCancelTarget] = useState<Detail | null>(null);
+  // Search + date range
+  const [search,   setSearch]   = useState('');
+  const [dateFrom, setDateFrom] = useState('');   // YYYY-MM-DD
+  const [dateTo,   setDateTo]   = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -320,14 +324,53 @@ export default function FacturasPage() {
     else alert('Error al rechazar la cancelacion');
   }
 
-  const filtered = filter === 'all' ? rows : rows.filter(r => r.status === filter);
+  // Aplicar filtros: status pill + search text + date range
+  const searchLower = search.trim().toLowerCase();
+  const fromMs = dateFrom ? Date.parse(`${dateFrom}T00:00:00`) : null;
+  const toMs   = dateTo   ? Date.parse(`${dateTo}T23:59:59`)   : null;
 
-  // Count per status for pill badges
+  const filtered = rows.filter(r => {
+    if (filter !== 'all' && r.status !== filter) return false;
+    if (fromMs !== null || toMs !== null) {
+      const ts = Date.parse(r.requested_at);
+      if (fromMs !== null && ts < fromMs) return false;
+      if (toMs   !== null && ts > toMs)   return false;
+    }
+    if (searchLower) {
+      const haystack = [
+        r.cliente_nombre, r.cliente_rfc, r.cliente_email,
+        r.issued_uuid, r.issued_folio, r.notes,
+      ].filter(Boolean).join(' ').toLowerCase();
+      if (!haystack.includes(searchLower)) return false;
+    }
+    return true;
+  });
+
+  // Count per status for pill badges (respetan search + date range para que
+  // el pill "Pendientes: 3" cambie cuando el owner filtra, no confuso)
+  const rowsScopedForCount = rows.filter(r => {
+    if (fromMs !== null || toMs !== null) {
+      const ts = Date.parse(r.requested_at);
+      if (fromMs !== null && ts < fromMs) return false;
+      if (toMs   !== null && ts > toMs)   return false;
+    }
+    if (searchLower) {
+      const haystack = [
+        r.cliente_nombre, r.cliente_rfc, r.cliente_email,
+        r.issued_uuid, r.issued_folio, r.notes,
+      ].filter(Boolean).join(' ').toLowerCase();
+      if (!haystack.includes(searchLower)) return false;
+    }
+    return true;
+  });
   const countOf = (id: FilterId) =>
-    id === 'all' ? rows.length : rows.filter(r => r.status === id).length;
+    id === 'all' ? rowsScopedForCount.length : rowsScopedForCount.filter(r => r.status === id).length;
 
-  // Alert count: pending + stamp_failed that need attention
+  // Alert count: pending + stamp_failed that need attention (sobre TODO, no filtrado)
   const alertCount = rows.filter(r => r.status === 'pending' || r.status === 'stamp_failed').length;
+
+  const hasActiveFilters = !!search || !!dateFrom || !!dateTo || filter !== 'all';
+  const clearFilters = () => { setSearch(''); setDateFrom(''); setDateTo(''); setFilter('all'); };
 
   return (
     <div id="of-facturas" className="flex flex-col gap-5 max-w-6xl mx-auto w-full p-4 md:p-6">
@@ -357,6 +400,58 @@ export default function FacturasPage() {
 
       {/* Facturas recibidas de proveedores */}
       <ReceivedInvoicesSection token={token} />
+
+      {/* Search + date range */}
+      {!loading && rows.length > 0 && (
+        <div className="flex flex-col gap-2 md:flex-row md:items-center">
+          <div className="relative flex-1 min-w-0">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+              style={{ color: '#9B8FB5' }} />
+            <input
+              type="search"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Cliente, RFC, correo, UUID, folio, notas..."
+              className="w-full rounded-lg pl-9 pr-3 py-2 text-[13px]"
+              style={{ background: '#fff', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-1.5 text-[12px]" style={{ color: '#6B6480' }}>
+              Desde
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={e => setDateFrom(e.target.value)}
+                max={dateTo || undefined}
+                className="rounded-lg px-2 py-1.5 text-[12px]"
+                style={{ background: '#fff', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }}
+              />
+            </label>
+            <label className="flex items-center gap-1.5 text-[12px]" style={{ color: '#6B6480' }}>
+              Hasta
+              <input
+                type="date"
+                value={dateTo}
+                onChange={e => setDateTo(e.target.value)}
+                min={dateFrom || undefined}
+                className="rounded-lg px-2 py-1.5 text-[12px]"
+                style={{ background: '#fff', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }}
+              />
+            </label>
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className="flex items-center gap-1 text-[12px] font-medium px-2 py-1.5 rounded-lg transition-colors hover:opacity-70"
+                style={{ color: '#6B6480' }}
+                title="Limpiar filtros"
+              >
+                <X size={12} /> Limpiar
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Filter pills */}
       {!loading && (
