@@ -47,13 +47,15 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
   // Stamp bypassing guardrails (human-authorized override)
   const result = await emitirFacturaAuto(id, supabase, { bypassGuardrails: true });
 
-  // Best-effort audit log
-  Promise.resolve(supabase.from('admin_access_log').insert({
-    actor_email: auth.portalEmail,
-    action: 'portal_stamp_manual',
-    target_id: id,
-    details: { outcome: result.outcome },
-  })).catch(() => {});
+  // Audit log — best-effort
+  void supabase.from('admin_access_log').insert({
+    admin_email:           auth.portalEmail,
+    endpoint:              '/api/portal/[token]/factura-requests/[id]/stamp',
+    method:                'POST',
+    affected_portal_email: agent.portal_email ?? auth.portalEmail,
+    query_type:            'modify',
+    filters:               { factura_request_id: id, outcome: result.outcome },
+  });
 
   return NextResponse.json({ ok: true, ...result });
 }
