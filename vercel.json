@@ -199,6 +199,10 @@
     {
       "path": "/api/cron/retry-failed-stamps",
       "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/csd-expiry-notify",
+      "schedule": "0 9 * * *"
     }
   ]
 }
