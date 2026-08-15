@@ -2,11 +2,39 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { marked } from 'marked';
+import { ArrowUp } from 'lucide-react';
 import { labelKind } from '@/lib/admin/consumo-labels';
 import type { LedgerEntry } from './page';
 
-marked.setOptions({ breaks: true, gfm: true });
+// Convierte markdown a texto corrido: quita **, __, ##, links, listas, code fences,
+// y colapsa saltos de línea a espacios. El detalle debe leerse como prosa.
+function stripMarkdown(md: string): string {
+  return md
+    // links [texto](url) → texto
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
+    // imágenes ![alt](src) → alt
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+    // code fences ```lang ... ```
+    .replace(/```[a-z]*\n?/gi, '').replace(/```/g, '')
+    // inline code `x`
+    .replace(/`([^`]+)`/g, '$1')
+    // headings ###, ##, #
+    .replace(/^\s{0,3}#{1,6}\s+/gm, '')
+    // bullets - * +
+    .replace(/^\s*[-*+]\s+/gm, '')
+    // numeric lists "1. "
+    .replace(/^\s*\d+\.\s+/gm, '')
+    // bold/italic **x** __x__ *x* _x_
+    .replace(/(\*\*|__)(.*?)\1/g, '$2')
+    .replace(/(\*|_)(.*?)\1/g, '$2')
+    // blockquotes "> "
+    .replace(/^\s{0,3}>\s?/gm, '')
+    // horizontal rules
+    .replace(/^\s*[-*_]{3,}\s*$/gm, '')
+    // colapsar saltos: cualquier secuencia de whitespace → 1 espacio
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
 interface Props {
   entries:      LedgerEntry[];
@@ -15,6 +43,8 @@ interface Props {
   kindFilter:   string;
   portalEmail:  string;
   csvHref:      string;
+  orgName:      string;
+  billingLabel: string;
 }
 
 function fmtDateTime(iso: string) {
@@ -27,15 +57,26 @@ function fmtDateTime(iso: string) {
 function DescriptionCell({ text }: { text: string | null }) {
   const [open, setOpen] = useState(false);
   if (!text) return <span className="opacity-40">—</span>;
-  const isLong = text.length > 180;
-  const shown = open || !isLong ? text : `${text.slice(0, 180).trimEnd()}…`;
-  const html = marked.parse(shown, { async: false }) as string;
+  const clean = stripMarkdown(text);
+  // Heurística de truncado histórico: texto de exactamente 200 chars y sin
+  // puntuación final (los backfills de agent_task_historical se cortaron ahí).
+  const looksTruncated = text.length === 200 && !/[.!?…]\s*$/.test(text.trim());
+  const isLong = clean.length > 180;
+  const shown = open || !isLong ? clean : `${clean.slice(0, 180).trimEnd()}…`;
   return (
     <div className="min-w-0">
-      <div
-        className="admin-md text-[12px] leading-snug"
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
+      <div className="text-[12px] leading-snug whitespace-normal">
+        {shown}
+        {looksTruncated && (
+          <span
+            className="ml-1 text-[10px] px-1.5 py-0.5 rounded"
+            style={{ background: '#FEF3C7', color: '#92400E' }}
+            title="El texto original quedó cortado en el histórico (backfill legacy limitado a 200 caracteres)."
+          >
+            histórico truncado
+          </span>
+        )}
+      </div>
       {isLong && (
         <button
           type="button"
@@ -50,7 +91,7 @@ function DescriptionCell({ text }: { text: string | null }) {
   );
 }
 
-export default function ConsumoClient({ entries, fromDate, toDate, kindFilter, csvHref }: Props) {
+export default function ConsumoClient({ entries, fromDate, toDate, kindFilter, portalEmail, csvHref, orgName, billingLabel }: Props) {
   const router = useRouter();
   const [from, setFrom] = useState(fromDate);
   const [to,   setTo]   = useState(toDate);
@@ -113,22 +154,7 @@ export default function ConsumoClient({ entries, fromDate, toDate, kindFilter, c
   }, [entries]);
 
   return (
-    <>
-      {/* Estilos de markdown para descripciones (scoped a .admin-md) */}
-      <style jsx global>{`
-        .admin-md p        { margin: 0 0 4px 0; }
-        .admin-md p:last-child { margin-bottom: 0; }
-        .admin-md strong   { font-weight: 600; color: #1A0A3B; }
-        .admin-md em       { font-style: italic; }
-        .admin-md ul, .admin-md ol { margin: 4px 0 4px 18px; padding: 0; }
-        .admin-md li       { margin: 2px 0; }
-        .admin-md code     { background: #F0EDF9; padding: 1px 4px; border-radius: 3px; font-size: 11px; font-family: ui-monospace, monospace; }
-        .admin-md pre      { background: #F0EDF9; padding: 6px 8px; border-radius: 4px; overflow-x: auto; margin: 4px 0; }
-        .admin-md h1, .admin-md h2, .admin-md h3 { font-size: 12px; font-weight: 700; margin: 6px 0 2px 0; color: #1A0A3B; }
-        .admin-md a        { color: #6C3BFF; text-decoration: underline; }
-      `}</style>
-
-      <div className="flex gap-6 items-start">
+    <div className="flex gap-6 items-start">
         {/* MAIN — tabla scrolleable */}
         <div className="flex-1 min-w-0">
           <div className="rounded-lg overflow-hidden" style={{ background: '#fff', border: '1px solid #E8E3F5' }}>
@@ -180,14 +206,37 @@ export default function ConsumoClient({ entries, fromDate, toDate, kindFilter, c
           </p>
         </div>
 
-        {/* SIDEBAR — controles + totales, sticky durante el scroll */}
-        <aside className="w-[300px] flex-shrink-0 sticky top-6 flex flex-col gap-3">
-          {/* Totales */}
-          <SidebarSummaryCard title="Minutos" total={summary.minutesTotal} byKind={summary.minutesByKind} unit="min" />
-          <SidebarSummaryCard title="Tareas"  total={summary.opsTotal}     byKind={summary.opsByKind}     unit="tareas" />
+        {/* SIDEBAR — sticky. 3 zonas:
+              - Header fijo (Cliente)
+              - Middle scrollable (Totales + Filtros)
+              - Footer fijo (Export + Volver arriba)
+            Tailwind purga algunas clases utility — usamos inline style para asegurar que apliquen. */}
+        <aside
+          className="flex flex-col gap-3"
+          style={{
+            position:   'sticky',
+            top:        '1.5rem',
+            width:      300,
+            flexShrink: 0,
+            maxHeight:  'calc(100dvh - 5rem)',
+          }}
+        >
+          {/* Cliente actual — header fijo */}
+          <div className="rounded-lg p-4 flex-shrink-0" style={{ background: '#1A0A3B', color: '#fff' }}>
+            <div className="text-[10px] font-bold uppercase tracking-wider opacity-60">Cliente</div>
+            <div className="text-base font-bold mt-1 leading-tight truncate" title={orgName}>{orgName}</div>
+            <div className="text-[11px] opacity-70 mt-0.5 truncate font-mono" title={portalEmail}>{portalEmail}</div>
+            <div className="text-[11px] opacity-70 mt-1">Facturación: {billingLabel}</div>
+          </div>
 
-          {/* Filtros */}
-          <div className="rounded-lg p-4 flex flex-col gap-3" style={{ background: '#fff', border: '1px solid #E8E3F5' }}>
+          {/* Zona scrollable — totales + filtros */}
+          <div className="flex flex-col gap-3 min-h-0" style={{ overflowY: 'auto', paddingRight: 4 }}>
+            {/* Totales */}
+            <SidebarSummaryCard title="Minutos" total={summary.minutesTotal} byKind={summary.minutesByKind} unit="min" />
+            <SidebarSummaryCard title="Tareas"  total={summary.opsTotal}     byKind={summary.opsByKind}     unit="tareas" />
+
+            {/* Filtros */}
+            <div className="rounded-lg p-4 flex flex-col gap-3" style={{ background: '#fff', border: '1px solid #E8E3F5' }}>
             <div className="text-[10px] font-bold uppercase tracking-wider opacity-60">Filtros</div>
 
             <div>
@@ -228,17 +277,32 @@ export default function ConsumoClient({ entries, fromDate, toDate, kindFilter, c
                 Limpiar
               </button>
             </div>
+            </div>
           </div>
 
-          {/* Export */}
-          <a href={csvHref} download
-            className="text-[12px] px-4 py-2 rounded-md font-semibold text-center"
-            style={{ background: '#1A0A3B', color: '#fff' }}>
-            Exportar CSV
-          </a>
+          {/* Footer fijo — Export + Volver arriba siempre visibles */}
+          <div className="flex flex-col gap-2 flex-shrink-0">
+            <a href={csvHref} download
+              className="text-[12px] px-4 py-2 rounded-md font-semibold text-center"
+              style={{ background: '#1A0A3B', color: '#fff' }}>
+              Exportar CSV
+            </a>
+            <button
+              type="button"
+              onClick={(ev) => {
+                const scroller = (ev.currentTarget as HTMLElement).closest('main') as HTMLElement | null;
+                if (scroller) scroller.scrollTo({ top: 0, behavior: 'smooth' });
+                else window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="inline-flex items-center justify-center gap-1.5 text-[11px] px-3 py-2 rounded-md font-semibold"
+              style={{ background: '#fff', color: '#1A0A3B', border: '1px solid #E8E3F5' }}
+            >
+              <ArrowUp size={13} />
+              Volver arriba
+            </button>
+          </div>
         </aside>
       </div>
-    </>
   );
 }
 

@@ -171,7 +171,7 @@ export async function createAgentTask(opts: {
     portal_email:        portalEmail,
     created_by:          createdBy,
     assigned_to:         assignedTo,
-    title:               title.slice(0, 200),
+    title:               title.slice(0, 2000),
     description,
     status:              initialStatus,
     trigger_type:        triggerType,
@@ -195,7 +195,7 @@ export async function createAgentTask(opts: {
     to_status:    initialStatus,
     actor,
     reason,
-    metadata:     { title: title.slice(0, 200), trigger_type: triggerType, assigned_to: assignedTo },
+    metadata:     { title: title.slice(0, 2000), trigger_type: triggerType, assigned_to: assignedTo },
   });
 
   return { ok: true, taskId };

@@ -160,8 +160,6 @@ export default async function AdminConsumoPage({ params, searchParams }: Params 
     <div className="min-h-screen p-6" style={{ background: '#FAFBFF', color: '#1A0A3B' }}>
       <div className="mb-4">
         <Link href="/admin/consumo" className="text-[12px] opacity-70 hover:opacity-100">← Consumo de todos los clientes</Link>
-        <h1 className="text-2xl font-bold mt-2">{orgName}</h1>
-        <p className="text-[13px] opacity-70">{portalEmail} · Facturación: {labelBilling(billingModel)}</p>
       </div>
       <ConsumoClient
         entries={entries}
@@ -170,6 +168,8 @@ export default async function AdminConsumoPage({ params, searchParams }: Params 
         kindFilter={kindFilter}
         portalEmail={portalEmail}
         csvHref={csvHref}
+        orgName={orgName}
+        billingLabel={labelBilling(billingModel)}
       />
     </div>
   );
