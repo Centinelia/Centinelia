@@ -2,7 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
-import { FileText, Clock, CheckCircle, XCircle, Copy, Check, Receipt } from 'lucide-react';
+import {
+  FileText, Clock, CheckCircle, XCircle, Copy, Check, Receipt,
+  Download, RefreshCw, AlertTriangle, Stamp,
+} from 'lucide-react';
 import { EmptyState as PortalEmptyState } from '@/components/portal-ui';
 import ReceivedInvoicesSection from './ReceivedInvoicesSection';
 
@@ -12,6 +15,17 @@ interface Item {
   precio_unitario: number;
   unidad?:         string;
 }
+
+type FacturaStatus =
+  | 'pending'
+  | 'in_progress'
+  | 'stamping'
+  | 'stamped'
+  | 'stamp_failed'
+  | 'marked_manual'
+  | 'cancellation_requested'
+  | 'issued'
+  | 'cancelled';
 
 interface FacturaRequest {
   id:             string;
@@ -26,13 +40,14 @@ interface FacturaRequest {
   iva:            number;
   total:          number;
   currency:       string;
-  status:         'pending' | 'in_progress' | 'issued' | 'cancelled';
+  status:         FacturaStatus;
   requested_at:   string;
   resolved_at:    string | null;
   resolved_by:    string | null;
   issued_uuid:    string | null;
   issued_folio:   string | null;
   notes:          string | null;
+  guardrail_reason?: string | null;
 }
 
 interface Detail extends FacturaRequest {
@@ -44,13 +59,40 @@ interface Detail extends FacturaRequest {
   source_call_id:    string | null;
   source_context:    string | null;
   cancel_reason:     string | null;
+  xml_storage_path?: string | null;
+  pdf_storage_path?: string | null;
 }
 
-const STATUS_LABEL: Record<string, { label: string; color: string; icon: React.ElementType }> = {
-  pending:     { label: 'Pendiente',   color: '#f59e0b', icon: Clock },
-  in_progress: { label: 'En proceso',  color: '#3b82f6', icon: Clock },
-  issued:      { label: 'Emitida',     color: '#22c55e', icon: CheckCircle },
-  cancelled:   { label: 'Cancelada',   color: '#ef4444', icon: XCircle },
+// ─── Status chip ──────────────────────────────────────────────────────────────
+
+function StatusChip({ s }: { s: string }) {
+  const cfg: Record<string, { label: string; cls: string }> = {
+    pending:                { label: 'Pendiente',         cls: 'bg-amber-100 text-amber-700' },
+    in_progress:            { label: 'En proceso',        cls: 'bg-blue-100 text-blue-700' },
+    stamping:               { label: 'Timbrando...',      cls: 'bg-blue-100 text-blue-700 animate-pulse' },
+    stamped:                { label: 'Emitida',           cls: 'bg-green-100 text-green-700' },
+    stamp_failed:           { label: 'Fallo timbrado',   cls: 'bg-red-100 text-red-700' },
+    marked_manual:          { label: 'Manual',            cls: 'bg-gray-100 text-gray-500' },
+    cancellation_requested: { label: 'Cancelacion pedida', cls: 'bg-amber-100 text-amber-700' },
+    issued:                 { label: 'Emitida',           cls: 'bg-green-100 text-green-700' },
+    cancelled:              { label: 'Cancelada',         cls: 'bg-gray-100 text-gray-400 line-through' },
+  };
+  const c = cfg[s] ?? cfg.pending;
+  return <span className={`text-xs px-2 py-1 rounded font-medium ${c.cls}`}>{c.label}</span>;
+}
+
+// ─── Legacy STATUS_LABEL kept for row icon colors ──────────────────────────
+
+const STATUS_ICON: Record<string, { color: string; icon: React.ElementType }> = {
+  pending:                { color: '#f59e0b', icon: Clock },
+  in_progress:            { color: '#3b82f6', icon: Clock },
+  stamping:               { color: '#3b82f6', icon: Clock },
+  stamped:                { color: '#22c55e', icon: CheckCircle },
+  stamp_failed:           { color: '#ef4444', icon: AlertTriangle },
+  marked_manual:          { color: '#6b7280', icon: Check },
+  cancellation_requested: { color: '#f59e0b', icon: Clock },
+  issued:                 { color: '#22c55e', icon: CheckCircle },
+  cancelled:              { color: '#ef4444', icon: XCircle },
 };
 
 function mxn(n: number, currency = 'MXN'): string {
@@ -64,6 +106,21 @@ function timeAgo(iso: string): string {
   return new Date(iso).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
 }
 
+// ─── Filter pills config ───────────────────────────────────────────────────
+
+type FilterId = 'all' | FacturaStatus;
+
+const PILL_DEFS: { id: FilterId; label: string }[] = [
+  { id: 'all',                    label: 'Todas'             },
+  { id: 'pending',                label: 'Pendientes'        },
+  { id: 'stamping',               label: 'Timbrando'         },
+  { id: 'stamp_failed',           label: 'Con falla'         },
+  { id: 'stamped',                label: 'Emitidas'          },
+  { id: 'marked_manual',          label: 'Manual'            },
+  { id: 'cancellation_requested', label: 'Cancelacion ped.'  },
+  { id: 'cancelled',              label: 'Canceladas'        },
+];
+
 export default function FacturasPage() {
   const { token }    = useParams<{ token: string }>();
   const searchParams = useSearchParams();
@@ -71,22 +128,29 @@ export default function FacturasPage() {
   const [rows,       setRows]       = useState<FacturaRequest[]>([]);
   const [agentNames, setAgentNames] = useState<Record<string, string | null>>({});
   const [loading,    setLoading]    = useState(true);
-  const [filter,     setFilter]     = useState<'all' | FacturaRequest['status']>('all');
+  const [filter,     setFilter]     = useState<FilterId>('all');
   const [selected,   setSelected]   = useState<Detail | null>(null);
+  // Whether org has PAC connected (affects action buttons)
+  const [pacConnected, setPacConnected] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res  = await fetch(`/api/portal/${token}/factura-requests`);
-      const data = await res.json();
-      setRows(data.requests ?? []);
-      setAgentNames(data.agentNames ?? {});
+      const [reqRes, cfgRes] = await Promise.all([
+        fetch(`/api/portal/${token}/factura-requests`),
+        fetch(`/api/portal/${token}/invoicing/config`),
+      ]);
+      const reqData = await reqRes.json();
+      const cfgData = await cfgRes.json().catch(() => ({ connected: false }));
+      setRows(reqData.requests ?? []);
+      setAgentNames(reqData.agentNames ?? {});
+      setPacConnected(cfgData.connected === true);
     } finally { setLoading(false); }
   }, [token]);
 
   useEffect(() => { load(); }, [load]);
 
-  // Deep link: ?open=<request_id> abre el modal automáticamente al cargar
+  // Deep link: ?open=<request_id> abre el modal automaticamente al cargar
   const openId = searchParams.get('open');
   useEffect(() => {
     if (!openId || loading) return;
@@ -122,7 +186,7 @@ export default function FacturasPage() {
 
   async function cancelRequest(reason: string) {
     if (!selected) return;
-    if (!confirm(`Cancelar esta solicitud de factura?\n\nRazón: ${reason}`)) return;
+    if (!confirm(`Cancelar esta solicitud de factura?\n\nRazon: ${reason}`)) return;
     await fetch(`/api/portal/${token}/factura-requests/${selected.id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'cancel', cancel_reason: reason }),
@@ -130,29 +194,31 @@ export default function FacturasPage() {
     setSelected(null); load();
   }
 
+  async function stampRequest(id: string) {
+    const res = await fetch(`/api/portal/${token}/factura-requests/${id}/stamp`, { method: 'POST' });
+    const data = await res.json();
+    if (data.ok || data.outcome) { setSelected(null); load(); }
+    else alert(data.error ?? 'Error al timbrar');
+  }
+
+  async function markManual(id: string) {
+    const res = await fetch(`/api/portal/${token}/factura-requests/${id}/mark-manual`, { method: 'POST' });
+    if ((await res.json()).ok) { setSelected(null); load(); }
+  }
+
   const filtered = filter === 'all' ? rows : rows.filter(r => r.status === filter);
-  const counts   = {
-    all:         rows.length,
-    pending:     rows.filter(r => r.status === 'pending').length,
-    in_progress: rows.filter(r => r.status === 'in_progress').length,
-    issued:      rows.filter(r => r.status === 'issued').length,
-    cancelled:   rows.filter(r => r.status === 'cancelled').length,
-  };
 
-  const PILLS: { id: 'all' | FacturaRequest['status']; label: string; count: number }[] = [
-    { id: 'all',         label: 'Todas',       count: counts.all         },
-    { id: 'pending',     label: 'Pendientes',  count: counts.pending     },
-    { id: 'in_progress', label: 'En proceso',  count: counts.in_progress },
-    { id: 'issued',      label: 'Emitidas',    count: counts.issued      },
-    { id: 'cancelled',   label: 'Canceladas',  count: counts.cancelled   },
-  ];
+  // Count per status for pill badges
+  const countOf = (id: FilterId) =>
+    id === 'all' ? rows.length : rows.filter(r => r.status === id).length;
 
-  const pendingCount = counts.pending + counts.in_progress;
+  // Alert count: pending + stamp_failed that need attention
+  const alertCount = rows.filter(r => r.status === 'pending' || r.status === 'stamp_failed').length;
 
   return (
     <div id="of-facturas" className="flex flex-col gap-5 max-w-6xl mx-auto w-full p-4 md:p-6">
 
-      {/* ── Hero ──────────────────────────────────────────────────────────── */}
+      {/* Hero */}
       <header className="flex items-start gap-4">
         <div
           className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
@@ -162,30 +228,31 @@ export default function FacturasPage() {
         </div>
         <div className="flex flex-col gap-1 min-w-0">
           <p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: '#9B6DFF' }}>
-            Facturación
+            Facturacion
           </p>
           <h1 className="text-[28px] font-bold leading-tight tracking-tight" style={{ color: '#1A0A3B' }}>
             Facturas
           </h1>
           <p className="text-[14px]" style={{ color: '#6B6480' }}>
             Facturas <strong style={{ color: '#1A0A3B' }}>recibidas</strong> de proveedores y solicitudes <strong style={{ color: '#1A0A3B' }}>por emitir</strong> a tus clientes.
-            {pendingCount > 0 && <> Hoy: <strong style={{ color: '#1A0A3B' }}>{pendingCount}</strong> por timbrar en tu PAC.</>}
+            {alertCount > 0 && <> Hoy: <strong style={{ color: '#1A0A3B' }}>{alertCount}</strong> por atender.</>}
           </p>
         </div>
       </header>
 
-      {/* Facturas recibidas — proveedores → tu equipo (aparecen aquí ya no en bandeja) */}
+      {/* Facturas recibidas de proveedores */}
       <ReceivedInvoicesSection token={token} />
 
-      {/* Filter pills — segmented control style */}
+      {/* Filter pills */}
       {!loading && (
         <div
           className="inline-flex items-center gap-1 p-1 rounded-xl overflow-x-auto whitespace-nowrap"
           style={{ background: '#F5F2FB', border: '1px solid #E8E3F5' }}
         >
-          {PILLS.map(p => {
+          {PILL_DEFS.map(p => {
+            const count    = countOf(p.id);
             const isActive = filter === p.id;
-            const showRed  = (p.id === 'pending' || p.id === 'in_progress') && p.count > 0;
+            const isAlert  = (p.id === 'pending' || p.id === 'stamp_failed') && count > 0;
             return (
               <button
                 key={p.id}
@@ -201,15 +268,15 @@ export default function FacturasPage() {
                 }}
               >
                 {p.label}
-                {p.count > 0 && (
+                {count > 0 && (
                   <span
                     className="inline-flex items-center justify-center text-[10px] font-bold tabular-nums min-w-[18px] h-[18px] px-1 rounded-full"
                     style={{
-                      background: showRed ? '#ef4444' : (isActive ? '#6C3BFF' : '#E8E3F5'),
-                      color:      showRed || isActive ? '#ffffff' : '#6B6480',
+                      background: isAlert ? '#ef4444' : (isActive ? '#6C3BFF' : '#E8E3F5'),
+                      color:      isAlert || isActive ? '#ffffff' : '#6B6480',
                     }}
                   >
-                    {p.count}
+                    {count}
                   </span>
                 )}
               </button>
@@ -243,7 +310,9 @@ export default function FacturasPage() {
                 )}
               </div>
               <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>
-                Timbra cada solicitud en tu PAC y márcala como emitida aquí.
+                {pacConnected
+                  ? 'Tu PAC esta conectado. Puedes timbrar solicitudes directamente desde aqui.'
+                  : 'Conecta tu PAC desde Configurar para timbrar automaticamente.'}
               </p>
             </div>
           </div>
@@ -253,19 +322,20 @@ export default function FacturasPage() {
               <PortalEmptyState
                 icon={FileText}
                 title="Sin solicitudes de factura"
-                description="Cuando tu empleado registre una solicitud (por teléfono, chat o correo), aparecerá aquí lista para emitir."
+                description="Cuando tu empleado registre una solicitud (por telefono, chat o correo), aparecera aqui lista para emitir."
               />
             </div>
           ) : (
             <div className="flex flex-col" style={{ borderTop: '1px solid #F0EDF9' }}>
               {filtered.map((r, idx) => {
-                const cfg = STATUS_LABEL[r.status];
+                const cfg  = STATUS_ICON[r.status] ?? STATUS_ICON.pending;
                 const Icon = cfg.icon;
                 return (
                   <button key={r.id} onClick={() => openDetail(r.id)}
                     className="flex items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-[#FAFAFB]"
                     style={{ borderBottom: idx === filtered.length - 1 ? 'none' : '1px solid #F0EDF9' }}>
-                    <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${cfg.color}15` }}>
+                    <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{ background: `${cfg.color}15` }}>
                       <Icon size={16} style={{ color: cfg.color }} />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -281,10 +351,10 @@ export default function FacturasPage() {
                     </div>
                     <div className="flex flex-col items-end gap-1 flex-shrink-0">
                       <span className="text-[13px] font-semibold tabular-nums" style={{ color: '#1A0A3B' }}>{mxn(r.total, r.currency)}</span>
-                      <span className="flex items-center gap-1 text-[11px]" style={{ color: cfg.color }}>
-                        <span className="font-medium">{cfg.label}</span>
-                        <span style={{ color: '#9B8FB5' }}>· {timeAgo(r.requested_at)}</span>
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <StatusChip s={r.status} />
+                        <span className="text-[11px]" style={{ color: '#9B8FB5' }}>{timeAgo(r.requested_at)}</span>
+                      </div>
                     </div>
                   </button>
                 );
@@ -297,10 +367,14 @@ export default function FacturasPage() {
       {selected && (
         <DetailModal
           request={selected}
+          token={token}
+          pacConnected={pacConnected}
           onClose={() => setSelected(null)}
           onMarkInProgress={markInProgress}
           onMarkIssued={markIssued}
           onCancel={cancelRequest}
+          onStamp={() => stampRequest(selected.id)}
+          onMarkManual={() => markManual(selected.id)}
         />
       )}
     </div>
@@ -309,17 +383,33 @@ export default function FacturasPage() {
 
 // ─── Detail modal ─────────────────────────────────────────────────────────────
 
-function DetailModal({ request, onClose, onMarkInProgress, onMarkIssued, onCancel }: {
-  request: Detail;
-  onClose: () => void;
+function DetailModal({
+  request,
+  token,
+  pacConnected,
+  onClose,
+  onMarkInProgress,
+  onMarkIssued,
+  onCancel,
+  onStamp,
+  onMarkManual,
+}: {
+  request:          Detail;
+  token:            string;
+  pacConnected:     boolean;
+  onClose:          () => void;
   onMarkInProgress: () => void;
-  onMarkIssued: (uuid: string, folio: string) => void;
-  onCancel: (reason: string) => void;
+  onMarkIssued:     (uuid: string, folio: string) => void;
+  onCancel:         (reason: string) => void;
+  onStamp:          () => void;
+  onMarkManual:     () => void;
 }) {
-  const [uuid, setUuid] = useState('');
-  const [folio, setFolio] = useState('');
+  const [uuid,         setUuid]         = useState('');
+  const [folio,        setFolio]        = useState('');
   const [cancelReason, setCancelReason] = useState('');
-  const [showCancel, setShowCancel] = useState(false);
+  const [showCancel,   setShowCancel]   = useState(false);
+  const [stamping,     setStamping]     = useState(false);
+  const [marking,      setMarking]      = useState(false);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -328,40 +418,64 @@ function DetailModal({ request, onClose, onMarkInProgress, onMarkIssued, onCance
     return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = ''; };
   }, [onClose]);
 
-  const isTerminal = request.status === 'issued' || request.status === 'cancelled';
-  const cfg = STATUS_LABEL[request.status];
+  const s           = request.status;
+  const isStamped   = s === 'stamped' || s === 'issued';
+  const isTerminal  = isStamped || s === 'cancelled' || s === 'marked_manual';
+  const isFailed    = s === 'stamp_failed';
+  const isPending   = s === 'pending' || s === 'in_progress';
+
+  async function handleStamp() {
+    setStamping(true);
+    try { await onStamp(); } finally { setStamping(false); }
+  }
+
+  async function handleMarkManual() {
+    setMarking(true);
+    try { await onMarkManual(); } finally { setMarking(false); }
+  }
+
+  const xmlUrl = `/api/portal/${token}/factura-requests/${request.id}/xml`;
+  const pdfUrl = `/api/portal/${token}/factura-requests/${request.id}/pdf`;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center overflow-y-auto" style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
-      onClick={onClose}>
-      <div className="w-full max-w-2xl m-4 rounded-2xl overflow-hidden" style={{ background: '#ffffff', border: '1px solid #E8E3F5' }}
-        onClick={e => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-50 flex items-start sm:items-center justify-center overflow-y-auto"
+      style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-2xl m-4 rounded-2xl overflow-hidden"
+        style={{ background: '#ffffff', border: '1px solid #E8E3F5' }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
         <div className="flex items-start justify-between px-6 py-4" style={{ borderBottom: '1px solid #E8E3F5' }}>
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#9B8FB5' }}>Solicitud de factura</p>
             <h2 className="text-lg font-bold mt-1" style={{ color: '#1A0A3B' }}>{request.cliente_nombre}</h2>
-            <div className="flex items-center gap-2 mt-1 text-xs" style={{ color: cfg.color }}>
-              <span className="font-medium">{cfg.label}</span>
-              <span style={{ color: '#9B8FB5' }}>· solicitada {timeAgo(request.requested_at)}</span>
-              {request.resolved_at && <span style={{ color: '#9B8FB5' }}>· resuelta {timeAgo(request.resolved_at)}</span>}
+            <div className="flex items-center gap-2 mt-1">
+              <StatusChip s={request.status} />
+              <span className="text-xs" style={{ color: '#9B8FB5' }}>solicitada {timeAgo(request.requested_at)}</span>
+              {request.resolved_at && <span className="text-xs" style={{ color: '#9B8FB5' }}>· resuelta {timeAgo(request.resolved_at)}</span>}
             </div>
           </div>
           <button onClick={onClose} className="text-xs px-2 py-1 rounded-lg hover:opacity-80" style={{ background: '#FAFAFB', color: '#6B6480' }}>Cerrar</button>
         </div>
 
-        <div className="px-6 py-4 flex flex-col gap-5 max-h-[70vh] overflow-y-auto">
+        {/* Body */}
+        <div className="px-6 py-4 flex flex-col gap-5 max-h-[60vh] overflow-y-auto">
           <Section title="Datos del receptor">
-            <Row k="Razón social"  v={request.cliente_nombre} />
+            <Row k="Razon social"  v={request.cliente_nombre} />
             <Row k="RFC"           v={request.cliente_rfc} mono copyable />
             <Row k="Correo fiscal" v={request.cliente_email} copyable />
-            {request.cliente_telefono  && <Row k="Teléfono"  v={request.cliente_telefono} />}
-            {request.cliente_direccion && <Row k="Dirección" v={request.cliente_direccion} />}
+            {request.cliente_telefono  && <Row k="Telefono"  v={request.cliente_telefono} />}
+            {request.cliente_direccion && <Row k="Direccion" v={request.cliente_direccion} />}
           </Section>
 
           <Section title="Datos fiscales">
-            <Row k="Uso CFDI"      v={request.uso_cfdi} copyable />
-            <Row k="Forma de pago" v={request.forma_pago} copyable />
-            <Row k="Método de pago" v={request.metodo_pago} copyable />
+            <Row k="Uso CFDI"       v={request.uso_cfdi} copyable />
+            <Row k="Forma de pago"  v={request.forma_pago} copyable />
+            <Row k="Metodo de pago" v={request.metodo_pago} copyable />
             {request.condiciones_pago && <Row k="Condiciones" v={request.condiciones_pago} />}
           </Section>
 
@@ -370,7 +484,7 @@ function DetailModal({ request, onClose, onMarkInProgress, onMarkIssued, onCance
               <table className="w-full text-xs">
                 <thead style={{ background: '#FAFAFB', color: '#9B8FB5' }}>
                   <tr>
-                    <th className="text-left py-2 px-3 font-semibold uppercase tracking-wide text-[10px]">Descripción</th>
+                    <th className="text-left py-2 px-3 font-semibold uppercase tracking-wide text-[10px]">Descripcion</th>
                     <th className="text-right py-2 px-3 font-semibold uppercase tracking-wide text-[10px] w-16">Cant.</th>
                     <th className="text-right py-2 px-3 font-semibold uppercase tracking-wide text-[10px] w-24">P. Unit.</th>
                     <th className="text-right py-2 px-3 font-semibold uppercase tracking-wide text-[10px] w-28">Importe</th>
@@ -404,82 +518,183 @@ function DetailModal({ request, onClose, onMarkInProgress, onMarkIssued, onCance
             </Section>
           )}
 
-          {request.status === 'issued' && (request.issued_uuid || request.issued_folio) && (
-            <Section title="Datos de emisión">
+          {request.guardrail_reason && (
+            <Section title="Razon del guardrail">
+              <p className="text-xs leading-relaxed" style={{ color: '#ef4444' }}>{request.guardrail_reason}</p>
+            </Section>
+          )}
+
+          {(s === 'stamped' || s === 'issued') && (request.issued_uuid || request.issued_folio) && (
+            <Section title="Datos de emision">
               {request.issued_folio && <Row k="Folio" v={request.issued_folio} mono />}
-              {request.issued_uuid  && <Row k="UUID"  v={request.issued_uuid} mono />}
+              {request.issued_uuid  && <Row k="UUID"  v={request.issued_uuid} mono copyable />}
               {request.resolved_by  && <Row k="Marcada por" v={request.resolved_by} />}
             </Section>
           )}
         </div>
 
-        {!isTerminal && (
-          <div className="px-6 py-4 flex flex-col gap-3" style={{ borderTop: '1px solid #E8E3F5', background: '#FAFAFB' }}>
-            {!showCancel ? (
-              <>
-                <div className="flex flex-wrap gap-2 items-end">
-                  <div className="flex-1 min-w-[200px]">
-                    <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: '#9B8FB5' }}>UUID (opcional)</label>
-                    <input value={uuid} onChange={e => setUuid(e.target.value)} placeholder="XXXX-XXXX-XXXX-XXXX"
-                      className="w-full rounded-lg px-3 py-2 text-xs font-mono"
-                      style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }} />
-                  </div>
-                  <div className="flex-1 min-w-[150px]">
-                    <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: '#9B8FB5' }}>Folio (opcional)</label>
-                    <input value={folio} onChange={e => setFolio(e.target.value)} placeholder="FAC-1234"
-                      className="w-full rounded-lg px-3 py-2 text-xs font-mono"
-                      style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }} />
-                  </div>
-                </div>
-                <div className="flex gap-2 flex-wrap">
-                  <button onClick={() => onMarkIssued(uuid, folio)}
+        {/* Actions footer */}
+        <div className="px-6 py-4 flex flex-col gap-3" style={{ borderTop: '1px solid #E8E3F5', background: '#FAFAFB' }}>
+
+          {/* Stamped / issued: downloads + cancellation placeholder */}
+          {isStamped && (
+            <div className="flex flex-wrap gap-2">
+              <a
+                href={xmlUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90"
+                style={{ background: 'rgba(34,197,94,0.1)', color: '#16a34a', border: '1px solid rgba(34,197,94,0.2)' }}
+              >
+                <Download size={12} /> Descargar XML
+              </a>
+              <a
+                href={pdfUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90"
+                style={{ background: 'rgba(34,197,94,0.1)', color: '#16a34a', border: '1px solid rgba(34,197,94,0.2)' }}
+              >
+                <Download size={12} /> Descargar PDF
+              </a>
+              {/* TASK-32-INSERTION-POINT: cancellation button for stamped invoices goes here */}
+            </div>
+          )}
+
+          {/* Pending + PAC connected: stamp now */}
+          {isPending && pacConnected && !showCancel && (
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={handleStamp}
+                disabled={stamping}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
+                style={{ background: '#6C3BFF', color: '#fff' }}
+              >
+                <Stamp size={12} /> {stamping ? 'Timbrando...' : 'Emitir con SF ahora'}
+              </button>
+              <button
+                onClick={handleMarkManual}
+                disabled={marking}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
+                style={{ background: 'rgba(107,114,128,0.1)', color: '#374151', border: '1px solid rgba(107,114,128,0.2)' }}
+              >
+                <Check size={12} /> {marking ? 'Guardando...' : 'Marcar como manual'}
+              </button>
+              {s === 'pending' && (
+                <button onClick={onMarkInProgress}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90"
+                  style={{ background: 'rgba(59,130,246,0.1)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.2)' }}>
+                  <Clock size={12} /> Marcar en proceso
+                </button>
+              )}
+              <button onClick={() => setShowCancel(true)}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90 ml-auto"
+                style={{ background: 'rgba(239,68,68,0.06)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.15)' }}>
+                <XCircle size={12} /> Cancelar solicitud
+              </button>
+            </div>
+          )}
+
+          {/* Pending, no PAC: manual mark only */}
+          {isPending && !pacConnected && !showCancel && (
+            <>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={handleMarkManual}
+                  disabled={marking}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
+                  style={{ background: '#22c55e', color: '#fff' }}
+                >
+                  <CheckCircle size={12} /> {marking ? 'Guardando...' : 'Marcar como emitida manual'}
+                </button>
+                {s === 'pending' && (
+                  <button onClick={onMarkInProgress}
                     className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90"
-                    style={{ background: '#22c55e', color: '#fff' }}>
-                    <CheckCircle size={12} /> Marcar como emitida
+                    style={{ background: 'rgba(59,130,246,0.1)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.2)' }}>
+                    <Clock size={12} /> Marcar en proceso
                   </button>
-                  {request.status === 'pending' && (
-                    <button onClick={onMarkInProgress}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90"
-                      style={{ background: 'rgba(59,130,246,0.1)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.2)' }}>
-                      <Clock size={12} /> Marcar en proceso
-                    </button>
-                  )}
-                  <button onClick={() => setShowCancel(true)}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90 ml-auto"
-                    style={{ background: 'rgba(239,68,68,0.06)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.15)' }}>
-                    <XCircle size={12} /> Cancelar solicitud
-                  </button>
-                </div>
-              </>
-            ) : (
-              <div className="flex flex-col gap-2">
-                <label className="block text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#9B8FB5' }}>Razón de la cancelación</label>
-                <input value={cancelReason} onChange={e => setCancelReason(e.target.value)} autoFocus
-                  placeholder="Ej: RFC no válido, cliente ya no lo necesita, factura duplicada"
-                  className="w-full rounded-lg px-3 py-2 text-xs"
-                  style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }} />
-                <div className="flex gap-2">
-                  <button onClick={() => onCancel(cancelReason)} disabled={!cancelReason.trim()}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
-                    style={{ background: '#ef4444', color: '#fff' }}>
-                    <XCircle size={12} /> Confirmar cancelación
-                  </button>
-                  <button onClick={() => setShowCancel(false)}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-                    style={{ background: '#ffffff', color: '#6B6480', border: '1px solid #E8E3F5' }}>
-                    Volver
-                  </button>
-                </div>
+                )}
+                <button onClick={() => setShowCancel(true)}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90 ml-auto"
+                  style={{ background: 'rgba(239,68,68,0.06)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.15)' }}>
+                  <XCircle size={12} /> Cancelar solicitud
+                </button>
               </div>
-            )}
-            {request.status === 'pending' && (
+              <div className="flex flex-wrap gap-2 items-end">
+                <div className="flex-1 min-w-[200px]">
+                  <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: '#9B8FB5' }}>UUID (opcional)</label>
+                  <input value={uuid} onChange={e => setUuid(e.target.value)} placeholder="XXXX-XXXX-XXXX-XXXX"
+                    className="w-full rounded-lg px-3 py-2 text-xs font-mono"
+                    style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }} />
+                </div>
+                <div className="flex-1 min-w-[150px]">
+                  <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: '#9B8FB5' }}>Folio (opcional)</label>
+                  <input value={folio} onChange={e => setFolio(e.target.value)} placeholder="FAC-1234"
+                    className="w-full rounded-lg px-3 py-2 text-xs font-mono"
+                    style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }} />
+                </div>
+                <button onClick={() => onMarkIssued(uuid, folio)}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90"
+                  style={{ background: '#22c55e', color: '#fff' }}>
+                  <CheckCircle size={12} /> Marcar como emitida
+                </button>
+              </div>
               <p className="text-[11px] leading-relaxed" style={{ color: '#9B8FB5' }}>
-                Cuando timbres esta factura en tu sistema fiscal (Solución Factible, CONTPAQ, Aspel, etc.), marca aquí como emitida.
-                Los datos de UUID y folio son opcionales pero útiles para tu récord interno.
+                Conecta tu PAC desde Configurar para timbrar automaticamente. Por ahora puedes marcar manualmente con UUID y folio opcionales.
               </p>
-            )}
-          </div>
-        )}
+            </>
+          )}
+
+          {/* stamp_failed: retry + mark manual */}
+          {isFailed && !showCancel && (
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={handleStamp}
+                disabled={stamping}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
+                style={{ background: '#6C3BFF', color: '#fff' }}
+              >
+                <RefreshCw size={12} /> {stamping ? 'Reintentando...' : 'Reintentar timbrado'}
+              </button>
+              <button
+                onClick={handleMarkManual}
+                disabled={marking}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
+                style={{ background: 'rgba(107,114,128,0.1)', color: '#374151', border: '1px solid rgba(107,114,128,0.2)' }}
+              >
+                <Check size={12} /> {marking ? 'Guardando...' : 'Marcar manual'}
+              </button>
+              <button onClick={() => setShowCancel(true)}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90 ml-auto"
+                style={{ background: 'rgba(239,68,68,0.06)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.15)' }}>
+                <XCircle size={12} /> Cancelar solicitud
+              </button>
+            </div>
+          )}
+
+          {/* Cancel confirmation panel */}
+          {showCancel && (
+            <div className="flex flex-col gap-2">
+              <label className="block text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#9B8FB5' }}>Razon de la cancelacion</label>
+              <input value={cancelReason} onChange={e => setCancelReason(e.target.value)} autoFocus
+                placeholder="Ej: RFC no valido, cliente ya no lo necesita, factura duplicada"
+                className="w-full rounded-lg px-3 py-2 text-xs"
+                style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }} />
+              <div className="flex gap-2">
+                <button onClick={() => onCancel(cancelReason)} disabled={!cancelReason.trim()}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
+                  style={{ background: '#ef4444', color: '#fff' }}>
+                  <XCircle size={12} /> Confirmar cancelacion
+                </button>
+                <button onClick={() => setShowCancel(false)}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+                  style={{ background: '#ffffff', color: '#6B6480', border: '1px solid #E8E3F5' }}>
+                  Volver
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
