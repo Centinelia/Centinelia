@@ -37,8 +37,8 @@ describe('csd-vault crypto round-trip', () => {
 });
 
 const CSD_DIR = join(process.cwd(), 'fixtures', 'sat-test-csd');
-const CSD_CER = join(CSD_DIR, 'CSD_Prueba_CFDI_LAN7008173R5.cer');
-const CSD_KEY = join(CSD_DIR, 'CSD_Prueba_CFDI_LAN7008173R5.key');
+const CSD_CER = join(CSD_DIR, 'EKU9003173C9.cer');
+const CSD_KEY = join(CSD_DIR, 'EKU9003173C9.key');
 const CSD_PW  = join(CSD_DIR, 'PASSWORD.txt');
 const CSD_FIXTURES_AVAILABLE = existsSync(CSD_CER) && existsSync(CSD_KEY) && existsSync(CSD_PW);
 
@@ -53,9 +53,9 @@ describe.skipIf(!CSD_FIXTURES_AVAILABLE)('parseCsd', () => {
     pw  = readFileSync(CSD_PW, 'utf8').trim();
   });
 
-  it('extrae RFC LAN7008173R5 del cert', () => {
+  it('extrae RFC EKU9003173C9 del cert', () => {
     const parsed = parseCsd(cer, key, pw);
-    expect(parsed.rfc).toBe('LAN7008173R5');
+    expect(parsed.rfc).toBe('EKU9003173C9');
     expect(parsed.noCertificado).toMatch(/^\d{20}$/);
     expect(parsed.notAfter).toBeInstanceOf(Date);
     expect(parsed.cerPem).toMatch(/-----BEGIN CERTIFICATE-----/);

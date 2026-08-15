@@ -1,5 +1,5 @@
 {
-  "emisor": { "rfc": "LAN7008173R5", "regimenFiscal": "601", "nombre": "ESCUELA KEMPER URGATE" },
+  "emisor": { "rfc": "EKU9003173C9", "regimenFiscal": "601", "nombre": "ESCUELA KEMPER URGATE SA DE CV" },
   "receptor": { "rfc": "XAXX010101000", "nombre": "PUBLICO EN GENERAL",
     "usoCfdi": "S01", "regimenFiscal": "616", "domicilioFiscal": "64000" },
   "lugarExpedicion": "64000",

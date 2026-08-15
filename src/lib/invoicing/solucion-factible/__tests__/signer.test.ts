@@ -13,8 +13,8 @@ const input = JSON.parse(
 );
 
 const CSD_DIR = join(process.cwd(), 'fixtures', 'sat-test-csd');
-const CSD_CER = join(CSD_DIR, 'CSD_Prueba_CFDI_LAN7008173R5.cer');
-const CSD_KEY = join(CSD_DIR, 'CSD_Prueba_CFDI_LAN7008173R5.key');
+const CSD_CER = join(CSD_DIR, 'EKU9003173C9.cer');
+const CSD_KEY = join(CSD_DIR, 'EKU9003173C9.key');
 const CSD_PW  = join(CSD_DIR, 'PASSWORD.txt');
 const CSD_FIXTURES_AVAILABLE = existsSync(CSD_CER) && existsSync(CSD_KEY) && existsSync(CSD_PW);
 
@@ -28,17 +28,17 @@ describe.skipIf(!CSD_FIXTURES_AVAILABLE)('signer', () => {
     );
   });
 
-  it('computeCadenaOriginal empieza y termina con ||', () => {
+  it('computeCadenaOriginal empieza y termina con ||', async () => {
     const xml = buildCfdiXml(input);
-    const cadena = computeCadenaOriginal(xml);
+    const cadena = await computeCadenaOriginal(xml);
     expect(cadena.startsWith('||')).toBe(true);
     expect(cadena.endsWith('||')).toBe(true);
     expect(cadena).toContain('|4.0|');
   });
 
-  it('signXml rellena Sello, NoCertificado, Certificado', () => {
+  it('signXml rellena Sello, NoCertificado, Certificado', async () => {
     const xml = buildCfdiXml(input);
-    const signed = signXml(xml, parsed);
+    const signed = await signXml(xml, parsed);
     const attrs = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@' })
       .parse(signed)['cfdi:Comprobante'];
     expect(attrs['@NoCertificado']).toBe(parsed.noCertificado);
@@ -46,13 +46,13 @@ describe.skipIf(!CSD_FIXTURES_AVAILABLE)('signer', () => {
     expect(attrs['@Sello'].length).toBeGreaterThan(300);          // firma RSA base64
   });
 
-  it('el sello verifica contra el public key del cert (SHA256withRSA)', () => {
+  it('el sello verifica contra el public key del cert (SHA256withRSA)', async () => {
     const xml = buildCfdiXml(input);
-    const signed = signXml(xml, parsed);
+    const signed = await signXml(xml, parsed);
     const attrs = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@' })
       .parse(signed)['cfdi:Comprobante'];
     const sello = attrs['@Sello'] as string;
-    const cadena = computeCadenaOriginal(signed);
+    const cadena = await computeCadenaOriginal(signed);
     const cert = forge.pki.certificateFromPem(parsed.cerPem);
     const md = forge.md.sha256.create();
     md.update(cadena, 'utf8');

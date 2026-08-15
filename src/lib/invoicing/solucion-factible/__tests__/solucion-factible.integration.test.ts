@@ -10,8 +10,8 @@ import type { CfdiInput } from '../../provider';
 const SF_ENABLED = process.env.SF_INTEGRATION_TESTS === 'true';
 
 const CSD_DIR = join(process.cwd(), 'fixtures', 'sat-test-csd');
-const CSD_CER = join(CSD_DIR, 'CSD_Prueba_CFDI_LAN7008173R5.cer');
-const CSD_KEY = join(CSD_DIR, 'CSD_Prueba_CFDI_LAN7008173R5.key');
+const CSD_CER = join(CSD_DIR, 'EKU9003173C9.cer');
+const CSD_KEY = join(CSD_DIR, 'EKU9003173C9.key');
 const CSD_PW  = join(CSD_DIR, 'PASSWORD.txt');
 const CSD_FIXTURES_AVAILABLE = existsSync(CSD_CER) && existsSync(CSD_KEY) && existsSync(CSD_PW);
 
@@ -32,7 +32,7 @@ describe.skipIf(!RUN_INTEGRATION)('SolucionFactibleProvider integration (sandbox
 
   function baseCfdi(overrides: Partial<CfdiInput> = {}): CfdiInput {
     return {
-      emisor: { rfc: 'LAN7008173R5', regimenFiscal: '601', nombre: 'ESCUELA KEMPER URGATE' },
+      emisor: { rfc: 'EKU9003173C9', regimenFiscal: '601', nombre: 'ESCUELA KEMPER URGATE SA DE CV' },
       receptor: {
         rfc: 'XAXX010101000', nombre: 'PUBLICO EN GENERAL',
         usoCfdi: 'S01', regimenFiscal: '616', domicilioFiscal: '64000',

@@ -44,7 +44,7 @@ async function generateQrPng(cadena: string): Promise<Buffer> {
 export class SolucionFactibleProvider implements InvoicingProvider {
   async timbrar(cfdi: CfdiInput, opts: TimbrarOpts): Promise<StampResult> {
     const xmlUnsigned = buildCfdiXml(cfdi);
-    const xmlSigned = signXml(xmlUnsigned, cfdi.csd);
+    const xmlSigned = await signXml(xmlUnsigned, cfdi.csd);
     const envelope = buildTimbrarEnvelope(cfdi.pacCredentials.usuario, cfdi.pacCredentials.password, xmlSigned);
     const url = opts.testMode ? ENDPOINTS.timbrado.test : ENDPOINTS.timbrado.prod;
     const { xml: soapResp } = await soapCall(url, 'timbrarBase64', envelope, opts.timeoutMs ?? 30000);

@@ -26,7 +26,7 @@ describe('buildCfdiXml (CFDI 4.0)', () => {
     expect(cfdi['@Certificado']).toBe('');
   });
   it('emisor y receptor con RFC correctos', () => {
-    expect(cfdi['cfdi:Emisor']['@Rfc']).toBe('LAN7008173R5');
+    expect(cfdi['cfdi:Emisor']['@Rfc']).toBe('EKU9003173C9');
     expect(cfdi['cfdi:Receptor']['@Rfc']).toBe('XAXX010101000');
     expect(cfdi['cfdi:Receptor']['@RegimenFiscalReceptor']).toBe('616');
     expect(cfdi['cfdi:Receptor']['@DomicilioFiscalReceptor']).toBe('64000');
