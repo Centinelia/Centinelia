@@ -212,6 +212,16 @@ export default function FacturasPage() {
   const [search,   setSearch]   = useState('');
   const [dateFrom, setDateFrom] = useState('');   // YYYY-MM-DD
   const [dateTo,   setDateTo]   = useState('');
+  // View toggle: emitidas (por emitir + emitidas a clientes) vs recibidas (de proveedores)
+  const initialView = searchParams.get('view') === 'recibidas' ? 'recibidas' : 'emitidas';
+  const [viewType, setViewType] = useState<'emitidas' | 'recibidas'>(initialView);
+  const changeView = (v: 'emitidas' | 'recibidas') => {
+    setViewType(v);
+    const sp = new URLSearchParams(searchParams.toString());
+    if (v === 'emitidas') sp.delete('view'); else sp.set('view', v);
+    const qs = sp.toString();
+    router.replace(qs ? `?${qs}` : window.location.pathname, { scroll: false });
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -398,11 +408,42 @@ export default function FacturasPage() {
         <BackupYearButton token={token} />
       </header>
 
-      {/* Facturas recibidas de proveedores */}
-      <ReceivedInvoicesSection token={token} />
+      {/* View toggle: Emitidas / Recibidas */}
+      <div className="inline-flex items-center gap-1 p-1 rounded-xl w-fit"
+        style={{ background: '#F5F2FB', border: '1px solid #E8E3F5' }}>
+        {([
+          { id: 'emitidas',  label: 'Facturas emitidas',   hint: 'a clientes' },
+          { id: 'recibidas', label: 'Facturas recibidas',  hint: 'de proveedores' },
+        ] as const).map(t => {
+          const active = viewType === t.id;
+          return (
+            <button
+              key={t.id}
+              onClick={() => changeView(t.id)}
+              className="px-3.5 py-1.5 rounded-lg text-[13px] transition-all"
+              style={{
+                background: active ? '#fff' : 'transparent',
+                color:      active ? '#1A0A3B' : '#6B6480',
+                fontWeight: active ? 600 : 500,
+                boxShadow:  active ? '0 1px 3px rgba(26,10,59,0.08)' : 'none',
+                border:     'none',
+                cursor:     'pointer',
+              }}
+            >
+              {t.label}
+              <span className="ml-1.5 text-[11px] font-normal" style={{ color: active ? '#9B6DFF' : '#9B8FB5' }}>
+                {t.hint}
+              </span>
+            </button>
+          );
+        })}
+      </div>
 
-      {/* Search + date range */}
-      {!loading && rows.length > 0 && (
+      {/* Vista recibidas */}
+      {viewType === 'recibidas' && <ReceivedInvoicesSection token={token} />}
+
+      {/* Vista emitidas: search + date range */}
+      {viewType === 'emitidas' && !loading && rows.length > 0 && (
         <div className="flex flex-col gap-2 md:flex-row md:items-center">
           <div className="relative flex-1 min-w-0">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
@@ -454,7 +495,7 @@ export default function FacturasPage() {
       )}
 
       {/* Filter pills */}
-      {!loading && (
+      {viewType === 'emitidas' && !loading && (
         <div
           className="inline-flex items-center gap-1 p-1 rounded-xl overflow-x-auto whitespace-nowrap"
           style={{ background: '#F5F2FB', border: '1px solid #E8E3F5' }}
@@ -495,9 +536,9 @@ export default function FacturasPage() {
         </div>
       )}
 
-      {loading ? (
+      {viewType === 'emitidas' && loading ? (
         <p className="text-[12px] py-10 text-center" style={{ color: '#6B6480' }}>Cargando solicitudes...</p>
-      ) : (
+      ) : viewType === 'emitidas' ? (
         <div
           className="flex flex-col rounded-2xl overflow-hidden"
           style={{
@@ -572,7 +613,7 @@ export default function FacturasPage() {
             </div>
           )}
         </div>
-      )}
+      ) : null}
 
       {selected && (
         <DetailModal
