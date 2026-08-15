@@ -442,9 +442,9 @@ export default function FacturasPage() {
       {/* Vista recibidas */}
       {viewType === 'recibidas' && <ReceivedInvoicesSection token={token} />}
 
-      {/* Vista emitidas: search + date range */}
+      {/* Vista emitidas: search + date range distribuido uniformemente */}
       {viewType === 'emitidas' && !loading && rows.length > 0 && (
-        <div className="flex flex-col gap-2 md:flex-row md:items-center">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-6">
           <div className="relative flex-1 min-w-0">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
               style={{ color: '#9B8FB5' }} />
@@ -457,40 +457,38 @@ export default function FacturasPage() {
               style={{ background: '#fff', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }}
             />
           </div>
-          <div className="flex items-center gap-2">
-            <label className="flex items-center gap-1.5 text-[12px]" style={{ color: '#6B6480' }}>
-              Desde
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={e => setDateFrom(e.target.value)}
-                max={dateTo || undefined}
-                className="rounded-lg px-2 py-1.5 text-[12px]"
-                style={{ background: '#fff', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }}
-              />
-            </label>
-            <label className="flex items-center gap-1.5 text-[12px]" style={{ color: '#6B6480' }}>
-              Hasta
-              <input
-                type="date"
-                value={dateTo}
-                onChange={e => setDateTo(e.target.value)}
-                min={dateFrom || undefined}
-                className="rounded-lg px-2 py-1.5 text-[12px]"
-                style={{ background: '#fff', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }}
-              />
-            </label>
-            {hasActiveFilters && (
-              <button
-                onClick={clearFilters}
-                className="flex items-center gap-1 text-[12px] font-medium px-2 py-1.5 rounded-lg transition-colors hover:opacity-70"
-                style={{ color: '#6B6480' }}
-                title="Limpiar filtros"
-              >
-                <X size={12} /> Limpiar
-              </button>
-            )}
-          </div>
+          <label className="flex items-center gap-1.5 text-[12px] flex-1 min-w-0 md:max-w-[220px]" style={{ color: '#6B6480' }}>
+            <span className="whitespace-nowrap">Desde</span>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={e => setDateFrom(e.target.value)}
+              max={dateTo || undefined}
+              className="flex-1 min-w-0 rounded-lg px-2 py-1.5 text-[12px]"
+              style={{ background: '#fff', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }}
+            />
+          </label>
+          <label className="flex items-center gap-1.5 text-[12px] flex-1 min-w-0 md:max-w-[220px]" style={{ color: '#6B6480' }}>
+            <span className="whitespace-nowrap">Hasta</span>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={e => setDateTo(e.target.value)}
+              min={dateFrom || undefined}
+              className="flex-1 min-w-0 rounded-lg px-2 py-1.5 text-[12px]"
+              style={{ background: '#fff', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }}
+            />
+          </label>
+          {hasActiveFilters && (
+            <button
+              onClick={clearFilters}
+              className="flex items-center gap-1 text-[12px] font-medium px-2.5 py-1.5 rounded-lg transition-colors hover:opacity-70 whitespace-nowrap flex-shrink-0"
+              style={{ color: '#6B6480' }}
+              title="Limpiar filtros"
+            >
+              <X size={12} /> Limpiar
+            </button>
+          )}
         </div>
       )}
 
