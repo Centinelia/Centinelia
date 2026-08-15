@@ -27,9 +27,9 @@ describe('buildCfdiXml (CFDI 4.0)', () => {
   });
   it('emisor y receptor con RFC correctos', () => {
     expect(cfdi['cfdi:Emisor']['@Rfc']).toBe('EKU9003173C9');
-    expect(cfdi['cfdi:Receptor']['@Rfc']).toBe('XAXX010101000');
-    expect(cfdi['cfdi:Receptor']['@RegimenFiscalReceptor']).toBe('616');
-    expect(cfdi['cfdi:Receptor']['@DomicilioFiscalReceptor']).toBe('64000');
+    expect(cfdi['cfdi:Receptor']['@Rfc']).toBe('EKU9003173C9');
+    expect(cfdi['cfdi:Receptor']['@RegimenFiscalReceptor']).toBe('601');
+    expect(cfdi['cfdi:Receptor']['@DomicilioFiscalReceptor']).toBe('20000');
   });
   it('concepto con IVA 16% en Impuestos.Traslados', () => {
     const c = cfdi['cfdi:Conceptos']['cfdi:Concepto'];

@@ -11,8 +11,10 @@ import { XMLParser } from 'fast-xml-parser';
 const PARSER = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@' });
 
 function pipe(...parts: (string | null | undefined)[]): string {
-  // Cadena original: fields separated by |, missing optional fields still get their pipe.
-  return parts.map(p => (p == null ? '' : String(p))).join('|');
+  // Cadena original: SAT XSLT uses <xsl:if test="@X"> per optional attribute — a
+  // missing attribute contributes NOTHING (no pipe), not an empty separator.
+  // Required attributes with valid values always emit their pipe naturally.
+  return parts.filter((p): p is string => p != null && p !== '').join('|');
 }
 
 function toArr<T>(x: T | T[] | undefined | null): T[] {

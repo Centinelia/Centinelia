@@ -71,6 +71,12 @@ function Doc({ d }: { d: CfdiPdfInput }) {
 }
 
 export async function buildCfdiPdf(d: CfdiPdfInput): Promise<Buffer> {
-  const blob = await pdf(<Doc d={d} />).toBuffer();
-  return blob as unknown as Buffer;
+  // @react-pdf/renderer's toBuffer() returns a NodeJS Readable stream, not a Buffer.
+  // Collect chunks into a real Buffer for Storage upload + email attachments.
+  const stream = (await pdf(<Doc d={d} />).toBuffer()) as unknown as NodeJS.ReadableStream;
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as ArrayBuffer));
+  }
+  return Buffer.concat(chunks);
 }

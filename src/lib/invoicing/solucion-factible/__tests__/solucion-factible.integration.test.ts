@@ -34,8 +34,8 @@ describe.skipIf(!RUN_INTEGRATION)('SolucionFactibleProvider integration (sandbox
     return {
       emisor: { rfc: 'EKU9003173C9', regimenFiscal: '601', nombre: 'ESCUELA KEMPER URGATE SA DE CV' },
       receptor: {
-        rfc: 'XAXX010101000', nombre: 'PUBLICO EN GENERAL',
-        usoCfdi: 'S01', regimenFiscal: '616', domicilioFiscal: '64000',
+        rfc: 'EKU9003173C9', nombre: 'ESCUELA KEMPER URGATE SA DE CV',
+        usoCfdi: 'G03', regimenFiscal: '601', domicilioFiscal: '20000',
       },
       lugarExpedicion: '64000',
       formaPago: '03', metodoPago: 'PUE',

@@ -2,10 +2,13 @@ const XML_ESC = (s: string) => s
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 
+const NS_TIMBRADO = 'http://timbrado.ws.cfdi.solucionfactible.com';
+const NS_CANCELACION = 'http://cancelacion.ws.cfdi.solucionfactible.com';
+
 export function buildTimbrarEnvelope(usuario: string, password: string, cfdiXml: string): string {
   const b64 = Buffer.from(cfdiXml, 'utf8').toString('base64');
   return `<?xml version="1.0" encoding="UTF-8"?>
-<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.web.mx/">
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="${NS_TIMBRADO}">
   <soapenv:Header/>
   <soapenv:Body>
     <ser:timbrarBase64>
@@ -26,7 +29,7 @@ export function buildCancelarEnvelope(
     ? `      <uuidSustituto>${XML_ESC(uuidSustituto)}</uuidSustituto>\n`
     : '';
   return `<?xml version="1.0" encoding="UTF-8"?>
-<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.web.mx/">
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="${NS_CANCELACION}">
   <soapenv:Header/>
   <soapenv:Body>
     <ser:cancelarAsincrono>
@@ -41,7 +44,7 @@ ${sust}    </ser:cancelarAsincrono>
 
 export function buildConsultarEstatusEnvelope(usuario: string, password: string, uuid: string): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
-<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.web.mx/">
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="${NS_CANCELACION}">
   <soapenv:Header/>
   <soapenv:Body>
     <ser:getStatusCancelacionAsincrona>
