@@ -316,16 +316,17 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
         body:    JSON.stringify(payload),
       });
       if (res.ok) {
-        setItems(prev => prev.map(i => i.id === id
-          ? { ...i, status, ai_draft: editedDraft?.trim() ? editedDraft.trim() : i.ai_draft }
-          : i
-        ));
         setExpanded(null);
         setDraftEdits(prev => {
           const next = { ...prev };
           delete next[id];
           return next;
         });
+        // Re-fetch en vez de mutar in-place. Antes: setItems(prev => prev.map)
+        // mostraba solo el cambio local, pero cualquier drift entre UI y DB
+        // se veía como bug ("desapareció el otro también"). Ahora el estado
+        // refleja la verdad del servidor tras cada acción.
+        await load();
       } else {
         // Sin toast el usuario ve "Procesando..." y luego nada — parece que
         // el botón no hizo nada. Mejor comunicar el error.
