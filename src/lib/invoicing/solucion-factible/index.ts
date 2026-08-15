@@ -67,7 +67,9 @@ export class SolucionFactibleProvider implements InvoicingProvider {
     }
 
     const xmlTimbrado = Buffer.from(cfdiTimbradoB64, 'base64');
-    const qrPng = await generateQrPng(cadenaOriginal || uuid);
+    const fe = String(selloSat).slice(-8);
+    const qrContent = `https://verificacfdi.facturaelectronica.sat.gob.mx/default.aspx?id=${uuid}&re=${cfdi.emisor.rfc}&rr=${cfdi.receptor.rfc}&tt=${cfdi.total.toFixed(2)}&fe=${fe}`;
+    const qrPng = await generateQrPng(qrContent);
     return { ok: true, uuid, selloSat, certificadoSat, fechaTimbrado, cadenaOriginal, xmlTimbrado, qrPng };
   }
 
