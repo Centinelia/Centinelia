@@ -495,7 +495,7 @@ export default function FacturasPage() {
       {/* Filter pills */}
       {viewType === 'emitidas' && !loading && (
         <div
-          className="inline-flex items-center gap-1 p-1 rounded-xl overflow-x-auto whitespace-nowrap"
+          className="flex items-center justify-between gap-1 p-1 rounded-xl overflow-x-auto whitespace-nowrap w-full"
           style={{ background: '#F5F2FB', border: '1px solid #E8E3F5' }}
         >
           {PILL_DEFS.map(p => {
@@ -506,7 +506,7 @@ export default function FacturasPage() {
               <button
                 key={p.id}
                 onClick={() => setFilter(p.id)}
-                className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] transition-all"
+                className="flex-1 min-w-fit flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] transition-all"
                 style={{
                   background: isActive ? '#ffffff' : 'transparent',
                   color:      isActive ? '#1A0A3B' : '#6B6480',
