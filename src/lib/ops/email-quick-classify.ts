@@ -39,6 +39,15 @@ const NOTIFICATION_LOCAL_PARTS = [
   'postmaster',
   'boletin', 'boletines', 'newsletter', 'newsletters',
   'noticias', 'promociones', 'promocion',
+  // Alumni / asociaciones institucionales — invitaciones a eventos,
+  // presentaciones de nuevos rectores/directivos, boletines de escuela.
+  // Casi nunca son "cliente pidiendo cotización". Añadido tras caso UDEM
+  // (exaudem@udem.mx) que se colaba a bandeja como Info Solicitada.
+  'exa', 'exaalumnos', 'exalumnos', 'exalumno', 'exaalumno',
+  'alumni', 'alumnos', 'egresados',
+  'asociacion', 'asociación',
+  'comunicacion', 'comunicación', 'comunicaciones',
+  'rectoria', 'rectoría',
 ];
 
 // Matchea local-part exacto (con posible sufijo tipo `noreply-alert`) o con
@@ -171,6 +180,23 @@ export function quickClassifyEmail(input: QuickClassifyInput): QuickClassifyResu
   //     Estos son sistemas de engagement/notificación producto.
   if (NOTIFICATION_SUBDOMAIN_REGEX.test(from)) {
     return { category: 'auto_notification', reason: `subdominio de notificaciones (${from})` };
+  }
+
+  // 1c. Alumni institucional: local-part con prefijo `exa` + nombre de
+  //     universidad conocida. Casi siempre son invitaciones de asociación
+  //     de exalumnos (rectores nuevos, eventos, reencuentros), no clientes
+  //     ni proveedores. UDEM usa `udem.mx` (no .edu.mx), por eso no basta
+  //     con matchear TLD educativo — necesitamos la lista de universidades.
+  //     Añadido tras caso `exaudem@udem.mx` colándose a bandeja como
+  //     "Info Solicitada" con draft de "por favor reenvía".
+  if (/^exa(udem|tec|itesm|anahuac|unam|ipn|iteso|udg|upaep|uag|lasalle|panamericana|panam|ibero|iberoamericana|uvm|unitec)[a-z]*@/i.test(from)) {
+    return { category: 'auto_notification', reason: `alumni institucional (${from})` };
+  }
+  // 1d. Cualquier dirección desde dominio .edu.mx o .edu con local-part que
+  //     sugiera comunicación institucional/asociación (no un profesor o
+  //     estudiante individual). Estos raramente son leads de negocio real.
+  if (/^(exa[a-z]*|alumni|alumnos|egresados|comunicacion|comunicaci[oó]n|rectoria|rector[ií]a|asociacion|asociaci[oó]n)@[a-z0-9.-]+\.edu(\.mx)?$/i.test(from)) {
+    return { category: 'auto_notification', reason: `institucional educativo (${from})` };
   }
 
   // 2. Recibos / confirmaciones automáticas por asunto

@@ -119,7 +119,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return NextResponse.json({ ok: true });
   }
 
-  if (item.status !== 'pending') return NextResponse.json({ error: 'Already processed' }, { status: 409 });
+  // Los info_requested son drafts en los que Nash/inbox pidió al humano
+  // aprobar el "pedir más info al cliente" — mismo flow que pending para
+  // approve/reject/edit. Antes 409 porque solo se aceptaba pending → borrador
+  // atascado sin botones en el portal.
+  if (item.status !== 'pending' && item.status !== 'info_requested') {
+    return NextResponse.json({ error: 'Already processed' }, { status: 409 });
+  }
 
   const newStatus = body.status as string;
   const update: Record<string, unknown> = {

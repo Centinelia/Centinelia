@@ -432,7 +432,10 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
     const isExpanded  = expandedId === item.id;
     const catColorObj = CATEGORY_COLORS[normalizeCategory(item.category)];
     const catColorHex = catColorObj.fg;
-    const isPending   = item.status === 'pending';
+    // "actionable": el humano puede aprobar/rechazar/editar el borrador.
+    // Incluye info_requested — son drafts donde Nash pidió más info al cliente
+    // y el humano debe validar antes de que salga.
+    const isPending   = item.status === 'pending' || item.status === 'info_requested';
 
     return (
       <div
