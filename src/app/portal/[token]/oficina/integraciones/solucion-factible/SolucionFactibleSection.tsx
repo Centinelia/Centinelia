@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { CheckCircle, AlertTriangle, Loader2, FileText, Settings, Trash2, Upload } from 'lucide-react';
 
 interface Org {
@@ -21,47 +21,27 @@ interface Org {
   };
 }
 
-const SFLogo = () => (
-  <svg width="20" height="20" viewBox="0 0 48 48" fill="none">
-    <rect width="48" height="48" rx="8" fill="#1A56DB" />
-    <rect x="10" y="8" width="28" height="32" rx="3" fill="#fff" fillOpacity=".15" />
-    <rect x="13" y="11" width="22" height="26" rx="2" fill="#fff" />
-    <path d="M17 18h14M17 23h14M17 28h8" stroke="#1A56DB" strokeWidth="2" strokeLinecap="round" />
-    <path d="M30 30l4 4" stroke="#1A56DB" strokeWidth="2.2" strokeLinecap="round" />
-  </svg>
-);
+export default function SolucionFactibleSection({ token }: { token: string }) {
+  const [org, setOrg]     = useState<Org | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [msg, setMsg]     = useState<{ text: string; ok: boolean } | null>(null);
+  const [busy, setBusy]   = useState(false);
 
-function StatusBadge({ connected, csdReady }: { connected: boolean; csdReady: boolean }) {
-  if (!connected) {
-    return (
-      <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-        style={{ background: 'var(--c-surface)', color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }}>
-        Desconectado
-      </span>
-    );
-  }
-  if (!csdReady) {
-    return (
-      <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium"
-        style={{ background: 'rgba(245,158,11,0.1)', color: '#B45309', border: '1px solid rgba(245,158,11,0.25)' }}>
-        <AlertTriangle size={10} /> Sin CSD
-      </span>
-    );
-  }
-  return (
-    <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium"
-      style={{ background: 'rgba(34,197,94,0.1)', color: '#16a34a', border: '1px solid rgba(34,197,94,0.25)' }}>
-      <CheckCircle size={10} /> Activo
-    </span>
-  );
-}
+  const load = useCallback(async () => {
+    try {
+      const r = await fetch(`/api/portal/${token}/invoicing/config`);
+      if (!r.ok) { setOrg({}); return; }
+      const d = await r.json();
+      setOrg(d);
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
 
-export default function SolucionFactibleSection({ token, org }: { token: string; org: Org }) {
-  const [msg, setMsg]   = useState<{ text: string; ok: boolean } | null>(null);
-  const [busy, setBusy] = useState(false);
+  useEffect(() => { void load(); }, [load]);
 
-  const connected = !!org.invoicing_provider;
-  const csdReady  = !!org.invoicing_csd_no_certificado;
+  const connected = !!org?.invoicing_provider;
+  const csdReady  = !!org?.invoicing_csd_no_certificado;
 
   async function connect(fd: FormData) {
     setBusy(true); setMsg(null);
@@ -80,7 +60,7 @@ export default function SolucionFactibleSection({ token, org }: { token: string;
     const j = await r.json();
     setBusy(false);
     setMsg({ ok: r.ok, text: r.ok ? 'Conexion exitosa. Ahora sube tu CSD.' : (j.error ?? 'Error al conectar.') });
-    if (r.ok) setTimeout(() => location.reload(), 800);
+    if (r.ok) await load();
   }
 
   async function uploadCsd(fd: FormData) {
@@ -94,7 +74,7 @@ export default function SolucionFactibleSection({ token, org }: { token: string;
         ? `CSD v${j.version} registrado. Vence ${new Date(j.expires_at).toLocaleDateString('es-MX', { dateStyle: 'medium' })}.`
         : (j.error ?? 'Error al subir CSD.'),
     });
-    if (r.ok) setTimeout(() => location.reload(), 800);
+    if (r.ok) await load();
   }
 
   async function saveConfig(patch: Record<string, unknown>) {
@@ -108,6 +88,7 @@ export default function SolucionFactibleSection({ token, org }: { token: string;
       setMsg({ ok: false, text: j.error ?? 'Error al guardar.' });
     } else {
       setMsg({ ok: true, text: 'Cambios guardados.' });
+      await load();
     }
   }
 
@@ -115,30 +96,22 @@ export default function SolucionFactibleSection({ token, org }: { token: string;
     if (!confirm('Desconectar Solucion Factible. Los empleados volveran a escalar facturas a humano. Continuar?')) return;
     setBusy(true);
     await fetch(`/api/portal/${token}/invoicing/disconnect`, { method: 'DELETE' });
-    location.reload();
+    await load();
+    setBusy(false);
   }
 
-  return (
-    <div className="max-w-2xl mx-auto px-4 py-6 flex flex-col gap-5">
-
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{ background: 'rgba(26,86,219,0.1)', border: '1px solid rgba(26,86,219,0.25)' }}>
-          <SFLogo />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-base font-bold" style={{ color: 'var(--c-text)' }}>
-              Solucion Factible
-            </h1>
-            <StatusBadge connected={connected} csdReady={csdReady} />
-          </div>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-            Timbrado CFDI 4.0 · PAC autorizado SAT
-          </p>
-        </div>
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 text-sm py-4" style={{ color: 'var(--c-text-3)' }}>
+        <Loader2 size={14} className="animate-spin" /> Cargando...
       </div>
+    );
+  }
+
+  const o = org ?? {};
+
+  return (
+    <div className="flex flex-col gap-4">
 
       {/* Feedback message */}
       {msg && (
@@ -254,6 +227,17 @@ export default function SolucionFactibleSection({ token, org }: { token: string;
         </div>
       )}
 
+      {/* Connected identity summary */}
+      {connected && (
+        <div className="rounded-xl px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs"
+          style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)' }}>
+          <span><span className="font-semibold" style={{ color: 'var(--c-text)' }}>RFC:</span> {o.invoicing_rfc_emisor}</span>
+          <span><span className="font-semibold" style={{ color: 'var(--c-text)' }}>Razon social:</span> {o.invoicing_razon_social}</span>
+          <span><span className="font-semibold" style={{ color: 'var(--c-text)' }}>Regimen:</span> {o.invoicing_regimen_fiscal}</span>
+          <span><span className="font-semibold" style={{ color: 'var(--c-text)' }}>Lugar exp.:</span> {o.invoicing_lugar_expedicion}</span>
+        </div>
+      )}
+
       {/* CSD section */}
       {connected && (
         <div className="rounded-xl overflow-hidden"
@@ -271,10 +255,10 @@ export default function SolucionFactibleSection({ token, org }: { token: string;
               <CheckCircle size={13} style={{ color: '#16a34a', flexShrink: 0, marginTop: 1 }} />
               <div className="text-xs leading-relaxed" style={{ color: 'var(--c-text-2)' }}>
                 <span className="font-semibold" style={{ color: 'var(--c-text)' }}>CSD registrado</span>
-                {' '} · Version {org.invoicing_csd_version}
-                {' '} · No. {org.invoicing_csd_no_certificado}
-                {org.invoicing_csd_expires_at && (
-                  <> · Vence {new Date(org.invoicing_csd_expires_at).toLocaleDateString('es-MX', { dateStyle: 'medium' })}</>
+                {' '} · Version {o.invoicing_csd_version}
+                {' '} · No. {o.invoicing_csd_no_certificado}
+                {o.invoicing_csd_expires_at && (
+                  <> · Vence {new Date(o.invoicing_csd_expires_at).toLocaleDateString('es-MX', { dateStyle: 'medium' })}</>
                 )}
               </div>
             </div>
@@ -357,7 +341,7 @@ export default function SolucionFactibleSection({ token, org }: { token: string;
             <label className="flex items-start gap-2.5 cursor-pointer">
               <input
                 type="checkbox"
-                defaultChecked={org.invoicing_test_mode !== false}
+                defaultChecked={o.invoicing_test_mode !== false}
                 onChange={e => void saveConfig({ test_mode: e.currentTarget.checked })}
                 className="mt-0.5 rounded"
               />
@@ -372,7 +356,7 @@ export default function SolucionFactibleSection({ token, org }: { token: string;
             <label className="flex items-start gap-2.5 cursor-pointer">
               <input
                 type="checkbox"
-                defaultChecked={!!org.invoicing_allow_agent_cancellation}
+                defaultChecked={!!o.invoicing_allow_agent_cancellation}
                 onChange={e => void saveConfig({ allow_agent_cancellation: e.currentTarget.checked })}
                 className="mt-0.5 rounded"
               />
@@ -384,7 +368,7 @@ export default function SolucionFactibleSection({ token, org }: { token: string;
               </div>
             </label>
 
-            <div className="pt-1" style={{ borderTop: '1px solid var(--c-border)' }}>
+            <div className="pt-3" style={{ borderTop: '1px solid var(--c-border)' }}>
               <p className="text-xs font-semibold mb-3" style={{ color: 'var(--c-text-2)' }}>Limites automaticos</p>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label className="flex flex-col gap-1">
@@ -392,8 +376,8 @@ export default function SolucionFactibleSection({ token, org }: { token: string;
                   <input
                     type="number"
                     min={1}
-                    defaultValue={org.invoicing_limits?.monto_max_mxn ?? 50000}
-                    onBlur={e => void saveConfig({ limits: { ...org.invoicing_limits, monto_max_mxn: Number(e.currentTarget.value) } })}
+                    defaultValue={o.invoicing_limits?.monto_max_mxn ?? 50000}
+                    onBlur={e => void saveConfig({ limits: { ...o.invoicing_limits, monto_max_mxn: Number(e.currentTarget.value) } })}
                     className="rounded-lg px-3 py-2 text-sm"
                     style={{ border: '1px solid var(--c-border)', background: 'var(--c-surface)', color: 'var(--c-text)', outline: 'none' }}
                   />
@@ -403,8 +387,8 @@ export default function SolucionFactibleSection({ token, org }: { token: string;
                   <input
                     type="number"
                     min={1}
-                    defaultValue={org.invoicing_limits?.max_stamps_per_hour_per_rfc ?? 3}
-                    onBlur={e => void saveConfig({ limits: { ...org.invoicing_limits, max_stamps_per_hour_per_rfc: Number(e.currentTarget.value) } })}
+                    defaultValue={o.invoicing_limits?.max_stamps_per_hour_per_rfc ?? 3}
+                    onBlur={e => void saveConfig({ limits: { ...o.invoicing_limits, max_stamps_per_hour_per_rfc: Number(e.currentTarget.value) } })}
                     className="rounded-lg px-3 py-2 text-sm"
                     style={{ border: '1px solid var(--c-border)', background: 'var(--c-surface)', color: 'var(--c-text)', outline: 'none' }}
                   />
@@ -414,8 +398,8 @@ export default function SolucionFactibleSection({ token, org }: { token: string;
                   <input
                     type="number"
                     min={1}
-                    defaultValue={org.invoicing_limits?.max_stamps_per_day ?? 50}
-                    onBlur={e => void saveConfig({ limits: { ...org.invoicing_limits, max_stamps_per_day: Number(e.currentTarget.value) } })}
+                    defaultValue={o.invoicing_limits?.max_stamps_per_day ?? 50}
+                    onBlur={e => void saveConfig({ limits: { ...o.invoicing_limits, max_stamps_per_day: Number(e.currentTarget.value) } })}
                     className="rounded-lg px-3 py-2 text-sm"
                     style={{ border: '1px solid var(--c-border)', background: 'var(--c-surface)', color: 'var(--c-text)', outline: 'none' }}
                   />
@@ -424,11 +408,11 @@ export default function SolucionFactibleSection({ token, org }: { token: string;
                   <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>Usos CFDI bloqueados (separados por coma)</span>
                   <input
                     type="text"
-                    defaultValue={(org.invoicing_limits?.blocked_uso_cfdi ?? []).join(',')}
+                    defaultValue={(o.invoicing_limits?.blocked_uso_cfdi ?? []).join(',')}
                     placeholder="G01,G03"
                     onBlur={e => void saveConfig({
                       limits: {
-                        ...org.invoicing_limits,
+                        ...o.invoicing_limits,
                         blocked_uso_cfdi: e.currentTarget.value.split(',').map(s => s.trim().toUpperCase()).filter(Boolean),
                       },
                     })}

@@ -20,14 +20,29 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ token: stri
 
   const supabase = createAdminClient();
   const { data } = await supabase.from('organizations')
-    .select('invoicing_provider, invoicing_rfc_emisor, invoicing_razon_social')
+    .select(`
+      invoicing_provider, invoicing_rfc_emisor, invoicing_razon_social,
+      invoicing_regimen_fiscal, invoicing_lugar_expedicion,
+      invoicing_test_mode, invoicing_allow_agent_cancellation,
+      invoicing_csd_version, invoicing_csd_expires_at, invoicing_csd_no_certificado,
+      invoicing_limits
+    `)
     .eq('portal_email', agent.portal_email)
     .single();
 
   return NextResponse.json({
-    connected:      !!data?.invoicing_provider,
-    rfc_emisor:     data?.invoicing_rfc_emisor ?? null,
-    razon_social:   data?.invoicing_razon_social ?? null,
+    connected:                          !!data?.invoicing_provider,
+    invoicing_provider:                 data?.invoicing_provider ?? null,
+    invoicing_rfc_emisor:               data?.invoicing_rfc_emisor ?? null,
+    invoicing_razon_social:             data?.invoicing_razon_social ?? null,
+    invoicing_regimen_fiscal:           data?.invoicing_regimen_fiscal ?? null,
+    invoicing_lugar_expedicion:         data?.invoicing_lugar_expedicion ?? null,
+    invoicing_test_mode:                data?.invoicing_test_mode ?? true,
+    invoicing_allow_agent_cancellation: !!data?.invoicing_allow_agent_cancellation,
+    invoicing_csd_version:              data?.invoicing_csd_version ?? 0,
+    invoicing_csd_expires_at:           data?.invoicing_csd_expires_at ?? null,
+    invoicing_csd_no_certificado:       data?.invoicing_csd_no_certificado ?? null,
+    invoicing_limits:                   data?.invoicing_limits ?? null,
   });
 }
 

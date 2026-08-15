@@ -1,18 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { Calendar, Mail, MessageSquare, ShoppingCart, ChevronDown, Check, Users, DollarSign, Plug, Sparkles, FileText, ChevronRight } from 'lucide-react';
+import { Calendar, Mail, MessageSquare, ShoppingCart, ChevronDown, Check, Users, DollarSign, Plug, Sparkles, FileText } from 'lucide-react';
 import type { Plan } from '@/types/agent';
 
-import IntegrationsSection  from './IntegrationsSection';
-import NotionSection        from './NotionSection';
-import NotionSchemasSection from './NotionSchemasSection';
-import TeamsSection         from './TeamsSection';
-import EmailOAuthSection    from './EmailOAuthSection';
-import MercadoLibreSection  from './MercadoLibreSection';
-import QuickBooksSection    from './QuickBooksSection';
-import GoogleWorkspaceCard  from './GoogleWorkspaceCard';
+import IntegrationsSection       from './IntegrationsSection';
+import NotionSection             from './NotionSection';
+import NotionSchemasSection      from './NotionSchemasSection';
+import TeamsSection              from './TeamsSection';
+import EmailOAuthSection         from './EmailOAuthSection';
+import MercadoLibreSection       from './MercadoLibreSection';
+import QuickBooksSection         from './QuickBooksSection';
+import GoogleWorkspaceCard       from './GoogleWorkspaceCard';
+import SolucionFactibleSection   from './oficina/integraciones/solucion-factible/SolucionFactibleSection';
 
 /* ── types ─────────────────────────────────────────────────────────────── */
 
@@ -533,8 +533,7 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
     label: string;
     subtitle?: string;
     connected: boolean;
-    href?: string;
-    children?: React.ReactNode;
+    children: React.ReactNode;
   };
 
   const rows: CapRow[] = [
@@ -646,8 +645,7 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
       label: 'Facturación CFDI',
       subtitle: 'Solucion Factible · Timbrado CFDI 4.0',
       connected: !!status.sf?.connected,
-      href: `/portal/${token}/oficina/integraciones/solucion-factible`,
-      children: undefined,
+      children: <SolucionFactibleSection token={token} />,
     },
   ];
 
@@ -688,52 +686,19 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
         </div>
 
         <div className="flex flex-col" style={{ borderTop: '1px solid #F0EDF9' }}>
-          {rows.map((r, idx) => {
-            const isLast = idx === rows.length - 1;
-            if (r.href) {
-              const displayIcon = r.connected && r.connectedIcon ? r.connectedIcon : r.icon;
-              return (
-                <Link
-                  key={r.key}
-                  href={r.href}
-                  className="flex items-center gap-3 px-5 py-4 transition-colors no-underline"
-                  style={{ borderBottom: isLast ? 'none' : '1px solid #F0EDF9', textDecoration: 'none' }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = '#FAFAFB'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'transparent'; }}
-                >
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
-                    {displayIcon}
-                  </div>
-                  <div className="flex flex-col flex-1 min-w-0">
-                    <span className="text-[13px] font-semibold" style={{ color: '#1A0A3B', lineHeight: 1.3 }}>
-                      {r.label}
-                    </span>
-                    {r.subtitle && (
-                      <span className="text-[12px] truncate" style={{ color: '#6B6480', marginTop: 1, lineHeight: 1.3 }}>
-                        {r.subtitle}
-                      </span>
-                    )}
-                  </div>
-                  <StatusDot on={r.connected} />
-                  <ChevronRight size={14} style={{ color: '#9B8FB5', flexShrink: 0 }} />
-                </Link>
-              );
-            }
-            return (
-              <CapabilityRow
-                key={r.key}
-                icon={r.icon}
-                connectedIcon={r.connectedIcon}
-                label={r.label}
-                subtitle={r.subtitle}
-                connected={r.connected}
-                isLast={isLast}
-              >
-                {r.children}
-              </CapabilityRow>
-            );
-          })}
+          {rows.map((r, idx) => (
+            <CapabilityRow
+              key={r.key}
+              icon={r.icon}
+              connectedIcon={r.connectedIcon}
+              label={r.label}
+              subtitle={r.subtitle}
+              connected={r.connected}
+              isLast={idx === rows.length - 1}
+            >
+              {r.children}
+            </CapabilityRow>
+          ))}
         </div>
       </div>
     </div>
