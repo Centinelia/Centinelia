@@ -60,6 +60,18 @@ export async function POST(req: NextRequest) {
   if (!res.ok) return reply(res.error ?? 'No pude registrar la solicitud.');
 
   const totalStr = res.total!.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+
+  if (res.path === 'auto' && res.outcome === 'stamped') {
+    return reply(
+      `Ya la emití por ${totalStr}, folio ${res.folio_corto}. Se la mandé a ${args.cliente_email}.`,
+    );
+  }
+  if (res.path === 'auto' && res.outcome === 'retrying') {
+    return reply(
+      `Estoy procesando la emisión por ${totalStr}. Le llegará al correo ${args.cliente_email} en los próximos minutos.`,
+    );
+  }
+  // 'human' o 'auto→failed' (cayó a humano)
   return reply(
     `Solicitud registrada por ${totalStr}. Le avisé al equipo de facturación (${res.target_email}) que emita la factura para ${args.cliente_nombre} (RFC ${args.cliente_rfc}). El cliente recibirá el CFDI en ${args.cliente_email} en las próximas 24 horas hábiles.`,
   );
