@@ -262,7 +262,30 @@ async function executeAgentToolInner(
       return { ok: false, error: `Verificador bloqueó el envío: ${verdict.concern ?? 'preocupación no especificada'}. Revisa destinatario o contenido, o pide aprobación.` };
     }
 
-    return executeSendEmail({
+    // Intent lock org-level — si otro meerkat ya reportó lo mismo al mismo
+    // destinatario en las últimas 24h, no duplicamos ni cobramos otra tarea.
+    const { tryClaimReportIntent, commitReportIntent, releaseReportIntent, formatDuplicateReportMessage } =
+      await import('@/lib/ops/report-intent-lock');
+    const claim = await tryClaimReportIntent({
+      portalEmail,
+      kind:      'email',
+      target:    toolInput.to as string,
+      subject:   toolInput.subject as string,
+      agentId,
+      agentName,
+      extraDedupe: (toolInput.body as string ?? '').slice(0, 800),
+      sourceContext: { tool: 'send_email', channel: ctx.channel ?? 'chat' },
+    });
+    if (!claim.claimed) {
+      return {
+        ok: false,
+        deduped: true,
+        message: formatDuplicateReportMessage(claim),
+        already_claimed_by: claim.alreadyClaimedBy,
+      };
+    }
+
+    const result = await executeSendEmail({
       agentId, businessName,
       to:           toolInput.to           as string,
       subject:      toolInput.subject      as string,
@@ -272,6 +295,11 @@ async function executeAgentToolInner(
       attFileName:  toolInput.attachment_file_name as string | undefined,
       attMimeType:  toolInput.attachment_mime_type as string | undefined,
     }, supabase);
+
+    const sent = result && typeof result === 'object' && (result as { ok?: unknown }).ok !== false;
+    if (sent) await commitReportIntent(claim.lockId);
+    else      await releaseReportIntent(claim.lockId);
+    return result;
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -1075,16 +1103,48 @@ async function executeAgentToolInner(
         .eq('id', affectedId)
         .maybeSingle();
       if (!target) return { ok: false, error: `no encontré voice_agent con id ${affectedId}` };
+      // Intent lock: Nash + otro incident responder no deben mandar el mismo
+      // update dos veces al mismo cliente afectado. Bucketing 6h para
+      // permitir un follow-up razonable en el mismo día.
+      const {
+        tryClaimReportIntent: tryClaim1,
+        commitReportIntent:   commit1,
+        releaseReportIntent:  release1,
+        formatDuplicateReportMessage: fmtDup1,
+      } = await import('@/lib/ops/report-intent-lock');
+      const contactTarget = canal === 'whatsapp'
+        ? String(target.transfer_whatsapp ?? affectedId)
+        : String(target.client_email ?? affectedId);
+      const claimNash = await tryClaim1({
+        portalEmail: (target.portal_email as string) ?? portalEmail,
+        kind:        canal as 'email' | 'whatsapp',
+        target:      contactTarget,
+        subject:     `[Nash] responder_cliente_afectado :: ${incidentId || target.business_name || affectedId}`,
+        agentId,
+        agentName:   agentName || 'Nash',
+        ttlHours:    6,
+        extraDedupe: mensaje.slice(0, 400),
+        sourceContext: { tool: 'responder_cliente_afectado', incident_id: incidentId || null },
+      });
+      if (!claimNash.claimed) {
+        return {
+          ok: false,
+          deduped: true,
+          message: fmtDup1(claimNash),
+          already_claimed_by: claimNash.alreadyClaimedBy,
+        };
+      }
       if (canal === 'whatsapp') {
         const to = target.transfer_whatsapp as string | null;
-        if (!to) return { ok: false, error: 'el cliente no tiene transfer_whatsapp configurado, prueba con email' };
+        if (!to) { await release1(claimNash.lockId); return { ok: false, error: 'el cliente no tiene transfer_whatsapp configurado, prueba con email' }; }
         const { sendWhatsApp } = await import('@/lib/whatsapp/send');
         const okWa = await sendWhatsApp(to, `Centinelia (Nash):\n\n${mensaje}`);
-        if (!okWa) return { ok: false, error: 'sendWhatsApp devolvió false — revisa TWILIO_*' };
+        if (!okWa) { await release1(claimNash.lockId); return { ok: false, error: 'sendWhatsApp devolvió false — revisa TWILIO_*' }; }
+        await commit1(claimNash.lockId);
         return { ok: true, delivered_to: to, channel: 'whatsapp', business: target.business_name };
       }
       const to = target.client_email as string | null;
-      if (!to) return { ok: false, error: 'el cliente no tiene client_email configurado' };
+      if (!to) { await release1(claimNash.lockId); return { ok: false, error: 'el cliente no tiene client_email configurado' }; }
 
       // Reply-To bidireccional: si el cliente responde a este correo, el inbound
       // webhook detecta el token del incidente y reabre el caso sin que el cliente
@@ -1097,18 +1157,24 @@ async function executeAgentToolInner(
         replyHint = '<p style="font-family:system-ui,-apple-system,sans-serif;font-size:13px;color:#6b7280;margin-top:16px;padding:12px;background:#f9fafb;border-radius:8px;border-left:3px solid #9CA3AF">Si el problema persiste o quieres seguir la conversación, simplemente <strong>responde a este correo</strong>. Tu mensaje reabre el caso automáticamente, no necesitas levantar otro reporte.</p>';
       }
 
-      await sendEmail({
-        to,
-        subject: `Centinelia (Nash): actualización sobre ${target.business_name ?? 'tu cuenta'}`,
-        html:    `<p style="font-family:system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.6">${mensaje.replace(/\n/g, '<br>')}</p>${replyHint}<p style="font-family:system-ui,-apple-system,sans-serif;font-size:12px;color:#6b7280;margin-top:24px">Nash, Centinelia interno</p>`,
-        replyTo,
-        // Infra lista para separar la identidad de Nash del correo genérico
-        // de notificaciones. Cuando NASH_EMAIL_FROM esté seteado en Vercel
-        // (ej. "Nash de Centinelia <nash@centinelia.mx>"), Nash enviará
-        // desde ese buzón. Sin la var, cae al default RESEND_FROM_EMAIL
-        // (notificaciones@centinelia.mx).
-        from:    process.env.NASH_EMAIL_FROM,
-      });
+      try {
+        await sendEmail({
+          to,
+          subject: `Centinelia (Nash): actualización sobre ${target.business_name ?? 'tu cuenta'}`,
+          html:    `<p style="font-family:system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.6">${mensaje.replace(/\n/g, '<br>')}</p>${replyHint}<p style="font-family:system-ui,-apple-system,sans-serif;font-size:12px;color:#6b7280;margin-top:24px">Nash, Centinelia interno</p>`,
+          replyTo,
+          // Infra lista para separar la identidad de Nash del correo genérico
+          // de notificaciones. Cuando NASH_EMAIL_FROM esté seteado en Vercel
+          // (ej. "Nash de Centinelia <nash@centinelia.mx>"), Nash enviará
+          // desde ese buzón. Sin la var, cae al default RESEND_FROM_EMAIL
+          // (notificaciones@centinelia.mx).
+          from:    process.env.NASH_EMAIL_FROM,
+        });
+      } catch (e) {
+        await release1(claimNash.lockId);
+        throw e;
+      }
+      await commit1(claimNash.lockId);
       return { ok: true, delivered_to: to, channel: 'email', business: target.business_name, reply_to: replyTo ?? null, from: process.env.NASH_EMAIL_FROM ?? 'default' };
     }
 
@@ -1233,6 +1299,38 @@ async function executeAgentToolInner(
       if (!['low', 'med', 'high', 'critical'].includes(urgencia)) {
         return { ok: false, error: `urgencia inválida: ${urgencia}` };
       }
+      // Intent lock: si dos incidentes disparan escalación por la misma razón
+      // al owner en poco tiempo, deduplicamos para no llenar el WhatsApp del
+      // owner. TTL 12h; los 'critical' ignoran la ventana (bypass abajo).
+      const {
+        tryClaimReportIntent: tryClaim2,
+        commitReportIntent:   commit2,
+        releaseReportIntent:  release2,
+        formatDuplicateReportMessage: fmtDup2,
+      } = await import('@/lib/ops/report-intent-lock');
+      // 'critical' bypasa el dedupe: el owner debe enterarse sí o sí, aunque
+      // suene repetido. Todo lo demás pasa por el lock.
+      const claimOwner = urgencia === 'critical'
+        ? { claimed: true, lockId: null, intentHash: '', alreadyClaimedBy: null }
+        : await tryClaim2({
+            portalEmail,
+            kind:      'monitor_alert',
+            target:    process.env.OWNER_WHATSAPP || (process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? 'hola@centinelia.mx'),
+            subject:   `[Nash escalation] ${urgencia} :: ${incidentId ?? 'no-incident'}`,
+            agentId,
+            agentName: agentName || 'Nash',
+            ttlHours:  12,
+            extraDedupe: razon.slice(0, 400),
+            sourceContext: { tool: 'escalar_al_owner', urgency: urgencia, incident_id: incidentId },
+          });
+      if (!claimOwner.claimed) {
+        return {
+          ok: false,
+          deduped: true,
+          message: fmtDup2(claimOwner),
+          already_claimed_by: claimOwner.alreadyClaimedBy,
+        };
+      }
       const flag     = urgencia === 'critical' ? '[CRITICO]' : urgencia === 'high' ? '[URGENTE]' : '[INFO]';
       const linkNote = incidentId ? `\n\nVer /admin/soporte (id ${incidentId.slice(0, 8)}...)` : '';
       const body     = `${flag} Nash escala (${urgencia}):\n\n${razon}${linkNote}`;
@@ -1245,14 +1343,20 @@ async function executeAgentToolInner(
       }
       if (deliveredVia !== 'whatsapp') {
         const to = process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? 'hola@centinelia.mx';
-        await sendEmail({
-          to,
-          subject: `${flag} Nash escala (${urgencia})`,
-          html:    `<p style="font-family:system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.6">${razon.replace(/\n/g, '<br>')}</p>${incidentId ? `<p style="font-family:system-ui,-apple-system,sans-serif;font-size:12px;color:#6b7280">Incidente <code>${incidentId}</code></p>` : ''}`,
-          // Ver comentario en responder_cliente_afectado sobre NASH_EMAIL_FROM.
-          from:    process.env.NASH_EMAIL_FROM,
-        });
+        try {
+          await sendEmail({
+            to,
+            subject: `${flag} Nash escala (${urgencia})`,
+            html:    `<p style="font-family:system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.6">${razon.replace(/\n/g, '<br>')}</p>${incidentId ? `<p style="font-family:system-ui,-apple-system,sans-serif;font-size:12px;color:#6b7280">Incidente <code>${incidentId}</code></p>` : ''}`,
+            // Ver comentario en responder_cliente_afectado sobre NASH_EMAIL_FROM.
+            from:    process.env.NASH_EMAIL_FROM,
+          });
+        } catch (e) {
+          await release2(claimOwner.lockId);
+          throw e;
+        }
       }
+      await commit2(claimOwner.lockId);
       if (incidentId) {
         const { data: inc } = await supabase
           .from('platform_incidents')
@@ -1276,7 +1380,7 @@ async function executeAgentToolInner(
       if (!incidentId) return { ok: false, error: 'incidente_id es obligatorio' };
       const { data: incident } = await supabase
         .from('platform_incidents')
-        .select('id, source, source_id, status')
+        .select('id, source, source_id, status, github_issue_url')
         .eq('id', incidentId)
         .maybeSingle();
       if (!incident) return { ok: false, error: `incidente ${incidentId} no encontrado` };
@@ -1287,8 +1391,49 @@ async function executeAgentToolInner(
       const sourceId = incident.source_id as string | null;
       let verified = false;
       let notes    = '';
-      if (!sourceId && source !== 'error_log') {
+
+      // Señal fuerte: GitHub issue cerrado. Si Nash mandó el bug a Claude Code
+      // y el issue quedó closed, el fix ya se hizo. Esto vale para CUALQUIER
+      // source (bug_report, error_log, agent_task…), porque `tool_call_log`
+      // rows no se borran cuando Claude Code cierra el bug — sin esta señal,
+      // bug_reports quedaban perpetuamente en awaiting_verification y Nash
+      // nunca mandaba el correo de "ya está resuelto".
+      const ghIssueUrl = incident.github_issue_url as string | null;
+      if (ghIssueUrl) {
+        const token = process.env.NASH_GITHUB_TOKEN;
+        const repo  = process.env.NASH_GITHUB_REPO ?? 'Centinelia/Centinelia';
+        const numMatch = ghIssueUrl.match(/\/issues\/(\d+)/);
+        if (token && numMatch) {
+          try {
+            const res = await fetch(`https://api.github.com/repos/${repo}/issues/${numMatch[1]}`, {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept':        'application/vnd.github+json',
+                'User-Agent':    'nash-meerkat',
+              },
+            });
+            if (res.ok) {
+              const issue = await res.json() as { state?: string; closed_at?: string | null };
+              if (issue.state === 'closed') {
+                verified = true;
+                notes    = `GitHub issue cerrado${issue.closed_at ? ` en ${issue.closed_at}` : ''}`;
+              }
+            }
+          } catch { /* falla silenciosa: caemos a la verificación por source */ }
+        }
+      }
+
+      if (!verified && !sourceId && source !== 'error_log') {
         return { ok: true, verified: false, new_status: incident.status as string, notes: 'incidente sin source_id no puede auto-verificarse; requiere validación manual' };
+      }
+      if (verified) {
+        // GitHub cerró el issue → salta el chequeo per-source y marca resolved.
+        const { error: updErr } = await supabase
+          .from('platform_incidents')
+          .update({ status: 'resolved', resolution: `Auto-verificado por Nash: ${notes}` })
+          .eq('id', incidentId);
+        if (updErr) return { ok: false, error: updErr.message };
+        return { ok: true, verified: true, new_status: 'resolved', notes };
       }
       if (source === 'agent_task' && sourceId) {
         const { data: task } = await supabase
