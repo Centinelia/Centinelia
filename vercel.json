@@ -195,6 +195,10 @@
     {
       "path": "/api/cron/poll-sat-cancellations",
       "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/retry-failed-stamps",
+      "schedule": "*/10 * * * *"
     }
   ]
 }
