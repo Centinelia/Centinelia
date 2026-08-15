@@ -112,7 +112,7 @@ export default function SolucionFactibleSection({ token, org }: { token: string;
   }
 
   async function disconnect() {
-    if (!confirm('Desconectar Solucion Factible. Los empleados volverin a escalar facturas a humano. Continuar?')) return;
+    if (!confirm('Desconectar Solucion Factible. Los empleados volveran a escalar facturas a humano. Continuar?')) return;
     setBusy(true);
     await fetch(`/api/portal/${token}/invoicing/disconnect`, { method: 'DELETE' });
     location.reload();

@@ -4,6 +4,11 @@ import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { sendEmail } from '@/lib/email/send';
 import { quickClassifyEmail } from '@/lib/ops/email-quick-classify';
 import { logLlmCall } from '@/lib/observability/llm-log';
+import {
+  tryClaimReportIntent,
+  commitReportIntent,
+  releaseReportIntent,
+} from '@/lib/ops/report-intent-lock';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -153,8 +158,33 @@ ${emailBody.slice(0, 1500)}`;
   const target = [...siblings].sort((a, b) => matchScore(agente, b) - matchScore(agente, a))[0];
   if (!target) return;
 
+  // Intent lock: si dos coordinadores del mismo portal (Nox + Niva marcados
+  // ambos como coordinator, o un cron double-fire) procesan EL MISMO correo
+  // en paralelo, deduplicamos ANTES de crear la task para no meter dos
+  // tareas hermanas al pool. Bucketing 24h.
+  const emailFingerprint = `${emailFrom}|${emailSubject}|${(emailBody ?? '').slice(0, 200)}`;
+  const claim = await tryClaimReportIntent({
+    portalEmail,
+    kind:      'task',
+    target:    target.id,
+    subject:   `nox-delegation :: ${emailSubject || '(sin asunto)'}`,
+    agentId:   noxAgent.id,
+    agentName: noxAgent.agent_name,
+    extraDedupe: emailFingerprint,
+    sourceContext: {
+      source:        'processEmailWithNox',
+      email_from:    emailFrom,
+      email_subject: emailSubject,
+      target_agent:  target.id,
+    },
+  });
+  if (!claim.claimed) {
+    // Otro coordinador ya creó (o está creando) esta misma delegación.
+    return;
+  }
+
   // Queue as pending — the process-tasks cron picks it up asynchronously
-  const { error: insertError } = await supabase.from('agent_tasks').insert({
+  const { data: inserted, error: insertError } = await supabase.from('agent_tasks').insert({
     portal_email:   portalEmail,
     created_by:     noxAgent.id,
     assigned_to:    target.id,
@@ -163,8 +193,22 @@ ${emailBody.slice(0, 1500)}`;
     status:         'pending',
     trigger_type:   'email',
     source_context: emailBody.slice(0, 500),
-  });
-  if (insertError) console.error('[nox] task insert error:', insertError);
+  }).select('id').single();
+  if (insertError) {
+    console.error('[nox] task insert error:', insertError);
+    await releaseReportIntent(claim.lockId);
+    return;
+  }
+  await commitReportIntent(claim.lockId);
+  // Guarda referencia inversa: la task apunta al lock que la parió (útil
+  // para debug y para que el executor pueda saltarse el lock del envío
+  // saliente si ya está cubierto por el lock del task).
+  if (inserted?.id && claim.lockId) {
+    await supabase
+      .from('report_intent_locks')
+      .update({ related_task_id: inserted.id as string })
+      .eq('id', claim.lockId);
+  }
 }
 
 // ── Cron monitoring: alert about overdue tasks ────────────────────────────────
@@ -222,18 +266,48 @@ export async function runNoxMonitor(): Promise<{ portalsAlerted: number; tasksFo
     const senderName = nox.agent_name || 'Centinelia';
     const message = `*${senderName} — Alerta de tareas pendientes*\n\nHay ${tasks.length} tarea${tasks.length > 1 ? 's' : ''} sin completar:\n\n${taskLines}\n\nRevisa el portal para más detalles.`;
 
-    if (nox.transfer_whatsapp) {
-      await sendWhatsApp(nox.transfer_whatsapp, message)
-        .catch(err => console.error('[nox-monitor] WhatsApp error:', err));
-    } else if (nox.client_email) {
-      await sendEmail({
-        to:      nox.client_email,
-        subject: `Nox: ${tasks.length} tarea${tasks.length > 1 ? 's' : ''} pendiente${tasks.length > 1 ? 's' : ''}`,
-        html:    `<pre style="font-family:sans-serif">${message.replace(/\*/g, '<b>').replace(/\n/g, '<br>')}</pre>`,
-      }).catch(err => console.error('[nox-monitor] email error:', err));
+    // Intent lock: si Nox y otro coordinador (o dos crons pisados) llegan al
+    // mismo escenario overdue, solo el primero alerta al owner. TTL 6h para
+    // que si el problema persiste al día siguiente vuelva a avisar.
+    const overdueIds = tasks.map(t => t.id).sort().join(',');
+    const monitorTarget = nox.transfer_whatsapp || nox.client_email || 'unknown';
+    const claim = await tryClaimReportIntent({
+      portalEmail,
+      kind:      'monitor_alert',
+      target:    monitorTarget,
+      subject:   `nox-monitor overdue tasks`,
+      agentId:   nox.id,
+      agentName: nox.agent_name,
+      ttlHours:  6,
+      extraDedupe: overdueIds,
+      sourceContext: { source: 'runNoxMonitor', task_count: tasks.length, task_ids: tasks.map(t => t.id) },
+    });
+    if (!claim.claimed) {
+      // Otro proceso ya avisó exactamente sobre esta misma cola de tareas.
+      continue;
     }
 
-    portalsAlerted++;
+    let sent = false;
+    try {
+      if (nox.transfer_whatsapp) {
+        await sendWhatsApp(nox.transfer_whatsapp, message);
+        sent = true;
+      } else if (nox.client_email) {
+        await sendEmail({
+          to:      nox.client_email,
+          subject: `Nox: ${tasks.length} tarea${tasks.length > 1 ? 's' : ''} pendiente${tasks.length > 1 ? 's' : ''}`,
+          html:    `<pre style="font-family:sans-serif">${message.replace(/\*/g, '<b>').replace(/\n/g, '<br>')}</pre>`,
+        });
+        sent = true;
+      }
+    } catch (err) {
+      console.error('[nox-monitor] alert error:', err);
+    }
+
+    if (sent) await commitReportIntent(claim.lockId);
+    else      await releaseReportIntent(claim.lockId);
+
+    if (sent) portalsAlerted++;
   }
 
   return { portalsAlerted, tasksFound: overdueTasks.length };

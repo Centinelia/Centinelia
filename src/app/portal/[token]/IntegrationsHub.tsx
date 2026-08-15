@@ -644,9 +644,7 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
       icon: <FileText size={16} style={{ color: '#1A56DB' }} />,
       connectedIcon: RowIcons.solucion_factible,
       label: 'Facturación CFDI',
-      subtitle: status.sf?.connected
-        ? 'Solucion Factible · Timbrado CFDI 4.0'
-        : 'Solucion Factible · Timbrado CFDI 4.0',
+      subtitle: 'Solucion Factible · Timbrado CFDI 4.0',
       connected: !!status.sf?.connected,
       href: `/portal/${token}/oficina/integraciones/solucion-factible`,
       children: undefined,
