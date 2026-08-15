@@ -1728,10 +1728,16 @@ async function executeAgentToolInner(
     });
     if (!res.ok) return { ok: false, error: res.error };
     const totalStr = res.total!.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+    const clienteEmail = toolInput.cliente_email as string;
+    const message = res.path === 'auto' && res.outcome === 'stamped'
+      ? `Emitida ✓ folio ${res.folio_corto} enviada a ${clienteEmail}.`
+      : res.path === 'auto' && res.outcome === 'retrying'
+      ? `Procesando emisión — llegará en minutos.`
+      : `Solicitud de factura registrada por ${totalStr}. Le avisé al equipo de facturación (${res.target_email}) que emita la factura al RFC ${toolInput.cliente_rfc}. El cliente la recibirá en su correo (${clienteEmail}) en las próximas 24 horas hábiles.`;
     return {
       ok:      true,
       request_id: res.request_id,
-      message: `Solicitud de factura registrada por ${totalStr}. Le avisé al equipo de facturación (${res.target_email}) que emita la factura al RFC ${toolInput.cliente_rfc}. El cliente la recibirá en su correo (${toolInput.cliente_email}) en las próximas 24 horas hábiles.`,
+      message,
     };
   }
 
@@ -1984,11 +1990,43 @@ async function executeAgentToolInner(
     if (!args.document_id || !args.to || !args.subject || !args.body) {
       return { ok: false, error: 'Necesito document_id, destinatario, asunto y cuerpo.' };
     }
+
+    // Intent lock: dos meerkats podrían adjuntar el MISMO document_id al MISMO
+    // destinatario en paralelo (ej: cliente pide "mándame la cotización" y
+    // Nia + Nova reaccionan). document_id es el dedupe fuerte — si el
+    // documento y el destinatario son idénticos, es el mismo envío.
+    const { tryClaimReportIntent, commitReportIntent, releaseReportIntent, formatDuplicateReportMessage } =
+      await import('@/lib/ops/report-intent-lock');
+    const claim = await tryClaimReportIntent({
+      portalEmail,
+      kind:      'email',
+      target:    args.to,
+      subject:   `[doc-attach] ${args.document_id} :: ${args.subject}`,
+      agentId,
+      agentName,
+      extraDedupe: args.document_id,
+      sourceContext: {
+        tool:        'enviar_documento_oficina',
+        channel:     ctx.channel ?? 'chat',
+        document_id: args.document_id,
+      },
+    });
+    if (!claim.claimed) {
+      return {
+        ok: false,
+        deduped: true,
+        message: formatDuplicateReportMessage(claim),
+        already_claimed_by: claim.alreadyClaimedBy,
+      };
+    }
+
     const res = await sendOfficeDocumentByEmail({
       supabase, portalEmail, agentId,
       documentId: args.document_id, to: args.to,
       subject: args.subject, body: args.body,
     });
+    if (res.ok) await commitReportIntent(claim.lockId);
+    else        await releaseReportIntent(claim.lockId);
     return res.ok ? { ok: true, message: res.message ?? 'Correo enviado.' } : { ok: false, error: res.error };
   }
 
