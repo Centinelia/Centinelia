@@ -48,12 +48,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
   const result = await emitirFacturaAuto(id, supabase, { bypassGuardrails: true });
 
   // Best-effort audit log
-  void supabase.from('admin_access_log').insert({
+  Promise.resolve(supabase.from('admin_access_log').insert({
     actor_email: auth.portalEmail,
     action: 'portal_stamp_manual',
     target_id: id,
     details: { outcome: result.outcome },
-  }).then(() => {}).catch(() => {});
+  })).catch(() => {});
 
   return NextResponse.json({ ok: true, ...result });
 }
