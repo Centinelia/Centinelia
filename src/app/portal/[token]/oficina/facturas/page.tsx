@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import {
   FileText, Clock, CheckCircle, XCircle, Copy, Check, Receipt,
-  Download, RefreshCw, AlertTriangle, Stamp,
+  Download, RefreshCw, AlertTriangle, Stamp, Ban, Loader2,
 } from 'lucide-react';
 import { EmptyState as PortalEmptyState } from '@/components/portal-ui';
 import ReceivedInvoicesSection from './ReceivedInvoicesSection';
@@ -132,6 +132,8 @@ export default function FacturasPage() {
   const [selected,   setSelected]   = useState<Detail | null>(null);
   // Whether org has PAC connected (affects action buttons)
   const [pacConnected, setPacConnected] = useState(false);
+  // Cancellation modal (for stamped/issued invoices)
+  const [cancelTarget, setCancelTarget] = useState<Detail | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -204,6 +206,44 @@ export default function FacturasPage() {
   async function markManual(id: string) {
     const res = await fetch(`/api/portal/${token}/factura-requests/${id}/mark-manual`, { method: 'POST' });
     if ((await res.json()).ok) { setSelected(null); load(); }
+  }
+
+  async function requestCfdiCancellation(
+    row: Detail,
+    motivo: '01' | '02' | '03' | '04',
+    uuidSustituto: string,
+    razonCliente: string,
+  ) {
+    const res = await fetch(`/api/portal/${token}/cancellations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        uuid_o_folio_corto: row.issued_uuid ?? '',
+        motivo,
+        uuid_sustituto: uuidSustituto || undefined,
+        razon_cliente: razonCliente || undefined,
+      }),
+    });
+    const data = await res.json();
+    if (data.ok) { setCancelTarget(null); setSelected(null); load(); }
+    else alert(data.message ?? 'Error al solicitar cancelacion');
+  }
+
+  async function confirmCancellation(cancellationId: string) {
+    const res = await fetch(`/api/portal/${token}/cancellations/${cancellationId}/confirm`, { method: 'POST' });
+    const data = await res.json();
+    if (data.ok) { setSelected(null); load(); }
+    else alert(data.error ?? 'Error al confirmar la cancelacion');
+  }
+
+  async function rejectCancellation(cancellationId: string, notes: string) {
+    const res = await fetch(`/api/portal/${token}/cancellations/${cancellationId}/reject`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notes: notes || 'Rechazado por humano' }),
+    });
+    if ((await res.json()).ok) { setSelected(null); load(); }
+    else alert('Error al rechazar la cancelacion');
   }
 
   const filtered = filter === 'all' ? rows : rows.filter(r => r.status === filter);
@@ -375,6 +415,19 @@ export default function FacturasPage() {
           onCancel={cancelRequest}
           onStamp={() => stampRequest(selected.id)}
           onMarkManual={() => markManual(selected.id)}
+          onRequestCfdiCancel={() => setCancelTarget(selected)}
+          onConfirmCancellation={confirmCancellation}
+          onRejectCancellation={rejectCancellation}
+        />
+      )}
+
+      {cancelTarget && (
+        <CancelCfdiModal
+          request={cancelTarget}
+          onClose={() => setCancelTarget(null)}
+          onSubmit={(motivo, uuidSustituto, razonCliente) =>
+            requestCfdiCancellation(cancelTarget, motivo, uuidSustituto, razonCliente)
+          }
         />
       )}
     </div>
@@ -393,23 +446,34 @@ function DetailModal({
   onCancel,
   onStamp,
   onMarkManual,
+  onRequestCfdiCancel,
+  onConfirmCancellation,
+  onRejectCancellation,
 }: {
-  request:          Detail;
-  token:            string;
-  pacConnected:     boolean;
-  onClose:          () => void;
-  onMarkInProgress: () => void;
-  onMarkIssued:     (uuid: string, folio: string) => void;
-  onCancel:         (reason: string) => void;
-  onStamp:          () => void;
-  onMarkManual:     () => void;
+  request:                Detail;
+  token:                  string;
+  pacConnected:           boolean;
+  onClose:                () => void;
+  onMarkInProgress:       () => void;
+  onMarkIssued:           (uuid: string, folio: string) => void;
+  onCancel:               (reason: string) => void;
+  onStamp:                () => void;
+  onMarkManual:           () => void;
+  onRequestCfdiCancel:    () => void;
+  onConfirmCancellation:  (cancellationId: string) => void;
+  onRejectCancellation:   (cancellationId: string, notes: string) => void;
 }) {
-  const [uuid,         setUuid]         = useState('');
-  const [folio,        setFolio]        = useState('');
-  const [cancelReason, setCancelReason] = useState('');
-  const [showCancel,   setShowCancel]   = useState(false);
-  const [stamping,     setStamping]     = useState(false);
-  const [marking,      setMarking]      = useState(false);
+  const [uuid,              setUuid]              = useState('');
+  const [folio,             setFolio]             = useState('');
+  const [cancelReason,      setCancelReason]      = useState('');
+  const [showCancel,        setShowCancel]        = useState(false);
+  const [stamping,          setStamping]          = useState(false);
+  const [marking,           setMarking]           = useState(false);
+  // Cancellation_requested state: fetch the pending cfdi_cancellation id
+  const [cancellationId,    setCancellationId]    = useState<string | null>(null);
+  const [rejectNotes,       setRejectNotes]       = useState('');
+  const [showRejectInput,   setShowRejectInput]   = useState(false);
+  const [loadingCancel,     setLoadingCancel]     = useState(false);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -417,6 +481,17 @@ function DetailModal({
     document.body.style.overflow = 'hidden';
     return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = ''; };
   }, [onClose]);
+
+  // Fetch pending cancellation id when status is cancellation_requested
+  useEffect(() => {
+    if (request.status !== 'cancellation_requested') return;
+    setLoadingCancel(true);
+    fetch(`/api/portal/${token}/cancellations?factura_request_id=${request.id}`)
+      .then(r => r.json())
+      .then(d => { if (d.cancellation?.id) setCancellationId(d.cancellation.id); })
+      .catch(() => {/* best-effort */})
+      .finally(() => setLoadingCancel(false));
+  }, [request.id, request.status, token]);
 
   const s           = request.status;
   const isStamped   = s === 'stamped' || s === 'issued';
@@ -536,7 +611,7 @@ function DetailModal({
         {/* Actions footer */}
         <div className="px-6 py-4 flex flex-col gap-3" style={{ borderTop: '1px solid #E8E3F5', background: '#FAFAFB' }}>
 
-          {/* Stamped / issued: downloads + cancellation placeholder */}
+          {/* Stamped / issued: downloads + solicitar cancelacion */}
           {isStamped && (
             <div className="flex flex-wrap gap-2">
               <a
@@ -557,7 +632,86 @@ function DetailModal({
               >
                 <Download size={12} /> Descargar PDF
               </a>
-              {/* TASK-32-INSERTION-POINT: cancellation button for stamped invoices goes here */}
+              <button
+                onClick={onRequestCfdiCancel}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90 ml-auto"
+                style={{ background: 'rgba(239,68,68,0.06)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.15)' }}
+              >
+                <Ban size={12} /> Solicitar cancelacion
+              </button>
+            </div>
+          )}
+
+          {/* Stamping in progress: indicator */}
+          {s === 'stamping' && (
+            <div className="flex items-center gap-2 text-xs" style={{ color: '#6B6480' }}>
+              <Loader2 size={13} className="animate-spin" style={{ color: '#6C3BFF' }} />
+              <span>Timbrado en progreso...</span>
+            </div>
+          )}
+
+          {/* Cancellation requested: confirm or reject */}
+          {s === 'cancellation_requested' && (
+            <div className="flex flex-col gap-3">
+              <div className="flex items-start gap-2 text-xs rounded-lg px-3 py-2"
+                style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', color: '#92400e' }}>
+                <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+                <span>Hay una solicitud de cancelacion pendiente. Confirma para enviarla al SAT via PAC, o rechazala para revertir la factura a estado <em>Emitida</em>.</span>
+              </div>
+              {loadingCancel ? (
+                <div className="flex items-center gap-2 text-xs" style={{ color: '#9B8FB5' }}>
+                  <Loader2 size={12} className="animate-spin" /> Cargando solicitud...
+                </div>
+              ) : !cancellationId ? (
+                <p className="text-xs" style={{ color: '#9B8FB5' }}>No se encontro la solicitud de cancelacion asociada.</p>
+              ) : showRejectInput ? (
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#9B8FB5' }}>
+                    Motivo del rechazo (opcional)
+                  </label>
+                  <input
+                    value={rejectNotes}
+                    onChange={e => setRejectNotes(e.target.value)}
+                    autoFocus
+                    placeholder="Ej: El cliente cambio de opinion"
+                    className="w-full rounded-lg px-3 py-2 text-xs"
+                    style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }}
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => onRejectCancellation(cancellationId, rejectNotes)}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90"
+                      style={{ background: '#ef4444', color: '#fff' }}
+                    >
+                      <XCircle size={12} /> Confirmar rechazo
+                    </button>
+                    <button
+                      onClick={() => setShowRejectInput(false)}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+                      style={{ background: '#ffffff', color: '#6B6480', border: '1px solid #E8E3F5' }}
+                    >
+                      Volver
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => onConfirmCancellation(cancellationId)}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90"
+                    style={{ background: '#6C3BFF', color: '#fff' }}
+                  >
+                    <CheckCircle size={12} /> Confirmar y enviar al SAT
+                  </button>
+                  <button
+                    onClick={() => setShowRejectInput(true)}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90 ml-auto"
+                    style={{ background: 'rgba(239,68,68,0.06)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.15)' }}
+                  >
+                    <XCircle size={12} /> Rechazar solicitud
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -723,6 +877,152 @@ function Row({ k, v, mono, copyable }: { k: string; v: string; mono?: boolean; c
           {copied ? <Check size={12} /> : <Copy size={12} />}
         </button>
       )}
+    </div>
+  );
+}
+
+// ─── Cancel CFDI modal ────────────────────────────────────────────────────────
+
+const MOTIVO_LABELS: Record<string, string> = {
+  '01': '01 — Comprobante emitido con errores con relacion',
+  '02': '02 — Comprobante emitido con errores sin relacion',
+  '03': '03 — No se llevo a cabo la operacion',
+  '04': '04 — Operacion nominativa relacionada en una factura global',
+};
+
+function CancelCfdiModal({
+  request,
+  onClose,
+  onSubmit,
+}: {
+  request:  Detail;
+  onClose:  () => void;
+  onSubmit: (motivo: '01' | '02' | '03' | '04', uuidSustituto: string, razonCliente: string) => Promise<void>;
+}) {
+  const [motivo,         setMotivo]         = useState<'01' | '02' | '03' | '04'>('02');
+  const [uuidSustituto,  setUuidSustituto]  = useState('');
+  const [razonCliente,   setRazonCliente]   = useState('');
+  const [submitting,     setSubmitting]     = useState(false);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  async function handleSubmit() {
+    if (motivo === '01' && !uuidSustituto.trim()) {
+      alert('El motivo 01 requiere el UUID del comprobante sustituto.');
+      return;
+    }
+    setSubmitting(true);
+    try { await onSubmit(motivo, uuidSustituto.trim(), razonCliente.trim()); }
+    finally { setSubmitting(false); }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-start sm:items-center justify-center overflow-y-auto"
+      style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)' }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md m-4 rounded-2xl overflow-hidden"
+        style={{ background: '#ffffff', border: '1px solid #E8E3F5' }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between px-6 py-4" style={{ borderBottom: '1px solid #E8E3F5' }}>
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#9B8FB5' }}>Cancelacion CFDI</p>
+            <h2 className="text-base font-bold mt-1" style={{ color: '#1A0A3B' }}>{request.cliente_nombre}</h2>
+            {request.issued_uuid && (
+              <p className="text-[11px] font-mono mt-0.5" style={{ color: '#9B8FB5' }}>
+                {request.issued_uuid.slice(0, 8).toUpperCase()}...{request.issued_uuid.slice(-8).toUpperCase()}
+              </p>
+            )}
+          </div>
+          <button onClick={onClose} className="text-xs px-2 py-1 rounded-lg hover:opacity-80" style={{ background: '#FAFAFB', color: '#6B6480' }}>
+            Cerrar
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 py-4 flex flex-col gap-4">
+          {/* Warning */}
+          <div className="flex items-start gap-2 text-xs rounded-lg px-3 py-2"
+            style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)', color: '#7f1d1d' }}>
+            <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+            <span>Esta accion registra una solicitud de cancelacion ante el SAT. El receptor recibira una notificacion y debera aceptarla. Es irreversible una vez enviada.</span>
+          </div>
+
+          {/* Motivo */}
+          <div>
+            <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#9B8FB5' }}>
+              Motivo SAT
+            </label>
+            <select
+              value={motivo}
+              onChange={e => setMotivo(e.target.value as '01' | '02' | '03' | '04')}
+              className="w-full rounded-lg px-3 py-2 text-xs"
+              style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }}
+            >
+              {(['01', '02', '03', '04'] as const).map(m => (
+                <option key={m} value={m}>{MOTIVO_LABELS[m]}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* UUID sustituto (solo motivo 01) */}
+          {motivo === '01' && (
+            <div>
+              <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#9B8FB5' }}>
+                UUID del CFDI sustituto <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+              <input
+                value={uuidSustituto}
+                onChange={e => setUuidSustituto(e.target.value)}
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                className="w-full rounded-lg px-3 py-2 text-xs font-mono"
+                style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }}
+              />
+            </div>
+          )}
+
+          {/* Razon para el cliente (opcional) */}
+          <div>
+            <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#9B8FB5' }}>
+              Razon interna (opcional)
+            </label>
+            <input
+              value={razonCliente}
+              onChange={e => setRazonCliente(e.target.value)}
+              placeholder="Ej: Error en RFC del receptor"
+              className="w-full rounded-lg px-3 py-2 text-xs"
+              style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }}
+            />
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 flex gap-2" style={{ borderTop: '1px solid #E8E3F5', background: '#FAFAFB' }}>
+          <button
+            onClick={handleSubmit}
+            disabled={submitting || (motivo === '01' && !uuidSustituto.trim())}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
+            style={{ background: '#ef4444', color: '#fff' }}
+          >
+            <Ban size={12} /> {submitting ? 'Enviando...' : 'Solicitar cancelacion'}
+          </button>
+          <button
+            onClick={onClose}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+            style={{ background: '#ffffff', color: '#6B6480', border: '1px solid #E8E3F5' }}
+          >
+            Volver
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

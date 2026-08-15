@@ -11,7 +11,7 @@ export interface SolicitarCancelacionArgs {
 
 export interface SolicitarCancelacionCtx {
   agentId: string; portalEmail: string; supabase: SupabaseClient;
-  channel: 'voice' | 'chat' | 'email';
+  channel: 'voice' | 'chat' | 'email' | 'portal';
 }
 
 export interface SolicitarCancelacionResult {
