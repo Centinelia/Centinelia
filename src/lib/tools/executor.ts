@@ -1732,7 +1732,7 @@ async function executeAgentToolInner(
     const message = res.path === 'auto' && res.outcome === 'stamped'
       ? `Emitida ✓ folio ${res.folio_corto} enviada a ${clienteEmail}.`
       : res.path === 'auto' && res.outcome === 'retrying'
-      ? `Procesando emisión — llegará en minutos.`
+      ? `Procesando emisión, llegará en minutos.`
       : `Solicitud de factura registrada por ${totalStr}. Le avisé al equipo de facturación (${res.target_email}) que emita la factura al RFC ${toolInput.cliente_rfc}. El cliente la recibirá en su correo (${clienteEmail}) en las próximas 24 horas hábiles.`;
     return {
       ok:      true,
