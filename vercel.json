@@ -1,4 +1,5 @@
 {
+  "ignoreCommand": "git rev-parse HEAD^ >/dev/null 2>&1 || exit 1; git diff --name-only HEAD^ HEAD | grep -qvE '^(docs|\\.claude|\\.obsidian|tests|_smoke|__snapshots__|sql|migrations|supabase|audit|audit-screenshots|fixtures|scripts|.github)/|\\.md$|^[^/]+\\.(pdf|png|jpg|jpeg)$' && exit 1 || exit 0",
   "crons": [
     {
       "path": "/api/cron/ops-reports",
