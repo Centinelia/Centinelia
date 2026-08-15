@@ -70,14 +70,7 @@ export async function emitirFacturaAuto(
     }
   }
 
-  // Update to stamping (with attempts increment)
-  await supabase.from('factura_requests').update({
-    status: 'stamping',
-    stamp_attempts: (req.stamp_attempts ?? 0) + 1,
-    provider: 'solucion_factible',
-  }).eq('id', requestId);
-
-  // Load CSD
+  // Load CSD first (before incrementing stamp_attempts — no SF call yet)
   let csd: { cerPem: string; keyPem: string; noCertificado: string };
   try {
     const loaded = await getCsd(req.portal_email, supabase);
@@ -91,8 +84,25 @@ export async function emitirFacturaAuto(
     return { outcome: 'failed', error: msg, retryable: false };
   }
 
+  // Update to stamping (increment only after CSD confirmed)
+  await supabase.from('factura_requests').update({
+    status: 'stamping',
+    stamp_attempts: (req.stamp_attempts ?? 0) + 1,
+    provider: 'solucion_factible',
+  }).eq('id', requestId);
+
   // Decrypt PAC creds
   const creds = JSON.parse(decryptString(org.invoicing_credentials_encrypted)) as { usuario: string; password: string };
+
+  // I4 — guardrail: moneda != MXN requires tipoCambio
+  const moneda = (req.currency ?? 'MXN') as string;
+  const tipoCambio = req.tipo_cambio as number | undefined;
+  if (moneda !== 'MXN' && !tipoCambio) {
+    await supabase.from('factura_requests').update({
+      guardrail_reason: 'currency_no_tipocambio',
+    }).eq('id', requestId);
+    return { outcome: 'failed', error: 'Moneda distinta a MXN requiere tipo_cambio', retryable: false };
+  }
 
   // Build CFDI input
   const cfdi: CfdiInput = {
@@ -111,7 +121,8 @@ export async function emitirFacturaAuto(
     lugarExpedicion: org.invoicing_lugar_expedicion,
     formaPago: req.forma_pago,
     metodoPago: req.metodo_pago,
-    moneda: (req.currency ?? 'MXN') as 'MXN' | 'USD',
+    moneda: moneda as 'MXN' | 'USD',
+    tipoCambio,
     conceptos: (req.items as Array<{
       descripcion: string;
       cantidad: number;
@@ -146,7 +157,7 @@ export async function emitirFacturaAuto(
       : { outcome: 'failed', error: result.message, retryable: false };
   }
 
-  // Upload to Storage
+  // Upload to Storage (parallel; roll back to stamp_failed on any error)
   const now = new Date();
   const yyyy = now.getFullYear();
   const mm = String(now.getMonth() + 1).padStart(2, '0');
@@ -154,13 +165,6 @@ export async function emitirFacturaAuto(
   const xmlPath = `${base}.xml`;
   const pdfPath = `${base}.pdf`;
   const qrPath = `${base}.qr.png`;
-
-  await supabase.storage.from('cfdi').upload(xmlPath, result.xmlTimbrado, {
-    contentType: 'application/xml', upsert: true,
-  });
-  await supabase.storage.from('cfdi').upload(qrPath, result.qrPng, {
-    contentType: 'image/png', upsert: true,
-  });
 
   const pdfBuf = await buildCfdiPdf({
     emisor: { rfc: cfdi.emisor.rfc, nombre: cfdi.emisor.nombre, regimenFiscal: cfdi.emisor.regimenFiscal },
@@ -175,9 +179,24 @@ export async function emitirFacturaAuto(
     uuid: result.uuid, selloSat: result.selloSat, certificadoSat: result.certificadoSat,
     fechaTimbrado: result.fechaTimbrado, cadenaOriginal: result.cadenaOriginal, qrPng: result.qrPng,
   });
-  await supabase.storage.from('cfdi').upload(pdfPath, pdfBuf, {
-    contentType: 'application/pdf', upsert: true,
-  });
+
+  const [xmlUp, qrUp, pdfUp] = await Promise.all([
+    supabase.storage.from('cfdi').upload(xmlPath, result.xmlTimbrado, { contentType: 'application/xml', upsert: true }),
+    supabase.storage.from('cfdi').upload(qrPath, result.qrPng, { contentType: 'image/png', upsert: true }),
+    supabase.storage.from('cfdi').upload(pdfPath, pdfBuf, { contentType: 'application/pdf', upsert: true }),
+  ]);
+
+  const uploadErr = xmlUp.error ?? qrUp.error ?? pdfUp.error;
+  if (uploadErr) {
+    // SF already timbrated — log UUID for manual recovery; mark for infra-alerts via STORAGE: prefix
+    console.error(`[emitirFacturaAuto] STORAGE upload failed uuid=${result.uuid}:`, uploadErr.message);
+    await supabase.from('factura_requests').update({
+      status: 'stamp_failed',
+      stamp_last_error: `STORAGE: ${uploadErr.message} (uuid=${result.uuid})`,
+      stamp_last_error_at: new Date().toISOString(),
+    }).eq('id', requestId);
+    return { outcome: 'failed', error: `Storage upload failed: ${uploadErr.message}`, retryable: false };
+  }
 
   // Update request
   await supabase.from('factura_requests').update({

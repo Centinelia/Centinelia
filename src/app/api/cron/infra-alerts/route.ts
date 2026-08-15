@@ -101,7 +101,7 @@ export async function GET(req: NextRequest) {
   const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
   const { data: recentFailed } = await supabase
     .from('factura_requests')
-    .select('organization_email, stamp_last_error')
+    .select('portal_email, stamp_last_error')
     .eq('status', 'stamp_failed')
     .gte('stamp_last_error_at', twoHoursAgo);
 
@@ -110,10 +110,10 @@ export async function GET(req: NextRequest) {
     const isCredError = SF_CRED_ERROR_CODES.some(code =>
       (row.stamp_last_error as string | null)?.includes(code),
     );
-    if (isCredError && row.organization_email) {
+    if (isCredError && row.portal_email) {
       credErrorsByOrg.set(
-        row.organization_email,
-        (credErrorsByOrg.get(row.organization_email) ?? 0) + 1,
+        row.portal_email,
+        (credErrorsByOrg.get(row.portal_email) ?? 0) + 1,
       );
     }
   }
@@ -125,16 +125,16 @@ export async function GET(req: NextRequest) {
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
   const { data: recentAll } = await supabase
     .from('factura_requests')
-    .select('organization_email, status')
+    .select('portal_email, status')
     .gte('created_at', oneHourAgo);
 
   const orgStats = new Map<string, { total: number; failed: number }>();
   for (const row of recentAll ?? []) {
-    if (!row.organization_email) continue;
-    const s = orgStats.get(row.organization_email) ?? { total: 0, failed: 0 };
+    if (!row.portal_email) continue;
+    const s = orgStats.get(row.portal_email) ?? { total: 0, failed: 0 };
     s.total++;
     if (row.status === 'stamp_failed') s.failed++;
-    orgStats.set(row.organization_email, s);
+    orgStats.set(row.portal_email, s);
   }
   const highFail = [...orgStats.entries()]
     .filter(([, s]) => s.total >= FAIL_RATE_MIN_TOTAL && s.failed / s.total > FAIL_RATE_THRESHOLD)

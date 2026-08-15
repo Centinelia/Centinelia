@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getAgentByToken } from '@/lib/portal/org-token';
+import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { parseCsd, putCsd, encryptString } from '@/lib/invoicing/csd-vault';
 import { assertInvoicingEnabled } from '@/lib/invoicing/kill-switch';
 
@@ -8,9 +9,18 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ token: string }> }) {
   assertInvoicingEnabled();
+
+  const cookie = req.cookies.get(PORTAL_COOKIE)?.value;
+  const session = cookie ? await verifySession(cookie) : null;
+  if (!session?.portalEmail) return NextResponse.json({ error: 'session missing' }, { status: 401 });
+
   const { token } = await ctx.params;
   const agent = await getAgentByToken<{ portal_email: string }>(token, 'portal_email');
   if (!agent) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+
+  // IDOR guard
+  if (session.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
 
   const form = await req.formData();
   const cerFile = form.get('cer') as File | null;
@@ -61,7 +71,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
 
   // Audit log — best-effort
   void supabase.from('admin_access_log').insert({
-    admin_email:           agent.portal_email,
+    admin_email:           session.portalEmail,
     endpoint:              '/api/portal/[token]/invoicing/csd/upload',
     method:                'POST',
     affected_portal_email: agent.portal_email,

@@ -21,6 +21,16 @@ export async function POST(req: NextRequest) {
   const { data: agent } = await supabase.from('voice_agents').select('portal_email').eq('id', agent_id).single();
   if (!agent) return reply('Agente no encontrado.');
 
+  // I2 — defense in depth: verify org-level gate before delegating
+  const { data: org } = await supabase
+    .from('organizations')
+    .select('invoicing_allow_agent_cancellation')
+    .eq('portal_email', agent.portal_email)
+    .single();
+  if (!org?.invoicing_allow_agent_cancellation) {
+    return reply('La cancelación de facturas por voz no está habilitada para esta organización.');
+  }
+
   const res = await solicitarCancelacion({
     uuid_o_folio_corto: String(args.uuid_o_folio_corto ?? ''),
     motivo: String(args.motivo ?? '') as '01'|'02'|'03'|'04',
