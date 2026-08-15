@@ -21,6 +21,16 @@ interface Org {
   };
 }
 
+// Catálogo de PACs disponibles. Agregar aquí cuando se integre uno nuevo.
+// El backend usa `organizations.invoicing_provider = <id>` para decidir en
+// `resolveInvoicingPath()` a qué SolucionFactibleProvider-like singleton llamar.
+const PAC_CATALOG: Array<{ id: string; label: string; enabled: boolean; note?: string }> = [
+  { id: 'solucion_factible', label: 'Solucion Factible', enabled: true },
+  // Ejemplos para el futuro (deshabilitados hasta integrar cada uno):
+  // { id: 'facturama',       label: 'Facturama',        enabled: false, note: 'Próximamente' },
+  // { id: 'finkok',          label: 'Finkok',           enabled: false, note: 'Próximamente' },
+];
+
 export default function SolucionFactibleSection({ token }: { token: string }) {
   const [org, setOrg]     = useState<Org | null>(null);
   const [loading, setLoading] = useState(true);
@@ -128,16 +138,34 @@ export default function SolucionFactibleSection({ token }: { token: string }) {
         </div>
       )}
 
-      {/* Connect form */}
+      {/* PAC selector + Connect form */}
       {!connected && (
         <div className="rounded-xl overflow-hidden"
           style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)' }}>
           <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--c-border)' }}>
             <h2 className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Conectar cuenta</h2>
             <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-              Ingresa las credenciales de tu cuenta en Solucion Factible para que tus empleados timbren CFDI automaticamente.
+              Elige tu PAC (Proveedor Autorizado de Certificacion) e ingresa las credenciales para que tus empleados timbren CFDI automaticamente.
             </p>
           </div>
+          {PAC_CATALOG.length > 1 && (
+            <div className="px-4 pt-3">
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>PAC</span>
+                <select
+                  defaultValue="solucion_factible"
+                  className="rounded-lg px-3 py-2 text-sm"
+                  style={{ border: '1px solid var(--c-border)', background: 'var(--c-surface)', color: 'var(--c-text)', outline: 'none' }}
+                >
+                  {PAC_CATALOG.map(p => (
+                    <option key={p.id} value={p.id} disabled={!p.enabled}>
+                      {p.label}{!p.enabled && p.note ? ` (${p.note})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          )}
           <form
             className="px-4 py-4 flex flex-col gap-4"
             onSubmit={e => { e.preventDefault(); void connect(new FormData(e.currentTarget)); }}

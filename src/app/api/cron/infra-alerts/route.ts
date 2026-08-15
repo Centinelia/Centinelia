@@ -21,6 +21,12 @@ const VAPI_LOW_THRESHOLD   = 20;   // USD
 const TWILIO_LOW_THRESHOLD = 10;   // USD
 const CLAUDE_COST_PER_OP   = 0.0024;
 
+// Storage cuota alerts (Supabase Pro tier: 100 GB included, overage $0.021/GB/mo)
+// Buckets vigilados: csd, cfdi, cfdi-cancellations
+const STORAGE_BUCKETS_WATCH = ['csd', 'cfdi', 'cfdi-cancellations'];
+const STORAGE_WARN_BYTES     = 50 * 1024 * 1024 * 1024;  // 50 GB early warning
+const STORAGE_CRITICAL_BYTES = 80 * 1024 * 1024 * 1024;  // 80 GB before overage
+
 export async function GET(req: NextRequest) {
   if (!verifyCronAuth(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -149,10 +155,39 @@ export async function GET(req: NextRequest) {
     }).catch(err => console.error('[infra-alerts] invoicing email failed:', err));
   }
 
+  // ── Storage cuota alerts (obligación fiscal SAT: 5 años retención CFDI) ──
+
+  const storageStats: { bucket: string; bytes: number; objects: number }[] = [];
+  for (const bucket of STORAGE_BUCKETS_WATCH) {
+    // Supabase Storage no expone sum(size) directamente; usamos SQL sobre storage.objects
+    const { data } = await supabase.rpc('sum_storage_bucket_bytes', { p_bucket_id: bucket })
+      .single<{ total_bytes: number; total_objects: number }>();
+    if (data) storageStats.push({ bucket, bytes: data.total_bytes ?? 0, objects: data.total_objects ?? 0 });
+  }
+  const totalStorageBytes = storageStats.reduce((s, b) => s + b.bytes, 0);
+
+  const storageAlert =
+    totalStorageBytes >= STORAGE_CRITICAL_BYTES ? 'critical'
+    : totalStorageBytes >= STORAGE_WARN_BYTES   ? 'warn'
+    : null;
+
+  if (storageAlert) {
+    const gb = (totalStorageBytes / (1024 ** 3)).toFixed(1);
+    const pct = Math.round((totalStorageBytes / (100 * 1024 ** 3)) * 100);
+    alerts.push({
+      service:   `Supabase Storage — cuota invoicing (${storageAlert === 'critical' ? 'crítico' : 'aviso'})`,
+      current:   `${gb} GB · ${pct}% del plan Pro (100 GB)`,
+      threshold: storageAlert === 'critical' ? `≥ 80 GB (próximo a overage)` : `≥ 50 GB`,
+      action:    'Ver breakdown por bucket + considerar cold tiering',
+      actionUrl: 'https://supabase.com/dashboard/project/_/storage',
+      color:     storageAlert === 'critical' ? '#ef4444' : '#f59e0b',
+    });
+  }
+
   // ─────────────────────────────────────────────────────────────
 
   if (alerts.length === 0 && badCreds.length === 0 && highFail.length === 0) {
-    return NextResponse.json({ ok: true, alerts: 0 });
+    return NextResponse.json({ ok: true, alerts: 0, storage: { totalBytes: totalStorageBytes, buckets: storageStats } });
   }
 
   const date = new Date().toLocaleDateString('es-MX', {
@@ -165,5 +200,11 @@ export async function GET(req: NextRequest) {
     html:    infraAlertHtml({ date, alerts }),
   });
 
-  return NextResponse.json({ ok: true, alerts: alerts.length, sent, invoicing: { badCreds: badCreds.length, highFail: highFail.length } });
+  return NextResponse.json({
+    ok: true,
+    alerts: alerts.length,
+    sent,
+    invoicing: { badCreds: badCreds.length, highFail: highFail.length },
+    storage: { totalBytes: totalStorageBytes, buckets: storageStats, alert: storageAlert },
+  });
 }

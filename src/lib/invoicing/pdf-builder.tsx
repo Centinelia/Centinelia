@@ -76,7 +76,7 @@ export async function buildCfdiPdf(d: CfdiPdfInput): Promise<Buffer> {
   const stream = (await pdf(<Doc d={d} />).toBuffer()) as unknown as NodeJS.ReadableStream;
   const chunks: Buffer[] = [];
   for await (const chunk of stream) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as ArrayBuffer));
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as unknown as ArrayBuffer));
   }
   return Buffer.concat(chunks);
 }

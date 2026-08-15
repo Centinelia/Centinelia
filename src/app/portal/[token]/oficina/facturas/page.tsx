@@ -4,10 +4,84 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import {
   FileText, Clock, CheckCircle, XCircle, Copy, Check, Receipt,
-  Download, RefreshCw, AlertTriangle, Stamp, Ban, Loader2,
+  Download, RefreshCw, AlertTriangle, Stamp, Ban, Loader2, Archive,
 } from 'lucide-react';
 import { EmptyState as PortalEmptyState } from '@/components/portal-ui';
 import ReceivedInvoicesSection from './ReceivedInvoicesSection';
+
+/* ─── Backup year button ─────────────────────────────────────────────────── */
+function BackupYearButton({ token }: { token: string }) {
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState<number | null>(null);
+  const [msg, setMsg]   = useState<string | null>(null);
+
+  async function download(year: number) {
+    setBusy(year); setMsg(null);
+    try {
+      const res = await fetch(`/api/portal/${token}/factura-requests/download-year?year=${year}`);
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        setMsg(j.error ?? `Error ${res.status}`);
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `cfdi-${year}.zip`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      setOpen(false);
+    } catch (err) {
+      setMsg((err as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <div className="relative flex-shrink-0">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="flex items-center gap-2 px-3.5 py-2 rounded-lg text-[13px] font-semibold transition-colors"
+        style={{ background: '#F5F2FB', color: '#6C3BFF', border: '1px solid #E8E3F5' }}
+      >
+        <Archive size={14} />
+        Descargar backup
+      </button>
+      {open && (
+        <div className="absolute right-0 mt-2 z-20 rounded-xl overflow-hidden min-w-[240px]"
+          style={{ background: '#fff', border: '1px solid #E8E3F5', boxShadow: '0 8px 24px rgba(26,10,59,0.12)' }}>
+          <div className="px-4 py-3" style={{ borderBottom: '1px solid #F0EDF9' }}>
+            <p className="text-[12px] font-semibold" style={{ color: '#1A0A3B' }}>Respaldo anual CFDI (ZIP)</p>
+            <p className="text-[11px] mt-0.5" style={{ color: '#6B6480' }}>
+              XML + PDF de todas las facturas timbradas ese año. SAT exige 5 años.
+            </p>
+          </div>
+          {years.map(y => (
+            <button
+              key={y}
+              onClick={() => void download(y)}
+              disabled={busy !== null}
+              className="w-full flex items-center justify-between px-4 py-2.5 text-left text-[13px] transition-colors hover:bg-[#FAFAFB] disabled:opacity-50"
+              style={{ borderBottom: y === years[years.length - 1] ? 'none' : '1px solid #F0EDF9', color: '#1A0A3B' }}
+            >
+              <span>Año {y}</span>
+              {busy === y ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} style={{ color: '#9B8FB5' }} />}
+            </button>
+          ))}
+          {msg && (
+            <div className="px-4 py-2.5 text-[11px]" style={{ color: '#b91c1c', background: 'rgba(239,68,68,0.05)', borderTop: '1px solid #F0EDF9' }}>
+              {msg}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface Item {
   descripcion:     string;
@@ -266,7 +340,7 @@ export default function FacturasPage() {
         >
           <Receipt size={26} style={{ color: '#6C3BFF' }} strokeWidth={2} />
         </div>
-        <div className="flex flex-col gap-1 min-w-0">
+        <div className="flex flex-col gap-1 min-w-0 flex-1">
           <p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: '#9B6DFF' }}>
             Facturacion
           </p>
@@ -278,6 +352,7 @@ export default function FacturasPage() {
             {alertCount > 0 && <> Hoy: <strong style={{ color: '#1A0A3B' }}>{alertCount}</strong> por atender.</>}
           </p>
         </div>
+        <BackupYearButton token={token} />
       </header>
 
       {/* Facturas recibidas de proveedores */}

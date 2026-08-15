@@ -180,10 +180,14 @@ export async function emitirFacturaAuto(
     fechaTimbrado: result.fechaTimbrado, cadenaOriginal: result.cadenaOriginal, qrPng: result.qrPng,
   });
 
+  // cacheControl: CFDI files are immutable once stamped (SAT-signed). Aggressive
+  // caching cuts egress bandwidth cost — clients descargan XML/PDF varias veces
+  // pero el contenido nunca cambia. 1 year max-age + immutable.
+  const CACHE_1Y = '31536000, immutable';
   const [xmlUp, qrUp, pdfUp] = await Promise.all([
-    supabase.storage.from('cfdi').upload(xmlPath, result.xmlTimbrado, { contentType: 'application/xml', upsert: true }),
-    supabase.storage.from('cfdi').upload(qrPath, result.qrPng, { contentType: 'image/png', upsert: true }),
-    supabase.storage.from('cfdi').upload(pdfPath, pdfBuf, { contentType: 'application/pdf', upsert: true }),
+    supabase.storage.from('cfdi').upload(xmlPath, result.xmlTimbrado, { contentType: 'application/xml', upsert: true, cacheControl: CACHE_1Y }),
+    supabase.storage.from('cfdi').upload(qrPath, result.qrPng, { contentType: 'image/png', upsert: true, cacheControl: CACHE_1Y }),
+    supabase.storage.from('cfdi').upload(pdfPath, pdfBuf, { contentType: 'application/pdf', upsert: true, cacheControl: CACHE_1Y }),
   ]);
 
   const uploadErr = xmlUp.error ?? qrUp.error ?? pdfUp.error;
