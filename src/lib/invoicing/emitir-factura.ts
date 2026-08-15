@@ -28,8 +28,13 @@ export async function resolveInvoicingPath(
   return 'auto';
 }
 
+export interface EmitirFacturaOptions {
+  /** Cuando true, salta la evaluación de guardrails (uso exclusivo portal — humano ya autorizó). */
+  bypassGuardrails?: boolean;
+}
+
 export async function emitirFacturaAuto(
-  requestId: string, supabase: SupabaseClient,
+  requestId: string, supabase: SupabaseClient, opts: EmitirFacturaOptions = {},
 ): Promise<EmitirOutcome> {
   const { data: req, error: reqErr } = await supabase
     .from('factura_requests')
@@ -45,22 +50,24 @@ export async function emitirFacturaAuto(
     .single();
   if (!org?.invoicing_provider) return { outcome: 'failed', error: 'org sin PAC', retryable: false };
 
-  // Guardrails
-  const guard = await evaluateGuardrails(
-    { total: req.total, uso_cfdi: req.uso_cfdi, cliente_rfc: req.cliente_rfc, portal_email: req.portal_email },
-    (org.invoicing_limits ?? {
-      monto_max_mxn: 100_000,
-      blocked_uso_cfdi: [],
-      max_stamps_per_day: 50,
-      max_stamps_per_hour_per_rfc: 5,
-    }) as GuardrailLimits,
-    supabase,
-  );
-  if (!guard.pass) {
-    await supabase.from('factura_requests').update({
-      guardrail_reason: guard.reasons.join('; '),
-    }).eq('id', requestId);
-    return { outcome: 'failed', error: guard.reasons.join('; '), retryable: false };
+  // Guardrails (skipped when bypassGuardrails=true — portal human override)
+  if (!opts.bypassGuardrails) {
+    const guard = await evaluateGuardrails(
+      { total: req.total, uso_cfdi: req.uso_cfdi, cliente_rfc: req.cliente_rfc, portal_email: req.portal_email },
+      (org.invoicing_limits ?? {
+        monto_max_mxn: 100_000,
+        blocked_uso_cfdi: [],
+        max_stamps_per_day: 50,
+        max_stamps_per_hour_per_rfc: 5,
+      }) as GuardrailLimits,
+      supabase,
+    );
+    if (!guard.pass) {
+      await supabase.from('factura_requests').update({
+        guardrail_reason: guard.reasons.join('; '),
+      }).eq('id', requestId);
+      return { outcome: 'failed', error: guard.reasons.join('; '), retryable: false };
+    }
   }
 
   // Update to stamping (with attempts increment)
