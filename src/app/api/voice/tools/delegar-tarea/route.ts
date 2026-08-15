@@ -11,6 +11,10 @@ import { sendEmail } from '@/lib/email/send';
 import { traceVoiceCall } from '@/lib/observability/voice-trace';
 import { createAgentTask, transitionAgentTask } from '@/lib/state-machines/agent-task';
 import { logLlmCall } from '@/lib/observability/llm-log';
+import {
+  tryClaimReportIntent, commitReportIntent, releaseReportIntent,
+  formatDuplicateReportMessage,
+} from '@/lib/ops/report-intent-lock';
 
 export const dynamic = 'force-dynamic';
 
@@ -421,6 +425,36 @@ export async function POST(req: NextRequest) {
     return fail(`Este canal de delegación está deshabilitado por configuración: ${gate.reason ?? 'edge disabled'}.`);
   }
 
+  // ── Intent lock ────────────────────────────────────────────────────────────
+  // Si otro meerkat del mismo portal ya delegó ESTA MISMA tarea al mismo
+  // target en las últimas 24h, no creamos otra fila en agent_tasks. TTL
+  // largo porque delegaciones son "trabajos", no notificaciones —
+  // duplicarlas cuesta doble ejecución completa.
+  const delegationClaim = await tryClaimReportIntent({
+    portalEmail: caller.portal_email,
+    kind:        'task',
+    target:      target.id,
+    subject:     `delegar_tarea :: ${tarea.slice(0, 120)}`,
+    agentId:     agentId || null,
+    agentName:   caller.agent_name,
+    extraDedupe: `${success_criteria ?? ''}|${(contexto ?? '').slice(0, 200)}`,
+    sourceContext: {
+      tool:         'delegar_tarea',
+      caller_agent: agentId,
+      target_agent: target.id,
+      session_id:   sessionId,
+    },
+  });
+  if (!delegationClaim.claimed) {
+    const msg = formatDuplicateReportMessage(delegationClaim);
+    return NextResponse.json({
+      ok:                  false,
+      deduped:             true,
+      message:             msg,
+      already_claimed_by:  delegationClaim.alreadyClaimedBy,
+    });
+  }
+
   // Hidrata knowledge_base org-level. client_email vive en voice_agents;
   // usamos el portal_email como fallback confiable para el correo del dueño.
   const { data: orgRow } = await supabase
@@ -486,7 +520,16 @@ export async function POST(req: NextRequest) {
     });
 
     const pendingId = created.ok ? created.taskId : undefined;
-    if (!pendingId) return fail('No se pudo guardar el plan.');
+    if (!pendingId) {
+      await releaseReportIntent(delegationClaim.lockId);
+      return fail('No se pudo guardar el plan.');
+    }
+    await commitReportIntent(delegationClaim.lockId);
+    if (delegationClaim.lockId && pendingId) {
+      await supabase.from('report_intent_locks')
+        .update({ related_task_id: pendingId })
+        .eq('id', delegationClaim.lockId);
+    }
 
     const appUrl     = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
     const approveUrl = `${appUrl}/api/portal/agent-tasks/${pendingId}/approve-plan?token=${approvalToken}`;
@@ -690,6 +733,16 @@ export async function POST(req: NextRequest) {
     reason:          orgAutoApproves ? 'delegation_auto_approved' : 'delegation_below_threshold',
   });
   const taskId = createdDirect.ok ? createdDirect.taskId : undefined;
+  if (!taskId) {
+    await releaseReportIntent(delegationClaim.lockId);
+  } else {
+    await commitReportIntent(delegationClaim.lockId);
+    if (delegationClaim.lockId) {
+      await supabase.from('report_intent_locks')
+        .update({ related_task_id: taskId })
+        .eq('id', delegationClaim.lockId);
+    }
+  }
   const client     = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const loopStart  = Date.now();
 

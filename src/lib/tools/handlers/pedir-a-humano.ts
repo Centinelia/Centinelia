@@ -1,5 +1,9 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { dispatchHumanRequestNotification } from '@/lib/human-handoff/notify';
+import {
+  tryClaimReportIntent, commitReportIntent, releaseReportIntent,
+  formatDuplicateReportMessage,
+} from '@/lib/ops/report-intent-lock';
 
 export type ExecCtx = {
   agentId:        string;
@@ -26,6 +30,9 @@ export interface PedirAHumanoResult {
   request_id?:  string;
   target_email?: string;
   error?:       string;
+  deduped?:     boolean;
+  message?:     string;
+  already_claimed_by?: { agentId: string | null; agentName: string | null; claimedAt: string } | null;
 }
 
 const MAX_REQUESTS_PER_INBOX = 3;
@@ -94,6 +101,42 @@ export async function pedirAHumano(
     return { ok: false, error: 'No hay destinatario configurado para este agente' };
   }
 
+  // ── Intent lock: dedupe cuando target=owner ──────────────────────────────
+  // Nash usa escalar_al_owner (ya gated). Otros meerkats usan pedir_a_humano
+  // con target='owner' — sin lock, dos meerkats podrían escalar el MISMO
+  // asunto al owner en paralelo por vías distintas. Cablear aquí cierra el
+  // hoyo. TTL 12h, alineado con escalar_al_owner. 'alta' bypasa (mismo
+  // criterio que 'critical' en Nash).
+  const portalEmail = (agent?.portal_email as string | null | undefined) ?? null;
+  const urgency = args.urgency ?? 'media';
+  const useLock = args.target === 'owner' && !!portalEmail && urgency !== 'alta';
+  const lockClaim = useLock
+    ? await tryClaimReportIntent({
+        portalEmail: portalEmail!,
+        kind:        'monitor_alert',
+        target:      targetEmail,
+        subject:     `pedir_a_humano owner :: ${args.title.slice(0, 120)}`,
+        agentId:     ctx.agentId,
+        agentName:   (agent?.agent_name as string | null | undefined) ?? null,
+        ttlHours:    12,
+        extraDedupe: args.description.slice(0, 400),
+        sourceContext: {
+          tool:      'pedir_a_humano',
+          type:      args.type,
+          urgency,
+          channel:   ctx.channel ?? 'email',
+        },
+      })
+    : { claimed: true, lockId: null, intentHash: '', alreadyClaimedBy: null };
+  if (!lockClaim.claimed) {
+    return {
+      ok:      false,
+      deduped: true,
+      message: formatDuplicateReportMessage(lockClaim),
+      already_claimed_by: lockClaim.alreadyClaimedBy,
+    };
+  }
+
   // INSERT
   const { data, error } = await supabase
     .from('human_requests')
@@ -106,7 +149,7 @@ export async function pedirAHumano(
       request_type:    args.type,
       title:           args.title.slice(0, 120),
       description:     args.description.slice(0, 2000),
-      urgency:         args.urgency ?? 'media',
+      urgency,
       needed_by:       args.needed_by ? new Date(args.needed_by).toISOString() : null,
       target_email:    targetEmail,
       target_type:     args.target,
@@ -117,8 +160,11 @@ export async function pedirAHumano(
 
   if (error || !data) {
     console.error('[pedir_a_humano] insert failed:', error);
+    await releaseReportIntent(lockClaim.lockId);
     return { ok: false, error: 'No se pudo registrar la solicitud' };
   }
+
+  await commitReportIntent(lockClaim.lockId);
 
   // Dispatch notif (non-blocking)
   void dispatchHumanRequestNotification(data.id).catch(err =>

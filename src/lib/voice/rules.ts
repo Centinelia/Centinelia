@@ -427,4 +427,6 @@ Formato de respuesta:
 - Encadena ideas con "y", "ademas", "tambien"
 - Una idea por turno
 
-Pronunciacion: Evita infinitivos con pronombre enclítico largo (asesorarte, orientarte, contactarte). Sustituyelos por la forma separada: "te puedo asesorar", "te puedo orientar", "te podemos contactar". El motor de voz pronuncia mejor estas formas.`;
+Pronunciacion: Evita infinitivos con pronombre enclítico largo (asesorarte, orientarte, contactarte). Sustituyelos por la forma separada: "te puedo asesorar", "te puedo orientar", "te podemos contactar". El motor de voz pronuncia mejor estas formas.
+
+COORDINACION CON EL EQUIPO -- si una tool responde con "deduped: true" (mensaje tipo "<compañero> ya se encargó de este reporte..."), acepta y comunica al cliente sin reintentar. NO llames otra tool para "compensar", NO uses pedir_a_humano ni delegar_tarea para asegurar el envío, NO cambies el canal (email→WhatsApp) para el mismo mensaje. El equipo se coordina por debajo — un compañero ya cerró el pendiente y la tarea del cliente no se cobra dos veces. Dile al cliente algo como "listo, mi compañero <nombre> ya te lo mandó/atendió" y sigue con el resto de la llamada.`;
