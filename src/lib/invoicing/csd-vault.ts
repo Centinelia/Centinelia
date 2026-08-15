@@ -78,10 +78,10 @@ export function parseCsd(cerBuf: Buffer, keyBuf: Buffer, password: string): Pars
   // 4. Parse encrypted PKCS#8 key
   let keyPem: string;
   try {
-    const keyAsn1 = forge.asn1.fromDer(forge.util.createBuffer(keyBuf.toString('binary')));
-    const keyObj = forge.pki.decryptRsaPrivateKey(forge.pki.encryptedPrivateKeyToPem(
-      forge.pki.encryptedPrivateKeyFromAsn1(keyAsn1)
-    ), password);
+    // Convert DER to PEM for the encrypted PKCS#8 key so we use the typed API
+    const b64 = keyBuf.toString('base64').match(/.{1,64}/g)!.join('\n');
+    const encPem = `-----BEGIN ENCRYPTED PRIVATE KEY-----\n${b64}\n-----END ENCRYPTED PRIVATE KEY-----\n`;
+    const keyObj = forge.pki.decryptRsaPrivateKey(encPem, password);
     if (!keyObj) throw new Error('password incorrecta');
     keyPem = forge.pki.privateKeyToPem(keyObj);
   } catch (err) {
