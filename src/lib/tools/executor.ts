@@ -1752,6 +1752,26 @@ async function executeAgentToolInner(
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // solicitar_cancelacion_factura — registra solicitud de cancelación de CFDI
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'solicitar_cancelacion_factura') {
+    const { solicitarCancelacion } = await import('@/lib/invoicing/solicitar-cancelacion');
+    const res = await solicitarCancelacion({
+      uuid_o_folio_corto: String(toolInput.uuid_o_folio_corto ?? ''),
+      motivo:             String(toolInput.motivo ?? '') as '01'|'02'|'03'|'04',
+      uuid_sustituto:     toolInput.uuid_sustituto as string | undefined,
+      razon_cliente:      toolInput.razon_cliente  as string | undefined,
+    }, {
+      agentId,
+      portalEmail,
+      supabase,
+      channel: ctx.channel ?? 'chat',
+    });
+    if (!res.ok) return { ok: false, error: res.message };
+    return { ok: true, cancellation_id: res.cancellation_id, message: res.message };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   // QuickBooks tools
   // ─────────────────────────────────────────────────────────────────────────
   if (toolName === 'qb_consultar_facturas') {

@@ -324,6 +324,21 @@ const AGREGAR_TAG_CONTACTO_TOOL: Anthropic.Tool = {
   },
 };
 
+const SOLICITAR_CANCELACION_FACTURA_TOOL: Anthropic.Tool = {
+  name: 'solicitar_cancelacion_factura',
+  description: 'Registra una solicitud de cancelación de un CFDI ya emitido. El equipo la confirma después.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      uuid_o_folio_corto: { type: 'string', description: 'UUID completo o últimos 8 caracteres del folio.' },
+      motivo:             { type: 'string', enum: ['01','02','03','04'], description: '01=error datos (requiere sustituto). 02=no realizada. 03=no llevó a cabo. 04=nominativa relacionada con global.' },
+      uuid_sustituto:     { type: 'string', description: 'Requerido si motivo=01. UUID del CFDI que sustituye a éste.' },
+      razon_cliente:      { type: 'string' },
+    },
+    required: ['uuid_o_folio_corto', 'motivo'],
+  },
+};
+
 const SOLICITAR_FACTURA_TOOL: Anthropic.Tool = {
   name: 'solicitar_factura',
   description: 'Regístra una solicitud de factura CFDI cuando el cliente pide su comprobante fiscal. Recolecta primero TODOS los datos por voz/chat, confirma con el cliente, y luego invoca esta herramienta. El equipo de facturación humano emitirá el CFDI en el sistema fiscal del negocio (Solución Factible, CONTPAQ, Aspel, etc.) — NO lo timbramos aquí. NO uses create_document con template_type=factura para esto: eso genera un PDF sin validez fiscal.',
@@ -1084,8 +1099,9 @@ const VOICE_TO_CHAT: Record<string, string | null> = {
   qb_registrar_pago:         'qb_registrar_pago',
   qb_reporte_ingresos:       'qb_reporte_ingresos',
   qb_crear_factura:          'qb_crear_factura',
-  solicitar_factura:         'solicitar_factura',
-  consultar_factura:         'consultar_factura',
+  solicitar_factura:              'solicitar_factura',
+  consultar_factura:              'consultar_factura',
+  solicitar_cancelacion_factura:  'solicitar_cancelacion_factura',
   revisar_desempeno_equipo:   'revisar_desempeno_equipo',
   aprobar_gasto:              'aprobar_gasto',
   evaluar_limite_gasto:       'evaluar_limite_gasto',
@@ -1108,8 +1124,9 @@ const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
   create_document:           CREATE_DOCUMENT_TOOL,
   buscar_documento_oficina:  BUSCAR_DOCUMENTO_OFICINA_TOOL,
   enviar_documento_oficina:  ENVIAR_DOCUMENTO_OFICINA_TOOL,
-  solicitar_factura:         SOLICITAR_FACTURA_TOOL,
-  consultar_factura:         CONSULTAR_FACTURA_TOOL,
+  solicitar_factura:              SOLICITAR_FACTURA_TOOL,
+  consultar_factura:              CONSULTAR_FACTURA_TOOL,
+  solicitar_cancelacion_factura:  SOLICITAR_CANCELACION_FACTURA_TOOL,
   revisar_desempeno_equipo:   REVISAR_DESEMPENO_EQUIPO_TOOL,
   aprobar_gasto:              APROBAR_GASTO_TOOL,
   evaluar_limite_gasto:       EVALUAR_LIMITE_GASTO_TOOL,
@@ -1280,7 +1297,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     targetQuery,
     supabase.from('qb_integrations').select('realm_id').eq('portal_email', accountAgent.portal_email).maybeSingle(),
     accountAgent.portal_email
-      ? supabase.from('organizations').select('notion_access_token, notion_db_id, notion_products_db_id').eq('portal_email', accountAgent.portal_email).maybeSingle()
+      ? supabase.from('organizations').select('notion_access_token, notion_db_id, notion_products_db_id, invoicing_allow_agent_cancellation').eq('portal_email', accountAgent.portal_email).maybeSingle()
       : Promise.resolve({ data: null }),
     accountAgent.portal_email
       ? supabase.from('organizations').select('business_email, brand_phone, business_website, brand_website, brand_address, email_footer_text').eq('portal_email', accountAgent.portal_email).maybeSingle()
@@ -1293,6 +1310,11 @@ export async function POST(req: NextRequest, { params }: Params) {
   const meerkatId               = (agentFeatures.meerkat_role_id  as string | null) ?? null;
   const notionProductsConnected = !!(orgNotion?.notion_access_token && orgNotion?.notion_products_db_id);
   const sessionTools            = getToolsForRole(meerkatId, qbConnected, notionProductsConnected);
+
+  // solicitar_cancelacion_factura — org-level toggle (condicional).
+  if ((orgNotion as { invoicing_allow_agent_cancellation?: boolean } | null)?.invoicing_allow_agent_cancellation === true) {
+    sessionTools.push(SOLICITAR_CANCELACION_FACTURA_TOOL);
+  }
 
   // preparar_brief_del_dia — Nox exclusivo. Canal voz ausente de forma intencional
   // (Nox nunca tiene vapi_agent_id; ver NON_VOICE_ROLES en sync.ts).
@@ -1641,6 +1663,18 @@ Si el dueño te reporta un bug visual, de layout o de comportamiento del portal 
 No prometas que la integración se habilitará: depende de si la plataforma lo permite.
 
 **Error inesperado del sistema** (falla técnica real: timeout de API, error de escritura, comportamiento incorrecto de una herramienta, resultado corrupto, error al procesar archivo): usa reportar_falla para notificar al equipo de Centinelia, luego informa al dueño que detectaste un problema y que ya fue reportado.
+
+## Cuando otro compañero del equipo ya se encargó
+
+Si una tool responde con \`deduped: true\` (mensaje tipo "<compañero> ya se encargó de este reporte…"), NO es un error tuyo — el equipo se coordina por debajo para no duplicar reportes ni gastar dos veces las tareas del cliente. Acepta el resultado y avísale al dueño con naturalidad: "Ya lo mandó <compañero>, no volví a enviarlo para no consumir otra tarea." Después continúa con lo que sigue.
+
+Cosas que NO debes hacer al ver \`deduped: true\`:
+- Reintentar la misma tool con args similares.
+- Cambiar de canal para el mismo mensaje (ej: send_email deduped → intentar WhatsApp del mismo contenido).
+- Escalar con reportar_falla, pedir_a_humano o enviar_a_claude_code "para asegurar".
+- Delegar a otro compañero pidiendo que reintente.
+
+Aplica a: send_email, enviar_documento_oficina, responder_cliente_afectado, escalar_al_owner, pedir_a_humano (con target=owner), delegar_tarea. La deduplicación tiene ventana de horas — si el mismo asunto reaparece días después, la tool volverá a funcionar normalmente.
 
 ## Autonomía y toma de decisiones
 

@@ -162,7 +162,7 @@ function peerToolCapabilities(peer: TeamPeer): string[] {
 // Org fields are stored in `organizations` (single source of truth).
 // Before building any Vapi assistant, merge them over the per-agent row.
 
-const ORG_SELECT = 'knowledge_base, owner_profile, owner_passphrase, business_description, business_hours, business_website, website_knowledge, google_review_url, email_brand_color, brand_color_secondary, brand_website, brand_address, email_footer_text, multilingual';
+const ORG_SELECT = 'knowledge_base, owner_profile, owner_passphrase, business_description, business_hours, business_website, website_knowledge, google_review_url, email_brand_color, brand_color_secondary, brand_website, brand_address, email_footer_text, multilingual, invoicing_allow_agent_cancellation';
 
 async function enrichWithOrgData(agent: VoiceAgent): Promise<VoiceAgent> {
   if (!agent.portal_email) return agent;
@@ -452,6 +452,8 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
 
     case 'agregar_tag_contacto': return { type: 'function', function: { name: 'agregar_tag_contacto', description: 'Agrega una etiqueta (tag) a un contacto de outbound_contacts según lo que hayas aprendido en la conversación. Úsala cuando detectes información útil para segmentar futuras campañas: si el cliente compró usa tag "compró"; si mostró interés pero no compró usa "interesado"; si no está listo usa "seguimiento"; si es cliente frecuente usa "vip"; etc. Tags sugeridos: compró, cotizó, interesado, no interesado, seguimiento, vencido, nuevo, vip. Puedes crear tags nuevos si aplican al negocio. Los tags permiten a las campañas futuras filtrar exactamente a quién llamar.', parameters: { type: 'object', properties: { telefono: { type: 'string', description: 'Número de teléfono del contacto. Se normaliza por sufijo de 10 dígitos.' }, tag: { type: 'string', description: 'Tag a agregar. Se guarda en lowercase, sin espacios extra. Max 40 chars.' }, motivo: { type: 'string', description: 'Motivo breve por el que agregas este tag (opcional, para auditoría).' } }, required: ['telefono', 'tag'] } }, server: server('agregar-tag-contacto') };
 
+    case 'solicitar_cancelacion_factura': return { type: 'function', function: { name: 'solicitar_cancelacion_factura', description: 'Registra una solicitud de cancelación de un CFDI ya emitido. El equipo la confirma después.', parameters: { type: 'object', properties: { uuid_o_folio_corto: { type: 'string', description: 'UUID completo o últimos 8 caracteres del folio.' }, motivo: { type: 'string', enum: ['01','02','03','04'], description: '01=error datos (requiere sustituto). 02=no realizada. 03=no llevó a cabo. 04=nominativa relacionada con global.' }, uuid_sustituto: { type: 'string', description: 'Requerido si motivo=01. UUID del CFDI que sustituye a éste.' }, razon_cliente: { type: 'string' } }, required: ['uuid_o_folio_corto', 'motivo'] } }, server: server('solicitar-cancelacion-factura') };
+
     case 'pedir_a_humano': return { type: 'function', function: { name: 'pedir_a_humano', description: 'Pide a un humano del equipo del negocio: info que no tienes, una acción física, o confirmación de una decisión importante. Úsala cuando necesitas datos que no están en Drive ni puedes obtener con otras tools, una acción física que solo un humano puede hacer, o aprobación de una decisión que excede tu autoridad. Para llamadas: si tienes minutos y la info, usa trigger_outbound_call primero; solo pide llamada a humano si sin minutos, cliente pidió humano, o conversación delicada. NO la uses para info obtenible con otras tools, cosas que puede hacer otro agente, o llamadas que puedes hacer tú.', parameters: { type: 'object', properties: { type: { type: 'string', enum: ['info', 'action', 'approval'] }, target: { type: 'string', enum: ['approver', 'owner', 'specific'] }, target_email: { type: 'string' }, title: { type: 'string' }, description: { type: 'string' }, urgency: { type: 'string', enum: ['baja', 'media', 'alta'] }, needed_by: { type: 'string' } }, required: ['type', 'target', 'title', 'description'] } }, server: server('exec/pedir_a_humano') };
 
     // A-F7 Nova despacho de campo:
@@ -516,6 +518,15 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
     if (agent.features.of_encuestas) tools.push(buildToolDef('registrar_encuesta', agent, server)!);
     if (agent.features.outbound_calls) tools.push(buildToolDef('marcar_no_llamar', agent, server)!);
     tools.push(buildToolDef('reportar_falla', agent, server)!);
+  }
+
+  // solicitar_cancelacion_factura — org-level toggle. Se agrega después del loop
+  // de roles para que sea independiente del meerkat_role_id. Sólo aparece cuando
+  // organizations.invoicing_allow_agent_cancellation === true.
+  const allowCancellation = (agent as unknown as Record<string, unknown>).invoicing_allow_agent_cancellation === true;
+  if (allowCancellation) {
+    const cancelDef = buildToolDef('solicitar_cancelacion_factura', agent, server);
+    if (cancelDef) tools.push(cancelDef);
   }
 
   // TransferCall a peers desactivado: Vapi rechazaba "assistantName not found"

@@ -648,6 +648,8 @@ Estas reglas se verifican con un safety net post-generación. Violarlas causa qu
 
 8. LECTURA DE ADJUNTOS Y LINKS ENTRANTES: si el correo entrante trae adjuntos (PDF/DOCX/imagen), estos YA vienen procesados en el body ("Contenido de documentos adjuntos") o como bloques image que puedes ver directamente. Úsalos. Si el correo tiene un LINK a un documento (típico en facturas Netsuite/Nayax: "Ver factura aquí" con URL), usa read_url para descargar y leer el contenido antes de clasificar como discrepancia. NO marques "requiere lectura manual" sin haber intentado read_url primero. Un correo de factura con link válido que no leíste es un fallo tuyo, no del sistema.
 
+9. COORDINACIÓN CON EL EQUIPO — si una tool devuelve "deduped: true" (mensaje tipo "<compañero> ya se encargó de este reporte…"), NO es un error. Otro empleado del mismo negocio ya envió lo mismo al mismo destinatario y el sistema evitó cobrar dos veces al cliente. NO reintentes con la misma tool ni con otra (nada de cambiar send_email por WhatsApp, ni escalar con pedir_a_humano para "asegurar"). Anota en tu draft o resumen que el compañero ya se encargó y sigue con la parte que aún no se atienda. Aplica a send_email, enviar_documento_oficina, responder_cliente_afectado, escalar_al_owner, pedir_a_humano(target=owner) y delegar_tarea.
+
 Regla de oro: PEDIR AYUDA es SIEMPRE mejor que INVENTAR. Un correo con "voy a verificar y te contesto pronto" es MEJOR que un correo con datos fabricados. Fabricar rompe la confianza; verificar la construye.
 
 === CLASIFICACIÓN ===
@@ -866,6 +868,13 @@ CATEGORÍAS:
       .select('*')
       .eq('id', agentId)
       .single();
+
+    // Org flags (best-effort)
+    const { data: orgFlags } = await supabase
+      .from('organizations')
+      .select('invoicing_allow_agent_cancellation')
+      .eq('portal_email', portalEmail)
+      .maybeSingle();
 
     // Include QB tools only when connected
     const qbConnected = !!(await getQBClient(portalEmail, supabase));
@@ -1087,6 +1096,25 @@ CATEGORÍAS:
             cliente_nombre: { type: 'string', description: 'Nombre parcial del cliente si no tienes RFC.' },
             request_id:     { type: 'string', description: 'ID exacto de la solicitud si lo tienes.' },
           },
+        },
+      });
+    }
+
+    // solicitar_cancelacion_factura — org-level toggle. Solo se expone cuando
+    // la org tiene invoicing_allow_agent_cancellation=true.
+    if ((orgFlags as { invoicing_allow_agent_cancellation?: boolean } | null)?.invoicing_allow_agent_cancellation === true) {
+      tools.push({
+        name: 'solicitar_cancelacion_factura',
+        description: 'Registra una solicitud de cancelación de un CFDI ya emitido. El equipo la confirma después.',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            uuid_o_folio_corto: { type: 'string', description: 'UUID completo o últimos 8 caracteres del folio.' },
+            motivo:             { type: 'string', enum: ['01','02','03','04'], description: '01=error datos (requiere sustituto). 02=no realizada. 03=no llevó a cabo. 04=nominativa relacionada con global.' },
+            uuid_sustituto:     { type: 'string', description: 'Requerido si motivo=01. UUID del CFDI que sustituye a éste.' },
+            razon_cliente:      { type: 'string' },
+          },
+          required: ['uuid_o_folio_corto', 'motivo'],
         },
       });
     }
