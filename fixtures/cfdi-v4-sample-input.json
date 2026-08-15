@@ -1,0 +1,13 @@
+{
+  "emisor": { "rfc": "LAN7008173R5", "regimenFiscal": "601", "nombre": "ESCUELA KEMPER URGATE" },
+  "receptor": { "rfc": "XAXX010101000", "nombre": "PUBLICO EN GENERAL",
+    "usoCfdi": "S01", "regimenFiscal": "616", "domicilioFiscal": "64000" },
+  "lugarExpedicion": "64000",
+  "formaPago": "03", "metodoPago": "PUE",
+  "moneda": "MXN",
+  "conceptos": [
+    { "claveProdServ": "01010101", "claveUnidad": "H87", "cantidad": 1,
+      "descripcion": "Servicio de consultoría", "valorUnitario": 100, "importe": 100, "iva": 16 }
+  ],
+  "subtotal": 100, "iva": 16, "total": 116
+}
