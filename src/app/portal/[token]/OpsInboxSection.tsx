@@ -326,7 +326,14 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
           delete next[id];
           return next;
         });
+      } else {
+        // Sin toast el usuario ve "Procesando..." y luego nada — parece que
+        // el botón no hizo nada. Mejor comunicar el error.
+        const errBody = await res.json().catch(() => ({} as { error?: string }));
+        toast.error(errBody.error ?? `No se pudo ${status === 'approved' ? 'aprobar' : 'rechazar'} (HTTP ${res.status}).`);
       }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Error de red.');
     } finally { setActing(null); }
   };
 

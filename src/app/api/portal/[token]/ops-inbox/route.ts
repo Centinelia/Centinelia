@@ -194,12 +194,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   }
 
   // Guard TOCTOU: dos requests simultáneos ambos pasaron la validación de línea 82;
-  // el .eq('status','pending') asegura que solo el primero muta el estado.
+  // el .in('status', ...) asegura que solo el primero muta el estado desde uno
+  // de los estados accionables (pending o info_requested).
   const { data: updated, error } = await supabase
     .from('ops_inbox')
     .update(update)
     .eq('id', item.id)
-    .eq('status', 'pending')
+    .in('status', ['pending', 'info_requested'])
     .select('id')
     .maybeSingle();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
