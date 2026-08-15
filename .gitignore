@@ -60,3 +60,6 @@ next-env.d.ts
 
 # Temporary scripts (test verifications, one-off checks)
 .tmp/
+
+# Obsidian vault (local exploration, no need to version)
+.obsidian/
