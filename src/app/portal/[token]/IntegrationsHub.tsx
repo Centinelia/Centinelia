@@ -512,6 +512,10 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
     ? `QuickBooks${status.qb.company_name ? ` · ${status.qb.company_name}` : ''}`
     : undefined;
 
+  const sfSubtitle     = status.sf?.connected
+    ? 'Solucion Factible · Timbrado CFDI 4.0'
+    : 'Elige tu proveedor y emite CFDI 4.0 automáticamente';
+
   /* ── summary caps ───────────────────────────────────────────────────── */
 
   const caps: CapabilitySummary[] = [
@@ -643,7 +647,7 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
       icon: <FileText size={16} style={{ color: '#1A56DB' }} />,
       connectedIcon: RowIcons.solucion_factible,
       label: 'Facturación CFDI',
-      subtitle: 'Solucion Factible · Timbrado CFDI 4.0',
+      subtitle: sfSubtitle,
       connected: !!status.sf?.connected,
       children: <SolucionFactibleSection token={token} />,
     },

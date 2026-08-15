@@ -1,6 +1,6 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
-import { CheckCircle, AlertTriangle, Loader2, FileText, Settings, Trash2, Upload } from 'lucide-react';
+import { CheckCircle, AlertTriangle, Loader2, FileText, Settings, Trash2, Upload, ArrowLeft } from 'lucide-react';
 
 interface Org {
   invoicing_provider?: string | null;
@@ -23,19 +23,62 @@ interface Org {
 
 // Catálogo de PACs disponibles. Agregar aquí cuando se integre uno nuevo.
 // El backend usa `organizations.invoicing_provider = <id>` para decidir en
-// `resolveInvoicingPath()` a qué SolucionFactibleProvider-like singleton llamar.
-const PAC_CATALOG: Array<{ id: string; label: string; enabled: boolean; note?: string }> = [
-  { id: 'solucion_factible', label: 'Solucion Factible', enabled: true },
-  // Ejemplos para el futuro (deshabilitados hasta integrar cada uno):
-  // { id: 'facturama',       label: 'Facturama',        enabled: false, note: 'Próximamente' },
-  // { id: 'finkok',          label: 'Finkok',           enabled: false, note: 'Próximamente' },
+// `resolveInvoicingPath()` a qué provider singleton llamar.
+//
+// Para agregar Facturama, Finkok, PACSA etc:
+//  1. Implementar src/lib/invoicing/{id}/index.ts (InvoicingProvider interface)
+//  2. Agregar case en resolveInvoicingPath() de emitir-factura.ts
+//  3. Agregar mapping de sus error codes en error-mapping.ts
+//  4. Marcar enabled: true aquí
+interface PacDef {
+  id: string;
+  label: string;
+  tagline: string;
+  logoColor: string;
+  enabled: boolean;
+  note?: string;
+}
+const PAC_CATALOG: PacDef[] = [
+  {
+    id: 'solucion_factible',
+    label: 'Solucion Factible',
+    tagline: 'PAC autorizado SAT · Timbrado CFDI 4.0 + Cancelacion',
+    logoColor: '#1A56DB',
+    enabled: true,
+  },
+  {
+    id: 'facturama',
+    label: 'Facturama',
+    tagline: 'PAC autorizado SAT · Timbrado CFDI 4.0',
+    logoColor: '#0EA5E9',
+    enabled: false,
+    note: 'Próximamente',
+  },
+  {
+    id: 'finkok',
+    label: 'Finkok',
+    tagline: 'PAC autorizado SAT · Timbrado CFDI 4.0',
+    logoColor: '#10B981',
+    enabled: false,
+    note: 'Próximamente',
+  },
 ];
+
+function PacLogo({ color }: { color: string }) {
+  return (
+    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+      style={{ background: `${color}18`, border: `1px solid ${color}44` }}>
+      <FileText size={16} style={{ color }} strokeWidth={2.2} />
+    </div>
+  );
+}
 
 export default function SolucionFactibleSection({ token }: { token: string }) {
   const [org, setOrg]     = useState<Org | null>(null);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg]     = useState<{ text: string; ok: boolean } | null>(null);
   const [busy, setBusy]   = useState(false);
+  const [selectedPac, setSelectedPac] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -138,34 +181,72 @@ export default function SolucionFactibleSection({ token }: { token: string }) {
         </div>
       )}
 
-      {/* PAC selector + Connect form */}
-      {!connected && (
+      {/* PAC catálogo (disconnected + no PAC seleccionado aún) */}
+      {!connected && !selectedPac && (
         <div className="rounded-xl overflow-hidden"
           style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)' }}>
           <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--c-border)' }}>
-            <h2 className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Conectar cuenta</h2>
+            <h2 className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Elige tu PAC</h2>
             <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-              Elige tu PAC (Proveedor Autorizado de Certificacion) e ingresa las credenciales para que tus empleados timbren CFDI automaticamente.
+              Un PAC (Proveedor Autorizado de Certificacion) es quien timbra los CFDI ante el SAT. Elige con cual tienes cuenta.
             </p>
           </div>
-          {PAC_CATALOG.length > 1 && (
-            <div className="px-4 pt-3">
-              <label className="flex flex-col gap-1">
-                <span className="text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>PAC</span>
-                <select
-                  defaultValue="solucion_factible"
-                  className="rounded-lg px-3 py-2 text-sm"
-                  style={{ border: '1px solid var(--c-border)', background: 'var(--c-surface)', color: 'var(--c-text)', outline: 'none' }}
-                >
-                  {PAC_CATALOG.map(p => (
-                    <option key={p.id} value={p.id} disabled={!p.enabled}>
-                      {p.label}{!p.enabled && p.note ? ` (${p.note})` : ''}
-                    </option>
-                  ))}
-                </select>
-              </label>
+          <div className="flex flex-col">
+            {PAC_CATALOG.map((p, i) => (
+              <button
+                key={p.id}
+                type="button"
+                disabled={!p.enabled}
+                onClick={() => p.enabled && setSelectedPac(p.id)}
+                className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
+                style={{
+                  borderBottom: i === PAC_CATALOG.length - 1 ? 'none' : '1px solid var(--c-border)',
+                  background:   'transparent',
+                  cursor:       p.enabled ? 'pointer' : 'default',
+                  opacity:      p.enabled ? 1 : 0.55,
+                }}
+                onMouseEnter={e => { if (p.enabled) (e.currentTarget as HTMLButtonElement).style.background = 'var(--c-surface)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
+              >
+                <PacLogo color={p.logoColor} />
+                <div className="flex flex-col flex-1 min-w-0">
+                  <span className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>{p.label}</span>
+                  <span className="text-xs truncate" style={{ color: 'var(--c-text-3)' }}>{p.tagline}</span>
+                </div>
+                {p.enabled ? (
+                  <span className="text-xs font-semibold" style={{ color: p.logoColor }}>Conectar →</span>
+                ) : (
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap"
+                    style={{ background: 'var(--c-surface)', color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }}>
+                    {p.note ?? 'Pronto'}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Connect form (después de elegir PAC) */}
+      {!connected && selectedPac === 'solucion_factible' && (
+        <div className="rounded-xl overflow-hidden"
+          style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)' }}>
+          <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: '1px solid var(--c-border)' }}>
+            <button
+              type="button"
+              onClick={() => setSelectedPac(null)}
+              className="flex items-center gap-1 text-xs font-medium transition-colors hover:opacity-70"
+              style={{ color: 'var(--c-text-3)' }}
+            >
+              <ArrowLeft size={12} /> Cambiar PAC
+            </button>
+            <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>·</span>
+            <PacLogo color="#1A56DB" />
+            <div className="flex flex-col">
+              <h2 className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Conectar Solucion Factible</h2>
+              <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>Ingresa las credenciales de tu cuenta PAC.</p>
             </div>
-          )}
+          </div>
           <form
             className="px-4 py-4 flex flex-col gap-4"
             onSubmit={e => { e.preventDefault(); void connect(new FormData(e.currentTarget)); }}
