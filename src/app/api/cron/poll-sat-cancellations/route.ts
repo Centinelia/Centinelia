@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
 import { decryptString } from '@/lib/invoicing/csd-vault';
-import { solucionFactibleProvider } from '@/lib/invoicing/solucion-factible';
+import { getProvider } from '@/lib/invoicing/registry';
 import { sendEmail } from '@/lib/email/send';
 
 export const dynamic = 'force-dynamic';
@@ -55,7 +55,7 @@ export async function GET(req: Request) {
     try {
       const { data: org } = await supabase
         .from('organizations')
-        .select('invoicing_credentials_encrypted, invoicing_test_mode')
+        .select('invoicing_provider, invoicing_credentials_encrypted, invoicing_test_mode')
         .eq('portal_email', cx.organization_email)
         .single();
 
@@ -64,10 +64,16 @@ export async function GET(req: Request) {
         continue;
       }
 
+      const provider = getProvider(org.invoicing_provider as string | null);
+      if (!provider) {
+        console.warn('[poll-sat-cancellations] PAC no soportado:', org.invoicing_provider);
+        continue;
+      }
+
       const creds = JSON.parse(decryptString(org.invoicing_credentials_encrypted as string));
       const testMode = (org.invoicing_test_mode as boolean | null) !== false;
 
-      const status = await solucionFactibleProvider.consultarEstatusCancelacion(
+      const status = await provider.consultarEstatusCancelacion(
         cx.uuid_cancelado,
         creds,
         { testMode },

@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { getCsd, decryptString } from './csd-vault';
 import { evaluateGuardrails } from './guardrails';
 import type { GuardrailLimits } from './guardrails';
-import { solucionFactibleProvider } from './solucion-factible';
+import { getProvider } from './registry';
 import { buildCfdiPdf } from './pdf-builder';
 import { mapSfError } from './error-mapping';
 import { isInvoicingDisabled } from './kill-switch';
@@ -143,7 +143,11 @@ export async function emitirFacturaAuto(
   };
 
   // Stamp
-  const result = await solucionFactibleProvider.timbrar(cfdi, { testMode: org.invoicing_test_mode });
+  const provider = getProvider(org.invoicing_provider);
+  if (!provider) {
+    return { outcome: 'failed', error: `PAC no soportado: ${org.invoicing_provider}`, retryable: false };
+  }
+  const result = await provider.timbrar(cfdi, { testMode: org.invoicing_test_mode });
 
   if (!result.ok) {
     const info = mapSfError(result.code);

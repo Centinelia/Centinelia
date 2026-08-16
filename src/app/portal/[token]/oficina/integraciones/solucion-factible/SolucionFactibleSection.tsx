@@ -47,6 +47,14 @@ const PAC_CATALOG: PacDef[] = [
     enabled: true,
   },
   {
+    id: 'contpaqi_timbra',
+    label: 'CONTPAQi Timbra',
+    tagline: 'PAC autorizado SAT · Timbrado CFDI 4.0 (REST/JSON)',
+    logoColor: '#E85D2F',
+    enabled: false,
+    note: 'En integración',
+  },
+  {
     id: 'facturama',
     label: 'Facturama',
     tagline: 'PAC autorizado SAT · Timbrado CFDI 4.0',

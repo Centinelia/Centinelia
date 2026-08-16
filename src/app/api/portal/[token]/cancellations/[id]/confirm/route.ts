@@ -4,8 +4,8 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { getCsd, decryptString } from '@/lib/invoicing/csd-vault';
-import { solucionFactibleProvider } from '@/lib/invoicing/solucion-factible';
-import type { CancelMotivo } from '@/lib/invoicing/provider';
+import { getProvider } from '@/lib/invoicing/registry';
+import type { CancelMotivo, CancelSubmitResult } from '@/lib/invoicing/provider';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
   // Load SF credentials
   const { data: org } = await supabase
     .from('organizations')
-    .select('invoicing_credentials_encrypted, invoicing_test_mode')
+    .select('invoicing_provider, invoicing_credentials_encrypted, invoicing_test_mode')
     .eq('portal_email', portalEmail)
     .single();
   if (!org?.invoicing_credentials_encrypted) {
@@ -59,10 +59,16 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
     password: string;
   };
 
-  // Call SF cancelar — may throw (network / SOAP fault)
-  let result: Awaited<ReturnType<typeof solucionFactibleProvider.cancelar>>;
+  // Resolver PAC provider desde el registry (SF, CONTPAQi, etc)
+  const provider = getProvider(org.invoicing_provider as string | null);
+  if (!provider) {
+    return NextResponse.json({ error: `PAC no soportado: ${org.invoicing_provider ?? 'null'}` }, { status: 400 });
+  }
+
+  // Call PAC cancelar — may throw (network / SOAP fault)
+  let result: CancelSubmitResult;
   try {
-    result = await solucionFactibleProvider.cancelar(
+    result = await provider.cancelar(
       cx.uuid_cancelado as string,
       cx.motivo as CancelMotivo,
       (cx.uuid_sustituto as string | null) ?? null,
