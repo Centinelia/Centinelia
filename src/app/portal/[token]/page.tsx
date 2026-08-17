@@ -53,6 +53,7 @@ import AutoRefillSection         from './AutoRefillSection';
 import IntegrationsHub           from './IntegrationsHub';
 import PoliciesSection          from './PoliciesSection';
 import OrgCard                  from './OrgCard';
+import DailyAvailabilityCard    from './DailyAvailabilityCard';
 import NegocioTabs              from './NegocioTabs';
 import DirectorioEditor         from './DirectorioEditor';
 import type { DirectoryPerson } from '@/lib/helpdesk/folio';
@@ -1135,6 +1136,8 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                       </div>
                     </div>
                   </div>
+
+                  <DailyAvailabilityCard token={token} />
 
                   <div id="conocimiento" style={{ scrollMarginTop: 80 }}>
                     <div className="flex flex-col rounded-2xl overflow-hidden"
