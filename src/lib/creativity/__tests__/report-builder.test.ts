@@ -5,44 +5,40 @@ vi.mock('@/lib/documents/excel', () => ({
   generateExcel: vi.fn(() => Buffer.from('fake-xlsx-bytes')),
 }));
 
-function makeQueryChain(rows: unknown[]) {
-  const leaf = async () => ({ data: rows, error: null });
-  const ordered = () => ({ limit: leaf });
-  const gte = () => ({ order: ordered });
-  const inFn = () => ({ gte });
-  const eq = () => ({ in: inFn, gte });
-  return { eq, in: inFn, gte };
+// Chainable query mock: every call returns the same proxy so any combination
+// of .select/.in/.eq/.gte/.order/.limit works. Terminal await returns
+// { data: rows }, single()/maybeSingle() return { data: rows[0] ?? null }.
+function chainable(rows: unknown[]) {
+  const arrayResult  = { data: rows, error: null };
+  const singleResult = { data: rows[0] ?? null, error: null };
+  const proxy: unknown = new Proxy(() => proxy, {
+    get(_, prop) {
+      if (prop === 'then')        return (onFulfilled: (v: unknown) => unknown, onRejected?: (e: unknown) => unknown) =>
+        Promise.resolve(arrayResult).then(onFulfilled, onRejected);
+      if (prop === 'single')      return async () => singleResult;
+      if (prop === 'maybeSingle') return async () => singleResult;
+      return () => proxy;
+    },
+    apply() { return proxy; },
+  });
+  return proxy;
 }
 
 function mockSupabase(rowsByTable: Record<string, unknown[]> = {}) {
-  const chain = (table: string) => {
-    const rows = rowsByTable[table] ?? [];
-    const q = makeQueryChain(rows);
-    return {
-      select: () => q,
-      insert: () => ({
-        select: () => ({
-          single: async () => ({ data: { id: 'doc-1' }, error: null }),
-        }),
-      }),
-    };
-  };
-
   return {
     from: (table: string) => {
-      if (table === 'voice_agents') {
+      if (table === 'ops_documents') {
+        // insert().select().single() -> id: 'doc-1'
         return {
-          select: () => ({
-            eq: () => ({
-              data:  [{ id: 'a1' }],
-              error: null,
-              then:  (cb: (v: { data: { id: string }[]; error: null }) => unknown) =>
-                cb({ data: [{ id: 'a1' }], error: null }),
+          insert: () => ({
+            select: () => ({
+              single: async () => ({ data: { id: 'doc-1' }, error: null }),
             }),
           }),
         };
       }
-      return chain(table);
+      const rows = rowsByTable[table] ?? (table === 'voice_agents' ? [{ id: 'a1' }] : []);
+      return chainable(rows);
     },
     storage: {
       from: () => ({
@@ -68,8 +64,8 @@ describe('buildReport', () => {
       { id: 'a1', agentName: 'Noah', portalEmail: 'test@x.com' },
       supabase,
     );
+    if (!result.ok) throw new Error(`buildReport failed: ${result.error}`);
     expect(result.ok).toBe(true);
-    if (!result.ok) return;
     expect(result.mime_type).toBe('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     expect(result.sheets).toContain('Leads');
     expect(result.sheets).toContain('Citas');

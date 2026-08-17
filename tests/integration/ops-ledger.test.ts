@@ -1,3 +1,18 @@
+/**
+ * Integration tests for the ops_ledger SQL surface.
+ *
+ * These tests hit the live Supabase project. They are EXCLUDED from the
+ * default `npx vitest run` (see vitest.config.ts) because:
+ *   1. They mutate real rows (ops_ledger + account_ops) for TEST_PORTAL_EMAIL.
+ *   2. They depend on a seeded voice_agent with ai_ops_limit set for that email.
+ *   3. Some assertions read organization state (ops_ledger_enabled flag) that
+ *      flips over time in real usage.
+ *
+ * To run them intentionally: `npm run test:integration`. Set
+ * TEST_PORTAL_EMAIL to a synthetic org you own so no production data is
+ * touched, and confirm that org has a voice_agent with ai_ops_limit set
+ * and ops_ledger_enabled = false.
+ */
 import { describe, it, expect, beforeAll, afterEach } from 'vitest';
 import { createAdminClient } from '@/lib/supabase/admin';
 

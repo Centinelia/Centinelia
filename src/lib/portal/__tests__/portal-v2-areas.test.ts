@@ -169,28 +169,28 @@ describe('buildPortalNav', () => {
     expect(ids).toEqual(['inicio', 'negocio', 'agentes', 'llamadas', 'cuenta', 'usuarios']);
   });
 
-  // Anchor items for Inicio
-  it('Inicio tiene 6 anchor items', () => {
+  // Anchor items for Inicio — simplificado en portal-v2-areas.ts:66-69
+  it('Inicio tiene 2 anchor items', () => {
     const groups = buildPortalNav(base);
     const inicio = groups.find(g => g.id === 'inicio')!;
-    expect(inicio.items).toHaveLength(6);
+    expect(inicio.items).toHaveLength(2);
     const anchors = inicio.items!.map(i => i.anchor);
-    expect(anchors).toEqual([
-      'resumen',
-      'equipo-hoy',
-      'actividad',
-      'horas-pico',
-      'reporte-mensual',
-      'contexto',
-    ]);
+    expect(anchors).toEqual(['semana', 'hoy']);
   });
 
-  // Cuenta anchor items
-  it('Cuenta tiene 3 anchor items', () => {
+  // Cuenta anchor items — expandido en portal-v2-areas.ts:150-156
+  it('Cuenta tiene 6 anchor items', () => {
     const groups = buildPortalNav(base);
     const cuenta = groups.find(g => g.id === 'cuenta')!;
-    expect(cuenta.items).toHaveLength(3);
+    expect(cuenta.items).toHaveLength(6);
     const anchors = cuenta.items!.map(i => i.anchor);
-    expect(anchors).toEqual(['uso-del-mes', 'comprar', 'historial']);
+    expect(anchors).toEqual([
+      'consumo-promedio',
+      'uso-del-mes',
+      'comprar',
+      'historial',
+      'reporte-mensual',
+      'terminos-servicio',
+    ]);
   });
 });
