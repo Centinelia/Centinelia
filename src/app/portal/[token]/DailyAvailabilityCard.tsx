@@ -107,7 +107,7 @@ export default function DailyAvailabilityCard({ token }: Props) {
         <div>
           <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>{title}</h2>
           <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>
-            Actualiza lo que esta disponible hoy para que tus empleados lo comuniquen correctamente.
+            Actualiza lo que está disponible hoy para que tus empleados lo comuniquen correctamente.
           </p>
         </div>
         {state.updated_at && (
@@ -129,7 +129,7 @@ export default function DailyAvailabilityCard({ token }: Props) {
         {listInput('Con existencia limitada', 'limited')}
 
         <label className="flex flex-col gap-1">
-          <span className="text-[12px] font-semibold" style={{ color: '#1A0A3B' }}>Especial del dia</span>
+          <span className="text-[12px] font-semibold" style={{ color: '#1A0A3B' }}>Especial del día</span>
           <input
             type="text"
             value={state.special ?? ''}
