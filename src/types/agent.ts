@@ -34,6 +34,9 @@ export interface AgentFeatures {
   // Vertical del cliente — controla qué secciones de Oficina se muestran
   vertical?: 'negocio' | 'gobierno';
 
+  // Industry subtype — optional when vertical === 'negocio'
+  industry?: 'restaurante' | 'retail' | 'clinica' | 'hotel';
+
   // IT Helpdesk — activa las tools de tickets, incidentes y directorio
   helpdesk?: boolean;
 
@@ -282,6 +285,7 @@ export const FEATURE_LABELS: Record<keyof AgentFeatures, string> = {
   client_memory:           'Memoria de cliente',
   outbound_calls:          'Llamadas salientes',
   vertical:                '',
+  industry:                '',
   helpdesk:                'Mesa de ayuda IT',
   is_coordinator:          'Coordinador de equipo',
   meerkat_role_id:         '',
