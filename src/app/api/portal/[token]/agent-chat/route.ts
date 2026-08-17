@@ -43,6 +43,7 @@ import { extractChatLearnings } from '@/lib/ai/chat-learning';
 import { getKnowledgeBase } from '@/lib/knowledge-base';
 import { MEERKAT_VOICE_DISTRIBUTION } from '@/lib/vapi/sync';
 import { getAgentIndustry, INDUSTRIES_WITH_DAILY_AVAILABILITY } from '@/lib/industry';
+import { formatDailyAvailabilityForPrompt } from '@/lib/daily-availability';
 import {
   enhanceTextContent,
   enhanceSlidesContent,
@@ -1317,7 +1318,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       ? supabase.from('organizations').select('notion_access_token, notion_db_id, notion_products_db_id, invoicing_allow_agent_cancellation').eq('portal_email', accountAgent.portal_email).maybeSingle()
       : Promise.resolve({ data: null }),
     accountAgent.portal_email
-      ? supabase.from('organizations').select('business_email, brand_phone, business_website, brand_website, brand_address, email_footer_text').eq('portal_email', accountAgent.portal_email).maybeSingle()
+      ? supabase.from('organizations').select('business_email, brand_phone, business_website, brand_website, brand_address, email_footer_text, daily_availability').eq('portal_email', accountAgent.portal_email).maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
   if (!agent) return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
@@ -1486,6 +1487,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   if ((agent.role_knowledge_base as string | null)?.trim()) {
     sections.push(`# Instrucciones del rol${agentRole ? ` — ${agentRole}` : ''}\n${agent.role_knowledge_base}`);
   }
+
   if ((agent.role_learnings as string | null)?.trim()) {
     sections.push(`# Aprendizajes del agente — instrucciones del puesto\n${agent.role_learnings}`);
   }
@@ -1618,7 +1620,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const todayEs      = nowForPrompt.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   const dateBlock    = `## Fecha actual\nHoy es ${todayEs} (${todayIso}). USA este año en cualquier fecha que redactes — no repitas años pasados.`;
 
-  const orgC = orgContact as { business_email?: string | null; brand_phone?: string | null; business_website?: string | null; brand_website?: string | null; brand_address?: string | null; email_footer_text?: string | null } | null;
+  const orgC = orgContact as { business_email?: string | null; brand_phone?: string | null; business_website?: string | null; brand_website?: string | null; brand_address?: string | null; email_footer_text?: string | null; daily_availability?: unknown } | null;
   const contactLines: string[] = [];
   const contactEmail = orgC?.business_email || accountAgent.portal_email;
   const contactSite  = orgC?.business_website || orgC?.brand_website;
@@ -1631,6 +1633,12 @@ export async function POST(req: NextRequest, { params }: Params) {
     : '';
   const footerBlock = orgC?.email_footer_text?.trim()
     ? `## Firma de correos por default\n${orgC.email_footer_text.trim()}`
+    : '';
+
+  // ── Daily availability (industry-gated) ─────────────────────────────────────
+  const chatIndustry   = getAgentIndustry(agent as { features?: { industry?: string } | null });
+  const chatDailyBlock = chatIndustry
+    ? formatDailyAvailabilityForPrompt((orgC?.daily_availability ?? null) as import('@/lib/daily-availability').DailyAvailability | null, chatIndustry)
     : '';
 
   const system = `Eres ${agentName}, empleado de ${agent.business_name}${agentRole ? ` con el rol de ${agentRole}` : ''}.
@@ -1739,6 +1747,7 @@ ${dateBlock}
 ${contactBlock}
 
 ${footerBlock}
+${chatDailyBlock ? `\n${chatDailyBlock}` : ''}
 
 ## Contexto operativo
 
