@@ -5,6 +5,7 @@ import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { validateDailyAvailability } from '@/lib/daily-availability';
 import { getOrgIndustry, INDUSTRIES_WITH_DAILY_AVAILABILITY } from '@/lib/industry';
+import { resyncPeerAgents } from '@/lib/vapi/sync';
 
 export const dynamic = 'force-dynamic';
 
@@ -90,6 +91,14 @@ export async function PUT(req: NextRequest, { params }: Params) {
     .eq('portal_email', portalEmail);
 
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+
+  // Vapi caches the system prompt per assistant. Availability lives in the prompt
+  // (injected by prompt-builder), so a change here doesn't reach voice until we
+  // resync. Fire-and-forget across every voice agent in the org: the empty exclude
+  // id means no agent is skipped. Non-voice roles are filtered inside.
+  resyncPeerAgents(portalEmail, '').catch(err => {
+    console.error('daily-availability: Vapi resync failed', err);
+  });
 
   return NextResponse.json({ ok: true, data: snapshot });
 }

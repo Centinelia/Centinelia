@@ -4,6 +4,7 @@ import { requireVapiAuth } from '@/lib/vapi/auth';
 import { validateDailyAvailability } from '@/lib/daily-availability';
 import { getOrgIndustry, INDUSTRIES_WITH_DAILY_AVAILABILITY } from '@/lib/industry';
 import { traceVoiceCall } from '@/lib/observability/voice-trace';
+import { resyncPeerAgents } from '@/lib/vapi/sync';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -72,6 +73,15 @@ export async function POST(req: NextRequest) {
     result:   { ok: true, snapshot },
     startedAt,
   });
+
+  // Propagate to Vapi so future calls see the new prompt. In-flight calls keep
+  // the assistant config they started with — this update only takes effect on
+  // the next call, not the one that just wrote the change.
+  if (agent.portal_email) {
+    resyncPeerAgents(agent.portal_email, '').catch(err => {
+      console.error('actualizar-disponibilidad-diaria: Vapi resync failed', err);
+    });
+  }
 
   return NextResponse.json({
     result: 'Disponibilidad actualizada. Todos los empleados del negocio veran este estado.',
