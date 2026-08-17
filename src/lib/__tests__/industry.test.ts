@@ -37,4 +37,18 @@ describe('INDUSTRIES_WITH_DAILY_AVAILABILITY', () => {
   it('includes restaurante', () => {
     expect(INDUSTRIES_WITH_DAILY_AVAILABILITY).toContain('restaurante');
   });
+
+  it('includes agencia', () => {
+    expect(INDUSTRIES_WITH_DAILY_AVAILABILITY).toContain('agencia');
+  });
+});
+
+describe('agencia labels', () => {
+  it('has weekly-oriented title (not menu-oriented)', () => {
+    expect(getIndustryLabel('agencia', 'daily_availability_title')).toBe('Disponibilidad y prioridades');
+  });
+
+  it('uses servicio as item word', () => {
+    expect(getIndustryLabel('agencia', 'daily_availability_item_word')).toBe('servicio');
+  });
 });
