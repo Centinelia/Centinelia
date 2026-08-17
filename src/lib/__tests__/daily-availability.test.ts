@@ -24,6 +24,52 @@ describe('formatDailyAvailabilityForPrompt', () => {
     expect(out).toContain('Tacos de barbacoa a 180');
     expect(out).toContain('Postre de la casa');
   });
+
+  it('instructs to offer the special proactively', () => {
+    const out = formatDailyAvailabilityForPrompt(
+      {
+        updated_at: '2026-08-17T10:00:00Z',
+        updated_by: 'owner@x.com',
+        unavailable: [],
+        limited: [],
+        special: 'Tacos de barbacoa a 180',
+        notes: null,
+      },
+      'restaurante',
+    );
+    expect(out).toMatch(/ofrécelo proactivamente/);
+  });
+
+  it('instructs to mention unavailable items only when the client asks for one', () => {
+    const out = formatDailyAvailabilityForPrompt(
+      {
+        updated_at: '2026-08-17T10:00:00Z',
+        updated_by: 'owner@x.com',
+        unavailable: ['Ceviche'],
+        limited: [],
+        special: null,
+        notes: null,
+      },
+      'restaurante',
+    );
+    expect(out).toMatch(/SOLO si el cliente pide alguno/);
+    expect(out).toMatch(/NUNCA los enumeres/);
+  });
+
+  it('places the special before unavailable items so the model sees the proactive item first', () => {
+    const out = formatDailyAvailabilityForPrompt(
+      {
+        updated_at: '2026-08-17T10:00:00Z',
+        updated_by: 'owner@x.com',
+        unavailable: ['Ceviche'],
+        limited: [],
+        special: 'Tacos de barbacoa a 180',
+        notes: null,
+      },
+      'restaurante',
+    );
+    expect(out.indexOf('Especial del día')).toBeLessThan(out.indexOf('No disponibles hoy'));
+  });
 });
 
 describe('validateDailyAvailability', () => {

@@ -39,12 +39,19 @@ export function formatDailyAvailabilityForPrompt(
   industry: Industry,
 ): string {
   if (!data) return '';
-  const title    = getIndustryLabel(industry, 'daily_availability_title');
-  const itemWord = getIndustryLabel(industry, 'daily_availability_item_word');
+  const title = getIndustryLabel(industry, 'daily_availability_title');
   const lines: string[] = [`\n### ${title} (actualizado ${data.updated_at})`];
-  if (data.unavailable.length) lines.push(`No disponibles hoy: ${data.unavailable.join(', ')}.`);
-  if (data.limited.length)     lines.push(`${itemWord.charAt(0).toUpperCase() + itemWord.slice(1)}s con existencia limitada: ${data.limited.join(', ')}.`);
-  if (data.special)            lines.push(`Especial del día: ${data.special}.`);
-  if (data.notes)              lines.push(`Nota: ${data.notes}.`);
+  if (data.special) {
+    lines.push(`Especial del día — ofrécelo proactivamente al inicio de la conversación o cuando sea natural mencionarlo: ${data.special}.`);
+  }
+  if (data.notes) {
+    lines.push(`Nota general: ${data.notes}.`);
+  }
+  if (data.unavailable.length) {
+    lines.push(`No disponibles hoy — indícalo SOLO si el cliente pide alguno de estos; NUNCA los enumeres por iniciativa propia: ${data.unavailable.join(', ')}.`);
+  }
+  if (data.limited.length) {
+    lines.push(`Con existencia limitada — avisa al cliente SOLO si pide alguno de estos; no los promuevas: ${data.limited.join(', ')}.`);
+  }
   return lines.join('\n');
 }
