@@ -42,6 +42,7 @@ import { checkOfficeInitiative } from '@/lib/initiative/detector';
 import { extractChatLearnings } from '@/lib/ai/chat-learning';
 import { getKnowledgeBase } from '@/lib/knowledge-base';
 import { MEERKAT_VOICE_DISTRIBUTION } from '@/lib/vapi/sync';
+import { getAgentIndustry, INDUSTRIES_WITH_DAILY_AVAILABILITY } from '@/lib/industry';
 import {
   enhanceTextContent,
   enhanceSlidesContent,
@@ -143,6 +144,22 @@ const CREATE_CONTRACT_DRAFT_TOOL: Anthropic.Tool = {
 
 // Migrated to registry: src/lib/tools/schemas.ts
 const SEND_EMAIL_TOOL: Anthropic.Tool = toAnthropicTool(TOOL_SCHEMAS['send_email']);
+
+const ACTUALIZAR_DISPONIBILIDAD_DIARIA_TOOL: Anthropic.Tool = {
+  name: 'actualizar_disponibilidad_diaria',
+  description:
+    'Actualiza la disponibilidad diaria del negocio (items agotados, con existencia limitada, especial del dia). Cambio compartido con todos los empleados.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      unavailable: { type: 'array', items: { type: 'string' } },
+      limited:     { type: 'array', items: { type: 'string' } },
+      special:     { type: ['string', 'null'] },
+      notes:       { type: ['string', 'null'] },
+    },
+    required: ['unavailable', 'limited'],
+  },
+};
 
 const CREATE_DOCUMENT_TOOL: Anthropic.Tool = {
   name: 'create_document',
@@ -1424,6 +1441,14 @@ export async function POST(req: NextRequest, { params }: Params) {
       if (meerkatId && (allowed as string[]).includes(meerkatId) && CREATIVITY_DECLARATIONS[toolName]) {
         sessionTools.push(CREATIVITY_DECLARATIONS[toolName]);
       }
+    }
+  }
+
+  // actualizar_disponibilidad_diaria — industry-gated (restaurante, retail, clinica, hotel)
+  {
+    const industry = getAgentIndustry(agent as { features?: { industry?: string } | null });
+    if (industry && INDUSTRIES_WITH_DAILY_AVAILABILITY.includes(industry)) {
+      sessionTools.push(ACTUALIZAR_DISPONIBILIDAD_DIARIA_TOOL);
     }
   }
 
