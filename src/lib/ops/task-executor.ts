@@ -5,6 +5,7 @@ import { findNoxAgent } from '@/lib/ops/nox-coordinator';
 import { transitionAgentTask } from '@/lib/state-machines/agent-task';
 import { logLlmCall } from '@/lib/observability/llm-log';
 import { TOOL_SCHEMAS, toAnthropicTool } from '@/lib/tools/schemas';
+import { getAgentIndustry, INDUSTRIES_WITH_DAILY_AVAILABILITY } from '@/lib/industry';
 
 const APP_URL        = process.env.NEXT_PUBLIC_APP_URL!;
 const MAX_ITER       = 6;
@@ -20,6 +21,7 @@ export interface AgentInfo {
   role_knowledge_base:  string | null;
   business_name:        string | null;
   portal_email?:        string | null;
+  features?:            { industry?: string } | null;
 }
 
 // ── Tools available to the executing agent ─────────────────────────────────────
@@ -136,6 +138,20 @@ const DELEGATION_TOOLS: Anthropic.Tool[] = [
       required: ['resultado'],
     },
   },
+  {
+    name:        'actualizar_disponibilidad_diaria',
+    description: 'Actualiza la disponibilidad diaria del negocio.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        unavailable: { type: 'array', items: { type: 'string' } },
+        limited:     { type: 'array', items: { type: 'string' } },
+        special:     { type: 'string' },
+        notes:       { type: 'string' },
+      },
+      required: ['unavailable', 'limited'],
+    },
+  },
 ];
 
 // ── Tool executor — calls existing voice tool routes ───────────────────────────
@@ -155,6 +171,7 @@ async function executeToolOnAgent(
     crear_ticket:              'crear-ticket',
     crear_documento:           'crear-documento',
     buscar_documento_oficina:  'buscar-documento-oficina',
+    actualizar_disponibilidad_diaria: 'actualizar-disponibilidad-diaria',
     // Tools que van al executor genérico (paridad con chat/voice cross-canal).
     // exec/<name> resuelve al mismo handler que el chat, así el behavior es
     // consistente entre delegate y chat directo.
@@ -443,9 +460,18 @@ export async function executeTask(params: {
     const __tetM = 'claude-haiku-4-5-20251001';
     let response;
     try {
+      // Gate tools per target agent industry
+      const industry = getAgentIndustry(targetAgent);
+      const filteredDelegTools = DELEGATION_TOOLS.filter(t => {
+        if (t.name === 'actualizar_disponibilidad_diaria') {
+          return industry !== null && INDUSTRIES_WITH_DAILY_AVAILABILITY.includes(industry);
+        }
+        return true;
+      });
+
       // Prompt caching: systemPrompt (~5k tokens) + DELEGATION_TOOLS estables
       // por task-loop. Cachear con TTL 5min reduce input cost ~90% en iters 2+.
-      const cachedDelegTools = DELEGATION_TOOLS.map((t, idx) => idx === DELEGATION_TOOLS.length - 1
+      const cachedDelegTools = filteredDelegTools.map((t, idx) => idx === filteredDelegTools.length - 1
         ? { ...t, cache_control: { type: 'ephemeral' as const } }
         : t);
       response = await client.messages.create({
