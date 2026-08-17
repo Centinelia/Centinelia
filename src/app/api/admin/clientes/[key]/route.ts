@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isAdmin } from '@/lib/admin/auth';
+import { INDUSTRIES } from '@/lib/industry';
 import type { AgentFeatures } from '@/types/agent';
 
 /**
@@ -82,10 +83,16 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const agentPatch: Record<string, unknown> = {};
   const orgPatch:   Record<string, unknown> = {};
   let vertical: 'negocio' | 'gobierno' | undefined;
+  let industry: string | null | undefined;
 
   for (const [k, v] of Object.entries(body)) {
     if (k === 'vertical') {
       if (v === 'negocio' || v === 'gobierno') vertical = v;
+      continue;
+    }
+    if (k === 'industry') {
+      if (v === null) industry = null;
+      else if (typeof v === 'string' && (INDUSTRIES as readonly string[]).includes(v)) industry = v;
       continue;
     }
     if (ORG_FIELDS.has(k))         orgPatch[k]   = v;
@@ -114,10 +121,14 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   }
 
   // 3) Vertical: merge dentro de features per-row (features es JSONB por agente)
+  // Industry ya NO se escribe en features — organizations.industry es la única fuente de verdad.
   if (vertical) {
     for (const row of rows) {
       const currentFeatures = (row.features ?? {}) as AgentFeatures;
-      const nextFeatures = { ...currentFeatures, vertical };
+      const nextFeatures = {
+        ...currentFeatures,
+        ...(vertical !== undefined ? { vertical } : {}),
+      };
       const { error: fErr } = await supabase
         .from('voice_agents')
         .update({ features: nextFeatures })
@@ -128,6 +139,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   }
 
   // 4) Org-level fields (upsert por portal_email)
+  // Industry lives exclusively in organizations.industry — no per-agent copy.
+  if (targetPortalEmail && industry !== undefined) {
+    orgPatch.industry = industry;
+  }
   if (targetPortalEmail && Object.keys(orgPatch).length > 0) {
     const { error: orgErr } = await supabase
       .from('organizations')

@@ -8,6 +8,7 @@ import {
   Building2, ChevronDown, Globe,
 } from 'lucide-react';
 import type { VoiceAgent, BusinessHours, DaySchedule } from '@/types/agent';
+import { INDUSTRIES, type Industry } from '@/lib/industry';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -48,12 +49,13 @@ interface Props {
   orgBusinessWebsite:     string | null;
   orgBusinessHours:       BusinessHours | null;
   orgBusinessDescription: string | null;
+  initialOrgIndustry:     string | null;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ClientEditForm({
-  routeKey, agents, orgBusinessWebsite, orgBusinessHours, orgBusinessDescription,
+  routeKey, agents, orgBusinessWebsite, orgBusinessHours, orgBusinessDescription, initialOrgIndustry,
 }: Props) {
   const router  = useRouter();
   const primary = agents[0];
@@ -71,6 +73,11 @@ export default function ClientEditForm({
   // Vertical
   const [vertical, setVertical] = useState<'negocio' | 'gobierno'>(
     (primary.features?.vertical as 'negocio' | 'gobierno') ?? 'negocio'
+  );
+
+  // Industria (org-level source of truth)
+  const [industry, setIndustry] = useState<Industry | ''>(
+    (initialOrgIndustry as Industry) ?? ''
   );
 
   // Negocio (compartido: aplica a todos los empleados del cliente).
@@ -107,6 +114,7 @@ export default function ClientEditForm({
       client_email:           clientEmail.trim(),
       client_phone:           clientPhone.trim() || null,
       vertical,
+      industry:               industry || null,
       business_name:          businessName.trim(),
       business_description:   businessDescription.trim() || null,
       business_website:       businessWebsite.trim()     || null,
@@ -211,6 +219,28 @@ export default function ClientEditForm({
             })}
           </div>
         </Card>
+
+        {vertical === 'negocio' && (
+          <Card title="Industria" icon={<Briefcase size={13} />}
+                subtitle="Habilita herramientas especificas de esta industria (opcional).">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <button onClick={() => setIndustry('')}
+                style={{ background: industry === '' ? '#F3F0FF' : '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: 6, padding: 12, textAlign: 'left' }}>
+                Ninguna
+              </button>
+              {INDUSTRIES.map(opt => {
+                const active = industry === opt;
+                const label = opt.charAt(0).toUpperCase() + opt.slice(1);
+                return (
+                  <button key={opt} onClick={() => setIndustry(opt)}
+                    style={{ background: active ? '#F3F0FF' : '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: 6, padding: 12, textAlign: 'left' }}>
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </Card>
+        )}
 
         <Card title="Negocio" icon={<Building2 size={13} />}
               subtitle="Info de la empresa del cliente. Aplica a todos sus empleados.">

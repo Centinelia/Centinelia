@@ -7,6 +7,7 @@ import { MEERKAT_PROMPT_TIER } from '@/lib/voice/rules';
 import { resolveMeerkatConfig, type MeerkatModelConfig } from './resolve-meerkat';
 import { resolveMeerkatVersionForAgent } from '@/lib/feature-flags/version-flag-resolver';
 import { TOOL_SCHEMAS, toVapiToolDef } from '@/lib/tools/schemas';
+import { getOrgIndustry, INDUSTRIES_WITH_DAILY_AVAILABILITY } from '@/lib/industry';
 
 const VAPI_URL = 'https://api.vapi.ai';
 const VAPI_KEY = process.env.VAPI_API_KEY!;
@@ -162,7 +163,7 @@ function peerToolCapabilities(peer: TeamPeer): string[] {
 // Org fields are stored in `organizations` (single source of truth).
 // Before building any Vapi assistant, merge them over the per-agent row.
 
-const ORG_SELECT = 'knowledge_base, owner_profile, owner_passphrase, business_description, business_hours, business_website, website_knowledge, google_review_url, email_brand_color, brand_color_secondary, brand_website, brand_address, email_footer_text, multilingual, invoicing_allow_agent_cancellation';
+const ORG_SELECT = 'knowledge_base, owner_profile, owner_passphrase, business_description, business_hours, business_website, website_knowledge, google_review_url, email_brand_color, brand_color_secondary, brand_website, brand_address, email_footer_text, multilingual, invoicing_allow_agent_cancellation, industry';
 
 async function enrichWithOrgData(agent: VoiceAgent): Promise<VoiceAgent> {
   if (!agent.portal_email) return agent;
@@ -225,7 +226,7 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
   // El goal-loop de delegar_tarea corre en Sonnet y ejecuta solicitar_factura
   // confiablemente. Si la org no tiene peer fiscal, Sofia hace fallback a
   // crear_lead con datos capturados + escalación manual.
-  nia:   ['crear_lead', 'crear_contacto_saliente', 'agendar_cita', 'registrar_pedido', 'buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'registrar_encuesta', 'buscar_documento_oficina', 'buscar_correo_enviado', 'buscar_producto', 'consultar_agente', 'delegar_tarea', 'reportar_falla', 'marcar_no_llamar', 'agregar_tag_contacto'],
+  nia:   ['crear_lead', 'crear_contacto_saliente', 'agendar_cita', 'registrar_pedido', 'buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'registrar_encuesta', 'buscar_documento_oficina', 'buscar_correo_enviado', 'buscar_producto', 'consultar_agente', 'delegar_tarea', 'reportar_falla', 'marcar_no_llamar', 'agregar_tag_contacto', 'actualizar_disponibilidad_diaria'],
   // Noah — ventas: vendedor oficial. Sin crear_documento por diseño (delega
   // a Nico/Niva para propuestas formales), pero puede buscar y reenviar
   // cotizaciones previas. Tiene extraer_voz_del_cliente + extraer_tono_de_marca
@@ -258,7 +259,7 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
   // pedir_a_humano agregado — el prompt de Nox instruye escalar al owner
   // cuando la decisión excede autonomía (aprobación de gasto grande, cambio
   // de política). Ver Scope A A1 CRITICAL #3.
-  nox:   ['consultar_agente', 'delegar_tarea', 'enviar_correo', 'llamar_a', 'crear_documento', 'buscar_documento_oficina', 'buscar_correo_enviado', 'enviar_documento_oficina', 'create_file', 'create_contract_draft', 'buscar_archivo', 'leer_archivo', 'save_to_drive', 'organize_files', 'list_calendar_events', 'create_calendar_event', 'delete_calendar_event', 'qb_consultar_facturas', 'consultar_factura', 'verificar_gasto_recurrente', 'extraer_voz_del_cliente', 'sheets_agregar_fila', 'sheets_actualizar_fila', 'sheets_leer', 'sheets_buscar', 'pedir_a_humano', 'reportar_falla'],
+  nox:   ['consultar_agente', 'delegar_tarea', 'enviar_correo', 'llamar_a', 'crear_documento', 'buscar_documento_oficina', 'buscar_correo_enviado', 'enviar_documento_oficina', 'create_file', 'create_contract_draft', 'buscar_archivo', 'leer_archivo', 'save_to_drive', 'organize_files', 'list_calendar_events', 'create_calendar_event', 'delete_calendar_event', 'qb_consultar_facturas', 'consultar_factura', 'verificar_gasto_recurrente', 'extraer_voz_del_cliente', 'sheets_agregar_fila', 'sheets_actualizar_fila', 'sheets_leer', 'sheets_buscar', 'pedir_a_humano', 'reportar_falla', 'actualizar_disponibilidad_diaria'],
   // Niva — directora general. Visión estratégica: desempeño del equipo,
   // aprobación de gastos, insights de marca/cliente. Delega ejecución fiscal
   // a Nico. Sin qb_crear_factura/qb_reporte_ingresos (los movimos a Nico).
@@ -330,7 +331,7 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
 
     case 'generar_pitch_deck': return { type: 'function', function: { name: 'generar_pitch_deck', description: 'Genera un pitch deck de PowerPoint editable (8-10 slides con logo, colores del negocio y estructura estándar: portada, problema, propuesta, alcance, timeline, inversión, contacto). Úsala cuando el cliente va a ver presentación formal.', parameters: { type: 'object', properties: { client_name:   { type: 'string', description: 'Nombre del cliente destinatario.' }, client_need:   { type: 'string', description: 'Qué está buscando el cliente (alcance, objetivo de la presentación).' }, extra_context: { type: 'string', description: 'Número de slides deseado, tono, temas a cubrir.' } }, required: ['client_name', 'client_need'] } }, server: server('creativity', { tool: 'generar_pitch_deck' }) };
 
-    case 'generar_reporte_metricas_excel': return { type: 'function', function: { name: 'generar_reporte_metricas_excel', description: 'Genera un reporte Excel con métricas del período (hojas separadas según tu rol: Noah = leads/citas/conversión, Nara = tareas/estatus, Nelia = tickets/escalaciones). Con branding del negocio.', parameters: { type: 'object', properties: { window_days: { type: 'number', enum: [7, 30], description: 'Ventana en días. 7 o 30. Default 7.' } }, required: [] } }, server: server('creativity', { tool: 'generar_reporte_metricas_excel' }) };
+    case 'generar_reporte_metricas_excel': return { type: 'function', function: { name: 'generar_reporte_metricas_excel', description: 'Genera un reporte Excel con métricas del período (hojas separadas según tu rol: Noah = leads/citas/conversión, Nara = tareas/estatus, Nelia = tickets/escalaciones). Con branding del negocio.', parameters: { type: 'object', properties: { window_days: { type: 'string', enum: ['7', '30'], description: 'Ventana en días. "7" o "30". Default "7".' } }, required: [] } }, server: server('creativity', { tool: 'generar_reporte_metricas_excel' }) };
 
     case 'solicitar_factura': return { type: 'function', function: { name: 'solicitar_factura', description: 'Úsala cuando el cliente pida factura: "necesito factura", "quiero mi factura", "facturame", "me pueden facturar", "hazme una factura". Recolecta los 6 datos fiscales uno por uno (razón social, RFC, correo, uso CFDI, forma pago, método pago), confirma repitiéndolos, y luego invoca. Aunque diga "MI factura", siempre trátalo como NUEVA solicitud. No uses crear_documento para facturas fiscales — el equipo de facturación las emite en su PAC.', parameters: { type: 'object', properties: { cliente_nombre: { type: 'string', description: 'Razón social o nombre completo' }, cliente_rfc: { type: 'string', description: 'RFC del receptor (12-13 chars)' }, cliente_email: { type: 'string', description: 'Correo donde llegará el CFDI (confirmar con el cliente)' }, cliente_telefono: { type: 'string', description: 'Teléfono del cliente (opcional)' }, uso_cfdi: { type: 'string', description: 'Uso CFDI SAT. Ej: G03 gastos generales, G01 mercancías, P01 por definir. PREGUNTA al cliente cuál.' }, forma_pago: { type: 'string', description: 'Forma de pago SAT. Ej: 01 efectivo, 03 transferencia, 04 tarjeta crédito, 28 tarjeta débito. PREGUNTA cómo pagó.' }, metodo_pago: { type: 'string', enum: ['PUE','PPD'], description: 'PUE=pago en una sola exhibición (contado). PPD=pago en parcialidades (crédito). PREGUNTA al cliente.' }, condiciones_pago: { type: 'string', description: 'Condiciones textuales opcionales (ej. Crédito 30 días)' }, items: { type: 'array', description: 'Conceptos a facturar (descripcion, cantidad, precio_unitario en MXN sin IVA)', items: { type: 'object', properties: { descripcion: { type: 'string' }, cantidad: { type: 'number' }, precio_unitario: { type: 'number' }, unidad: { type: 'string' } }, required: ['descripcion','cantidad','precio_unitario'] } }, incluir_iva: { type: 'boolean', description: 'Incluir IVA 16%. Default true.' }, notes: { type: 'string', description: 'Notas internas para el equipo de facturación (no salen en el CFDI)' } }, required: ['cliente_nombre','cliente_rfc','cliente_email','uso_cfdi','forma_pago','metodo_pago','items'] } }, server: server('solicitar-factura') };
 
@@ -466,6 +467,30 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
     case 'solicitar_permiso': return { type: 'function', function: { name: 'solicitar_permiso', description: 'Registra una solicitud de permiso o vacaciones de un empleado. Queda en estado "registrada" hasta que el owner/RH la apruebe.', parameters: { type: 'object', properties: { employee_name: { type: 'string' }, record_type: { type: 'string', enum: ['vacaciones','permiso'] }, start_date: { type: 'string' }, end_date: { type: 'string' }, reason: { type: 'string' } }, required: ['employee_name', 'record_type', 'start_date', 'end_date'] } }, server: server('exec/solicitar_permiso') };
     case 'verificar_incidencia': return { type: 'function', function: { name: 'verificar_incidencia', description: 'Registra o consulta una incidencia disciplinaria/operativa de un empleado (retardo, error, conducta).', parameters: { type: 'object', properties: { employee_name: { type: 'string' }, start_date: { type: 'string' }, reason: { type: 'string' } }, required: ['employee_name', 'start_date', 'reason'] } }, server: server('exec/verificar_incidencia') };
 
+    // actualizar_disponibilidad_diaria — gateado por industria en createVapiTools.
+    // buildToolDef solo construye la definicion; la decision de incluirla la toma
+    // el gate dual (industria + rol) despues del loop principal.
+    case 'actualizar_disponibilidad_diaria': return {
+      type: 'function',
+      async: false,
+      function: {
+        name: 'actualizar_disponibilidad_diaria',
+        description:
+          'Actualiza la disponibilidad diaria del negocio (items agotados, con existencia limitada, especial del dia). Se propaga a todos los empleados del cliente. Usalo cuando el dueno o gerente te informe cambios de disponibilidad.',
+        parameters: {
+          type: 'object',
+          properties: {
+            unavailable: { type: 'array', items: { type: 'string' }, description: 'Items agotados hoy' },
+            limited:     { type: 'array', items: { type: 'string' }, description: 'Items con existencia limitada' },
+            special:     { type: ['string', 'null'], description: 'Especial del dia. null para no cambiar.' },
+            notes:       { type: ['string', 'null'], description: 'Nota libre. null para no cambiar.' },
+          },
+          required: ['unavailable', 'limited'],
+        },
+      },
+      server: server('actualizar-disponibilidad-diaria'),
+    };
+
     default: return null;
   }
 }
@@ -489,9 +514,15 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
   const meerkatId = agent.features.meerkat_role_id;
   const roleTools = meerkatId && meerkatId !== 'custom' ? MEERKAT_VOICE_DISTRIBUTION[meerkatId] : null;
 
+  // Tools gateados por condiciones extra-role (industria, org-toggle) se
+  // manejan fuera del loop para evitar push incondicional. Se listan aqui
+  // para que el check roleTools.includes() siga funcionando como 2da guarda.
+  const EXTRA_GATED_TOOLS = new Set(['actualizar_disponibilidad_diaria']);
+
   if (roleTools) {
     // Role-based: build each tool from the confirmed distribution
     for (const toolName of roleTools) {
+      if (EXTRA_GATED_TOOLS.has(toolName)) continue; // handled below with extra gates
       const def = buildToolDef(toolName, agent, server);
       if (def) tools.push(def);
     }
@@ -527,6 +558,21 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
   if (allowCancellation) {
     const cancelDef = buildToolDef('solicitar_cancelacion_factura', agent, server);
     if (cancelDef) tools.push(cancelDef);
+  }
+
+  // actualizar_disponibilidad_diaria — gate dual: industria + rol.
+  // Solo se incluye si la industria de la org soporta disponibilidad diaria
+  // Y el meerkat tiene la tool en su distribucion. Se gestiona fuera del loop
+  // principal para que el check de industria sea obligatorio.
+  const agentIndustry = getOrgIndustry(agent as unknown as { industry?: string | null });
+  const rolToolsForGate = roleTools ?? [];
+  if (
+    agentIndustry &&
+    INDUSTRIES_WITH_DAILY_AVAILABILITY.includes(agentIndustry) &&
+    rolToolsForGate.includes('actualizar_disponibilidad_diaria')
+  ) {
+    const availDef = buildToolDef('actualizar_disponibilidad_diaria', agent, server);
+    if (availDef) tools.push(availDef);
   }
 
   // TransferCall a peers desactivado: Vapi rechazaba "assistantName not found"

@@ -36,11 +36,12 @@ export default async function EditarClientePage({ params }: Props) {
     business_website?:     string | null;
     business_hours?:       unknown;
     business_description?: string | null;
+    industry?:             string | null;
   } | null = null;
   if (portalEmail) {
     const { data } = await supabase
       .from('organizations')
-      .select('business_website, business_hours, business_description')
+      .select('business_website, business_hours, business_description, industry')
       .eq('portal_email', portalEmail)
       .maybeSingle();
     orgData = data as any;
@@ -53,6 +54,7 @@ export default async function EditarClientePage({ params }: Props) {
       orgBusinessWebsite={(orgData?.business_website as string) ?? null}
       orgBusinessHours={(orgData?.business_hours as any) ?? null}
       orgBusinessDescription={(orgData?.business_description as string) ?? null}
+      initialOrgIndustry={(orgData?.industry as string) ?? null}
     />
   );
 }

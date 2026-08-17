@@ -5,6 +5,8 @@ import { findNoxAgent } from '@/lib/ops/nox-coordinator';
 import { transitionAgentTask } from '@/lib/state-machines/agent-task';
 import { logLlmCall } from '@/lib/observability/llm-log';
 import { TOOL_SCHEMAS, toAnthropicTool } from '@/lib/tools/schemas';
+import { getOrgIndustry, INDUSTRIES_WITH_DAILY_AVAILABILITY } from '@/lib/industry';
+import { formatDailyAvailabilityForPrompt } from '@/lib/daily-availability';
 
 const APP_URL        = process.env.NEXT_PUBLIC_APP_URL!;
 const MAX_ITER       = 6;
@@ -136,6 +138,20 @@ const DELEGATION_TOOLS: Anthropic.Tool[] = [
       required: ['resultado'],
     },
   },
+  {
+    name:        'actualizar_disponibilidad_diaria',
+    description: 'Actualiza la disponibilidad diaria del negocio.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        unavailable: { type: 'array', items: { type: 'string' } },
+        limited:     { type: 'array', items: { type: 'string' } },
+        special:     { type: 'string' },
+        notes:       { type: 'string' },
+      },
+      required: ['unavailable', 'limited'],
+    },
+  },
 ];
 
 // ── Tool executor — calls existing voice tool routes ───────────────────────────
@@ -155,6 +171,7 @@ async function executeToolOnAgent(
     crear_ticket:              'crear-ticket',
     crear_documento:           'crear-documento',
     buscar_documento_oficina:  'buscar-documento-oficina',
+    actualizar_disponibilidad_diaria: 'actualizar-disponibilidad-diaria',
     // Tools que van al executor genérico (paridad con chat/voice cross-canal).
     // exec/<name> resuelve al mismo handler que el chat, así el behavior es
     // consistente entre delegate y chat directo.
@@ -370,14 +387,19 @@ export async function executeTask(params: {
   // docs o firmas siempre incluya el teléfono/correo/website real de la
   // empresa en vez de sólo decir "contáctenos" (bug 2026-08-10: correo a
   // Pedro Sola sin datos de contacto de Pneuma Studio).
-  if (targetAgent.portal_email) {
-    const { data: orgContact } = await supabase
-      .from('organizations')
-      .select('business_email, brand_phone, business_website, brand_website, brand_address, email_footer_text')
-      .eq('portal_email', targetAgent.portal_email)
-      .maybeSingle();
+  // Fetch org once — used for contact info, daily_availability, and industry gate (org is single source of truth).
+  const ocRaw = targetAgent.portal_email
+    ? (await supabase
+        .from('organizations')
+        .select('business_email, brand_phone, business_website, brand_website, brand_address, email_footer_text, daily_availability, industry')
+        .eq('portal_email', targetAgent.portal_email)
+        .maybeSingle()
+      ).data
+    : null;
+  const orgExecIndustry = getOrgIndustry(ocRaw as { industry?: string | null } | null);
 
-    const oc = orgContact as { business_email?: string | null; brand_phone?: string | null; business_website?: string | null; brand_website?: string | null; brand_address?: string | null; email_footer_text?: string | null } | null;
+  if (targetAgent.portal_email) {
+    const oc = ocRaw as { business_email?: string | null; brand_phone?: string | null; business_website?: string | null; brand_website?: string | null; brand_address?: string | null; email_footer_text?: string | null; daily_availability?: unknown; industry?: string | null } | null;
     const contactLines: string[] = [];
     const contactEmail = oc?.business_email || targetAgent.portal_email;
     const contactSite  = oc?.business_website || oc?.brand_website;
@@ -392,6 +414,15 @@ export async function executeTask(params: {
 
     if (oc?.email_footer_text?.trim()) {
       promptLines.push('', '## Firma de correos por default', oc.email_footer_text.trim());
+    }
+
+    // ── Daily availability (industry-gated) ─────────────────────────────────
+    {
+      const industry   = getOrgIndustry(oc);
+      const dailyBlock = industry
+        ? formatDailyAvailabilityForPrompt((oc?.daily_availability ?? null) as import('@/lib/daily-availability').DailyAvailability | null, industry)
+        : '';
+      if (dailyBlock) promptLines.push('', dailyBlock);
     }
   }
 
@@ -443,9 +474,17 @@ export async function executeTask(params: {
     const __tetM = 'claude-haiku-4-5-20251001';
     let response;
     try {
+      // Gate tools per org industry (org is single source of truth)
+      const filteredDelegTools = DELEGATION_TOOLS.filter(t => {
+        if (t.name === 'actualizar_disponibilidad_diaria') {
+          return orgExecIndustry !== null && INDUSTRIES_WITH_DAILY_AVAILABILITY.includes(orgExecIndustry);
+        }
+        return true;
+      });
+
       // Prompt caching: systemPrompt (~5k tokens) + DELEGATION_TOOLS estables
       // por task-loop. Cachear con TTL 5min reduce input cost ~90% en iters 2+.
-      const cachedDelegTools = DELEGATION_TOOLS.map((t, idx) => idx === DELEGATION_TOOLS.length - 1
+      const cachedDelegTools = filteredDelegTools.map((t, idx) => idx === filteredDelegTools.length - 1
         ? { ...t, cache_control: { type: 'ephemeral' as const } }
         : t);
       response = await client.messages.create({

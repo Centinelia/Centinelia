@@ -37,7 +37,7 @@ export async function processPendingTasks(limit: number = 10): Promise<ProcessTa
 
   const { data: agentRows } = await supabase
     .from('voice_agents')
-    .select('id, agent_name, role, role_knowledge_base, business_name, portal_email')
+    .select('id, agent_name, role, knowledge_base, role_knowledge_base, business_name, portal_email')
     .in('id', [...agentIds]);
 
   const agentMap = new Map<string, AgentInfo>();

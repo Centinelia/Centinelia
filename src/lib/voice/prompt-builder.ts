@@ -5,6 +5,8 @@ import { MEERKAT_MAP, COORDINATOR_ROLE_IDS, type MeerkatRoleId } from '@/lib/por
 import type { createAdminClient } from '@/lib/supabase/admin';
 import { getActiveTramitesForOrg } from '@/lib/tramites/config';
 import { renderTramitesSection } from '@/lib/tramites/prompt';
+import { getOrgIndustry } from '@/lib/industry';
+import { formatDailyAvailabilityForPrompt } from '@/lib/daily-availability';
 
 type SupabaseClient = ReturnType<typeof createAdminClient>;
 
@@ -177,16 +179,20 @@ TONO Y ESTILO DE VOZ:
   // Los agrupamos en un solo SELECT para no gastar dos roundtrips.
   // NOTA: el parámetro se llama orgId por historia, pero es el portal_email
   // — organizations no tiene columna id, su PK es portal_email.
-  let orgBrandVoice:  string | null = null;
-  let orgPassphrase:  string | null = null;
+  let orgBrandVoice:    string | null = null;
+  let orgPassphrase:    string | null = null;
+  let orgDailyAvail:   unknown       = null;
+  let orgForIndustry:  { industry?: string | null } | null = null;
   if (orgId && supabase) {
     const { data: orgRow } = await supabase
       .from('organizations')
-      .select('brand_voice_guide, owner_passphrase')
+      .select('brand_voice_guide, owner_passphrase, daily_availability, industry')
       .eq('portal_email', orgId)
       .maybeSingle();
-    orgBrandVoice = (orgRow?.brand_voice_guide as string | null) ?? null;
-    orgPassphrase = (orgRow?.owner_passphrase as string | null) ?? null;
+    orgBrandVoice  = (orgRow?.brand_voice_guide as string | null) ?? null;
+    orgPassphrase  = (orgRow?.owner_passphrase as string | null) ?? null;
+    orgDailyAvail  = (orgRow as Record<string, unknown> | null)?.daily_availability ?? null;
+    orgForIndustry = orgRow as { industry?: string | null } | null;
   }
 
   if (!isCoordinator && orgBrandVoice?.trim()) {
@@ -601,6 +607,15 @@ ${agent.knowledge_base.trim()}
 
 Usa esta información para responder preguntas sobre productos, precios, disponibilidad y servicios.
 Si algo no está en esta lista, dilo honestamente y ofrece tomar sus datos para que el equipo les contacte.`);
+  }
+
+  // ── Daily availability (industry-gated) ───────────────────────────────────
+  {
+    const industry   = getOrgIndustry(orgForIndustry);
+    const dailyBlock = industry
+      ? formatDailyAvailabilityForPrompt(orgDailyAvail as Parameters<typeof formatDailyAvailabilityForPrompt>[0], industry)
+      : '';
+    if (dailyBlock) blocks.push(dailyBlock);
   }
 
   // ── Website knowledge ──────────────────────────────────────────────────────

@@ -42,6 +42,8 @@ import { checkOfficeInitiative } from '@/lib/initiative/detector';
 import { extractChatLearnings } from '@/lib/ai/chat-learning';
 import { getKnowledgeBase } from '@/lib/knowledge-base';
 import { MEERKAT_VOICE_DISTRIBUTION } from '@/lib/vapi/sync';
+import { getOrgIndustry, INDUSTRIES_WITH_DAILY_AVAILABILITY } from '@/lib/industry';
+import { formatDailyAvailabilityForPrompt } from '@/lib/daily-availability';
 import {
   enhanceTextContent,
   enhanceSlidesContent,
@@ -143,6 +145,22 @@ const CREATE_CONTRACT_DRAFT_TOOL: Anthropic.Tool = {
 
 // Migrated to registry: src/lib/tools/schemas.ts
 const SEND_EMAIL_TOOL: Anthropic.Tool = toAnthropicTool(TOOL_SCHEMAS['send_email']);
+
+const ACTUALIZAR_DISPONIBILIDAD_DIARIA_TOOL: Anthropic.Tool = {
+  name: 'actualizar_disponibilidad_diaria',
+  description:
+    'Actualiza la disponibilidad diaria del negocio (items agotados, con existencia limitada, especial del dia). Cambio compartido con todos los empleados.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      unavailable: { type: 'array', items: { type: 'string' } },
+      limited:     { type: 'array', items: { type: 'string' } },
+      special:     { type: ['string', 'null'] },
+      notes:       { type: ['string', 'null'] },
+    },
+    required: ['unavailable', 'limited'],
+  },
+};
 
 const CREATE_DOCUMENT_TOOL: Anthropic.Tool = {
   name: 'create_document',
@@ -1300,7 +1318,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       ? supabase.from('organizations').select('notion_access_token, notion_db_id, notion_products_db_id, invoicing_allow_agent_cancellation').eq('portal_email', accountAgent.portal_email).maybeSingle()
       : Promise.resolve({ data: null }),
     accountAgent.portal_email
-      ? supabase.from('organizations').select('business_email, brand_phone, business_website, brand_website, brand_address, email_footer_text').eq('portal_email', accountAgent.portal_email).maybeSingle()
+      ? supabase.from('organizations').select('business_email, brand_phone, business_website, brand_website, brand_address, email_footer_text, daily_availability, industry').eq('portal_email', accountAgent.portal_email).maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
   if (!agent) return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
@@ -1427,6 +1445,14 @@ export async function POST(req: NextRequest, { params }: Params) {
     }
   }
 
+  // actualizar_disponibilidad_diaria — industry-gated (restaurante, retail, clinica, hotel)
+  {
+    const industry = getOrgIndustry(orgContact as { industry?: string | null } | null);
+    if (industry && INDUSTRIES_WITH_DAILY_AVAILABILITY.includes(industry)) {
+      sessionTools.push(ACTUALIZAR_DISPONIBILIDAD_DIARIA_TOOL);
+    }
+  }
+
   const toolsListText = sessionTools.length
     ? 'Herramientas disponibles:\n' + sessionTools.map(t => `- ${t.name}: ${t.description}`).join('\n')
     : '';
@@ -1461,6 +1487,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   if ((agent.role_knowledge_base as string | null)?.trim()) {
     sections.push(`# Instrucciones del rol${agentRole ? ` — ${agentRole}` : ''}\n${agent.role_knowledge_base}`);
   }
+
   if ((agent.role_learnings as string | null)?.trim()) {
     sections.push(`# Aprendizajes del agente — instrucciones del puesto\n${agent.role_learnings}`);
   }
@@ -1593,7 +1620,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const todayEs      = nowForPrompt.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   const dateBlock    = `## Fecha actual\nHoy es ${todayEs} (${todayIso}). USA este año en cualquier fecha que redactes — no repitas años pasados.`;
 
-  const orgC = orgContact as { business_email?: string | null; brand_phone?: string | null; business_website?: string | null; brand_website?: string | null; brand_address?: string | null; email_footer_text?: string | null } | null;
+  const orgC = orgContact as { business_email?: string | null; brand_phone?: string | null; business_website?: string | null; brand_website?: string | null; brand_address?: string | null; email_footer_text?: string | null; daily_availability?: unknown } | null;
   const contactLines: string[] = [];
   const contactEmail = orgC?.business_email || accountAgent.portal_email;
   const contactSite  = orgC?.business_website || orgC?.brand_website;
@@ -1606,6 +1633,12 @@ export async function POST(req: NextRequest, { params }: Params) {
     : '';
   const footerBlock = orgC?.email_footer_text?.trim()
     ? `## Firma de correos por default\n${orgC.email_footer_text.trim()}`
+    : '';
+
+  // ── Daily availability (industry-gated) ─────────────────────────────────────
+  const chatIndustry   = getOrgIndustry(orgC as { industry?: string | null } | null);
+  const chatDailyBlock = chatIndustry
+    ? formatDailyAvailabilityForPrompt((orgC?.daily_availability ?? null) as import('@/lib/daily-availability').DailyAvailability | null, chatIndustry)
     : '';
 
   const system = `Eres ${agentName}, empleado de ${agent.business_name}${agentRole ? ` con el rol de ${agentRole}` : ''}.
@@ -1714,6 +1747,7 @@ ${dateBlock}
 ${contactBlock}
 
 ${footerBlock}
+${chatDailyBlock ? `\n${chatDailyBlock}` : ''}
 
 ## Contexto operativo
 
