@@ -14,9 +14,18 @@ type DailyState = {
   updated_at?: string;
 };
 
+// Lists (unavailable / limited) are edited as free-text so the user can type
+// spaces, commas and continue writing without the input eating characters.
+// The string is only split into an array at save time.
+function splitList(raw: string): string[] {
+  return raw.split(',').map(x => x.trim()).filter(Boolean);
+}
+
 export default function DailyAvailabilityCard({ token }: Props) {
   const [industry, setIndustry] = useState<Industry | null>(null);
   const [state, setState]       = useState<DailyState>({ unavailable: [], limited: [], special: null, notes: null });
+  const [rawUnavailable, setRawUnavailable] = useState('');
+  const [rawLimited,     setRawLimited]     = useState('');
   const [saving, setSaving]     = useState(false);
   const [saved, setSaved]       = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -28,13 +37,17 @@ export default function DailyAvailabilityCard({ token }: Props) {
       .then(r => {
         if (r.industry) setIndustry(r.industry as Industry);
         if (r.data) {
+          const unavailable = r.data.unavailable ?? [];
+          const limited     = r.data.limited     ?? [];
           setState({
-            unavailable: r.data.unavailable ?? [],
-            limited:     r.data.limited     ?? [],
-            special:     r.data.special     ?? null,
-            notes:       r.data.notes       ?? null,
-            updated_at:  r.data.updated_at,
+            unavailable,
+            limited,
+            special:    r.data.special    ?? null,
+            notes:      r.data.notes      ?? null,
+            updated_at: r.data.updated_at,
           });
+          setRawUnavailable(unavailable.join(', '));
+          setRawLimited(limited.join(', '));
         }
         setLoaded(true);
       })
@@ -51,20 +64,24 @@ export default function DailyAvailabilityCard({ token }: Props) {
     setSaving(true);
     setSaveError(null);
     setSaved(false);
+    const unavailable = splitList(rawUnavailable);
+    const limited     = splitList(rawLimited);
     try {
       const r = await fetch(`/api/portal/${token}/daily-availability`, {
         method:  'PUT',
         headers: { 'content-type': 'application/json' },
         body:    JSON.stringify({
-          unavailable: state.unavailable,
-          limited:     state.limited,
-          special:     state.special,
-          notes:       state.notes,
+          unavailable,
+          limited,
+          special: state.special,
+          notes:   state.notes,
         }),
       });
       const data = await r.json();
       if (data.ok) {
-        setState(s => ({ ...s, updated_at: data.data.updated_at }));
+        setState(s => ({ ...s, unavailable, limited, updated_at: data.data.updated_at }));
+        setRawUnavailable(unavailable.join(', '));
+        setRawLimited(limited.join(', '));
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
       } else {
@@ -77,17 +94,12 @@ export default function DailyAvailabilityCard({ token }: Props) {
     }
   };
 
-  const listInput = (label: string, key: 'unavailable' | 'limited') => (
+  const listInput = (label: string, raw: string, setRaw: (v: string) => void) => (
     <label className="flex flex-col gap-1">
       <span className="text-[12px] font-semibold" style={{ color: '#1A0A3B' }}>{label}</span>
       <textarea
-        value={state[key].join(', ')}
-        onChange={e =>
-          setState(s => ({
-            ...s,
-            [key]: e.target.value.split(',').map(x => x.trim()).filter(Boolean),
-          }))
-        }
+        value={raw}
+        onChange={e => setRaw(e.target.value)}
         rows={2}
         placeholder={`Un ${word} por coma`}
         className="w-full rounded-lg px-3 py-2 text-[13px] leading-relaxed outline-none resize-none transition-all focus:border-[rgba(108,59,255,0.4)]"
@@ -125,8 +137,8 @@ export default function DailyAvailabilityCard({ token }: Props) {
         className="px-5 py-4 flex flex-col gap-4"
         style={{ borderTop: '1px solid #F0EDF9' }}
       >
-        {listInput('No disponibles hoy', 'unavailable')}
-        {listInput('Con existencia limitada', 'limited')}
+        {listInput('No disponibles hoy',      rawUnavailable, setRawUnavailable)}
+        {listInput('Con existencia limitada', rawLimited,     setRawLimited)}
 
         <label className="flex flex-col gap-1">
           <span className="text-[12px] font-semibold" style={{ color: '#1A0A3B' }}>Especial del día</span>
