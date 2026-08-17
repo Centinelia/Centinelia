@@ -8,6 +8,7 @@ import {
   Building2, ChevronDown, Globe,
 } from 'lucide-react';
 import type { VoiceAgent, BusinessHours, DaySchedule } from '@/types/agent';
+import { INDUSTRIES, type Industry } from '@/lib/industry';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -73,6 +74,11 @@ export default function ClientEditForm({
     (primary.features?.vertical as 'negocio' | 'gobierno') ?? 'negocio'
   );
 
+  // Industria
+  const [industry, setIndustry] = useState<Industry | ''>(
+    (primary.features?.industry as Industry) ?? ''
+  );
+
   // Negocio (compartido: aplica a todos los empleados del cliente).
   // business_description vive en organizations (dropped column en voice_agents).
   const [businessName,        setBusinessName]        = useState(primary.business_name ?? '');
@@ -107,6 +113,7 @@ export default function ClientEditForm({
       client_email:           clientEmail.trim(),
       client_phone:           clientPhone.trim() || null,
       vertical,
+      industry:               industry || null,
       business_name:          businessName.trim(),
       business_description:   businessDescription.trim() || null,
       business_website:       businessWebsite.trim()     || null,
@@ -211,6 +218,28 @@ export default function ClientEditForm({
             })}
           </div>
         </Card>
+
+        {vertical === 'negocio' && (
+          <Card title="Industria" icon={<Briefcase size={13} />}
+                subtitle="Habilita herramientas especificas de esta industria (opcional).">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <button onClick={() => setIndustry('')}
+                style={{ background: industry === '' ? '#F3F0FF' : '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: 6, padding: 12, textAlign: 'left' }}>
+                Ninguna
+              </button>
+              {INDUSTRIES.map(opt => {
+                const active = industry === opt;
+                const label = opt.charAt(0).toUpperCase() + opt.slice(1);
+                return (
+                  <button key={opt} onClick={() => setIndustry(opt)}
+                    style={{ background: active ? '#F3F0FF' : '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: 6, padding: 12, textAlign: 'left' }}>
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </Card>
+        )}
 
         <Card title="Negocio" icon={<Building2 size={13} />}
               subtitle="Info de la empresa del cliente. Aplica a todos sus empleados.">

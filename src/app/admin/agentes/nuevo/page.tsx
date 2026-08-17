@@ -67,6 +67,7 @@ const FEATURE_SHORT: Record<keyof AgentFeatures, string> = {
   client_memory:           'Memoria',
   outbound_calls:          'Salientes',
   vertical:                '',
+  industry:                '',
   helpdesk:                'Helpdesk',
   is_coordinator:          'Coordinador',
   meerkat_role_id:         '',
