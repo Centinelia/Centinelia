@@ -16,6 +16,12 @@ export function getAgentIndustry(agent: { features?: { industry?: string } | nul
   return (INDUSTRIES as readonly string[]).includes(raw) ? (raw as Industry) : null;
 }
 
+export function getOrgIndustry(org: { industry?: string | null } | null | undefined): Industry | null {
+  const raw = org?.industry;
+  if (!raw) return null;
+  return (INDUSTRIES as readonly string[]).includes(raw) ? (raw as Industry) : null;
+}
+
 export function getIndustryLabel(
   industry: Industry,
   key: 'daily_availability_title' | 'daily_availability_item_word',

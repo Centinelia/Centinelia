@@ -139,6 +139,12 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   }
 
   // 4) Org-level fields (upsert por portal_email)
+  // Industry is org-level source of truth: the DailyAvailabilityCard visibility gate
+  // reads from organizations.industry (per-agent features.industry stays in sync for
+  // voice/chat gating and prompt injection).
+  if (targetPortalEmail && industry !== undefined) {
+    orgPatch.industry = industry;
+  }
   if (targetPortalEmail && Object.keys(orgPatch).length > 0) {
     const { error: orgErr } = await supabase
       .from('organizations')

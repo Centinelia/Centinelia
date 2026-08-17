@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { validateDailyAvailability } from '@/lib/daily-availability';
-import { getAgentIndustry, INDUSTRIES_WITH_DAILY_AVAILABILITY } from '@/lib/industry';
+import { getOrgIndustry, INDUSTRIES_WITH_DAILY_AVAILABILITY } from '@/lib/industry';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,23 +31,16 @@ export async function GET(req: NextRequest, { params }: Params) {
 
   const supabase = createAdminClient();
 
-  // Need features to determine industry
-  const agent = await getPrimaryAgentFromToken<{ features: Record<string, unknown> | null }>(
-    token,
-    'features',
-    supabase,
-  );
+  const { data: org } = await supabase
+    .from('organizations')
+    .select('industry, daily_availability')
+    .eq('portal_email', portalEmail)
+    .maybeSingle();
 
-  const industry = agent ? getAgentIndustry(agent) : null;
+  const industry = getOrgIndustry(org as { industry?: string | null } | null);
   if (!industry || !INDUSTRIES_WITH_DAILY_AVAILABILITY.includes(industry)) {
     return NextResponse.json({ ok: true, industry: null, data: null });
   }
-
-  const { data: org } = await supabase
-    .from('organizations')
-    .select('daily_availability')
-    .eq('portal_email', portalEmail)
-    .maybeSingle();
 
   return NextResponse.json({ ok: true, industry, data: (org as any)?.daily_availability ?? null });
 }
@@ -63,13 +56,13 @@ export async function PUT(req: NextRequest, { params }: Params) {
 
   const supabase = createAdminClient();
 
-  const agent = await getPrimaryAgentFromToken<{ features: Record<string, unknown> | null }>(
-    token,
-    'features',
-    supabase,
-  );
+  const { data: org } = await supabase
+    .from('organizations')
+    .select('industry')
+    .eq('portal_email', portalEmail)
+    .maybeSingle();
 
-  const industry = agent ? getAgentIndustry(agent) : null;
+  const industry = getOrgIndustry(org as { industry?: string | null } | null);
   if (!industry || !INDUSTRIES_WITH_DAILY_AVAILABILITY.includes(industry)) {
     return NextResponse.json({ ok: false, error: 'industria no soporta disponibilidad diaria' }, { status: 400 });
   }
