@@ -3059,11 +3059,13 @@ async function executeAgentToolInner(
   // ─────────────────────────────────────────────────────────────────────────
   if (toolName === 'actualizar_disponibilidad_diaria') {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
+    const internalHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (process.env.VAPI_SERVER_SECRET) internalHeaders['x-vapi-secret'] = process.env.VAPI_SERVER_SECRET;
     const res = await fetch(
       `${appUrl}/api/voice/tools/actualizar-disponibilidad-diaria?agent_id=${agentId}`,
       {
         method:  'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: internalHeaders,
         body:    JSON.stringify({ ...toolInput, actor: portalEmail }),
       },
     );
