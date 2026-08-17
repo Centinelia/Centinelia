@@ -16,12 +16,19 @@
 import { describe, it, expect, beforeAll, afterEach } from 'vitest';
 import { createAdminClient } from '@/lib/supabase/admin';
 
-const TEST_EMAIL = process.env.TEST_PORTAL_EMAIL ?? 'centinelia.dev@gmail.com';
+// Default to the synthetic org seeded by the ops-ledger test setup — the .invalid
+// TLD guarantees it never collides with a real customer inbox. Override with
+// TEST_PORTAL_EMAIL if you have a different seeded org you want to point at.
+const TEST_EMAIL = process.env.TEST_PORTAL_EMAIL ?? 'ops-ledger-test@test.centinelia.invalid';
 const supabase = createAdminClient();
 
+// ops_ledger rows are protected by a prevent_ledger_tamper trigger — a plain
+// .delete() from supabase-js is silently rejected. The test_cleanup_ops_ledger
+// RPC bypasses the trigger, but only for synthetic .test.centinelia.invalid
+// emails (guard rail in the function body). Signature stays zero-arg because
+// vitest treats a parameterized callback as a fixture request.
 async function cleanup() {
-  await supabase.from('ops_ledger').delete().eq('portal_email', TEST_EMAIL);
-  await supabase.from('account_ops').delete().eq('portal_email', TEST_EMAIL);
+  await supabase.rpc('test_cleanup_ops_ledger', { p_portal_email: TEST_EMAIL });
 }
 
 describe('ops_ledger SQL functions', () => {
@@ -205,25 +212,27 @@ describe('auto_refresh_ops_pool_cache trigger', () => {
 });
 
 describe('consumeAiOp behavior with feature flag', () => {
+  // Uses a distinct portal_email with no seeded organizations row, so
+  // ops_ledger_enabled resolves to the default (false) and no ledger rows
+  // can exist. Isolates the assertion from TEST_EMAIL, which has the flag
+  // ON for the RPC-behaviour tests above.
+  const LEGACY_TEST_EMAIL = 'ops-ledger-legacy-test@test.centinelia.invalid';
+
   it('uses legacy path when flag off', async () => {
     const { data: org } = await supabase
       .from('organizations')
       .select('ops_ledger_enabled')
-      .eq('portal_email', TEST_EMAIL)
+      .eq('portal_email', LEGACY_TEST_EMAIL)
       .maybeSingle();
 
-    // Assumption: TEST_EMAIL org has flag off by default
     expect(org?.ops_ledger_enabled ?? false).toBe(false);
 
-    // Ledger should be empty of consumption rows for this email
     const before = await supabase
       .from('ops_ledger')
       .select('id')
-      .eq('portal_email', TEST_EMAIL)
+      .eq('portal_email', LEGACY_TEST_EMAIL)
       .eq('kind', 'consumption');
 
-    // No hacemos consumeAiOp real aqui porque toca agentes vivos.
-    // El test principal es que el flag existe y default false.
     expect(before.data).toEqual([]);
   });
 });
