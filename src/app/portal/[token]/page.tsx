@@ -1137,8 +1137,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     </div>
                   </div>
 
-                  <DailyAvailabilityCard token={token} />
-
                   <div id="conocimiento" style={{ scrollMarginTop: 80 }}>
                     <div className="flex flex-col rounded-2xl overflow-hidden"
                       style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 2px rgba(26,10,59,0.04)' }}>
@@ -1269,6 +1267,10 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
                   <div id="sheets-crm" style={{ scrollMarginTop: 80 }}>
                     <SheetsMappingsSection token={token} />
+                  </div>
+
+                  <div id="disponibilidad-diaria" style={{ scrollMarginTop: 80 }}>
+                    <DailyAvailabilityCard token={token} />
                   </div>
                 </>
 

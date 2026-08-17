@@ -32,8 +32,9 @@ const ANCHOR_TO_TAB: Record<string, string> = {
   branding:        'identidad',
   'tono-de-marca': 'identidad',
   sitio:           'identidad',
-  horarios:        'operacion',
-  'sheets-crm':    'operacion',
+  horarios:               'operacion',
+  'sheets-crm':           'operacion',
+  'disponibilidad-diaria': 'operacion',
   directorio:      'directorio',
   integraciones:   'integraciones',
 };
