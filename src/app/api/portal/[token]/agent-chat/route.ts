@@ -42,7 +42,7 @@ import { checkOfficeInitiative } from '@/lib/initiative/detector';
 import { extractChatLearnings } from '@/lib/ai/chat-learning';
 import { getKnowledgeBase } from '@/lib/knowledge-base';
 import { MEERKAT_VOICE_DISTRIBUTION } from '@/lib/vapi/sync';
-import { getAgentIndustry, INDUSTRIES_WITH_DAILY_AVAILABILITY } from '@/lib/industry';
+import { getOrgIndustry, INDUSTRIES_WITH_DAILY_AVAILABILITY } from '@/lib/industry';
 import { formatDailyAvailabilityForPrompt } from '@/lib/daily-availability';
 import {
   enhanceTextContent,
@@ -1318,7 +1318,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       ? supabase.from('organizations').select('notion_access_token, notion_db_id, notion_products_db_id, invoicing_allow_agent_cancellation').eq('portal_email', accountAgent.portal_email).maybeSingle()
       : Promise.resolve({ data: null }),
     accountAgent.portal_email
-      ? supabase.from('organizations').select('business_email, brand_phone, business_website, brand_website, brand_address, email_footer_text, daily_availability').eq('portal_email', accountAgent.portal_email).maybeSingle()
+      ? supabase.from('organizations').select('business_email, brand_phone, business_website, brand_website, brand_address, email_footer_text, daily_availability, industry').eq('portal_email', accountAgent.portal_email).maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
   if (!agent) return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
@@ -1447,7 +1447,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   // actualizar_disponibilidad_diaria — industry-gated (restaurante, retail, clinica, hotel)
   {
-    const industry = getAgentIndustry(agent as { features?: { industry?: string } | null });
+    const industry = getOrgIndustry(orgContact as { industry?: string | null } | null);
     if (industry && INDUSTRIES_WITH_DAILY_AVAILABILITY.includes(industry)) {
       sessionTools.push(ACTUALIZAR_DISPONIBILIDAD_DIARIA_TOOL);
     }
@@ -1636,7 +1636,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     : '';
 
   // ── Daily availability (industry-gated) ─────────────────────────────────────
-  const chatIndustry   = getAgentIndustry(agent as { features?: { industry?: string } | null });
+  const chatIndustry   = getOrgIndustry(orgC as { industry?: string | null } | null);
   const chatDailyBlock = chatIndustry
     ? formatDailyAvailabilityForPrompt((orgC?.daily_availability ?? null) as import('@/lib/daily-availability').DailyAvailability | null, chatIndustry)
     : '';

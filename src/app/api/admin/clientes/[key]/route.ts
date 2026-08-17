@@ -120,14 +120,14 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     updated = count ?? 0;
   }
 
-  // 3) Vertical + Industry: merge dentro de features per-row (features es JSONB por agente)
-  if (vertical || industry !== undefined) {
+  // 3) Vertical: merge dentro de features per-row (features es JSONB por agente)
+  // Industry ya NO se escribe en features — organizations.industry es la única fuente de verdad.
+  if (vertical) {
     for (const row of rows) {
       const currentFeatures = (row.features ?? {}) as AgentFeatures;
       const nextFeatures = {
         ...currentFeatures,
         ...(vertical !== undefined ? { vertical } : {}),
-        ...(industry !== undefined ? { industry } : {}),
       };
       const { error: fErr } = await supabase
         .from('voice_agents')
@@ -139,9 +139,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   }
 
   // 4) Org-level fields (upsert por portal_email)
-  // Industry is org-level source of truth: the DailyAvailabilityCard visibility gate
-  // reads from organizations.industry (per-agent features.industry stays in sync for
-  // voice/chat gating and prompt injection).
+  // Industry lives exclusively in organizations.industry — no per-agent copy.
   if (targetPortalEmail && industry !== undefined) {
     orgPatch.industry = industry;
   }

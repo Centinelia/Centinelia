@@ -1,21 +1,21 @@
 import { describe, it, expect } from 'vitest';
 import {
-  getAgentIndustry,
+  getOrgIndustry,
   getIndustryLabel,
   INDUSTRIES_WITH_DAILY_AVAILABILITY,
 } from '../industry';
 
-describe('getAgentIndustry', () => {
-  it('returns null when features is missing', () => {
-    expect(getAgentIndustry({})).toBeNull();
+describe('getOrgIndustry', () => {
+  it('returns null when org is null', () => {
+    expect(getOrgIndustry(null)).toBeNull();
   });
 
   it('returns null when industry is not in whitelist', () => {
-    expect(getAgentIndustry({ features: { industry: 'petshop' } })).toBeNull();
+    expect(getOrgIndustry({ industry: 'petshop' })).toBeNull();
   });
 
   it('returns the industry when whitelisted', () => {
-    expect(getAgentIndustry({ features: { industry: 'restaurante' } })).toBe('restaurante');
+    expect(getOrgIndustry({ industry: 'restaurante' })).toBe('restaurante');
   });
 });
 

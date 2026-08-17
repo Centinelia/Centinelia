@@ -7,7 +7,7 @@ import { MEERKAT_PROMPT_TIER } from '@/lib/voice/rules';
 import { resolveMeerkatConfig, type MeerkatModelConfig } from './resolve-meerkat';
 import { resolveMeerkatVersionForAgent } from '@/lib/feature-flags/version-flag-resolver';
 import { TOOL_SCHEMAS, toVapiToolDef } from '@/lib/tools/schemas';
-import { getAgentIndustry, INDUSTRIES_WITH_DAILY_AVAILABILITY } from '@/lib/industry';
+import { getOrgIndustry, INDUSTRIES_WITH_DAILY_AVAILABILITY } from '@/lib/industry';
 
 const VAPI_URL = 'https://api.vapi.ai';
 const VAPI_KEY = process.env.VAPI_API_KEY!;
@@ -163,7 +163,7 @@ function peerToolCapabilities(peer: TeamPeer): string[] {
 // Org fields are stored in `organizations` (single source of truth).
 // Before building any Vapi assistant, merge them over the per-agent row.
 
-const ORG_SELECT = 'knowledge_base, owner_profile, owner_passphrase, business_description, business_hours, business_website, website_knowledge, google_review_url, email_brand_color, brand_color_secondary, brand_website, brand_address, email_footer_text, multilingual, invoicing_allow_agent_cancellation';
+const ORG_SELECT = 'knowledge_base, owner_profile, owner_passphrase, business_description, business_hours, business_website, website_knowledge, google_review_url, email_brand_color, brand_color_secondary, brand_website, brand_address, email_footer_text, multilingual, invoicing_allow_agent_cancellation, industry';
 
 async function enrichWithOrgData(agent: VoiceAgent): Promise<VoiceAgent> {
   if (!agent.portal_email) return agent;
@@ -561,10 +561,10 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
   }
 
   // actualizar_disponibilidad_diaria — gate dual: industria + rol.
-  // Solo se incluye si la industria del agente soporta disponibilidad diaria
+  // Solo se incluye si la industria de la org soporta disponibilidad diaria
   // Y el meerkat tiene la tool en su distribucion. Se gestiona fuera del loop
   // principal para que el check de industria sea obligatorio.
-  const agentIndustry = getAgentIndustry(agent);
+  const agentIndustry = getOrgIndustry(agent as unknown as { industry?: string | null });
   const rolToolsForGate = roleTools ?? [];
   if (
     agentIndustry &&

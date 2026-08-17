@@ -49,12 +49,13 @@ interface Props {
   orgBusinessWebsite:     string | null;
   orgBusinessHours:       BusinessHours | null;
   orgBusinessDescription: string | null;
+  initialOrgIndustry:     string | null;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ClientEditForm({
-  routeKey, agents, orgBusinessWebsite, orgBusinessHours, orgBusinessDescription,
+  routeKey, agents, orgBusinessWebsite, orgBusinessHours, orgBusinessDescription, initialOrgIndustry,
 }: Props) {
   const router  = useRouter();
   const primary = agents[0];
@@ -74,9 +75,9 @@ export default function ClientEditForm({
     (primary.features?.vertical as 'negocio' | 'gobierno') ?? 'negocio'
   );
 
-  // Industria
+  // Industria (org-level source of truth)
   const [industry, setIndustry] = useState<Industry | ''>(
-    (primary.features?.industry as Industry) ?? ''
+    (initialOrgIndustry as Industry) ?? ''
   );
 
   // Negocio (compartido: aplica a todos los empleados del cliente).

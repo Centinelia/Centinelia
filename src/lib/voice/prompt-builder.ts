@@ -5,7 +5,7 @@ import { MEERKAT_MAP, COORDINATOR_ROLE_IDS, type MeerkatRoleId } from '@/lib/por
 import type { createAdminClient } from '@/lib/supabase/admin';
 import { getActiveTramitesForOrg } from '@/lib/tramites/config';
 import { renderTramitesSection } from '@/lib/tramites/prompt';
-import { getAgentIndustry } from '@/lib/industry';
+import { getOrgIndustry } from '@/lib/industry';
 import { formatDailyAvailabilityForPrompt } from '@/lib/daily-availability';
 
 type SupabaseClient = ReturnType<typeof createAdminClient>;
@@ -182,15 +182,17 @@ TONO Y ESTILO DE VOZ:
   let orgBrandVoice:    string | null = null;
   let orgPassphrase:    string | null = null;
   let orgDailyAvail:   unknown       = null;
+  let orgForIndustry:  { industry?: string | null } | null = null;
   if (orgId && supabase) {
     const { data: orgRow } = await supabase
       .from('organizations')
-      .select('brand_voice_guide, owner_passphrase, daily_availability')
+      .select('brand_voice_guide, owner_passphrase, daily_availability, industry')
       .eq('portal_email', orgId)
       .maybeSingle();
     orgBrandVoice  = (orgRow?.brand_voice_guide as string | null) ?? null;
     orgPassphrase  = (orgRow?.owner_passphrase as string | null) ?? null;
     orgDailyAvail  = (orgRow as Record<string, unknown> | null)?.daily_availability ?? null;
+    orgForIndustry = orgRow as { industry?: string | null } | null;
   }
 
   if (!isCoordinator && orgBrandVoice?.trim()) {
@@ -609,7 +611,7 @@ Si algo no está en esta lista, dilo honestamente y ofrece tomar sus datos para 
 
   // ── Daily availability (industry-gated) ───────────────────────────────────
   {
-    const industry   = getAgentIndustry(agent as { features?: { industry?: string } | null });
+    const industry   = getOrgIndustry(orgForIndustry);
     const dailyBlock = industry
       ? formatDailyAvailabilityForPrompt(orgDailyAvail as Parameters<typeof formatDailyAvailabilityForPrompt>[0], industry)
       : '';

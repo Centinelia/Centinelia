@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireVapiAuth } from '@/lib/vapi/auth';
 import { validateDailyAvailability } from '@/lib/daily-availability';
-import { getAgentIndustry, INDUSTRIES_WITH_DAILY_AVAILABILITY } from '@/lib/industry';
+import { getOrgIndustry, INDUSTRIES_WITH_DAILY_AVAILABILITY } from '@/lib/industry';
 import { traceVoiceCall } from '@/lib/observability/voice-trace';
 
 export async function POST(req: NextRequest) {
@@ -23,15 +23,18 @@ export async function POST(req: NextRequest) {
 
   const { data: agent, error: agentErr } = await supabase
     .from('voice_agents')
-    .select('id, portal_email, features')
+    .select('id, portal_email')
     .eq('id', agentId)
     .single();
   if (agentErr || !agent) {
     return NextResponse.json({ result: 'Agente no encontrado.' }, { status: 404 });
   }
 
-  // Defense in depth: validate industry even if Vapi already gated via sync.ts
-  const industry = getAgentIndustry(agent);
+  // Defense in depth: validate industry via org (single source of truth).
+  const { data: org } = agent.portal_email
+    ? await supabase.from('organizations').select('industry').eq('portal_email', agent.portal_email).maybeSingle()
+    : { data: null };
+  const industry = getOrgIndustry(org);
   if (!industry || !INDUSTRIES_WITH_DAILY_AVAILABILITY.includes(industry)) {
     return NextResponse.json({ result: 'Esta funcion no esta disponible para este negocio.' }, { status: 400 });
   }

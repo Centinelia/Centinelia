@@ -5,7 +5,7 @@ import { findNoxAgent } from '@/lib/ops/nox-coordinator';
 import { transitionAgentTask } from '@/lib/state-machines/agent-task';
 import { logLlmCall } from '@/lib/observability/llm-log';
 import { TOOL_SCHEMAS, toAnthropicTool } from '@/lib/tools/schemas';
-import { getAgentIndustry, INDUSTRIES_WITH_DAILY_AVAILABILITY } from '@/lib/industry';
+import { getOrgIndustry, INDUSTRIES_WITH_DAILY_AVAILABILITY } from '@/lib/industry';
 import { formatDailyAvailabilityForPrompt } from '@/lib/daily-availability';
 
 const APP_URL        = process.env.NEXT_PUBLIC_APP_URL!;
@@ -22,7 +22,6 @@ export interface AgentInfo {
   role_knowledge_base:  string | null;
   business_name:        string | null;
   portal_email?:        string | null;
-  features?:            { industry?: string } | null;
 }
 
 // ── Tools available to the executing agent ─────────────────────────────────────
@@ -388,14 +387,19 @@ export async function executeTask(params: {
   // docs o firmas siempre incluya el teléfono/correo/website real de la
   // empresa en vez de sólo decir "contáctenos" (bug 2026-08-10: correo a
   // Pedro Sola sin datos de contacto de Pneuma Studio).
-  if (targetAgent.portal_email) {
-    const { data: orgContact } = await supabase
-      .from('organizations')
-      .select('business_email, brand_phone, business_website, brand_website, brand_address, email_footer_text, daily_availability')
-      .eq('portal_email', targetAgent.portal_email)
-      .maybeSingle();
+  // Fetch org once — used for contact info, daily_availability, and industry gate (org is single source of truth).
+  const ocRaw = targetAgent.portal_email
+    ? (await supabase
+        .from('organizations')
+        .select('business_email, brand_phone, business_website, brand_website, brand_address, email_footer_text, daily_availability, industry')
+        .eq('portal_email', targetAgent.portal_email)
+        .maybeSingle()
+      ).data
+    : null;
+  const orgExecIndustry = getOrgIndustry(ocRaw as { industry?: string | null } | null);
 
-    const oc = orgContact as { business_email?: string | null; brand_phone?: string | null; business_website?: string | null; brand_website?: string | null; brand_address?: string | null; email_footer_text?: string | null; daily_availability?: unknown } | null;
+  if (targetAgent.portal_email) {
+    const oc = ocRaw as { business_email?: string | null; brand_phone?: string | null; business_website?: string | null; brand_website?: string | null; brand_address?: string | null; email_footer_text?: string | null; daily_availability?: unknown; industry?: string | null } | null;
     const contactLines: string[] = [];
     const contactEmail = oc?.business_email || targetAgent.portal_email;
     const contactSite  = oc?.business_website || oc?.brand_website;
@@ -414,7 +418,7 @@ export async function executeTask(params: {
 
     // ── Daily availability (industry-gated) ─────────────────────────────────
     {
-      const industry   = getAgentIndustry(targetAgent);
+      const industry   = getOrgIndustry(oc);
       const dailyBlock = industry
         ? formatDailyAvailabilityForPrompt((oc?.daily_availability ?? null) as import('@/lib/daily-availability').DailyAvailability | null, industry)
         : '';
@@ -470,11 +474,10 @@ export async function executeTask(params: {
     const __tetM = 'claude-haiku-4-5-20251001';
     let response;
     try {
-      // Gate tools per target agent industry
-      const industry = getAgentIndustry(targetAgent);
+      // Gate tools per org industry (org is single source of truth)
       const filteredDelegTools = DELEGATION_TOOLS.filter(t => {
         if (t.name === 'actualizar_disponibilidad_diaria') {
-          return industry !== null && INDUSTRIES_WITH_DAILY_AVAILABILITY.includes(industry);
+          return orgExecIndustry !== null && INDUSTRIES_WITH_DAILY_AVAILABILITY.includes(orgExecIndustry);
         }
         return true;
       });
