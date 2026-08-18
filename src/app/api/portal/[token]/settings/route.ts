@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requirePortalAccess } from '@/lib/portal/access';
-import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
+import { getAgentAccess } from '@/lib/portal/agent-access';
 import { updateVapiAssistant } from '@/lib/vapi/sync';
 import { KB_LIMITS, FIELD_TO_LIMIT } from '@/lib/portal/kb-limits';
 import type { VoiceAgent } from '@/types/agent';
@@ -23,10 +23,27 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const body = await req.json();
   const supabase = createAdminClient();
 
-  const agent = await getPrimaryAgentFromToken<{ id: string; vapi_agent_id: string | null; portal_email: string | null; features: Record<string, unknown> | null }>(token, 'id, vapi_agent_id, portal_email, features', supabase);
-  if (!agent) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-  if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
+  // Body puede especificar agentId para editar settings de un meerkat concreto.
+  // Default primaryId por retrocompat — bug histórico: settings siempre iba al
+  // primary sin importar qué meerkat estabas editando en el frontend. Los
+  // ORG_FIELDS y organizations.features siguen siendo org-scoped.
+  // Ver [[handoff-peer-discrimination-fix]] B1 #4.
+  const access = await getAgentAccess(token, req);
+  if (!access) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  if (auth.portalEmail && access.portalEmail !== auth.portalEmail)
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+
+  const targetId = (body.agentId as string | undefined) ?? access.primaryId;
+  if (!access.ids.includes(targetId)) {
+    return NextResponse.json({ error: 'Empleado no válido para este portal' }, { status: 403 });
+  }
+
+  const { data: agent } = await supabase
+    .from('voice_agents')
+    .select('id, vapi_agent_id, portal_email, features')
+    .eq('id', targetId)
+    .single<{ id: string; vapi_agent_id: string | null; portal_email: string | null; features: Record<string, unknown> | null }>();
+  if (!agent) return NextResponse.json({ error: 'Empleado no encontrado' }, { status: 404 });
 
   // Second gate: si el body toca ORG_FIELDS (knowledge_base, owner_passphrase,
   // guardia_schedule, etc.) sub-user también necesita 'negocio'. Sin este

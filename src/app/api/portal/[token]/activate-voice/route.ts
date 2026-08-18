@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
+import { getAgentAccess } from '@/lib/portal/agent-access';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { stripe } from '@/lib/stripe';
 import { createVapiAssistant } from '@/lib/vapi/sync';
@@ -21,11 +21,29 @@ export async function POST(req: NextRequest, { params }: Params) {
   const { token } = await params;
   const supabase  = createAdminClient();
 
-  const agent = await getPrimaryAgentFromToken<VoiceAgent>(token, '*', supabase);
+  // Body puede pasar agentId para activar voz a un meerkat específico. Default
+  // al primary por retrocompat (bug histórico: siempre activaba al primary
+  // aunque el user estuviera editando otro peer).
+  // Ver [[handoff-peer-discrimination-fix]] B1 #2.
+  const body = await req.json().catch(() => ({} as { agentId?: string }));
+  const bodyAgentId = (body as { agentId?: string }).agentId;
 
-  if (!agent) return NextResponse.json({ error: 'Agente no encontrado' }, { status: 404 });
-  if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
+  const access = await getAgentAccess(token, req);
+  if (!access) return NextResponse.json({ error: 'Agente no encontrado' }, { status: 404 });
+  if (auth.portalEmail && access.portalEmail !== auth.portalEmail)
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+
+  const targetId = bodyAgentId ?? access.primaryId;
+  if (!access.ids.includes(targetId)) {
+    return NextResponse.json({ error: 'Empleado no válido para este portal' }, { status: 403 });
+  }
+
+  const { data: agent } = await supabase
+    .from('voice_agents')
+    .select('*')
+    .eq('id', targetId)
+    .single<VoiceAgent>();
+  if (!agent) return NextResponse.json({ error: 'Empleado no encontrado' }, { status: 404 });
 
   const jornadaType = ((agent as any).jornada_type ?? 'combinada') as string;
   if (jornadaType !== 'tareas') {
