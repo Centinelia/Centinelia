@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.0" />
+    <PackageReference Include="FirebirdSql.Data.FirebirdClient" Version="10.3.1" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
     <PackageReference Include="xunit" Version="2.5.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
@@ -22,6 +23,21 @@
 
   <ItemGroup>
     <ProjectReference Include="..\src\BillingContpaqiReader.csproj" />
+  </ItemGroup>
+
+  <!--
+    Firebird 5 embeddable binaries — required by FirebirdCatalogRepositoryTests.
+    Files must land flat in the output directory alongside the test DLL so that
+    fbembed.dll (= fbclient.dll renamed) is found by FirebirdSql.Data.FirebirdClient.
+    The plugins/ and intl/ sub-directories are preserved via their own glob.
+  -->
+  <ItemGroup>
+    <None Include="fb-native\*.dll;fb-native\*.dat;fb-native\*.conf;fb-native\*.msg"
+          CopyToOutputDirectory="PreserveNewest" Link="%(Filename)%(Extension)" />
+    <None Include="fb-native\plugins\**\*"
+          CopyToOutputDirectory="PreserveNewest" Link="plugins\%(RecursiveDir)%(Filename)%(Extension)" />
+    <None Include="fb-native\intl\**\*"
+          CopyToOutputDirectory="PreserveNewest" Link="intl\%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>

@@ -1,3 +1,5 @@
 bin/
 obj/
 *.user
+# Firebird embedded binaries (downloaded locally, not committed)
+tests/fb-native/
