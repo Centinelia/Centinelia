@@ -1,0 +1,244 @@
+/**
+ * queue.ts — async job queue for the billing employee inbox processor.
+ *
+ * Uses billing_jobs table with a Postgres RPC (claim_billing_job) that executes
+ * SELECT FOR UPDATE SKIP LOCKED to prevent double-processing under concurrent
+ * cron runs.
+ *
+ * Enqueue: enqueueBillingEmail({ emailId, kind, portalEmail, integrationId })
+ * Dequeue: dequeueAndRun() — claims one pending job and executes its handler.
+ *
+ * Handlers for each kind are stubs until Tasks 8+ implement them.
+ * Max 3 attempts per job before it is permanently marked 'failed'.
+ */
+
+import { createAdminClient } from '@/lib/supabase/admin';
+
+export type BillingJobKind = 'process_notes' | 'reply_missing_attachments';
+
+export interface EnqueueParams {
+  emailId:       string;
+  kind:          BillingJobKind;
+  portalEmail:   string;
+  integrationId: string;
+}
+
+export interface EnqueueResult {
+  jobId: string;
+}
+
+export interface DequeueResult {
+  processed: number;
+}
+
+const MAX_ATTEMPTS = 3;
+
+/**
+ * Insert one pending billing job into the queue.
+ */
+export async function enqueueBillingEmail(params: EnqueueParams): Promise<EnqueueResult> {
+  const { emailId, kind, portalEmail, integrationId } = params;
+  const supabase = createAdminClient();
+
+  const { data, error } = await supabase
+    .from('billing_jobs')
+    .insert({
+      portal_email:   portalEmail,
+      integration_id: integrationId,
+      kind,
+      payload:        { email_id: emailId },
+      status:         'pending',
+    })
+    .select('id')
+    .single();
+
+  if (error) {
+    throw new Error(`[billing/queue] enqueue failed: ${error.message}`);
+  }
+
+  return { jobId: data.id as string };
+}
+
+/**
+ * Claim one pending billing job atomically via the claim_billing_job RPC
+ * (SELECT FOR UPDATE SKIP LOCKED) and execute its handler.
+ *
+ * Returns { processed: 1 } if a job was found and handled, { processed: 0 } otherwise.
+ */
+export async function dequeueAndRun(): Promise<DequeueResult> {
+  const supabase = createAdminClient();
+
+  // Atomic claim — returns the row already updated to status='running' with attempts++.
+  const { data: rows, error: claimError } = await supabase.rpc('claim_billing_job');
+
+  if (claimError) {
+    throw new Error(`[billing/queue] claim_billing_job RPC failed: ${claimError.message}`);
+  }
+
+  const jobs = rows as BillingJobRow[] | null;
+  if (!jobs || jobs.length === 0) {
+    return { processed: 0 };
+  }
+
+  const job = jobs[0];
+
+  try {
+    await runHandler(job);
+    await markDone(supabase, job.id);
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    await markFailed(supabase, job.id, job.attempts, errorMsg);
+  }
+
+  return { processed: 1 };
+}
+
+// ---------------------------------------------------------------------------
+// Internal types
+// ---------------------------------------------------------------------------
+
+interface BillingJobRow {
+  id:             string;
+  portal_email:   string;
+  integration_id: string;
+  kind:           string;
+  payload:        Record<string, unknown>;
+  status:         string;
+  attempts:       number;
+  last_error:     string | null;
+  created_at:     string;
+  started_at:     string | null;
+  finished_at:    string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Handler dispatch
+// ---------------------------------------------------------------------------
+
+async function runHandler(job: BillingJobRow): Promise<void> {
+  switch (job.kind as BillingJobKind) {
+    case 'process_notes':
+      await handleProcessNotes(job);
+      break;
+    case 'reply_missing_attachments':
+      await handleReplyMissingAttachments(job);
+      break;
+    default:
+      throw new Error(`[billing/queue] unknown job kind: ${job.kind}`);
+  }
+}
+
+/**
+ * Handle a process_notes job: runs the full BillingEmployee reasoning loop.
+ *
+ * The adapter and config values are loaded from the job's payload and
+ * the organization's integration config (or from env for the pilot phase).
+ *
+ * Fase 2: loadAdapterForIntegration() leer la config de organization_integrations
+ * e instanciar el adaptador CONTPAQi real. Por ahora usa MockBillingAdapter.
+ */
+async function handleProcessNotes(job: BillingJobRow): Promise<void> {
+  const emailId = job.payload['email_id'] as string | undefined;
+  if (!emailId) {
+    throw new Error('[billing/queue] process_notes: missing email_id in payload');
+  }
+
+  // Lazy imports to keep the module lightweight at load time.
+  const { BillingEmployee } = await import('./loop');
+  const { MockBillingAdapter } = await import('../adapters/mock');
+
+  // Pilot-phase mock adapter with empty catalog.
+  // Fase 2: replace with CONTPAQiAdapter loaded from organization_integrations config.
+  const adapter = new MockBillingAdapter({ clients: [], products: [] });
+
+  const employee = new BillingEmployee(adapter, {
+    portalEmail: job.portal_email,
+    integrationId: job.integration_id,
+    dropboxToken: process.env.BILLING_DROPBOX_TOKEN ?? '',
+    dropboxBasePath: process.env.BILLING_DROPBOX_BASE_PATH ?? '/Facturacion',
+    escalationEmail: process.env.BILLING_ESCALATION_EMAIL ?? job.portal_email,
+    orgName: job.portal_email,
+  });
+
+  const result = await employee.runOnEmail(emailId);
+
+  if (result.errors.length > 0) {
+    // Surface errors to the queue so markFailed is triggered if needed.
+    throw new Error(
+      `[billing/queue] process_notes completed with errors: ${result.errors.join('; ')}`,
+    );
+  }
+
+  console.log('[billing/queue] process_notes completed', {
+    jobId: job.id,
+    emailId,
+    processed: result.processed,
+    escalated: result.escalated,
+    consulted: result.consulted,
+  });
+}
+
+/**
+ * Handle a reply_missing_attachments job: replies to the inbound email
+ * asking the sender to provide photos of the billing notes.
+ */
+async function handleReplyMissingAttachments(job: BillingJobRow): Promise<void> {
+  const emailId = job.payload['email_id'] as string | undefined;
+  if (!emailId) {
+    throw new Error('[billing/queue] reply_missing_attachments: missing email_id in payload');
+  }
+
+  const { replyToInboundEmail } = await import('../mail/send');
+
+  const body = [
+    '<p>Hola,</p>',
+    '<p>Recibimos tu correo, pero no detectamos imagenes de notitas de venta adjuntas.</p>',
+    '<p>Por favor reenviale con las fotos de las notitas para que podamos procesarlas.</p>',
+    '<p>Gracias.</p>',
+  ].join('\n');
+
+  await replyToInboundEmail(emailId, body);
+
+  console.log('[billing/queue] reply_missing_attachments sent', { jobId: job.id, emailId });
+}
+
+// ---------------------------------------------------------------------------
+// Status helpers
+// ---------------------------------------------------------------------------
+
+async function markDone(supabase: ReturnType<typeof createAdminClient>, id: string): Promise<void> {
+  const { error } = await supabase
+    .from('billing_jobs')
+    .update({ status: 'done', finished_at: new Date().toISOString() })
+    .eq('id', id);
+
+  if (error) {
+    console.error('[billing/queue] markDone error:', error.message);
+  }
+}
+
+async function markFailed(
+  supabase: ReturnType<typeof createAdminClient>,
+  id:       string,
+  attempts: number,
+  msg:      string,
+): Promise<void> {
+  // If this was the last allowed attempt, permanently fail.
+  // Otherwise revert to pending so the next cron run retries.
+  const nextStatus = attempts >= MAX_ATTEMPTS ? 'failed' : 'pending';
+
+  const { error } = await supabase
+    .from('billing_jobs')
+    .update({
+      status:      nextStatus,
+      last_error:  msg,
+      finished_at: nextStatus === 'failed' ? new Date().toISOString() : null,
+      // Reset started_at so the retry window is clean.
+      started_at:  null,
+    })
+    .eq('id', id);
+
+  if (error) {
+    console.error('[billing/queue] markFailed error:', error.message);
+  }
+}

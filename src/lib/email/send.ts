@@ -356,6 +356,7 @@ export async function sendEmail(opts: {
   from?:        string;
   replyTo?:     string;
   attachments?: { filename: string; content: string }[]; // content = base64
+  headers?:     Record<string, string>;
 }): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) { console.warn('Email not configured, missing RESEND_API_KEY'); return false; }
@@ -368,6 +369,7 @@ export async function sendEmail(opts: {
   };
   if (opts.replyTo) payload.reply_to = [opts.replyTo];
   if (opts.attachments?.length) payload.attachments = opts.attachments;
+  if (opts.headers) payload.headers = opts.headers;
 
   const res = await fetch('https://api.resend.com/emails', {
     method:  'POST',

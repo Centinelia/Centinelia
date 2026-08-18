@@ -204,6 +204,22 @@
     {
       "path": "/api/cron/csd-expiry-notify",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/billing/worker",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/billing-periodic-cuts",
+      "schedule": "0 18 * * *"
+    },
+    {
+      "path": "/api/cron/billing-retention",
+      "schedule": "0 3 1 * *"
+    },
+    {
+      "path": "/api/cron/billing-daily-report",
+      "schedule": "0 22 * * *"
     }
   ]
 }
