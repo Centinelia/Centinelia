@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
-import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
+import { getAgentAccess } from '@/lib/portal/agent-access';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,17 +60,25 @@ export async function GET(req: NextRequest, { params }: Params) {
   if (!auth) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 
   const { token } = await params;
-  const supabase  = createAdminClient();
 
-  const agent = await getPrimaryAgentFromToken<{ id: string; features: Record<string, unknown> | null; portal_email: string | null }>(token, 'id, features, portal_email', supabase);
-  if (!agent) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-  if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
+  const access = await getAgentAccess(token, req);
+  if (!access) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  if (auth.portalEmail && access.portalEmail && auth.portalEmail !== access.portalEmail)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
-  const { data: tpl } = await supabase
-    .from('contract_templates').select('*').eq('agent_id', agent.id).single();
+  const supabase = createAdminClient();
 
-  const features       = (agent.features as Record<string, unknown>) ?? {};
+  const { data: tpl } = await supabase
+    .from('contract_templates').select('*').in('agent_id', access.ids).limit(1).single();
+
+  // features.contrato_config lives on the primary agent
+  const { data: primaryAgent } = await supabase
+    .from('voice_agents')
+    .select('features')
+    .eq('id', access.primaryId)
+    .single();
+
+  const features       = (primaryAgent?.features as Record<string, unknown>) ?? {};
   const contratoCfg    = (features.contrato_config as Record<string, unknown>) ?? {};
   const templateName   = (contratoCfg.template_name as string | undefined) ?? null;
   const templatePath   = (contratoCfg.template_path as string | undefined) ?? null;
@@ -84,17 +92,23 @@ export async function PUT(req: NextRequest, { params }: Params) {
   if (!auth) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 
   const { token } = await params;
-  const supabase  = createAdminClient();
 
-  const agent = await getPrimaryAgentFromToken<{ id: string; portal_email: string | null }>(token, 'id, portal_email', supabase);
-  if (!agent) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-  if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
+  const access = await getAgentAccess(token, req);
+  if (!access) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  if (auth.portalEmail && access.portalEmail && auth.portalEmail !== access.portalEmail)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
-  const { clauses } = await req.json();
+  const { clauses, agentId } = await req.json();
 
+  // Caller may specify which peer's template to upsert; default to primary.
+  const targetAgentId = (agentId as string | undefined) ?? access.primaryId;
+  if (!access.ids.includes(targetAgentId)) {
+    return NextResponse.json({ error: 'Empleado no válido para este portal' }, { status: 403 });
+  }
+
+  const supabase = createAdminClient();
   const { error } = await supabase.from('contract_templates').upsert(
-    { agent_id: agent.id, clauses, updated_at: new Date().toISOString() },
+    { agent_id: targetAgentId, clauses, updated_at: new Date().toISOString() },
     { onConflict: 'agent_id' }
   );
 
