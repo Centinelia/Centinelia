@@ -353,7 +353,7 @@ describe('CONTPAQi E2E Test 2: submitInvoiceBatch escribe XML al path correcto',
 
     // Path incluye Importables_CONTPAQi/pendientes/ con nombre de fecha
     expect(writtenPath).toContain(`${BASE_CONFIG.dropboxBasePath}/Importables_CONTPAQi/pendientes/`);
-    expect(writtenPath).toMatch(/facturas_\d{4}-\d{2}-\d{2}\.xml$/);
+    expect(writtenPath).toMatch(/facturas_\d{4}-\d{2}-\d{2}_[0-9a-f]{8}\.xml$/);
 
     // Buffer es un XML valido que contiene los datos del receptor y el producto
     expect(Buffer.isBuffer(writtenBuffer)).toBe(true);

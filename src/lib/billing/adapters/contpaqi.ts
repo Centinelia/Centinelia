@@ -13,6 +13,7 @@
  * submitInvoiceBatch escribe el XML a Dropbox y retorna mode='file'.
  */
 
+import { createHash } from 'crypto';
 import type {
   BillingAdapter,
   BillingClient,
@@ -202,8 +203,17 @@ export class CONTPAQiAdapter implements BillingAdapter {
     const xmlString = buildImportXml(invoices, this.xmlConfig);
     const buffer = Buffer.from(xmlString, 'utf-8');
 
-    const date = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-    const filename = `facturas_${date}.xml`;
+    // Prefer the date embedded in the first invoice so the filename reflects
+    // the content period, not the processing wall-clock time (which may differ
+    // after midnight or during retries).
+    const date = invoices[0]?.date ?? new Date().toISOString().slice(0, 10);
+
+    // Deterministic 8-char hash of the XML content:
+    //  - Same content => same hash => same path (idempotent on retry).
+    //  - Different content => different hash => no silent overwrite.
+    const contentHash = createHash('sha256').update(xmlString).digest('hex').slice(0, 8);
+
+    const filename = `facturas_${date}_${contentHash}.xml`;
     const destPath = `${this.basePath}/Importables_CONTPAQi/pendientes/${filename}`;
 
     const writtenPath = await this.dropbox.writeFile(destPath, buffer);

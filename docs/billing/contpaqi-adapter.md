@@ -34,7 +34,7 @@ Dropbox (<basePath>/Config/)
 CONTPAQiAdapter              (Centinelia, servidor)
     |  busqueda fuzzy
     |  freshness check
-    |  submitInvoiceBatch -> facturas_YYYY-MM-DD.xml
+    |  submitInvoiceBatch -> facturas_YYYY-MM-DD_<8hex>.xml
     v
 Dropbox (<basePath>/Importables_CONTPAQi/pendientes/)
     |
@@ -174,6 +174,7 @@ interface OrganizationIntegrationConfig {
     serie_default: string;               // Serie del comprobante, ej: 'A'
     uso_cfdi_default: string;            // Uso CFDI por defecto, ej: 'G03'
     clave_sat_default_producto: string;  // Clave SAT de producto por defecto, ej: '50161509'
+    codigo_postal_emisor: string;        // CP del domicilio fiscal del emisor -> LugarExpedicion en el XML, ej: '64000'
   };
 
   // Parametros del ciclo de sincronizacion (requerido para type='contpaqi')
@@ -197,7 +198,8 @@ interface OrganizationIntegrationConfig {
     "regimen_fiscal": "601",
     "serie_default": "A",
     "uso_cfdi_default": "G03",
-    "clave_sat_default_producto": "50161509"
+    "clave_sat_default_producto": "50161509",
+    "codigo_postal_emisor": "64000"
   },
   "scheduled_task": {
     "expected_sync_interval_minutes": 15,
@@ -207,7 +209,7 @@ interface OrganizationIntegrationConfig {
 }
 ```
 
-Nota: `lugarExpedicion` (codigo postal del emisor para el XML) no esta actualmente en el schema JSONB. Se pasa como string vacio al `XmlImportConfig`. Follow-up: agregar `codigo_postal_emisor` al schema.
+`fiscal.codigo_postal_emisor` es el codigo postal del domicilio fiscal del emisor. Se usa como `<LugarExpedicion>` en cada XML generado. CONTPAQi rechaza el documento si este campo llega vacio. `buildAdapter` lanza un error explicativo si falta.
 
 ### Ejemplo para mock (desarrollo y tests)
 
@@ -232,7 +234,7 @@ El agente Windows escribe en `<basePath>/Config/` y el empleado digital escribe 
 | `<basePath>/Config/contpaqi_clientes.csv` | Windows agent | CONTPAQiAdapter (Centinelia) |
 | `<basePath>/Config/contpaqi_productos.csv` | Windows agent | CONTPAQiAdapter (Centinelia) |
 | `<basePath>/Config/last_sync.json` | Windows agent | CONTPAQiAdapter (Centinelia) |
-| `<basePath>/Importables_CONTPAQi/pendientes/facturas_YYYY-MM-DD.xml` | CONTPAQiAdapter | Contador (importacion manual en CONTPAQi) |
+| `<basePath>/Importables_CONTPAQi/pendientes/facturas_YYYY-MM-DD_<8hex>.xml` | CONTPAQiAdapter | Contador (importacion manual en CONTPAQi) |
 
 Los XMLs en `pendientes/` son rotados a `procesados/` por el cron `billing-retention` (`/api/cron/billing-retention`) en su ciclo mensual.
 

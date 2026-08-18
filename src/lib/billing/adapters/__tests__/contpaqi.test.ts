@@ -338,6 +338,89 @@ describe('CONTPAQiAdapter', () => {
     expect(result.ref).toBe(writtenPath);
   });
 
+  it('submitInvoiceBatch filename contains date from invoices[0].date (not new Date())', async () => {
+    const { adapter, writeFileMock } = makeAdapterWithData();
+
+    await adapter.submitInvoiceBatch([
+      {
+        clientRFC: 'TDM040101ABC',
+        date: '2024-01-15',
+        lines: [{ sku: 'TOR-MAI-KG', qty: 5, unitPrice: 18 }],
+        paymentMethod: 'efectivo',
+        usoCFDI: 'G03',
+      },
+    ]);
+
+    const writtenPath = writeFileMock.mock.calls[0][0] as string;
+    // Must contain the invoice date, not today's date
+    expect(writtenPath).toContain('2024-01-15');
+  });
+
+  it('submitInvoiceBatch filename contains 8-char hex hash of XML content', async () => {
+    const { adapter, writeFileMock } = makeAdapterWithData();
+
+    await adapter.submitInvoiceBatch([
+      {
+        clientRFC: 'TDM040101ABC',
+        date: '2026-08-18',
+        lines: [{ sku: 'TOR-MAI-KG', qty: 10, unitPrice: 18 }],
+        paymentMethod: 'efectivo',
+        usoCFDI: 'G03',
+      },
+    ]);
+
+    const writtenPath = writeFileMock.mock.calls[0][0] as string;
+    // Pattern: facturas_YYYY-MM-DD_<8hex>.xml
+    expect(writtenPath).toMatch(/facturas_\d{4}-\d{2}-\d{2}_[0-9a-f]{8}\.xml$/);
+  });
+
+  it('submitInvoiceBatch same content => same path (idempotent on retry)', async () => {
+    const invoice = {
+      clientRFC: 'TDM040101ABC',
+      date: '2026-08-18',
+      lines: [{ sku: 'TOR-MAI-KG', qty: 10, unitPrice: 18 }],
+      paymentMethod: 'efectivo' as const,
+      usoCFDI: 'G03',
+    };
+
+    const { adapter: a1, writeFileMock: w1 } = makeAdapterWithData();
+    const { adapter: a2, writeFileMock: w2 } = makeAdapterWithData();
+
+    await a1.submitInvoiceBatch([invoice]);
+    await a2.submitInvoiceBatch([invoice]);
+
+    const path1 = w1.mock.calls[0][0] as string;
+    const path2 = w2.mock.calls[0][0] as string;
+    expect(path1).toBe(path2);
+  });
+
+  it('submitInvoiceBatch different content => different paths (no silent overwrite)', async () => {
+    const invoice1 = {
+      clientRFC: 'TDM040101ABC',
+      date: '2026-08-18',
+      lines: [{ sku: 'TOR-MAI-KG', qty: 10, unitPrice: 18 }],
+      paymentMethod: 'efectivo' as const,
+      usoCFDI: 'G03',
+    };
+    const invoice2 = {
+      clientRFC: 'XAX010101ABC',
+      date: '2026-08-18',
+      lines: [{ sku: 'TOR-HAR-KG', qty: 5, unitPrice: 32 }],
+      paymentMethod: 'transferencia' as const,
+      usoCFDI: 'G03',
+    };
+
+    const { adapter: a1, writeFileMock: w1 } = makeAdapterWithData();
+    const { adapter: a2, writeFileMock: w2 } = makeAdapterWithData();
+
+    await a1.submitInvoiceBatch([invoice1]);
+    await a2.submitInvoiceBatch([invoice2]);
+
+    const path1 = w1.mock.calls[0][0] as string;
+    const path2 = w2.mock.calls[0][0] as string;
+    expect(path1).not.toBe(path2);
+  });
+
   it('submitInvoiceBatch writes valid XML buffer (contains XML declaration)', async () => {
     const { adapter, writeFileMock } = makeAdapterWithData();
 

@@ -37,6 +37,7 @@ const CONTPAQI_CONFIG = {
     serie_default: 'A',
     uso_cfdi_default: 'G03',
     clave_sat_default_producto: '50161509',
+    codigo_postal_emisor: '64000',
   },
   scheduled_task: {
     expected_sync_interval_minutes: 15,
@@ -69,5 +70,24 @@ describe('buildAdapter', () => {
   it('type=contpaqi sin dropbox_token lanza Error', () => {
     const badConfig = { ...CONTPAQI_CONFIG, dropbox_token: undefined };
     expect(() => buildAdapter(badConfig as any)).toThrow();
+  });
+
+  it('type=contpaqi sin fiscal.codigo_postal_emisor lanza Error explicativo', () => {
+    const badConfig = {
+      ...CONTPAQI_CONFIG,
+      fiscal: {
+        ...CONTPAQI_CONFIG.fiscal,
+        codigo_postal_emisor: undefined,
+      },
+    };
+    expect(() => buildAdapter(badConfig as any)).toThrow(/codigo_postal_emisor/);
+  });
+
+  it('type=contpaqi con codigo_postal_emisor pasa lugarExpedicion al adapter (no vacio)', () => {
+    // Verify that the adapter is constructed without throwing when the field is present.
+    // The actual lugarExpedicion value is internal to the adapter; we confirm no error is thrown
+    // and the returned adapter has the correct name.
+    const adapter = buildAdapter(CONTPAQI_CONFIG);
+    expect(adapter.name).toBe('CONTPAQi Comercial Pro');
   });
 });

@@ -46,6 +46,13 @@ export interface OrganizationIntegrationConfig {
     uso_cfdi_default: string;
     /** Clave de producto SAT por defecto. Ej: '50161509'. */
     clave_sat_default_producto: string;
+    /**
+     * Codigo postal del domicilio fiscal del emisor.
+     * Se usa como LugarExpedicion en el XML de importacion a CONTPAQi.
+     * Requerido para que CONTPAQi acepte el XML al timbrar.
+     * Ej: '64000'.
+     */
+    codigo_postal_emisor: string;
   };
 
   // --- Parametros del agente de sincronizacion (requerido para type='contpaqi') ---
@@ -85,6 +92,13 @@ export function buildAdapter(config: OrganizationIntegrationConfig): BillingAdap
         );
       }
 
+      if (!config.fiscal.codigo_postal_emisor) {
+        throw new Error(
+          'CONTPAQi adapter requires fiscal.codigo_postal_emisor (LugarExpedicion en el XML). ' +
+          'Agregar el campo al JSONB config de organization_integrations. Ej: "64000".'
+        );
+      }
+
       return new CONTPAQiAdapter({
         dropboxClient: new DropboxClient(config.dropbox_token),
         basePath: config.dropbox_base_path,
@@ -94,9 +108,7 @@ export function buildAdapter(config: OrganizationIntegrationConfig): BillingAdap
           serie: config.fiscal.serie_default,
           rfcEmisor: config.fiscal.rfc_emisor,
           regimenFiscal: config.fiscal.regimen_fiscal,
-          // lugarExpedicion no esta en el config JSONB actual; se pasa vacio.
-          // Follow-up: agregar codigo_postal_emisor al schema JSONB.
-          lugarExpedicion: '',
+          lugarExpedicion: config.fiscal.codigo_postal_emisor,
           usoCFDIDefault: config.fiscal.uso_cfdi_default,
         },
       });
