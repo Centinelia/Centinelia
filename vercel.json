@@ -216,6 +216,10 @@
     {
       "path": "/api/cron/billing-retention",
       "schedule": "0 3 1 * *"
+    },
+    {
+      "path": "/api/cron/billing-daily-report",
+      "schedule": "0 22 * * *"
     }
   ]
 }

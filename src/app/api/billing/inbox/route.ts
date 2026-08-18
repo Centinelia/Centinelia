@@ -124,18 +124,26 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Persist inbound email row ───────────────────────────────────────────────
+  // Build attachments_meta array for the LLM to identify files without reading content.
+  const attachmentsMeta = parsed.attachments.map((att) => ({
+    filename:    att.filename,
+    contentType: att.contentType,
+    size:        att.content.length,
+  }));
+
   const { data: emailRow, error: insertErr } = await supabase
     .from('billing_incoming_emails')
     .insert({
-      portal_email:    integration.portal_email,
-      integration_id:  integration.id,
-      from_address:    parsed.from,
-      to_address:      parsed.to,
-      subject:         parsed.subject || null,
-      body_text:       parsed.text    || null,
+      portal_email:     integration.portal_email,
+      integration_id:   integration.id,
+      from_address:     parsed.from,
+      to_address:       parsed.to,
+      subject:          parsed.subject || null,
+      body_text:        parsed.text    || null,
       attachment_count: parsed.attachments.length,
-      raw_payload:     rawPayload,
-      message_id:      parsed.messageId,
+      attachments_meta: attachmentsMeta.length > 0 ? attachmentsMeta : null,
+      raw_payload:      rawPayload,
+      message_id:       parsed.messageId,
     })
     .select('id')
     .single();

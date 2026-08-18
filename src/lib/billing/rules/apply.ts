@@ -112,7 +112,7 @@ export async function applyRuleToSale(
   // -------------------------------------------------------------------------
   const { data: rule, error } = await supabase
     .from('billing_client_rules')
-    .select('rfc, frequency, payment_method')
+    .select('rfc, frequency, default_payment_method')
     .eq('integration_id', ctx.integrationId)
     .eq('rfc', sale.rfc)
     .maybeSingle();
@@ -154,7 +154,7 @@ export async function applyRuleToSale(
     // El token de Dropbox se resuelve en el contexto del caller (BillingEmployee).
     // Aqui accedemos via variable de entorno como fallback de infraestructura.
     // En produccion, el caller inyecta el token via ctx o la integration config.
-    process.env.DROPBOX_ACCESS_TOKEN ?? '',
+    process.env.BILLING_DROPBOX_TOKEN ?? '',
   );
   const snapshots = new SnapshotStorage();
 

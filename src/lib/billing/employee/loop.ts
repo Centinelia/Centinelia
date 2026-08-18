@@ -95,7 +95,7 @@ export class BillingEmployee {
     // -------------------------------------------------------------------------
     const { data: emailRow, error: emailError } = await supabase
       .from('billing_incoming_emails')
-      .select('id, from_address, subject, body_text, attachments_meta, received_at')
+      .select('id, from_address, subject, body_text, attachments_meta, attachment_count, received_at')
       .eq('id', emailId)
       .maybeSingle();
 
@@ -144,25 +144,36 @@ export class BillingEmployee {
     let aliasesJson = '[]';
 
     try {
-      const { data: reglas } = await supabase
+      const { data: reglas, error: reglasError } = await supabase
         .from('billing_client_rules')
-        .select('rfc, frequency, payment_method, aliases')
+        .select('rfc, frequency, default_payment_method, aliases')
         .eq('integration_id', this.ctx.integrationId)
         .limit(20);
-      if (reglas) reglasJson = JSON.stringify(reglas);
-    } catch {
-      // No bloquear -- el LLM usara get_billing_rules en el loop.
+      if (reglasError) {
+        console.warn('[billing.loop] failed to load billing_client_rules:', reglasError.message);
+        result.errors.push(`billing_client_rules load failed: ${reglasError.message}`);
+      } else if (reglas) {
+        reglasJson = JSON.stringify(reglas);
+      }
+    } catch (reglasErr) {
+      const msg = reglasErr instanceof Error ? reglasErr.message : String(reglasErr);
+      console.warn('[billing.loop] unexpected error loading billing_client_rules:', msg);
     }
 
     try {
-      const { data: aliases } = await supabase
+      const { data: aliases, error: aliasesError } = await supabase
         .from('billing_product_aliases')
         .select('adapter_sku, alias_text')
         .eq('integration_id', this.ctx.integrationId)
         .limit(30);
-      if (aliases) aliasesJson = JSON.stringify(aliases);
-    } catch {
-      // No bloquear.
+      if (aliasesError) {
+        console.warn('[billing.loop] failed to load billing_product_aliases:', aliasesError.message);
+      } else if (aliases) {
+        aliasesJson = JSON.stringify(aliases);
+      }
+    } catch (aliasesErr) {
+      const msg = aliasesErr instanceof Error ? aliasesErr.message : String(aliasesErr);
+      console.warn('[billing.loop] unexpected error loading billing_product_aliases:', msg);
     }
 
     // -------------------------------------------------------------------------
@@ -200,11 +211,16 @@ export class BillingEmployee {
       emailRow.body_text ?? '(sin texto)',
     ].join('\n');
 
+    // attachments_meta is populated by the migration + inbox route update (Plan A fix C3).
+    // Fall back to attachment_count for graceful operation before migration is applied.
     const attachmentsMeta = emailRow.attachments_meta;
+    const attachmentCount = emailRow.attachment_count ?? 0;
     const attachmentsNote =
       Array.isArray(attachmentsMeta) && attachmentsMeta.length > 0
         ? `\n\nAdjuntos detectados: ${JSON.stringify(attachmentsMeta)}`
-        : '\n\nSin adjuntos detectados.';
+        : attachmentCount > 0
+          ? `\n\nAdjuntos detectados: ${attachmentCount} archivo(s). Usa extract_note_from_image para procesar las imagenes del payload original.`
+          : '\n\nSin adjuntos detectados.';
 
     const userMessage =
       `Procesa el correo de facturacion (id: ${emailId}).\n\n${emailContext}${attachmentsNote}\n\n` +

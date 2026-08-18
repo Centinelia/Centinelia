@@ -102,10 +102,22 @@ const MOCK_VENTAS_CON_ESCALACION = [
   { num: 31, hora: '14:30', cliente: 'Cliente Grande SA', rfc: 'CGS040404GHI', productos: 'Servicio', total: 8450, metodo: 'transferencia', status: 'monto_inusual', factura: '' },
 ];
 
-/** Registros de activity_log con escalaciones. */
+/** Registros de activity_log con escalaciones (schema real: action_type, severity, entity_ref, context, timestamp). */
 const MOCK_ACTIVITY_LOG_ESCALACIONES = [
-  { id: 'log-01', notita_num: 23, status: 'escalado', notes: 'no reconoci al cliente "Miscelanea El Sol". Es nuevo?', created_at: '2026-08-17T10:05:00Z' },
-  { id: 'log-02', notita_num: 31, status: 'monto_inusual', notes: 'monto inusual ($8,450). Verifica antes de timbrar.', created_at: '2026-08-17T14:35:00Z' },
+  {
+    action_type: 'escalation',
+    severity:    'error',
+    entity_ref:  'cliente_desconocido',
+    context:     { notita_num: 23, motivo: 'no reconoci al cliente "Miscelanea El Sol". Es nuevo?', email_id: 'email-abc' },
+    timestamp:   '2026-08-17T10:05:00Z',
+  },
+  {
+    action_type: 'monto_inusual',
+    severity:    'warning',
+    entity_ref:  'CGS040404GHI',
+    context:     { notita_num: 31, motivo: 'monto inusual ($8,450). Verifica antes de timbrar.', email_id: 'email-abc' },
+    timestamp:   '2026-08-17T14:35:00Z',
+  },
 ];
 
 /** Mock del buffer de Excel. */

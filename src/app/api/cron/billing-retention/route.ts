@@ -194,7 +194,6 @@ export async function GET(req: Request) {
     .from('organization_integrations')
     .select('id, portal_email, config')
     .eq('type', 'contpaqi')
-    .eq('active', true)
     .not('config', 'is', null);
 
   if (dbError) {

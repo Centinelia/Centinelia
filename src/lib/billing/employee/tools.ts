@@ -211,7 +211,7 @@ export function buildEmployeeTools(toolsCtx: ToolsContext): EmployeeTool[] {
       handler: async (input: { rfc: string }) => {
         const { data, error } = await supabase
           .from('billing_client_rules')
-          .select('rfc, frequency, payment_method, aliases, notes')
+          .select('rfc, frequency, default_payment_method, aliases, notes')
           .eq('integration_id', ctx.integrationId)
           .eq('rfc', input.rfc)
           .maybeSingle();
@@ -605,11 +605,10 @@ export function buildEmployeeTools(toolsCtx: ToolsContext): EmployeeTool[] {
         const { error } = await supabase.from('billing_activity_log').insert({
           portal_email: ctx.portalEmail,
           integration_id: ctx.integrationId,
-          email_id: emailId,
           action_type: input.action_type,
           severity: input.severity,
           entity_ref: input.entity_ref ?? null,
-          context: input.context ?? {},
+          context: { ...(input.context ?? {}), email_id: emailId },
         });
 
         if (error) {
@@ -685,11 +684,11 @@ ${contextBlock}
         await supabase.from('billing_activity_log').insert({
           portal_email: ctx.portalEmail,
           integration_id: ctx.integrationId,
-          email_id: emailId,
           action_type: 'escalation',
           severity: 'error',
           entity_ref: input.topic,
           context: {
+            email_id: emailId,
             urgency: input.urgency,
             ...(input.context ?? {}),
             mail_sent: !!mailResult,

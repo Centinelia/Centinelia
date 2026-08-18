@@ -144,20 +144,27 @@ export async function buildDailyReport(
 
   const { data: logRows } = await supabase
     .from('billing_activity_log')
-    .select('notita_num, status, notes')
+    .select('action_type, severity, entity_ref, context, timestamp')
     .eq('integration_id', ctx.integrationId)
-    .gte('created_at', dayStart)
-    .lte('created_at', dayEnd);
+    .gte('timestamp', dayStart)
+    .lte('timestamp', dayEnd);
 
   const requiereAtencion: RequiereAtencionItem[] = [];
 
   for (const log of (logRows ?? [])) {
-    const st = String(log.status ?? '');
-    if (st === 'escalado' || st === 'monto_inusual') {
-      requiereAtencion.push({
-        notitaNum: Number(log.notita_num),
-        motivo:    String(log.notes ?? ''),
-      });
+    const severity   = String(log.severity ?? '');
+    const actionType = String(log.action_type ?? '');
+    // Surface warnings, errors, escalations, and unusual amounts as items requiring attention.
+    if (
+      severity === 'error' ||
+      severity === 'warning' ||
+      actionType === 'escalation' ||
+      actionType === 'monto_inusual'
+    ) {
+      const ctx_data = (log.context ?? {}) as Record<string, unknown>;
+      const notitaNum = Number(ctx_data['notita_num'] ?? ctx_data['venta_num'] ?? 0);
+      const motivo    = String(ctx_data['motivo'] ?? log.entity_ref ?? actionType);
+      requiereAtencion.push({ notitaNum, motivo });
     }
   }
 
