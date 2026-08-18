@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
+import { updateOrgFeatureConfig } from '@/lib/portal/features';
 import Anthropic from '@anthropic-ai/sdk';
 import mammoth from 'mammoth';
 import PizZip from 'pizzip';
@@ -208,7 +209,16 @@ export async function POST(req: NextRequest, { params }: Params) {
     },
   };
 
-  await supabase.from('voice_agents').update({ features: merged }).eq('id', agent.id);
+  // Templates son compartidos org-level: propagar a todos los meerkats.
+  // Ver [[handoff-peer-discrimination-fix]] audit 2026-08-18.
+  await updateOrgFeatureConfig(supabase, agent.portal_email, agent.id, configKey, {
+    template_path:       templatePath,
+    template_sample_path: canAutoTemplatize ? samplePath : null,
+    template_name:       file.name,
+    template_ext:        ext,
+    template_validation: validation,
+    auto_templatized:    canAutoTemplatize && autoResult?.ok === true,
+  });
 
   const { data: signed } = await supabase.storage
     .from('agent-documents')
@@ -255,9 +265,24 @@ export async function DELETE(req: NextRequest, { params }: Params) {
     await supabase.storage.from('agent-documents').remove([path]);
   }
 
+  // DELETE: quitar los campos template_* del sub-config. Propagar a todos
+  // los peers del org (templates son compartidos).
+  // Ver [[handoff-peer-discrimination-fix]] audit 2026-08-18.
   const { template_path: _p, template_name: _n, template_ext: _e, ...restCfg } = prevCfg;
-  const merged = { ...existing, [configKey]: restCfg };
-  await supabase.from('voice_agents').update({ features: merged }).eq('id', agent.id);
+  if (agent.portal_email) {
+    const { data: agents } = await supabase
+      .from('voice_agents').select('id, features').eq('portal_email', agent.portal_email);
+    if (agents?.length) {
+      for (const a of agents) {
+        const aExisting = (a.features as Record<string, unknown>) ?? {};
+        const aMerged   = { ...aExisting, [configKey]: restCfg };
+        await supabase.from('voice_agents').update({ features: aMerged }).eq('id', a.id);
+      }
+    }
+  } else {
+    const merged = { ...existing, [configKey]: restCfg };
+    await supabase.from('voice_agents').update({ features: merged }).eq('id', agent.id);
+  }
 
   return NextResponse.json({ ok: true });
 }

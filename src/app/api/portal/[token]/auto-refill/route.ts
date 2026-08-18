@@ -84,17 +84,19 @@ export async function PATCH(
   if (session.portalEmail && agentCheck.portal_email && session.portalEmail !== agentCheck.portal_email)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
-  const { error } = await supabase
-    .from('voice_agents')
-    .update({
-      auto_refill_enabled:        body.enabled,
-      auto_refill_threshold:      body.threshold,
-      auto_refill_minutes:        body.minutes,
-      auto_refill_ops_enabled:    body.opsEnabled,
-      auto_refill_ops_threshold:  body.opsThreshold,
-      auto_refill_ops_amount:     body.opsAmount,
-    })
-    .eq('id', agentCheck.id);
+  // Auto-refill es org-level: propagar a TODOS los meerkats del org.
+  // Ver [[handoff-peer-discrimination-fix]] audit 2026-08-18.
+  const query = supabase.from('voice_agents').update({
+    auto_refill_enabled:        body.enabled,
+    auto_refill_threshold:      body.threshold,
+    auto_refill_minutes:        body.minutes,
+    auto_refill_ops_enabled:    body.opsEnabled,
+    auto_refill_ops_threshold:  body.opsThreshold,
+    auto_refill_ops_amount:     body.opsAmount,
+  });
+  const { error } = agentCheck.portal_email
+    ? await query.eq('portal_email', agentCheck.portal_email)
+    : await query.eq('id', agentCheck.id);
 
   if (error) return NextResponse.json({ error: 'DB error' }, { status: 500 });
   return NextResponse.json({ ok: true });

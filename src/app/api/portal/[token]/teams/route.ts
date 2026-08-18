@@ -42,10 +42,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
-  const { error } = await supabase
-    .from('voice_agents')
-    .update({ teams_user_email: body.teams_user_email ?? null })
-    .eq('id', agent.id);
+  // teams_user_email es org-level (todos los meerkats se autentican al mismo
+  // tenant Teams). Propagar a todos los peers.
+  // Ver [[handoff-peer-discrimination-fix]] audit 2026-08-18.
+  const q = supabase.from('voice_agents').update({ teams_user_email: body.teams_user_email ?? null });
+  const { error } = agent.portal_email
+    ? await q.eq('portal_email', agent.portal_email)
+    : await q.eq('id', agent.id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });

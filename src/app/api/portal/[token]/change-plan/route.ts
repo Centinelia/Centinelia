@@ -115,11 +115,8 @@ export async function POST(req: NextRequest, { params }: Params) {
     proration_behavior: 'none',
   });
 
-  const { data: updatedAgent } = await supabase
-    .from('voice_agents')
-    .select('portal_email')
-    .eq('id', agent.id)
-    .single();
+  // Ya tenemos portal_email desde el IDOR check inicial (agentMeta.portal_email).
+  const portalEmailForUpdate = (agentMeta?.portal_email as string | null) ?? null;
 
   // Deltas de tier (fix H8 audit 2026-08-10 + fix drift MONTHLY_CONFIG vs
   // JORNADA_CONFIG 2026-08-11). Antes se leía MONTHLY_CONFIG.aiOps (100/200/300)
@@ -140,15 +137,29 @@ export async function POST(req: NextRequest, { params }: Params) {
   const changeLabel  = `${currentPlan}/${currentTier} → ${newPlan}/${newTier}`;
   const changeKind   = (minutesDelta < 0 || opsDelta < 0) ? 'plan_downgrade' : 'plan_upgrade';
 
-  await supabase.from('voice_agents').update({
-    plan:             newPlan,
-    features:         PLAN_FEATURES[newPlan],
-    minutes_plan:     newTier,
-    minutes_included: newMinutes,
-    ai_ops_limit:     newOps,
-  }).eq('id', agent.id);
+  // Plan es org-level: propagar a TODOS los meerkats del org. Sin esto solo
+  // el primary recibía el nuevo plan y los peers quedaban con plan/tier viejo,
+  // desalineando pool de minutos y ai_ops_limit. Ver [[handoff-peer-discrimination-fix]].
+  if (portalEmailForUpdate) {
+    await supabase.from('voice_agents').update({
+      plan:             newPlan,
+      features:         PLAN_FEATURES[newPlan],
+      minutes_plan:     newTier,
+      minutes_included: newMinutes,
+      ai_ops_limit:     newOps,
+    }).eq('portal_email', portalEmailForUpdate);
+  } else {
+    // Fallback demo standalone sin portal_email
+    await supabase.from('voice_agents').update({
+      plan:             newPlan,
+      features:         PLAN_FEATURES[newPlan],
+      minutes_plan:     newTier,
+      minutes_included: newMinutes,
+      ai_ops_limit:     newOps,
+    }).eq('id', agent.id);
+  }
 
-  const portalEmail = updatedAgent?.portal_email as string | null;
+  const portalEmail = portalEmailForUpdate;
 
   // Minutes ledger: audit trail del cambio de tier. Delta puede ser + o -.
   // Ceiling nuevo se aplica inmediatamente en refresh_pool_cache siguiente.

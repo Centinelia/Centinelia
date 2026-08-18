@@ -54,7 +54,13 @@ export async function POST(req: NextRequest) {
       metadata: { agent_id: agent.id },
     });
     customerId = customer.id;
-    await supabase.from('voice_agents').update({ stripe_customer_id: customerId }).eq('id', agent.id);
+    // stripe_customer_id es org-level: propagar a todos los meerkats.
+    // Ver [[handoff-peer-discrimination-fix]] audit 2026-08-18.
+    if (agent.portal_email) {
+      await supabase.from('voice_agents').update({ stripe_customer_id: customerId }).eq('portal_email', agent.portal_email);
+    } else {
+      await supabase.from('voice_agents').update({ stripe_customer_id: customerId }).eq('id', agent.id);
+    }
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL!;

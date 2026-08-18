@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
+import { updateOrgFeatureConfig } from '@/lib/portal/features';
 
 interface Params { params: Promise<{ token: string }> }
 
@@ -44,11 +45,12 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
-  const existing = (agent.features as Record<string, unknown>) ?? {};
-  const merged   = { ...existing, factura_config: { ...(existing.factura_config as object ?? {}), ...body } };
-
-  const { error } = await supabase.from('voice_agents').update({ features: merged }).eq('id', agent.id);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  // Propagar a TODOS los meerkats del org (config compartida, no per-agent).
+  // Ver [[handoff-peer-discrimination-fix]] audit 2026-08-18.
+  const result = await updateOrgFeatureConfig(
+    supabase, agent.portal_email, agent.id, 'factura_config', body as Record<string, unknown>,
+  );
+  if (result.error) return NextResponse.json({ error: result.error }, { status: 500 });
 
   return NextResponse.json({ ok: true });
 }
