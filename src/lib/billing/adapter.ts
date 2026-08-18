@@ -147,6 +147,13 @@ export interface BillingAdapter {
   getClientByRFC(rfc: string): Promise<BillingClient | null>;
 
   /**
+   * Obtiene un producto por SKU exacto.
+   * @param sku Clave de articulo interna del sistema contable.
+   * @returns BillingProduct si existe, null si no se encuentra.
+   */
+  getProductBySKU(sku: string): Promise<BillingProduct | null>;
+
+  /**
    * Envia un lote de facturas al sistema contable.
    * @param invoices Lista de facturas a generar.
    * @returns Resultado del lote con modo, referencia y errores por factura.
