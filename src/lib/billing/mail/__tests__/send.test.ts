@@ -1,23 +1,39 @@
 /**
  * send.test.ts — unit tests for the billing outbound mail helper.
  *
- * Mocks the underlying sendEmail function from src/lib/email/send.ts so no
- * real HTTP calls are made. Verifies:
+ * Mocks:
+ *   - sendEmail from src/lib/email/send.ts (no real HTTP calls)
+ *   - @/lib/supabase/admin (no real DB)
+ *
+ * Verifies:
  *   - simple send (to, subject, body)
  *   - threading headers (In-Reply-To, References) when threadRef is provided
  *   - attachments forwarded correctly
  *   - custom from address override
  *   - error propagation from sendEmail
- *   - replyToInboundEmail stub logs and returns a dummy messageId (Task 5 pending)
+ *   - replyToInboundEmail: lookup + threading (Task 5 implementation)
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ── Mock sendEmail from src/lib/email/send.ts ──────────────────────────────
-// We mock the module before importing the billing mail helper so that the
-// helper picks up the mocked version.
 vi.mock('@/lib/email/send', () => ({
   sendEmail: vi.fn(),
+}));
+
+// ── Mock Supabase admin ────────────────────────────────────────────────────
+const mockMaybeSingle = vi.fn();
+
+vi.mock('@/lib/supabase/admin', () => ({
+  createAdminClient: () => ({
+    from: vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          maybeSingle: mockMaybeSingle,
+        }),
+      }),
+    }),
+  }),
 }));
 
 import { sendEmail } from '@/lib/email/send';
@@ -168,19 +184,117 @@ describe('sendBillingMail', () => {
   });
 });
 
-describe('replyToInboundEmail (stub — Task 5 pending)', () => {
-  it('returns a dummy messageId and logs a warning', async () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+describe('replyToInboundEmail (Task 5 — real lookup)', () => {
+  it('sends a reply with threading headers when message_id is present', async () => {
+    mockMaybeSingle.mockResolvedValueOnce({
+      data: {
+        from_address: 'oficina@tortilleria.mx',
+        subject:      'Notitas del dia',
+        message_id:   'abc123@mail.example.com',
+      },
+      error: null,
+    });
+    mockSendEmail.mockResolvedValueOnce(true);
 
-    const result = await replyToInboundEmail('some-email-id', '<p>Respuesta.</p>');
+    const result = await replyToInboundEmail('email-uuid-1', '<p>Adjuntamos respuesta.</p>');
 
     expect(result).toHaveProperty('messageId');
-    expect(typeof result.messageId).toBe('string');
-    // Must log a warning about the missing table
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('billing_incoming_emails'),
-    );
+    expect(mockSendEmail).toHaveBeenCalledOnce();
+
+    const callArgs = mockSendEmail.mock.calls[0][0];
+    expect(callArgs.to).toBe('oficina@tortilleria.mx');
+    expect(callArgs.subject).toBe('Re: Notitas del dia');
+    expect(callArgs.headers?.['In-Reply-To']).toBe('<abc123@mail.example.com>');
+    expect(callArgs.headers?.['References']).toContain('<abc123@mail.example.com>');
+  });
+
+  it('wraps message_id in angle brackets if not already wrapped', async () => {
+    mockMaybeSingle.mockResolvedValueOnce({
+      data: {
+        from_address: 'x@y.mx',
+        subject:      'Test',
+        message_id:   'bare-id@example.com',
+      },
+      error: null,
+    });
+    mockSendEmail.mockResolvedValueOnce(true);
+
+    await replyToInboundEmail('email-uuid-2', '<p>OK</p>');
+
+    const callArgs = mockSendEmail.mock.calls[0][0];
+    expect(callArgs.headers?.['In-Reply-To']).toBe('<bare-id@example.com>');
+  });
+
+  it('does not add threading headers when message_id is null and logs warning', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    mockMaybeSingle.mockResolvedValueOnce({
+      data: {
+        from_address: 'x@y.mx',
+        subject:      'Sin message-id',
+        message_id:   null,
+      },
+      error: null,
+    });
+    mockSendEmail.mockResolvedValueOnce(true);
+
+    await replyToInboundEmail('email-uuid-3', '<p>Sin threading</p>');
+
+    const callArgs = mockSendEmail.mock.calls[0][0];
+    expect(callArgs.headers).toBeUndefined();
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('no message_id'));
 
     warnSpy.mockRestore();
+  });
+
+  it('prefixes subject with "Re: " if not already prefixed', async () => {
+    mockMaybeSingle.mockResolvedValueOnce({
+      data: { from_address: 'x@y.mx', subject: 'Factura pendiente', message_id: 'id@x.com' },
+      error: null,
+    });
+    mockSendEmail.mockResolvedValueOnce(true);
+
+    await replyToInboundEmail('e4', '<p>ok</p>');
+    expect(mockSendEmail.mock.calls[0][0].subject).toBe('Re: Factura pendiente');
+  });
+
+  it('does not double-prefix subject that already starts with "Re:"', async () => {
+    mockMaybeSingle.mockResolvedValueOnce({
+      data: { from_address: 'x@y.mx', subject: 'Re: Factura pendiente', message_id: 'id@x.com' },
+      error: null,
+    });
+    mockSendEmail.mockResolvedValueOnce(true);
+
+    await replyToInboundEmail('e5', '<p>ok</p>');
+    expect(mockSendEmail.mock.calls[0][0].subject).toBe('Re: Factura pendiente');
+  });
+
+  it('throws when emailId is not found in billing_incoming_emails', async () => {
+    mockMaybeSingle.mockResolvedValueOnce({ data: null, error: null });
+
+    await expect(replyToInboundEmail('missing-id', '<p>X</p>')).rejects.toThrow(
+      'no billing_incoming_emails row found',
+    );
+  });
+
+  it('throws when DB lookup returns an error', async () => {
+    mockMaybeSingle.mockResolvedValueOnce({ data: null, error: { message: 'DB error' } });
+
+    await expect(replyToInboundEmail('bad-id', '<p>X</p>')).rejects.toThrow('DB lookup failed');
+  });
+
+  it('forwards attachments to sendBillingMail', async () => {
+    mockMaybeSingle.mockResolvedValueOnce({
+      data: { from_address: 'x@y.mx', subject: 'Test', message_id: 'id@x.com' },
+      error: null,
+    });
+    mockSendEmail.mockResolvedValueOnce(true);
+
+    const attachments = [{ filename: 'factura.pdf', content: Buffer.from('pdf') }];
+    await replyToInboundEmail('e6', '<p>ok</p>', attachments);
+
+    const sentAtts = mockSendEmail.mock.calls[0][0].attachments ?? [];
+    expect(sentAtts).toHaveLength(1);
+    expect(sentAtts[0].filename).toBe('factura.pdf');
   });
 });

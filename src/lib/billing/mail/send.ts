@@ -13,17 +13,15 @@
  *     it assigns in the boolean-return helper, so we generate a deterministic
  *     token locally — sufficient for Tasks 8, 10, 11 that need a reference)
  *
- * replyToInboundEmail is a STUB pending Task 5, which creates the
- * billing_incoming_emails table. It logs a warning and returns a dummy
- * messageId so callers can be wired up without blocking on Task 5.
- *
- * Design decision (documented in task-14-report.md):
- *   replyToInboundEmail is intentionally incomplete here. Moving it to Task 5
- *   avoids a dependency on a table that does not yet exist, keeps zero-debt
- *   within Task 14's scope, and gives Task 5 a clear integration target.
+ * replyToInboundEmail: Task 5 implementation.
+ *   - Looks up the original email row in billing_incoming_emails by emailId.
+ *   - Constructs SMTP threading headers (In-Reply-To, References) from message_id.
+ *   - Sends via sendBillingMail so all billing emails share the same formatting
+ *     and transport path.
  */
 
 import { sendEmail } from '@/lib/email/send';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { randomUUID } from 'crypto';
 
 // ── Default from address ──────────────────────────────────────────────────────
@@ -123,32 +121,73 @@ function buildThreadHeaders(ref: BillingThreadRef): Record<string, string> {
   };
 }
 
-// ── replyToInboundEmail — STUB (Task 5 pending) ───────────────────────────────
+// ── replyToInboundEmail ───────────────────────────────────────────────────────
 
 /**
- * STUB: replies to an inbound email preserving SMTP threading.
+ * Replies to an inbound billing email preserving SMTP threading.
  *
- * Full implementation requires the billing_incoming_emails table (Task 5).
- * Until Task 5 lands this function:
- *   1. Logs a warning so operators know the stub is active.
- *   2. Returns a dummy messageId so callers can compile and run.
+ * Steps:
+ *   1. Fetch the original billing_incoming_emails row by emailId.
+ *   2. Build a BillingThreadRef from the stored message_id, if present.
+ *   3. Send the reply via sendBillingMail with subject prefixed "Re: ".
  *
- * Task 5 should replace this body with:
- *   - SELECT Message-ID from billing_incoming_emails WHERE id = emailId
- *   - Call sendBillingMail with threadRef set from that row
+ * Throws if:
+ *   - The emailId is not found in billing_incoming_emails.
+ *   - sendBillingMail fails (delivery error).
+ *
+ * Threading notes:
+ *   - In-Reply-To is set to the original Message-ID (angle-bracket wrapped).
+ *   - References includes In-Reply-To (minimal — no prior References chain
+ *     stored yet; sufficient for two-level threads in Gmail / Outlook).
+ *   - If message_id is null (email arrived without a Message-ID header), the
+ *     reply is sent without threading headers. This is logged at warning level.
  */
 export async function replyToInboundEmail(
   emailId: string,
   body: string,
   attachments?: BillingAttachment[],
 ): Promise<MailSendResult> {
-  console.warn(
-    '[billing/mail] replyToInboundEmail: billing_incoming_emails not yet migrated ' +
-      '(Task 5 pending). emailId=' +
-      emailId +
-      ' — returning dummy messageId. body.length=' +
-      body.length +
-      (attachments ? ' attachments=' + attachments.length : ''),
-  );
-  return { messageId: `<stub-reply-${randomUUID()}@centinelia.internal>` };
+  const supabase = createAdminClient();
+
+  const { data: row, error } = await supabase
+    .from('billing_incoming_emails')
+    .select('from_address, subject, message_id')
+    .eq('id', emailId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(
+      `[billing/mail] replyToInboundEmail: DB lookup failed for emailId=${emailId}: ${error.message}`,
+    );
+  }
+
+  if (!row) {
+    throw new Error(
+      `[billing/mail] replyToInboundEmail: no billing_incoming_emails row found for emailId=${emailId}`,
+    );
+  }
+
+  const subject = row.subject
+    ? (row.subject.startsWith('Re:') ? row.subject : `Re: ${row.subject}`)
+    : 'Re: (sin asunto)';
+
+  let threadRef: BillingThreadRef | undefined;
+  if (row.message_id) {
+    const mid = row.message_id.startsWith('<')
+      ? row.message_id
+      : `<${row.message_id}>`;
+    threadRef = { messageId: mid };
+  } else {
+    console.warn(
+      `[billing/mail] replyToInboundEmail: emailId=${emailId} has no message_id — sending without threading headers`,
+    );
+  }
+
+  return sendBillingMail({
+    to:          row.from_address,
+    subject,
+    body,
+    attachments,
+    threadRef,
+  });
 }
