@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Documentos xmlns="http://www.contpaqi.com/comercial/import/v1">
+  <Documento>
+    <Encabezado>
+      <Concepto>FACT</Concepto>
+      <Serie>A</Serie>
+      <Fecha>2026-08-17</Fecha>
+      <RfcEmisor>XAXX010101000</RfcEmisor>
+      <RfcReceptor>TDM040101ABC</RfcReceptor>
+      <UsoCFDI>G03</UsoCFDI>
+      <MetodoPago>PUE</MetodoPago>
+      <FormaPago>03</FormaPago>
+      <Moneda>MXN</Moneda>
+      <LugarExpedicion>64000</LugarExpedicion>
+      <Subtotal>90.00</Subtotal>
+      <Total>90.00</Total>
+    </Encabezado>
+    <Movimientos>
+      <Movimiento>
+        <CodigoProducto>TOR-MAI-KG</CodigoProducto>
+        <Cantidad>5</Cantidad>
+        <PrecioUnitario>18.00</PrecioUnitario>
+        <Importe>90.00</Importe>
+        <IvaTasa>0.0</IvaTasa>
+      </Movimiento>
+    </Movimientos>
+  </Documento>
+</Documentos>

@@ -61,6 +61,11 @@ export interface BillingLineItem {
   qty: number;
   /** Precio unitario al momento de la factura (puede diferir del precio base). */
   unitPrice: number;
+  /**
+   * Tasa de IVA como decimal (0.16 = 16%, 0 = exento/tasa cero).
+   * Opcional para backwards compat: si no se indica, se asume 0 (sin IVA).
+   */
+  ivaTasa?: number;
 }
 
 /** Datos de una factura a generar. */

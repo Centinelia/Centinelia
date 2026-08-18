@@ -44,7 +44,34 @@ vi.mock('@/lib/email/send', () => ({
   sendEmail: vi.fn().mockResolvedValue(true),
 }));
 
-// Import AFTER the mock is registered so the module receives the mock.
+// Hoisted mocks: declared before vi.mock() factory hoisting so references are valid.
+const { mockBuildAdapter, mockRunOnEmail } = vi.hoisted(() => ({
+  mockBuildAdapter: vi.fn(),
+  mockRunOnEmail:   vi.fn(),
+}));
+
+// Mock buildAdapter so process_notes tests don't need a real adapter.
+vi.mock('@/lib/billing/adapters', () => ({
+  buildAdapter: (...args: unknown[]) => mockBuildAdapter(...args),
+}));
+
+// Mock BillingEmployee so process_notes tests don't run the real LLM loop.
+vi.mock('@/lib/billing/employee/loop', () => ({
+  BillingEmployee: vi.fn().mockImplementation(() => ({
+    runOnEmail: mockRunOnEmail,
+  })),
+}));
+
+// retryWithBackoff mock: a vi.fn() wrapping a configurable implementation.
+// Default behaviour is a zero-delay pass-through (calls fn() once, no sleep).
+// Individual tests can override with mockImplementationOnce to test retry logic.
+const mockRetryWithBackoff = vi.fn(async <T>(fn: () => Promise<T>, _opts?: unknown): Promise<T> => fn());
+
+vi.mock('@/lib/billing/util/retry', () => ({
+  retryWithBackoff: (...args: Parameters<typeof mockRetryWithBackoff>) => mockRetryWithBackoff(...args),
+}));
+
+// Import AFTER the mocks are registered so the module receives the mocks.
 import { enqueueBillingEmail, dequeueAndRun } from '../queue';
 
 // ---------------------------------------------------------------------------
@@ -82,6 +109,12 @@ function setupFromChain({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Default: adapter stub that satisfies BillingAdapter shape (not called in most tests).
+  mockBuildAdapter.mockReturnValue({});
+  // Default: successful runOnEmail result.
+  mockRunOnEmail.mockResolvedValue({ processed: 1, escalated: 0, consulted: 0, errors: [] });
+  // Default: pass-through (calls fn() once, no sleep).
+  mockRetryWithBackoff.mockImplementation(async <T>(fn: () => Promise<T>, _opts?: unknown): Promise<T> => fn());
 });
 
 // ---------------------------------------------------------------------------
@@ -255,11 +288,180 @@ describe('dequeueAndRun', () => {
 
     const updateEqMock = vi.fn().mockResolvedValue({ error: null });
     const updateMock   = vi.fn().mockReturnValue({ eq: updateEqMock });
-    mockClient.from = vi.fn().mockReturnValue({ update: updateMock });
+
+    // process_notes now reads organization_integrations — set up select chain + update.
+    const mockConfig = { type: 'mock' };
+    const integSingle = vi.fn().mockResolvedValue({
+      data: { config: mockConfig },
+      error: null,
+    });
+    const integEq = vi.fn().mockReturnValue({ single: integSingle });
+    const integSelect = vi.fn().mockReturnValue({ eq: integEq });
+
+    mockClient.from = vi.fn().mockImplementation((table: string) => {
+      if (table === 'organization_integrations') {
+        return { select: integSelect };
+      }
+      return { update: updateMock };
+    });
 
     const [first, second] = await Promise.all([dequeueAndRun(), dequeueAndRun()]);
 
     expect(first).toEqual({ processed: 1 });
     expect(second).toEqual({ processed: 0 });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// handleProcessNotes — adapter registry integration
+// ---------------------------------------------------------------------------
+
+describe('handleProcessNotes — adapter registry', () => {
+  function makeProcessNotesJob(integrationId = 'integ-registry-1') {
+    return {
+      id:             'job-pn-1',
+      portal_email:   'factory@example.com',
+      integration_id: integrationId,
+      kind:           'process_notes' as const,
+      payload:        { email_id: 'email-pn-1' },
+      status:         'running',
+      attempts:       1,
+      last_error:     null,
+      created_at:     new Date().toISOString(),
+      started_at:     new Date().toISOString(),
+      finished_at:    null,
+    };
+  }
+
+  function setupProcessNotesFromChain(
+    integConfig: Record<string, unknown>,
+    integError: { message: string } | null = null,
+  ) {
+    const updateEqMock = vi.fn().mockResolvedValue({ error: null });
+    const updateMock   = vi.fn().mockReturnValue({ eq: updateEqMock });
+
+    const integSingle = vi.fn().mockResolvedValue({
+      data: integError ? null : { config: integConfig },
+      error: integError,
+    });
+    const integEq     = vi.fn().mockReturnValue({ single: integSingle });
+    const integSelect = vi.fn().mockReturnValue({ eq: integEq });
+
+    mockClient.from = vi.fn().mockImplementation((table: string) => {
+      if (table === 'organization_integrations') {
+        return { select: integSelect };
+      }
+      return { update: updateMock };
+    });
+
+    return { updateMock, integSelect, integEq, integSingle };
+  }
+
+  it('reads integration config from organization_integrations and calls buildAdapter', async () => {
+    const mockConfig = { type: 'mock' };
+    const job = makeProcessNotesJob('integ-registry-1');
+
+    mockRpc.mockResolvedValue({ data: [job], error: null });
+    const { integEq } = setupProcessNotesFromChain(mockConfig);
+
+    await dequeueAndRun();
+
+    // Verify DB lookup used the correct integration_id.
+    expect(integEq).toHaveBeenCalledWith('id', 'integ-registry-1');
+    // Verify buildAdapter was called with the config from the DB row.
+    expect(mockBuildAdapter).toHaveBeenCalledWith(mockConfig);
+  });
+
+  it('retryWithBackoff: fn falla en primer intento y tiene exito en segundo — callCount=2', async () => {
+    // Verifies that queue.ts passes a callable `fn` to retryWithBackoff, and that
+    // when retryWithBackoff invokes fn() a second time (after the first throws), the
+    // second call succeeds and the result propagates correctly.
+    //
+    // Strategy: replace mockRetryWithBackoff with a minimal real-retry implementation
+    // (no sleep) that calls fn() up to twice. The underlying Supabase .single() mock
+    // throws on the first call and resolves on the second. We assert callCount===2
+    // and that the integration config from the second call reaches buildAdapter.
+    const job = makeProcessNotesJob('integ-retry');
+    mockRpc.mockResolvedValue({ data: [job], error: null });
+
+    const mockConfig = { type: 'mock' };
+    let fnCallCount = 0;
+    const updateEqMock = vi.fn().mockResolvedValue({ error: null });
+    const updateMock   = vi.fn().mockReturnValue({ eq: updateEqMock });
+
+    mockClient.from = vi.fn().mockImplementation((table: string) => {
+      if (table === 'organization_integrations') {
+        const singleMock = vi.fn().mockImplementation(() => {
+          fnCallCount++;
+          if (fnCallCount === 1) {
+            // First call: throw so retryWithBackoff retries.
+            return Promise.reject(new Error('ECONNRESET'));
+          }
+          // Second call: success — resolves with integration config.
+          return Promise.resolve({ data: { config: mockConfig }, error: null });
+        });
+        const eqMock = vi.fn().mockReturnValue({ single: singleMock });
+        return { select: vi.fn().mockReturnValue({ eq: eqMock }) };
+      }
+      return { update: updateMock };
+    });
+
+    // For this test: replace pass-through with a real 2-attempt retry loop (no sleep).
+    // This isolates the retry behaviour without needing to run BillingEmployee.
+    mockRetryWithBackoff.mockImplementationOnce(async <T>(fn: () => Promise<T>) => {
+      let lastErr: unknown;
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          return await fn();
+        } catch (err) {
+          lastErr = err;
+        }
+      }
+      throw lastErr;
+    });
+
+    // dequeueAndRun will fail further down (BillingEmployee constructor) because we're
+    // replacing the retry but not the full LLM loop. We capture markFailed's update instead.
+    const result = await dequeueAndRun();
+
+    // The retry executed fn() exactly twice: fail then succeed.
+    expect(fnCallCount).toBe(2);
+    // retryWithBackoff was called once (for the integration lookup).
+    expect(mockRetryWithBackoff).toHaveBeenCalledTimes(1);
+    // buildAdapter was called with the config returned by the second (successful) fn() call.
+    expect(mockBuildAdapter).toHaveBeenCalledWith(mockConfig);
+    // dequeueAndRun always returns { processed: 1 } when a job was claimed.
+    expect(result).toEqual({ processed: 1 });
+  });
+
+  it('throws and marks job failed when integration row is not found', async () => {
+    const job = makeProcessNotesJob('integ-missing');
+
+    mockRpc.mockResolvedValue({ data: [job], error: null });
+    setupProcessNotesFromChain({}, { message: 'row not found' });
+
+    const updateEqMock = vi.fn().mockResolvedValue({ error: null });
+    const updateMock   = vi.fn().mockReturnValue({ eq: updateEqMock });
+    // Override from so the update path also works after the handler throws.
+    mockClient.from = vi.fn().mockImplementation((table: string) => {
+      if (table === 'organization_integrations') {
+        const s = vi.fn().mockResolvedValue({ data: null, error: { message: 'row not found' } });
+        const e = vi.fn().mockReturnValue({ single: s });
+        return { select: vi.fn().mockReturnValue({ eq: e }) };
+      }
+      return { update: updateMock };
+    });
+
+    const result = await dequeueAndRun();
+
+    // dequeueAndRun catches the error and calls markFailed — returns processed: 1.
+    expect(result).toEqual({ processed: 1 });
+    // The job should be marked pending (attempt 1 < MAX_ATTEMPTS=3) with the integration error.
+    expect(updateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status:     'pending',
+        last_error: expect.stringContaining('integration not found'),
+      }),
+    );
   });
 });

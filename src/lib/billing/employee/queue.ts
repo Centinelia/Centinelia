@@ -13,6 +13,8 @@
  */
 
 import { createAdminClient } from '@/lib/supabase/admin';
+import { retryWithBackoff } from '@/lib/billing/util/retry';
+import type { OrganizationIntegrationConfig } from '@/lib/billing/adapters';
 
 export type BillingJobKind = 'process_notes' | 'reply_missing_attachments';
 
@@ -131,11 +133,9 @@ async function runHandler(job: BillingJobRow): Promise<void> {
 /**
  * Handle a process_notes job: runs the full BillingEmployee reasoning loop.
  *
- * The adapter and config values are loaded from the job's payload and
- * the organization's integration config (or from env for the pilot phase).
- *
- * Fase 2: loadAdapterForIntegration() leer la config de organization_integrations
- * e instanciar el adaptador CONTPAQi real. Por ahora usa MockBillingAdapter.
+ * Reads `config` from organization_integrations by integration_id, then calls
+ * buildAdapter(config) to get the correct BillingAdapter instance.
+ * Throws if no matching integration row is found.
  */
 async function handleProcessNotes(job: BillingJobRow): Promise<void> {
   const emailId = job.payload['email_id'] as string | undefined;
@@ -144,12 +144,48 @@ async function handleProcessNotes(job: BillingJobRow): Promise<void> {
   }
 
   // Lazy imports to keep the module lightweight at load time.
-  const { BillingEmployee } = await import('./loop');
-  const { MockBillingAdapter } = await import('../adapters/mock');
+  const { BillingEmployee } = await import('@/lib/billing/employee/loop');
+  const { buildAdapter } = await import('@/lib/billing/adapters');
 
-  // Pilot-phase mock adapter with empty catalog.
-  // Fase 2: replace with CONTPAQiAdapter loaded from organization_integrations config.
-  const adapter = new MockBillingAdapter({ clients: [], products: [] });
+  // Load integration config from organization_integrations.
+  // Wrapped in retryWithBackoff to tolerate transient Supabase network errors.
+  const supabase = createAdminClient();
+  const { data: integration, error: intError } = await retryWithBackoff<{
+    data: { config: OrganizationIntegrationConfig } | null;
+    error: { message: string } | null;
+  }>(
+    () =>
+      supabase
+        .from('organization_integrations')
+        .select('config')
+        .eq('id', job.integration_id)
+        .single() as unknown as Promise<{
+          data: { config: OrganizationIntegrationConfig } | null;
+          error: { message: string } | null;
+        }>,
+    {
+      maxAttempts:   3,
+      initialDelayMs: 100,
+      maxDelayMs:    2000,
+      isRetryable: (error: unknown) => {
+        const err = error as Record<string, unknown>;
+        const code = (err?.['code'] ?? err?.['status'] ?? 0) as string | number;
+        // PostgREST error codes (e.g. PGRST116 = row not found) — permanent, no retry.
+        if (typeof code === 'string' && code.startsWith('PGRST')) return false;
+        // 4xx HTTP errors (except 429 Too Many Requests) — permanent, no retry.
+        if (typeof code === 'number' && code >= 400 && code < 500 && code !== 429) return false;
+        return true;
+      },
+    },
+  );
+
+  if (intError || !integration) {
+    throw new Error(
+      `[billing/queue] process_notes: integration not found for id=${job.integration_id}`,
+    );
+  }
+
+  const adapter = buildAdapter(integration.config);
 
   const employee = new BillingEmployee(adapter, {
     portalEmail: job.portal_email,
