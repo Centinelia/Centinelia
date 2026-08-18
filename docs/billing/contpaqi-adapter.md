@@ -276,7 +276,7 @@ Estructura del XML generado:
       <MetodoPago>PUE</MetodoPago>
       <FormaPago>03</FormaPago>
       <Moneda>MXN</Moneda>
-      <LugarExpedicion></LugarExpedicion>
+      <LugarExpedicion>64000</LugarExpedicion>
       <Subtotal>4500.00</Subtotal>
       <Total>4500.00</Total>
     </Encabezado>

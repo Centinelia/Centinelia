@@ -13,7 +13,7 @@
  * submitInvoiceBatch escribe el XML a Dropbox y retorna mode='file'.
  */
 
-import { createHash } from 'crypto';
+import { createHash } from 'node:crypto';
 import type {
   BillingAdapter,
   BillingClient,
