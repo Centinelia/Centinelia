@@ -208,6 +208,10 @@
     {
       "path": "/api/billing/worker",
       "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/billing-periodic-cuts",
+      "schedule": "0 18 * * *"
     }
   ]
 }
