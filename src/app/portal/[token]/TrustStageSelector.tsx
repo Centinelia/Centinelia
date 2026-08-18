@@ -5,6 +5,7 @@ import { Check, Eye, Bell, Zap } from 'lucide-react';
 
 interface Props {
   token:      string;
+  agentId?:   string;
   initStage:  number;
 }
 
@@ -39,7 +40,7 @@ const STAGES = [
   },
 ];
 
-export default function TrustStageSelector({ token, initStage }: Props) {
+export default function TrustStageSelector({ token, agentId, initStage }: Props) {
   const [stage,  setStage]  = useState(initStage);
   const [saving, setSaving] = useState(false);
   const [saved,  setSaved]  = useState(false);
@@ -53,7 +54,7 @@ export default function TrustStageSelector({ token, initStage }: Props) {
       await fetch(`/api/portal/${token}/settings`, {
         method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ trust_stage: v }),
+        body:    JSON.stringify({ ...(agentId ? { agentId } : {}), trust_stage: v }),
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);

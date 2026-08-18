@@ -6,9 +6,11 @@ import VoiceSelector from '@/components/VoiceSelector';
 
 export default function PortalVoiceSelector({
   token,
+  agentId,
   currentVoiceId,
 }: {
   token: string;
+  agentId?: string;
   currentVoiceId: string | null;
 }) {
   const [selected, setSelected] = useState<string | null>(currentVoiceId);
@@ -23,7 +25,7 @@ export default function PortalVoiceSelector({
       const res = await fetch(`/api/portal/${token}/voice`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ voice_id: selected }),
+        body: JSON.stringify({ ...(agentId ? { agentId } : {}), voice_id: selected }),
       });
       if (res.ok) { setSaved(true); setTimeout(() => setSaved(false), 3000); }
     } finally {

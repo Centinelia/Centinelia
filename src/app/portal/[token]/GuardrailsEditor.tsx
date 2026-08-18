@@ -5,6 +5,7 @@ import { Check, Loader2, ShieldCheck } from 'lucide-react';
 
 interface Props {
   token:                       string;
+  agentId?:                    string;
   initialValue:                string;
   initialGuardrailsLearnings?: string;
 }
@@ -29,7 +30,7 @@ SIEMPRE DEBE TRANSFERIR cuando:
 - La solicitud requiere autorización del responsable
 - No tiene información suficiente para responder con certeza`;
 
-export default function GuardrailsEditor({ token, initialValue, initialGuardrailsLearnings = '' }: Props) {
+export default function GuardrailsEditor({ token, agentId, initialValue, initialGuardrailsLearnings = '' }: Props) {
   const [value,              setValue]              = useState(initialValue);
   const [saving,             setSaving]             = useState(false);
   const [saved,              setSaved]              = useState(false);
@@ -44,7 +45,7 @@ export default function GuardrailsEditor({ token, initialValue, initialGuardrail
       await fetch(`/api/portal/${token}/settings`, {
         method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ agent_guardrails: value }),
+        body:    JSON.stringify({ ...(agentId ? { agentId } : {}), agent_guardrails: value }),
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -59,7 +60,7 @@ export default function GuardrailsEditor({ token, initialValue, initialGuardrail
       await fetch(`/api/portal/${token}/settings`, {
         method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ guardrails_learnings: learnings }),
+        body:    JSON.stringify({ ...(agentId ? { agentId } : {}), guardrails_learnings: learnings }),
       });
       setSavedLearnings(true);
       setTimeout(() => setSavedLearnings(false), 2500);

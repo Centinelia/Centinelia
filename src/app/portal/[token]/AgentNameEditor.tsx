@@ -5,9 +5,11 @@ import { Pencil, Check } from 'lucide-react';
 
 export default function AgentNameEditor({
   token,
+  agentId,
   initialName,
 }: {
   token: string;
+  agentId?: string;
   initialName: string;
 }) {
   const [name,    setName]    = useState(initialName || 'Centinelia');
@@ -27,7 +29,7 @@ export default function AgentNameEditor({
     const res = await fetch(`/api/portal/${token}/settings`, {
       method:  'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ agent_name: trimmed }),
+      body:    JSON.stringify({ ...(agentId ? { agentId } : {}), agent_name: trimmed }),
     });
     if (res.ok) {
       setSaved(true);

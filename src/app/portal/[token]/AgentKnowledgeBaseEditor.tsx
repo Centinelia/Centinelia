@@ -78,6 +78,7 @@ const ROLE_COLORS = COLOR_POOL.filter(c => !LOCKED_COLORS.has(c));
 
 export default function AgentKnowledgeBaseEditor({
   token,
+  agentId,
   initialRole,
   initialRoleColor,
   initialRoleKb,
@@ -88,6 +89,7 @@ export default function AgentKnowledgeBaseEditor({
   roleLocked     = false,
 }: {
   token:             string;
+  agentId?:          string;
   initialRole:       string;
   initialRoleColor:  string;
   initialRoleKb:     string;
@@ -144,7 +146,7 @@ export default function AgentKnowledgeBaseEditor({
       const res = await fetch(`/api/portal/${token}/settings`, {
         method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ [field]: val }),
+        body:    JSON.stringify({ ...(agentId ? { agentId } : {}), [field]: val }),
       });
       if (res.ok) { setSaved(true); setDirty(false); setTimeout(() => setSaved(false), 2500); }
     } finally { setSaving(false); }
@@ -157,7 +159,7 @@ export default function AgentKnowledgeBaseEditor({
       const res = await fetch(`/api/portal/${token}/settings`, {
         method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ role, role_color: roleColor }),
+        body:    JSON.stringify({ ...(agentId ? { agentId } : {}), role, role_color: roleColor }),
       });
       if (res.ok) { setSavedRoleName(true); setDirtyRoleName(false); setTimeout(() => setSavedRoleName(false), 2500); }
     } finally { setSavingRoleName(false); }
@@ -199,7 +201,7 @@ export default function AgentKnowledgeBaseEditor({
     await fetch(`/api/portal/${token}/settings`, {
       method:  'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ role_color: c }),
+      body:    JSON.stringify({ ...(agentId ? { agentId } : {}), role_color: c }),
     });
     router.refresh();
   };

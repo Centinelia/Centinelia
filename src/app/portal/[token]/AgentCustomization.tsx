@@ -5,11 +5,12 @@ import { Check } from 'lucide-react';
 
 interface Props {
   token:             string;
+  agentId?:          string;
   initGreeting:      string;
   initTransferRules: string;
 }
 
-export default function AgentCustomization({ token, initGreeting, initTransferRules }: Props) {
+export default function AgentCustomization({ token, agentId, initGreeting, initTransferRules }: Props) {
   const [greeting,      setGreeting]      = useState(initGreeting);
   const [transferRules, setTransferRules] = useState(initTransferRules);
   const [saved,         setSaved]         = useState<'greeting' | 'rules' | null>(null);
@@ -21,7 +22,7 @@ export default function AgentCustomization({ token, initGreeting, initTransferRu
       await fetch(`/api/portal/${token}/settings`, {
         method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ [field]: value }),
+        body:    JSON.stringify({ ...(agentId ? { agentId } : {}), [field]: value }),
       });
       setSaved(key);
       setTimeout(() => setSaved(null), 2000);

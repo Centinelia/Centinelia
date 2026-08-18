@@ -36,7 +36,7 @@ const inputStyle: React.CSSProperties = {
   outline: 'none',
 };
 
-export default function GuardiaEditor({ token, initial }: { token: string; initial: GuardiaSchedule }) {
+export default function GuardiaEditor({ token, agentId, initial }: { token: string; agentId?: string; initial: GuardiaSchedule }) {
   const [schedule, setSchedule] = useState<GuardiaSchedule>(initial);
   const [open, setOpen]         = useState(false);
   const [saving, setSaving]     = useState(false);
@@ -111,7 +111,7 @@ export default function GuardiaEditor({ token, initial }: { token: string; initi
     try {
       await fetch(`/api/portal/${token}/settings`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ guardia_schedule: schedule }),
+        body: JSON.stringify({ ...(agentId ? { agentId } : {}), guardia_schedule: schedule }),
       });
       setDirty(false);
     } finally {

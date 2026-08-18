@@ -14,6 +14,7 @@ const MEERKATS = [
 
 interface Props {
   token:     string;
+  agentId?:  string;
   avatarSrc: string | null;
   initial:   string;
   color:     string;
@@ -21,7 +22,7 @@ interface Props {
   locked?:   boolean;
 }
 
-export default function AgentAvatarPicker({ token, avatarSrc, initial, color, size = 44, locked = false }: Props) {
+export default function AgentAvatarPicker({ token, agentId, avatarSrc, initial, color, size = 44, locked = false }: Props) {
   const router  = useRouter();
   const [open,    setOpen]    = useState(false);
   const [current, setCurrent] = useState(avatarSrc);
@@ -34,7 +35,7 @@ export default function AgentAvatarPicker({ token, avatarSrc, initial, color, si
       await fetch(`/api/portal/${token}/settings`, {
         method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ avatar: next }),
+        body:    JSON.stringify({ ...(agentId ? { agentId } : {}), avatar: next }),
       });
       setCurrent(next || null);
       router.refresh();

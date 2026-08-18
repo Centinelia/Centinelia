@@ -6,6 +6,7 @@ import type { CommsRoutingConfig, CommsRoute } from '@/lib/comms/routing';
 
 interface Props {
   token:   string;
+  agentId?: string;
   initial: CommsRoutingConfig;
 }
 
@@ -13,7 +14,7 @@ function genId() {
   return Math.random().toString(36).slice(2, 8);
 }
 
-export default function CommsRoutingEditor({ token, initial }: Props) {
+export default function CommsRoutingEditor({ token, agentId, initial }: Props) {
   const [open,   setOpen]   = useState(false);
   const [cfg,    setCfg]    = useState<CommsRoutingConfig>(initial);
   const [saving, setSaving] = useState(false);
@@ -63,7 +64,7 @@ export default function CommsRoutingEditor({ token, initial }: Props) {
       await fetch(`/api/portal/${token}/settings`, {
         method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ comms_routing: cfg }),
+        body:    JSON.stringify({ ...(agentId ? { agentId } : {}), comms_routing: cfg }),
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);

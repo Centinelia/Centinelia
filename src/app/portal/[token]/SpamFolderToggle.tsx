@@ -12,10 +12,12 @@ interface CostStats {
 
 export default function SpamFolderToggle({
   token,
+  agentId,
   initial,
   stats,
 }: {
   token: string;
+  agentId?: string;
   initial: boolean;
   stats: CostStats | null;
 }) {
@@ -30,7 +32,7 @@ export default function SpamFolderToggle({
       const res = await fetch(`/api/portal/${token}/settings`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ check_spam_folder: next }),
+        body: JSON.stringify({ ...(agentId ? { agentId } : {}), check_spam_folder: next }),
       });
       if (!res.ok) throw new Error();
       toast.success(

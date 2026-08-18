@@ -678,6 +678,9 @@ function Step6PrepareAgent({
   }
 
   async function saveField(key: string, value: string) {
+    // TODO: pass agentId once available — setup flow saves org-level fields only
+    // (business_description, knowledge_base, role_knowledge_base) so no agentId
+    // is needed here. If per-agent fields are added to setup, thread agentId from props.
     await fetch(`/api/portal/${token}/settings`, {
       method:  'PATCH',
       headers: { 'Content-Type': 'application/json' },

@@ -5,9 +5,11 @@ import { Check, Phone, AlertTriangle } from 'lucide-react';
 
 export default function JornadaSection({
   token,
+  agentId,
   jornadaType,
 }: {
   token:       string;
+  agentId?:    string;
   jornadaType: string;
 }) {
   const [activating, setActivating] = useState(false);
@@ -22,7 +24,11 @@ export default function JornadaSection({
     setActivating(true);
     setError('');
     try {
-      const res  = await fetch(`/api/portal/${token}/activate-voice`, { method: 'POST' });
+      const res  = await fetch(`/api/portal/${token}/activate-voice`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ ...(agentId ? { agentId } : {}) }),
+      });
       const data = await res.json() as { error?: string; success?: boolean; checkoutUrl?: string };
       if (data.checkoutUrl) {
         window.location.href = data.checkoutUrl;

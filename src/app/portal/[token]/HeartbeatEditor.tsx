@@ -14,8 +14,9 @@ interface HeartbeatConfig {
 }
 
 interface Props {
-  token:         string;
-  initConfig:    HeartbeatConfig | null;
+  token:          string;
+  agentId?:       string;
+  initConfig:     HeartbeatConfig | null;
   isCoordinator?: boolean;
 }
 
@@ -35,7 +36,7 @@ const DAYS = [
 const DEFAULT_TASK = 'Revisa las llamadas del día y envíame un resumen con los puntos más importantes: leads capturados, solicitudes pendientes y cualquier situación que requiera mi atención.';
 const DEFAULT_TASK_COORDINATOR = 'Revisa la actividad operativa del día: tareas completadas, pendientes sin resolver y cualquier situación que requiera decisión. Envíame un resumen ejecutivo con lo más relevante.';
 
-export default function HeartbeatEditor({ token, initConfig, isCoordinator = false }: Props) {
+export default function HeartbeatEditor({ token, agentId, initConfig, isCoordinator = false }: Props) {
   const base: HeartbeatConfig = {
     enabled:     false,
     frequency:   isCoordinator ? 'weekly' : 'daily',
@@ -58,7 +59,7 @@ export default function HeartbeatEditor({ token, initConfig, isCoordinator = fal
         await fetch(`/api/portal/${token}/settings`, {
           method:  'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ heartbeat_config: next }),
+          body:    JSON.stringify({ ...(agentId ? { agentId } : {}), heartbeat_config: next }),
         });
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
