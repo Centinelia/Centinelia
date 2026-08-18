@@ -29,6 +29,7 @@ import { DropboxClient } from '@/lib/billing/storage/dropbox';
 import { SnapshotStorage } from '@/lib/billing/storage/snapshot';
 import { ExcelWorkbook } from '@/lib/billing/excel/workbook';
 import { PendingClientSchema, HistoryMonthlySchema } from '@/lib/billing/excel/schemas';
+import { sanitizeRfc } from '@/lib/billing/util/rfc';
 
 export const dynamic    = 'force-dynamic';
 export const maxDuration = 300;
@@ -70,10 +71,6 @@ export interface PeriodicCutResult {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function sanitizeRfc(rfc: string): string {
-  return rfc.replace(/[^A-Za-z0-9]/g, '_');
-}
 
 function buildPendingPath(basePath: string, rfc: string): string {
   const cleanBase = basePath.replace(/\/$/, '');

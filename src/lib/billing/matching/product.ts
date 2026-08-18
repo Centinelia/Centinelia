@@ -43,6 +43,10 @@ export async function matchProduct(
   adapter: BillingAdapter,
   ctx: OrgCtx
 ): Promise<MatchResult<BillingProduct>> {
+  if (!rawText || !rawText.trim()) {
+    return { decision: 'unknown', top: null, candidates: [], reason: 'empty_query' };
+  }
+
   const supabase = createAdminClient();
   const normalizedQuery = rawText.trim().toLowerCase();
 
@@ -111,6 +115,8 @@ export async function learnProductAlias(
   ctx: OrgCtx,
   learnedFrom: string
 ): Promise<void> {
+  if (!alias || !alias.trim()) return;
+
   const supabase = createAdminClient();
   const normalized = alias.trim().toLowerCase();
 

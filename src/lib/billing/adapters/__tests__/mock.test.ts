@@ -68,4 +68,8 @@ describe('MockBillingAdapter', () => {
   it('supportsAutoStamping is false for mock (mimics file-based adapter)', () => {
     expect(adapter.supportsAutoStamping()).toBe(false);
   });
+
+  it('name property is set correctly', () => {
+    expect(adapter.name).toBe('MockBillingAdapter');
+  });
 });

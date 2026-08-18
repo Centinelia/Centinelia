@@ -179,6 +179,49 @@ describe('matchClient', () => {
     const res = await matchClient('zzz', adapter, ctx);
     expect(res.decision).toBe('unknown');
   });
+
+  it('returns empty_query decision for empty string without hitting DB', async () => {
+    const { fromFn } = makeSupabaseMock({ aliasRow: null, ruleRow: null });
+    vi.mocked(createAdminClient).mockReturnValue({ from: fromFn } as never);
+
+    const res = await matchClient('', adapter, ctx);
+    expect(res.decision).toBe('unknown');
+    expect(res.reason).toBe('empty_query');
+    expect(res.top).toBeNull();
+    // No DB calls should have been made
+    expect(fromFn).not.toHaveBeenCalled();
+  });
+
+  it('returns empty_query for whitespace-only input', async () => {
+    const { fromFn } = makeSupabaseMock({ aliasRow: null, ruleRow: null });
+    vi.mocked(createAdminClient).mockReturnValue({ from: fromFn } as never);
+
+    const res = await matchClient('   ', adapter, ctx);
+    expect(res.decision).toBe('unknown');
+    expect(res.reason).toBe('empty_query');
+    expect(fromFn).not.toHaveBeenCalled();
+  });
+
+  it('returns consult with reason low_score when top score is between 0.50 and 0.75', async () => {
+    // Adapter with a client whose name shares only one word with the query,
+    // producing a word-overlap score of ~0.50 (1 word matching out of 2 total unique words).
+    // Query: "maria sa" -> 2 words
+    // "TORTAS DONA MARIA SA" -> 4 words; intersection = { maria, sa } = 2
+    // score = 2 / max(2, 4) = 2/4 = 0.5 -> should be in the consult/low_score range.
+    // We use a query that yields score 0.5 by word overlap against "PANADERIA LOPEZ"
+    // with only 1 shared word out of 2:
+    // query: "panaderia xyz" -> words: {panaderia, xyz}
+    // "PANADERIA LOPEZ": words {panaderia, lopez}; intersection = {panaderia} = 1
+    // score = 1 / max(2, 2) = 0.5
+    const { fromFn } = makeSupabaseMock({ aliasRow: null, ruleRow: null });
+    vi.mocked(createAdminClient).mockReturnValue({ from: fromFn } as never);
+
+    const res = await matchClient('panaderia xyz', adapter, ctx);
+    // Score 0.5 is exactly at THRESHOLD_MIN (0.5) -> should be 'consult' with reason 'low_score'
+    expect(res.decision).toBe('consult');
+    expect(res.reason).toBe('low_score');
+    expect(res.top).not.toBeNull();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -230,5 +273,25 @@ describe('learnClientAlias', () => {
 
     expect(updateFn).not.toHaveBeenCalled();
     expect(insertFn).not.toHaveBeenCalled();
+  });
+
+  it('skips insert when alias is empty string', async () => {
+    const { fromFn, insertFn } = makeSupabaseMock({ aliasRow: null, ruleRow: null });
+    vi.mocked(createAdminClient).mockReturnValue({ from: fromFn } as never);
+
+    await learnClientAlias('TDM040101ABC', '', ctx, 'voice_message');
+
+    expect(insertFn).not.toHaveBeenCalled();
+    expect(fromFn).not.toHaveBeenCalled();
+  });
+
+  it('skips insert when alias is whitespace-only', async () => {
+    const { fromFn, insertFn } = makeSupabaseMock({ aliasRow: null, ruleRow: null });
+    vi.mocked(createAdminClient).mockReturnValue({ from: fromFn } as never);
+
+    await learnClientAlias('TDM040101ABC', '   ', ctx, 'voice_message');
+
+    expect(insertFn).not.toHaveBeenCalled();
+    expect(fromFn).not.toHaveBeenCalled();
   });
 });

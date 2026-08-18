@@ -11,7 +11,9 @@
  */
 
 export const dynamic    = 'force-dynamic';
-export const maxDuration = 60;
+// LLM loop with up to 20 iterations plus Vision AI per notita can exceed 60s.
+// Vercel Pro supports up to 300s per function.
+export const maxDuration = 300;
 
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';

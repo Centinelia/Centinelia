@@ -57,6 +57,10 @@ export async function matchClient(
   adapter: BillingAdapter,
   ctx: OrgCtx
 ): Promise<MatchResult<BillingClient>> {
+  if (!rawText || !rawText.trim()) {
+    return { decision: 'unknown', top: null, candidates: [], reason: 'empty_query' };
+  }
+
   const supabase = createAdminClient();
   const normalizedQuery = rawText.trim().toLowerCase();
 
@@ -125,6 +129,8 @@ export async function learnClientAlias(
   ctx: OrgCtx,
   learnedFrom: string
 ): Promise<void> {
+  if (!alias || !alias.trim()) return;
+
   const supabase = createAdminClient();
   const normalized = alias.trim().toLowerCase();
 

@@ -150,6 +150,9 @@ import type {
 } from '../adapter';
 
 export class MiEmpresaAdapter implements BillingAdapter {
+  // REQUERIDO: identificador legible del adaptador. Aparece en logs y system prompt.
+  readonly name = 'MiEmpresaAdapter';
+
   async searchClient(query: string, limit = 3): Promise<BillingClientMatch[]> {
     // Consultar API o BD del ERP externo
     // Ordenar por score descendente, filtrar a score >= 0.3
@@ -310,7 +313,7 @@ src/lib/billing/employee/loop.ts
 |---|---|---|
 | `/api/billing/worker` | `* * * * *` (cada 1 min) | Llama `dequeueAndRun()`: toma un job pendiente y ejecuta el loop LLM. |
 | `/api/cron/billing-periodic-cuts` | `0 18 * * *` (18:00 diario) | Genera cortes para clientes con frecuencia semanal o mensual. |
-| `/api/cron/billing-retention` | `0 3 1 * *` (3 AM el 1 de cada mes) | Limpia datos antiguos de `billing_activity_log` y snapshots expirados. |
+| `/api/cron/billing-retention` | `0 3 1 * *` (3 AM el 1 de cada mes) | Rota archivos viejos de Dropbox (`Diarios/` e `Importables_CONTPAQi/procesados/`) a carpetas `_Historico/`. Prueba snapshots de Supabase Storage, conservando los 30 mas recientes por archivo. No limpia `billing_activity_log` (pendiente). |
 
 Todos los cron endpoints se autentican con el header `Authorization: Bearer <CRON_SECRET>` via `src/lib/auth/cron-auth.ts`.
 

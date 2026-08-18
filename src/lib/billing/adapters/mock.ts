@@ -31,7 +31,7 @@ function normalize(s: string): string {
   return s
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/\p{M}/gu, '')
     .trim();
 }
 
@@ -54,6 +54,8 @@ function similarity(a: string, b: string): number {
 const MIN_SCORE = 0.3;
 
 export class MockBillingAdapter implements BillingAdapter {
+  readonly name = 'MockBillingAdapter';
+
   constructor(private data: MockData) {}
 
   async searchClient(query: string, limit = 3): Promise<BillingClientMatch[]> {

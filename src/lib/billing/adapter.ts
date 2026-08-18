@@ -121,8 +121,16 @@ export interface BillingAdapterHealth {
  * - Todos los metodos son async para permitir adaptadores remotos.
  * - supportsAutoStamping() es sincrono porque es metadato estatico del adaptador.
  * - No lanza errores de negocio — los encapsula en BillingBatchResult.errors.
+ * - name es un identificador legible del adaptador, usado en logs y en el system prompt.
+ *   Cada implementacion debe declararlo como `readonly name = 'NombreDelAdaptador'`.
  */
 export interface BillingAdapter {
+  /**
+   * Nombre legible del adaptador. Ejemplo: 'MockBillingAdapter', 'CONTPAQiAdapter'.
+   * Usado en logs y en el system prompt del empleado digital.
+   */
+  readonly name: string;
+
   /**
    * Busca clientes por nombre o RFC usando coincidencia fuzzy.
    * @param query Texto libre a buscar.

@@ -182,7 +182,7 @@ export class BillingEmployee {
     const systemPrompt = buildSystemPrompt({
       emailId,
       orgName: this.config.orgName ?? this.config.portalEmail,
-      adapterName: 'MockBillingAdapter', // Fase 2: leer del adapter.name
+      adapterName: this.adapter.name,
       freshnessSummary,
       reglasJson,
       aliasesJson,

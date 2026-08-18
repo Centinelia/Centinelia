@@ -149,6 +149,46 @@ describe('matchProduct', () => {
     const res = await matchProduct('zzz', adapter, ctx);
     expect(res.decision).toBe('unknown');
   });
+
+  it('returns empty_query decision for empty string without hitting DB', async () => {
+    const { fromFn } = makeSupabaseMock({ aliasRow: null });
+    vi.mocked(createAdminClient).mockReturnValue({ from: fromFn } as never);
+
+    const res = await matchProduct('', adapter, ctx);
+    expect(res.decision).toBe('unknown');
+    expect(res.reason).toBe('empty_query');
+    expect(res.top).toBeNull();
+    expect(fromFn).not.toHaveBeenCalled();
+  });
+
+  it('returns empty_query for whitespace-only input', async () => {
+    const { fromFn } = makeSupabaseMock({ aliasRow: null });
+    vi.mocked(createAdminClient).mockReturnValue({ from: fromFn } as never);
+
+    const res = await matchProduct('   ', adapter, ctx);
+    expect(res.decision).toBe('unknown');
+    expect(res.reason).toBe('empty_query');
+    expect(fromFn).not.toHaveBeenCalled();
+  });
+
+  it('returns consult with reason low_score when top score is between 0.50 and 0.75', async () => {
+    // Query "tortilla xyz" produces word-overlap score of 0.5 against "Tortilla de maiz por kilogramo":
+    // words query: {tortilla, xyz}, words product: {tortilla, de, maiz, por, kilogramo}
+    // intersection = {tortilla}, score = 1 / max(2, 5) = 0.2 -- too low.
+    // Better fixture: query "agua xyz" vs "Agua purificada 500ml":
+    // intersection = {agua} = 1, max(2, 3) = 3, score = 0.33 -- still below MIN.
+    // Use "agua purificada xyz" vs "Agua purificada 500ml":
+    // query words: {agua, purificada, xyz} (3), product words: {agua, purificada, 500ml} (3)
+    // intersection = {agua, purificada} = 2, score = 2/3 = 0.667
+    // 0.667 is between THRESHOLD_MIN (0.5) and THRESHOLD_FLAG (0.75) -> consult / low_score
+    const { fromFn } = makeSupabaseMock({ aliasRow: null });
+    vi.mocked(createAdminClient).mockReturnValue({ from: fromFn } as never);
+
+    const res = await matchProduct('agua purificada xyz', adapter, ctx);
+    expect(res.decision).toBe('consult');
+    expect(res.reason).toBe('low_score');
+    expect(res.top?.sku).toBe('AGUA-500ML');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -184,5 +224,25 @@ describe('learnProductAlias', () => {
     await learnProductAlias('TORTILLA-KG', 'Tortilla Kilo', ctx, 'voice_message');
 
     expect(insertFn).not.toHaveBeenCalled();
+  });
+
+  it('skips insert when alias is empty string', async () => {
+    const { fromFn, insertFn } = makeSupabaseMock({ aliasRow: null });
+    vi.mocked(createAdminClient).mockReturnValue({ from: fromFn } as never);
+
+    await learnProductAlias('TORTILLA-KG', '', ctx, 'voice_message');
+
+    expect(insertFn).not.toHaveBeenCalled();
+    expect(fromFn).not.toHaveBeenCalled();
+  });
+
+  it('skips insert when alias is whitespace-only', async () => {
+    const { fromFn, insertFn } = makeSupabaseMock({ aliasRow: null });
+    vi.mocked(createAdminClient).mockReturnValue({ from: fromFn } as never);
+
+    await learnProductAlias('TORTILLA-KG', '   ', ctx, 'voice_message');
+
+    expect(insertFn).not.toHaveBeenCalled();
+    expect(fromFn).not.toHaveBeenCalled();
   });
 });

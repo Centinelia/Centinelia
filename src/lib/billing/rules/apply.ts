@@ -34,6 +34,7 @@ import { SnapshotStorage } from '../storage/snapshot';
 import { ExcelWorkbook } from '../excel/workbook';
 import { PendingClientSchema } from '../excel/schemas';
 import type { OrgCtx } from '../matching/client';
+import { sanitizeRfc } from '../util/rfc';
 
 // ---------------------------------------------------------------------------
 // Tipos publicos
@@ -64,14 +65,6 @@ export type RuleDecision = 'daily' | 'weekly' | 'monthly' | 'no_rule';
 // ---------------------------------------------------------------------------
 // Helpers internos
 // ---------------------------------------------------------------------------
-
-/**
- * Sanitiza un RFC para usarlo como segmento de ruta en Dropbox.
- * Elimina caracteres que puedan causar problemas en paths de archivos.
- */
-function sanitizeRfc(rfc: string): string {
-  return rfc.replace(/[^A-Za-z0-9]/g, '_');
-}
 
 /**
  * Construye la ruta absoluta del Pendientes.xlsx del cliente.

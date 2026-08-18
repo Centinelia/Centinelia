@@ -25,6 +25,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
 import { DropboxClient } from '@/lib/billing/storage/dropbox';
+import { SnapshotStorage } from '@/lib/billing/storage/snapshot';
 import { sendBillingMail } from '@/lib/billing/mail/send';
 
 export const dynamic    = 'force-dynamic';
@@ -51,6 +52,7 @@ export interface RetentionResult {
   portal_email:        string;
   diariosRotated?:     number;
   importablesRotated?: number;
+  snapshotsPruned?:    number;
   skipped?:            string;
   error?:              string;
 }
@@ -140,10 +142,26 @@ export async function applyRetentionForIntegration(
     console.warn('[billing-retention] importables folder not found for', integ.portal_email);
   }
 
+  // Prune old snapshots for this organization, keeping the 30 most recent per file path.
+  // Non-fatal: errors are logged but do not fail the integration result.
+  let snapshotsPruned = 0;
+  try {
+    const snapshots = new SnapshotStorage();
+    snapshotsPruned = await snapshots.pruneAllSnapshotsForOrg(integ.portal_email, 30);
+  } catch (pruneErr) {
+    console.warn(
+      '[billing-retention] snapshot prune error for',
+      integ.portal_email,
+      ':',
+      pruneErr instanceof Error ? pruneErr.message : String(pruneErr),
+    );
+  }
+
   return {
     portal_email:      integ.portal_email,
     diariosRotated,
     importablesRotated,
+    snapshotsPruned,
   };
 }
 
@@ -156,16 +174,17 @@ function buildReportBody(results: RetentionResult[], runDate: string): string {
     `<h2>Reporte de retencion de archivos de facturacion</h2>`,
     `<p>Fecha de ejecucion: ${runDate}</p>`,
     `<table border="1" cellpadding="6" cellspacing="0">`,
-    `<thead><tr><th>Integracion</th><th>Diarios rotados</th><th>Importables rotados</th><th>Nota</th></tr></thead>`,
+    `<thead><tr><th>Integracion</th><th>Diarios rotados</th><th>Importables rotados</th><th>Snapshots eliminados</th><th>Nota</th></tr></thead>`,
     `<tbody>`,
   ];
 
   for (const r of results) {
     const diarios     = r.diariosRotated     ?? '-';
     const importables = r.importablesRotated ?? '-';
+    const snapshots   = r.snapshotsPruned    ?? '-';
     const note        = r.skipped ?? r.error ?? '';
     lines.push(
-      `<tr><td>${r.portal_email}</td><td>${diarios}</td><td>${importables}</td><td>${note}</td></tr>`,
+      `<tr><td>${r.portal_email}</td><td>${diarios}</td><td>${importables}</td><td>${snapshots}</td><td>${note}</td></tr>`,
     );
   }
 

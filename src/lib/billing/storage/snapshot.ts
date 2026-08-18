@@ -88,9 +88,22 @@ export class SnapshotStorage {
   /**
    * Download and return a snapshot as a Buffer.
    *
-   * @param snapshotId - the id returned by listSnapshots or snapshot()
+   * @param snapshotId    - the id returned by listSnapshots or snapshot()
+   * @param expectedOrgKey - optional portal_email guard. If provided, the snapshotId
+   *                         must start with this orgKey prefix. Throws if it does not.
+   *                         When undefined, no prefix check is performed (backwards compat).
    */
-  async restoreSnapshot(snapshotId: string): Promise<Buffer> {
+  async restoreSnapshot(snapshotId: string, expectedOrgKey?: string): Promise<Buffer> {
+    if (expectedOrgKey !== undefined) {
+      const expectedPrefix = `${expectedOrgKey}/`;
+      if (!snapshotId.startsWith(expectedPrefix)) {
+        throw new Error(
+          `restoreSnapshot: snapshotId prefix mismatch. ` +
+          `Expected prefix "${expectedPrefix}", got snapshotId "${snapshotId}".`
+        );
+      }
+    }
+
     const { data, error } = await this.supabase.storage.from(BUCKET).download(snapshotId);
     if (error) throw error;
     const arrayBuf = await (data as Blob).arrayBuffer();
@@ -113,5 +126,72 @@ export class SnapshotStorage {
     const { error } = await this.supabase.storage.from(BUCKET).remove(toDelete.map(s => s.id));
     if (error) throw error;
     return toDelete.length;
+  }
+
+  /**
+   * Prune all snapshots for an organization by listing top-level keys under
+   * the orgKey prefix and pruning each path found, keeping the N most recent
+   * per path.
+   *
+   * This is the simpler alternative to per-path pruning: it discovers existing
+   * snapshot prefixes by listing the bucket at the orgKey level and then calls
+   * pruneOldSnapshots for each prefix found. Suitable for the retention cron
+   * where we do not want to enumerate all active Excel paths explicitly.
+   *
+   * @param orgKey   - portal_email
+   * @param keepLast - number of snapshots to retain per file path
+   * @returns total number of snapshots deleted across all paths
+   */
+  async pruneAllSnapshotsForOrg(orgKey: string, keepLast: number): Promise<number> {
+    // List top-level folders under orgKey (each folder = one filePath segment)
+    const { data: topLevel, error: topError } = await this.supabase.storage
+      .from(BUCKET)
+      .list(orgKey);
+    if (topError) throw topError;
+
+    const folders = (topLevel ?? []) as Array<{ name: string; id?: string | null }>;
+    let totalDeleted = 0;
+
+    for (const folder of folders) {
+      // Each folder.name is the first path segment after orgKey.
+      // We need to recurse one more level to find actual file-path prefixes.
+      const subPrefix = `${orgKey}/${folder.name}`;
+      const { data: subEntries, error: subError } = await this.supabase.storage
+        .from(BUCKET)
+        .list(subPrefix);
+
+      if (subError) {
+        // Non-fatal: log and continue to the next folder.
+        console.warn(`[SnapshotStorage.pruneAllSnapshotsForOrg] list error for ${subPrefix}:`, subError.message);
+        continue;
+      }
+
+      for (const entry of (subEntries ?? []) as Array<{ name: string; id?: string | null }>) {
+        // If the entry has no id it is a "folder" (another nesting level).
+        // If it has an id it is a file version directly — unusual layout but handle gracefully.
+        const isVersionFile = entry.name.startsWith('ver-');
+        if (isVersionFile) {
+          // The filePath is one level up: `${folder.name}` (relative to orgKey).
+          // Prune using the sub-prefix directly.
+          const deleted = await this.pruneOldSnapshots(orgKey, `/${folder.name}`, keepLast);
+          totalDeleted += deleted;
+          break; // pruneOldSnapshots handles all versions for this path at once.
+        } else {
+          // entry.name is yet another path segment — prune at this deeper level.
+          const filePath = `/${folder.name}/${entry.name}`;
+          try {
+            const deleted = await this.pruneOldSnapshots(orgKey, filePath, keepLast);
+            totalDeleted += deleted;
+          } catch (pruneErr) {
+            console.warn(
+              `[SnapshotStorage.pruneAllSnapshotsForOrg] prune error for ${orgKey}${filePath}:`,
+              pruneErr instanceof Error ? pruneErr.message : String(pruneErr),
+            );
+          }
+        }
+      }
+    }
+
+    return totalDeleted;
   }
 }

@@ -78,6 +78,29 @@ describe('SnapshotStorage', () => {
     expect(buf.toString()).toBe('content');
   });
 
+  it('restoreSnapshot succeeds when expectedOrgKey matches prefix', async () => {
+    const buf = await storage.restoreSnapshot(
+      'org-1/CONTPAQi/Pendientes.xlsx/ver-2026-08-17T18-00-00.xlsx',
+      'org-1',
+    );
+    expect(Buffer.isBuffer(buf)).toBe(true);
+  });
+
+  it('restoreSnapshot throws when expectedOrgKey does not match prefix', async () => {
+    await expect(
+      storage.restoreSnapshot(
+        'org-1/CONTPAQi/Pendientes.xlsx/ver-2026-08-17T18-00-00.xlsx',
+        'org-99',
+      ),
+    ).rejects.toThrow('prefix mismatch');
+  });
+
+  it('restoreSnapshot accepts any snapshotId when expectedOrgKey is undefined (backwards compat)', async () => {
+    // No expectedOrgKey: no guard, no throw
+    const buf = await storage.restoreSnapshot('org-anything/path/ver-mock.xlsx');
+    expect(Buffer.isBuffer(buf)).toBe(true);
+  });
+
   it('pruneOldSnapshots deletes excess snapshots', async () => {
     const deleted = await storage.pruneOldSnapshots('org-1', '/CONTPAQi/Pendientes.xlsx', 1);
     expect(deleted).toBe(1);
