@@ -23,11 +23,19 @@ export async function validateAgentDbs(agentId: string): Promise<ValidationResul
 
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('id, notion_access_token, notion_db_id, business_name, client_email, portal_token')
+    .select('id, business_name, client_email, portal_email, portal_token')
     .eq('id', agentId)
     .single();
 
-  if (!agent?.notion_access_token) return [];
+  if (!agent?.portal_email) return [];
+
+  const { data: org } = await supabase
+    .from('organizations')
+    .select('notion_access_token')
+    .eq('portal_email', agent.portal_email)
+    .single();
+
+  if (!org?.notion_access_token) return [];
 
   const { data: schemas } = await supabase
     .from('notion_db_schemas')
@@ -38,7 +46,7 @@ export async function validateAgentDbs(agentId: string): Promise<ValidationResul
   if (!schemas?.length) return [];
 
   const results: ValidationResult[] = [];
-  const notion = notionClient(agent.notion_access_token as string);
+  const notion = notionClient(org.notion_access_token as string);
 
   for (const schema of schemas) {
     const requiredProps  = (schema.required_props  as Array<{ name: string; type: string }>) ?? [];
