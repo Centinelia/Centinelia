@@ -13,6 +13,7 @@ import MercadoLibreSection       from './MercadoLibreSection';
 import QuickBooksSection         from './QuickBooksSection';
 import GoogleWorkspaceCard       from './GoogleWorkspaceCard';
 import SolucionFactibleSection   from './oficina/integraciones/solucion-factible/SolucionFactibleSection';
+import DropboxSection            from './DropboxSection';
 
 /* ── types ─────────────────────────────────────────────────────────────── */
 
@@ -22,6 +23,7 @@ interface EmailStatus  { provider: 'gmail' | 'outlook'; email?: string }
 interface MLStatus     { connected: boolean; nickname: string | null }
 interface QBStatus     { connected: boolean; company_name: string | null }
 interface SFStatus     { connected: boolean }
+interface DropboxStatus { connected: boolean; email?: string }
 interface HubStatus    {
   cal:        CalStatus | null;
   notion:     NotionStatus | null;
@@ -30,6 +32,7 @@ interface HubStatus    {
   ml:         MLStatus | null;
   qb:         QBStatus | null;
   sf:         SFStatus | null;
+  dropbox:    DropboxStatus | null;
 }
 
 /* ── provider icons (for workspace callout) ─────────────────────────────── */
@@ -452,7 +455,7 @@ interface Props {
 
 export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }: Props) {
   const [status, setStatus] = useState<HubStatus>({
-    cal: null, notion: null, emails: [], teamsEmail: null, ml: null, qb: null, sf: null,
+    cal: null, notion: null, emails: [], teamsEmail: null, ml: null, qb: null, sf: null, dropbox: null,
   });
   const [statusLoaded, setStatusLoaded] = useState(false);
 
@@ -467,7 +470,8 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
         ? fetch(`/api/portal/${token}/teams`).then(r => r.json()).catch(() => null)
         : Promise.resolve(null),
       fetch(`/api/portal/${token}/invoicing/config`).then(r => r.json()).catch(() => null),
-    ]).then(([calData, notionData, emailData, mlData, qbData, teamsData, sfData]) => {
+      fetch(`/api/portal/${token}/dropbox-oauth`).then(r => r.json()).catch(() => null),
+    ]).then(([calData, notionData, emailData, mlData, qbData, teamsData, sfData, dropboxData]) => {
       setStatus({
         cal:        calData    ?? null,
         notion:     notionData ?? null,
@@ -476,6 +480,7 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
         ml:         mlData    ?? null,
         qb:         qbData    ?? null,
         sf:         sfData    ?? null,
+        dropbox:    dropboxData ?? null,
       });
       setStatusLoaded(true);
     });
@@ -650,6 +655,14 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
       subtitle: sfSubtitle,
       connected: !!status.sf?.connected,
       children: <SolucionFactibleSection token={token} />,
+    },
+    {
+      key: 'dropbox',
+      icon: <Plug size={16} style={{ color: '#0061FF' }} />,
+      label: 'Dropbox (catálogo)',
+      subtitle: status.dropbox?.connected ? `Dropbox · ${status.dropbox.email ?? ''}` : undefined,
+      connected: !!status.dropbox?.connected,
+      children: <DropboxSection token={token} />,
     },
   ];
 
