@@ -131,7 +131,23 @@ src/app/api/cron/
 
 ---
 
-## 3. Como agregar un adaptador nuevo
+## 3. Adaptadores disponibles
+
+| Adaptador | Clase | Estado | Descripcion |
+|---|---|---|---|
+| `MockBillingAdapter` | `src/lib/billing/adapters/mock.ts` | Produccion (Fase 1) | Catalogo en memoria. Usado en pruebas y como fallback cuando no hay integracion ERP configurada. |
+| `CONTPAQiAdapter` | `src/lib/billing/adapters/contpaqi.ts` | Produccion (Fase 1) | CONTPAQi Comercial Pro. Lee CSVs de Dropbox generados por el Windows agent local. No timbra directamente: genera XML importable para carga manual por el contador. Ver [`contpaqi-adapter.md`](contpaqi-adapter.md). |
+| Aspel SAE | - | Futuro (Fase 3+) | Por implementar. Seguira el mismo patron de contrato CSV o API REST segun disponibilidad del proveedor. |
+| CONTPAQi Nube | - | Futuro (Fase 3+) | Por implementar. Conexion via API REST de CONTPAQi en la nube; elimina la necesidad del Windows agent local. |
+| Solucion Factible directo | - | Futuro (Fase 2) | Conexion directa al PAC via SOAP. Timbrado automatico sin intervencion humana. |
+
+### Adapter registry
+
+El factory `buildAdapter(config)` en `src/lib/billing/adapters/index.ts` recibe el JSONB de `organization_integrations.config` y retorna la instancia correcta. El campo `type` del JSONB es el discriminador.
+
+---
+
+## 4. Como agregar un adaptador nuevo
 
 ### Paso 1: Crear el archivo del adaptador
 
@@ -358,12 +374,14 @@ Variables de entorno ya presentes en el proyecto y usadas por este modulo:
 - Adaptador activo: `MockBillingAdapter` (catalogo en memoria, modo `file`).
 - No timbra CFDIs directamente: genera filas en Excel para carga manual por el contador.
 
-### Fase 2: pendiente (adaptador CONTPAQi real)
+### Fase 2: completa (CONTPAQi Comercial Pro, Plan B)
 
-- Implementar `CONTPAQiAdapter` en `src/lib/billing/adapters/contpaqi.ts`.
-- Conectar la cola a `organization_integrations` para cargar el adaptador correcto por integracion.
-- Tests con fixtures reales del catalogo CONTPAQi.
-- Documentar en el spec, Seccion 8 (Puente CONTPAQi).
+- `CONTPAQiAdapter` implementado en `src/lib/billing/adapters/contpaqi.ts`.
+- Windows agent .NET 8 (`windows-agent/billing-contpaqi-reader/`) que lee la BD local de CONTPAQi y sube CSVs + JSON de frescura a Dropbox cada 15 minutos.
+- La cola (`employee/queue.ts`) carga el adaptador correcto desde `organization_integrations.config` via `buildAdapter`.
+- Tests unitarios y E2E con fixtures CSV reales del catalogo CONTPAQi.
+- Documentacion tecnica en [`contpaqi-adapter.md`](contpaqi-adapter.md) y guia de compilacion en [`contpaqi-agent-setup.md`](contpaqi-agent-setup.md).
+- Pendiente (Fase 0): verificar tablas y columnas reales de la BD del cliente piloto + round-trip XML con la contadora. Ver seccion "Deuda Fase 0" en `contpaqi-adapter.md`.
 
 ### Fase 3: pendiente (UI portal)
 
@@ -382,9 +400,15 @@ Variables de entorno ya presentes en el proyecto y usadas por este modulo:
 |---|---|
 | Spec de diseno completo | `docs/superpowers/specs/2026-08-17-empleado-digital-facturacion-notas-design.md` |
 | Plan de implementacion A | `docs/superpowers/sdd/2026-08-17-empleado-facturacion-plan-a-base/` |
+| Plan de implementacion B (CONTPAQi) | `docs/superpowers/sdd/2026-08-18-empleado-facturacion-plan-b-contpaqi/` |
 | Interfaz BillingAdapter | `src/lib/billing/adapter.ts` |
 | Loop de razonamiento | `src/lib/billing/employee/loop.ts` |
 | System prompt | `src/lib/billing/employee/system-prompt.ts` |
 | Tools del empleado | `src/lib/billing/employee/tools.ts` |
 | Adaptador mock | `src/lib/billing/adapters/mock.ts` |
+| Adaptador CONTPAQi | `src/lib/billing/adapters/contpaqi.ts` |
+| Registry de adaptadores | `src/lib/billing/adapters/index.ts` |
+| Guia tecnica del adaptador CONTPAQi | `docs/billing/contpaqi-adapter.md` |
+| Guia de compilacion del Windows agent | `docs/billing/contpaqi-agent-setup.md` |
+| Windows agent (.NET 8) | `windows-agent/billing-contpaqi-reader/` |
 | Infra existente de facturacion (PAC/CSD) | `src/lib/invoicing/` |
