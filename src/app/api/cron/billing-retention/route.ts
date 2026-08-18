@@ -195,7 +195,7 @@ export async function GET(req: Request) {
     .select('id, portal_email, config')
     .eq('type', 'contpaqi')
     .eq('active', true)
-    .filter('config', 'not.is', null);
+    .not('config', 'is', null);
 
   if (dbError) {
     console.error('[billing-retention] DB query error:', dbError.message);

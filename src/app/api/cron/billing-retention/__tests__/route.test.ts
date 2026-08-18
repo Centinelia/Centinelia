@@ -98,7 +98,7 @@ function setupSupabase(integrations: unknown[]) {
         select:  vi.fn().mockReturnThis(),
         eq:      vi.fn().mockReturnThis(),
         in:      vi.fn().mockReturnThis(),
-        filter:  vi.fn().mockResolvedValue({ data: integrations, error: null }),
+        not:     vi.fn().mockResolvedValue({ data: integrations, error: null }),
       };
     }
     return { select: vi.fn().mockReturnThis() };
@@ -249,6 +249,7 @@ describe('GET /api/cron/billing-retention', () => {
     const body = await res.json();
     expect(body.results[0].skipped).toBe('year_end');
     expect(mockDropboxMoveFile).not.toHaveBeenCalled();
+    expect(mockSendBillingMail).toHaveBeenCalledTimes(1);
 
     vi.useRealTimers();
   });
