@@ -75,9 +75,9 @@ const CONTENT: Record<string, {
     tagline:  'Nunca se le escapa un dato',
     subtitle: 'Primera impresión impecable, todos los días',
     bullets:  [
-      'Responde preguntas sobre tu negocio las 24 horas',
       'Captura los datos de cada prospecto que llama',
-      'Agenda citas directamente en el calendario de tu equipo',
+      'Agenda citas y toma pedidos directamente por teléfono',
+      'Aplica encuestas de satisfacción al cierre de la llamada',
       'Transfiere al área correcta en el momento indicado',
     ],
   },
@@ -87,20 +87,20 @@ const CONTENT: Record<string, {
     subtitle: 'Prospección y cierre sin descanso',
     bullets:  [
       'Califica prospectos con preguntas clave en la llamada',
-      'Registra pedidos completos con todos los detalles',
+      'Genera cotizaciones y propuestas comerciales al instante',
       'Sale a buscar clientes con llamadas salientes',
-      'Transfiere al equipo cuando el cliente está listo para cerrar',
+      'Consulta tu catálogo y publica en MercadoLibre cuando aplica',
     ],
   },
   nico: {
     rolLabel: 'Recuperación de Cartera',
     tagline:  'Ya tiene tu dinero contado',
-    subtitle: 'Cobra sin dañar la relación',
+    subtitle: 'Cobra, factura y concilia sin dañar la relación',
     bullets:  [
       'Recuerda pagos pendientes con amabilidad y firmeza',
-      'Negocia plazos y condiciones de forma autónoma',
       'Llama proactivamente a clientes con saldo vencido',
-      'Registra cada acuerdo de pago para seguimiento',
+      'Emite CFDIs y registra pagos en QuickBooks',
+      'Consulta facturas, saldos y reportes de ingresos al momento',
     ],
   },
   nelia: {
@@ -109,9 +109,9 @@ const CONTENT: Record<string, {
     subtitle: 'Cada cliente sabe qué sigue',
     bullets:  [
       'Resuelve dudas frecuentes al instante sin escalar',
-      'Da seguimiento a casos abiertos hasta su cierre',
-      'Llama a clientes para confirmar, informar o encuestar',
-      'Registra la retroalimentación de cada interacción',
+      'Da seguimiento por correo a cada caso hasta su cierre',
+      'Aplica encuestas de satisfacción y extrae la voz del cliente',
+      'Genera one-pagers y correos de seguimiento personalizados',
     ],
   },
   neo: {
@@ -486,86 +486,76 @@ export default function EmpleadosPage() {
           }} />
         </div>
 
-        <div className="relative max-w-6xl mx-auto px-5 sm:px-8" style={{ zIndex: 1 }}>
-          <div className="flex flex-col lg:flex-row items-end gap-0">
+        <div className="relative max-w-4xl mx-auto px-5 sm:px-8 py-20 sm:py-28 lg:py-32" style={{ zIndex: 1, textAlign: 'center' }}>
 
-            {/* Text */}
-            <AnimatedSection className="flex-1 py-20 sm:py-28 lg:py-32 lg:pr-16">
-              <p style={{
-                color: 'rgba(155,109,255,0.85)',
-                fontSize: '0.68rem', fontWeight: 700,
-                letterSpacing: '0.14em', textTransform: 'uppercase',
-                marginBottom: 16,
-              }}>
-                Tu equipo completo
-              </p>
-              <h2 style={{
-                color: '#fff', fontWeight: 800,
-                fontSize: 'clamp(2rem, 4.5vw, 3.8rem)',
-                lineHeight: 1.06, marginBottom: 20,
-                letterSpacing: '-0.025em',
-              }}>
-                Arma tu equipo<br />desde hoy
-              </h2>
-              <p style={{
-                color: 'rgba(255,255,255,0.48)',
-                fontSize: '1rem', lineHeight: 1.75,
-                maxWidth: 420, marginBottom: 36,
-              }}>
-                Elige al empleado que tu negocio necesita, configúralo con
-                tu información y empieza a recibir llamadas en menos de 24 horas.
-              </p>
-              <div className="flex flex-row flex-wrap gap-3">
-                <Link
-                  href="/registro"
-                  className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl text-sm font-bold transition-all hover:opacity-90 hover:scale-[1.02]"
-                  style={{ background: 'linear-gradient(135deg, #6C3BFF, #9B6DFF)', color: '#fff' }}
-                >
-                  Contratar ahora <ArrowRight size={14} />
-                </Link>
-                <Link
-                  href="/cotizar"
-                  className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl text-sm font-medium transition-colors whitespace-nowrap"
-                  style={{
-                    background: 'rgba(255,255,255,0.06)',
-                    color: 'rgba(255,255,255,0.7)',
-                    border: '1px solid rgba(255,255,255,0.14)',
-                  }}
-                >
-                  Cotizar equipo completo
-                </Link>
-              </div>
-            </AnimatedSection>
+          {/* Text block — centered */}
+          <AnimatedSection>
+            <p style={{
+              color: 'rgba(155,109,255,0.85)',
+              fontSize: '0.68rem', fontWeight: 700,
+              letterSpacing: '0.14em', textTransform: 'uppercase',
+              marginBottom: 16,
+            }}>
+              Tu equipo completo
+            </p>
+            <h2 style={{
+              color: '#fff', fontWeight: 800,
+              fontSize: 'clamp(2rem, 4.5vw, 3.8rem)',
+              lineHeight: 1.06, marginBottom: 20,
+              letterSpacing: '-0.025em',
+            }}>
+              Arma tu equipo desde hoy
+            </h2>
+            <p style={{
+              color: 'rgba(255,255,255,0.48)',
+              fontSize: '1rem', lineHeight: 1.75,
+              maxWidth: 560, margin: '0 auto 36px',
+            }}>
+              Elige al empleado que tu negocio necesita, configúralo con
+              tu información y empieza a recibir llamadas en menos de 24 horas.
+            </p>
+            <div className="flex flex-row flex-wrap gap-3 justify-center">
+              <Link
+                href="/registro"
+                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl text-sm font-bold transition-all hover:opacity-90 hover:scale-[1.02]"
+                style={{ background: 'linear-gradient(135deg, #6C3BFF, #9B6DFF)', color: '#fff' }}
+              >
+                Contratar ahora <ArrowRight size={14} />
+              </Link>
+              <Link
+                href="/cotizar"
+                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl text-sm font-medium transition-colors whitespace-nowrap"
+                style={{
+                  background: 'rgba(255,255,255,0.06)',
+                  color: 'rgba(255,255,255,0.7)',
+                  border: '1px solid rgba(255,255,255,0.14)',
+                }}
+              >
+                Cotizar equipo completo
+              </Link>
+            </div>
+          </AnimatedSection>
 
-            {/* Group photo — desktop */}
-            <AnimatedSection
-              className="hidden lg:block relative flex-shrink-0 self-center"
-              style={{ width: 860, height: 700 }}
-              delay={0.18}
-              y={32}
-            >
-              <Image
-                src="/meerkats/grupo.png"
-                alt="Equipo Centinelia"
-                fill
-                sizes="860px"
-                style={{ objectFit: 'contain', objectPosition: 'center center' }}
-              />
-            </AnimatedSection>
-          </div>
-
-          {/* Group photo — mobile */}
-          <div className="lg:hidden overflow-hidden" style={{ marginTop: -8 }}>
-            <AnimatedSection className="relative" style={{ width: '125%', marginLeft: '-12.5%', aspectRatio: '2752/1536' }} delay={0.1} y={20}>
-              <Image
-                src="/meerkats/grupo.png"
-                alt="Equipo Centinelia"
-                fill
-                sizes="125vw"
-                style={{ objectFit: 'contain', objectPosition: 'center center' }}
-              />
-            </AnimatedSection>
-          </div>
+          {/* Group photo — centered below, same on mobile and desktop */}
+          <AnimatedSection
+            className="relative mx-auto"
+            style={{
+              marginTop: 48,
+              width: '100%',
+              maxWidth: 860,
+              aspectRatio: '2752/1536',
+            }}
+            delay={0.18}
+            y={32}
+          >
+            <Image
+              src="/meerkats/grupo.png"
+              alt="Equipo Centinelia"
+              fill
+              sizes="(max-width: 1024px) 100vw, 860px"
+              style={{ objectFit: 'contain', objectPosition: 'center center' }}
+            />
+          </AnimatedSection>
         </div>
       </section>
 
