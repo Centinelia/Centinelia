@@ -1022,6 +1022,19 @@ const BUSCAR_PRODUCTO_TOOL: Anthropic.Tool = {
   },
 };
 
+const DROPBOX_BUSCAR_CODIGO_TOOL: Anthropic.Tool = {
+  name: 'dropbox_buscar_codigo',
+  description: 'Busca un código de pieza o producto en el catálogo Excel/CSV que el cliente mantiene en su Dropbox. Úsala ANTES de llenar una OC, cotización o factura cuando necesites el SKU correcto. Devuelve hasta 20 coincidencias con SKU, descripción y precio (si aplica). Si pasas exact:true busca match exacto sólo contra SKU. NO inventes códigos si no encuentras — dile al usuario y ofrece delegar a humano.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      query: { type: 'string', description: 'Término a buscar (parte del SKU o descripción). Case-insensitive.' },
+      exact: { type: 'boolean', description: 'True para match exacto contra SKU. Default false (fuzzy).' },
+    },
+    required: ['query'],
+  },
+};
+
 const ALL_TOOLS = [
   DELEGATE_TASK_TOOL,
   CONSULT_AGENT_TOOL,
@@ -1131,6 +1144,7 @@ const VOICE_TO_CHAT: Record<string, string | null> = {
   marcar_no_llamar:          null,  // voice-only (no aplica a chat portal — owner no habla con clientes por chat)
   agregar_tag_contacto:      'agregar_tag_contacto',
   pedir_a_humano:            'pedir_a_humano',
+  dropbox_buscar_codigo:     'dropbox_buscar_codigo',
 };
 
 // Chat tool name → Anthropic.Tool object
@@ -1189,6 +1203,7 @@ const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
   ver_metricas_ml:           ML_VER_METRICAS_TOOL,
   ...Object.fromEntries(QB_TOOLS.map(t => [t.name, t])),
   buscar_producto: BUSCAR_PRODUCTO_TOOL,
+  dropbox_buscar_codigo: DROPBOX_BUSCAR_CODIGO_TOOL,
   revisar_incidentes_plataforma: REVISAR_INCIDENTES_PLATAFORMA_TOOL,
   crear_incidente:               CREAR_INCIDENTE_TOOL,
   responder_cliente_afectado:    RESPONDER_CLIENTE_AFECTADO_TOOL,
@@ -1237,13 +1252,18 @@ function getToolsForRole(meerkatId: string | null, qbConnected: boolean, notionP
     const tool = CHAT_TOOL_BY_NAME[chatName];
     if (tool) { tools.push(tool); seen.add(chatName); }
   }
-  // pedir_a_humano es universal — cualquier empleado debe poder escalar al
-  // humano sin importar su rol. La MEERKAT_VOICE_DISTRIBUTION no la declara
-  // per-rol, así que la agregamos como default. Sin esto, chat de Niva/Nox
-  // halucinaba "listo, escalado" sin crear human_requests.
-  if (!seen.has('pedir_a_humano')) {
-    tools.push(PEDIR_A_HUMANO_TOOL);
-    seen.add('pedir_a_humano');
+  // Base universal — 6 tools que todo meerkat recibe sin importar el preset.
+  // Se agregan después del loop para no duplicar si el preset ya las listó.
+  // Origen: feedback-tool-bloat-reglas regla #1 (2026-08-18). Los presets en
+  // MEERKAT_VOICE_DISTRIBUTION ya no listan estas.
+  const UNIVERSAL_CHAT: string[] = [
+    'delegate_task', 'consult_agent', 'pedir_a_humano',
+    'reportar_falla', 'read_url', 'buscar_en_web',
+  ];
+  for (const name of UNIVERSAL_CHAT) {
+    if (seen.has(name)) continue;
+    const t = CHAT_TOOL_BY_NAME[name];
+    if (t) { tools.push(t); seen.add(name); }
   }
   return tools;
 }

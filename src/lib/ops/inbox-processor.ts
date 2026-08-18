@@ -390,6 +390,20 @@ NO la uses para:
       required: ['telefono'],
     },
   },
+  // Pack dropbox_catalog — lookup del catálogo Excel/CSV que vive en el
+  // Dropbox del cliente. El executor gate por feature flag y config JSONB.
+  {
+    name:        'dropbox_buscar_codigo',
+    description: 'Busca un código de pieza o producto en el catálogo Excel/CSV que el cliente mantiene en su Dropbox. Úsala ANTES de llenar OC, cotización o factura cuando el correo mencione un SKU o descripción que necesitas mapear al código correcto. NO inventes códigos si no encuentras — dile al remitente y ofrece delegar.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        query: { type: 'string', description: 'Término a buscar (parte del SKU o descripción). Case-insensitive.' },
+        exact: { type: 'boolean', description: 'True para match exacto contra SKU. Default false (fuzzy).' },
+      },
+      required: ['query'],
+    },
+  },
 ];
 
 const QB_EMAIL_TOOLS: Anthropic.Tool[] = [

@@ -2,16 +2,18 @@ import { describe, it, expect } from 'vitest';
 import { meerkatCanUse, MEERKAT_TOOL_ACCESS } from '../meerkat-gates';
 
 describe('meerkat-gates', () => {
-  it('Noah puede usar los 4 tools', () => {
+  it('Noah es owner de propuesta, cotizacion y correo estructurado', () => {
     expect(meerkatCanUse('noah', 'generar_propuesta_comercial')).toBe(true);
     expect(meerkatCanUse('noah', 'generar_cotizacion')).toBe(true);
-    expect(meerkatCanUse('noah', 'generar_one_pager')).toBe(true);
     expect(meerkatCanUse('noah', 'generar_correo_estructurado')).toBe(true);
+    // one_pager movido a Nelia (contenido postventa) en refactor tool bloat
+    expect(meerkatCanUse('noah', 'generar_one_pager')).toBe(false);
   });
 
-  it('Nelia puede one_pager y correo pero NO propuesta ni cotizacion', () => {
+  it('Nelia es owner de one_pager, correo estructurado y reporte metricas; NO propuesta ni cotizacion', () => {
     expect(meerkatCanUse('nelia', 'generar_one_pager')).toBe(true);
     expect(meerkatCanUse('nelia', 'generar_correo_estructurado')).toBe(true);
+    expect(meerkatCanUse('nelia', 'generar_reporte_metricas_excel')).toBe(true);
     expect(meerkatCanUse('nelia', 'generar_propuesta_comercial')).toBe(false);
     expect(meerkatCanUse('nelia', 'generar_cotizacion')).toBe(false);
   });
@@ -40,17 +42,19 @@ describe('meerkat-gates', () => {
     ]);
   });
 
-  it('extended tools están en MEERKAT_TOOL_ACCESS con roles correctos', () => {
-    expect(MEERKAT_TOOL_ACCESS.generar_pitch_deck).toEqual(['noah']);
-    expect(MEERKAT_TOOL_ACCESS.generar_reporte_metricas_excel).toEqual(['noah', 'nara', 'nelia']);
+  it('extended tools están en MEERKAT_TOOL_ACCESS con roles correctos (post refactor tool bloat)', () => {
+    expect(MEERKAT_TOOL_ACCESS.generar_pitch_deck).toEqual(['niva']);
+    expect(MEERKAT_TOOL_ACCESS.generar_reporte_metricas_excel).toEqual(['nelia', 'nara', 'niva']);
   });
 
-  it('Noah puede pitch_deck y reporte_metricas', () => {
-    expect(meerkatCanUse('noah', 'generar_pitch_deck')).toBe(true);
-    expect(meerkatCanUse('noah', 'generar_reporte_metricas_excel')).toBe(true);
+  it('Niva es owner de pitch_deck; NO Noah', () => {
+    expect(meerkatCanUse('niva', 'generar_pitch_deck')).toBe(true);
+    expect(meerkatCanUse('niva', 'generar_reporte_metricas_excel')).toBe(true);
+    expect(meerkatCanUse('noah', 'generar_pitch_deck')).toBe(false);
+    expect(meerkatCanUse('noah', 'generar_reporte_metricas_excel')).toBe(false);
   });
 
-  it('Nara y Nelia solo tienen reporte_metricas, NO pitch_deck', () => {
+  it('Nara solo tiene reporte_metricas, NO pitch_deck', () => {
     expect(meerkatCanUse('nara', 'generar_pitch_deck')).toBe(false);
     expect(meerkatCanUse('nara', 'generar_reporte_metricas_excel')).toBe(true);
     expect(meerkatCanUse('nelia', 'generar_pitch_deck')).toBe(false);

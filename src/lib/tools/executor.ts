@@ -1694,6 +1694,37 @@ async function executeAgentToolInner(
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // dropbox_buscar_codigo — pack dropbox_catalog. Lookup en Excel/CSV que el
+  // cliente mantiene en su Dropbox. Feature gated + config JSONB requeridos.
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'dropbox_buscar_codigo') {
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('features, dropbox_catalog_config')
+      .eq('portal_email', portalEmail)
+      .maybeSingle();
+    const orgFeatures = (org?.features as Record<string, unknown>) ?? {};
+    if (!orgFeatures.dropbox_catalog) {
+      return { ok: false, error: 'El pack Dropbox Catalog no está activo para esta cuenta.' };
+    }
+    const config = org?.dropbox_catalog_config as {
+      doc_path: string; sku_column: string; desc_column: string; price_column?: string | null;
+    } | null;
+    if (!config?.doc_path || !config.sku_column || !config.desc_column) {
+      return { ok: false, error: 'Catálogo Dropbox no configurado. Actívalo en Integraciones → Dropbox del portal.' };
+    }
+    const { query, exact } = toolInput as { query?: string; exact?: boolean };
+    if (!query?.trim()) return { ok: false, error: 'Proporciona un término a buscar (SKU o descripción).' };
+    const { searchCatalog } = await import('@/lib/dropbox/catalog');
+    const res = await searchCatalog(portalEmail, config, query.trim(), { exact: !!exact });
+    if ('error' in res) return { ok: false, error: res.error };
+    if (res.matches.length === 0) {
+      return { ok: false, error: `Sin coincidencias para "${query}" en el catálogo Dropbox.` };
+    }
+    return { ok: true, matches: res.matches, total: res.total };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   // Fiscal: solicitar_factura + consultar_factura
   // Sofia recolecta datos de un cliente que pide su CFDI y delega la emisión
   // al equipo humano (Martha en AC). No timbramos desde Centinelia.

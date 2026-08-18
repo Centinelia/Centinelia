@@ -148,6 +148,7 @@ const TOOL_HUMAN_LABEL: Record<string, string> = {
   sheets_leer:              'leer contenido de un Google Sheet',
   sheets_buscar:            'buscar filas en un Google Sheet por texto',
   buscar_producto:          'consultar catálogo Notion por SKU/nombre (precio real, no inventado)',
+  dropbox_buscar_codigo:    'buscar código de pieza/producto en el catálogo Dropbox del cliente (Excel/CSV)',
 };
 
 function peerToolCapabilities(peer: TeamPeer): string[] {
@@ -216,60 +217,57 @@ async function fetchTeamPeers(agent: VoiceAgent): Promise<TeamPeer[]> {
 }
 
 // ─── Voice tool distribution by meerkat role ─────────────────────────────────
-
+//
+// Presets pulidos 2026-08-18 tras auditoría de uso real (tool_call_log 14d,
+// 1943 calls) y las 5 reglas duras contra tool bloat: tope objetivo 12-15
+// tools efectivas por meerkat, con excepción documentada para coordinadores
+// (nox=19, niva=23) por rol hub. Las tools con feature flag (QB, ML, sheets)
+// bajan el conteo efectivo cuando la org no activa la feature.
+//
+// Base compartida (delegar_tarea, consultar_agente, reportar_falla,
+// pedir_a_humano, read_url, buscar_en_web) NO se lista aquí — cada meerkat
+// la recibe automáticamente vía el runtime (agent-chat y sync.ts).
+//
+// Fuente de verdad de qué rol puede usar qué tool: este mapa. TOOL_REGISTRY
+// en src/lib/tools/registry.ts refleja lo mismo para /admin/tools.
 export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
-  // Sofia (Nia) — recepcionista: 1er contacto, delega para tareas de fondo.
-  // Puede buscar docs para saber si algo ya existe antes de generar duplicado.
-  // solicitar_factura REMOVIDA por bug de Haiku 4.5 halucinando tool calls
-  // en flujos fiscales críticos (call 22:35 del 2026-08-04). Nia SIEMPRE
-  // delega la factura vía delegar_tarea a un peer con Sonnet (Noah, Nico, Nox).
-  // El goal-loop de delegar_tarea corre en Sonnet y ejecuta solicitar_factura
-  // confiablemente. Si la org no tiene peer fiscal, Sofia hace fallback a
-  // crear_lead con datos capturados + escalación manual.
-  nia:   ['crear_lead', 'crear_contacto_saliente', 'agendar_cita', 'registrar_pedido', 'buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'registrar_encuesta', 'buscar_documento_oficina', 'buscar_correo_enviado', 'buscar_producto', 'consultar_agente', 'delegar_tarea', 'reportar_falla', 'marcar_no_llamar', 'agregar_tag_contacto', 'actualizar_disponibilidad_diaria'],
-  // Noah — ventas: vendedor oficial. Sin crear_documento por diseño (delega
-  // a Nico/Niva para propuestas formales), pero puede buscar y reenviar
-  // cotizaciones previas. Tiene extraer_voz_del_cliente + extraer_tono_de_marca
-  // para hablar como la empresa y con el lenguaje real del cliente. Exclusiva:
-  // read_url — investiga sitios de prospectos a fondo antes de llamar.
-  noah:  ['crear_lead', 'crear_contacto_saliente', 'registrar_pedido', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'buscar_en_web', 'read_url', 'search_leads', 'solicitar_factura', 'buscar_documento_oficina', 'buscar_correo_enviado', 'buscar_producto', 'enviar_documento_oficina', 'analizar_publicaciones_ml', 'crear_publicacion_ml', 'actualizar_publicacion_ml', 'ver_metricas_ml', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'consultar_agente', 'reportar_falla', 'agregar_tag_contacto', 'generar_propuesta_comercial', 'generar_cotizacion', 'generar_one_pager', 'generar_correo_estructurado', 'generar_pitch_deck', 'generar_reporte_metricas_excel'],
-  // Nico — cobranza y fiscal: sigue facturas + emite CFDIs + reenvía comprobantes
-  // + reportes de ingresos (P&L).
-  nico:  ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'enviar_correo', 'crear_documento', 'buscar_documento_oficina', 'buscar_correo_enviado', 'buscar_producto', 'enviar_documento_oficina', 'solicitar_factura', 'consultar_factura', 'qb_consultar_facturas', 'qb_buscar_cliente', 'qb_registrar_pago', 'qb_crear_factura', 'qb_reporte_ingresos', 'reportar_falla', 'agregar_tag_contacto', 'generar_correo_estructurado'],
-  // Nelia — servicio al cliente: postventa. Ahora puede reenviar docs previos
-  // y ver insights de voz del cliente para responder mejor.
-  nelia: ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'registrar_encuesta', 'enviar_correo', 'buscar_archivo', 'buscar_documento_oficina', 'buscar_correo_enviado', 'buscar_producto', 'enviar_documento_oficina', 'extraer_voz_del_cliente', 'consultar_agente', 'reportar_falla', 'agregar_tag_contacto', 'generar_one_pager', 'generar_correo_estructurado', 'generar_reporte_metricas_excel'],
-  // Neo — helpdesk IT. `llamar_a` agregado: el prompt-builder helpdesk paso 4
-  // dice "LLAMA AL RESPONSABLE con llamar_a" — sin la tool Neo halucinaba
-  // "avisé al técnico". Ver Scope A A1 top CRITICAL #1.
-  neo:   ['crear_ticket', 'consultar_incidentes', 'buscar_directorio', 'buscar_archivo', 'leer_archivo', 'llamar_a', 'delegar_tarea', 'consultar_agente', 'reportar_falla'],
-  // Nara — municipal: ahora puede aplicar encuestas de satisfacción también.
-  nara:  ['create_civic_report', 'lookup_civic_report', 'update_civic_report', 'buscar_cliente', 'registrar_encuesta', 'notificar_transferencia', 'transferir_llamada', 'delegar_tarea', 'consultar_agente', 'reportar_falla', 'generar_reporte_metricas_excel'],
-  // Naia — RRHH real (A-F7). Owner eligió agregar tools HR reales para que
-  // el rol declarado 'Recursos Humanos' tenga sustento en el toolkit. MVP:
-  // registrar_falta, consultar_vacaciones, solicitar_permiso, verificar_incidencia.
-  naia:  ['iniciar_onboarding', 'agendar_cita', 'buscar_cliente', 'registrar_encuesta', 'enviar_correo', 'crear_documento', 'buscar_documento_oficina', 'buscar_correo_enviado', 'enviar_documento_oficina', 'list_calendar_events', 'create_calendar_event', 'delete_calendar_event', 'buscar_archivo', 'leer_archivo', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'registrar_falta', 'consultar_vacaciones', 'solicitar_permiso', 'verificar_incidencia', 'reportar_falla', 'generar_correo_estructurado'],
-  // Nova — Centro de Coordinación (despacho de campo). A-F7: rol declarado
-  // en meerkat-roles.ts:281 es 'Centro de Coordinación' (despacho), este
-  // comment previamente decía 'recuperación/retención' — identidad dual
-  // resuelta. Owner eligió despacho.
-  // Nuevas tools: asignar_unidad_campo + consultar_unidades_disponibles.
-  nova:  ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'crear_ticket', 'crear_documento', 'buscar_documento_oficina', 'buscar_correo_enviado', 'buscar_producto', 'enviar_documento_oficina', 'extraer_voz_del_cliente', 'delegar_tarea', 'consultar_agente', 'buscar_en_web', 'asignar_unidad_campo', 'consultar_unidades_disponibles', 'reportar_falla'],
-  // Nox — coordinador director. Ahora también consulta estado de facturas.
-  // pedir_a_humano agregado — el prompt de Nox instruye escalar al owner
-  // cuando la decisión excede autonomía (aprobación de gasto grande, cambio
-  // de política). Ver Scope A A1 CRITICAL #3.
-  nox:   ['consultar_agente', 'delegar_tarea', 'enviar_correo', 'llamar_a', 'crear_documento', 'buscar_documento_oficina', 'buscar_correo_enviado', 'enviar_documento_oficina', 'create_file', 'create_contract_draft', 'buscar_archivo', 'leer_archivo', 'save_to_drive', 'organize_files', 'list_calendar_events', 'create_calendar_event', 'delete_calendar_event', 'qb_consultar_facturas', 'consultar_factura', 'verificar_gasto_recurrente', 'extraer_voz_del_cliente', 'sheets_agregar_fila', 'sheets_actualizar_fila', 'sheets_leer', 'sheets_buscar', 'pedir_a_humano', 'reportar_falla', 'actualizar_disponibilidad_diaria'],
-  // Niva — directora general. Visión estratégica: desempeño del equipo,
-  // aprobación de gastos, insights de marca/cliente. Delega ejecución fiscal
-  // a Nico. Sin qb_crear_factura/qb_reporte_ingresos (los movimos a Nico).
-  // Niva — directora. A-F7 boundary: SIN delegar_tarea (Niva=decisor, no
-  // ejecutor). Cuando necesita ejecutar algo, invoca consultar_agente a Nox
-  // y Nox ejecuta. Esta separación fuerza el rol real (Niva analiza+aprueba,
-  // Nox mueve fichas). Ver Scope A A4 HIGH #5.
-  // pedir_a_humano agregado (A-F1 CRITICAL #3).
-  niva:  ['consultar_agente', 'enviar_correo', 'llamar_a', 'crear_documento', 'buscar_documento_oficina', 'buscar_correo_enviado', 'enviar_documento_oficina', 'create_file', 'save_to_drive', 'buscar_en_web', 'search_leads', 'list_calendar_events', 'create_calendar_event', 'qb_consultar_facturas', 'qb_buscar_cliente', 'qb_registrar_pago', 'solicitar_factura', 'consultar_factura', 'analizar_publicaciones_ml', 'ver_metricas_ml', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'revisar_desempeno_equipo', 'aprobar_gasto', 'evaluar_limite_gasto', 'verificar_gasto_recurrente', 'pedir_a_humano', 'reportar_falla'],
+  // Nia — recepcionista de 1er contacto. Voice-only: transferencias y encuesta.
+  // solicitar_factura queda en Nico/Nox (bug Haiku 4.5 halucinando CFDI 22:35
+  // del 2026-08-04). Nia siempre delega vía delegar_tarea.
+  nia:   ['crear_lead', 'crear_contacto_saliente', 'agendar_cita', 'registrar_pedido', 'buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'registrar_encuesta', 'buscar_documento_oficina', 'buscar_correo_enviado', 'agregar_tag_contacto'],
+  // Noah — ventas outbound. marcar_no_llamar por regulatorio LFPDPPP. ML tools
+  // feature-gated ('mercadolibre') solo suman si org activa la feature.
+  noah:  ['crear_lead', 'crear_contacto_saliente', 'llamar_a', 'notificar_transferencia', 'transferir_llamada', 'buscar_documento_oficina', 'buscar_correo_enviado', 'buscar_producto', 'dropbox_buscar_codigo', 'marcar_no_llamar', 'trigger_outbound_call', 'analizar_publicaciones_ml', 'crear_publicacion_ml', 'actualizar_publicacion_ml', 'ver_metricas_ml', 'generar_propuesta_comercial', 'generar_cotizacion', 'generar_correo_estructurado'],
+  // Nico — cobranza y fiscal (CFDIs + P&L). Owner del pack invoicing_cfdi.
+  // QB tools feature-gated ('quickbooks').
+  nico:  ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'enviar_correo', 'crear_documento', 'enviar_documento_oficina', 'solicitar_factura', 'consultar_factura', 'qb_consultar_facturas', 'qb_buscar_cliente', 'qb_registrar_pago', 'qb_crear_factura', 'qb_reporte_ingresos', 'generar_correo_estructurado'],
+  // Nelia — servicio al cliente + contenido postventa. Owner de extraer_voz
+  // (insights de cliente) + generar_one_pager (contenido postventa).
+  nelia: ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'registrar_encuesta', 'enviar_correo', 'buscar_archivo', 'buscar_documento_oficina', 'buscar_correo_enviado', 'enviar_documento_oficina', 'extraer_voz_del_cliente', 'generar_one_pager', 'generar_correo_estructurado', 'generar_reporte_metricas_excel'],
+  // Neo — helpdesk IT. `llamar_a` para escalar responsable (Scope A A1 CRITICAL #1).
+  neo:   ['crear_ticket', 'consultar_incidentes', 'buscar_directorio', 'buscar_archivo', 'leer_archivo', 'llamar_a'],
+  // Nara — municipal (civic reports + trámites externos si feature activa).
+  nara:  ['create_civic_report', 'lookup_civic_report', 'update_civic_report', 'buscar_cliente', 'registrar_encuesta', 'notificar_transferencia', 'transferir_llamada', 'consultar_catalogo_externo', 'buscar_en_padron_externo', 'enviar_tramite_externo', 'generar_reporte_metricas_excel'],
+  // Naia — RRHH. Owner de iniciar_onboarding + HR MVP tools (registrar_falta,
+  // consultar_vacaciones, solicitar_permiso, verificar_incidencia).
+  naia:  ['iniciar_onboarding', 'agendar_cita', 'buscar_cliente', 'enviar_correo', 'crear_documento', 'buscar_documento_oficina', 'buscar_correo_enviado', 'list_calendar_events', 'create_calendar_event', 'delete_calendar_event', 'buscar_archivo', 'registrar_falta', 'consultar_vacaciones', 'solicitar_permiso', 'verificar_incidencia', 'generar_correo_estructurado'],
+  // Nova — Centro de Coordinación (despacho de campo). Owner de asignar_unidad.
+  nova:  ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'crear_ticket', 'crear_documento', 'buscar_documento_oficina', 'buscar_correo_enviado', 'extraer_voz_del_cliente', 'asignar_unidad_campo', 'consultar_unidades_disponibles'],
+  // Nox — coordinador director (rol hub por diseño, excepción a tope 12-15).
+  // Contract drafts, sheets, save_to_drive gated por features respectivas.
+  nox:   ['enviar_correo', 'llamar_a', 'crear_documento', 'buscar_documento_oficina', 'buscar_correo_enviado', 'enviar_documento_oficina', 'create_file', 'create_contract_draft', 'buscar_archivo', 'leer_archivo', 'save_to_drive', 'organize_files', 'list_calendar_events', 'create_calendar_event', 'verificar_gasto_recurrente', 'sheets_agregar_fila', 'sheets_actualizar_fila', 'sheets_leer', 'sheets_buscar', 'dropbox_buscar_codigo', 'preparar_brief_del_dia', 'actualizar_disponibilidad_diaria'],
+  // Niva — directora general (rol hub por diseño, excepción a tope). Boundary
+  // A-F7: SIN delegar_tarea (Niva=decisor). Escala a Nox vía consultar_agente.
+  // QB/ML tools feature-gated.
+  niva:  ['enviar_correo', 'llamar_a', 'crear_documento', 'buscar_documento_oficina', 'buscar_correo_enviado', 'enviar_documento_oficina', 'create_file', 'save_to_drive', 'search_leads', 'list_calendar_events', 'create_calendar_event', 'qb_consultar_facturas', 'qb_buscar_cliente', 'analizar_publicaciones_ml', 'ver_metricas_ml', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'revisar_desempeno_equipo', 'aprobar_gasto', 'evaluar_limite_gasto', 'verificar_gasto_recurrente', 'generar_pitch_deck', 'generar_reporte_metricas_excel'],
 };
+
+// Universal tools que TODOS los meerkats reciben en voice y chat/email,
+// sin importar el preset. Agregadas por sync.ts (voice) y agent-chat (chat).
+// Base 6 acordada 2026-08-18 (feedback-tool-bloat-reglas regla #1).
+export const UNIVERSAL_VOICE_TOOLS: string[] = [
+  'delegar_tarea', 'consultar_agente', 'reportar_falla', 'read_url', 'buscar_en_web',
+];
 
 type ToolDef = Record<string, unknown>;
 type ServerFn = (path: string, extraQuery?: Record<string, string>) => unknown;
@@ -449,6 +447,9 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
     case 'buscar_producto':
       return { type: 'function', function: { name: 'buscar_producto', description: 'Busca un producto o servicio en el catálogo de Notion del negocio por SKU o nombre. ÚSALA SIEMPRE antes de mencionar precios al llamante — nunca inventes cifras. Devuelve nombre, SKU, precio formateado y descripción.', parameters: { type: 'object', properties: { query: { type: 'string', description: 'SKU exacto o nombre parcial del producto/servicio a buscar.' } }, required: ['query'] } }, server: server('exec/buscar_producto') };
 
+    case 'dropbox_buscar_codigo':
+      return { type: 'function', function: { name: 'dropbox_buscar_codigo', description: 'Busca un código de pieza o producto en el catálogo Excel/CSV que el cliente mantiene en su Dropbox. Úsala ANTES de llenar una OC o factura cuando necesites el SKU correcto. NO inventes códigos si no encuentras — dile al cliente y ofrece delegar.', parameters: { type: 'object', properties: { query: { type: 'string', description: 'Término a buscar (parte del SKU o descripción).' }, exact: { type: 'boolean', description: 'True para match exacto contra SKU. Default false (fuzzy).' } }, required: ['query'] } }, server: server('exec/dropbox_buscar_codigo') };
+
     case 'marcar_no_llamar': return { type: 'function', function: { name: 'marcar_no_llamar', description: 'Marca un número de teléfono como "no volver a llamar". Úsala inmediatamente cuando el ciudadano diga que no quiere recibir más llamadas ("no me llamen", "quítenme de la lista", "no me interesa"). Los futuros crons de llamadas salientes respetarán esta marca. Después de llamar esta herramienta, termina la llamada con cortesía sin insistir.', parameters: { type: 'object', properties: { telefono: { type: 'string', description: 'Número de teléfono del ciudadano tal como está en el sistema (con o sin lada). Se normaliza automáticamente en el servidor.' }, motivo: { type: 'string', description: 'Motivo breve de la solicitud (ej: "no interesado", "número equivocado", "ya no vive aquí"). Opcional.' } }, required: ['telefono'] } }, server: server('marcar-no-llamar') };
 
     case 'agregar_tag_contacto': return { type: 'function', function: { name: 'agregar_tag_contacto', description: 'Agrega una etiqueta (tag) a un contacto de outbound_contacts según lo que hayas aprendido en la conversación. Úsala cuando detectes información útil para segmentar futuras campañas: si el cliente compró usa tag "compró"; si mostró interés pero no compró usa "interesado"; si no está listo usa "seguimiento"; si es cliente frecuente usa "vip"; etc. Tags sugeridos: compró, cotizó, interesado, no interesado, seguimiento, vencido, nuevo, vip. Puedes crear tags nuevos si aplican al negocio. Los tags permiten a las campañas futuras filtrar exactamente a quién llamar.', parameters: { type: 'object', properties: { telefono: { type: 'string', description: 'Número de teléfono del contacto. Se normaliza por sufijo de 10 dígitos.' }, tag: { type: 'string', description: 'Tag a agregar. Se guarda en lowercase, sin espacios extra. Max 40 chars.' }, motivo: { type: 'string', description: 'Motivo breve por el que agregas este tag (opcional, para auditoría).' } }, required: ['telefono', 'tag'] } }, server: server('agregar-tag-contacto') };
@@ -520,8 +521,10 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
   const EXTRA_GATED_TOOLS = new Set(['actualizar_disponibilidad_diaria']);
 
   if (roleTools) {
-    // Role-based: build each tool from the confirmed distribution
-    for (const toolName of roleTools) {
+    // Role-based: preset + base universal (5 tools que todos reciben).
+    // Merge dedup para permitir presets que expliciten universales si necesitan.
+    const merged = Array.from(new Set([...UNIVERSAL_VOICE_TOOLS, ...roleTools]));
+    for (const toolName of merged) {
       if (EXTRA_GATED_TOOLS.has(toolName)) continue; // handled below with extra gates
       const def = buildToolDef(toolName, agent, server);
       if (def) tools.push(def);

@@ -33,15 +33,17 @@ export const TOOL_REGISTRY: ToolEntry[] = [
   { name: 'read_url',                 description: 'Lee el contenido de una URL pública',                  channels: A, category: 'web',       destructive: false, gatedByRole: null, gatedByFeature: null,      capability: null, policy: policyFor('read_url') },
   { name: 'buscar_en_web',            description: 'Búsqueda web general (Brave Search)',                   channels: A, category: 'web',       destructive: false, gatedByRole: null, gatedByFeature: null,      capability: null, policy: policyFor('buscar_en_web') },
   { name: 'search_leads',             description: 'Búsqueda estructurada de leads/empresas',               channels: A, category: 'web',       destructive: false, gatedByRole: ['niva'], gatedByFeature: null,  capability: null, policy: policyFor('search_leads') },
-  { name: 'search_files',             description: 'Busca archivos en Drive del negocio',                   channels: A, category: 'drive',     destructive: false, gatedByRole: null, gatedByFeature: null,      capability: 'files', policy: policyFor('search_files') },
-  { name: 'read_file',                description: 'Lee contenido de archivo del Drive',                    channels: A, category: 'drive',     destructive: false, gatedByRole: null, gatedByFeature: null,      capability: 'files', policy: policyFor('read_file') },
+  // search_files/read_file son alias chat/email de buscar_archivo/leer_archivo (voice).
+  // Los meerkats que los reciben en runtime son los que tienen los aliases voice en su preset.
+  { name: 'search_files',             description: 'Busca archivos en Drive del negocio',                   channels: A, category: 'drive',     destructive: false, gatedByRole: ['nelia','neo','naia','nox'], gatedByFeature: null, capability: 'files', policy: policyFor('search_files') },
+  { name: 'read_file',                description: 'Lee contenido de archivo del Drive',                    channels: A, category: 'drive',     destructive: false, gatedByRole: ['neo','nox'], gatedByFeature: null, capability: 'files', policy: policyFor('read_file') },
 
   // destructive
-  { name: 'send_email',               description: 'Envía correo directo (verifier antes de send)',         channels: A, category: 'comms',     destructive: true,  gatedByRole: null, gatedByFeature: null,      capability: 'email', policy: policyFor('send_email') },
-  { name: 'trigger_outbound_call',    description: 'Dispara llamada saliente (verifier antes)',             channels: A, category: 'comms',     destructive: true,  gatedByRole: null, gatedByFeature: 'outbound_calls', capability: 'phone', policy: policyFor('trigger_outbound_call') },
+  { name: 'send_email',               description: 'Envía correo directo (verifier antes de send)',         channels: A, category: 'comms',     destructive: true,  gatedByRole: ['nico','nelia','naia','nox','niva'], gatedByFeature: null, capability: 'email', policy: policyFor('send_email') },
+  { name: 'trigger_outbound_call',    description: 'Dispara llamada saliente (verifier antes)',             channels: A, category: 'comms',     destructive: true,  gatedByRole: ['noah'], gatedByFeature: 'outbound_calls', capability: 'phone', policy: policyFor('trigger_outbound_call') },
 
   // documents
-  { name: 'create_document',          description: 'Genera PDF (factura, orden, cotización, general)',      channels: A, category: 'docs',      destructive: false, gatedByRole: null, gatedByFeature: null,      capability: null, policy: policyFor('create_document') },
+  { name: 'create_document',          description: 'Genera PDF (factura, orden, cotización, general)',      channels: A, category: 'docs',      destructive: false, gatedByRole: ['nico','naia','nova','nox','niva'], gatedByFeature: null, capability: null, policy: policyFor('create_document') },
   { name: 'create_file',              description: 'Genera archivo Excel/Word/PowerPoint',                  channels: A, category: 'docs',      destructive: false, gatedByRole: ['nox','niva'], gatedByFeature: null, capability: null, policy: policyFor('create_file') },
   { name: 'create_contract_draft',    description: 'Crea borrador de contrato',                             channels: A, category: 'docs',      destructive: true,  gatedByRole: ['nox'], gatedByFeature: 'contract_drafts', capability: null, policy: policyFor('create_contract_draft') },
 
@@ -50,28 +52,29 @@ export const TOOL_REGISTRY: ToolEntry[] = [
   { name: 'organize_files',           description: 'Renombra, mueve o crea carpetas en Drive',              channels: A, category: 'drive',     destructive: true,  gatedByRole: ['nox'], gatedByFeature: null,   capability: 'files', policy: policyFor('organize_files') },
 
   // calendar
-  { name: 'list_calendar_events',     description: 'Lista eventos del calendario',                          channels: A, category: 'calendar',  destructive: false, gatedByRole: null, gatedByFeature: null,      capability: null, policy: policyFor('list_calendar_events') },
-  { name: 'create_calendar_event',    description: 'Crea evento en calendario',                             channels: A, category: 'calendar',  destructive: false, gatedByRole: null, gatedByFeature: null,      capability: null, policy: policyFor('create_calendar_event') },
-  { name: 'delete_calendar_event',    description: 'Elimina evento del calendario',                         channels: A, category: 'calendar',  destructive: true,  gatedByRole: null, gatedByFeature: null,      capability: null, policy: policyFor('delete_calendar_event') },
+  { name: 'list_calendar_events',     description: 'Lista eventos del calendario',                          channels: A, category: 'calendar',  destructive: false, gatedByRole: ['naia','nox','niva'], gatedByFeature: null, capability: null, policy: policyFor('list_calendar_events') },
+  { name: 'create_calendar_event',    description: 'Crea evento en calendario',                             channels: A, category: 'calendar',  destructive: false, gatedByRole: ['naia','nox','niva'], gatedByFeature: null, capability: null, policy: policyFor('create_calendar_event') },
+  { name: 'delete_calendar_event',    description: 'Elimina evento del calendario',                         channels: A, category: 'calendar',  destructive: true,  gatedByRole: ['naia'], gatedByFeature: null, capability: null, policy: policyFor('delete_calendar_event') },
 
   // civic
   { name: 'create_civic_report',      description: 'Reporte cívico municipal',                              channels: A, category: 'gobierno',  destructive: false, gatedByRole: ['nara'], gatedByFeature: 'civic_reports', capability: null, policy: policyFor('create_civic_report') },
   { name: 'lookup_civic_report',      description: 'Consulta reporte cívico por folio',                     channels: A, category: 'gobierno',  destructive: false, gatedByRole: ['nara'], gatedByFeature: 'civic_reports', capability: null, policy: policyFor('lookup_civic_report') },
   { name: 'update_civic_report',      description: 'Actualiza estado de reporte cívico',                    channels: A, category: 'gobierno',  destructive: false, gatedByRole: ['nara'], gatedByFeature: 'civic_reports', capability: null, policy: policyFor('update_civic_report') },
 
-  // QB
-  { name: 'qb_consultar_facturas',    description: 'Consulta facturas en QuickBooks',                       channels: A, category: 'quickbooks', destructive: false, gatedByRole: null, gatedByFeature: null,     capability: null, policy: policyFor('qb_consultar_facturas') },
-  { name: 'qb_buscar_cliente',        description: 'Busca cliente en QuickBooks',                           channels: A, category: 'quickbooks', destructive: false, gatedByRole: null, gatedByFeature: null,     capability: null, policy: policyFor('qb_buscar_cliente') },
-  { name: 'qb_crear_factura',         description: 'Crea factura en QuickBooks (destructiva, 1 op)',        channels: A, category: 'quickbooks', destructive: true,  gatedByRole: null, gatedByFeature: null,     capability: null, policy: policyFor('qb_crear_factura') },
+  // QB (feature-gated 'quickbooks')
+  { name: 'qb_consultar_facturas',    description: 'Consulta facturas en QuickBooks',                       channels: A, category: 'quickbooks', destructive: false, gatedByRole: ['nico','niva'], gatedByFeature: 'quickbooks', capability: null, policy: policyFor('qb_consultar_facturas') },
+  { name: 'qb_buscar_cliente',        description: 'Busca cliente en QuickBooks',                           channels: A, category: 'quickbooks', destructive: false, gatedByRole: ['nico','niva'], gatedByFeature: 'quickbooks', capability: null, policy: policyFor('qb_buscar_cliente') },
+  { name: 'qb_crear_factura',         description: 'Crea factura en QuickBooks (destructiva, 1 op)',        channels: A, category: 'quickbooks', destructive: true,  gatedByRole: ['nico'], gatedByFeature: 'quickbooks', capability: null, policy: policyFor('qb_crear_factura') },
 
   // fiscal
-  { name: 'solicitar_factura',        description: 'Registra solicitud de CFDI al equipo humano',           channels: A, category: 'fiscal',    destructive: true,  gatedByRole: null, gatedByFeature: null,      capability: null, policy: policyFor('solicitar_factura') },
-  { name: 'consultar_factura',        description: 'Consulta estado de solicitud de CFDI',                  channels: A, category: 'fiscal',    destructive: false, gatedByRole: null, gatedByFeature: null,      capability: null, policy: policyFor('consultar_factura') },
+  { name: 'solicitar_factura',        description: 'Registra solicitud de CFDI al equipo humano',           channels: A, category: 'fiscal',    destructive: true,  gatedByRole: ['nico'], gatedByFeature: null, capability: null, policy: policyFor('solicitar_factura') },
+  { name: 'consultar_factura',        description: 'Consulta estado de solicitud de CFDI',                  channels: A, category: 'fiscal',    destructive: false, gatedByRole: ['nico'], gatedByFeature: null, capability: null, policy: policyFor('consultar_factura') },
 
-  // productos / ML
-  { name: 'buscar_producto',          description: 'Busca producto en catálogo Notion',                     channels: A, category: 'catalog',   destructive: false, gatedByRole: null, gatedByFeature: null,      capability: null, policy: policyFor('buscar_producto') },
-  { name: 'analizar_publicaciones_ml',description: 'Lista publicaciones Mercado Libre (solo chat)',         channels: ['chat'], category: 'mercadolibre', destructive: false, gatedByRole: ['niva'], gatedByFeature: null, capability: null, policy: policyFor('analizar_publicaciones_ml') },
-  { name: 'ver_metricas_ml',          description: 'Métricas Mercado Libre (solo chat)',                    channels: ['chat'], category: 'mercadolibre', destructive: false, gatedByRole: ['niva'], gatedByFeature: null, capability: null, policy: policyFor('ver_metricas_ml') },
+  // productos / ML (feature-gated 'mercadolibre')
+  { name: 'buscar_producto',          description: 'Busca producto en catálogo Notion',                     channels: A, category: 'catalog',   destructive: false, gatedByRole: ['noah'], gatedByFeature: null, capability: null, policy: policyFor('buscar_producto') },
+  { name: 'dropbox_buscar_codigo',    description: 'Busca código de pieza/producto en catálogo Excel/CSV del cliente en Dropbox (pack dropbox_catalog)', channels: A, category: 'catalog', destructive: false, gatedByRole: ['nox','noah'], gatedByFeature: 'dropbox_catalog', capability: 'files', policy: DEFAULT_POLICY },
+  { name: 'analizar_publicaciones_ml',description: 'Lista publicaciones Mercado Libre (solo chat)',         channels: ['chat'], category: 'mercadolibre', destructive: false, gatedByRole: ['noah','niva'], gatedByFeature: 'mercadolibre', capability: null, policy: policyFor('analizar_publicaciones_ml') },
+  { name: 'ver_metricas_ml',          description: 'Métricas Mercado Libre (solo chat)',                    channels: ['chat'], category: 'mercadolibre', destructive: false, gatedByRole: ['noah','niva'], gatedByFeature: 'mercadolibre', capability: null, policy: policyFor('ver_metricas_ml') },
 
   // meta
   { name: 'delegate_task',            description: 'Delega tarea a otro empleado (loop on evidence)',       channels: A, category: 'meta',      destructive: false, gatedByRole: null, gatedByFeature: null,      capability: null, policy: policyFor('delegate_task') },
@@ -88,64 +91,67 @@ export const TOOL_REGISTRY: ToolEntry[] = [
   { name: 'consultar_billing_org',         description: 'Nash: estado billing real de una org (minutos/tareas usados y disponibles, ciclo, modelo, ledger flag). Fuente de verdad para responder al owner sin alucinar cifras.', channels: ['chat', 'email'], category: 'nash', destructive: false, gatedByRole: ['nash'], gatedByFeature: null,                       capability: null, policy: DEFAULT_POLICY },
 
   // brand / voc
-  { name: 'extraer_tono_de_marca',    description: 'Extrae guía de tono desde muestras',                    channels: A, category: 'brand',     destructive: false, gatedByRole: null, gatedByFeature: null,      capability: null, policy: DEFAULT_POLICY },
-  { name: 'extraer_voz_del_cliente',  description: 'VoC desde llamadas/correos/tickets',                    channels: A, category: 'brand',     destructive: false, gatedByRole: null, gatedByFeature: null,      capability: null, policy: DEFAULT_POLICY },
+  { name: 'extraer_tono_de_marca',    description: 'Extrae guía de tono desde muestras',                    channels: A, category: 'brand',     destructive: false, gatedByRole: ['niva'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
+  { name: 'extraer_voz_del_cliente',  description: 'VoC desde llamadas/correos/tickets',                    channels: A, category: 'brand',     destructive: false, gatedByRole: ['nelia','nova','niva'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
 
-  // sheets
-  { name: 'sheets_agregar_fila',      description: 'Agrega fila al Google Sheet configurado para el propósito',    channels: ['chat', 'email', 'voice'], category: 'sheets', destructive: false, gatedByRole: null, gatedByFeature: 'google_sheets', capability: 'sheets.write', policy: policyFor('sheets_agregar_fila') },
-  { name: 'sheets_actualizar_fila',   description: 'Actualiza fila existente en el Google Sheet',                  channels: ['chat', 'email', 'voice'], category: 'sheets', destructive: false, gatedByRole: null, gatedByFeature: 'google_sheets', capability: 'sheets.write', policy: policyFor('sheets_actualizar_fila') },
-  { name: 'sheets_leer',              description: 'Lee el contenido del Google Sheet configurado',                 channels: ['chat', 'email', 'voice'], category: 'sheets', destructive: false, gatedByRole: null, gatedByFeature: 'google_sheets', capability: 'sheets.read',  policy: policyFor('sheets_leer') },
-  { name: 'sheets_buscar',            description: 'Busca filas en el Google Sheet que contengan un texto',        channels: ['chat', 'email', 'voice'], category: 'sheets', destructive: false, gatedByRole: null, gatedByFeature: 'google_sheets', capability: 'sheets.read',  policy: policyFor('sheets_buscar') },
+  // sheets (feature-gated 'google_sheets')
+  { name: 'sheets_agregar_fila',      description: 'Agrega fila al Google Sheet configurado para el propósito',    channels: ['chat', 'email', 'voice'], category: 'sheets', destructive: false, gatedByRole: ['nox'], gatedByFeature: 'google_sheets', capability: 'sheets.write', policy: policyFor('sheets_agregar_fila') },
+  { name: 'sheets_actualizar_fila',   description: 'Actualiza fila existente en el Google Sheet',                  channels: ['chat', 'email', 'voice'], category: 'sheets', destructive: false, gatedByRole: ['nox'], gatedByFeature: 'google_sheets', capability: 'sheets.write', policy: policyFor('sheets_actualizar_fila') },
+  { name: 'sheets_leer',              description: 'Lee el contenido del Google Sheet configurado',                 channels: ['chat', 'email', 'voice'], category: 'sheets', destructive: false, gatedByRole: ['nox'], gatedByFeature: 'google_sheets', capability: 'sheets.read',  policy: policyFor('sheets_leer') },
+  { name: 'sheets_buscar',            description: 'Busca filas en el Google Sheet que contengan un texto',        channels: ['chat', 'email', 'voice'], category: 'sheets', destructive: false, gatedByRole: ['nox'], gatedByFeature: 'google_sheets', capability: 'sheets.read',  policy: policyFor('sheets_buscar') },
 
   // ─── F8 batch: 35+ tools funcionales pero sin declaración en registry ────
   // Ver Scope B Agent 1 sección 4. Sin estas entries, /admin/tools no las
   // descubre, auditRegistry() no gobierna, policy engine no aplica retry.
 
-  // QB adicionales
-  { name: 'qb_registrar_pago',        description: 'Registra pago en QuickBooks (destructivo, 1 op)',              channels: A, category: 'quickbooks', destructive: true,  gatedByRole: null, gatedByFeature: null,      capability: null, policy: DEFAULT_POLICY },
-  { name: 'qb_reporte_ingresos',      description: 'Reporte de ingresos/gastos/AR de QuickBooks por período',      channels: A, category: 'quickbooks', destructive: false, gatedByRole: null, gatedByFeature: null,      capability: null, policy: DEFAULT_POLICY },
+  // QB adicionales (feature-gated 'quickbooks')
+  { name: 'qb_registrar_pago',        description: 'Registra pago en QuickBooks (destructivo, 1 op)',              channels: A, category: 'quickbooks', destructive: true,  gatedByRole: ['nico'], gatedByFeature: 'quickbooks', capability: null, policy: DEFAULT_POLICY },
+  { name: 'qb_reporte_ingresos',      description: 'Reporte de ingresos/gastos/AR de QuickBooks por período',      channels: A, category: 'quickbooks', destructive: false, gatedByRole: ['nico'], gatedByFeature: 'quickbooks', capability: null, policy: DEFAULT_POLICY },
 
   // office docs (reutilización de docs previos)
-  { name: 'buscar_documento_oficina', description: 'Busca documentos generados previamente en Oficina',            channels: A, category: 'docs',      destructive: false, gatedByRole: null, gatedByFeature: null,      capability: null, policy: DEFAULT_POLICY },
-  { name: 'enviar_documento_oficina', description: 'Reenvía un documento existente de Oficina como adjunto',       channels: A, category: 'docs',      destructive: true,  gatedByRole: null, gatedByFeature: null,      capability: 'email', policy: DEFAULT_POLICY },
+  { name: 'buscar_documento_oficina', description: 'Busca documentos generados previamente en Oficina',            channels: A, category: 'docs',      destructive: false, gatedByRole: ['nia','noah','nico','nelia','naia','nova','nox','niva'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
+  { name: 'enviar_documento_oficina', description: 'Reenvía un documento existente de Oficina como adjunto',       channels: A, category: 'docs',      destructive: true,  gatedByRole: ['nico','nelia','nox','niva'], gatedByFeature: null, capability: 'email', policy: DEFAULT_POLICY },
 
   // CRM / data capture
-  { name: 'crear_lead',               description: 'Registra un lead con nombre/telefono/interés',                 channels: A, category: 'crm',       destructive: false, gatedByRole: null, gatedByFeature: null,      capability: null, policy: DEFAULT_POLICY },
-  { name: 'crear_contacto_saliente',  description: 'Crea contacto en outbound_contacts para campañas',             channels: A, category: 'crm',       destructive: false, gatedByRole: null, gatedByFeature: 'outbound_calls', capability: null, policy: DEFAULT_POLICY },
-  { name: 'agendar_cita',             description: 'Registra cita en la agenda del negocio',                       channels: A, category: 'crm',       destructive: false, gatedByRole: null, gatedByFeature: null,      capability: null, policy: DEFAULT_POLICY },
-  { name: 'registrar_pedido',         description: 'Registra pedido de cliente (producto, cantidad, entrega)',     channels: A, category: 'crm',       destructive: false, gatedByRole: null, gatedByFeature: null,      capability: null, policy: DEFAULT_POLICY },
-  { name: 'buscar_cliente',           description: 'Busca cliente existente por nombre/telefono',                  channels: A, category: 'crm',       destructive: false, gatedByRole: null, gatedByFeature: null,      capability: null, policy: DEFAULT_POLICY },
-  { name: 'buscar_correo_enviado',    description: 'Busca correos enviados previamente para dar seguimiento',      channels: A, category: 'crm',       destructive: false, gatedByRole: null, gatedByFeature: null,      capability: 'email', policy: DEFAULT_POLICY },
-  { name: 'agregar_tag_contacto',     description: 'Agrega tag a contacto para segmentación de campañas',          channels: A, category: 'crm',       destructive: false, gatedByRole: null, gatedByFeature: null,      capability: null, policy: DEFAULT_POLICY },
-  { name: 'marcar_no_llamar',         description: 'Marca teléfono como "no volver a llamar" (regulatorio LFPDPPP)', channels: ['voice', 'email'], category: 'crm',    destructive: true,  gatedByRole: null, gatedByFeature: null,      capability: null, policy: DEFAULT_POLICY },
+  { name: 'crear_lead',               description: 'Registra un lead con nombre/telefono/interés',                 channels: A, category: 'crm',       destructive: false, gatedByRole: ['nia','noah'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
+  { name: 'crear_contacto_saliente',  description: 'Crea contacto en outbound_contacts para campañas',             channels: A, category: 'crm',       destructive: false, gatedByRole: ['nia','noah'], gatedByFeature: 'outbound_calls', capability: null, policy: DEFAULT_POLICY },
+  { name: 'agendar_cita',             description: 'Registra cita en la agenda del negocio',                       channels: A, category: 'crm',       destructive: false, gatedByRole: ['nia','naia'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
+  { name: 'registrar_pedido',         description: 'Registra pedido de cliente (producto, cantidad, entrega)',     channels: A, category: 'crm',       destructive: false, gatedByRole: ['nia'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
+  { name: 'buscar_cliente',           description: 'Busca cliente existente por nombre/telefono',                  channels: A, category: 'crm',       destructive: false, gatedByRole: ['nia','nico','nelia','nara','naia','nova'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
+  { name: 'buscar_correo_enviado',    description: 'Busca correos enviados previamente para dar seguimiento',      channels: A, category: 'crm',       destructive: false, gatedByRole: ['nia','noah','nico','nelia','naia','nox','niva'], gatedByFeature: null, capability: 'email', policy: DEFAULT_POLICY },
+  { name: 'agregar_tag_contacto',     description: 'Agrega tag a contacto para segmentación de campañas',          channels: A, category: 'crm',       destructive: false, gatedByRole: ['nia'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
+  { name: 'marcar_no_llamar',         description: 'Marca teléfono como "no volver a llamar" (regulatorio LFPDPPP)', channels: ['voice', 'email'], category: 'crm', destructive: true, gatedByRole: ['noah'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
 
   // helpdesk IT
-  { name: 'crear_ticket',             description: 'Crea ticket de soporte IT con categoría y prioridad',          channels: A, category: 'helpdesk',  destructive: false, gatedByRole: ['neo'], gatedByFeature: null,   capability: null, policy: DEFAULT_POLICY },
-  { name: 'consultar_incidentes',     description: 'Consulta incidentes activos por tema',                         channels: A, category: 'helpdesk',  destructive: false, gatedByRole: ['neo'], gatedByFeature: null,   capability: null, policy: DEFAULT_POLICY },
-  { name: 'buscar_directorio',        description: 'Busca en directorio interno quién atiende un problema',        channels: A, category: 'helpdesk',  destructive: false, gatedByRole: null,  gatedByFeature: null,     capability: null, policy: DEFAULT_POLICY },
-  { name: 'iniciar_onboarding',       description: 'Dispara onboarding con correo de bienvenida',                  channels: A, category: 'helpdesk',  destructive: true,  gatedByRole: ['naia'], gatedByFeature: null,  capability: 'email', policy: DEFAULT_POLICY },
+  { name: 'crear_ticket',             description: 'Crea ticket de soporte IT con categoría y prioridad',          channels: A, category: 'helpdesk',  destructive: false, gatedByRole: ['neo','nova'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
+  { name: 'consultar_incidentes',     description: 'Consulta incidentes activos por tema',                         channels: A, category: 'helpdesk',  destructive: false, gatedByRole: ['neo'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
+  { name: 'buscar_directorio',        description: 'Busca en directorio interno quién atiende un problema',        channels: A, category: 'helpdesk',  destructive: false, gatedByRole: ['neo'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
+  { name: 'iniciar_onboarding',       description: 'Dispara onboarding con correo de bienvenida',                  channels: A, category: 'helpdesk',  destructive: true,  gatedByRole: ['naia'], gatedByFeature: null, capability: 'email', policy: DEFAULT_POLICY },
 
   // voice-only (transferencias telefónicas y encuestas en llamada)
-  { name: 'notificar_transferencia',  description: 'Voice-only: notifica al destinatario antes de transferir',    channels: ['voice'], category: 'voice',   destructive: false, gatedByRole: null, gatedByFeature: null,   capability: null, policy: DEFAULT_POLICY },
-  { name: 'transferir_llamada',       description: 'Voice-only: transfiere llamada a número/agente',              channels: ['voice'], category: 'voice',   destructive: true,  gatedByRole: null, gatedByFeature: null,   capability: null, policy: DEFAULT_POLICY },
-  { name: 'registrar_encuesta',       description: 'Voice-only: registra respuestas de encuesta telefónica',      channels: ['voice'], category: 'voice',   destructive: false, gatedByRole: null, gatedByFeature: null,   capability: null, policy: DEFAULT_POLICY },
+  { name: 'notificar_transferencia',  description: 'Voice-only: notifica al destinatario antes de transferir',    channels: ['voice'], category: 'voice', destructive: false, gatedByRole: ['nia','noah','nico','nelia','nara','nova'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
+  { name: 'transferir_llamada',       description: 'Voice-only: transfiere llamada a número/agente',              channels: ['voice'], category: 'voice', destructive: true,  gatedByRole: ['nia','noah','nico','nelia','nara','nova'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
+  { name: 'registrar_encuesta',       description: 'Voice-only: registra respuestas de encuesta telefónica',      channels: ['voice'], category: 'voice', destructive: false, gatedByRole: ['nia','nelia','nara'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
 
   // director / niva (finanzas + desempeño)
   { name: 'revisar_desempeno_equipo', description: 'Reporte de desempeño del equipo (director)',                   channels: A, category: 'finanzas',  destructive: false, gatedByRole: ['niva'], gatedByFeature: null,  capability: null, policy: DEFAULT_POLICY },
   { name: 'aprobar_gasto',            description: 'Registra aprobación/rechazo de gasto operativo (director, audit)', channels: A, category: 'finanzas', destructive: true,  gatedByRole: ['niva'], gatedByFeature: null,  capability: null, policy: DEFAULT_POLICY },
   { name: 'evaluar_limite_gasto',     description: 'Verifica si un gasto cabe en el presupuesto mensual',          channels: A, category: 'finanzas',  destructive: false, gatedByRole: ['niva'], gatedByFeature: null,  capability: null, policy: DEFAULT_POLICY },
-  { name: 'verificar_gasto_recurrente', description: 'Consulta historial de proveedor para auto-approve facturas', channels: A, category: 'finanzas',  destructive: false, gatedByRole: null, gatedByFeature: null,      capability: null, policy: DEFAULT_POLICY },
+  { name: 'verificar_gasto_recurrente', description: 'Consulta historial de proveedor para auto-approve facturas', channels: A, category: 'finanzas',  destructive: false, gatedByRole: ['nox','niva'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
 
   // Nox coordinator (non-voice)
   { name: 'preparar_brief_del_dia',   description: 'Nox: brief diario del owner (acción hoy / preparación / al tanto)', channels: ['chat', 'email'], category: 'meta', destructive: false, gatedByRole: ['nox'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
 
   // Pilar 2 creativity (docs generados con LLM, cobran 3-6 ops)
-  { name: 'generar_propuesta_comercial',    description: 'Genera propuesta comercial PDF (5 ops)',                  channels: A, category: 'creatividad', destructive: false, gatedByRole: ['nox','niva','noah'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
-  { name: 'generar_cotizacion',             description: 'Genera cotización PDF con precios (4 ops)',              channels: A, category: 'creatividad', destructive: false, gatedByRole: ['nox','niva','noah','nico'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
-  { name: 'generar_one_pager',              description: 'Genera one-pager informativo PDF (3 ops)',                channels: A, category: 'creatividad', destructive: false, gatedByRole: ['nox','niva','noah','nelia'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
-  { name: 'generar_correo_estructurado',    description: 'Borrador de correo largo estructurado (2 ops)',           channels: A, category: 'creatividad', destructive: false, gatedByRole: null, gatedByFeature: null,      capability: null, policy: DEFAULT_POLICY },
-  { name: 'generar_pitch_deck',             description: 'Pitch deck PowerPoint 8-10 slides (6 ops)',               channels: A, category: 'creatividad', destructive: false, gatedByRole: ['nox','niva','noah'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
-  { name: 'generar_reporte_metricas_excel', description: 'Reporte Excel de métricas del período (4 ops)',           channels: A, category: 'creatividad', destructive: false, gatedByRole: ['nox','niva','noah','nara','nelia'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
+  // Nota: MEERKAT_TOOL_ACCESS en src/lib/creativity/meerkat-gates.ts controla
+  // el runtime de estas tools. Aquí solo se documenta la distribución para
+  // /admin/tools; mantener ambas fuentes sincronizadas.
+  { name: 'generar_propuesta_comercial',    description: 'Genera propuesta comercial PDF (5 ops)',                  channels: A, category: 'creatividad', destructive: false, gatedByRole: ['noah'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
+  { name: 'generar_cotizacion',             description: 'Genera cotización PDF con precios (4 ops)',              channels: A, category: 'creatividad', destructive: false, gatedByRole: ['noah'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
+  { name: 'generar_one_pager',              description: 'Genera one-pager informativo PDF (3 ops)',                channels: A, category: 'creatividad', destructive: false, gatedByRole: ['nelia'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
+  { name: 'generar_correo_estructurado',    description: 'Borrador de correo largo estructurado (2 ops)',           channels: A, category: 'creatividad', destructive: false, gatedByRole: ['noah','nico','naia','nelia'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
+  { name: 'generar_pitch_deck',             description: 'Pitch deck PowerPoint 8-10 slides (6 ops)',               channels: A, category: 'creatividad', destructive: false, gatedByRole: ['niva'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
+  { name: 'generar_reporte_metricas_excel', description: 'Reporte Excel de métricas del período (4 ops)',           channels: A, category: 'creatividad', destructive: false, gatedByRole: ['nelia','nara','niva'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
 
   // ML publicaciones (registro real de operación — voice + chat, email intencionalmente ausente)
   { name: 'crear_publicacion_ml',           description: 'Crea publicación en Mercado Libre (voice+chat)',          channels: ['voice', 'chat'], category: 'mercadolibre', destructive: true, gatedByRole: ['noah'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
