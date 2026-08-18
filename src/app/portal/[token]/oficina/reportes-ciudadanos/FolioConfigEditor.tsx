@@ -12,11 +12,12 @@ const SEPARATORS = [
 ];
 
 interface Props {
-  token:   string;
-  initial: FolioConfig;
+  token:    string;
+  agentId?: string;
+  initial:  FolioConfig;
 }
 
-export default function FolioConfigEditor({ token, initial }: Props) {
+export default function FolioConfigEditor({ token, agentId, initial }: Props) {
   const [open,   setOpen]   = useState(false);
   const [cfg,    setCfg]    = useState<FolioConfig>(initial);
   const [saving, setSaving] = useState(false);
@@ -32,7 +33,7 @@ export default function FolioConfigEditor({ token, initial }: Props) {
       await fetch(`/api/portal/${token}/settings`, {
         method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ folio_config: cfg }),
+        body:    JSON.stringify({ ...(agentId ? { agentId } : {}), folio_config: cfg }),
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);

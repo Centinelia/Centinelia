@@ -10,7 +10,7 @@ interface SubUser {
   name:  string | null;
 }
 
-export default function ApprovalEmailEditor({ token, initialEmail }: { token: string; initialEmail: string }) {
+export default function ApprovalEmailEditor({ token, agentId, initialEmail }: { token: string; agentId?: string; initialEmail: string }) {
   const [subUsers, setSubUsers] = useState<SubUser[]>([]);
   const [email,    setEmail]    = useState(initialEmail);
   const [saving,   setSaving]   = useState(false);
@@ -33,7 +33,7 @@ export default function ApprovalEmailEditor({ token, initialEmail }: { token: st
       const res = await fetch(`/api/portal/${token}/settings`, {
         method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ approval_email: email.trim() || null }),
+        body:    JSON.stringify({ ...(agentId ? { agentId } : {}), approval_email: email.trim() || null }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));

@@ -7,10 +7,12 @@ import { KB_LIMITS } from '@/lib/portal/kb-limits';
 
 export default function RoleKnowledgeBaseEditor({
   token,
+  agentId,
   role,
   initialValue,
 }: {
   token:        string;
+  agentId?:     string;
   role:         string;
   initialValue: string;
 }) {
@@ -39,7 +41,7 @@ export default function RoleKnowledgeBaseEditor({
       const res = await fetch(`/api/portal/${token}/settings`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role_knowledge_base: value }),
+        body: JSON.stringify({ ...(agentId ? { agentId } : {}), role_knowledge_base: value }),
       });
       if (res.ok) { setSaved(true); setDirty(false); setTimeout(() => setSaved(false), 2500); }
     } finally {

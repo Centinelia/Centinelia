@@ -7,6 +7,7 @@ import { MEERKAT_ROLES } from '@/lib/portal/meerkat-roles';
 
 interface Props {
   token:                  string;
+  agentId?:               string;
   initOutbound:           boolean;
   initMissedCallRecovery: boolean;
   agentCapabilities?:     string[];
@@ -217,7 +218,7 @@ function OutboundConsentModal({ onConfirm, onCancel, saving }: {
   );
 }
 
-export default function OutboundToggles({ token, initOutbound, initMissedCallRecovery, agentCapabilities = [], agentName }: Props) {
+export default function OutboundToggles({ token, agentId, initOutbound, initMissedCallRecovery, agentCapabilities = [], agentName }: Props) {
   const [outbound,     setOutbound]     = useState(initOutbound);
   const [missed,       setMissed]       = useState(initMissedCallRecovery);
   const [saving,       setSaving]       = useState<string | null>(null);
@@ -233,7 +234,7 @@ export default function OutboundToggles({ token, initOutbound, initMissedCallRec
       await fetch(`/api/portal/${token}/settings`, {
         method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ [field]: value }),
+        body:    JSON.stringify({ ...(agentId ? { agentId } : {}), [field]: value }),
       });
       setSaved(field);
       setTimeout(() => setSaved(null), 2000);

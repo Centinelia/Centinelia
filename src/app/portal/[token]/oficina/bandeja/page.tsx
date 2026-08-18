@@ -234,7 +234,7 @@ export default async function BandejaPage({ params }: Props) {
             </span>
           </summary>
           <div className="mt-3">
-            <CommsRoutingEditor token={token} initial={commsRouting} />
+            <CommsRoutingEditor token={token} agentId={agent?.id as string | undefined} initial={commsRouting} />
           </div>
         </details>
       )}

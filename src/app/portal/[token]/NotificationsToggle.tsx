@@ -5,6 +5,7 @@ import { Check, Mail } from 'lucide-react';
 
 interface Props {
   token:        string;
+  agentId?:     string;
   initWhatsApp: boolean;
   initEmail:    boolean;
 }
@@ -45,7 +46,7 @@ function Toggle({ on, onChange, disabled }: { on: boolean; onChange: (v: boolean
   );
 }
 
-export default function NotificationsToggle({ token, initWhatsApp: _initWhatsApp, initEmail }: Props) {
+export default function NotificationsToggle({ token, agentId, initWhatsApp: _initWhatsApp, initEmail }: Props) {
   // WhatsApp está oculto en UI (2026-08-06). El backend sigue leyendo
   // notify_whatsapp; cuando volvamos a exponerlo, re-agregar la row abajo.
   const [email,  setEmail]  = useState(initEmail);
@@ -59,7 +60,7 @@ export default function NotificationsToggle({ token, initWhatsApp: _initWhatsApp
       await fetch(`/api/portal/${token}/settings`, {
         method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ [field]: value }),
+        body:    JSON.stringify({ ...(agentId ? { agentId } : {}), [field]: value }),
       });
       setSaved(field);
       setTimeout(() => setSaved(null), 2000);

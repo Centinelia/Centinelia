@@ -4,11 +4,12 @@ import { useState } from 'react';
 import { Check, Target } from 'lucide-react';
 
 interface Props {
-  token:   string;
-  initDod: string;
+  token:    string;
+  agentId?: string;
+  initDod:  string;
 }
 
-export default function DefinitionOfDoneEditor({ token, initDod }: Props) {
+export default function DefinitionOfDoneEditor({ token, agentId, initDod }: Props) {
   const [value,  setValue]  = useState(initDod);
   const [saving, setSaving] = useState(false);
   const [saved,  setSaved]  = useState(false);
@@ -20,7 +21,7 @@ export default function DefinitionOfDoneEditor({ token, initDod }: Props) {
       await fetch(`/api/portal/${token}/settings`, {
         method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ definition_of_done: value }),
+        body:    JSON.stringify({ ...(agentId ? { agentId } : {}), definition_of_done: value }),
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);

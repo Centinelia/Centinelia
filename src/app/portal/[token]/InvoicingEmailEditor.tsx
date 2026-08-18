@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 interface SubUser { id: string; email: string; name: string | null; is_owner?: boolean }
 
-export default function InvoicingEmailEditor({ token, initialEmail }: { token: string; initialEmail: string }) {
+export default function InvoicingEmailEditor({ token, agentId, initialEmail }: { token: string; agentId?: string; initialEmail: string }) {
   const [subUsers, setSubUsers] = useState<SubUser[]>([]);
   const [email,    setEmail]    = useState(initialEmail);
   const [saving,   setSaving]   = useState(false);
@@ -28,7 +28,7 @@ export default function InvoicingEmailEditor({ token, initialEmail }: { token: s
       const res = await fetch(`/api/portal/${token}/settings`, {
         method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ invoicing_email: email.trim() || null }),
+        body:    JSON.stringify({ ...(agentId ? { agentId } : {}), invoicing_email: email.trim() || null }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));

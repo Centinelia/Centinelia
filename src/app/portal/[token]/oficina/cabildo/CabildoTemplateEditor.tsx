@@ -5,8 +5,9 @@ import { Check, ChevronDown, ChevronRight, Gavel } from 'lucide-react';
 import type { CabildoTemplate } from '@/lib/civic/cabildo';
 
 interface Props {
-  token:   string;
-  initial: CabildoTemplate;
+  token:    string;
+  agentId?: string;
+  initial:  CabildoTemplate;
 }
 
 const TAB_VARS: Record<string, string[]> = {
@@ -21,7 +22,7 @@ const TABS = [
 
 type TabKey = typeof TABS[number]['key'];
 
-export default function CabildoTemplateEditor({ token, initial }: Props) {
+export default function CabildoTemplateEditor({ token, agentId, initial }: Props) {
   const [open,    setOpen]    = useState(false);
   const [cfg,     setCfg]     = useState<CabildoTemplate>(initial);
   const [tab,     setTab]     = useState<TabKey>('punto_acuerdo');
@@ -34,7 +35,7 @@ export default function CabildoTemplateEditor({ token, initial }: Props) {
       await fetch(`/api/portal/${token}/settings`, {
         method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ cabildo_template: cfg }),
+        body:    JSON.stringify({ ...(agentId ? { agentId } : {}), cabildo_template: cfg }),
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);

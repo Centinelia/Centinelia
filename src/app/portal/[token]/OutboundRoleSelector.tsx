@@ -20,9 +20,11 @@ export const OUTBOUND_ROLES_MAP = Object.fromEntries(
 
 export default function OutboundRoleSelector({
   token,
+  agentId,
   initialRole,
 }: {
   token: string;
+  agentId?: string;
   initialRole: string | null;
 }) {
   const [role, setRole]     = useState(initialRole ?? '');
@@ -38,7 +40,7 @@ export default function OutboundRoleSelector({
       const res = await fetch(`/api/portal/${token}/settings`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ outbound_role: next || null }),
+        body: JSON.stringify({ ...(agentId ? { agentId } : {}), outbound_role: next || null }),
       });
       if (!res.ok) { setError('No se pudo guardar.'); return; }
       setSaved(true);

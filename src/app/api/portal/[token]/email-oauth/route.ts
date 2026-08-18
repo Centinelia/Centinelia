@@ -147,12 +147,15 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         .eq('provider', provider),
     ];
 
-    // Update voice_agents.auto_mode if provided (single source of truth)
+    // Update voice_agents.auto_mode if provided. Auto_mode es un toggle
+    // org-wide (el comment "single source of truth" refleja el intent),
+    // así que propagamos a TODOS los meerkats del org, no solo al primary.
+    // Ver [[handoff-peer-discrimination-fix]] B1 #1.
     if (auto_mode !== undefined) {
       promises.push(
         supabase.from('voice_agents')
           .update({ auto_mode })
-          .eq('id', agent.id)
+          .eq('portal_email', agent.portal_email)
       );
     }
 
@@ -205,11 +208,21 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   if (session.portalEmail && agent.portal_email && session.portalEmail !== agent.portal_email)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
-  // Remove from both tables
+  // Remove from both tables. email_integrations es per-agent — borramos de
+  // todo el roster del org para que ningún peer quede con la integración
+  // colgando cuando el usuario desconecta desde el portal.
+  const rosterIds: string[] = agent.portal_email
+    ? await supabase
+        .from('voice_agents')
+        .select('id')
+        .eq('portal_email', agent.portal_email)
+        .then(({ data }) => (data ?? []).map((r: { id: string }) => r.id))
+    : [agent.id];
+
   await Promise.all([
     supabase.from('email_integrations')
       .delete()
-      .eq('agent_id', agent.id)
+      .in('agent_id', rosterIds)
       .eq('provider', provider),
 
     agent.portal_email

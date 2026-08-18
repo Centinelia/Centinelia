@@ -279,7 +279,7 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
                 {/* Nombre + rol + business + chip de jornada */}
                 <div className="flex-1 min-w-0 flex flex-col gap-1.5">
                   <div className="flex items-baseline gap-2 flex-wrap">
-                    <AgentNameEditor token={token} initialName={agentName} />
+                    <AgentNameEditor token={token} agentId={agent.id as string} initialName={agentName} />
                     {agentRole && (
                       <span className="text-sm font-semibold" style={{ color: roleColor }}>
                         {agentRole}
@@ -306,7 +306,7 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
                 {/* CTA lateral: contratar canal de voz (solo si jornada=tareas y no coordinador) */}
                 {!isCoordinator && jornadaType === 'tareas' && (
                   <div className="flex-shrink-0 w-64">
-                    <JornadaSection token={token} jornadaType={jornadaType} />
+                    <JornadaSection token={token} agentId={agent.id as string} jornadaType={jornadaType} />
                   </div>
                 )}
               </div>
@@ -389,7 +389,7 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
                       tooltip="Elige la voz con la que este empleado atenderá las llamadas. Usa el botón ▶ para escuchar una muestra."
                       className="mb-4"
                     />
-                    <PortalVoiceSelector token={token} currentVoiceId={(agent as any).elevenlabs_voice_id ?? null} />
+                    <PortalVoiceSelector token={token} agentId={agent.id as string} currentVoiceId={(agent as any).elevenlabs_voice_id ?? null} />
                   </Card>
                 </div>
               )}
@@ -410,6 +410,7 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
                   />
                   <AgentKnowledgeBaseEditor
                     token={token}
+                    agentId={agent.id as string}
                     initialRole={(agent as any).role ?? ''}
                     initialRoleColor={((agent as any).features as any)?.role_color ?? ''}
                     initialRoleKb={(agent as any).role_knowledge_base ?? ''}
@@ -433,6 +434,7 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
                     />
                     <AgentCustomization
                       token={token}
+                      agentId={agent.id as string}
                       initGreeting={(agent as any).first_message ?? ''}
                       initTransferRules={(agent as any).transfer_rules ?? ''}
                     />
@@ -458,7 +460,7 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
                     tooltip="Tu empleado usará esto como brújula: sabe que hizo bien su trabajo cuando cumple exactamente esta condición. Sin esto, trabaja sin un target claro."
                     className="mb-4"
                   />
-                  <DefinitionOfDoneEditor token={token} initDod={(agent as any).definition_of_done ?? ''} />
+                  <DefinitionOfDoneEditor token={token} agentId={agent.id as string} initDod={(agent as any).definition_of_done ?? ''} />
                 </Card>
               </div>
 
@@ -484,6 +486,7 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
                   />
                   <GuardrailsEditor
                     token={token}
+                    agentId={agent.id as string}
                     initialValue={(agent as any).agent_guardrails ?? ''}
                     initialGuardrailsLearnings={(agent as any).guardrails_learnings ?? ''}
                   />
@@ -547,6 +550,7 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
                       <div className="mt-5 pt-5" style={{ borderTop: '1px solid var(--c-border)' }}>
                         <SpamFolderToggle
                           token={token}
+                          agentId={agent.id as string}
                           initial={spamCheckEnabled}
                           stats={spamStats.revisados > 0 ? spamStats : null}
                         />
@@ -560,7 +564,7 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
                         tooltip="Cuando el empleado redacta una respuesta de correo que necesita revisión humana (según su Modo de respuesta), esta persona recibirá la notificación para aprobar o descartar el borrador."
                         className="mb-3"
                       />
-                      <ApprovalEmailEditor token={token} initialEmail={(agent as any).approval_email ?? ''} />
+                      <ApprovalEmailEditor token={token} agentId={agent.id as string} initialEmail={(agent as any).approval_email ?? ''} />
                     </div>
 
                     <div className="mt-5 pt-5" style={{ borderTop: '1px solid var(--c-border)' }}>
@@ -570,7 +574,7 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
                         tooltip="Cuando el empleado recolecte una solicitud de factura de un cliente, esta persona recibirá el correo con todos los datos para timbrar el CFDI en su sistema fiscal (Solución Factible, CONTPAQ, Aspel, etc.)."
                         className="mb-3"
                       />
-                      <InvoicingEmailEditor token={token} initialEmail={((agent as any).features?.invoicing_email as string | undefined) ?? ''} />
+                      <InvoicingEmailEditor token={token} agentId={agent.id as string} initialEmail={((agent as any).features?.invoicing_email as string | undefined) ?? ''} />
                     </div>
                   </Card>
                 </div>
@@ -644,6 +648,7 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
                     />
                     <OutboundToggles
                       token={token}
+                      agentId={agent.id as string}
                       initOutbound={initOutbound}
                       initMissedCallRecovery={initMissedCall}
                       agentCapabilities={agentOutboundCaps}
@@ -663,6 +668,7 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
                       className="mb-4"
                     />
                     <PassphraseEditor token={token} initial={ownerPassphrase} />
+                    {/* PassphraseEditor saves owner_passphrase (org-level field) — agentId not needed */}
                   </Card>
                 </div>
               )}
@@ -684,7 +690,7 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
                     tooltip="Controla cuánta independencia tiene el empleado en las tareas que hace por su cuenta (atender llamadas, responder correos, capturar leads). No aplica cuando delega a otro empleado, para eso está el bloque de abajo."
                     className="mb-4"
                   />
-                  <TrustStageSelector token={token} initStage={(agent as any).trust_stage ?? 3} />
+                  <TrustStageSelector token={token} agentId={agent.id as string} initStage={(agent as any).trust_stage ?? 3} />
                 </Card>
               </div>
 
@@ -718,6 +724,7 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
                   />
                   <HeartbeatEditor
                     token={token}
+                    agentId={agent.id as string}
                     initConfig={(agent as any).heartbeat_config ?? null}
                     isCoordinator={isCoordinator}
                   />
@@ -761,6 +768,7 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
                     />
                     <NotificationsToggle
                       token={token}
+                      agentId={agent.id as string}
                       initWhatsApp={(agent as any).notify_whatsapp ?? false}
                       initEmail={(agent as any).notify_email ?? true}
                     />

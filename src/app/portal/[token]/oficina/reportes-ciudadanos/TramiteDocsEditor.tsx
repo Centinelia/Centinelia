@@ -5,11 +5,12 @@ import { Check, ChevronDown, ChevronRight, FileCheck2, Plus, Trash2, X } from 'l
 import type { TramiteDocsConfig } from '@/lib/civic/folio';
 
 interface Props {
-  token:   string;
-  initial: TramiteDocsConfig;
+  token:    string;
+  agentId?: string;
+  initial:  TramiteDocsConfig;
 }
 
-export default function TramiteDocsEditor({ token, initial }: Props) {
+export default function TramiteDocsEditor({ token, agentId, initial }: Props) {
   const [open,       setOpen]       = useState(false);
   const [cfg,        setCfg]        = useState<TramiteDocsConfig>(initial);
   const [saving,     setSaving]     = useState(false);
@@ -55,7 +56,7 @@ export default function TramiteDocsEditor({ token, initial }: Props) {
       await fetch(`/api/portal/${token}/settings`, {
         method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ tramite_docs: cfg }),
+        body:    JSON.stringify({ ...(agentId ? { agentId } : {}), tramite_docs: cfg }),
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
