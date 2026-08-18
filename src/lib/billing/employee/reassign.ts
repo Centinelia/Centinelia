@@ -139,6 +139,10 @@ export async function reassignSales(params: ReassignParams): Promise<ReassignRes
   // -------------------------------------------------------------------------
   const errors: Array<{ saleNum: number; reason: string }> = [];
 
+  // Extraer fecha YYYY-MM-DD del nombre de archivo del Excel diario.
+  // El campo row.hora contiene la hora del turno (ej: '10:00'), no la fecha.
+  const dateFromPath = /(\d{4}-\d{2}-\d{2})/.exec(dailyExcelPath)?.[1] ?? '';
+
   // Obtener los datos de las filas reasignadas para pasarlas a applyRuleToSale
   const allRows = wb.getRows('Ventas');
   const reassignedRows = allRows.filter((row) => {
@@ -152,7 +156,7 @@ export async function reassignSales(params: ReassignParams): Promise<ReassignRes
       await applyRuleToSale(
         {
           rfc:       targetRFC,
-          date:      String(row.hora ?? ''),  // Daily Excel stores hora; use fallback date below
+          date:      dateFromPath,
           productos: String(row.productos ?? ''),
           total:     typeof row.total === 'number' ? row.total : Number(row.total ?? 0),
           metodo:    String(row.metodo ?? ''),

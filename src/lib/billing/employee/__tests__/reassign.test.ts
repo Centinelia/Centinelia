@@ -460,3 +460,74 @@ describe('reassignSales -- orden de operaciones', () => {
     expect(callOrder).toEqual(['snapshot', 'writeFile']);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Test 6: per-sale applyRuleToSale error path
+// ---------------------------------------------------------------------------
+
+describe('reassignSales -- error en applyRuleToSale por venta', () => {
+  it('captura error de la primera venta y sigue procesando la segunda', async () => {
+    const rows = [
+      { num: 10, hora: '08:00', cliente: 'Viejo A', rfc: 'VIEJA00000AAA', productos: 'Pan', total: 150, metodo: 'efectivo', status: 'No facturado', factura: '' },
+      { num: 11, hora: '08:30', cliente: 'Viejo B', rfc: 'VIEJB00000BBB', productos: 'Leche', total: 250, metodo: 'transferencia', status: 'No facturado', factura: '' },
+    ];
+    const buf = await buildDailyExcel(rows);
+    mockDropboxRead.mockResolvedValue(buf);
+
+    // Primera llamada lanza, segunda resuelve
+    mockApplyRuleToSale
+      .mockRejectedValueOnce(new Error('Fallo de regla en venta 10'))
+      .mockResolvedValueOnce('daily');
+
+    const adapter = makeAdapter({ [TARGET_CLIENT_DAILY.rfc]: TARGET_CLIENT_DAILY });
+
+    const result = await reassignSales({
+      dailyExcelPath: DAILY_EXCEL_PATH,
+      saleNums:       [10, 11],
+      targetRFC:      TARGET_CLIENT_DAILY.rfc,
+      ctx:            CTX,
+      adapter,
+      basePath:       BASE_PATH,
+    });
+
+    // Ambas ventas fueron reasignadas fisicamente en el Excel
+    expect(result.reassigned).toBe(2);
+    // Solo una fallo en applyRuleToSale
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0].saleNum).toBe(10);
+    expect(result.errors[0].reason).toContain('Fallo de regla en venta 10');
+    // missing sigue vacio
+    expect(result.missing).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Test 7: sale.date se extrae del filename, no de row.hora
+// ---------------------------------------------------------------------------
+
+describe('reassignSales -- sale.date proviene del path del Excel', () => {
+  it('pasa sale.date === "2026-08-17" cuando el path contiene esa fecha', async () => {
+    const rows = [
+      { num: 20, hora: '10:00', cliente: 'Viejo', rfc: 'VIEJ000000AAA', productos: 'Agua', total: 50, metodo: 'efectivo', status: 'No facturado', factura: '' },
+    ];
+    const buf = await buildDailyExcel(rows);
+    mockDropboxRead.mockResolvedValue(buf);
+    mockApplyRuleToSale.mockResolvedValue('daily');
+
+    const adapter = makeAdapter({ [TARGET_CLIENT_DAILY.rfc]: TARGET_CLIENT_DAILY });
+
+    await reassignSales({
+      dailyExcelPath: '/Facturacion/2026/Ventas_2026-08-17.xlsx',
+      saleNums:       [20],
+      targetRFC:      TARGET_CLIENT_DAILY.rfc,
+      ctx:            CTX,
+      adapter,
+      basePath:       BASE_PATH,
+    });
+
+    expect(mockApplyRuleToSale).toHaveBeenCalledTimes(1);
+    expect(mockApplyRuleToSale.mock.calls[0][0]).toMatchObject({
+      date: '2026-08-17',
+    });
+  });
+});
