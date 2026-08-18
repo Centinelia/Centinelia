@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getAgentByToken } from '@/lib/portal/org-token';
+import { resolveOrgFromToken } from '@/lib/portal/org-token';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { parseCsd, putCsd, encryptString } from '@/lib/invoicing/csd-vault';
 import { assertInvoicingEnabled } from '@/lib/invoicing/kill-switch';
@@ -15,11 +15,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
   if (!session?.portalEmail) return NextResponse.json({ error: 'session missing' }, { status: 401 });
 
   const { token } = await ctx.params;
-  const agent = await getAgentByToken<{ portal_email: string }>(token, 'portal_email');
-  if (!agent) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  const resolved = await resolveOrgFromToken(token);
+  if (!resolved) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   // IDOR guard
-  if (session.portalEmail !== agent.portal_email)
+  if (session.portalEmail !== resolved.portalEmail)
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
 
   const form = await req.formData();
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
   const supabase = createAdminClient();
   const { data: org } = await supabase.from('organizations')
     .select('invoicing_rfc_emisor, invoicing_csd_version')
-    .eq('portal_email', agent.portal_email)
+    .eq('portal_email', resolved.portalEmail)
     .single();
   if (org?.invoicing_rfc_emisor && org.invoicing_rfc_emisor.toUpperCase() !== parsed.rfc.toUpperCase()) {
     return NextResponse.json({
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
   const version = (org?.invoicing_csd_version ?? 0) + 1;
   let cerPath: string, keyPath: string;
   try {
-    ({ cerPath, keyPath } = await putCsd(agent.portal_email, cerBuf, keyBuf, version, supabase));
+    ({ cerPath, keyPath } = await putCsd(resolved.portalEmail, cerBuf, keyBuf, version, supabase));
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });
   }
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
     invoicing_csd_expires_at: parsed.notAfter.toISOString(),
     invoicing_csd_no_certificado: parsed.noCertificado,
     invoicing_rfc_emisor: parsed.rfc,
-  }).eq('portal_email', agent.portal_email);
+  }).eq('portal_email', resolved.portalEmail);
 
   if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 });
 
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
     admin_email:           session.portalEmail,
     endpoint:              '/api/portal/[token]/invoicing/csd/upload',
     method:                'POST',
-    affected_portal_email: agent.portal_email,
+    affected_portal_email: resolved.portalEmail,
     query_type:            'modify',
     filters:               { version, no_certificado: parsed.noCertificado, expires_at: parsed.notAfter.toISOString() },
   });

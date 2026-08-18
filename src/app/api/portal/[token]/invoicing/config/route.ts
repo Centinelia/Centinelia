@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getAgentByToken } from '@/lib/portal/org-token';
+import { resolveOrgFromToken } from '@/lib/portal/org-token';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 
 export const dynamic = 'force-dynamic';
@@ -11,11 +11,11 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ token: stri
   if (!session?.portalEmail) return NextResponse.json({ error: 'session missing' }, { status: 401 });
 
   const { token } = await ctx.params;
-  const agent = await getAgentByToken<{ portal_email: string }>(token, 'portal_email');
-  if (!agent) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  const resolved = await resolveOrgFromToken(token);
+  if (!resolved) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   // IDOR guard
-  if (session.portalEmail !== agent.portal_email)
+  if (session.portalEmail !== resolved.portalEmail)
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
 
   const supabase = createAdminClient();
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ token: stri
       invoicing_csd_version, invoicing_csd_expires_at, invoicing_csd_no_certificado,
       invoicing_limits
     `)
-    .eq('portal_email', agent.portal_email)
+    .eq('portal_email', resolved.portalEmail)
     .single();
 
   return NextResponse.json({
@@ -52,11 +52,11 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ token: st
   if (!session?.portalEmail) return NextResponse.json({ error: 'session missing' }, { status: 401 });
 
   const { token } = await ctx.params;
-  const agent = await getAgentByToken<{ portal_email: string }>(token, 'portal_email');
-  if (!agent) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  const resolved = await resolveOrgFromToken(token);
+  if (!resolved) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   // IDOR guard
-  if (session.portalEmail !== agent.portal_email)
+  if (session.portalEmail !== resolved.portalEmail)
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
 
   const body = await req.json() as Record<string, unknown>;
@@ -78,7 +78,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ token: st
   if (Object.keys(patch).length === 0) return NextResponse.json({ error: 'nothing to update' }, { status: 400 });
 
   const supabase = createAdminClient();
-  const { error } = await supabase.from('organizations').update(patch).eq('portal_email', agent.portal_email);
+  const { error } = await supabase.from('organizations').update(patch).eq('portal_email', resolved.portalEmail);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   // Audit log — best-effort
@@ -86,7 +86,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ token: st
     admin_email:           session.portalEmail,
     endpoint:              '/api/portal/[token]/invoicing/config',
     method:                'PATCH',
-    affected_portal_email: agent.portal_email,
+    affected_portal_email: resolved.portalEmail,
     query_type:            'modify',
     filters:               patch,
   });
