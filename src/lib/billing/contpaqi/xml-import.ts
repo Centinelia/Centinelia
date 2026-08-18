@@ -63,13 +63,33 @@ function fmt(value: number): string {
 }
 
 /**
+ * Formatea ivaTasa como string con 1 decimal minimo.
+ * Ejemplos: 0 -> '0.0', 0.16 -> '0.16', 0.08 -> '0.08'.
+ */
+function fmtIvaTasa(tasa: number): string {
+  // Use at least 1 decimal place, trimming trailing zeros beyond that.
+  const s = tasa.toFixed(2).replace(/\.?0+$/, '');
+  return s.includes('.') ? s : s + '.0';
+}
+
+/**
+ * Calcula el importe de IVA para una linea: importe * ivaTasa, redondeado a 2 decimales.
+ */
+function calcIvaImporte(line: BillingLineItem): number {
+  const tasa = line.ivaTasa ?? 0;
+  if (tasa <= 0) return 0;
+  return Math.round(calcImporte(line) * tasa * 100) / 100;
+}
+
+/**
  * Genera el bloque XML de un solo <Movimiento>.
+ * Si line.ivaTasa esta presente y es mayor a 0, se usa esa tasa.
+ * Si no, la tasa es 0.0 (exento/tasa cero), manteniendo backwards compat.
  */
 function buildMovimiento(line: BillingLineItem): string {
   const importe = calcImporte(line);
-  // IvaTasa se toma siempre como 0.0 en este generador; si se necesita IVA
-  // habilitarlo via un campo futuro en BillingLineItem o XmlImportConfig.
-  const ivaTasa = '0.0';
+  const ivaTasaNum = line.ivaTasa ?? 0;
+  const ivaTasaStr = fmtIvaTasa(ivaTasaNum);
 
   return [
     '      <Movimiento>',
@@ -77,7 +97,7 @@ function buildMovimiento(line: BillingLineItem): string {
     `        <Cantidad>${line.qty}</Cantidad>`,
     `        <PrecioUnitario>${fmt(line.unitPrice)}</PrecioUnitario>`,
     `        <Importe>${fmt(importe)}</Importe>`,
-    `        <IvaTasa>${ivaTasa}</IvaTasa>`,
+    `        <IvaTasa>${ivaTasaStr}</IvaTasa>`,
     '      </Movimiento>',
   ].join('\n');
 }
@@ -90,8 +110,12 @@ function buildDocumento(invoice: BillingInvoice, config: XmlImportConfig): strin
   const usoCFDI = escapeXml(invoice.usoCFDI || config.usoCFDIDefault);
   const formaPago = FORMA_PAGO_MAP[invoice.paymentMethod] ?? FORMA_PAGO_DEFAULT;
 
-  // Calcular total sumando los importes de todas las lineas
-  const total = invoice.lines.reduce((acc, line) => acc + calcImporte(line), 0);
+  // Calcular subtotal (suma de importes sin IVA) y total (subtotal + IVA acumulado).
+  // Cada linea puede tener su propia tasa, incluyendo tasa 0 (exento).
+  const subtotal = invoice.lines.reduce((acc, line) => acc + calcImporte(line), 0);
+  const totalIva = invoice.lines.reduce((acc, line) => acc + calcIvaImporte(line), 0);
+  const total = subtotal + totalIva;
+  const subtotalStr = fmt(Math.round(subtotal * 100) / 100);
   const totalStr = fmt(Math.round(total * 100) / 100);
 
   const movimientos = invoice.lines.map(buildMovimiento).join('\n');
@@ -109,7 +133,7 @@ function buildDocumento(invoice: BillingInvoice, config: XmlImportConfig): strin
     `      <FormaPago>${escapeXml(formaPago)}</FormaPago>`,
     '      <Moneda>MXN</Moneda>',
     `      <LugarExpedicion>${escapeXml(config.lugarExpedicion)}</LugarExpedicion>`,
-    `      <Subtotal>${totalStr}</Subtotal>`,
+    `      <Subtotal>${subtotalStr}</Subtotal>`,
     `      <Total>${totalStr}</Total>`,
     '    </Encabezado>',
     '    <Movimientos>',

@@ -79,8 +79,9 @@ function similarity(a: string, b: string): number {
   if (nb.includes(na) || na.includes(nb)) return 0.85;
   const wordsA = new Set(na.split(/\s+/).filter(Boolean));
   const wordsB = new Set(nb.split(/\s+/).filter(Boolean));
-  const common = [...wordsA].filter((w) => wordsB.has(w)).length;
+  // Both empty strings have no tokens in common — score is 0 by definition.
   if (wordsA.size === 0 && wordsB.size === 0) return 0;
+  const common = [...wordsA].filter((w) => wordsB.has(w)).length;
   return common / Math.max(wordsA.size, wordsB.size);
 }
 

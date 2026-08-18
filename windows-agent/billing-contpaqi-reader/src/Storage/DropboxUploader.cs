@@ -7,14 +7,12 @@ public class DropboxUploader : IDropboxUploader
 {
     private readonly Func<string, Stream, Task> _uploadImpl;
 
-    /// <summary>Public constructor — uses the real Dropbox SDK.</summary>
-    public DropboxUploader(string accessToken)
-        : this(accessToken, BuildRealHandler(accessToken))
-    {
-    }
-
-    /// <summary>Internal constructor — allows injecting a fake handler for tests.</summary>
-    internal DropboxUploader(string accessToken, Func<string, Stream, Task>? uploadImpl)
+    /// <summary>
+    /// Creates a DropboxUploader.
+    /// When uploadImpl is null (default), the real Dropbox SDK is used.
+    /// Pass a non-null uploadImpl to inject a fake handler for testing.
+    /// </summary>
+    public DropboxUploader(string accessToken, Func<string, Stream, Task>? uploadImpl = null)
     {
         _ = accessToken; // kept for symmetry / future refresh-token use
         _uploadImpl = uploadImpl ?? BuildRealHandler(accessToken);

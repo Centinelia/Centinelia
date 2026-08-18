@@ -162,6 +162,14 @@ La suite cubre:
 
 Los tests de `FirebirdCatalogRepositoryTests` usan Firebird embedded para crear una BD temporal real en `%TEMP%` durante cada test. No requieren CONTPAQi instalado.
 
+**Para correr los tests de Firebird localmente, primero ejecutar:**
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tests\setup-fb-native.ps1
+```
+
+El script descarga Firebird 3.0 embedded de la pagina oficial de GitHub y lo descomprime en `tests/fb-native/`. Es idempotente: si `fbembed.dll` ya existe, no hace nada. Los binarios estan gitignoreados por tamano (~10 MB).
+
 Los binarios nativos de Firebird necesarios estan en `tests/fb-native/` y se copian automaticamente al directorio de salida del test por el `.csproj`:
 
 ```xml

@@ -125,6 +125,58 @@ describe('buildImportXml', () => {
     expect(xml).toContain('<Importe>55.00</Importe>');
   });
 
+  it('IVA 0 (default, sin campo ivaTasa) — IvaTasa=0.0, Subtotal==Total', () => {
+    const invoice: BillingInvoice = {
+      clientRFC: 'TDM040101ABC',
+      date: '2026-08-18',
+      lines: [{ sku: 'TOR-MAI-KG', qty: 5, unitPrice: 18.0 }],
+      paymentMethod: 'transferencia',
+      usoCFDI: 'G03',
+    };
+    const xml = buildImportXml([invoice], BASE_CONFIG);
+    // 5 * 18 = 90; IVA = 0; total = subtotal = 90
+    expect(xml).toContain('<IvaTasa>0.0</IvaTasa>');
+    expect(xml).toContain('<Subtotal>90.00</Subtotal>');
+    expect(xml).toContain('<Total>90.00</Total>');
+  });
+
+  it('IVA 0.16 — IvaTasa=0.16, Total = Subtotal + IVA', () => {
+    const invoice: BillingInvoice = {
+      clientRFC: 'TDM040101ABC',
+      date: '2026-08-18',
+      lines: [{ sku: 'TOR-MAI-KG', qty: 5, unitPrice: 100.0, ivaTasa: 0.16 }],
+      paymentMethod: 'transferencia',
+      usoCFDI: 'G03',
+    };
+    const xml = buildImportXml([invoice], BASE_CONFIG);
+    // importe = 500; IVA = 80; total = 580
+    expect(xml).toContain('<IvaTasa>0.16</IvaTasa>');
+    expect(xml).toContain('<Subtotal>500.00</Subtotal>');
+    expect(xml).toContain('<Total>580.00</Total>');
+  });
+
+  it('mezcla de lineas con IVA 0 e IVA 0.16 — totales correctos', () => {
+    const invoice: BillingInvoice = {
+      clientRFC: 'TDM040101ABC',
+      date: '2026-08-18',
+      lines: [
+        { sku: 'TOR-MAI-KG', qty: 2, unitPrice: 50.0, ivaTasa: 0 },
+        { sku: 'TOR-HAR-KG', qty: 1, unitPrice: 200.0, ivaTasa: 0.16 },
+      ],
+      paymentMethod: 'efectivo',
+      usoCFDI: 'G03',
+    };
+    const xml = buildImportXml([invoice], BASE_CONFIG);
+    // subtotal = 100 + 200 = 300; IVA = 0 + 32 = 32; total = 332
+    expect(xml).toContain('<Subtotal>300.00</Subtotal>');
+    expect(xml).toContain('<Total>332.00</Total>');
+    // First line has 0.0, second has 0.16
+    const ivaMatches = xml.match(/<IvaTasa>[^<]+<\/IvaTasa>/g) ?? [];
+    expect(ivaMatches).toHaveLength(2);
+    expect(ivaMatches[0]).toBe('<IvaTasa>0.0</IvaTasa>');
+    expect(ivaMatches[1]).toBe('<IvaTasa>0.16</IvaTasa>');
+  });
+
   it('serie del invoice sobreescribe la serie del config', () => {
     const invoice: BillingInvoice = {
       clientRFC: 'TDM040101ABC',

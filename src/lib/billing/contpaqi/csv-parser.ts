@@ -151,7 +151,33 @@ export function parseProductsCsv(csvContent: string): BillingProduct[] {
 // ---------------------------------------------------------------------------
 
 /**
+ * Valida la presencia y tipo de un campo en el objeto raw del JSON de frescura.
+ * Lanza un error descriptivo si el campo falta o tiene tipo incorrecto.
+ */
+function assertField(
+  raw: Record<string, unknown>,
+  field: string,
+  expectedType: 'string' | 'number' | 'object',
+): void {
+  if (!(field in raw) || raw[field] === null || raw[field] === undefined) {
+    throw new Error(
+      `parseFreshnessJson: malformed freshness data - missing/invalid field: ${field}`,
+    );
+  }
+  // eslint-disable-next-line valid-typeof
+  if (typeof raw[field] !== expectedType) {
+    throw new Error(
+      `parseFreshnessJson: malformed freshness data - missing/invalid field: ${field}`,
+    );
+  }
+}
+
+/**
  * Parsea el contenido de last_sync.json generado por el agente CONTPAQi local.
+ *
+ * Valida que todos los campos requeridos existan y tengan el tipo correcto.
+ * Si el JSON esta malformado o faltan campos, lanza un Error con mensaje
+ * explicito: "parseFreshnessJson: malformed freshness data - missing/invalid field: <campo>".
  *
  * Mapeo snake_case -> camelCase:
  *   last_sync_at   -> lastSyncAt
@@ -160,25 +186,33 @@ export function parseProductsCsv(csvContent: string): BillingProduct[] {
  *   error_message  -> error (solo presente si status = 'error')
  */
 export function parseFreshnessJson(json: string): FreshnessData {
-  const raw = JSON.parse(json) as {
-    last_sync_at: string;
-    status: 'ok' | 'partial' | 'error';
-    records: { clients: number; products: number };
-    duration_ms: number;
-    agent_version: string;
-    error_message?: string;
-  };
+  const raw = JSON.parse(json) as Record<string, unknown>;
+
+  // Validate required fields presence and type.
+  assertField(raw, 'last_sync_at', 'string');
+  assertField(raw, 'status', 'string');
+  assertField(raw, 'records', 'object');
+  assertField(raw, 'duration_ms', 'number');
+  assertField(raw, 'agent_version', 'string');
+
+  // Validate records sub-fields.
+  const records = raw['records'] as Record<string, unknown>;
+  if (typeof records['clients'] !== 'number' || typeof records['products'] !== 'number') {
+    throw new Error(
+      'parseFreshnessJson: malformed freshness data - missing/invalid field: records.clients or records.products',
+    );
+  }
 
   const result: FreshnessData = {
-    lastSyncAt: raw.last_sync_at,
-    status: raw.status,
-    records: raw.records,
-    durationMs: raw.duration_ms,
-    agentVersion: raw.agent_version,
+    lastSyncAt: raw['last_sync_at'] as string,
+    status: raw['status'] as 'ok' | 'partial' | 'error',
+    records: { clients: records['clients'] as number, products: records['products'] as number },
+    durationMs: raw['duration_ms'] as number,
+    agentVersion: raw['agent_version'] as string,
   };
 
-  if (raw.error_message !== undefined) {
-    result.error = raw.error_message;
+  if (raw['error_message'] !== undefined) {
+    result.error = raw['error_message'] as string;
   }
 
   return result;

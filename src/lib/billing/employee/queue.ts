@@ -13,6 +13,8 @@
  */
 
 import { createAdminClient } from '@/lib/supabase/admin';
+import { retryWithBackoff } from '@/lib/billing/util/retry';
+import type { OrganizationIntegrationConfig } from '@/lib/billing/adapters';
 
 export type BillingJobKind = 'process_notes' | 'reply_missing_attachments';
 
@@ -146,12 +148,23 @@ async function handleProcessNotes(job: BillingJobRow): Promise<void> {
   const { buildAdapter } = await import('@/lib/billing/adapters');
 
   // Load integration config from organization_integrations.
+  // Wrapped in retryWithBackoff to tolerate transient Supabase network errors.
   const supabase = createAdminClient();
-  const { data: integration, error: intError } = await supabase
-    .from('organization_integrations')
-    .select('config')
-    .eq('id', job.integration_id)
-    .single();
+  const { data: integration, error: intError } = await retryWithBackoff<{
+    data: { config: OrganizationIntegrationConfig } | null;
+    error: { message: string } | null;
+  }>(
+    () =>
+      supabase
+        .from('organization_integrations')
+        .select('config')
+        .eq('id', job.integration_id)
+        .single() as unknown as Promise<{
+          data: { config: OrganizationIntegrationConfig } | null;
+          error: { message: string } | null;
+        }>,
+    { maxAttempts: 3, initialDelayMs: 100, maxDelayMs: 2000 },
+  );
 
   if (intError || !integration) {
     throw new Error(

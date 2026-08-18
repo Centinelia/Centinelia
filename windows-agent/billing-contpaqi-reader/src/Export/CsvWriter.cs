@@ -56,9 +56,11 @@ public static class CsvWriter
     /// <summary>
     /// RFC 4180 quoting: if the field contains comma, double-quote, CR, or LF,
     /// wrap it in double-quotes and escape any embedded double-quotes as "".
+    /// Returns empty string for null fields.
     /// </summary>
-    private static string Escape(string field)
+    private static string Escape(string? field)
     {
+        if (field is null) return "";
         if (field.Contains(',') || field.Contains('"') || field.Contains('\r') || field.Contains('\n'))
         {
             return "\"" + field.Replace("\"", "\"\"") + "\"";

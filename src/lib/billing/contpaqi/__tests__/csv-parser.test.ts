@@ -96,4 +96,41 @@ describe('CONTPAQi CSV parser', () => {
     const freshness = parseFreshnessJson(json);
     expect(freshness.error).toBeUndefined();
   });
+
+  it('parseFreshnessJson lanza error explicito cuando falta last_sync_at', () => {
+    const json = JSON.stringify({
+      status: 'ok',
+      records: { clients: 10, products: 5 },
+      duration_ms: 200,
+      agent_version: '0.1.0'
+    });
+    expect(() => parseFreshnessJson(json)).toThrow(
+      'parseFreshnessJson: malformed freshness data - missing/invalid field: last_sync_at'
+    );
+  });
+
+  it('parseFreshnessJson lanza error explicito cuando records.clients es string', () => {
+    const json = JSON.stringify({
+      last_sync_at: '2026-08-18T21:15:00.000Z',
+      status: 'ok',
+      records: { clients: 'diez', products: 5 },
+      duration_ms: 200,
+      agent_version: '0.1.0'
+    });
+    expect(() => parseFreshnessJson(json)).toThrow(
+      'parseFreshnessJson: malformed freshness data - missing/invalid field: records.clients'
+    );
+  });
+
+  it('parseFreshnessJson lanza error explicito cuando duration_ms falta', () => {
+    const json = JSON.stringify({
+      last_sync_at: '2026-08-18T21:15:00.000Z',
+      status: 'ok',
+      records: { clients: 10, products: 5 },
+      agent_version: '0.1.0'
+    });
+    expect(() => parseFreshnessJson(json)).toThrow(
+      'parseFreshnessJson: malformed freshness data - missing/invalid field: duration_ms'
+    );
+  });
 });
