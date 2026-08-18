@@ -4,7 +4,7 @@ export const maxDuration = 60;
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
-import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
+import { getAgentAccess } from '@/lib/portal/agent-access';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
 import { refreshIfNeeded } from '@/lib/connectors';
 import type { IntegrationRow } from '@/lib/connectors';
@@ -28,10 +28,28 @@ export async function POST(
   const { token } = await params;
   const supabase  = createAdminClient();
 
-  const agent = await getPrimaryAgentFromToken<{ id: string; agent_name: string | null; business_name: string; role: string | null; role_knowledge_base: string | null; portal_email: string | null }>(token, 'id, agent_name, business_name, role, role_knowledge_base, portal_email', supabase);
-  if (!agent) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  if (session.portalEmail && agent.portal_email && session.portalEmail !== agent.portal_email)
+  // Learning se guarda por meerkat (cada rol aprende cosas distintas). El body
+  // puede pasar agentId para aprender al meerkat correcto; default primaryId
+  // por retrocompat. Ver [[handoff-peer-discrimination-fix]] B2 email.
+  const body = await req.json().catch(() => ({} as { agentId?: string }));
+  const bodyAgentId = (body as { agentId?: string }).agentId;
+
+  const access = await getAgentAccess(token, req);
+  if (!access) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (session.portalEmail && access.portalEmail !== session.portalEmail)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+
+  const targetId = bodyAgentId ?? access.primaryId;
+  if (!access.ids.includes(targetId)) {
+    return NextResponse.json({ error: 'Empleado no válido para este portal' }, { status: 403 });
+  }
+
+  const { data: agent } = await supabase
+    .from('voice_agents')
+    .select('id, agent_name, business_name, role, role_knowledge_base, portal_email')
+    .eq('id', targetId)
+    .single<{ id: string; agent_name: string | null; business_name: string; role: string | null; role_knowledge_base: string | null; portal_email: string | null }>();
+  if (!agent) return NextResponse.json({ error: 'Empleado no encontrado' }, { status: 404 });
 
   // El correo de aprendizaje es el CORREO DE LA ORG, no del empleado.
   // Un empleado no aprende a hablar como la marca leyendo sus propios drafts
@@ -66,10 +84,12 @@ export async function POST(
   }
 
   if (!integration) {
+    // Fallback: cualquier email_integrations del roster del org (no solo del
+    // meerkat que aprende — el inbox es del negocio, se comparte).
     const { data: perAgent } = await supabase
       .from('email_integrations')
       .select('*')
-      .eq('agent_id', agent.id)
+      .in('agent_id', access.ids)
       .maybeSingle();
     if (perAgent) integration = perAgent as IntegrationRow;
   }
