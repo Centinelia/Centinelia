@@ -467,9 +467,14 @@ export default function SolucionFactibleSection({ token }: { token: string }) {
       {connected && (
         <div className="rounded-xl overflow-hidden"
           style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)' }}>
-          <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: '1px solid var(--c-border)' }}>
-            <Settings size={14} style={{ color: 'var(--c-text-3)' }} />
-            <h2 className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Configuracion</h2>
+          <div className="flex items-center justify-between gap-2 px-4 py-3" style={{ borderBottom: '1px solid var(--c-border)' }}>
+            <div className="flex items-center gap-2">
+              <Settings size={14} style={{ color: 'var(--c-text-3)' }} />
+              <h2 className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Configuracion</h2>
+            </div>
+            <span className="text-[10px] italic" style={{ color: 'var(--c-text-3)' }}>
+              Los cambios se guardan automaticamente
+            </span>
           </div>
 
           <div className="px-4 py-4 flex flex-col gap-4">
@@ -507,12 +512,21 @@ export default function SolucionFactibleSection({ token }: { token: string }) {
               <p className="text-xs font-semibold mb-3" style={{ color: 'var(--c-text-2)' }}>Limites automaticos</p>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label className="flex flex-col gap-1">
-                  <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>Monto maximo por CFDI (MXN)</span>
+                  <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>Monto maximo por CFDI</span>
                   <input
-                    type="number"
-                    min={1}
-                    defaultValue={o.invoicing_limits?.monto_max_mxn ?? 50000}
-                    onBlur={e => void saveConfig({ limits: { ...o.invoicing_limits, monto_max_mxn: Number(e.currentTarget.value) } })}
+                    type="text"
+                    inputMode="decimal"
+                    defaultValue={(o.invoicing_limits?.monto_max_mxn ?? 50000).toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })}
+                    onFocus={e => {
+                      const raw = e.currentTarget.value.replace(/[^0-9.]/g, '');
+                      e.currentTarget.value = raw;
+                      e.currentTarget.select();
+                    }}
+                    onBlur={e => {
+                      const parsed = Number(e.currentTarget.value.replace(/[^0-9.]/g, '')) || 0;
+                      e.currentTarget.value = parsed.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 });
+                      if (parsed > 0) void saveConfig({ limits: { ...o.invoicing_limits, monto_max_mxn: parsed } });
+                    }}
                     className="rounded-lg px-3 py-2 text-sm"
                     style={{ border: '1px solid var(--c-border)', background: 'var(--c-surface)', color: 'var(--c-text)', outline: 'none' }}
                   />
@@ -589,8 +603,20 @@ export default function SolucionFactibleSection({ token }: { token: string }) {
           <button
             onClick={disconnect}
             disabled={busy}
-            className="flex items-center gap-1.5 text-xs font-medium transition-colors hover:opacity-80 disabled:opacity-50"
-            style={{ color: 'var(--c-text-3)' }}
+            className="flex items-center gap-1.5 text-xs font-semibold transition-all disabled:opacity-50 rounded-md px-2.5 py-1.5"
+            style={{
+              color:      '#dc2626',
+              background: 'rgba(220,38,38,0.06)',
+              border:     '1px solid rgba(220,38,38,0.22)',
+            }}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLButtonElement).style.background = 'rgba(220,38,38,0.14)';
+              (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(220,38,38,0.45)';
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLButtonElement).style.background = 'rgba(220,38,38,0.06)';
+              (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(220,38,38,0.22)';
+            }}
           >
             <Trash2 size={12} />
             Desconectar Solucion Factible
