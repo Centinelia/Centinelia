@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getAgentForPdf, pdfResponse } from '../_auth';
 import { ReportePdf } from '@/lib/pdf/reporte';
 import type { BrandKit } from '@/lib/brand/kit';
+import { getOrgAgentIds } from '@/lib/portal/roster';
 
 // ─── Branding Centinelia (el reporte lo generamos NOSOTROS para el cliente) ─
 // El reporte mensual NO usa el branding del cliente porque es un producto
@@ -49,10 +50,14 @@ export async function GET(req: NextRequest, { params }: Params) {
   const from = new Date(year, month - 1, 1).toISOString();
   const to   = new Date(year, month, 0, 23, 59, 59).toISOString();
 
+  // Org-scoped: reporte muestra actividad de TODOS los meerkats del org.
+  // Ver [[handoff-peer-discrimination-fix]] audit 2026-08-18.
+  const roster = await getOrgAgentIds(supabase, ctx.agent.portal_email as string | null, ctx.agent.id as string);
+
   const [callsRes, acctRes, agentsRes, tasksRes, orgRes, acctOpsRes] = await Promise.all([
     supabase.from('voice_calls')
       .select('outcome, duration_seconds, created_at')
-      .eq('agent_id', ctx.agent.id as string)
+      .in('agent_id', roster)
       .gte('created_at', from).lte('created_at', to),
     ctx.agent.portal_email
       ? supabase.from('account_minutes')

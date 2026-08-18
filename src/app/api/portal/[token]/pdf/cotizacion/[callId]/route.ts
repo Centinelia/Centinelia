@@ -4,6 +4,7 @@ import { createElement } from 'react';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getAgentForPdf, pdfResponse } from '../../_auth';
 import { CotizacionPdf } from '@/lib/pdf/cotizacion';
+import { getOrgAgentIds } from '@/lib/portal/roster';
 
 interface Params { params: Promise<{ token: string; callId: string }> }
 
@@ -15,14 +16,18 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
   const supabase = createAdminClient();
 
+  // Org-scoped: cualquier call/lead del org puede generar PDF desde cualquier meerkat.
+  // Ver [[handoff-peer-discrimination-fix]] audit 2026-08-18.
+  const roster = await getOrgAgentIds(supabase, ctx.agent.portal_email as string | null, ctx.agent.id as string);
+
   // Pull call + associated lead in parallel
   const [callRes, leadRes] = await Promise.all([
     supabase.from('voice_calls')
       .select('caller_number, summary, created_at')
-      .eq('id', callId).eq('agent_id', ctx.agent.id as string).single(),
+      .eq('id', callId).in('agent_id', roster).single(),
     supabase.from('leads_voice')
       .select('nombre, whatsapp, telefono, email, servicio, presupuesto')
-      .eq('agent_id', ctx.agent.id as string)
+      .in('agent_id', roster)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle(),

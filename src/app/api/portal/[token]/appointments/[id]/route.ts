@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
+import { getOrgAgentIds } from '@/lib/portal/roster';
 import { triggerOutboundCall } from '@/lib/vapi/outbound';
 import type { VoiceAgent } from '@/types/agent';
 
@@ -24,14 +25,18 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const allowed = ['status', 'nombre', 'telefono', 'servicio', 'fecha', 'hora'];
   const update  = Object.fromEntries(Object.entries(body).filter(([k]) => allowed.includes(k)));
 
+  // Org-scoped. Ver [[handoff-peer-discrimination-fix]] audit 2026-08-18.
+  const roster = await getOrgAgentIds(supabase, agent.portal_email, agent.id);
   const { data, error } = await supabase
-    .from('appointments_voice').update(update).eq('id', id).eq('agent_id', agent.id).select().single();
+    .from('appointments_voice').update(update).eq('id', id).in('agent_id', roster).select().single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Fire outbound survey call when appointment is marked completada
+  // Fire outbound survey call when appointment is marked completada.
+  // Usar el agent_id REAL del appointment (puede ser un peer, no el primary).
   if (update.status === 'completada' && data?.telefono) {
-    schedulePostAppointmentSurvey(agent.id, data as {
+    const appointmentAgentId = (data as { agent_id?: string }).agent_id ?? agent.id;
+    schedulePostAppointmentSurvey(appointmentAgentId, data as {
       telefono: string; nombre?: string | null; servicio?: string | null;
     }).catch(console.error);
   }

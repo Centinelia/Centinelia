@@ -33,18 +33,41 @@ export async function POST(
   const { token } = await params;
   const supabase  = createAdminClient();
 
-  const agent = await getPrimaryAgentFromToken<{
+  const primary = await getPrimaryAgentFromToken<{
     id: string;
-    agent_name: string | null;
-    business_name: string | null;
-    role: string | null;
-    role_knowledge_base: string | null;
     portal_email: string | null;
-  }>(token, 'id, agent_name, business_name, role, role_knowledge_base, portal_email', supabase);
+  }>(token, 'id, portal_email', supabase);
 
-  if (!agent) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  if (session.portalEmail && agent.portal_email && session.portalEmail !== agent.portal_email)
+  if (!primary) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (session.portalEmail && primary.portal_email && session.portalEmail !== primary.portal_email)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+
+  // Aceptar agentId opcional del body — si se provee, sintetizamos ESE agente
+  // específico (validado que pertenezca al org). Si no, fallback al primary
+  // (comportamiento viejo). Ver [[handoff-peer-discrimination-fix]] audit
+  // 2026-08-18.
+  const rawBody = await req.json().catch(() => ({}));
+  const requestedAgentId = typeof (rawBody as { agentId?: unknown }).agentId === 'string'
+    ? (rawBody as { agentId: string }).agentId
+    : null;
+
+  let targetAgentId = primary.id;
+  if (requestedAgentId && primary.portal_email) {
+    const { data: check } = await supabase
+      .from('voice_agents').select('id')
+      .eq('id', requestedAgentId).eq('portal_email', primary.portal_email).maybeSingle();
+    if (!check) return NextResponse.json({ error: 'Agente fuera del org' }, { status: 403 });
+    targetAgentId = requestedAgentId;
+  }
+
+  const { data: agent } = await supabase.from('voice_agents')
+    .select('id, agent_name, business_name, role, role_knowledge_base, portal_email')
+    .eq('id', targetAgentId)
+    .single() as { data: {
+      id: string; agent_name: string | null; business_name: string | null;
+      role: string | null; role_knowledge_base: string | null; portal_email: string | null;
+    } | null };
+  if (!agent) return NextResponse.json({ error: 'Agente no encontrado' }, { status: 404 });
 
   const since60 = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
 
