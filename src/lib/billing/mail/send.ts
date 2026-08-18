@@ -82,13 +82,17 @@ export async function sendBillingMail(
     : undefined;
 
   // Map BillingAttachment to the shape sendEmail expects.
-  const attachments = opts.attachments?.map((a) => ({
-    filename: a.filename,
-    content:
-      a.content instanceof Buffer
-        ? a.content.toString('base64')
-        : a.content,
-  }));
+  // Buffer.toString('base64') returns string; the conditional ternary is already
+  // string in both branches — cast to satisfy tsc's union inference.
+  const attachments: { filename: string; content: string }[] | undefined =
+    opts.attachments?.map((a) => ({
+      filename: a.filename,
+      content: (
+        a.content instanceof Buffer
+          ? a.content.toString('base64')
+          : a.content
+      ) as string,
+    }));
 
   const ok = await sendEmail({
     to: opts.to,
@@ -98,7 +102,7 @@ export async function sendBillingMail(
     ...(opts.replyTo ? { replyTo: opts.replyTo } : {}),
     ...(attachments?.length ? { attachments } : {}),
     ...(headers ? { headers } : {}),
-  } as Parameters<typeof sendEmail>[0] & { headers?: Record<string, string> });
+  });
 
   if (!ok) {
     throw new Error(
