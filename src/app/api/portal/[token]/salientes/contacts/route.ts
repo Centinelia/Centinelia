@@ -2,16 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { getAgentAccess } from '@/lib/portal/agent-access';
-import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { timingSafeCompareStrings } from '@/lib/auth/cron-auth';
 
 interface Params { params: Promise<{ token: string }> }
-
-async function getAgent(token: string, portalEmail: string) {
-  const data = await getPrimaryAgentFromToken<{ id: string; vapi_agent_id: string | null; phone_number: string | null; business_name: string; features: Record<string, unknown> | null; portal_email: string | null }>(token, 'id, vapi_agent_id, phone_number, business_name, features, portal_email');
-  if (!data || data.portal_email !== portalEmail) return null;
-  return data;
-}
 
 export async function GET(req: NextRequest, { params }: Params) {
   const session = await verifySession(req.cookies.get(PORTAL_COOKIE)?.value ?? '');
@@ -39,11 +32,20 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 
   const { token } = await params;
-  const agent = await getAgent(token, session.portalEmail);
-  if (!agent) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+  const access = await getAgentAccess(token, req);
+  if (!access || access.portalEmail !== session.portalEmail)
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   const body = await req.json();
   const supabase = createAdminClient();
+
+  // El body puede especificar agentId para asignar el contacto a un peer
+  // concreto (ej. el meerkat de ventas que lo va a llamar). Default al primer
+  // meerkat activo del roster si no se pasa — preserva comportamiento previo.
+  const targetAgentId = (body.agentId as string | undefined) ?? access.primaryId;
+  if (!access.ids.includes(targetAgentId)) {
+    return NextResponse.json({ error: 'Empleado no válido para este portal' }, { status: 403 });
+  }
 
   // Supports single { nombre, telefono, email, motivo } or batch { contacts: [...] }
   const isBatch = Array.isArray(body.contacts);
@@ -57,7 +59,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const source = isBatch ? 'csv' : 'manual';
 
   const toInsert = valid.map(r => ({
-    agent_id: agent.id,
+    agent_id: targetAgentId,
     nombre:   r.nombre?.trim() || null,
     telefono: r.telefono.trim(),
     email:    r.email?.trim()  || null,
@@ -80,8 +82,9 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 
   const { token } = await params;
-  const agent = await getAgent(token, session.portalEmail);
-  if (!agent) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+  const access = await getAgentAccess(token, req);
+  if (!access || access.portalEmail !== session.portalEmail)
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   const { ids, password } = await req.json() as { ids: string[]; password?: string };
   if (!ids?.length) return NextResponse.json({ error: 'Se requieren IDs' }, { status: 400 });
@@ -105,7 +108,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   const { error } = await supabase
     .from('outbound_contacts')
     .delete()
-    .eq('agent_id', agent.id)
+    .in('agent_id', access.ids)
     .in('id', ids);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

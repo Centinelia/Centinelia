@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
-import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
+import { getAgentAccess } from '@/lib/portal/agent-access';
 
 interface Params { params: Promise<{ token: string; id: string }> }
 
@@ -13,16 +13,17 @@ export async function GET(req: NextRequest, { params }: Params) {
   const { token, id } = await params;
   const supabase = createAdminClient();
 
-  // Verify portal ownership
-  const agent = await getPrimaryAgentFromToken<{ id: string; portal_email: string | null }>(token, 'id, portal_email', supabase);
-  if (!agent || agent.portal_email !== session.portalEmail) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+  const access = await getAgentAccess(token, req);
+  if (!access) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+  if (session.portalEmail && access.portalEmail !== session.portalEmail)
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
-  // Verify campaign belongs to this agent's client
+  // La campaña puede pertenecer a cualquier peer del org, no solo al primary.
   const { data: campaign } = await supabase
     .from('outbound_campaigns')
     .select('id')
     .eq('id', id)
-    .eq('agent_id', agent.id)
+    .in('agent_id', access.ids)
     .single();
   if (!campaign) return NextResponse.json({ error: 'No encontrado' }, { status: 404 });
 

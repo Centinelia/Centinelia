@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requirePortalAccess } from '@/lib/portal/access';
-import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
+import { getAgentAccess } from '@/lib/portal/agent-access';
 import { triggerOutboundCall } from '@/lib/vapi/outbound';
 import { checkAccount } from '@/lib/compliance/account-guard';
 
@@ -16,12 +16,11 @@ export async function POST(req: NextRequest, { params }: Params) {
   const { token } = await params;
   const supabase  = createAdminClient();
 
-  // Verify the portal token belongs to this session
-  const portalAgent = await getPrimaryAgentFromToken<{ id: string; portal_email: string | null }>(token, 'id, portal_email', supabase);
-  if (!portalAgent || portalAgent.portal_email !== session.portalEmail) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+  const access = await getAgentAccess(token, req);
+  if (!access || access.portalEmail !== session.portalEmail) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   // Account guard
-  const guard = await checkAccount(portalAgent.portal_email, supabase);
+  const guard = await checkAccount(access.portalEmail, supabase);
   if (!guard.canOperate) {
     return NextResponse.json({ error: `Cuenta ${guard.status}. No se pueden hacer llamadas salientes.` }, { status: 403 });
   }
@@ -31,8 +30,12 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!contactIds?.length) return NextResponse.json({ error: 'Se requieren contactIds' }, { status: 400 });
 
   // Resolve which agent makes the calls:
-  // if agentId is provided and belongs to the same client, use it; otherwise use the portal agent
-  const targetId = agentId ?? portalAgent.id;
+  // si agentId viene del body, debe estar dentro del roster accesible;
+  // si no, se usa el primer meerkat activo del roster (fallback determinístico).
+  const targetId = agentId ?? access.primaryId;
+  if (!access.ids.includes(targetId)) {
+    return NextResponse.json({ error: 'Empleado no válido para este portal' }, { status: 403 });
+  }
   const { data: agent } = await supabase
     .from('voice_agents')
     .select('*')
@@ -48,11 +51,12 @@ export async function POST(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'El agente no está sincronizado con Vapi' }, { status: 400 });
   }
 
-  // Contacts must belong to the portal's own agent (where they were captured)
+  // Contacts pueden pertenecer a cualquier peer del org, no solo al primary.
+  // El agente que ejecuta la llamada sí es targetId (elegido por el usuario).
   const { data: contacts } = await supabase
     .from('outbound_contacts')
     .select('*')
-    .eq('agent_id', portalAgent.id)
+    .in('agent_id', access.ids)
     .in('id', contactIds);
 
   if (!contacts?.length) return NextResponse.json({ error: 'Contactos no encontrados' }, { status: 404 });
