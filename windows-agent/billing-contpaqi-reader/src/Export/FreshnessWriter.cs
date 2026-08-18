@@ -17,6 +17,11 @@ public static class FreshnessWriter
     /// }
     /// If error is not null, an "error_message" field is added.
     /// </summary>
+    /// <param name="startTime">
+    /// The timestamp that represents when the sync cycle started.
+    /// If null, defaults to <see cref="DateTimeOffset.UtcNow"/> at call time (backward-compatible).
+    /// Pass the start-of-cycle timestamp so that last_sync_at reflects cycle START, not END.
+    /// </param>
     public static void Write(
         string status,
         int clients,
@@ -24,7 +29,8 @@ public static class FreshnessWriter
         long durationMs,
         string version,
         Stream output,
-        string? error = null)
+        string? error = null,
+        DateTimeOffset? startTime = null)
     {
         var options = new JsonWriterOptions { Indented = true };
 
@@ -33,8 +39,9 @@ public static class FreshnessWriter
         writer.WriteStartObject();
 
         // last_sync_at: ISO 8601 UTC with milliseconds, e.g. "2026-08-18T21:15:00.000Z"
-        var nowUtc = DateTime.UtcNow;
-        writer.WriteString("last_sync_at", nowUtc.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"));
+        // Uses startTime (cycle start) if provided; falls back to UtcNow for backward compat.
+        var syncAt = (startTime ?? DateTimeOffset.UtcNow).UtcDateTime;
+        writer.WriteString("last_sync_at", syncAt.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"));
 
         writer.WriteString("status", status);
 
