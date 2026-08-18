@@ -128,14 +128,78 @@ async function runHandler(job: BillingJobRow): Promise<void> {
   }
 }
 
-/** Stub — Task 8 will implement the real handler. */
+/**
+ * Handle a process_notes job: runs the full BillingEmployee reasoning loop.
+ *
+ * The adapter and config values are loaded from the job's payload and
+ * the organization's integration config (or from env for the pilot phase).
+ *
+ * Fase 2: loadAdapterForIntegration() leer la config de organization_integrations
+ * e instanciar el adaptador CONTPAQi real. Por ahora usa MockBillingAdapter.
+ */
 async function handleProcessNotes(job: BillingJobRow): Promise<void> {
-  console.log('[billing/queue] process_notes stub', { jobId: job.id, payload: job.payload });
+  const emailId = job.payload['email_id'] as string | undefined;
+  if (!emailId) {
+    throw new Error('[billing/queue] process_notes: missing email_id in payload');
+  }
+
+  // Lazy imports to keep the module lightweight at load time.
+  const { BillingEmployee } = await import('./loop');
+  const { MockBillingAdapter } = await import('../adapters/mock');
+
+  // Pilot-phase mock adapter with empty catalog.
+  // Fase 2: replace with CONTPAQiAdapter loaded from organization_integrations config.
+  const adapter = new MockBillingAdapter({ clients: [], products: [] });
+
+  const employee = new BillingEmployee(adapter, {
+    portalEmail: job.portal_email,
+    integrationId: job.integration_id,
+    dropboxToken: process.env.BILLING_DROPBOX_TOKEN ?? '',
+    dropboxBasePath: process.env.BILLING_DROPBOX_BASE_PATH ?? '/Facturacion',
+    escalationEmail: process.env.BILLING_ESCALATION_EMAIL ?? job.portal_email,
+    orgName: job.portal_email,
+  });
+
+  const result = await employee.runOnEmail(emailId);
+
+  if (result.errors.length > 0) {
+    // Surface errors to the queue so markFailed is triggered if needed.
+    throw new Error(
+      `[billing/queue] process_notes completed with errors: ${result.errors.join('; ')}`,
+    );
+  }
+
+  console.log('[billing/queue] process_notes completed', {
+    jobId: job.id,
+    emailId,
+    processed: result.processed,
+    escalated: result.escalated,
+    consulted: result.consulted,
+  });
 }
 
-/** Stub — Task 8 will implement the real handler. */
+/**
+ * Handle a reply_missing_attachments job: replies to the inbound email
+ * asking the sender to provide photos of the billing notes.
+ */
 async function handleReplyMissingAttachments(job: BillingJobRow): Promise<void> {
-  console.log('[billing/queue] reply_missing_attachments stub', { jobId: job.id, payload: job.payload });
+  const emailId = job.payload['email_id'] as string | undefined;
+  if (!emailId) {
+    throw new Error('[billing/queue] reply_missing_attachments: missing email_id in payload');
+  }
+
+  const { replyToInboundEmail } = await import('../mail/send');
+
+  const body = [
+    '<p>Hola,</p>',
+    '<p>Recibimos tu correo, pero no detectamos imagenes de notitas de venta adjuntas.</p>',
+    '<p>Por favor reenviale con las fotos de las notitas para que podamos procesarlas.</p>',
+    '<p>Gracias.</p>',
+  ].join('\n');
+
+  await replyToInboundEmail(emailId, body);
+
+  console.log('[billing/queue] reply_missing_attachments sent', { jobId: job.id, emailId });
 }
 
 // ---------------------------------------------------------------------------

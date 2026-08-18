@@ -39,6 +39,11 @@ vi.mock('@/lib/supabase/admin', () => ({
   createAdminClient: () => mockClient,
 }));
 
+// Mock sendEmail so integration tests do not hit real Resend API.
+vi.mock('@/lib/email/send', () => ({
+  sendEmail: vi.fn().mockResolvedValue(true),
+}));
+
 // Import AFTER the mock is registered so the module receives the mock.
 import { enqueueBillingEmail, dequeueAndRun } from '../queue';
 
@@ -135,7 +140,7 @@ describe('dequeueAndRun', () => {
       id:             'job-1',
       portal_email:   'test@example.com',
       integration_id: 'integ-1',
-      kind:           'process_notes',
+      kind:           'reply_missing_attachments', // simpler handler — no DB lookup needed
       payload:        { email_id: 'e1' },
       status:         'running',
       attempts:       1,
@@ -147,9 +152,21 @@ describe('dequeueAndRun', () => {
 
     mockRpc.mockResolvedValue({ data: [job], error: null });
 
+    // reply_missing_attachments calls replyToInboundEmail which calls supabase select.
+    // Mock from() to support both select and update chains.
     const updateEqMock = vi.fn().mockResolvedValue({ error: null });
     const updateMock   = vi.fn().mockReturnValue({ eq: updateEqMock });
-    mockClient.from = vi.fn().mockReturnValue({ update: updateMock });
+    const maybeSingle  = vi.fn().mockResolvedValue({
+      data: { from_address: 'from@test.com', subject: 'Test', message_id: null },
+      error: null,
+    });
+    const eqMock = vi.fn().mockReturnValue({ maybeSingle });
+    const selectMock = vi.fn().mockReturnValue({ eq: eqMock });
+
+    mockClient.from = vi.fn().mockReturnValue({
+      update: updateMock,
+      select: selectMock,
+    });
 
     const result = await dequeueAndRun();
 
