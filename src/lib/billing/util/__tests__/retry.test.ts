@@ -73,4 +73,44 @@ describe('retryWithBackoff', () => {
 
     expect(result).toEqual(expected);
   });
+
+  it('isRetryable=false → throws al primer intento sin reintentos', async () => {
+    const permanentError = new Error('permanent 400');
+    const fn = vi.fn().mockRejectedValue(permanentError);
+
+    await expect(
+      retryWithBackoff(fn, {
+        maxAttempts:  3,
+        initialDelayMs: 1,
+        isRetryable: () => false,
+      }),
+    ).rejects.toThrow('permanent 400');
+
+    // Must not have retried — exactly 1 call.
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+
+  it('isRetryable: retryable errors still retry, non-retryable stop immediately', async () => {
+    const transientError = Object.assign(new Error('transient'), { status: 500 });
+    const permanentError = Object.assign(new Error('not found'), { status: 404 });
+
+    // First call: transient (should retry). Second call: permanent (should stop immediately).
+    const fn = vi
+      .fn()
+      .mockRejectedValueOnce(transientError)
+      .mockRejectedValueOnce(permanentError)
+      .mockResolvedValueOnce('should not reach');
+
+    const isRetryable = (err: unknown) => {
+      const e = err as { status?: number };
+      return e?.status !== 404;
+    };
+
+    await expect(
+      retryWithBackoff(fn, { maxAttempts: 3, initialDelayMs: 1, isRetryable }),
+    ).rejects.toThrow('not found');
+
+    // Called twice: first (transient → retry), second (permanent → stop).
+    expect(fn).toHaveBeenCalledTimes(2);
+  });
 });

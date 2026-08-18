@@ -163,7 +163,20 @@ async function handleProcessNotes(job: BillingJobRow): Promise<void> {
           data: { config: OrganizationIntegrationConfig } | null;
           error: { message: string } | null;
         }>,
-    { maxAttempts: 3, initialDelayMs: 100, maxDelayMs: 2000 },
+    {
+      maxAttempts:   3,
+      initialDelayMs: 100,
+      maxDelayMs:    2000,
+      isRetryable: (error: unknown) => {
+        const err = error as Record<string, unknown>;
+        const code = (err?.['code'] ?? err?.['status'] ?? 0) as string | number;
+        // PostgREST error codes (e.g. PGRST116 = row not found) — permanent, no retry.
+        if (typeof code === 'string' && code.startsWith('PGRST')) return false;
+        // 4xx HTTP errors (except 429 Too Many Requests) — permanent, no retry.
+        if (typeof code === 'number' && code >= 400 && code < 500 && code !== 429) return false;
+        return true;
+      },
+    },
   );
 
   if (intError || !integration) {

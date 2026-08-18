@@ -62,9 +62,13 @@ vi.mock('@/lib/billing/employee/loop', () => ({
   })),
 }));
 
-// Mock retryWithBackoff to disable delays in tests (pass-through with no sleep).
+// retryWithBackoff mock: a vi.fn() wrapping a configurable implementation.
+// Default behaviour is a zero-delay pass-through (calls fn() once, no sleep).
+// Individual tests can override with mockImplementationOnce to test retry logic.
+const mockRetryWithBackoff = vi.fn(async <T>(fn: () => Promise<T>, _opts?: unknown): Promise<T> => fn());
+
 vi.mock('@/lib/billing/util/retry', () => ({
-  retryWithBackoff: async <T>(fn: () => Promise<T>) => fn(),
+  retryWithBackoff: (...args: Parameters<typeof mockRetryWithBackoff>) => mockRetryWithBackoff(...args),
 }));
 
 // Import AFTER the mocks are registered so the module receives the mocks.
@@ -109,6 +113,8 @@ beforeEach(() => {
   mockBuildAdapter.mockReturnValue({});
   // Default: successful runOnEmail result.
   mockRunOnEmail.mockResolvedValue({ processed: 1, escalated: 0, consulted: 0, errors: [] });
+  // Default: pass-through (calls fn() once, no sleep).
+  mockRetryWithBackoff.mockImplementation(async <T>(fn: () => Promise<T>, _opts?: unknown): Promise<T> => fn());
 });
 
 // ---------------------------------------------------------------------------
@@ -366,38 +372,66 @@ describe('handleProcessNotes — adapter registry', () => {
     expect(mockBuildAdapter).toHaveBeenCalledWith(mockConfig);
   });
 
-  it('retryWithBackoff: primer intento de integration falla (error), segundo exito', async () => {
-    // Since retryWithBackoff is mocked as pass-through in tests, we verify that
-    // when the integration fetch returns a transient error, the job is retried
-    // by the queue retry mechanism (marked pending, not failed).
-    // This test verifies the queue-level retry behavior for non-fatal integration errors.
+  it('retryWithBackoff: fn falla en primer intento y tiene exito en segundo — callCount=2', async () => {
+    // Verifies that queue.ts passes a callable `fn` to retryWithBackoff, and that
+    // when retryWithBackoff invokes fn() a second time (after the first throws), the
+    // second call succeeds and the result propagates correctly.
+    //
+    // Strategy: replace mockRetryWithBackoff with a minimal real-retry implementation
+    // (no sleep) that calls fn() up to twice. The underlying Supabase .single() mock
+    // throws on the first call and resolves on the second. We assert callCount===2
+    // and that the integration config from the second call reaches buildAdapter.
     const job = makeProcessNotesJob('integ-retry');
-
     mockRpc.mockResolvedValue({ data: [job], error: null });
 
-    let callCount = 0;
+    const mockConfig = { type: 'mock' };
+    let fnCallCount = 0;
     const updateEqMock = vi.fn().mockResolvedValue({ error: null });
     const updateMock   = vi.fn().mockReturnValue({ eq: updateEqMock });
 
     mockClient.from = vi.fn().mockImplementation((table: string) => {
       if (table === 'organization_integrations') {
-        // First call: transient error; second call: success.
-        callCount++;
-        const mockConfig = { type: 'mock' };
-        const s = vi.fn().mockResolvedValue(
-          callCount === 1
-            ? { data: { config: mockConfig }, error: null }
-            : { data: { config: mockConfig }, error: null },
-        );
-        const e = vi.fn().mockReturnValue({ single: s });
-        return { select: vi.fn().mockReturnValue({ eq: e }) };
+        const singleMock = vi.fn().mockImplementation(() => {
+          fnCallCount++;
+          if (fnCallCount === 1) {
+            // First call: throw so retryWithBackoff retries.
+            return Promise.reject(new Error('ECONNRESET'));
+          }
+          // Second call: success — resolves with integration config.
+          return Promise.resolve({ data: { config: mockConfig }, error: null });
+        });
+        const eqMock = vi.fn().mockReturnValue({ single: singleMock });
+        return { select: vi.fn().mockReturnValue({ eq: eqMock }) };
       }
       return { update: updateMock };
     });
 
+    // For this test: replace pass-through with a real 2-attempt retry loop (no sleep).
+    // This isolates the retry behaviour without needing to run BillingEmployee.
+    mockRetryWithBackoff.mockImplementationOnce(async <T>(fn: () => Promise<T>) => {
+      let lastErr: unknown;
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          return await fn();
+        } catch (err) {
+          lastErr = err;
+        }
+      }
+      throw lastErr;
+    });
+
+    // dequeueAndRun will fail further down (BillingEmployee constructor) because we're
+    // replacing the retry but not the full LLM loop. We capture markFailed's update instead.
     const result = await dequeueAndRun();
+
+    // The retry executed fn() exactly twice: fail then succeed.
+    expect(fnCallCount).toBe(2);
+    // retryWithBackoff was called once (for the integration lookup).
+    expect(mockRetryWithBackoff).toHaveBeenCalledTimes(1);
+    // buildAdapter was called with the config returned by the second (successful) fn() call.
+    expect(mockBuildAdapter).toHaveBeenCalledWith(mockConfig);
+    // dequeueAndRun always returns { processed: 1 } when a job was claimed.
     expect(result).toEqual({ processed: 1 });
-    expect(mockBuildAdapter).toHaveBeenCalled();
   });
 
   it('throws and marks job failed when integration row is not found', async () => {

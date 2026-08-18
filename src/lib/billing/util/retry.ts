@@ -18,6 +18,12 @@ export interface RetryOptions {
   maxDelayMs?: number;
   /** Multiplicador de backoff. Default: 2. */
   backoff?: number;
+  /**
+   * Predicado opcional para decidir si un error es reintentable.
+   * Si devuelve false, el error se propaga inmediatamente sin mas intentos.
+   * Si se omite, todos los errores se reintentan (comportamiento original).
+   */
+  isRetryable?: (error: unknown) => boolean;
 }
 
 /**
@@ -38,6 +44,7 @@ export async function retryWithBackoff<T>(
   const initialDelayMs = opts.initialDelayMs ?? 100;
   const maxDelayMs = opts.maxDelayMs ?? 2000;
   const backoff = opts.backoff ?? 2;
+  const { isRetryable } = opts;
 
   let lastError: unknown;
   let delayMs = initialDelayMs;
@@ -47,6 +54,11 @@ export async function retryWithBackoff<T>(
       return await fn();
     } catch (err) {
       lastError = err;
+      // If a retryable predicate is provided and the error is not retryable,
+      // throw immediately without sleeping or consuming remaining attempts.
+      if (isRetryable !== undefined && !isRetryable(err)) {
+        throw err;
+      }
       if (attempt < maxAttempts) {
         await sleep(Math.min(delayMs, maxDelayMs));
         delayMs *= backoff;
