@@ -403,8 +403,17 @@ export default function SolucionFactibleSection({ token }: { token: string }) {
                   type="file"
                   accept=".cer"
                   required
-                  className="text-xs"
-                  style={{ color: 'var(--c-text-3)' }}
+                  className="block w-full text-xs rounded-lg cursor-pointer
+                             file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0
+                             file:text-xs file:font-semibold file:cursor-pointer
+                             file:bg-[#1A56DB] file:text-white
+                             hover:file:opacity-80"
+                  style={{
+                    color:      'var(--c-text-3)',
+                    padding:    '6px 8px',
+                    border:     '1px dashed var(--c-border)',
+                    background: 'var(--c-surface)',
+                  }}
                 />
               </label>
               <label className="flex flex-col gap-1">
@@ -414,8 +423,17 @@ export default function SolucionFactibleSection({ token }: { token: string }) {
                   type="file"
                   accept=".key"
                   required
-                  className="text-xs"
-                  style={{ color: 'var(--c-text-3)' }}
+                  className="block w-full text-xs rounded-lg cursor-pointer
+                             file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0
+                             file:text-xs file:font-semibold file:cursor-pointer
+                             file:bg-[#1A56DB] file:text-white
+                             hover:file:opacity-80"
+                  style={{
+                    color:      'var(--c-text-3)',
+                    padding:    '6px 8px',
+                    border:     '1px dashed var(--c-border)',
+                    background: 'var(--c-surface)',
+                  }}
                 />
               </label>
             </div>
