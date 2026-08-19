@@ -35,7 +35,17 @@ function Avatar({ agent, size = 32 }: { agent: AgentStat; size?: number }) {
     <div className="flex-shrink-0 overflow-hidden relative"
       style={{ width: size, height: size, borderRadius: radius, background: `${agent.roleColor || agent.color}20`, border: `1px solid ${agent.roleColor || agent.color}35` }}>
       {agent.avatarSrc
-        ? <Image src={agent.avatarSrc} alt="" fill sizes={`${size}px`} style={{ objectFit: 'contain', padding: size * 0.05 }} />
+        ? <Image
+            src={agent.avatarSrc}
+            alt=""
+            fill
+            sizes={`${size}px`}
+            style={{
+              objectFit:      'contain',
+              objectPosition: 'center bottom',
+              padding:        `${size * 0.05}px ${size * 0.05}px 0`,
+            }}
+          />
         : <span className="w-full h-full flex items-center justify-center font-bold"
             style={{ color: agent.roleColor || agent.color, fontSize: size * 0.4 }}>{agent.initial}</span>
       }
