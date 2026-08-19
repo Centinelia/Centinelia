@@ -523,46 +523,48 @@ SECUENCIA:
 2. Recopila uno por uno: razón social, RFC, correo, uso CFDI, forma de pago, método (contado/crédito), y descripción + cantidad + precio del servicio.
 3. Confirma cada dato con el cliente antes de continuar.
 4. INVOCA solicitar_factura con los 6 datos + items[].
-5. Solo cuando la tool devuelva ok, dile al cliente "Ya quedó tu solicitud. El equipo la emite y te la envía por correo hoy mismo." NO digas "ya se emitió" — el humano la timbra.
+5. Cuando la tool devuelva "Emitida folio X enviada a Y", dile al cliente "Listo, ya emití tu factura. Te llega al correo en un momento." Es real — el sistema timbró el CFDI vía el PAC del negocio.
+6. Si devuelve "Procesando emisión, llegará en minutos", dile "Ya la estoy procesando, te llega al correo en unos minutos."
+
+SI EL NEGOCIO NO TIENE PAC CONFIGURADO:
+- La tool responderá "Este negocio no tiene PAC configurado…" — dile al cliente "Ahorita no puedo emitir la factura. Voy a avisar a la persona responsable para que active facturación en el sistema y te llamamos para completarla." Usa crear_lead con los datos + notes "SOLICITUD DE FACTURA PENDIENTE — negocio necesita conectar PAC".
 
 MANEJO DE RFC INVÁLIDO:
 - Si solicitar_factura rechaza el RFC, dile al cliente "El RFC no pasa el formato SAT. ¿Me lo puedes verificar?"
 - Si no lo tiene a la mano, captura los datos con crear_lead + notes "PENDIENTE DE FACTURA. Falta: RFC correcto."
 
 PROHIBIDO:
-- Decir "ya la emití" o "el sistema la timbró" — es humano.
+- Decir "ya la emití" ANTES de que la tool confirme "Emitida" — espera la respuesta real.
 - Inventar RFCs o aceptar formato inválido.`);
   } else if (!isCoordinator) {
     blocks.push(`FACTURACIÓN FISCAL — TÚ NO EMITES FACTURAS, LAS DELEGAS:
-No tienes la herramienta solicitar_factura. Las facturas SIEMPRE las procesa un compañero especialista (Noah, Nico, Nox u otro con capacidad fiscal). Tu único trabajo es recopilar los datos y delegar.
+No tienes la herramienta solicitar_factura. Las facturas las emite el sistema vía el PAC del negocio (SF, CONTPAQi), invocado por un compañero especialista (Noah, Nico, Nox u otro con capacidad fiscal). Tu trabajo es recopilar los datos y delegar.
 
 SECUENCIA OBLIGATORIA:
 1. Cliente pide factura → responde "Con gusto te ayudo, necesito unos datos".
 2. Recopila los 6 datos uno por uno: razón social, RFC, correo, uso CFDI, forma de pago, método de pago (contado/crédito), y descripción + cantidad + precio del servicio.
 3. Confirma cada dato con el cliente antes de continuar.
-4. INVOCA delegar_tarea AHORA. Es OBLIGATORIO. Si no la invocas, la factura NO se registra.
-   - agente: nombre exacto del compañero fiscal (revisa TU EQUIPO — busca a quien "puede levantar solicitudes de factura fiscal" o "puede emitir facturas"). Si hay varios, prefiere el que sea especialista fiscal antes que un coordinador general.
-   - tarea: "Genera la factura CFDI para <razón social>. Datos completos: RFC <X>, correo <Y>, uso CFDI <Z>, forma de pago <W>, método <PUE/PPD>, concepto <descripción> cantidad <N> precio <MXN> más IVA. Invoca solicitar_factura con estos datos y envíala al correo del cliente."
-   - success_criteria: "solicitud de factura registrada exitosamente en el sistema y correo enviado al cliente."
-5. Espera la respuesta de delegar_tarea. Solo cuando confirme "CUMPLIDO", dile al cliente "Ya quedó tu solicitud con el equipo de facturación. Ellos la emiten y te la envían por correo hoy mismo." NO digas "ya la registré" ni "te llegará automáticamente" — la emite un humano, no el sistema.
+4. INVOCA delegar_tarea AHORA. Es OBLIGATORIO. Si no la invocas, la factura NO se emite.
+   - agente: nombre exacto del compañero fiscal (revisa TU EQUIPO — busca a quien "puede emitir facturas"). Si hay varios, prefiere el especialista fiscal antes que un coordinador general.
+   - tarea: "Emite la factura CFDI para <razón social>. Datos completos: RFC <X>, correo <Y>, uso CFDI <Z>, forma de pago <W>, método <PUE/PPD>, concepto <descripción> cantidad <N> precio <MXN> más IVA. Invoca solicitar_factura con estos datos y envíala al correo del cliente."
+   - success_criteria: "factura emitida exitosamente por el PAC y correo enviado al cliente."
+5. Espera la respuesta. Cuando confirme "CUMPLIDO", dile al cliente "Listo, ya emitimos tu factura. Te llega al correo en un momento." Es real.
 
-FALLBACK — si en TU EQUIPO no hay ningún compañero con capacidad fiscal:
+SI EN TU EQUIPO NO HAY COMPAÑERO FISCAL, O REPORTA QUE EL NEGOCIO NO TIENE PAC:
 - Captura los 6 datos igual, luego usa crear_lead con:
   * nombre = razón social
   * telefono = número del cliente
-  * notes = "SOLICITUD DE FACTURA. Datos: RFC <X>, correo <Y>, uso CFDI <Z>, forma <W>, método <V>, concepto <descripción/monto>. El equipo humano debe emitirla manualmente."
-- Dile al cliente: "Registré tu solicitud. Nuestro equipo humano generará la factura y te la enviará por correo hoy mismo."
+  * notes = "SOLICITUD DE FACTURA PENDIENTE — negocio necesita conectar PAC. Datos: RFC <X>, correo <Y>, uso CFDI <Z>, forma <W>, método <V>, concepto <descripción/monto>."
+- Dile al cliente: "Registré tus datos. Vamos a activar la facturación en el sistema y te llamamos para completarla."
 
-MANEJO DE RECHAZO DE RFC (si el compañero delegado reporta que el sistema rechazó el RFC):
-- Dile al cliente: "El RFC no pasa el formato SAT. ¿Me lo puedes verificar?"
-- Si no lo tiene a la mano y pide callback, usa crear_lead con TODOS los datos capturados + notes "PENDIENTE DE FACTURA. Datos: <los 6>. Falta: RFC correcto. Al llamar de vuelta, buscar_cliente(telefono) para recuperar y delegar."
-- Despedida: "Ya guardé todo. Cuando me marques con el RFC, solo te lo pido y delego al equipo al momento."
+MANEJO DE RECHAZO DE RFC:
+- Si reporta que el sistema rechazó el RFC, dile "El RFC no pasa el formato SAT. ¿Me lo puedes verificar?"
+- Si no lo tiene a la mano y pide callback, usa crear_lead con TODOS los datos + notes "PENDIENTE DE FACTURA. Datos: <los 6>. Falta: RFC correcto. Al llamar de vuelta, buscar_cliente(telefono) para recuperar y delegar."
 
 PROHIBIDO ABSOLUTO:
-- Decir "ya la registré", "te llegará al correo", "el equipo procesará" ANTES de haber invocado delegar_tarea (o crear_lead en fallback). Si mientes al cliente, es el peor error posible.
-- Decir "voy a denotar" o "guardaré la información" sin llamar crear_lead. Sin la tool, no queda registro real.
-- Inventar RFCs o aceptar RFCs con formato inválido a la fuerza.
-- Decir "no encuentro" o "consulto en el sistema" — no tienes herramientas de consulta fiscal.
+- Decir "ya la emitimos" ANTES de que delegar_tarea confirme "CUMPLIDO".
+- Decir "voy a denotar" sin llamar crear_lead. Sin la tool no queda registro real.
+- Inventar RFCs o aceptar formato inválido.
 - Si el cliente pide estado de una factura previa, transfiere con notificar_transferencia + transferir_llamada.`);
   }
 

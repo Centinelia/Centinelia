@@ -1728,17 +1728,11 @@ async function executeAgentToolInner(
 
   // ─────────────────────────────────────────────────────────────────────────
   // Fiscal: solicitar_factura + consultar_factura
-  // Sofia recolecta datos de un cliente que pide su CFDI y delega la emisión
-  // al equipo humano (Martha en AC). No timbramos desde Centinelia.
+  // Emite CFDIs vía el PAC del negocio (SF, CONTPAQi, etc.). El flujo manual
+  // (email al responsable de facturación) fue eliminado 2026-08-19 — si el
+  // org no tiene PAC configurado, el empleado avisa al cliente.
   // ─────────────────────────────────────────────────────────────────────────
   if (toolName === 'solicitar_factura') {
-    // invoicing_email vive en organizations desde 2026-08-19
-    const { data: orgInv } = portalEmail
-      ? await supabase.from('organizations').select('invoicing_email').eq('portal_email', portalEmail).maybeSingle()
-      : { data: null };
-    const invoicingEmail = (orgInv?.invoicing_email as string | null | undefined)
-      ?? (agent.client_email as string | undefined)
-      ?? portalEmail;
     const res = await solicitarFactura({
       cliente_nombre:    toolInput.cliente_nombre    as string,
       cliente_rfc:       toolInput.cliente_rfc       as string,
@@ -1761,16 +1755,21 @@ async function executeAgentToolInner(
       sourceCallId:  ctx.sourceCallId,
       sourceInboxId: ctx.sourceInboxId,
       sourceContext: ctx.userContext,
-      invoicingEmail,
     });
+    if (!res.ok && res.reason === 'no_pac') {
+      return {
+        ok: false,
+        error: 'Este negocio no tiene PAC configurado. Avísale al cliente que le llamamos cuando esté listo, y notifica al responsable del negocio para conectar Solución Factible u otro proveedor desde Integraciones.',
+      };
+    }
     if (!res.ok) return { ok: false, error: res.error };
     const totalStr = res.total!.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
     const clienteEmail = toolInput.cliente_email as string;
-    const message = res.path === 'auto' && res.outcome === 'stamped'
-      ? `Emitida ✓ folio ${res.folio_corto} enviada a ${clienteEmail}.`
-      : res.path === 'auto' && res.outcome === 'retrying'
-      ? `Procesando emisión, llegará en minutos.`
-      : `Solicitud de factura registrada por ${totalStr}. Le avisé al equipo de facturación (${res.target_email}) que emita la factura al RFC ${toolInput.cliente_rfc}. El cliente la recibirá en su correo (${clienteEmail}) en las próximas 24 horas hábiles.`;
+    const message = res.outcome === 'stamped'
+      ? `Emitida folio ${res.folio_corto} enviada a ${clienteEmail}.`
+      : res.outcome === 'retrying'
+      ? `Procesando emisión por ${totalStr}, llegará en minutos.`
+      : `Registré la solicitud por ${totalStr} pero el PAC rechazó el timbrado. El responsable del negocio debe revisar en el portal.`;
     return {
       ok:      true,
       request_id: res.request_id,
@@ -4069,7 +4068,7 @@ async function executeAgentToolInner(
     if (toolName === 'generar_pitch_deck') {
       const { data: org } = await supabase
         .from('organizations')
-        .select('knowledge_base, business_description, brand_website, invoicing_email')
+        .select('knowledge_base, business_description, brand_website, business_email')
         .eq('portal_email', portalEmail)
         .maybeSingle();
       const servicesKb = (((org?.knowledge_base as string | null) ?? '') + '\n' + ((org?.business_description as string | null) ?? '')).trim() || null;
@@ -4081,7 +4080,7 @@ async function executeAgentToolInner(
         servicesKb,
         extraContext: (toolInput.extra_context as string | null) ?? null,
         contactWebsite: (org?.brand_website as string | null) ?? null,
-        contactEmail:   (org?.invoicing_email as string | null) ?? (agent.client_email as string | null) ?? portalEmail,
+        contactEmail:   (org?.business_email as string | null) ?? (agent.client_email as string | null) ?? portalEmail,
         contactPhone:   (agent.transfer_whatsapp as string | null) ?? (agent.phone_number as string | null) ?? null,
       }, supabase);
       if (!result.ok) { await refundCreativity(result.error ?? 'buildDeck_failed'); return result; }
@@ -4102,7 +4101,7 @@ async function executeAgentToolInner(
     // invente dominios/emails/teléfonos en el CTA de los documentos).
     const { data: org } = await supabase
       .from('organizations')
-      .select('knowledge_base, business_description, brand_website, brand_address, invoicing_email')
+      .select('knowledge_base, business_description, brand_website, brand_address, business_email')
       .eq('portal_email', portalEmail)
       .maybeSingle();
 
@@ -4110,7 +4109,7 @@ async function executeAgentToolInner(
 
     // agent.transfer_whatsapp o client_email son los canales de contacto reales del org
     const contactWebsite = (org?.brand_website as string | null) ?? null;
-    const contactEmail   = (org?.invoicing_email as string | null) ?? (agent.client_email as string | null) ?? portalEmail;
+    const contactEmail   = (org?.business_email as string | null) ?? (agent.client_email as string | null) ?? portalEmail;
     const contactPhone   = (agent.transfer_whatsapp as string | null) ?? (agent.phone_number as string | null) ?? null;
 
     const { generateStructuredContent } = await import('@/lib/creativity/content-generator');

@@ -25,18 +25,10 @@ export async function POST(req: NextRequest) {
   const supabase = createAdminClient();
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('id, business_name, portal_email, client_email')
+    .select('id, business_name, portal_email')
     .eq('id', agent_id)
     .single();
   if (!agent) return reply('No pude registrar la solicitud: agente no encontrado.');
-
-  // invoicing_email vive en organizations desde 2026-08-19 (migración desde features.invoicing_email)
-  const { data: org } = agent.portal_email
-    ? await supabase.from('organizations').select('invoicing_email').eq('portal_email', agent.portal_email).maybeSingle()
-    : { data: null };
-  const invoicingEmail = (org?.invoicing_email as string | null | undefined)
-    ?? (agent.client_email as string | undefined)
-    ?? (agent.portal_email as string | undefined);
 
   const res = await solicitarFactura({
     cliente_nombre:    args.cliente_nombre    as string,
@@ -58,25 +50,30 @@ export async function POST(req: NextRequest) {
     supabase,
     channel:       'voice',
     sourceCallId:  callId,
-    invoicingEmail,
   });
 
+  // Sin PAC: aviso al cliente que no se puede facturar y pide que el negocio conecte uno
+  if (!res.ok && res.reason === 'no_pac') {
+    return reply(
+      `Ahorita no tengo forma de emitir CFDIs. El negocio necesita conectar un proveedor de facturación (SF, CONTPAQi, Aspel, etc.). Dile al cliente que le vamos a llamar en cuanto esté listo, y avisa tú al responsable del negocio.`,
+    );
+  }
   if (!res.ok) return reply(res.error ?? 'No pude registrar la solicitud.');
 
   const totalStr = res.total!.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
 
-  if (res.path === 'auto' && res.outcome === 'stamped') {
+  if (res.outcome === 'stamped') {
     return reply(
       `Ya la emití por ${totalStr}, folio ${res.folio_corto}. Se la mandé a ${args.cliente_email}.`,
     );
   }
-  if (res.path === 'auto' && res.outcome === 'retrying') {
+  if (res.outcome === 'retrying') {
     return reply(
       `Estoy procesando la emisión por ${totalStr}. Le llegará al correo ${args.cliente_email} en los próximos minutos.`,
     );
   }
-  // 'human' o 'auto→failed' (cayó a humano)
+  // failed (auto pero falló hard): registrada en portal para revisión humana
   return reply(
-    `Solicitud registrada por ${totalStr}. Le avisé al equipo de facturación (${res.target_email}) que emita la factura para ${args.cliente_nombre} (RFC ${args.cliente_rfc}). El cliente recibirá el CFDI en ${args.cliente_email} en las próximas 24 horas hábiles.`,
+    `Registré la solicitud por ${totalStr}, pero el PAC rechazó el timbrado. Avisa al responsable del negocio para que revise en el portal. El cliente aún no recibió la factura.`,
   );
 }

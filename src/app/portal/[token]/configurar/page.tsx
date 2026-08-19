@@ -28,7 +28,6 @@ import TrustStageSelector           from '../TrustStageSelector';
 import RoleEmailLearningSection     from '../RoleEmailLearningSection';
 import JornadaSection               from '../JornadaSection';
 import ApprovalEmailEditor          from '../ApprovalEmailEditor';
-import InvoicingEmailEditor         from '../InvoicingEmailEditor';
 import CallForwardingSection   from '../CallForwardingSection';
 import FallbackNumberSection  from '../FallbackNumberSection';
 import AgentEmailSection     from '../AgentEmailSection';
@@ -171,11 +170,10 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
   }
 
   const { data: orgRow } = agent.portal_email
-    ? await supabase.from('organizations').select('owner_passphrase, fallback_phone_number, invoicing_email').eq('portal_email', agent.portal_email).maybeSingle()
+    ? await supabase.from('organizations').select('owner_passphrase, fallback_phone_number').eq('portal_email', agent.portal_email).maybeSingle()
     : { data: null };
   const ownerPassphrase      = orgRow?.owner_passphrase ?? '';
   const fallbackPhoneNumber  = (orgRow as any)?.fallback_phone_number as string | null ?? null;
-  const orgInvoicingEmail    = (orgRow as any)?.invoicing_email as string | null ?? '';
 
   // Fetch spam folder stats for the last 7 days
   const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
@@ -571,15 +569,6 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
                       <ApprovalEmailEditor token={token} agentId={agent.id as string} initialEmail={(agent as any).approval_email ?? ''} />
                     </div>
 
-                    <div className="mt-5 pt-5" style={{ borderTop: '1px solid var(--c-border)' }}>
-                      <SectionHeader
-                        as="h3"
-                        title="Responsable de facturación"
-                        tooltip="Cuando el empleado recolecte una solicitud de factura de un cliente, esta persona recibirá el correo con todos los datos para timbrar el CFDI en su sistema fiscal (Solución Factible, CONTPAQ, Aspel, etc.)."
-                        className="mb-3"
-                      />
-                      <InvoicingEmailEditor token={token} initialEmail={orgInvoicingEmail} />
-                    </div>
                   </Card>
                 </div>
 

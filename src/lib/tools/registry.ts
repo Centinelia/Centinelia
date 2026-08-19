@@ -67,7 +67,7 @@ export const TOOL_REGISTRY: ToolEntry[] = [
   { name: 'qb_crear_factura',         description: 'Crea factura en QuickBooks (destructiva, 1 op)',        channels: A, category: 'quickbooks', destructive: true,  gatedByRole: ['nico'], gatedByFeature: 'quickbooks', capability: null, policy: policyFor('qb_crear_factura') },
 
   // fiscal
-  { name: 'solicitar_factura',        description: 'Registra solicitud de CFDI al equipo humano',           channels: A, category: 'fiscal',    destructive: true,  gatedByRole: ['nico'], gatedByFeature: null, capability: null, policy: policyFor('solicitar_factura') },
+  { name: 'solicitar_factura',        description: 'Emite CFDI vía el PAC del negocio (SF, CONTPAQi)',      channels: A, category: 'fiscal',    destructive: true,  gatedByRole: ['nico'], gatedByFeature: null, capability: null, policy: policyFor('solicitar_factura') },
   { name: 'consultar_factura',        description: 'Consulta estado de solicitud de CFDI',                  channels: A, category: 'fiscal',    destructive: false, gatedByRole: ['nico'], gatedByFeature: null, capability: null, policy: policyFor('consultar_factura') },
 
   // productos / ML (feature-gated 'mercadolibre')

@@ -9,7 +9,7 @@ import type { VoiceAgent } from '@/types/agent';
 interface Params { params: Promise<{ token: string }> }
 
 // Fields that live in organizations (account-level source of truth)
-const ORG_FIELDS = new Set(['knowledge_base', 'business_hours', 'business_description', 'business_email', 'owner_passphrase', 'owner_profile', 'guardia_schedule', 'invoicing_email']);
+const ORG_FIELDS = new Set(['knowledge_base', 'business_hours', 'business_description', 'business_email', 'owner_passphrase', 'owner_profile', 'guardia_schedule']);
 
 export async function PATCH(req: NextRequest, { params }: Params) {
   // Gate: sub-user necesita módulo 'agentes' (config voz/prompts/trust_stage).
@@ -55,7 +55,6 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   }
 
   // Keys stored inside the features JSONB column — merge instead of flat update
-  // invoicing_email fue migrado a organizations.invoicing_email 2026-08-19 (ORG_FIELDS)
   const featureJsonKeys = ['outbound_calls', 'outbound_role', 'role_color', 'avatar', 'check_spam_folder'];
   const featureJsonUpdate = Object.fromEntries(Object.entries(body).filter(([k]) => featureJsonKeys.includes(k)));
   if (Object.keys(featureJsonUpdate).length > 0) {
@@ -63,7 +62,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     await supabase.from('voice_agents').update({ features: merged }).eq('id', agent.id);
   }
 
-  const allowed = ['business_hours', 'knowledge_base', 'business_description', 'business_email', 'role_knowledge_base', 'role_learnings', 'guardrails_learnings', 'role', 'outbound_knowledge_base', 'notify_whatsapp', 'notify_email', 'first_message', 'transfer_rules', 'missed_call_recovery', 'agent_name', 'speech_style', 'folio_config', 'tramite_docs', 'cabildo_template', 'comms_routing', 'guardia_schedule', 'owner_passphrase', 'definition_of_done', 'owner_profile', 'agent_guardrails', 'heartbeat_config', 'trust_stage', 'approval_email', 'invoicing_email'];
+  const allowed = ['business_hours', 'knowledge_base', 'business_description', 'business_email', 'role_knowledge_base', 'role_learnings', 'guardrails_learnings', 'role', 'outbound_knowledge_base', 'notify_whatsapp', 'notify_email', 'first_message', 'transfer_rules', 'missed_call_recovery', 'agent_name', 'speech_style', 'folio_config', 'tramite_docs', 'cabildo_template', 'comms_routing', 'guardia_schedule', 'owner_passphrase', 'definition_of_done', 'owner_profile', 'agent_guardrails', 'heartbeat_config', 'trust_stage', 'approval_email'];
   const update = Object.fromEntries(Object.entries(body).filter(([k]) => allowed.includes(k)));
 
   // heartbeat_config.enabled is owned by /automations endpoint (D9). If the
