@@ -135,6 +135,16 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       emailIntegrationsUpdatePayload.auto_reply = auto_reply;
     }
 
+    // Roster completo del org: email_integrations es per-agent pero el
+    // toggle auto_reply se decide a nivel inbox compartido (org). Escribir
+    // sólo al primary dejaba peers con auto_reply desincronizado. Consistente
+    // con DELETE (L214-225) y con auto_mode (L154-159 abajo).
+    const { data: rosterRows } = await supabase
+      .from('voice_agents')
+      .select('id')
+      .eq('portal_email', agent.portal_email);
+    const rosterIds = (rosterRows ?? []).map((r: { id: string }) => r.id);
+
     const promises = [
       supabase.from('integration_accounts')
         .update({ metadata: integrationAccountsUpdateMeta })
@@ -143,7 +153,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       // email-sync reads auto_reply from email_integrations — keep in sync
       supabase.from('email_integrations')
         .update(emailIntegrationsUpdatePayload)
-        .eq('agent_id', agent.id)
+        .in('agent_id', rosterIds.length ? rosterIds : [agent.id])
         .eq('provider', provider),
     ];
 
