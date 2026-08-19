@@ -446,6 +446,34 @@ const EMAIL_TOOL_BY_NAME: Record<string, Anthropic.Tool> = Object.fromEntries(
 );
 
 /**
+ * MEERKAT_EMAIL_DISTRIBUTION — preset explícito por meerkat en email.
+ *
+ * Diseñado con Nazre 2026-08-19. Voice-preset ≠ email-preset porque email
+ * permite research profundo (nadie busca archivos hablando por teléfono live).
+ *
+ * Tools que no existen en EMAIL_TOOL_BY_NAME se dropean silenciosamente en
+ * getToolsForRoleEmail. Followup Deuda #3: agregar schemas email para HR
+ * tools (registrar_falta, consultar_vacaciones, solicitar_permiso,
+ * verificar_incidencia), despacho de campo (asignar_unidad_campo,
+ * consultar_unidades_disponibles), gobierno externas (consultar_catalogo_externo,
+ * buscar_en_padron_externo, enviar_tramite_externo), y pack ciclo OC-CFDI
+ * (qb_crear_orden_compra, firmar_oc, sf_timbrar_desde_oc, etc. — 12 tools).
+ */
+const MEERKAT_EMAIL_DISTRIBUTION: Record<string, string[]> = {
+  nia:   ['crear_lead', 'crear_contacto_saliente', 'agendar_cita', 'registrar_pedido', 'buscar_cliente', 'buscar_correo_enviado', 'agregar_tag_contacto', 'registrar_encuesta', 'delegate_task', 'consult_agent', 'pedir_a_humano', 'reportar_falla'],
+  noah:  ['crear_lead', 'crear_contacto_saliente', 'agregar_tag_contacto', 'buscar_cliente', 'buscar_correo_enviado', 'buscar_producto', 'catalogo_buscar_codigo', 'list_calendar_events', 'create_calendar_event', 'generar_propuesta_comercial', 'generar_cotizacion', 'delegate_task', 'consult_agent', 'pedir_a_humano'],
+  nico:  ['buscar_cliente', 'buscar_correo_enviado', 'buscar_documento_oficina', 'solicitar_factura', 'consultar_factura', 'solicitar_cancelacion_factura', 'qb_consultar_facturas', 'qb_buscar_cliente', 'qb_registrar_pago', 'qb_crear_factura', 'qb_reporte_ingresos', 'enviar_documento_oficina', 'delegate_task', 'consult_agent', 'pedir_a_humano'],
+  nelia: ['buscar_cliente', 'buscar_correo_enviado', 'buscar_documento_oficina', 'search_files', 'enviar_documento_oficina', 'generar_one_pager', 'generar_correo_estructurado', 'generar_reporte_metricas_excel', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'create_document', 'create_file', 'save_to_drive', 'delegate_task', 'consult_agent', 'pedir_a_humano'],
+  neo:   ['crear_ticket', 'consultar_incidentes', 'buscar_directorio', 'search_files', 'read_file', 'buscar_correo_enviado', 'buscar_documento_oficina', 'enviar_documento_oficina', 'buscar_cliente', 'reportar_falla', 'delegate_task', 'consult_agent', 'pedir_a_humano'],
+  nara:  ['create_civic_report', 'lookup_civic_report', 'update_civic_report', 'consultar_catalogo_externo', 'buscar_en_padron_externo', 'enviar_tramite_externo', 'buscar_cliente', 'buscar_correo_enviado', 'generar_reporte_metricas_excel', 'search_files', 'read_file', 'delegate_task', 'consult_agent', 'pedir_a_humano'],
+  naia:  ['iniciar_onboarding', 'agendar_cita', 'list_calendar_events', 'create_calendar_event', 'delete_calendar_event', 'buscar_cliente', 'buscar_correo_enviado', 'buscar_documento_oficina', 'search_files', 'read_file', 'registrar_falta', 'consultar_vacaciones', 'solicitar_permiso', 'verificar_incidencia', 'generar_correo_estructurado', 'create_document', 'save_to_drive', 'delegate_task', 'consult_agent', 'pedir_a_humano'],
+  nova:  ['asignar_unidad_campo', 'consultar_unidades_disponibles', 'crear_ticket', 'buscar_cliente', 'buscar_correo_enviado', 'buscar_documento_oficina', 'search_files', 'read_file', 'enviar_documento_oficina', 'create_document', 'extraer_voz_del_cliente', 'delegate_task', 'consult_agent', 'pedir_a_humano'],
+  nox:   ['create_document', 'create_file', 'create_contract_draft', 'save_to_drive', 'organize_files', 'buscar_documento_oficina', 'enviar_documento_oficina', 'search_files', 'read_file', 'buscar_cliente', 'buscar_correo_enviado', 'catalogo_buscar_codigo', 'list_calendar_events', 'create_calendar_event', 'verificar_gasto_recurrente', 'sheets_agregar_fila', 'sheets_actualizar_fila', 'sheets_leer', 'sheets_buscar', 'preparar_brief_del_dia', 'delegate_task', 'consult_agent', 'pedir_a_humano', 'reportar_falla'],
+  niva:  ['create_document', 'create_file', 'save_to_drive', 'buscar_documento_oficina', 'enviar_documento_oficina', 'search_files', 'read_file', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'revisar_desempeno_equipo', 'generar_pitch_deck', 'generar_reporte_metricas_excel', 'aprobar_gasto', 'evaluar_limite_gasto', 'verificar_gasto_recurrente', 'list_calendar_events', 'search_leads', 'delegate_task', 'consult_agent', 'pedir_a_humano'],
+  nala:  ['qb_crear_orden_compra', 'qb_consultar_orden_compra', 'qb_descargar_oc_pdf', 'firmar_oc', 'sf_timbrar_desde_oc', 'sf_cancelar_cfdi', 'sf_consultar_estado_sat', 'enviar_oc_a_pagos', 'registrar_comprobante_pago', 'enviar_oc_a_proveedor', 'archivar_expediente', 'qb_crear_orden_compra_desde_cotizacion', 'search_files', 'read_file', 'delegate_task', 'consult_agent', 'pedir_a_humano'],
+};
+
+/**
  * Filtra BASE_EMAIL_TOOLS al preset del meerkat (mismo pattern que
  * getToolsForRole en agent-chat). Si no hay preset (meerkat desconocido o
  * custom), retorna todas las tools por retrocompat.
@@ -467,12 +495,25 @@ function getToolsForRoleEmail(meerkatId: string | null, qbConnected: boolean): A
     return tools;
   }
 
-  // TODO 2026-08-19: definir MEERKAT_EMAIL_DISTRIBUTION explícito por rol.
-  // El intento de reusar MEERKAT_VOICE_DISTRIBUTION rompió Nia/Noah/Nox/Niva
-  // porque voice-preset ≠ email-preset (email hace research profundo, voice es
-  // reactivo). Mientras tanto, todos reciben BASE_EMAIL_TOOLS entero.
-  // Ver [[handoff-tool-bloat-refactor]].
-  return [...BASE_EMAIL_TOOLS, ...(qbConnected ? QB_EMAIL_TOOLS : [])];
+  const emailNames = meerkatId ? MEERKAT_EMAIL_DISTRIBUTION[meerkatId] ?? null : null;
+
+  // Meerkat desconocido / custom → todas las tools (retrocompat)
+  if (!emailNames) {
+    return [...BASE_EMAIL_TOOLS, ...(qbConnected ? QB_EMAIL_TOOLS : [])];
+  }
+
+  const tools: Anthropic.Tool[] = [];
+  const seen  = new Set<string>();
+
+  for (const name of emailNames) {
+    if (seen.has(name)) continue;
+    if (!qbConnected && name.startsWith('qb_')) continue;
+    const t = EMAIL_TOOL_BY_NAME[name];
+    if (t) { tools.push(t); seen.add(name); }
+    // Tools sin schema (Deuda #3) se dropean silenciosamente.
+  }
+
+  return tools;
 }
 
 export async function processInboxEmail(params: {
