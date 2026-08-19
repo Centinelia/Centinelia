@@ -45,7 +45,7 @@ export default function PendienteContent() {
             position: 'absolute', inset: 0,
             background: `radial-gradient(ellipse at 50% 100%, ${roleColor}30 0%, transparent 65%)`,
           }} />
-          {meerkat && meerkat.id !== 'custom' && meerkat.imagen ? (
+          {meerkat && meerkat.imagen ? (
             <Image
               src={meerkat.imagen}
               alt={name}

@@ -66,7 +66,7 @@ function SaveButton({ saving, saved, onSave, accent, dirty }: { saving: boolean;
 }
 
 const LOCKED_COLORS = new Set(
-  MEERKAT_ROLES.filter(r => r.id !== 'custom').map(r => r.color.toLowerCase())
+  MEERKAT_ROLES.map(r => r.color.toLowerCase())
 );
 
 const COLOR_POOL = [

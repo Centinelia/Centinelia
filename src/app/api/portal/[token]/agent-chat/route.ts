@@ -922,6 +922,248 @@ const QB_TOOLS: Anthropic.Tool[] = [
       required: [],
     },
   },
+  // ── pack ciclo_oc_cfdi (Nala + Nox) ───────────────────────────────────────
+  {
+    name: 'qb_crear_orden_compra',
+    description: 'Crea una Orden de Compra en QuickBooks para un proveedor y abre un expediente para dar seguimiento al ciclo completo (firma → pago → CFDI). Confirma proveedor + conceptos con el dueño antes de ejecutar. Consume 1 tarea.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        proveedor_nombre: { type: 'string', description: 'Nombre del proveedor (se busca en QB por LIKE, se crea si no existe).' },
+        proveedor_rfc:    { type: 'string', description: 'RFC del proveedor (opcional pero recomendado para autofirma).' },
+        proveedor_email:  { type: 'string', description: 'Correo del proveedor para enviarle la OC firmada.' },
+        conceptos: {
+          type: 'array',
+          description: 'Lista de conceptos/partidas de la OC.',
+          items: {
+            type: 'object',
+            properties: {
+              descripcion:     { type: 'string' },
+              cantidad:        { type: 'number' },
+              precio_unitario: { type: 'number' },
+            },
+            required: ['descripcion', 'cantidad', 'precio_unitario'],
+          },
+        },
+        folio_interno: { type: 'string', description: 'Folio interno de proyecto/expediente del cliente (opcional).' },
+        descripcion:   { type: 'string', description: 'Descripción corta del expediente (opcional).' },
+      },
+      required: ['proveedor_nombre', 'conceptos'],
+    },
+  },
+  {
+    name: 'qb_consultar_orden_compra',
+    description: 'Lee los datos de una OC de QuickBooks + estado del expediente. Solo lectura, no consume tareas.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        expediente_id: { type: 'string', description: 'UUID del expediente (preferido).' },
+        qb_po_id:      { type: 'string', description: 'ID de la OC en QuickBooks (alternativa).' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'qb_descargar_oc_pdf',
+    description: 'Descarga el PDF de la OC desde QuickBooks y lo archiva en Storage para poder firmarlo. Consume 1 tarea.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        expediente_id: { type: 'string', description: 'UUID del expediente.' },
+      },
+      required: ['expediente_id'],
+    },
+  },
+  {
+    name: 'firmar_oc',
+    description: 'Evalúa reglas de autofirma (monto ≤ tope + datos completos + no duplicados) y si pasan, aplica la firma digitalizada al PDF de la OC. Si no pasan, escala al humano. Consume 1 tarea.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        expediente_id: { type: 'string', description: 'UUID del expediente.' },
+      },
+      required: ['expediente_id'],
+    },
+  },
+  {
+    name: 'sf_timbrar_desde_oc',
+    description: 'Timbra CFDI en Solución Factible copiando los conceptos del expediente OC (mismo precio, sin markup). Requiere datos fiscales del cliente. Confirma con el dueño antes de ejecutar. Consume 1 tarea.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        expediente_id:  { type: 'string', description: 'UUID del expediente OC.' },
+        cliente_nombre: { type: 'string', description: 'Razón social del cliente receptor.' },
+        cliente_rfc:    { type: 'string', description: 'RFC del cliente receptor.' },
+        cliente_email:  { type: 'string', description: 'Correo del cliente para enviar el CFDI.' },
+        uso_cfdi:       { type: 'string', description: 'Clave del uso CFDI (ej. G03 gastos en general).' },
+        forma_pago:     { type: 'string', description: 'Clave de forma de pago (ej. 03 transferencia, 01 efectivo).' },
+        metodo_pago:    { type: 'string', description: 'Clave de método de pago (PUE = pago único, PPD = parcialidades).' },
+      },
+      required: ['expediente_id', 'cliente_nombre', 'cliente_rfc', 'cliente_email', 'uso_cfdi', 'forma_pago', 'metodo_pago'],
+    },
+  },
+  // ── pack ciclo_oc_cfdi bloque A ────────────────────────────────────────────
+  {
+    name: 'enviar_oc_a_firma_humana',
+    description: 'Nox: escala OC al autorizador humano por correo cuando la autofirma no procede. El autorizador se lee del directorio (is_oc_autorizador). Adjunta PDF y explicación de por qué no se autofirmó. Consume 1 tarea.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        expediente_id: { type: 'string', description: 'UUID del expediente.' },
+        razon:         { type: 'string', description: 'Razón de la escalación (default: la razón guardada en el expediente).' },
+      },
+      required: ['expediente_id'],
+    },
+  },
+  {
+    name: 'enviar_oc_a_pagos',
+    description: 'Nala: envía la OC firmada por correo al depto de pagos (is_oc_pagos en el directorio) para que hagan la transferencia bancaria. Consume 1 tarea.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        expediente_id:    { type: 'string', description: 'UUID del expediente.' },
+        datos_bancarios:  { type: 'string', description: 'CLABE, cuenta, banco del proveedor (opcional pero recomendado).' },
+        nota:             { type: 'string', description: 'Nota interna opcional para el depto de pagos.' },
+      },
+      required: ['expediente_id'],
+    },
+  },
+  {
+    name: 'registrar_comprobante_pago',
+    description: 'Nala: registra el comprobante de pago que regresa el depto de pagos y transiciona el expediente a `oc_pagada`. Acepta base64 o path si ya está en Storage. Consume 1 tarea.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        expediente_id:            { type: 'string', description: 'UUID del expediente.' },
+        comprobante_base64:       { type: 'string', description: 'Contenido del archivo del comprobante en base64 (PDF o imagen, max 5MB).' },
+        extension:                { type: 'string', description: 'Extensión del archivo (pdf, png, jpg). Default: pdf.' },
+        comprobante_storage_path: { type: 'string', description: 'Alternativa a base64: path del archivo en bucket cfdi si ya está subido.' },
+        nota:                     { type: 'string', description: 'Nota opcional (fecha real de pago, referencia bancaria, etc.).' },
+      },
+      required: ['expediente_id'],
+    },
+  },
+  {
+    name: 'enviar_oc_a_proveedor',
+    description: 'Nala: envía OC firmada + comprobante de pago por correo al proveedor para que libere la mercancía. Requiere expediente en `oc_pagada`. Verifier obligatorio (destructivo). Consume 1 tarea.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        expediente_id: { type: 'string', description: 'UUID del expediente.' },
+        mensaje:       { type: 'string', description: 'Mensaje custom al proveedor (opcional, hay uno por default).' },
+      },
+      required: ['expediente_id'],
+    },
+  },
+  {
+    name: 'archivar_expediente',
+    description: 'Nala: archiva XML+PDF+acuse del CFDI (y OC firmada) en el destino configurado por el dueño (Dropbox / SMB local / Windows agent) con la nomenclatura definida en el portal. Requiere expediente con CFDI timbrado. Consume 1 tarea.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        expediente_id: { type: 'string', description: 'UUID del expediente.' },
+      },
+      required: ['expediente_id'],
+    },
+  },
+  {
+    name: 'qb_crear_orden_compra_desde_cotizacion',
+    description: 'Nala: parsea una cotización de proveedor (PDF o imagen) con Vision AI y crea la Orden de Compra en QuickBooks automáticamente. Extrae proveedor + items + precios. Delega en qb_crear_orden_compra internamente. Verifier obligatorio (destructivo, 1 op).',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        cotizacion_base64:       { type: 'string', description: 'Contenido del archivo de cotización en base64 (PDF o imagen, max 15MB). Alternativa a cotizacion_storage_path.' },
+        cotizacion_storage_path: { type: 'string', description: 'Path del archivo en bucket cfdi si ya está subido. Alternativa a cotizacion_base64.' },
+        mime_type:               { type: 'string', description: 'MIME type del archivo (application/pdf, image/jpeg, image/png). Si viene de Storage se infiere de la extensión.' },
+        folio_interno:           { type: 'string', description: 'Folio de proyecto/expediente del cliente (opcional).' },
+        descripcion:             { type: 'string', description: 'Descripción corta del expediente (opcional, hay un default).' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'qb_crear_cotizacion',
+    description: 'Nox: crea una cotización (Estimate) en QuickBooks para un cliente. Verifier obligatorio (destructivo). Consume 1 tarea.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        cliente_nombre: { type: 'string', description: 'Nombre exacto del cliente en QuickBooks.' },
+        conceptos: {
+          type: 'array',
+          description: 'Partidas de la cotización.',
+          items: {
+            type: 'object',
+            properties: {
+              descripcion:     { type: 'string' },
+              cantidad:        { type: 'number' },
+              precio_unitario: { type: 'number' },
+            },
+            required: ['descripcion', 'cantidad', 'precio_unitario'],
+          },
+        },
+        vigencia_dias: { type: 'number', description: 'Días de vigencia de la cotización (opcional).' },
+        notas:         { type: 'string', description: 'Nota para el cliente (opcional, aparece en el PDF).' },
+      },
+      required: ['cliente_nombre', 'conceptos'],
+    },
+  },
+  {
+    name: 'qb_registrar_gasto',
+    description: 'Nox: registra un gasto en QuickBooks (Purchase) contra una cuenta bancaria o tarjeta. Verifier obligatorio (destructivo). Consume 1 tarea.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        concepto:         { type: 'string', description: 'Descripción del gasto.' },
+        monto:            { type: 'number', description: 'Monto en MXN.' },
+        proveedor_nombre: { type: 'string', description: 'Nombre del proveedor si aplica (opcional).' },
+        cuenta_gasto:     { type: 'string', description: 'Nombre de la cuenta de gasto en QB (default: primera cuenta Expense).' },
+        forma_pago:       { type: 'string', enum: ['efectivo', 'transferencia', 'tarjeta', 'cheque'], description: 'Forma de pago (opcional).' },
+        fecha:            { type: 'string', description: 'Fecha YYYY-MM-DD (default: hoy).' },
+      },
+      required: ['concepto', 'monto'],
+    },
+  },
+  {
+    name: 'qb_registrar_caja_chica',
+    description: 'Nox: registra un gasto pequeño contra la cuenta de Caja Chica en QuickBooks. Requiere que exista una cuenta "Caja Chica" o "Petty Cash" tipo Bank. Verifier obligatorio (destructivo). Consume 1 tarea.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        concepto:     { type: 'string', description: 'Descripción del gasto.' },
+        monto:        { type: 'number', description: 'Monto en MXN.' },
+        cuenta_gasto: { type: 'string', description: 'Cuenta contable de gasto (default: primera Expense).' },
+        fecha:        { type: 'string', description: 'Fecha YYYY-MM-DD (default: hoy).' },
+      },
+      required: ['concepto', 'monto'],
+    },
+  },
+  {
+    name: 'sf_cancelar_cfdi',
+    description: 'Nala: solicita cancelación de CFDI ante el SAT via Solución Factible. Requiere que el dueño haya activado "Permitir cancelación por empleado" en el portal. Motivo 01 requiere uuid_sustituto. Verifier obligatorio (destructivo IRREVERSIBLE). Consume 1 tarea.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        expediente_id:  { type: 'string', description: 'UUID del expediente (alternativa: uuid directo del CFDI).' },
+        uuid:           { type: 'string', description: 'UUID del CFDI a cancelar (alternativa: expediente_id).' },
+        motivo:         { type: 'string', enum: ['01', '02', '03', '04'], description: '01=sustitución, 02=error sin relación, 03=no se llevó a cabo, 04=nominativa relacionada.' },
+        uuid_sustituto: { type: 'string', description: 'UUID del CFDI que sustituye al cancelado (obligatorio si motivo=01).' },
+        razon_cliente:  { type: 'string', description: 'Razón que dio el cliente (opcional, se guarda en audit).' },
+      },
+      required: ['motivo'],
+    },
+  },
+  {
+    name: 'sf_consultar_estado_sat',
+    description: 'Nala: consulta el estado real de una cancelación de CFDI ante el SAT via Solución Factible. Read-only, no consume tareas.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        expediente_id: { type: 'string', description: 'UUID del expediente (alternativa: uuid).' },
+        uuid:          { type: 'string', description: 'UUID del CFDI (alternativa: expediente_id).' },
+      },
+      required: [],
+    },
+  },
 ];
 
 // Migrated to registry: src/lib/tools/schemas.ts

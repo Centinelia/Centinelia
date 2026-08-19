@@ -14,7 +14,7 @@
  */
 
 import { useState } from 'react';
-import { Plus, X, Crown, Pencil, Save, Lock, Eye, EyeOff, BookUser, Users } from 'lucide-react';
+import { Plus, X, Crown, Pencil, Save, Lock, Eye, EyeOff, BookUser, Users, PenLine, DollarSign, Mail } from 'lucide-react';
 import { v4 as uuid } from 'uuid';
 import type { DirectoryPerson } from '@/lib/helpdesk/folio';
 
@@ -316,11 +316,35 @@ function PersonRow({
                 Guardia
               </span>
             )}
+            {person.is_oc_autorizador && (
+              <span className="text-[10px] px-2 py-0.5 rounded font-semibold flex items-center gap-1"
+                style={{ background: 'rgba(245,158,11,0.12)', color: '#c2680a' }}
+                title="Autoriza órdenes de compra que no pasan autofirma">
+                <PenLine size={9} /> Autoriza OC
+              </span>
+            )}
+            {person.is_oc_pagos && (
+              <span className="text-[10px] px-2 py-0.5 rounded font-semibold flex items-center gap-1"
+                style={{ background: 'rgba(14,165,233,0.12)', color: '#0369a1' }}
+                title="Recibe OCs firmadas para hacer transferencia bancaria">
+                <DollarSign size={9} /> Pagos OC
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2 flex-wrap mt-0.5">
-            <span className="font-mono text-[12px]" style={{ color: '#6B6480' }}>{person.phone || 'Sin teléfono'}</span>
+            {person.phone && (
+              <span className="font-mono text-[12px]" style={{ color: '#6B6480' }}>{person.phone}</span>
+            )}
             {person.extension && (
               <span className="text-[11px]" style={{ color: '#9B8FB5' }}>· ext. {person.extension}</span>
+            )}
+            {person.email && (
+              <span className="text-[11px] flex items-center gap-1" style={{ color: '#6B6480' }}>
+                <Mail size={10} /> {person.email}
+              </span>
+            )}
+            {!person.phone && !person.email && (
+              <span className="text-[11px]" style={{ color: '#9B8FB5' }}>Sin contacto</span>
             )}
           </div>
         </div>
@@ -353,13 +377,45 @@ function PersonRow({
         <input value={person.phone} onChange={e => onUpdate({ phone: e.target.value })}
           placeholder="Teléfono (ej: +52 811 234 5678)"
           className="px-3 py-2 rounded-lg text-[13px] font-mono" style={inputStyle} />
+        <input type="email" value={person.email ?? ''} onChange={e => onUpdate({ email: e.target.value })}
+          placeholder="Correo (opcional, requerido para escalación OC)"
+          className="px-3 py-2 rounded-lg text-[13px]" style={inputStyle} />
         <input value={person.extension ?? ''} onChange={e => onUpdate({ extension: e.target.value })}
           placeholder="Extensión (opcional)"
           className="px-3 py-2 rounded-lg text-[13px]" style={inputStyle} />
         <input value={person.department ?? ''} onChange={e => onUpdate({ department: e.target.value })}
           placeholder="Departamento o área (opcional)"
-          className="px-3 py-2 rounded-lg text-[13px]" style={inputStyle} />
+          className="px-3 py-2 rounded-lg text-[13px] sm:col-span-2" style={inputStyle} />
       </div>
+
+      {/* Flags del pack ciclo_oc_cfdi — solo visibles si hay correo */}
+      {(person.email ?? '').trim() && (
+        <div className="flex flex-col gap-1.5 pt-1 pb-1 px-1">
+          <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#9B8FB5' }}>
+            Roles del ciclo de compras
+          </p>
+          <label className="flex items-start gap-2 text-[12px] cursor-pointer" style={{ color: '#6B6480' }}>
+            <input type="checkbox" className="mt-0.5" checked={!!person.is_oc_autorizador}
+              onChange={e => onUpdate({ is_oc_autorizador: e.target.checked })} />
+            <div>
+              <span style={{ color: '#1A0A3B', fontWeight: 500 }}>Autoriza órdenes de compra</span>
+              <div className="text-[11px]" style={{ color: '#9B8FB5' }}>
+                Recibe por correo las OCs que no pasan autofirma para aprobación manual.
+              </div>
+            </div>
+          </label>
+          <label className="flex items-start gap-2 text-[12px] cursor-pointer" style={{ color: '#6B6480' }}>
+            <input type="checkbox" className="mt-0.5" checked={!!person.is_oc_pagos}
+              onChange={e => onUpdate({ is_oc_pagos: e.target.checked })} />
+            <div>
+              <span style={{ color: '#1A0A3B', fontWeight: 500 }}>Departamento de pagos</span>
+              <div className="text-[11px]" style={{ color: '#9B8FB5' }}>
+                Recibe por correo las OCs firmadas para hacer la transferencia bancaria al proveedor.
+              </div>
+            </div>
+          </label>
+        </div>
+      )}
 
       {showHelpdeskFields && (
         <>

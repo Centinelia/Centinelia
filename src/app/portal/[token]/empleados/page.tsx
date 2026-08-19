@@ -51,7 +51,16 @@ const TOOL_COLOR: Record<string, string> = {
   qb_consultar_facturas: '#22c55e', qb_buscar_cliente: '#22c55e',
   qb_registrar_pago: '#22c55e', qb_reporte_ingresos: '#22c55e',
   qb_crear_factura: '#22c55e',
+  qb_crear_cotizacion: '#22c55e', qb_registrar_gasto: '#22c55e', qb_registrar_caja_chica: '#22c55e',
   solicitar_factura: '#eab308', consultar_factura: '#eab308',
+  // Pack ciclo OC-CFDI (Nala + Nox) — color ámbar de Nala
+  qb_crear_orden_compra: '#d97706', qb_consultar_orden_compra: '#d97706', qb_descargar_oc_pdf: '#d97706',
+  qb_crear_orden_compra_desde_cotizacion: '#d97706',
+  firmar_oc: '#d97706', sf_timbrar_desde_oc: '#d97706',
+  enviar_oc_a_firma_humana: '#d97706', enviar_oc_a_pagos: '#d97706',
+  registrar_comprobante_pago: '#d97706', enviar_oc_a_proveedor: '#d97706',
+  archivar_expediente: '#d97706',
+  sf_cancelar_cfdi: '#d97706', sf_consultar_estado_sat: '#d97706',
   // Helpdesk IT
   crear_ticket: '#ef4444', consultar_incidentes: '#ef4444', buscar_directorio: '#ef4444',
   // Municipal
@@ -87,8 +96,9 @@ const CAPABILITY_GROUPS: { label: string; color: string; tools: string[] }[] = [
   { label: 'Web e investigación',   color: '#3b82f6', tools: ['buscar_en_web', 'read_url', 'search_leads'] },
   { label: 'Trabajo en equipo',     color: '#0d9488', tools: ['consultar_agente', 'delegar_tarea'] },
   { label: 'MercadoLibre',          color: '#f59e0b', tools: ['analizar_publicaciones_ml', 'crear_publicacion_ml', 'actualizar_publicacion_ml', 'ver_metricas_ml'] },
-  { label: 'QuickBooks',            color: '#22c55e', tools: ['qb_consultar_facturas', 'qb_buscar_cliente', 'qb_registrar_pago', 'qb_reporte_ingresos', 'qb_crear_factura'] },
+  { label: 'QuickBooks',            color: '#22c55e', tools: ['qb_consultar_facturas', 'qb_buscar_cliente', 'qb_registrar_pago', 'qb_reporte_ingresos', 'qb_crear_factura', 'qb_crear_cotizacion', 'qb_registrar_gasto', 'qb_registrar_caja_chica'] },
   { label: 'Facturación fiscal',    color: '#eab308', tools: ['solicitar_factura', 'consultar_factura'] },
+  { label: 'Ciclo OC-CFDI',         color: '#d97706', tools: ['qb_crear_orden_compra', 'qb_consultar_orden_compra', 'qb_descargar_oc_pdf', 'qb_crear_orden_compra_desde_cotizacion', 'firmar_oc', 'sf_timbrar_desde_oc', 'enviar_oc_a_firma_humana', 'enviar_oc_a_pagos', 'registrar_comprobante_pago', 'enviar_oc_a_proveedor', 'archivar_expediente', 'sf_cancelar_cfdi', 'sf_consultar_estado_sat'] },
   { label: 'Helpdesk IT',           color: '#ef4444', tools: ['crear_ticket', 'consultar_incidentes', 'buscar_directorio'] },
   { label: 'Servicios municipales', color: '#3b82f6', tools: ['create_civic_report', 'lookup_civic_report', 'update_civic_report'] },
   { label: 'Onboarding y bienvenida', color: '#a855f7', tools: ['iniciar_onboarding'] },
@@ -164,6 +174,29 @@ const BUSINESS_CATEGORIES: { label: string; color: string; specialized?: boolean
       { key: 'qb_registrar_pago',     label: 'Registrar pagos recibidos' },
       { key: 'qb_reporte_ingresos',   label: 'Ver reporte de ingresos' },
       { key: 'qb_crear_factura',      label: 'Crear facturas nuevas' },
+      { key: 'qb_crear_cotizacion',   label: 'Crear cotizaciones para clientes' },
+      { key: 'qb_registrar_gasto',    label: 'Registrar gastos' },
+      { key: 'qb_registrar_caja_chica', label: 'Registrar gastos de caja chica' },
+    ],
+  },
+  {
+    label: 'Facturación CFDI',
+    color: '#d97706', // nala
+    specialized: true,
+    tools: [
+      { key: 'qb_crear_orden_compra_desde_cotizacion', label: 'Crear OC desde cotización de proveedor (Vision AI)' },
+      { key: 'qb_crear_orden_compra',                   label: 'Crear orden de compra en QuickBooks' },
+      { key: 'qb_consultar_orden_compra',               label: 'Consultar estado de una OC' },
+      { key: 'qb_descargar_oc_pdf',                     label: 'Descargar PDF de la OC' },
+      { key: 'firmar_oc',                               label: 'Firmar OC (autofirma o escalar a humano)' },
+      { key: 'enviar_oc_a_firma_humana',                label: 'Escalar OC al autorizador por correo' },
+      { key: 'enviar_oc_a_pagos',                       label: 'Enviar OC firmada al depto de pagos' },
+      { key: 'registrar_comprobante_pago',              label: 'Registrar comprobante de transferencia' },
+      { key: 'enviar_oc_a_proveedor',                   label: 'Enviar OC + comprobante al proveedor' },
+      { key: 'sf_timbrar_desde_oc',                     label: 'Timbrar CFDI copiando conceptos de la OC' },
+      { key: 'sf_cancelar_cfdi',                        label: 'Cancelar CFDI ante el SAT' },
+      { key: 'sf_consultar_estado_sat',                 label: 'Consultar estado de cancelación en SAT' },
+      { key: 'archivar_expediente',                     label: 'Archivar XML+PDF+acuse en el destino configurado' },
     ],
   },
   {
@@ -470,9 +503,15 @@ export default async function AgentesPage({ params }: Props) {
         const isOnline        = (a.active as boolean) && !isClientPaused && !isBillingPaused;
         const hasRole         = !!((a.role as string | null)?.trim());
         const roleColor       = ((a.features as any)?.role_color as string | null) || '#6C3BFF';
-        const avatarSrc       = ((a.features as any)?.avatar as string | null) || null;
         const meerkatId       = ((a.features as any)?.meerkat_role_id as string | null) || null;
-        const avatarLocked    = !!meerkatId && meerkatId !== 'custom';
+        const meerkatDefEarly = meerkatId ? MEERKAT_MAP[meerkatId as MeerkatRoleId] ?? null : null;
+        // Fallback ladder: custom avatar del owner → imagen canónica del meerkat role → initial.
+        // Bug 2026-08-19: Nox/Nala mostraban placeholder porque features.avatar era null y
+        // el código no caía a role.imagen. Ver AC Proyectos.
+        const avatarSrc       = ((a.features as any)?.avatar as string | null)
+                                || meerkatDefEarly?.imagen
+                                || null;
+        const avatarLocked    = !!meerkatId;
         const isCoordinator   = !!meerkatId && (COORDINATOR_ROLE_IDS as readonly string[]).includes(meerkatId);
         const callCount       = callCountMap[a.id] ?? 0;
 

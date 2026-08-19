@@ -65,18 +65,6 @@ function MeerkatCardImage({ role }: { role: MeerkatRole }) {
       />
     );
   }
-  if (role.id === 'custom') {
-    return (
-      <div className="w-full h-full flex items-center justify-center" style={{ background: `rgba(108,59,255,0.06)` }}>
-        <svg viewBox="0 0 64 80" className="w-1/2 h-1/2" fill="rgba(108,59,255,0.25)">
-          <ellipse cx="32" cy="26" rx="13" ry="14" />
-          <ellipse cx="20" cy="16" rx="5" ry="6" />
-          <ellipse cx="44" cy="16" rx="5" ry="6" />
-          <rect x="14" y="38" width="36" height="28" rx="10" />
-        </svg>
-      </div>
-    );
-  }
   return (
     <div className="w-full h-full flex items-center justify-center text-4xl font-black"
       style={{ background: `${role.color}18`, color: role.color }}>
@@ -124,7 +112,7 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
       const role = PUBLIC_MEERKAT_ROLES.find(r => r.id === preselect);
       if (role) {
         setSelected(role);
-        setAgentName(role.id === 'custom' ? '' : role.nombre);
+        setAgentName(role.nombre);
         const isCoord = !!(role.features as any)?.is_coordinator;
         setJornada(isCoord ? 'tareas' : 'combinada');
       }
@@ -134,7 +122,7 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
 
   const handleSelect = (role: MeerkatRole) => {
     setSelected(role);
-    setAgentName(role.id === 'custom' ? '' : role.nombre);
+    setAgentName(role.nombre);
     setError('');
     const isCoord = !!(role.features as any)?.is_coordinator;
     setJornada(isCoord ? 'tareas' : 'combinada');
@@ -272,8 +260,7 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
                         </div>
                         {/* Text */}
                         <div className="px-3 py-2.5 flex flex-col gap-0.5">
-                          <div className="font-bold text-sm leading-tight"
-                            style={{ color: role.id === 'custom' ? '#6B6480' : '#1A0A3B' }}>
+                          <div className="font-bold text-sm leading-tight" style={{ color: '#1A0A3B' }}>
                             {role.nombre}
                           </div>
                           {role.rol && (
@@ -424,7 +411,7 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
                     value={agentName}
                     onChange={e => setAgentName(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter' && agentName.trim()) handleCreate(); }}
-                    placeholder={selected.id === 'custom' ? 'Ej: Mi Asistente' : selected.nombre}
+                    placeholder={selected.nombre}
                     className="px-3 py-2.5 rounded-lg text-sm"
                     style={{
                       background: '#FAFAFB',

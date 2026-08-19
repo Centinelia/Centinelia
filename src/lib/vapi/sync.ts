@@ -255,7 +255,11 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
   nova:  ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'crear_ticket', 'crear_documento', 'buscar_documento_oficina', 'buscar_correo_enviado', 'extraer_voz_del_cliente', 'asignar_unidad_campo', 'consultar_unidades_disponibles'],
   // Nox — coordinador director (rol hub por diseño, excepción a tope 12-15).
   // Contract drafts, sheets, save_to_drive gated por features respectivas.
-  nox:   ['enviar_correo', 'llamar_a', 'crear_documento', 'buscar_documento_oficina', 'buscar_correo_enviado', 'enviar_documento_oficina', 'create_file', 'create_contract_draft', 'buscar_archivo', 'leer_archivo', 'save_to_drive', 'organize_files', 'list_calendar_events', 'create_calendar_event', 'verificar_gasto_recurrente', 'sheets_agregar_fila', 'sheets_actualizar_fila', 'sheets_leer', 'sheets_buscar', 'dropbox_buscar_codigo', 'preparar_brief_del_dia', 'actualizar_disponibilidad_diaria'],
+  // Pack ciclo_oc_cfdi (shared con Nala + escalación humana + admin QB de departamentos).
+  nox:   ['enviar_correo', 'llamar_a', 'crear_documento', 'buscar_documento_oficina', 'buscar_correo_enviado', 'enviar_documento_oficina', 'create_file', 'create_contract_draft', 'buscar_archivo', 'leer_archivo', 'save_to_drive', 'organize_files', 'list_calendar_events', 'create_calendar_event', 'verificar_gasto_recurrente', 'sheets_agregar_fila', 'sheets_actualizar_fila', 'sheets_leer', 'sheets_buscar', 'dropbox_buscar_codigo', 'preparar_brief_del_dia', 'actualizar_disponibilidad_diaria', 'qb_crear_orden_compra', 'qb_consultar_orden_compra', 'qb_descargar_oc_pdf', 'firmar_oc', 'enviar_oc_a_firma_humana', 'qb_crear_cotizacion', 'qb_registrar_gasto', 'qb_registrar_caja_chica'],
+  // Nala — facturista (ejecutor puro del ciclo OC-CFDI). Owner del pack.
+  // 12 tools del pack + universales (delegar_tarea, consultar_agente, etc).
+  nala:  ['qb_crear_orden_compra', 'qb_consultar_orden_compra', 'qb_descargar_oc_pdf', 'firmar_oc', 'sf_timbrar_desde_oc', 'enviar_oc_a_pagos', 'registrar_comprobante_pago', 'enviar_oc_a_proveedor', 'archivar_expediente', 'qb_crear_orden_compra_desde_cotizacion', 'sf_cancelar_cfdi', 'sf_consultar_estado_sat'],
   // Niva — directora general (rol hub por diseño, excepción a tope). Boundary
   // A-F7: SIN delegar_tarea (Niva=decisor). Escala a Nox vía consultar_agente.
   // QB/ML tools feature-gated.

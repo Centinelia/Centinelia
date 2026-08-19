@@ -59,6 +59,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { href: '/documentos',           moduleId: 'of_documentos',           label: 'Documentos',          icon: FolderOpen,     badgeKey: '' },
       { href: '/facturas',             moduleId: 'of_facturas',             label: 'Facturas',            icon: Receipt,        badgeKey: 'facturas' },
+      { href: '/expedientes',          moduleId: 'of_expedientes',          label: 'Expedientes OC',      icon: FileSignature,  badgeKey: '' },
       { href: '/contratos',            moduleId: 'of_contratos',            label: 'Contratos',           icon: FileSignature,  badgeKey: '' },
       { href: '/plantillas',           moduleId: 'of_plantillas',           label: 'Plantillas',          icon: LayoutTemplate, badgeKey: '' },
       { href: '/tareas',               moduleId: 'of_tareas_programadas',   label: 'Tareas',              icon: CalendarClock,  badgeKey: '' },

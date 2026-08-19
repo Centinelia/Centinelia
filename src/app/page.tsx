@@ -41,8 +41,8 @@ const TEAM = [
   { nombre: 'Naia',  rol: 'Recursos Humanos',  desc: 'Organiza vacaciones, permisos y expedientes del equipo.',              color: '#ec4899', img: '/meerkats/naia.png'  },
   { nombre: 'Nico',  rol: 'Recuperación',      desc: 'Cobra, recuerda pagos y recupera clientes inactivos.',                 color: '#f59e0b', img: '/meerkats/nico.png'  },
   { nombre: 'Nelia', rol: 'Atención al Cliente', desc: 'Responde dudas y acompaña al cliente hasta resolverlas.',            color: '#3b82f6', img: '/meerkats/nelia.png' },
-  { nombre: 'Nova',        rol: 'Despacho',       desc: 'Despacha equipos, actualiza estatus y coordina cada salida en campo.',               color: '#ef4444', img: '/meerkats/nova.png'    },
-  { nombre: 'Personalizado', rol: 'A tu medida', desc: 'Diseña un empleado con el rol, nombre y personalidad que tu organización necesita.',       color: '#6b7280', img: '/meerkats/custom.png'  },
+  { nombre: 'Nova',  rol: 'Despacho',         desc: 'Despacha equipos, actualiza estatus y coordina cada salida en campo.',                   color: '#ef4444', img: '/meerkats/nova.png'  },
+  { nombre: 'Nala',  rol: 'Facturación',      desc: 'Timbra CFDIs, archiva comprobantes y mantiene el orden fiscal.',                         color: '#d97706', img: '/meerkats/nala.png'  },
 ];
 
 const LIMITS = [

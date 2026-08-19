@@ -575,6 +575,33 @@ export default function SolucionFactibleSection({ token }: { token: string }) {
         </div>
       )}
 
+      {/* Cross-link a Expedientes OC — solo si connected, para descubrimiento
+          de la firma digitalizada (que vive en Expedientes, no en SF). */}
+      {connected && (
+        <a
+          href={`/portal/${token}/oficina/expedientes`}
+          className="rounded-xl px-4 py-3 flex items-start gap-3 transition-all hover:opacity-90"
+          style={{
+            background: 'rgba(108,59,255,0.05)',
+            border: '1px solid rgba(108,59,255,0.22)',
+            textDecoration: 'none',
+          }}
+        >
+          <FileText size={16} style={{ color: '#6C3BFF', flexShrink: 0, marginTop: 2 }} />
+          <div className="flex-1">
+            <div className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>
+              Órdenes de compra y firma digitalizada
+            </div>
+            <div className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+              Si tus empleados van a crear y firmar Órdenes de Compra a proveedores, sube tu firma y configura el monto máximo autofirma en Expedientes OC.
+            </div>
+          </div>
+          <span className="text-xs font-semibold flex-shrink-0 self-center" style={{ color: '#6C3BFF' }}>
+            Configurar →
+          </span>
+        </a>
+      )}
+
       {/* Capabilities callout */}
       <div className="rounded-xl overflow-hidden"
         style={{ border: '1px solid var(--c-border)', background: 'var(--c-bg)' }}>

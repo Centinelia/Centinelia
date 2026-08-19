@@ -16,7 +16,7 @@ export function resolveMeerkatFromAgent(agent: {
   const rawRoleId = (agent.features && (agent.features.meerkat_role_id as string | null | undefined)) ?? null;
   const role = rawRoleId ? MEERKAT_MAP[rawRoleId as MeerkatRoleId] : null;
 
-  if (role && role.id !== 'custom') {
+  if (role) {
     return {
       roleId:   role.id,
       name:     agent.agent_name?.trim() || role.nombre,

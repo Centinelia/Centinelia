@@ -62,6 +62,7 @@ import ContractSection          from './ContractSection';
 import InfoTooltip              from '@/components/InfoTooltip';
 import AccountSerialBadge       from './AccountSerialBadge';
 import CuentaUsageTabsCard      from './CuentaUsageTabsCard';
+import ChangePasswordCard       from './ChangePasswordCard';
 import { BriefDelDiaCard }      from './BriefDelDiaCard';
 import { getOrCreateSerial }    from '@/lib/portal/serial';
 import { computePoolStatus }    from '@/lib/portal/pool-status';
@@ -1603,6 +1604,11 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                       signedAt={contractAcceptedAt}
                       contractPreviewUrl={`/portal/${token}/contrato`}
                     />
+                  </div>
+
+                  {/* Cambiar contraseña — accesible siempre para el dueño */}
+                  <div id="contrasena">
+                    <ChangePasswordCard token={token} />
                   </div>
                 </div>
 

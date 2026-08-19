@@ -16,7 +16,7 @@ import { PUBLIC_MEERKAT_ROLES } from '@/lib/portal/meerkat-roles';
 
 export const metadata: Metadata = {
   title: { absolute: 'Empleados digitales | Centinelia' },
-  description: 'Conoce al equipo de empleados digitales de Centinelia: Nia, Noah, Nara, Nelia, Nico, Neo, Naia, Nova, Nox y más. Cada uno especializado en un área, trabajando 24/7 para tu organización.',
+  description: 'Conoce al equipo de empleados digitales de Centinelia: Nia, Noah, Nara, Nelia, Nico, Neo, Naia, Nova, Nala, Nox y más. Cada uno especializado en un área, trabajando 24/7 para tu organización.',
   alternates: { canonical: 'https://www.centinelia.mx/empleados' },
   openGraph: {
     title: 'Empleados digitales | Centinelia',
@@ -158,15 +158,15 @@ const CONTENT: Record<string, {
       'Registra y archiva cada operación automáticamente',
     ],
   },
-  custom: {
-    rolLabel: 'A tu medida',
-    tagline:  'Cuando ningún rol estándar encaja, diseña el tuyo.',
-    subtitle: 'Tú defines todo',
+  nala: {
+    rolLabel: 'Facturación',
+    tagline:  'El SAT no perdona errores, y ella tampoco.',
+    subtitle: 'Cada CFDI timbrado con datos perfectos',
     bullets:  [
-      'Nombre y personalidad únicos para tu negocio',
-      'Tú defines el rol, las funciones y el tono de voz',
-      'Configura cada capacidad manualmente en el portal',
-      'Ideal para operaciones muy específicas o mixtas',
+      'Timbra CFDIs verificando RFC, régimen y uso antes de emitir',
+      'Copia órdenes de compra tal cual sin inventar montos',
+      'Archiva XML, PDF y acuse según la nomenclatura configurada',
+      'Escala al dueño cuando el monto rebasa el límite autorizado',
     ],
   },
 };
@@ -329,7 +329,7 @@ export default function EmpleadosPage() {
             fontSize: 'clamp(0.95rem, 2vw, 1.15rem)',
             lineHeight: 1.75, maxWidth: 520, margin: '0 auto 36px',
           }}>
-            Dos Directores Generales, ocho especialistas y un empleado completamente personalizable, listos para integrarse a tu negocio desde el primer día.
+            Dos Directores Generales y nueve especialistas, listos para integrarse a tu negocio desde el primer día. Si tu rol no está aquí, cuéntanos y lo diseñamos.
           </p>
           <Link
             href="/registro"
@@ -468,6 +468,42 @@ export default function EmpleadosPage() {
           </section>
         );
       })}
+
+      {/* ── PEDIR ROL NUEVO ──────────────────────────────────────────────── */}
+      <section style={{ background: C.bgAlt, borderTop: `1px solid ${C.border}` }}>
+        <AnimatedSection>
+          <div className="max-w-4xl mx-auto text-center" style={{ padding: 'clamp(56px, 8vw, 96px) clamp(20px, 5vw, 48px)' }}>
+            <p style={{
+              fontSize: '0.68rem', fontWeight: 700,
+              letterSpacing: '0.12em', textTransform: 'uppercase',
+              color: C.textSub, marginBottom: 16,
+            }}>
+              Tu rol no está aquí?
+            </p>
+            <h2 style={{
+              fontSize: 'clamp(1.8rem, 4vw, 2.8rem)',
+              fontWeight: 800, color: C.text,
+              lineHeight: 1.1, marginBottom: 20,
+              letterSpacing: '-0.025em',
+            }}>
+              Cuéntanos qué necesitas y lo diseñamos.
+            </h2>
+            <p style={{
+              color: C.textSub, fontSize: 'clamp(0.95rem, 1.8vw, 1.1rem)',
+              lineHeight: 1.7, maxWidth: 560, margin: '0 auto 32px',
+            }}>
+              Cada especialista de arriba nació de una necesidad real de un negocio. Si el tuyo no está en el equipo, envíanos los detalles y evaluamos añadirlo al roster.
+            </p>
+            <Link
+              href="/pedir-rol"
+              className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-sm font-bold transition-all hover:opacity-90 hover:scale-[1.02]"
+              style={{ background: 'linear-gradient(135deg, #6C3BFF, #9B6DFF)', color: '#fff' }}
+            >
+              Proponer un rol nuevo <ArrowRight size={14} />
+            </Link>
+          </div>
+        </AnimatedSection>
+      </section>
 
       {/* ── GROUP CTA ─────────────────────────────────────────────────────── */}
       <section

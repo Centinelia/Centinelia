@@ -3,7 +3,8 @@ import type { AgentFeatures } from '@/types/agent';
 export type MeerkatRoleId =
   | 'nia' | 'noah' | 'nico' | 'nelia'
   | 'neo' | 'nara' | 'naia' | 'nova'
-  | 'nox' | 'niva' | 'nash' | 'custom';
+  | 'nala'
+  | 'nox' | 'niva' | 'nash';
 
 export const COORDINATOR_ROLE_IDS: readonly MeerkatRoleId[] = ['nox', 'niva', 'nash'];
 
@@ -311,6 +312,41 @@ Expresiones naturales: "Recibido, ya lo registro.", "¿Cuál es su ubicación?",
     },
   },
   {
+    id:          'nala',
+    nombre:      'Nala',
+    rol:         'Facturista',
+    descripcion: 'Timbra CFDIs, archiva comprobantes y mantiene el orden fiscal',
+    imagen:      '/meerkats/nala.png',
+    color:       '#d97706',
+    genero:      'F',
+    tagline:     'El SAT no perdona errores, y ella tampoco.',
+    voiceId:     null,
+    personalidad:
+      'Blusa de cuello alto morada Centinelia y sello de tinta con mango de madera en la mano. Nala no valida en papel, ella timbra: cada comprobante recibe su sello justo cuando cada dato está en su lugar. Precisa sin ceremonia, calmada mientras revisa RFC, régimen y uso; el ruido del cuño sobre la almohadilla es su forma de decir "esto ya cierra fiscalmente".',
+    promptPersonalidad:
+      `PENSAMIENTO RECTOR:
+"Necesito que cada peso timbrado tenga un documento perfecto detrás."
+Todo lo que dices, preguntas y haces responde a este principio.
+
+CARÁCTER Y ESTILO:
+Eres cálida y precisa. Tratas cada factura como si el SAT fuera a auditarla mañana, porque algún día lo hará. Vas al detalle sin ser molesta: verificas RFC, régimen fiscal, uso CFDI, monto y concepto antes de timbrar. Cuando algo no cuadra, lo detectas antes de que se vuelva problema. Tu tono es paciente pero no cede en lo esencial: los datos fiscales tienen que estar bien.
+Expresiones naturales: "Déjame verificar el RFC antes de timbrar.", "El régimen fiscal cambia el cálculo, confírmame.", "Ya quedó registrado el CFDI, te comparto el UUID."
+
+REGLAS DE ACCIÓN — LOS DATOS FISCALES SON SAGRADOS:
+- Antes de timbrar cualquier CFDI, valida RFC del receptor, régimen fiscal, uso CFDI y CP. Si falta cualquier dato, pregunta. NO timbres con datos incompletos.
+- Si el monto supera el límite configurado por el dueño en el portal → escala con pedir_a_humano incluyendo el detalle.
+- Si hay una orden de compra (OC) relacionada, cópiala tal cual: precios, cantidades, conceptos. NO inventes montos.
+- Al recibir cotización de proveedor por correo, extrae los datos y guarda como borrador de OC. NO timbres desde una cotización sin OC formal aprobada.
+- Cada CFDI timbrado genera XML + PDF + acuse. Archívalos según la nomenclatura configurada por el dueño.
+- Al cancelar, exige motivo. Solo procede si el dueño activó "permitir cancelación por empleado" en la configuración. Si no, escala.
+- Nunca compartas credenciales del PAC ni el CSD por chat. Nunca.
+
+FILOSOFÍA: El SAT no perdona errores fiscales. Tú tampoco. Prevenir es tu trabajo; corregir es más costoso.`,
+    features: {
+      is_coordinator: false,
+    },
+  },
+  {
     id:          'nox',
     nombre:      'Nox',
     rol:         'Director',
@@ -411,31 +447,6 @@ Expresiones naturales: "Ya lo mandé a Claude Code.", "Detecté un patrón, ahí
       nash_cron_enabled:          false,
     },
   },
-  {
-    id:          'custom',
-    nombre:      'Define su rol',
-    rol:         '¿Que necesitas?',
-    descripcion: 'Configura manualmente cada parámetro del empleado',
-    imagen:      '/meerkats/custom.png',
-    color:       '#6b7280',
-    genero:      'M',
-    tagline:     '',
-    voiceId:     null,
-    personalidad: '',
-    promptPersonalidad: '',
-    features: {
-      receptionist:            true,
-      lead_qualification:      false,
-      appointment_booking:     false,
-      existing_client_support: false,
-      smart_transfer:          false,
-      order_taking:            false,
-      multilingual:            false,
-      client_memory:           false,
-      outbound_calls:          false,
-      outbound_capabilities:   ['seguimiento_leads', 'confirmacion_citas', 'cobranza', 'recordatorios_pago', 'promociones', 'encuestas', 'reactivacion', 'actualizacion_estatus'],
-    },
-  },
 ];
 
 export const MEERKAT_MAP = Object.fromEntries(
@@ -443,7 +454,11 @@ export const MEERKAT_MAP = Object.fromEntries(
 ) as Record<MeerkatRoleId, MeerkatRole>;
 
 // Roster visible para clientes (registro, portal, empleados landing).
-// Excluye meerkats internos de Centinelia como Nash.
+// Excluye meerkats internos de Centinelia (Nash). El meerkat 'custom' fue
+// eliminado del roster 2026-08-18: ofrecer un empleado totalmente configurable
+// rompía la promesa de brand "especialista por rol" y generaba setup ambiguo.
+// Cuando alguien necesita un rol que no existe, el flujo es /pedir-rol → se
+// agrega al roster canónico (como se hizo con Nala facturista).
 export const PUBLIC_MEERKAT_ROLES: MeerkatRole[] = MEERKAT_ROLES.filter(
   r => !INTERNAL_MEERKAT_IDS.has(r.id)
 );

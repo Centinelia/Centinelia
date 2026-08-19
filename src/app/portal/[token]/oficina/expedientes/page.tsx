@@ -1,0 +1,609 @@
+'use client';
+
+import { useCallback, useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
+import {
+  FileText, ChevronRight, ChevronDown, CheckCircle, AlertTriangle,
+  Loader2, Upload, Settings, Search, RefreshCw, Trash2, PenLine,
+} from 'lucide-react';
+
+// ── Tipos ────────────────────────────────────────────────────────────────────
+interface ExpedienteRow {
+  id:                        string;
+  folio_interno:             string | null;
+  descripcion:               string | null;
+  qb_po_folio:               string | null;
+  proveedor_nombre:          string | null;
+  proveedor_rfc:             string | null;
+  oc_monto_mxn:              number | null;
+  status:                    string;
+  oc_firmada_at:             string | null;
+  oc_pagada_at:              string | null;
+  mercancia_recibida_at:     string | null;
+  cfdi_timbrada_at:          string | null;
+  sf_uuid:                   string | null;
+  requiere_atencion_razon:   string | null;
+  created_at:                string;
+}
+
+interface CicloOcConfig {
+  monto_max_autofirma_mxn?:     number;
+  sanidad_no_duplicados_horas?: number;
+  archivado_nomenclatura?:      string;
+  archivado_destino?:           string;
+  archivado_root?:              string;
+}
+
+interface Evento {
+  id:           string;
+  tipo:         string;
+  from_status:  string | null;
+  to_status:    string | null;
+  actor:        string | null;
+  detalle:      Record<string, unknown>;
+  created_at:   string;
+}
+
+// ── Etiquetas ────────────────────────────────────────────────────────────────
+const STATUS_LABELS: Record<string, string> = {
+  oc_creada:           'OC creada',
+  oc_firmada:          'OC firmada',
+  oc_pagada:           'OC pagada',
+  oc_enviada_proveedor:'Enviada a proveedor',
+  mercancia_recibida:  'Mercancía recibida',
+  factura_timbrada:    'CFDI timbrado',
+  docs_archivados:     'Docs archivados',
+  cancelado:           'Cancelado',
+  requiere_atencion:   'Requiere atención',
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  oc_creada:           '#6b7280',
+  oc_firmada:          '#3b82f6',
+  oc_pagada:           '#0ea5e9',
+  oc_enviada_proveedor:'#06b6d4',
+  mercancia_recibida:  '#84cc16',
+  factura_timbrada:    '#22c55e',
+  docs_archivados:     '#16a34a',
+  cancelado:           '#9ca3af',
+  requiere_atencion:   '#f59e0b',
+};
+
+const DESTINOS = [
+  { id: 'dropbox',        label: 'Dropbox'                         },
+  { id: 'smb_local',      label: 'Servidor local (SMB)'            },
+  { id: 'windows_agent',  label: 'Agente Windows (filesystem)'     },
+];
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+const fmtMxn = (n: number | null) => n == null ? '—' : n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 });
+const fmtDate = (s: string | null) => s == null ? '—' : new Date(s).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
+const fmtDateTime = (s: string) => new Date(s).toLocaleString('es-MX', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+// ── Página ───────────────────────────────────────────────────────────────────
+export default function ExpedientesPage() {
+  const params    = useParams<{ token: string }>();
+  const token     = params.token;
+
+  const [expedientes,       setExpedientes]       = useState<ExpedienteRow[]>([]);
+  const [counts,            setCounts]            = useState<Record<string, number>>({});
+  const [filterStatus,      setFilterStatus]      = useState<string | null>(null);
+  const [searchText,        setSearchText]        = useState('');
+  const [loading,           setLoading]           = useState(true);
+  const [expandedId,        setExpandedId]        = useState<string | null>(null);
+  const [detailData,        setDetailData]        = useState<{ expediente: Record<string, unknown>; eventos: Evento[] } | null>(null);
+  const [detailLoading,     setDetailLoading]     = useState(false);
+  const [configPanelOpen,   setConfigPanelOpen]   = useState(false);
+  const [config,            setConfig]            = useState<CicloOcConfig>({});
+  const [firmaCargada,      setFirmaCargada]      = useState(false);
+  const [msg,               setMsg]               = useState<{ ok: boolean; text: string } | null>(null);
+  const [busy,              setBusy]              = useState(false);
+
+  // ── Load list + counters ────────────────────────────────────────────────
+  const loadList = useCallback(async () => {
+    setLoading(true);
+    const qs = new URLSearchParams();
+    if (filterStatus) qs.set('status', filterStatus);
+    if (searchText.trim()) qs.set('q', searchText.trim());
+    const res = await fetch(`/api/portal/${token}/expedientes?${qs}`);
+    if (res.ok) {
+      const d = await res.json();
+      setExpedientes(d.expedientes ?? []);
+      setCounts(d.counts ?? {});
+    }
+    setLoading(false);
+  }, [token, filterStatus, searchText]);
+
+  const loadConfig = useCallback(async () => {
+    const res = await fetch(`/api/portal/${token}/ciclo-oc/config`);
+    if (res.ok) {
+      const d = await res.json();
+      setConfig(d.config ?? {});
+      setFirmaCargada(!!d.firma_cargada);
+    }
+  }, [token]);
+
+  useEffect(() => { void loadList();   }, [loadList]);
+  useEffect(() => { void loadConfig(); }, [loadConfig]);
+
+  // ── Load detail ─────────────────────────────────────────────────────────
+  async function loadDetail(id: string) {
+    if (expandedId === id) { setExpandedId(null); return; }
+    setExpandedId(id);
+    setDetailData(null);
+    setDetailLoading(true);
+    const res = await fetch(`/api/portal/${token}/expedientes/${id}`);
+    if (res.ok) setDetailData(await res.json());
+    setDetailLoading(false);
+  }
+
+  // ── Config actions ──────────────────────────────────────────────────────
+  async function saveConfig(patch: CicloOcConfig) {
+    setBusy(true); setMsg(null);
+    const res = await fetch(`/api/portal/${token}/ciclo-oc/config`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch),
+    });
+    setBusy(false);
+    if (res.ok) {
+      const d = await res.json();
+      setConfig(d.config);
+      setMsg({ ok: true, text: 'Configuración guardada.' });
+    } else {
+      const j = await res.json().catch(() => ({}));
+      setMsg({ ok: false, text: j.error ?? 'Error al guardar.' });
+    }
+  }
+
+  async function uploadFirma(file: File) {
+    setBusy(true); setMsg(null);
+    const fd = new FormData();
+    fd.append('firma', file);
+    const res = await fetch(`/api/portal/${token}/ciclo-oc/firma`, { method: 'POST', body: fd });
+    setBusy(false);
+    if (res.ok) {
+      setFirmaCargada(true);
+      setMsg({ ok: true, text: 'Firma digitalizada cargada.' });
+    } else {
+      const j = await res.json().catch(() => ({}));
+      setMsg({ ok: false, text: j.error ?? 'Error al subir la firma.' });
+    }
+  }
+
+  async function deleteFirma() {
+    if (!confirm('Eliminar la imagen de firma digitalizada? Las autofirmas quedarán deshabilitadas hasta que subas una nueva.')) return;
+    setBusy(true); setMsg(null);
+    const res = await fetch(`/api/portal/${token}/ciclo-oc/firma`, { method: 'DELETE' });
+    setBusy(false);
+    if (res.ok) {
+      setFirmaCargada(false);
+      setMsg({ ok: true, text: 'Firma eliminada.' });
+    }
+  }
+
+  return (
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3 mb-6 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold" style={{ color: '#1A0A3B', letterSpacing: '-0.02em' }}>
+            Expedientes de compra
+          </h1>
+          <p className="text-sm mt-1" style={{ color: '#6B6480' }}>
+            Ciclo completo OC → firma → pago → CFDI → archivado. Gestionado por Nox y Nala.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => void loadList()}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold transition-colors"
+            style={{ background: '#F5F2FB', color: '#6C3BFF', border: '1px solid #E8E3F5' }}
+          >
+            <RefreshCw size={13} /> Refrescar
+          </button>
+          <button
+            onClick={() => setConfigPanelOpen(v => !v)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold transition-colors"
+            style={{
+              background: configPanelOpen ? '#6C3BFF' : '#fff',
+              color:      configPanelOpen ? '#fff' : '#6C3BFF',
+              border:     '1px solid #6C3BFF',
+            }}
+          >
+            <Settings size={13} /> Configuración
+          </button>
+        </div>
+      </div>
+
+      {/* Feedback */}
+      {msg && (
+        <div className="rounded-lg px-4 py-3 mb-4 text-sm flex items-start gap-2"
+          style={{
+            background: msg.ok ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)',
+            border:     msg.ok ? '1px solid rgba(34,197,94,0.25)' : '1px solid rgba(239,68,68,0.25)',
+            color:      msg.ok ? '#15803d' : '#b91c1c',
+          }}>
+          {msg.ok ? <CheckCircle size={14} /> : <AlertTriangle size={14} />}
+          <span>{msg.text}</span>
+        </div>
+      )}
+
+      {/* Config panel (colapsable) */}
+      {configPanelOpen && (
+        <div className="rounded-2xl mb-6 overflow-hidden" style={{ background: '#fff', border: '1px solid #E8E3F5' }}>
+          <div className="px-5 py-4" style={{ borderBottom: '1px solid #F0EDF9' }}>
+            <h2 className="text-sm font-bold" style={{ color: '#1A0A3B' }}>Configuración del ciclo</h2>
+            <p className="text-xs mt-1" style={{ color: '#6B6480' }}>
+              Reglas de autofirma, nomenclatura de archivado, imagen de firma digitalizada.
+            </p>
+          </div>
+          <div className="p-5 flex flex-col gap-5">
+            {/* Firma digitalizada */}
+            <div>
+              <p className="text-xs font-semibold mb-2" style={{ color: '#1A0A3B' }}>Firma digitalizada</p>
+              <div className="flex items-center gap-2 flex-wrap">
+                {firmaCargada ? (
+                  <>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold"
+                      style={{ background: 'rgba(34,197,94,0.1)', color: '#15803d', border: '1px solid rgba(34,197,94,0.25)' }}>
+                      <PenLine size={12} /> Cargada
+                    </span>
+                    <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer"
+                      style={{ background: '#F5F2FB', color: '#6C3BFF', border: '1px solid #E8E3F5' }}>
+                      <Upload size={12} /> Reemplazar
+                      <input type="file" accept="image/png,image/jpeg" hidden
+                        onChange={e => { const f = e.target.files?.[0]; if (f) void uploadFirma(f); }} />
+                    </label>
+                    <button onClick={deleteFirma} disabled={busy}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50"
+                      style={{ background: 'rgba(239,68,68,0.06)', color: '#dc2626', border: '1px solid rgba(239,68,68,0.22)' }}>
+                      <Trash2 size={12} /> Eliminar
+                    </button>
+                  </>
+                ) : (
+                  <label className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer"
+                    style={{ background: '#6C3BFF', color: '#fff' }}>
+                    <Upload size={13} /> Subir imagen firma (PNG o JPG, max 2 MB)
+                    <input type="file" accept="image/png,image/jpeg" hidden
+                      onChange={e => { const f = e.target.files?.[0]; if (f) void uploadFirma(f); }} />
+                  </label>
+                )}
+              </div>
+              <p className="text-[11px] mt-1.5" style={{ color: '#9B8FB5' }}>
+                Nala aplica esta imagen automáticamente sobre las OC que cumplan las reglas de autofirma.
+              </p>
+            </div>
+
+            {/* Monto máximo autofirma */}
+            <div>
+              <label className="block text-xs font-semibold mb-1.5" style={{ color: '#1A0A3B' }}>
+                Monto máximo para autofirma (MXN)
+              </label>
+              <input
+                type="number"
+                min={0}
+                defaultValue={config.monto_max_autofirma_mxn ?? 0}
+                onBlur={e => { const n = Number(e.currentTarget.value); if (n >= 0 && n !== (config.monto_max_autofirma_mxn ?? 0)) void saveConfig({ monto_max_autofirma_mxn: n }); }}
+                className="w-full sm:w-64 rounded-lg px-3 py-2 text-sm"
+                style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }}
+              />
+              <p className="text-[11px] mt-1.5" style={{ color: '#9B8FB5' }}>
+                Órdenes por debajo o iguales a este monto se firman automáticamente si pasan las reglas de sanidad. 0 = autofirma deshabilitada.
+              </p>
+            </div>
+
+            {/* Ventana anti-duplicados */}
+            <div>
+              <label className="block text-xs font-semibold mb-1.5" style={{ color: '#1A0A3B' }}>
+                Ventana de detección de OC duplicadas (horas)
+              </label>
+              <input
+                type="number"
+                min={0}
+                defaultValue={config.sanidad_no_duplicados_horas ?? 48}
+                onBlur={e => { const n = Number(e.currentTarget.value); if (n >= 0 && n !== (config.sanidad_no_duplicados_horas ?? 48)) void saveConfig({ sanidad_no_duplicados_horas: n }); }}
+                className="w-full sm:w-64 rounded-lg px-3 py-2 text-sm"
+                style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }}
+              />
+              <p className="text-[11px] mt-1.5" style={{ color: '#9B8FB5' }}>
+                Si aparece otra OC al mismo proveedor por el mismo monto dentro de esta ventana, Nala escala en lugar de firmar.
+              </p>
+            </div>
+
+            {/* Nomenclatura archivado */}
+            <div>
+              <label className="block text-xs font-semibold mb-1.5" style={{ color: '#1A0A3B' }}>
+                Nomenclatura de archivado
+              </label>
+              <input
+                type="text"
+                defaultValue={config.archivado_nomenclatura ?? '{año}/{mes}/{proveedor}/{folio}_{fecha}.pdf'}
+                onBlur={e => { const v = e.currentTarget.value.trim(); if (v && v !== config.archivado_nomenclatura) void saveConfig({ archivado_nomenclatura: v }); }}
+                className="w-full rounded-lg px-3 py-2 text-sm font-mono"
+                style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }}
+              />
+              <p className="text-[11px] mt-1.5" style={{ color: '#9B8FB5' }}>
+                Placeholders disponibles: {'{año}'} · {'{mes}'} · {'{proveedor}'} · {'{folio}'} · {'{fecha}'} · {'{uuid}'}.
+              </p>
+            </div>
+
+            {/* Destino archivado */}
+            <div>
+              <label className="block text-xs font-semibold mb-1.5" style={{ color: '#1A0A3B' }}>
+                Destino de archivado
+              </label>
+              <select
+                value={config.archivado_destino ?? ''}
+                onChange={e => void saveConfig({ archivado_destino: e.target.value })}
+                className="w-full sm:w-72 rounded-lg px-3 py-2 text-sm"
+                style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }}
+              >
+                <option value="">Selecciona un destino</option>
+                {DESTINOS.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
+              </select>
+            </div>
+
+            {/* Root path */}
+            {config.archivado_destino && (
+              <div>
+                <label className="block text-xs font-semibold mb-1.5" style={{ color: '#1A0A3B' }}>
+                  Ruta raíz {config.archivado_destino === 'smb_local' ? '(SMB)' : ''}
+                </label>
+                <input
+                  type="text"
+                  defaultValue={config.archivado_root ?? ''}
+                  placeholder={
+                    config.archivado_destino === 'smb_local'   ? '\\\\SERVIDOR\\facturas' :
+                    config.archivado_destino === 'windows_agent' ? 'C:\\Facturación' :
+                    '/Centinelia/Facturación'
+                  }
+                  onBlur={e => { const v = e.currentTarget.value.trim(); if (v !== (config.archivado_root ?? '')) void saveConfig({ archivado_root: v }); }}
+                  className="w-full rounded-lg px-3 py-2 text-sm font-mono"
+                  style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Filters */}
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
+        <button
+          onClick={() => setFilterStatus(null)}
+          className="px-3 py-1.5 rounded-full text-xs font-semibold transition-colors"
+          style={{
+            background: filterStatus === null ? '#1A0A3B' : '#fff',
+            color:      filterStatus === null ? '#fff' : '#6B6480',
+            border:     '1px solid #E8E3F5',
+          }}
+        >
+          Todos {Object.values(counts).reduce((a, b) => a + b, 0) > 0 && <span className="opacity-60 ml-1">· {Object.values(counts).reduce((a, b) => a + b, 0)}</span>}
+        </button>
+        {Object.entries(STATUS_LABELS).map(([sid, label]) => {
+          const n = counts[sid] ?? 0;
+          if (n === 0 && filterStatus !== sid) return null;
+          const selected = filterStatus === sid;
+          const color = STATUS_COLORS[sid];
+          return (
+            <button
+              key={sid}
+              onClick={() => setFilterStatus(sid)}
+              className="px-3 py-1.5 rounded-full text-xs font-semibold transition-colors"
+              style={{
+                background: selected ? color : '#fff',
+                color:      selected ? '#fff' : color,
+                border:     `1px solid ${selected ? color : '#E8E3F5'}`,
+              }}
+            >
+              {label} {n > 0 && <span className="opacity-70 ml-1">· {n}</span>}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Search */}
+      <div className="relative mb-4">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#9B8FB5' }} />
+        <input
+          type="text"
+          placeholder="Buscar por folio, proveedor, o número de OC…"
+          value={searchText}
+          onChange={e => setSearchText(e.target.value)}
+          className="w-full pl-9 pr-3 py-2 rounded-lg text-sm"
+          style={{ background: '#fff', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }}
+        />
+      </div>
+
+      {/* Lista */}
+      {loading ? (
+        <div className="flex items-center justify-center py-16 text-sm" style={{ color: '#6B6480' }}>
+          <Loader2 size={16} className="animate-spin mr-2" /> Cargando expedientes…
+        </div>
+      ) : expedientes.length === 0 ? (
+        <div className="rounded-2xl py-16 text-center" style={{ background: '#fff', border: '1px solid #E8E3F5' }}>
+          <FileText size={32} className="mx-auto mb-3" style={{ color: '#C7BFE0' }} />
+          <p className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>Sin expedientes todavía</p>
+          <p className="text-xs mt-1" style={{ color: '#6B6480' }}>
+            Cuando Nala o Nox creen una Orden de Compra en QuickBooks, aparecerá aquí.
+          </p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {expedientes.map(exp => (
+            <ExpedienteCard
+              key={exp.id}
+              row={exp}
+              expanded={expandedId === exp.id}
+              detail={expandedId === exp.id ? detailData : null}
+              detailLoading={expandedId === exp.id && detailLoading}
+              onToggle={() => void loadDetail(exp.id)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Card ─────────────────────────────────────────────────────────────────────
+function ExpedienteCard({
+  row, expanded, detail, detailLoading, onToggle,
+}: {
+  row: ExpedienteRow;
+  expanded: boolean;
+  detail: { expediente: Record<string, unknown>; eventos: Evento[] } | null;
+  detailLoading: boolean;
+  onToggle: () => void;
+}) {
+  const color = STATUS_COLORS[row.status] ?? '#6b7280';
+  return (
+    <div className="rounded-xl overflow-hidden transition-shadow"
+      style={{ background: '#fff', border: `1px solid ${expanded ? color + '55' : '#E8E3F5'}`, boxShadow: expanded ? `0 4px 20px ${color}18` : undefined }}>
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center gap-3 px-4 py-3 text-left"
+        style={{ background: 'transparent' }}
+      >
+        {expanded ? <ChevronDown size={16} style={{ color: '#9B8FB5' }} /> : <ChevronRight size={16} style={{ color: '#9B8FB5' }} />}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>
+              {row.proveedor_nombre ?? 'Proveedor sin nombre'}
+            </span>
+            {row.qb_po_folio && (
+              <span className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ background: '#F5F2FB', color: '#6C3BFF' }}>
+                OC #{row.qb_po_folio}
+              </span>
+            )}
+            {row.folio_interno && (
+              <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: '#F5F2FB', color: '#6B6480' }}>
+                {row.folio_interno}
+              </span>
+            )}
+          </div>
+          {row.descripcion && (
+            <p className="text-xs mt-0.5 truncate" style={{ color: '#6B6480' }}>{row.descripcion}</p>
+          )}
+        </div>
+        <div className="text-right flex-shrink-0">
+          <div className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>{fmtMxn(row.oc_monto_mxn)}</div>
+          <span className="inline-block mt-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full"
+            style={{ background: `${color}18`, color, border: `1px solid ${color}35` }}>
+            {STATUS_LABELS[row.status] ?? row.status}
+          </span>
+        </div>
+      </button>
+
+      {row.requiere_atencion_razon && !expanded && (
+        <div className="px-4 py-2 flex items-start gap-2 text-[11px]"
+          style={{ background: 'rgba(245,158,11,0.06)', borderTop: '1px solid rgba(245,158,11,0.2)', color: '#92400E' }}>
+          <AlertTriangle size={11} style={{ marginTop: 1, flexShrink: 0 }} />
+          <span>{row.requiere_atencion_razon}</span>
+        </div>
+      )}
+
+      {expanded && (
+        <div style={{ borderTop: '1px solid #F0EDF9' }}>
+          {detailLoading || !detail ? (
+            <div className="py-8 flex items-center justify-center text-xs" style={{ color: '#6B6480' }}>
+              <Loader2 size={12} className="animate-spin mr-2" /> Cargando detalle…
+            </div>
+          ) : (
+            <ExpedienteDetail row={row} detail={detail} />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Detail ───────────────────────────────────────────────────────────────────
+function ExpedienteDetail({ row, detail }: {
+  row: ExpedienteRow;
+  detail: { expediente: Record<string, unknown>; eventos: Evento[] };
+}) {
+  const e = detail.expediente as Record<string, any>;
+  return (
+    <div className="p-5 grid grid-cols-1 md:grid-cols-3 gap-5">
+      {/* OC info */}
+      <Section title="Orden de compra">
+        <Field label="Proveedor" value={e.proveedor_nombre} />
+        <Field label="RFC" value={e.proveedor_rfc} mono />
+        <Field label="Correo" value={e.proveedor_email} />
+        <Field label="Monto" value={fmtMxn(e.oc_monto_mxn)} />
+        <Field label="OC QB" value={e.qb_po_folio ? `#${e.qb_po_folio}` : e.qb_po_id} />
+        <Field label="Creada" value={fmtDateTime(e.created_at)} />
+      </Section>
+
+      {/* Firma + pago */}
+      <Section title="Firma y pago">
+        <Field label="Firmada" value={row.oc_firmada_at ? fmtDateTime(row.oc_firmada_at) : '—'} />
+        <Field label="Por" value={e.oc_firmada_por} />
+        <Field label="Auto" value={e.oc_firma_es_auto ? 'Sí' : 'No'} />
+        <Field label="Pagada" value={row.oc_pagada_at ? fmtDateTime(row.oc_pagada_at) : '—'} />
+        <Field label="Enviada al proveedor" value={e.oc_enviada_proveedor_at ? fmtDateTime(e.oc_enviada_proveedor_at) : '—'} />
+        <Field label="Mercancía recibida" value={row.mercancia_recibida_at ? fmtDateTime(row.mercancia_recibida_at) : '—'} />
+      </Section>
+
+      {/* CFDI */}
+      <Section title="CFDI">
+        <Field label="Cliente" value={e.cliente_nombre} />
+        <Field label="RFC cliente" value={e.cliente_rfc} mono />
+        <Field label="UUID" value={e.sf_uuid} mono small />
+        <Field label="Uso" value={e.cfdi_uso} />
+        <Field label="Timbrado" value={row.cfdi_timbrada_at ? fmtDateTime(row.cfdi_timbrada_at) : '—'} />
+        <Field label="Archivado" value={e.docs_archivados_at ? fmtDateTime(e.docs_archivados_at) : '—'} />
+      </Section>
+
+      {/* Eventos timeline */}
+      <div className="md:col-span-3">
+        <h3 className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: '#6B6480' }}>
+          Historial ({detail.eventos.length})
+        </h3>
+        {detail.eventos.length === 0 ? (
+          <p className="text-xs" style={{ color: '#9B8FB5' }}>Sin eventos registrados.</p>
+        ) : (
+          <ul className="flex flex-col gap-1.5">
+            {detail.eventos.map(ev => (
+              <li key={ev.id} className="flex items-start gap-2 text-xs">
+                <div className="mt-1 flex-shrink-0" style={{ width: 6, height: 6, borderRadius: '50%', background: STATUS_COLORS[ev.to_status ?? ''] ?? '#9B8FB5' }} />
+                <div className="flex-1 min-w-0">
+                  <span className="font-semibold" style={{ color: '#1A0A3B' }}>{ev.tipo.replace(/_/g, ' ')}</span>
+                  {ev.from_status && ev.to_status && (
+                    <span className="mx-1.5" style={{ color: '#9B8FB5' }}>
+                      {ev.from_status} → {ev.to_status}
+                    </span>
+                  )}
+                  {ev.actor && <span className="ml-1.5" style={{ color: '#6B6480' }}>· {ev.actor}</span>}
+                </div>
+                <span className="flex-shrink-0" style={{ color: '#9B8FB5' }}>{fmtDateTime(ev.created_at)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: '#6B6480' }}>{title}</h3>
+      <div className="flex flex-col gap-1.5">{children}</div>
+    </div>
+  );
+}
+
+function Field({ label, value, mono, small }: { label: string; value: React.ReactNode; mono?: boolean; small?: boolean }) {
+  const display = value == null || value === '' ? '—' : value;
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <span className="text-[11px] flex-shrink-0" style={{ color: '#9B8FB5' }}>{label}</span>
+      <span className={`text-right ${mono ? 'font-mono' : ''} ${small ? 'text-[11px]' : 'text-xs'}`}
+        style={{ color: '#1A0A3B', fontWeight: 500, wordBreak: 'break-all' }}>
+        {display}
+      </span>
+    </div>
+  );
+}

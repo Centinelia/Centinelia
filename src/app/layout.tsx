@@ -105,7 +105,7 @@ const softwareSchema = {
   '@type': 'SoftwareApplication',
   name: 'Centinelia',
   url: BASE_URL,
-  description: 'Plataforma de empleados digitales de IA para organizaciones mexicanas. Incorpora hasta 11 empleados especializados — Nia (recepción), Noah (ventas), Nara (coordinación), Nelia (atención), Nico (cobranza) y más — que trabajan 24/7 sin IMSS, vacaciones ni ausencias. Activo en menos de 24 horas.',
+  description: 'Plataforma de empleados digitales de IA para organizaciones mexicanas. Incorpora empleados especializados — Nia (recepción), Noah (ventas), Nara (coordinación), Nelia (atención), Nico (cobranza), Nala (facturación CFDI) y más — que trabajan 24/7 sin IMSS, vacaciones ni ausencias. Activo en menos de 24 horas.',
   applicationCategory: 'BusinessApplication',
   applicationSubCategory: 'AIAssistant',
   operatingSystem: 'Web',
@@ -126,7 +126,7 @@ const softwareSchema = {
     { '@type': 'Offer', name: 'Empleado Centinelia — Alta Demanda', price: '11988', priceCurrency: 'MXN', description: '1,200 minutos/mes, 320 tareas de oficina, para operaciones de alto volumen.' },
   ],
   featureList: [
-    'Empleados de IA especializados por rol (Nia, Noah, Nara, Nelia, Nico, Neo, Naia, Nova y mas)',
+    'Empleados de IA especializados por rol (Nia, Noah, Nara, Nelia, Nico, Neo, Naia, Nova, Nala y mas)',
     'Atencion telefonica entrante y saliente 24/7',
     'Administracion de correos electronicos con respuestas automaticas',
     'Generacion de documentos, propuestas y contratos',

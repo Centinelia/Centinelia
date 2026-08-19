@@ -43,12 +43,14 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const body = await req.json() as { directory?: DirectoryPerson[] };
   const clean: DirectoryPerson[] = (body.directory ?? [])
-    .filter(p => p && typeof p.phone === 'string' && p.phone.trim())
+    // Aceptar personas con phone O email (los autorizadores de OC pueden no tener teléfono)
+    .filter(p => p && ((typeof p.phone === 'string' && p.phone.trim()) || (typeof p.email === 'string' && p.email.trim())))
     .slice(0, 200)
     .map(p => ({
       id:                 typeof p.id === 'string' && p.id ? p.id : crypto.randomUUID(),
       name:               (p.name ?? '').trim(),
-      phone:              p.phone.trim(),
+      phone:              (p.phone ?? '').trim(),
+      ...(p.email              ? { email:              p.email.trim() }              : {}),
       ...(p.extension          ? { extension:          p.extension.trim() }          : {}),
       ...(p.department         ? { department:         p.department.trim() }         : {}),
       ...(p.role               ? { role:               p.role.trim() }               : {}),
@@ -56,6 +58,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       ...(p.is_team            ? { is_team:            true }                        : {}),
       ...(p.helpdesk_expertise ? { helpdesk_expertise: p.helpdesk_expertise.trim() } : {}),
       ...(p.on_call            ? { on_call:            true }                        : {}),
+      // Flags pack ciclo_oc_cfdi
+      ...(p.is_oc_autorizador  ? { is_oc_autorizador:  true }                        : {}),
+      ...(p.is_oc_pagos        ? { is_oc_pagos:        true }                        : {}),
     }));
 
   // Sub-users no pueden modificar/eliminar al dueño (defense in depth — el gate

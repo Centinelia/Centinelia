@@ -43,6 +43,7 @@ export interface DirectoryPerson {
   id:                  string;
   name:                string;
   phone:               string;
+  email?:              string;         // correo — usado por pack ciclo_oc_cfdi para escalar OCs
   extension?:          string;
   department?:         string;         // ej: "Sistemas", "RRHH"
   role?:               string;         // ej: "Coordinador de red"
@@ -50,6 +51,12 @@ export interface DirectoryPerson {
   is_team?:            boolean;        // miembro del equipo interno (identificación de llamadas)
   helpdesk_expertise?: string;         // palabras clave para búsqueda en Neo (ej: "vpn, wifi, switches")
   on_call?:            boolean;        // aparece como candidato en horario de guardia
+
+  // Roles del pack ciclo_oc_cfdi (una persona puede tener varios flags true).
+  // Meerkats (Nala/Nox) usan estos flags para saber a quién escalar cada paso
+  // del ciclo OC-CFDI por correo. Ver [[project-ciclo-oc-cfdi-pack]].
+  is_oc_autorizador?:  boolean;        // recibe OCs que no pasan autofirma
+  is_oc_pagos?:        boolean;        // recibe OCs firmadas para hacer transferencia bancaria
 }
 
 /** @deprecated usar DirectoryPerson (organizations.directory) */

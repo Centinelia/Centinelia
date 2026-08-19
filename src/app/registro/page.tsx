@@ -218,6 +218,10 @@ const ROLE_PREVIEW: Partial<Record<MeerkatRoleId, { subtitle: string; bullets: s
     subtitle: 'Coordina tu operación en campo',
     bullets:  ['Despacha equipos en segundos', 'Coordina repartidores, técnicos o brigadas', 'Actualiza el estatus de cada unidad', 'Registra y archiva cada operación'],
   },
+  nala:  {
+    subtitle: 'Cada factura con datos perfectos',
+    bullets:  ['Timbra CFDIs verificando RFC, régimen y uso', 'Copia órdenes de compra tal cual sin inventar', 'Archiva XML, PDF y acuse en el servidor local', 'Escala al dueño cuando el monto rebasa el límite'],
+  },
   nox:   {
     subtitle: 'El que mantiene todo en orden',
     bullets:  ['Enruta correos al agente correcto', 'Monitorea tareas delegadas y escala las vencidas', 'Genera reportes de operación automáticos', 'Sin llamadas: coordinación pura, máxima eficiencia'],
@@ -227,18 +231,6 @@ const ROLE_PREVIEW: Partial<Record<MeerkatRoleId, { subtitle: string; bullets: s
     bullets:  ['Analiza el contexto antes de asignar cada tarea', 'Detecta cuellos de botella y los resuelve de raíz', 'Monitorea al equipo y escala lo vencido a tiempo', 'Sin llamadas: estrategia y criterio, cero interrupciones'],
   },
 };
-
-const CUSTOM_PORTAL_FEATURES: { label: string; desc: string }[] = [
-  { label: 'Nombre y voz del agente',        desc: 'Elige el nombre y la voz que mejor represente a tu organización.' },
-  { label: 'Rol y descripción del puesto',   desc: 'Define qué hace, cómo se llama su rol y cómo se presenta ante los clientes.' },
-  { label: 'Base de conocimiento',           desc: 'Carga información de tu organización para que responda con precisión.' },
-  { label: 'Capacidades activas',            desc: 'Activa o desactiva recepción, agendamiento, cobranza, ventas y más.' },
-  { label: 'Horarios de atención',           desc: 'Configura cuándo atiende llamadas y cuándo redirige al personal.' },
-  { label: 'Transferencias',                  desc: 'Define a quién y cuándo transferir llamadas.' },
-  { label: 'Instrucciones personalizadas',   desc: 'Dale un guion, tono de voz y estilo de conversación propio.' },
-  { label: 'Llamadas salientes',             desc: 'Activa marcación automática para confirmaciones o seguimiento.' },
-];
-
 
 // ── Capability chips (dark-themed, for registration flow) ─────────────────────
 const REG_VOICE_CAPS = [
@@ -438,7 +430,6 @@ function MeerkatCard({
   const [err, setErr] = useState(false);
 
   const hasImg = !!role.imagen && !err;
-  const isCustom = role.id === 'custom';
 
   return (
     <button
@@ -472,15 +463,6 @@ function MeerkatCard({
               ...(roleId === 'nia' && { transform: 'scale(1.09)', transformOrigin: 'bottom center' }),
             }}
           />
-        ) : isCustom ? (
-          <div style={{ width: '100%', height: '100%', background: '#0a0618', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg viewBox="0 0 64 80" style={{ width: '55%', height: '55%', fill: 'rgba(255,255,255,0.12)' }}>
-              <ellipse cx="32" cy="26" rx="13" ry="14" />
-              <ellipse cx="20" cy="16" rx="5" ry="6" />
-              <ellipse cx="44" cy="16" rx="5" ry="6" />
-              <rect x="14" y="38" width="36" height="28" rx="10" />
-            </svg>
-          </div>
         ) : (
           <div style={{
             width: '100%', height: '100%',
@@ -565,6 +547,11 @@ const MEERKAT_CHAT: Record<string, MeerkatChatDef> = {
     desc:  { filled: 'Contexto operacional registrado. Listo para coordinar.', cleared: 'Descripción borrada. En espera de la definitiva.' },
     phone: { filled: 'Número de contacto registrado.', cleared: '¿Cambio de número? Actualizando cuando lo tengas.' },
   },
+  nala: {
+    name:  { filled: n => `${n}. Ya lo tengo en la razón social.`, cleared: '¿Cambio de nombre? Cuando lo confirmes, actualizo la razón social.' },
+    desc:  { filled: 'Contexto fiscal registrado. Ya sé cómo describir tu actividad económica.', cleared: 'Sin descripción no puedo alinear el régimen fiscal. Cuando la tengas, seguimos.' },
+    phone: { filled: 'Teléfono guardado para el domicilio fiscal.', cleared: '¿Cambio de teléfono? Aquí lo actualizo en el domicilio fiscal.' },
+  },
   nox: {
     name:  { filled: n => `${n}. Lo registro para el equipo.`, cleared: '¿Corrección? Cuando lo confirmes, lo asigno.' },
     desc:  { filled: 'Contexto claro. Ya puedo coordinar al equipo.', cleared: 'Cuando tengas la descripción, seguimos.' },
@@ -574,11 +561,6 @@ const MEERKAT_CHAT: Record<string, MeerkatChatDef> = {
     name:  { filled: n => `${n}. Bien, empezamos a construir el expediente.`, cleared: '¿Revisión del nombre? Tómate el tiempo que necesites.' },
     desc:  { filled: 'Ya veo el contexto. Entiendo cómo opera la organización.', cleared: '¿Ajustando la descripción? Sin prisa.' },
     phone: { filled: 'Número registrado. Sigamos.', cleared: '¿Cambio de número? Aquí lo actualizo.' },
-  },
-  custom: {
-    name:  { filled: n => `${n}, registrado.`, cleared: 'Sin problema. Cuando lo tengas, continúa.' },
-    desc:  { filled: 'Información registrada.', cleared: 'Puedes reescribirla cuando quieras.' },
-    phone: { filled: 'Número registrado.', cleared: 'Cuando tengas el número, continúa.' },
   },
 };
 
@@ -591,9 +573,9 @@ const MEERKAT_GREETING: Record<string, string> = {
   nelia:  'Para atender a tus clientes como si fuera parte del equipo, cuéntame de la organización.',
   neo:    'Para inicializar mis protocolos de soporte, necesito los datos de la organización.',
   nova:   'Para coordinar correctamente, necesito el contexto operacional de la organización.',
+  nala:   'Para poder timbrar tus CFDIs correctamente, necesito los datos fiscales de la organización.',
   nox:    'Para empezar a coordinar al equipo, dime los datos de la organización.',
   niva:   'Para construir el expediente de la organización, necesito algunos datos.',
-  custom: 'Para empezar a trabajar, necesito conocer un poco tu organización.',
 };
 
 const MEERKAT_AGENT_NAME_MSG: Record<string, (name: string) => string> = {
@@ -605,9 +587,9 @@ const MEERKAT_AGENT_NAME_MSG: Record<string, (name: string) => string> = {
   nelia:  n => `¡${n}! Me encanta. Ya me lo aprendo.`,
   neo:    n => `${n}. Nombre actualizado en el sistema.`,
   nova:   n => `Recibido. Operaré como ${n}.`,
+  nala:   n => `${n}. Lo timbro en cada factura.`,
   nox:    n => `${n}. Se lo comunico al equipo.`,
   niva:   n => `${n}. Bien elegido.`,
-  custom: n => `¡${n} me queda perfecto!`,
 };
 
 const MEERKAT_GIRO_MSG: Record<string, (label: string) => string> = {
@@ -619,9 +601,9 @@ const MEERKAT_GIRO_MSG: Record<string, (label: string) => string> = {
   nelia:  g => `¡${g}! Ese sector me encanta atender.`,
   neo:    g => `Sector ${g} detectado. Ajustando protocolo de soporte.`,
   nova:   g => `Sector ${g} registrado. Listo para coordinar.`,
+  nala:   g => `Sector ${g}. Ya alineo el régimen y los usos CFDI habituales.`,
   nox:    g => `${g}. Lo añado al perfil del equipo.`,
   niva:   g => `${g}. Conozco los patrones de ese sector.`,
-  custom: g => `Excelente, el sector ${g} es mi especialidad.`,
 };
 
 // ─── Main form ────────────────────────────────────────────────────────────────
@@ -666,7 +648,7 @@ function RegistroInner() {
   const countryDef  = COUNTRIES.find(c => c.id === country)!;
   const citiesList  = CITIES_BY_COUNTRY[country];
   const [agentName,     setAgentName]     = useState(
-    initRole && initRole !== 'custom' ? (MEERKAT_MAP[initRole]?.nombre ?? '') : ''
+    initRole ? (MEERKAT_MAP[initRole]?.nombre ?? '') : ''
   );
 
   // Step 4 — Contact
@@ -854,8 +836,7 @@ function RegistroInner() {
     const role = MEERKAT_MAP[roleId];
     setMeerkatRoleId(roleId);
     setOverlayOpen(false);
-    if (role.id !== 'custom') setAgentName(role.nombre);
-    else setAgentName('');
+    setAgentName(role.nombre);
     setError('');
   };
 
@@ -1255,99 +1236,71 @@ function RegistroInner() {
                           background: `${selectedMeerkat.color}18`,
                         }}>
 
-                        {selectedMeerkat.id !== 'custom' ? (
-                          <>
-                            <div className="px-4 py-3.5" style={{ borderBottom: `1px solid ${selectedMeerkat.color}35` }}>
-                              <div className="flex items-center justify-between gap-3">
-                                <div>
-                                  <div style={{ fontWeight: 700, color: '#fff', fontSize: 14 }}>{selectedMeerkat.nombre}</div>
-                                  <div style={{ fontSize: 11, color: lightenColor(selectedMeerkat.color, 0.45), fontWeight: 600, marginTop: 2 }}>{selectedMeerkat.rol}</div>
-                                </div>
-                                <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.38)', maxWidth: 180, textAlign: 'right', lineHeight: 1.45, flexShrink: 0 }}>
-                                  {selectedMeerkat.descripcion}
-                                </p>
+                        <>
+                          <div className="px-4 py-3.5" style={{ borderBottom: `1px solid ${selectedMeerkat.color}35` }}>
+                            <div className="flex items-center justify-between gap-3">
+                              <div>
+                                <div style={{ fontWeight: 700, color: '#fff', fontSize: 14 }}>{selectedMeerkat.nombre}</div>
+                                <div style={{ fontSize: 11, color: lightenColor(selectedMeerkat.color, 0.45), fontWeight: 600, marginTop: 2 }}>{selectedMeerkat.rol}</div>
+                              </div>
+                              <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.38)', maxWidth: 180, textAlign: 'right', lineHeight: 1.45, flexShrink: 0 }}>
+                                {selectedMeerkat.descripcion}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="px-4 py-3">
+                            {ROLE_PREVIEW[selectedMeerkat.id as keyof typeof ROLE_PREVIEW] && (() => {
+                              const preview = ROLE_PREVIEW[selectedMeerkat.id as keyof typeof ROLE_PREVIEW]!;
+                              return (
+                                <>
+                                  <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.28)', marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>
+                                    {preview.subtitle}
+                                  </p>
+                                  <div className="flex flex-col gap-1.5 mb-4">
+                                    {preview.bullets.map(b => (
+                                      <div key={b} className="flex items-center gap-2">
+                                        <Check size={10} style={{ color: lightenColor(selectedMeerkat.color, 0.45), flexShrink: 0 }} />
+                                        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)' }}>{b}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                  <CapabilityChipsRegistro
+                                    features={selectedMeerkat.features as Record<string, unknown>}
+                                    color={selectedMeerkat.color}
+                                    isCoordinator={false}
+                                  />
+                                </>
+                              );
+                            })()}
+                            {/* Mobile: price + go straight to next step */}
+                            <div className="sm:hidden mb-5 rounded-xl px-3 py-2.5"
+                              style={{ background: `${selectedMeerkat.color}14`, border: `1px solid ${selectedMeerkat.color}28` }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(255,255,255,0.45)', marginBottom: 3 }}>
+                                <span>Instalación</span>
+                                <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.75)' }}>$14,990 + IVA</span>
+                              </div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>
+                                <span>Mensualidad</span>
+                                <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.75)' }}>desde $2,997 + IVA/mes</span>
                               </div>
                             </div>
-                            <div className="px-4 py-3">
-                              {ROLE_PREVIEW[selectedMeerkat.id as keyof typeof ROLE_PREVIEW] && (() => {
-                                const preview = ROLE_PREVIEW[selectedMeerkat.id as keyof typeof ROLE_PREVIEW]!;
-                                return (
-                                  <>
-                                    <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.28)', marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>
-                                      {preview.subtitle}
-                                    </p>
-                                    <div className="flex flex-col gap-1.5 mb-4">
-                                      {preview.bullets.map(b => (
-                                        <div key={b} className="flex items-center gap-2">
-                                          <Check size={10} style={{ color: lightenColor(selectedMeerkat.color, 0.45), flexShrink: 0 }} />
-                                          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)' }}>{b}</span>
-                                        </div>
-                                      ))}
-                                    </div>
-                                    <CapabilityChipsRegistro
-                                      features={selectedMeerkat.features as Record<string, unknown>}
-                                      color={selectedMeerkat.color}
-                                      isCoordinator={false}
-                                    />
-                                  </>
-                                );
-                              })()}
-                              {/* Mobile: price + go straight to next step */}
-                              <div className="sm:hidden mb-5 rounded-xl px-3 py-2.5"
-                                style={{ background: `${selectedMeerkat.color}14`, border: `1px solid ${selectedMeerkat.color}28` }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(255,255,255,0.45)', marginBottom: 3 }}>
-                                  <span>Instalación</span>
-                                  <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.75)' }}>$14,990 + IVA</span>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>
-                                  <span>Mensualidad</span>
-                                  <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.75)' }}>desde $2,997 + IVA/mes</span>
-                                </div>
-                              </div>
-                              <button
-                                onClick={handleNext}
-                                className="sm:hidden w-full py-3 rounded-xl font-semibold text-sm text-white flex items-center justify-center gap-2 transition-opacity hover:opacity-90"
-                                style={{ background: `linear-gradient(135deg, ${selectedMeerkat.color}, #9B6DFF)` }}
-                              >
-                                Continuar con {selectedMeerkat.nombre} <ChevronRight size={15} />
-                              </button>
-                              {/* Desktop: open full overlay */}
-                              <button
-                                onClick={() => setOverlayOpen(true)}
-                                className="hidden sm:flex w-full py-3 rounded-xl font-semibold text-sm text-white items-center justify-center gap-2 transition-opacity hover:opacity-90"
-                                style={{ background: `linear-gradient(135deg, ${selectedMeerkat.color}, #9B6DFF)` }}
-                              >
-                                Continuar con {selectedMeerkat.nombre} <ChevronRight size={15} />
-                              </button>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="px-4 py-3 flex flex-col gap-3">
-                            <div style={{ borderBottom: `1px solid ${selectedMeerkat.color}35`, paddingBottom: 10, marginBottom: 2 }}>
-                              <div style={{ fontWeight: 700, color: '#fff', fontSize: 14 }}>{selectedMeerkat.nombre}</div>
-                              <div style={{ fontSize: 11, color: lightenColor(selectedMeerkat.color, 0.45), fontWeight: 600, marginTop: 2 }}>{selectedMeerkat.rol}</div>
-                            </div>
-                            <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', lineHeight: 1.6 }}>
-                              Configurarás manualmente el rol, las capacidades y el comportamiento desde tu portal.
-                            </p>
-                            {/* Mobile */}
                             <button
                               onClick={handleNext}
                               className="sm:hidden w-full py-3 rounded-xl font-semibold text-sm text-white flex items-center justify-center gap-2 transition-opacity hover:opacity-90"
-                              style={{ background: `linear-gradient(135deg, ${selectedMeerkat.color}, #9ca3af)` }}
+                              style={{ background: `linear-gradient(135deg, ${selectedMeerkat.color}, #9B6DFF)` }}
                             >
-                              Continuar <ChevronRight size={15} />
+                              Continuar con {selectedMeerkat.nombre} <ChevronRight size={15} />
                             </button>
-                            {/* Desktop */}
+                            {/* Desktop: open full overlay */}
                             <button
                               onClick={() => setOverlayOpen(true)}
                               className="hidden sm:flex w-full py-3 rounded-xl font-semibold text-sm text-white items-center justify-center gap-2 transition-opacity hover:opacity-90"
-                              style={{ background: `linear-gradient(135deg, ${selectedMeerkat.color}, #9ca3af)` }}
+                              style={{ background: `linear-gradient(135deg, ${selectedMeerkat.color}, #9B6DFF)` }}
                             >
-                              Ver detalles <ChevronRight size={15} />
+                              Continuar con {selectedMeerkat.nombre} <ChevronRight size={15} />
                             </button>
                           </div>
-                        )}
+                        </>
                       </div>
                     )}
                   </div>
@@ -1361,6 +1314,23 @@ function RegistroInner() {
                 {error}
               </p>
             )}
+
+            {/* ¿Tu rol no está aquí? — link sutil hacia /pedir-rol */}
+            <div style={{ textAlign: 'center', marginTop: 10, marginBottom: 4 }}>
+              <a
+                href="/pedir-rol"
+                style={{
+                  fontSize: 12, color: 'rgba(255,255,255,0.55)',
+                  textDecoration: 'none', fontWeight: 500,
+                  padding: '6px 12px', borderRadius: 999,
+                  transition: 'color 0.15s',
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.color = '#9B6DFF'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.color = 'rgba(255,255,255,0.55)'; }}
+              >
+                ¿Tu rol no está aquí? Cuéntanos y lo diseñamos →
+              </a>
+            </div>
 
             {/* Centinelia Empresarial — expandable */}
             <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
@@ -1732,7 +1702,7 @@ function RegistroInner() {
                   value={agentName}
                   onChange={e => setAgentName(e.target.value)}
                   onBlur={handleAgentNameBlur}
-                  placeholder={selectedMeerkat && selectedMeerkat.id !== 'custom' ? selectedMeerkat.nombre : 'Ej. Ana, Carlos, Sofía…'}
+                  placeholder={selectedMeerkat ? selectedMeerkat.nombre : 'Ej. Ana, Carlos, Sofía…'}
                   style={inputStyle}
                 />
               </div>
@@ -1959,15 +1929,11 @@ function RegistroInner() {
                 {/* Employee hero */}
                 <div className="relative flex justify-center items-end" style={{ minHeight: 130, background: `${roleColor}10` }}>
                   <div className="absolute inset-0" style={{ background: `radial-gradient(ellipse at 50% 90%, ${roleColor}30 0%, transparent 70%)` }} />
-                  {selectedMeerkat && selectedMeerkat.id !== 'custom' ? (
+                  {selectedMeerkat && (
                     selectedMeerkat.imagen
                       ? <img src={selectedMeerkat.imagen} alt={selectedMeerkat.nombre}
                           style={{ height: 130, objectFit: 'contain', objectPosition: 'bottom', position: 'relative', zIndex: 1 }} />
                       : <div style={{ width: 70, height: 70, borderRadius: 18, marginBottom: 16, background: `${roleColor}25`, border: `1px solid ${roleColor}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontWeight: 900, color: roleColor, position: 'relative', zIndex: 1 }}>{selectedMeerkat.nombre[0]}</div>
-                  ) : (
-                    <div style={{ width: 70, height: 70, borderRadius: 18, marginBottom: 16, background: `${roleColor}18`, border: `1px solid ${roleColor}35`, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 1 }}>
-                      <span style={{ fontSize: 26, color: roleColor, fontWeight: 900 }}>C</span>
-                    </div>
                   )}
                 </div>
 
@@ -1976,7 +1942,7 @@ function RegistroInner() {
                   <p className="font-bold text-white" style={{ fontSize: 15 }}>
                     {agentName || selectedMeerkat?.nombre || 'Tu empleado'}
                   </p>
-                  {selectedMeerkat && selectedMeerkat.id !== 'custom' && (
+                  {selectedMeerkat && (
                     <p className="text-xs mt-0.5" style={{ color: lightenColor(roleColor, 0.45) }}>{selectedMeerkat.rol}</p>
                   )}
                   <div className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full"
@@ -1989,7 +1955,7 @@ function RegistroInner() {
                 {/* Expediente fields */}
                 <div style={{ padding: '14px 18px 18px' }}>
                   {[
-                    { label: 'Cargo',          value: selectedMeerkat?.id !== 'custom' ? (selectedMeerkat?.rol ?? 'Personalizado') : 'Personalizado' },
+                    { label: 'Cargo',          value: selectedMeerkat?.rol ?? '—' },
                     { label: 'Jornada',        value: isCoordinator ? `${selectedNoxTier.label} tareas` : `${selectedTier.label} · ${jornada === 'tareas' ? 'solo tareas' : jornada === 'minutos' ? 'solo minutos' : 'combinada'}` },
                     { label: 'Organización',   value: businessName || '—' },
                     { label: 'Inicio',         value: 'Hoy' },
@@ -2144,7 +2110,7 @@ function RegistroInner() {
               {selectedMeerkat.nombre}
             </h2>
 
-            {selectedMeerkat.id !== 'custom' && selectedMeerkat.tagline && (
+            {selectedMeerkat.tagline && (
               <>
                 <p style={{
                   fontStyle: 'italic', fontSize: '1rem',
@@ -2161,24 +2127,7 @@ function RegistroInner() {
               </>
             )}
 
-            {selectedMeerkat.id === 'custom' && (
-              <>
-                <p style={{
-                  fontStyle: 'italic', fontSize: '1rem',
-                  color: 'rgba(255,255,255,0.78)', lineHeight: 1.65, marginBottom: 18,
-                }}>
-                  "Sin moldes. Sin restricciones."
-                </p>
-                <p style={{
-                  fontSize: '0.875rem',
-                  color: 'rgba(255,255,255,0.62)', lineHeight: 1.8, marginBottom: 38,
-                }}>
-                  Diseña al empleado exactamente como lo necesitas: nombre, voz, rol, personalidad, capacidades y guion de conversación. Todo lo defines desde el portal, sin depender de un perfil preestablecido.
-                </p>
-              </>
-            )}
-
-            {selectedMeerkat.id !== 'custom' && ROLE_PREVIEW[selectedMeerkat.id as keyof typeof ROLE_PREVIEW] && (() => {
+            {ROLE_PREVIEW[selectedMeerkat.id as keyof typeof ROLE_PREVIEW] && (() => {
               const preview = ROLE_PREVIEW[selectedMeerkat.id as keyof typeof ROLE_PREVIEW]!;
               return (
                 <div>
@@ -2212,9 +2161,9 @@ function RegistroInner() {
               <p style={{
                 fontSize: 11, fontWeight: 700,
                 letterSpacing: '0.12em', textTransform: 'uppercase',
-                color: selectedMeerkat.id === 'custom' ? '#9ca3af' : '#9B6DFF', marginBottom: 14,
+                color: '#9B6DFF', marginBottom: 14,
               }}>
-                {selectedMeerkat.id === 'custom' ? 'Empleado Personalizado' : 'Empleado Centinelia'}
+                Empleado Centinelia
               </p>
               <div className="flex items-baseline gap-2 mb-1">
                 <span style={{ fontSize: '2.6rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.025em' }}>
@@ -2232,15 +2181,12 @@ function RegistroInner() {
                   letterSpacing: '0.1em', textTransform: 'uppercase',
                   color: 'rgba(255,255,255,0.5)', marginBottom: 14,
                 }}>
-                  {selectedMeerkat.id === 'custom' ? 'Configuras desde tu portal' : 'Incluye'}
+                  Incluye
                 </p>
                 <div className="flex flex-col gap-3">
-                  {(selectedMeerkat.id === 'custom'
-                    ? CUSTOM_PORTAL_FEATURES
-                    : AGENT_PLANS[0].features.map(f => f.label === 'Voz y nombre personalizables' ? { label: 'Nombre personalizable', desc: 'Ponle el nombre que quieras a tu Centinelia desde el portal.' } : f)
-                  ).map(f => (
+                  {AGENT_PLANS[0].features.map(f => f.label === 'Voz y nombre personalizables' ? { label: 'Nombre personalizable', desc: 'Ponle el nombre que quieras a tu Centinelia desde el portal.' } : f).map(f => (
                     <div key={f.label} className="flex items-start gap-2.5">
-                      <Check size={12} style={{ color: selectedMeerkat.id === 'custom' ? '#6b7280' : '#6C3BFF', flexShrink: 0, marginTop: 2 }} />
+                      <Check size={12} style={{ color: '#6C3BFF', flexShrink: 0, marginTop: 2 }} />
                       <div>
                         <p style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.88)', lineHeight: 1.3 }}>
                           {f.label}
@@ -2267,9 +2213,9 @@ function RegistroInner() {
             <button
               onClick={handleNext}
               className="w-full py-4 rounded-2xl font-bold text-sm text-white flex items-center justify-center gap-2 transition-all hover:opacity-90 hover:scale-[1.01] flex-shrink-0"
-              style={{ background: selectedMeerkat.id === 'custom' ? 'linear-gradient(135deg, #6b7280, #9ca3af)' : `linear-gradient(135deg, ${selectedMeerkat.color}, #9B6DFF)` }}
+              style={{ background: `linear-gradient(135deg, ${selectedMeerkat.color}, #9B6DFF)` }}
             >
-              {selectedMeerkat.id === 'custom' ? 'Continuar' : `Continuar con ${selectedMeerkat.nombre}`} <ChevronRight size={15} />
+              Continuar con {selectedMeerkat.nombre} <ChevronRight size={15} />
             </button>
           </div>
 

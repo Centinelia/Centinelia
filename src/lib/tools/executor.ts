@@ -1951,6 +1951,1273 @@ async function executeAgentToolInner(
     } catch (err) { return { ok: false, error: String(err) }; }
   }
 
+  // ═════════════════════════════════════════════════════════════════════════
+  // PACK ciclo_oc_cfdi — Orden de Compra + Firma + CFDI ciclo completo
+  // Aplicable a constructoras / comercializadoras / PYMEs industriales con
+  // QuickBooks + PAC conectados. Piloto: AC Proyectos.
+  // Ver [[handoff-ac-proyectos-ciclo-oc-cfdi]].
+  // ═════════════════════════════════════════════════════════════════════════
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // qb_crear_orden_compra — Crea OC en QB + persiste expediente
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'qb_crear_orden_compra') {
+    const opsCheck = await consumeAiOp(agentId, 1, { source: 'tool_execution', label: 'Ejecución de herramienta interna' });
+    if (!opsCheck.ok) return { ok: false, error: 'Sin tareas disponibles para crear la orden de compra.' };
+    const refundOc = (reason: string) => refundOps(agentId, 1, { source: 'tool_execution', label: `Refund qb_crear_orden_compra: ${reason}` });
+
+    const { verifyDestructiveAction } = await import('@/lib/tools/verifier');
+    const args = toolInput as {
+      proveedor_nombre?:  string;
+      proveedor_rfc?:     string;
+      proveedor_email?:   string;
+      conceptos?:         Array<{ descripcion: string; cantidad: number; precio_unitario: number }>;
+      folio_interno?:     string;
+      descripcion?:       string;
+    };
+    const conceptos = Array.isArray(args.conceptos) ? args.conceptos : [];
+    const total     = conceptos.reduce((s, c) => s + (c.cantidad ?? 0) * (c.precio_unitario ?? 0), 0);
+
+    const verdict = await verifyDestructiveAction({
+      action:          'crear orden de compra en QuickBooks (destructivo, afecta cuentas por pagar)',
+      target:          String(args.proveedor_nombre ?? ''),
+      reason:          `Conceptos: ${conceptos.length} — Total: ${total} MXN`,
+      businessContext: (agent.knowledge_base as string | null) ?? null,
+      currentIsoDate:  new Date().toISOString(),
+    });
+    if (!verdict.safe) {
+      await refundOc('verifier_blocked');
+      return { ok: false, error: `Verificador bloqueó la OC: ${verdict.concern ?? 'preocupación no especificada'}.` };
+    }
+
+    if (!args.proveedor_nombre?.trim()) { await refundOc('missing_proveedor_nombre'); return { ok: false, error: 'proveedor_nombre es requerido.' }; }
+    if (conceptos.length === 0)         { await refundOc('missing_conceptos');        return { ok: false, error: 'conceptos (array con descripcion+cantidad+precio_unitario) es requerido.' }; }
+    if (total <= 0)                     { await refundOc('invalid_total');            return { ok: false, error: 'El total de la OC debe ser mayor a 0.' }; }
+
+    const qb = await getQBClient(portalEmail, supabase);
+    if (!qb) { await refundOc('qb_not_connected'); return { ok: false, error: 'QuickBooks no está conectado.' }; }
+
+    try {
+      // Buscar vendor por nombre (o crearlo si no existe)
+      const safeName  = args.proveedor_nombre.replace(/'/g, '');
+      const vendData  = await qb.query(`SELECT Id, DisplayName FROM Vendor WHERE DisplayName LIKE '%${safeName}%' MAXRESULTS 1`);
+      let vendor      = vendData?.QueryResponse?.Vendor?.[0];
+      if (!vendor) {
+        const vendorPayload: any = { DisplayName: args.proveedor_nombre };
+        if (args.proveedor_email) vendorPayload.PrimaryEmailAddr = { Address: args.proveedor_email };
+        const created = await qb.post('/vendor', vendorPayload);
+        vendor = created?.Vendor;
+        if (!vendor) { await refundOc('vendor_create_failed'); return { ok: false, error: 'No se pudo crear el proveedor en QB.' }; }
+      }
+
+      const lines = conceptos.map(c => ({
+        DetailType: 'ItemBasedExpenseLineDetail',
+        Amount:     c.cantidad * c.precio_unitario,
+        Description: c.descripcion,
+        ItemBasedExpenseLineDetail: { Qty: c.cantidad, UnitPrice: c.precio_unitario },
+      }));
+
+      const poBody: any = {
+        VendorRef: { value: vendor.Id, name: vendor.DisplayName },
+        Line:      lines,
+      };
+      const res  = await qb.post('/purchaseorder', poBody);
+      const po   = res?.PurchaseOrder;
+      if (!po?.Id) { await refundOc('qb_po_create_failed'); return { ok: false, error: 'QB no devolvió PurchaseOrder.' }; }
+
+      const { data: exp, error: expErr } = await supabase.from('expedientes_compras').insert({
+        portal_email:      portalEmail,
+        agent_id:          agentId,
+        folio_interno:     args.folio_interno ?? null,
+        descripcion:       args.descripcion ?? null,
+        qb_po_id:          String(po.Id),
+        qb_po_folio:       po.DocNumber ?? null,
+        proveedor_nombre:  vendor.DisplayName,
+        proveedor_rfc:     args.proveedor_rfc ?? null,
+        proveedor_email:   args.proveedor_email ?? null,
+        oc_monto_mxn:      total,
+        oc_conceptos:      conceptos,
+        status:            'oc_creada',
+      }).select('id').single();
+
+      if (expErr) { await refundOc('expediente_insert_failed'); return { ok: false, error: `OC creada en QB (${po.Id}) pero no se pudo persistir el expediente: ${expErr.message}` }; }
+
+      void supabase.from('expediente_eventos').insert({
+        expediente_id: exp.id, portal_email: portalEmail, agent_id: agentId,
+        actor: `meerkat:${(agent.agent_name as string | null)?.toLowerCase() ?? 'unknown'}`,
+        tipo: 'oc_creada', from_status: null, to_status: 'oc_creada',
+        detalle: { qb_po_id: po.Id, qb_po_folio: po.DocNumber, total },
+      });
+
+      const fmt = (n: number) => n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+      return {
+        ok:               true,
+        expediente_id:    exp.id,
+        qb_po_id:         po.Id,
+        qb_po_folio:      po.DocNumber,
+        proveedor:        vendor.DisplayName,
+        total:            fmt(total),
+        message:          `OC #${po.DocNumber ?? po.Id} creada en QuickBooks para ${vendor.DisplayName} por ${fmt(total)}. Expediente ${exp.id} abierto.`,
+      };
+    } catch (err) { await refundOc('exception'); return { ok: false, error: String(err) }; }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // qb_consultar_orden_compra — Lee OC de QB (read-only, 0 ops)
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'qb_consultar_orden_compra') {
+    const args = toolInput as { qb_po_id?: string; expediente_id?: string };
+    if (!args.qb_po_id && !args.expediente_id) return { ok: false, error: 'Necesito qb_po_id o expediente_id.' };
+
+    let qbPoId = args.qb_po_id ?? null;
+    let expedienteRow: any = null;
+    if (args.expediente_id) {
+      const { data } = await supabase.from('expedientes_compras')
+        .select('*').eq('id', args.expediente_id).eq('portal_email', portalEmail).single();
+      if (!data) return { ok: false, error: 'Expediente no encontrado.' };
+      expedienteRow = data;
+      qbPoId = qbPoId ?? data.qb_po_id;
+    }
+    if (!qbPoId) return { ok: false, error: 'El expediente no tiene qb_po_id asociado.' };
+
+    const qb = await getQBClient(portalEmail, supabase);
+    if (!qb) return { ok: false, error: 'QuickBooks no está conectado.' };
+
+    try {
+      const res = await qb.get(`/purchaseorder/${qbPoId}`);
+      const po  = res?.PurchaseOrder;
+      if (!po) return { ok: false, error: 'OC no encontrada en QB.' };
+      return {
+        ok:            true,
+        qb_po_id:      po.Id,
+        folio:         po.DocNumber,
+        proveedor:     po.VendorRef?.name,
+        total:         po.TotalAmt,
+        estado_qb:     po.POStatus,
+        expediente:    expedienteRow ? {
+          id:                expedienteRow.id,
+          status:            expedienteRow.status,
+          oc_firmada_at:     expedienteRow.oc_firmada_at,
+          oc_pagada_at:      expedienteRow.oc_pagada_at,
+          sf_uuid:           expedienteRow.sf_uuid,
+        } : null,
+      };
+    } catch (err) { return { ok: false, error: String(err) }; }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // qb_descargar_oc_pdf — Baja PDF de QB, lo sube a Storage, guarda path
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'qb_descargar_oc_pdf') {
+    const opsCheck = await consumeAiOp(agentId, 1, { source: 'tool_execution', label: 'Ejecución de herramienta interna' });
+    if (!opsCheck.ok) return { ok: false, error: 'Sin tareas disponibles para descargar el PDF.' };
+    const refundDesc = (reason: string) => refundOps(agentId, 1, { source: 'tool_execution', label: `Refund qb_descargar_oc_pdf: ${reason}` });
+
+    const args = toolInput as { expediente_id?: string };
+    if (!args.expediente_id) { await refundDesc('missing_expediente'); return { ok: false, error: 'expediente_id es requerido.' }; }
+
+    const { data: exp } = await supabase.from('expedientes_compras')
+      .select('id, qb_po_id, oc_pdf_path, status')
+      .eq('id', args.expediente_id).eq('portal_email', portalEmail).single();
+    if (!exp) { await refundDesc('expediente_not_found'); return { ok: false, error: 'Expediente no encontrado.' }; }
+    if (!exp.qb_po_id) { await refundDesc('no_qb_po'); return { ok: false, error: 'El expediente no tiene qb_po_id.' }; }
+
+    const qb = await getQBClient(portalEmail, supabase);
+    if (!qb) { await refundDesc('qb_not_connected'); return { ok: false, error: 'QuickBooks no está conectado.' }; }
+
+    try {
+      // QB v3 devuelve PDF binario en /purchaseorder/{id}/pdf con Accept application/pdf
+      const url = `${qb.apiBase}/company/${qb.realmId}/purchaseorder/${exp.qb_po_id}/pdf?minorversion=65`;
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${qb.accessToken}`, Accept: 'application/pdf' },
+      });
+      if (!res.ok) { await refundDesc('qb_pdf_fetch_failed'); return { ok: false, error: `QB devolvió ${res.status} al pedir PDF.` }; }
+      const arrayBuf = await res.arrayBuffer();
+      const pdfBuf   = Buffer.from(arrayBuf);
+
+      const path = `${portalEmail}/oc/${exp.id}.pdf`;
+      const up = await supabase.storage.from('cfdi').upload(path, pdfBuf, {
+        contentType: 'application/pdf', upsert: true,
+      });
+      if (up.error) { await refundDesc('storage_upload_failed'); return { ok: false, error: `No se pudo guardar el PDF: ${up.error.message}` }; }
+
+      await supabase.from('expedientes_compras')
+        .update({ oc_pdf_path: path })
+        .eq('id', exp.id);
+
+      return { ok: true, expediente_id: exp.id, pdf_path: path, size_kb: Math.round(pdfBuf.length / 1024) };
+    } catch (err) { await refundDesc('exception'); return { ok: false, error: String(err) }; }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // firmar_oc — Evalúa reglas de autofirma; si pasan, aplica firma al PDF
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'firmar_oc') {
+    const opsCheck = await consumeAiOp(agentId, 1, { source: 'tool_execution', label: 'Ejecución de herramienta interna' });
+    if (!opsCheck.ok) return { ok: false, error: 'Sin tareas disponibles para firmar la OC.' };
+    const refundFirmar = (reason: string) => refundOps(agentId, 1, { source: 'tool_execution', label: `Refund firmar_oc: ${reason}` });
+
+    const args = toolInput as { expediente_id?: string };
+    if (!args.expediente_id) { await refundFirmar('missing_expediente'); return { ok: false, error: 'expediente_id es requerido.' }; }
+
+    const { data: exp } = await supabase.from('expedientes_compras')
+      .select('*').eq('id', args.expediente_id).eq('portal_email', portalEmail).single();
+    if (!exp) { await refundFirmar('expediente_not_found'); return { ok: false, error: 'Expediente no encontrado.' }; }
+    if (!exp.oc_pdf_path) { await refundFirmar('no_pdf'); return { ok: false, error: 'Descarga primero el PDF con qb_descargar_oc_pdf.' }; }
+    if (exp.oc_firmada_at) { await refundFirmar('already_signed'); return { ok: false, error: 'La OC ya fue firmada.' }; }
+
+    const { evaluateFirmaRules } = await import('@/lib/ciclo-oc/firma-rules');
+    const evalRes = await evaluateFirmaRules({
+      portalEmail,
+      oc_monto_mxn:     Number(exp.oc_monto_mxn ?? 0),
+      proveedor_rfc:    exp.proveedor_rfc,
+      proveedor_nombre: exp.proveedor_nombre,
+      conceptos:        Array.isArray(exp.oc_conceptos) ? exp.oc_conceptos : [],
+    }, supabase);
+
+    if (!evalRes.passed) {
+      // Escala a humano — marca expediente y crea evento
+      await supabase.from('expedientes_compras').update({
+        status:                  'requiere_atencion',
+        requiere_atencion_razon: evalRes.reason,
+        requiere_atencion_at:    new Date().toISOString(),
+      }).eq('id', exp.id);
+
+      void supabase.from('expediente_eventos').insert({
+        expediente_id: exp.id, portal_email: portalEmail, agent_id: agentId,
+        actor: `meerkat:${(agent.agent_name as string | null)?.toLowerCase() ?? 'unknown'}`,
+        tipo: 'requiere_atencion', from_status: exp.status, to_status: 'requiere_atencion',
+        detalle: { reglas_falladas: evalRes.reglas_falladas, reglas_pasadas: evalRes.reglas_pasadas, monto_tope: evalRes.monto_tope_mxn },
+      });
+
+      return {
+        ok:                       false,
+        requiere_atencion:        true,
+        razon:                    evalRes.reason,
+        reglas_falladas:          evalRes.reglas_falladas,
+        message:                  `No pude firmar automáticamente. Escalo al humano autorizado: ${evalRes.reason}`,
+      };
+    }
+
+    // Reglas OK — bajar PDF, firma image, aplicar, guardar
+    try {
+      const { data: org } = await supabase
+        .from('organizations').select('ciclo_oc_firma_path').eq('portal_email', portalEmail).single();
+      if (!org?.ciclo_oc_firma_path) { await refundFirmar('no_firma_configured'); return { ok: false, error: 'No hay firma digitalizada configurada.' }; }
+
+      const [pdfDl, firmaDl] = await Promise.all([
+        supabase.storage.from('cfdi').download(exp.oc_pdf_path),
+        supabase.storage.from('cfdi').download(org.ciclo_oc_firma_path),
+      ]);
+      if (pdfDl.error || !pdfDl.data)     { await refundFirmar('pdf_download_failed');   return { ok: false, error: `No se pudo bajar el PDF: ${pdfDl.error?.message}` }; }
+      if (firmaDl.error || !firmaDl.data) { await refundFirmar('firma_download_failed'); return { ok: false, error: `No se pudo bajar la firma: ${firmaDl.error?.message}` }; }
+
+      const pdfBuf   = Buffer.from(await pdfDl.data.arrayBuffer());
+      const firmaBuf = Buffer.from(await firmaDl.data.arrayBuffer());
+
+      const { applyFirmaToPdf } = await import('@/lib/ciclo-oc/apply-firma-pdf');
+      const signedBuf = await applyFirmaToPdf(pdfBuf, firmaBuf);
+
+      const signedPath = `${portalEmail}/oc/${exp.id}_firmada.pdf`;
+      const up = await supabase.storage.from('cfdi').upload(signedPath, signedBuf, {
+        contentType: 'application/pdf', upsert: true,
+      });
+      if (up.error) { await refundFirmar('storage_upload_failed'); return { ok: false, error: `No se pudo guardar el PDF firmado: ${up.error.message}` }; }
+
+      const nowIso = new Date().toISOString();
+      const meerkatName = (agent.agent_name as string | null) ?? 'meerkat';
+      await supabase.from('expedientes_compras').update({
+        status:                  'oc_firmada',
+        oc_pdf_firmado_path:     signedPath,
+        oc_firmada_por:          `meerkat_auto:${meerkatName}`,
+        oc_firmada_at:           nowIso,
+        oc_firma_es_auto:        true,
+        oc_firma_reglas_pasadas: { pasadas: evalRes.reglas_pasadas, tope_mxn: evalRes.monto_tope_mxn },
+      }).eq('id', exp.id);
+
+      void supabase.from('expediente_eventos').insert({
+        expediente_id: exp.id, portal_email: portalEmail, agent_id: agentId,
+        actor: `meerkat:${meerkatName.toLowerCase()}`,
+        tipo: 'oc_firmada_auto', from_status: exp.status, to_status: 'oc_firmada',
+        detalle: { reglas: evalRes.reglas_pasadas, tope_mxn: evalRes.monto_tope_mxn, pdf_firmado_path: signedPath },
+      });
+
+      return {
+        ok:                     true,
+        expediente_id:          exp.id,
+        pdf_firmado_path:       signedPath,
+        firmada_auto:           true,
+        reglas_pasadas:         evalRes.reglas_pasadas,
+        message:                `OC firmada automáticamente (${evalRes.reglas_pasadas.length} reglas OK, tope ${evalRes.monto_tope_mxn} MXN).`,
+      };
+    } catch (err) { await refundFirmar('exception'); return { ok: false, error: String(err) }; }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // sf_timbrar_desde_oc — Timbra CFDI copiando conceptos de la OC
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'sf_timbrar_desde_oc') {
+    const opsCheck = await consumeAiOp(agentId, 1, { source: 'tool_execution', label: 'Ejecución de herramienta interna' });
+    if (!opsCheck.ok) return { ok: false, error: 'Sin tareas disponibles para timbrar el CFDI.' };
+    const refundTim = (reason: string) => refundOps(agentId, 1, { source: 'tool_execution', label: `Refund sf_timbrar_desde_oc: ${reason}` });
+
+    const args = toolInput as {
+      expediente_id?:  string;
+      cliente_nombre?: string;
+      cliente_rfc?:    string;
+      cliente_email?:  string;
+      uso_cfdi?:       string;
+      forma_pago?:     string;
+      metodo_pago?:    string;
+    };
+    if (!args.expediente_id) { await refundTim('missing_expediente'); return { ok: false, error: 'expediente_id es requerido.' }; }
+
+    for (const [k, v] of Object.entries({
+      cliente_nombre: args.cliente_nombre, cliente_rfc: args.cliente_rfc, cliente_email: args.cliente_email,
+      uso_cfdi: args.uso_cfdi, forma_pago: args.forma_pago, metodo_pago: args.metodo_pago,
+    })) {
+      if (!v?.toString().trim()) { await refundTim(`missing_${k}`); return { ok: false, error: `${k} es requerido para timbrar.` }; }
+    }
+
+    const { verifyDestructiveAction } = await import('@/lib/tools/verifier');
+    const verdict = await verifyDestructiveAction({
+      action:          'timbrar CFDI ante el SAT (destructivo, fiscal)',
+      target:          String(args.cliente_nombre),
+      reason:          `RFC ${args.cliente_rfc} — Uso ${args.uso_cfdi} — desde expediente ${args.expediente_id}`,
+      businessContext: (agent.knowledge_base as string | null) ?? null,
+      currentIsoDate:  new Date().toISOString(),
+    });
+    if (!verdict.safe) { await refundTim('verifier_blocked'); return { ok: false, error: `Verificador bloqueó el timbrado: ${verdict.concern ?? 'preocupación no especificada'}.` }; }
+
+    const { data: exp } = await supabase.from('expedientes_compras')
+      .select('*').eq('id', args.expediente_id).eq('portal_email', portalEmail).single();
+    if (!exp) { await refundTim('expediente_not_found'); return { ok: false, error: 'Expediente no encontrado.' }; }
+    if (exp.sf_uuid) { await refundTim('already_stamped'); return { ok: false, error: `Ya existe CFDI para este expediente (UUID ${exp.sf_uuid}).` }; }
+
+    const conceptos = Array.isArray(exp.oc_conceptos) ? exp.oc_conceptos : [];
+    if (conceptos.length === 0) { await refundTim('no_conceptos'); return { ok: false, error: 'El expediente no tiene conceptos para timbrar.' }; }
+
+    const items = conceptos.map((c: any) => ({
+      descripcion:      c.descripcion,
+      cantidad:         c.cantidad,
+      precio_unitario:  c.precio_unitario,
+    }));
+    const subtotal = Number(exp.oc_monto_mxn ?? conceptos.reduce((s: number, c: any) => s + (c.cantidad ?? 0) * (c.precio_unitario ?? 0), 0));
+
+    try {
+      const { data: req, error: reqErr } = await supabase.from('factura_requests').insert({
+        agent_id:         agentId,
+        portal_email:     portalEmail,
+        cliente_nombre:   args.cliente_nombre,
+        cliente_rfc:      args.cliente_rfc,
+        cliente_email:    args.cliente_email,
+        uso_cfdi:         args.uso_cfdi,
+        forma_pago:       args.forma_pago,
+        metodo_pago:      args.metodo_pago,
+        items,
+        subtotal,
+        iva:              0,
+        total:            subtotal,
+        currency:         'MXN',
+        source_channel:   ctx.channel ?? 'chat',
+        source_context:   `expediente:${exp.id}`,
+        status:           'pending',
+      }).select('id').single();
+
+      if (reqErr || !req) { await refundTim('factura_request_insert_failed'); return { ok: false, error: `No se pudo crear factura_request: ${reqErr?.message}` }; }
+
+      const { emitirFacturaAuto } = await import('@/lib/invoicing/emitir-factura');
+      const outcome = await emitirFacturaAuto(req.id, supabase);
+
+      if (outcome.outcome !== 'stamped') {
+        await refundTim(`stamp_${outcome.outcome}`);
+        return { ok: false, error: `Timbrado no completado: ${outcome.outcome}${outcome.error ? ` — ${outcome.error}` : ''}`, factura_request_id: req.id };
+      }
+
+      const meerkatName = (agent.agent_name as string | null) ?? 'meerkat';
+      await supabase.from('expedientes_compras').update({
+        status:              'factura_timbrada',
+        sf_uuid:             outcome.uuid,
+        cliente_nombre:      args.cliente_nombre,
+        cliente_rfc:         args.cliente_rfc,
+        cliente_email:       args.cliente_email,
+        cfdi_monto_mxn:      subtotal,
+        cfdi_uso:            args.uso_cfdi,
+        cfdi_forma_pago:     args.forma_pago,
+        cfdi_metodo_pago:    args.metodo_pago,
+        cfdi_xml_path:       outcome.xmlPath ?? null,
+        cfdi_pdf_path:       outcome.pdfPath ?? null,
+        cfdi_timbrada_at:    new Date().toISOString(),
+        factura_request_id:  req.id,
+      }).eq('id', exp.id);
+
+      void supabase.from('expediente_eventos').insert({
+        expediente_id: exp.id, portal_email: portalEmail, agent_id: agentId,
+        actor: `meerkat:${meerkatName.toLowerCase()}`,
+        tipo: 'factura_timbrada', from_status: exp.status, to_status: 'factura_timbrada',
+        detalle: { uuid: outcome.uuid, factura_request_id: req.id, subtotal },
+      });
+
+      return {
+        ok:                  true,
+        expediente_id:       exp.id,
+        uuid:                outcome.uuid,
+        factura_request_id:  req.id,
+        pdf_path:            outcome.pdfPath,
+        xml_path:            outcome.xmlPath,
+        message:             `CFDI timbrado ${outcome.uuid} para ${args.cliente_nombre} por ${subtotal} MXN.`,
+      };
+    } catch (err) { await refundTim('exception'); return { ok: false, error: String(err) }; }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // sf_cancelar_cfdi — Nala solicita cancelación de CFDI ante el SAT
+  // Requiere invoicing_allow_agent_cancellation=true en org (safeguard).
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'sf_cancelar_cfdi') {
+    const opsCheck = await consumeAiOp(agentId, 1, { source: 'tool_execution', label: 'Ejecución de herramienta interna' });
+    if (!opsCheck.ok) return { ok: false, error: 'Sin tareas disponibles para cancelar el CFDI.' };
+    const refundCancel = (r: string) => refundOps(agentId, 1, { source: 'tool_execution', label: `Refund sf_cancelar_cfdi: ${r}` });
+
+    const args = toolInput as {
+      expediente_id?:  string;
+      uuid?:           string;
+      motivo?:         '01' | '02' | '03' | '04';
+      uuid_sustituto?: string;
+      razon_cliente?:  string;
+    };
+
+    if (!args.motivo || !['01', '02', '03', '04'].includes(args.motivo)) {
+      await refundCancel('invalid_motivo');
+      return { ok: false, error: 'motivo es requerido (01=sustitución, 02=error sin relación, 03=no se llevó a cabo la operación, 04=nominativa relacionada).' };
+    }
+    if (args.motivo === '01' && !args.uuid_sustituto?.trim()) {
+      await refundCancel('missing_sustituto');
+      return { ok: false, error: 'Motivo 01 (sustitución) requiere uuid_sustituto.' };
+    }
+
+    let uuid: string | null = args.uuid ?? null;
+    let expedienteId: string | null = null;
+    let factRequestId: string | null = null;
+    if (args.expediente_id) {
+      const { data: exp } = await supabase.from('expedientes_compras')
+        .select('id, sf_uuid, status, factura_request_id')
+        .eq('id', args.expediente_id).eq('portal_email', portalEmail).single();
+      if (!exp) { await refundCancel('expediente_not_found'); return { ok: false, error: 'Expediente no encontrado.' }; }
+      if (!exp.sf_uuid) { await refundCancel('no_cfdi'); return { ok: false, error: 'El expediente no tiene CFDI timbrado.' }; }
+      uuid = uuid ?? exp.sf_uuid;
+      expedienteId = exp.id;
+      factRequestId = exp.factura_request_id ?? null;
+    }
+    if (!uuid) { await refundCancel('missing_uuid'); return { ok: false, error: 'Necesito uuid o expediente_id.' }; }
+
+    const { verifyDestructiveAction } = await import('@/lib/tools/verifier');
+    const verdict = await verifyDestructiveAction({
+      action:          'cancelar CFDI ante el SAT (destructivo, fiscal, IRREVERSIBLE si el SAT acepta)',
+      target:          uuid,
+      reason:          `Motivo ${args.motivo}${args.razon_cliente ? ` — ${args.razon_cliente}` : ''}${args.uuid_sustituto ? ` — sustituye por ${args.uuid_sustituto}` : ''}`,
+      businessContext: (agent.knowledge_base as string | null) ?? null,
+      currentIsoDate:  new Date().toISOString(),
+    });
+    if (!verdict.safe) { await refundCancel('verifier_blocked'); return { ok: false, error: `Verificador bloqueó la cancelación: ${verdict.concern ?? 'sin razón'}.` }; }
+
+    // Cargar org + credenciales + CSD
+    const { data: org } = await supabase.from('organizations')
+      .select('invoicing_provider, invoicing_credentials_encrypted, invoicing_test_mode, invoicing_allow_agent_cancellation')
+      .eq('portal_email', portalEmail).single();
+    if (org?.invoicing_provider !== 'solucion_factible') { await refundCancel('no_sf'); return { ok: false, error: 'Solución Factible no está conectado en esta organización.' }; }
+    if (!org.invoicing_allow_agent_cancellation) {
+      await refundCancel('not_allowed');
+      return { ok: false, error: 'El dueño no autorizó cancelaciones por empleado. Actívalo en el portal → Facturación CFDI → Configuración → "Permitir cancelación por empleado".' };
+    }
+    if (!org.invoicing_credentials_encrypted) { await refundCancel('no_creds'); return { ok: false, error: 'Credenciales SF no configuradas.' }; }
+
+    const { decryptString } = await import('@/lib/invoicing/csd-vault');
+    const { getCsd } = await import('@/lib/invoicing/csd-vault');
+    const creds = JSON.parse(decryptString(org.invoicing_credentials_encrypted)) as { usuario: string; password: string };
+    const csd   = await getCsd(portalEmail, supabase);
+    if (!csd) { await refundCancel('no_csd'); return { ok: false, error: 'CSD no cargado o expirado.' }; }
+
+    try {
+      const { solucionFactibleProvider } = await import('@/lib/invoicing/solucion-factible');
+      const submit = await solucionFactibleProvider.cancelar(
+        uuid, args.motivo, args.uuid_sustituto ?? null,
+        creds, { cerPem: csd.cerPem, keyPem: csd.keyPem, noCertificado: csd.noCertificado },
+        { testMode: org.invoicing_test_mode !== false },
+      );
+
+      // Registrar en cfdi_cancellations (audit fiscal)
+      await supabase.from('cfdi_cancellations').insert({
+        factura_request_id:    factRequestId,
+        organization_email:    portalEmail,
+        uuid_cancelado:        uuid,
+        motivo:                args.motivo,
+        uuid_sustituto:        args.uuid_sustituto ?? null,
+        requested_by:          `meerkat:${(agent.agent_name as string | null)?.toLowerCase() ?? 'nala'}`,
+        requested_by_agent_id: agentId,
+        requested_via:         ctx.channel ?? 'chat',
+        status:                submit.status === 'sent_to_sat' ? 'sent_to_sat' : 'rejected',
+        razon_cliente:         args.razon_cliente ?? null,
+        notes:                 submit.message ?? null,
+      });
+
+      if (expedienteId) {
+        await supabase.from('expedientes_compras').update({
+          status:          'cancelado',
+          cancelado_at:    new Date().toISOString(),
+          cancelado_razon: args.razon_cliente ?? submit.message ?? `Cancelación motivo ${args.motivo}`,
+        }).eq('id', expedienteId);
+
+        void supabase.from('expediente_eventos').insert({
+          expediente_id: expedienteId, portal_email: portalEmail, agent_id: agentId,
+          actor: `meerkat:${(agent.agent_name as string | null)?.toLowerCase() ?? 'nala'}`,
+          tipo: 'cancelado', from_status: 'factura_timbrada', to_status: 'cancelado',
+          detalle: { uuid, motivo: args.motivo, uuid_sustituto: args.uuid_sustituto, sf_status: submit.status },
+        });
+      }
+
+      if (submit.status === 'rejected') {
+        return { ok: false, error: `SF rechazó la cancelación: ${submit.message}`, sf_status: 'rejected' };
+      }
+
+      return {
+        ok:            true,
+        uuid,
+        sf_status:     submit.status,
+        expediente_id: expedienteId,
+        message:       `Solicitud de cancelación enviada al SAT (status: ${submit.status}). ${submit.message ?? ''}`,
+      };
+    } catch (err) { await refundCancel('exception'); return { ok: false, error: String(err) }; }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // sf_consultar_estado_sat — Nala consulta estado real de cancelación ante SAT
+  // Read-only. Sin ops.
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'sf_consultar_estado_sat') {
+    const args = toolInput as { expediente_id?: string; uuid?: string };
+    let uuid: string | null = args.uuid ?? null;
+    let expedienteId: string | null = null;
+    if (args.expediente_id) {
+      const { data: exp } = await supabase.from('expedientes_compras')
+        .select('id, sf_uuid').eq('id', args.expediente_id).eq('portal_email', portalEmail).single();
+      if (!exp?.sf_uuid) return { ok: false, error: 'Expediente sin CFDI timbrado.' };
+      uuid = uuid ?? exp.sf_uuid;
+      expedienteId = exp.id;
+    }
+    if (!uuid) return { ok: false, error: 'Necesito uuid o expediente_id.' };
+
+    const { data: org } = await supabase.from('organizations')
+      .select('invoicing_provider, invoicing_credentials_encrypted, invoicing_test_mode')
+      .eq('portal_email', portalEmail).single();
+    if (org?.invoicing_provider !== 'solucion_factible') return { ok: false, error: 'Solución Factible no está conectado.' };
+    if (!org.invoicing_credentials_encrypted) return { ok: false, error: 'Credenciales SF no configuradas.' };
+
+    const { decryptString } = await import('@/lib/invoicing/csd-vault');
+    const creds = JSON.parse(decryptString(org.invoicing_credentials_encrypted)) as { usuario: string; password: string };
+
+    try {
+      const { solucionFactibleProvider } = await import('@/lib/invoicing/solucion-factible');
+      const status = await solucionFactibleProvider.consultarEstatusCancelacion(
+        uuid, creds, { testMode: org.invoicing_test_mode !== false },
+      );
+      return {
+        ok:            true,
+        uuid,
+        expediente_id: expedienteId,
+        sat_status:    status.status,
+        message:       status.message,
+      };
+    } catch (err) { return { ok: false, error: String(err) }; }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // qb_crear_cotizacion — Nox: crea Estimate en QuickBooks para cliente
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'qb_crear_cotizacion') {
+    const opsCheck = await consumeAiOp(agentId, 1, { source: 'tool_execution', label: 'Ejecución de herramienta interna' });
+    if (!opsCheck.ok) return { ok: false, error: 'Sin tareas disponibles para crear la cotización.' };
+    const refundCot = (r: string) => refundOps(agentId, 1, { source: 'tool_execution', label: `Refund qb_crear_cotizacion: ${r}` });
+
+    const { verifyDestructiveAction } = await import('@/lib/tools/verifier');
+    const args = toolInput as {
+      cliente_nombre?: string;
+      conceptos?:      Array<{ descripcion: string; cantidad: number; precio_unitario: number }>;
+      vigencia_dias?:  number;
+      notas?:          string;
+    };
+    const conceptos = Array.isArray(args.conceptos) ? args.conceptos : [];
+    const total = conceptos.reduce((s, c) => s + (c.cantidad ?? 0) * (c.precio_unitario ?? 0), 0);
+
+    const verdict = await verifyDestructiveAction({
+      action:          'crear cotización (Estimate) en QuickBooks',
+      target:          String(args.cliente_nombre ?? ''),
+      reason:          `Conceptos: ${conceptos.length} — Total: ${total} MXN`,
+      businessContext: (agent.knowledge_base as string | null) ?? null,
+      currentIsoDate:  new Date().toISOString(),
+    });
+    if (!verdict.safe) { await refundCot('verifier_blocked'); return { ok: false, error: `Verificador bloqueó la cotización: ${verdict.concern ?? 'sin razón'}.` }; }
+
+    if (!args.cliente_nombre?.trim()) { await refundCot('missing_cliente'); return { ok: false, error: 'cliente_nombre es requerido.' }; }
+    if (conceptos.length === 0)       { await refundCot('missing_conceptos'); return { ok: false, error: 'conceptos es requerido.' }; }
+    if (total <= 0)                   { await refundCot('invalid_total'); return { ok: false, error: 'El total debe ser mayor a 0.' }; }
+
+    const qb = await getQBClient(portalEmail, supabase);
+    if (!qb) { await refundCot('qb_not_connected'); return { ok: false, error: 'QuickBooks no está conectado.' }; }
+
+    try {
+      const safe = args.cliente_nombre.replace(/'/g, '');
+      const cust = await qb.query(`SELECT Id, DisplayName FROM Customer WHERE DisplayName LIKE '%${safe}%' MAXRESULTS 1`);
+      const customer = cust?.QueryResponse?.Customer?.[0];
+      if (!customer) { await refundCot('customer_not_found'); return { ok: false, error: `Cliente "${args.cliente_nombre}" no encontrado en QB.` }; }
+
+      const itemData = await qb.query(`SELECT Id, Name FROM Item WHERE Type = 'Service' MAXRESULTS 1`);
+      const fallbackItem = itemData?.QueryResponse?.Item?.[0];
+
+      const lines = conceptos.map(c => {
+        const amount = c.cantidad * c.precio_unitario;
+        return fallbackItem
+          ? { DetailType: 'SalesItemLineDetail', Amount: amount, Description: c.descripcion,
+              SalesItemLineDetail: { ItemRef: { value: fallbackItem.Id, name: fallbackItem.Name }, UnitPrice: c.precio_unitario, Qty: c.cantidad } }
+          : { DetailType: 'DescriptionOnlyLine', Amount: amount, Description: c.descripcion, DescriptionOnlyLineDetail: {} };
+      });
+
+      const body: any = {
+        Line:        lines,
+        CustomerRef: { value: customer.Id, name: customer.DisplayName },
+      };
+      if (typeof args.vigencia_dias === 'number' && args.vigencia_dias > 0) {
+        const exp = new Date(); exp.setDate(exp.getDate() + args.vigencia_dias);
+        body.ExpirationDate = exp.toISOString().split('T')[0];
+      }
+      if (args.notas) body.CustomerMemo = { value: args.notas };
+
+      const res = await qb.post('/estimate', body);
+      const est = res?.Estimate;
+      if (!est?.Id) { await refundCot('qb_estimate_failed'); return { ok: false, error: 'QB no devolvió Estimate.' }; }
+
+      const fmt = (n: number) => n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+      return {
+        ok:            true,
+        estimate_id:   est.Id,
+        folio:         est.DocNumber,
+        cliente:       customer.DisplayName,
+        total:         fmt(total),
+        vigencia:      body.ExpirationDate ?? null,
+        message:       `Cotización #${est.DocNumber ?? est.Id} creada para ${customer.DisplayName} por ${fmt(total)}.`,
+      };
+    } catch (err) { await refundCot('exception'); return { ok: false, error: String(err) }; }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // qb_registrar_gasto — Nox: crea Purchase en QB (compra directa)
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'qb_registrar_gasto') {
+    const opsCheck = await consumeAiOp(agentId, 1, { source: 'tool_execution', label: 'Ejecución de herramienta interna' });
+    if (!opsCheck.ok) return { ok: false, error: 'Sin tareas disponibles para registrar el gasto.' };
+    const refundGasto = (r: string) => refundOps(agentId, 1, { source: 'tool_execution', label: `Refund qb_registrar_gasto: ${r}` });
+
+    const { verifyDestructiveAction } = await import('@/lib/tools/verifier');
+    const args = toolInput as {
+      concepto?:        string;
+      monto?:           number;
+      proveedor_nombre?:string;
+      cuenta_gasto?:    string;
+      forma_pago?:      'efectivo' | 'transferencia' | 'tarjeta' | 'cheque';
+      fecha?:           string;
+    };
+
+    const verdict = await verifyDestructiveAction({
+      action:          'registrar gasto en QuickBooks (Purchase, destructivo)',
+      target:          String(args.proveedor_nombre ?? args.concepto ?? ''),
+      reason:          `Concepto: ${args.concepto ?? ''} — Monto: ${args.monto} MXN — Forma: ${args.forma_pago ?? 'no especificada'}`,
+      businessContext: (agent.knowledge_base as string | null) ?? null,
+      currentIsoDate:  new Date().toISOString(),
+    });
+    if (!verdict.safe) { await refundGasto('verifier_blocked'); return { ok: false, error: `Verificador bloqueó el gasto: ${verdict.concern ?? 'sin razón'}.` }; }
+
+    if (!args.concepto?.trim())              { await refundGasto('missing_concepto'); return { ok: false, error: 'concepto es requerido.' }; }
+    if (typeof args.monto !== 'number' || args.monto <= 0) { await refundGasto('invalid_monto'); return { ok: false, error: 'monto (número > 0) es requerido.' }; }
+
+    const qb = await getQBClient(portalEmail, supabase);
+    if (!qb) { await refundGasto('qb_not_connected'); return { ok: false, error: 'QuickBooks no está conectado.' }; }
+
+    try {
+      // Encontrar cuenta de gasto: usa la que el usuario indica o cae a "Expenses" genérica
+      const accountName = (args.cuenta_gasto ?? 'Expenses').replace(/'/g, '');
+      const acctData = await qb.query(`SELECT Id, Name FROM Account WHERE AccountType = 'Expense' AND Name LIKE '%${accountName}%' MAXRESULTS 1`);
+      let account = acctData?.QueryResponse?.Account?.[0];
+      if (!account) {
+        // Fallback: primera cuenta de gasto disponible
+        const anyAcct = await qb.query(`SELECT Id, Name FROM Account WHERE AccountType = 'Expense' MAXRESULTS 1`);
+        account = anyAcct?.QueryResponse?.Account?.[0];
+      }
+      if (!account) { await refundGasto('no_expense_account'); return { ok: false, error: 'No encontré cuentas de gasto en QuickBooks.' }; }
+
+      // Cuenta pagadora (efectivo/banco). Por default: primera Bank o CreditCard.
+      const payAccData = await qb.query(`SELECT Id, Name FROM Account WHERE AccountType IN ('Bank','Credit Card') MAXRESULTS 1`);
+      const payAccount = payAccData?.QueryResponse?.Account?.[0];
+      if (!payAccount) { await refundGasto('no_payment_account'); return { ok: false, error: 'No encontré cuenta de banco o tarjeta.' }; }
+
+      let vendorRef: any = null;
+      if (args.proveedor_nombre?.trim()) {
+        const vsafe = args.proveedor_nombre.replace(/'/g, '');
+        const vend = await qb.query(`SELECT Id, DisplayName FROM Vendor WHERE DisplayName LIKE '%${vsafe}%' MAXRESULTS 1`);
+        const v = vend?.QueryResponse?.Vendor?.[0];
+        if (v) vendorRef = { value: v.Id, name: v.DisplayName };
+      }
+
+      const body: any = {
+        AccountRef:  { value: payAccount.Id, name: payAccount.Name },
+        PaymentType: payAccount.AccountType === 'Credit Card' ? 'CreditCard' : 'Cash',
+        TxnDate:     args.fecha ?? new Date().toISOString().split('T')[0],
+        Line: [{
+          DetailType: 'AccountBasedExpenseLineDetail',
+          Amount:     args.monto,
+          Description: args.concepto,
+          AccountBasedExpenseLineDetail: { AccountRef: { value: account.Id, name: account.Name } },
+        }],
+      };
+      if (vendorRef) body.EntityRef = { ...vendorRef, type: 'Vendor' };
+
+      const res = await qb.post('/purchase', body);
+      const p = res?.Purchase;
+      if (!p?.Id) { await refundGasto('qb_purchase_failed'); return { ok: false, error: 'QB no devolvió Purchase.' }; }
+
+      const fmt = (n: number) => n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+      return {
+        ok:           true,
+        gasto_id:     p.Id,
+        concepto:     args.concepto,
+        monto:        fmt(args.monto),
+        cuenta:       account.Name,
+        pagado_desde: payAccount.Name,
+        proveedor:    vendorRef?.name ?? null,
+        message:      `Gasto de ${fmt(args.monto)} registrado en ${account.Name} (pagado desde ${payAccount.Name}).`,
+      };
+    } catch (err) { await refundGasto('exception'); return { ok: false, error: String(err) }; }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // qb_registrar_caja_chica — Nox: gasto pequeño registrado contra caja chica
+  // Variante convenience de qb_registrar_gasto — busca cuenta "Caja Chica" o
+  // "Petty Cash" en QB. Si no existe, sugiere crearla y falla.
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'qb_registrar_caja_chica') {
+    const opsCheck = await consumeAiOp(agentId, 1, { source: 'tool_execution', label: 'Ejecución de herramienta interna' });
+    if (!opsCheck.ok) return { ok: false, error: 'Sin tareas disponibles para registrar caja chica.' };
+    const refundCC = (r: string) => refundOps(agentId, 1, { source: 'tool_execution', label: `Refund qb_registrar_caja_chica: ${r}` });
+
+    const { verifyDestructiveAction } = await import('@/lib/tools/verifier');
+    const args = toolInput as {
+      concepto?: string;
+      monto?:    number;
+      fecha?:    string;
+      cuenta_gasto?: string;
+    };
+
+    const verdict = await verifyDestructiveAction({
+      action:          'registrar gasto de caja chica en QuickBooks',
+      target:          'Caja Chica',
+      reason:          `Concepto: ${args.concepto ?? ''} — Monto: ${args.monto} MXN`,
+      businessContext: (agent.knowledge_base as string | null) ?? null,
+      currentIsoDate:  new Date().toISOString(),
+    });
+    if (!verdict.safe) { await refundCC('verifier_blocked'); return { ok: false, error: `Verificador bloqueó la caja chica: ${verdict.concern ?? 'sin razón'}.` }; }
+
+    if (!args.concepto?.trim()) { await refundCC('missing_concepto'); return { ok: false, error: 'concepto es requerido.' }; }
+    if (typeof args.monto !== 'number' || args.monto <= 0) { await refundCC('invalid_monto'); return { ok: false, error: 'monto (número > 0) es requerido.' }; }
+
+    const qb = await getQBClient(portalEmail, supabase);
+    if (!qb) { await refundCC('qb_not_connected'); return { ok: false, error: 'QuickBooks no está conectado.' }; }
+
+    try {
+      // Buscar cuenta "Caja Chica" / "Petty Cash" en Bank accounts
+      const ccData = await qb.query(`SELECT Id, Name FROM Account WHERE AccountType = 'Bank' AND (Name LIKE '%Caja Chica%' OR Name LIKE '%Petty Cash%' OR Name LIKE '%Caja%') MAXRESULTS 1`);
+      const cajaChica = ccData?.QueryResponse?.Account?.[0];
+      if (!cajaChica) {
+        await refundCC('no_caja_chica_account');
+        return { ok: false, error: 'No encontré una cuenta llamada "Caja Chica" en QuickBooks. Créala como cuenta bancaria en QB y vuelve a intentar.' };
+      }
+
+      const gastoName = (args.cuenta_gasto ?? 'Expenses').replace(/'/g, '');
+      const gastoData = await qb.query(`SELECT Id, Name FROM Account WHERE AccountType = 'Expense' AND Name LIKE '%${gastoName}%' MAXRESULTS 1`);
+      let gastoAcct = gastoData?.QueryResponse?.Account?.[0];
+      if (!gastoAcct) {
+        const anyGasto = await qb.query(`SELECT Id, Name FROM Account WHERE AccountType = 'Expense' MAXRESULTS 1`);
+        gastoAcct = anyGasto?.QueryResponse?.Account?.[0];
+      }
+      if (!gastoAcct) { await refundCC('no_expense_account'); return { ok: false, error: 'No encontré cuentas de gasto.' }; }
+
+      const body: any = {
+        AccountRef:  { value: cajaChica.Id, name: cajaChica.Name },
+        PaymentType: 'Cash',
+        TxnDate:     args.fecha ?? new Date().toISOString().split('T')[0],
+        Line: [{
+          DetailType: 'AccountBasedExpenseLineDetail',
+          Amount:     args.monto,
+          Description: args.concepto,
+          AccountBasedExpenseLineDetail: { AccountRef: { value: gastoAcct.Id, name: gastoAcct.Name } },
+        }],
+      };
+
+      const res = await qb.post('/purchase', body);
+      const p = res?.Purchase;
+      if (!p?.Id) { await refundCC('qb_purchase_failed'); return { ok: false, error: 'QB no devolvió Purchase.' }; }
+
+      const fmt = (n: number) => n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+      return {
+        ok:               true,
+        gasto_id:         p.Id,
+        concepto:         args.concepto,
+        monto:            fmt(args.monto),
+        pagado_desde:     cajaChica.Name,
+        cuenta_gasto:     gastoAcct.Name,
+        message:          `Caja chica: ${fmt(args.monto)} de "${args.concepto}" pagado desde ${cajaChica.Name}.`,
+      };
+    } catch (err) { await refundCC('exception'); return { ok: false, error: String(err) }; }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // qb_crear_orden_compra_desde_cotizacion — Vision AI parsea PDF/imagen y
+  // crea OC en QB. Reutiliza qb_crear_orden_compra internamente.
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'qb_crear_orden_compra_desde_cotizacion') {
+    const args = toolInput as {
+      cotizacion_base64?:        string;
+      cotizacion_storage_path?:  string;
+      mime_type?:                string;
+      folio_interno?:            string;
+      descripcion?:              string;
+    };
+
+    // No consume ops aquí — se consume 1 op cuando qb_crear_orden_compra corra.
+    // Si el extractor falla antes, no cobramos por Vision solo.
+
+    let buffer: Buffer;
+    let mime = args.mime_type ?? 'application/pdf';
+
+    if (args.cotizacion_storage_path) {
+      const dl = await supabase.storage.from('cfdi').download(args.cotizacion_storage_path);
+      if (dl.error || !dl.data) return { ok: false, error: `Storage download: ${dl.error?.message}` };
+      buffer = Buffer.from(await dl.data.arrayBuffer());
+      // Infer mime from extension if not provided
+      if (!args.mime_type) {
+        const ext = args.cotizacion_storage_path.split('.').pop()?.toLowerCase();
+        if (ext === 'pdf') mime = 'application/pdf';
+        else if (ext === 'png') mime = 'image/png';
+        else if (ext === 'jpg' || ext === 'jpeg') mime = 'image/jpeg';
+      }
+    } else if (args.cotizacion_base64) {
+      buffer = Buffer.from(args.cotizacion_base64, 'base64');
+    } else {
+      return { ok: false, error: 'Necesito cotizacion_base64 o cotizacion_storage_path.' };
+    }
+
+    if (buffer.length === 0) return { ok: false, error: 'El archivo está vacío.' };
+    if (buffer.length > 15 * 1024 * 1024) return { ok: false, error: 'El archivo excede 15 MB.' };
+
+    let extraccion;
+    try {
+      const { extractCotizacionFromFile } = await import('@/lib/ciclo-oc/extract-cotizacion');
+      extraccion = await extractCotizacionFromFile(buffer, mime);
+    } catch (err) {
+      return { ok: false, error: `No pude parsear la cotización con Vision: ${(err as Error).message}` };
+    }
+
+    if (!extraccion.proveedor?.nombre?.trim()) {
+      return { ok: false, error: 'Vision no detectó nombre del proveedor. Revisa que la cotización sea legible o crea la OC manualmente.', extraccion };
+    }
+    if (extraccion.items.length === 0) {
+      return { ok: false, error: 'Vision no detectó items válidos en la cotización.', extraccion };
+    }
+
+    // Delegar a qb_crear_orden_compra reciclando el flujo
+    const mappedInput = {
+      proveedor_nombre: extraccion.proveedor.nombre,
+      proveedor_rfc:    extraccion.proveedor.rfc ?? undefined,
+      proveedor_email:  extraccion.proveedor.email ?? undefined,
+      conceptos:        extraccion.items,
+      folio_interno:    args.folio_interno,
+      descripcion:      args.descripcion ?? `Desde cotización proveedor (Vision AI, confianza global ${extraccion.confianza?.global ?? 'N/A'})`,
+    };
+
+    const result = await executeAgentToolInner('qb_crear_orden_compra', mappedInput as Record<string, unknown>, ctx);
+    // Anexar la extracción al resultado para trazabilidad
+    if (result && typeof result === 'object') {
+      (result as any).extraccion = extraccion;
+    }
+    return result;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // enviar_oc_a_firma_humana — Nox escala cuando autofirma no procede
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'enviar_oc_a_firma_humana') {
+    const opsCheck = await consumeAiOp(agentId, 1, { source: 'tool_execution', label: 'Ejecución de herramienta interna' });
+    if (!opsCheck.ok) return { ok: false, error: 'Sin tareas disponibles para escalar la OC a firma humana.' };
+    const refundEsc = (r: string) => refundOps(agentId, 1, { source: 'tool_execution', label: `Refund enviar_oc_a_firma_humana: ${r}` });
+
+    const args = toolInput as { expediente_id?: string; razon?: string };
+    if (!args.expediente_id) { await refundEsc('missing_expediente'); return { ok: false, error: 'expediente_id es requerido.' }; }
+
+    const { data: exp } = await supabase.from('expedientes_compras')
+      .select('*').eq('id', args.expediente_id).eq('portal_email', portalEmail).single();
+    if (!exp) { await refundEsc('expediente_not_found'); return { ok: false, error: 'Expediente no encontrado.' }; }
+    if (!exp.oc_pdf_path) { await refundEsc('no_pdf'); return { ok: false, error: 'Descarga primero el PDF con qb_descargar_oc_pdf.' }; }
+
+    const { loadOrgDirectory } = await import('@/lib/portal/directory');
+    const directory = await loadOrgDirectory(portalEmail, supabase);
+    const autorizadores = directory.filter(p => p.is_oc_autorizador && p.email?.trim());
+    if (autorizadores.length === 0) {
+      await refundEsc('no_autorizador');
+      return { ok: false, error: 'No hay ninguna persona marcada como autorizador de OC en el directorio. Configúralo en el portal.' };
+    }
+
+    // Signed URL para adjuntar (7 días)
+    const { data: signed } = await supabase.storage.from('cfdi').createSignedUrl(exp.oc_pdf_path, 60 * 60 * 24 * 7);
+    const pdfUrl = signed?.signedUrl ?? null;
+
+    const fmt = (n: number) => n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+    const subject = `Autorización requerida — OC ${exp.qb_po_folio ?? exp.id.slice(0, 8)} · ${exp.proveedor_nombre ?? '(sin proveedor)'} · ${fmt(Number(exp.oc_monto_mxn ?? 0))}`;
+    const razon = args.razon ?? exp.requiere_atencion_razon ?? 'La OC no cumplió las reglas de autofirma configuradas.';
+
+    const html = `
+      <div style="font-family: -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
+        <div style="background: #fff; border-radius: 16px; padding: 32px; border: 1px solid rgba(108,59,255,0.15);">
+          <p style="font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #f59e0b; margin: 0 0 12px;">Requiere autorización</p>
+          <h1 style="font-size: 22px; font-weight: 800; margin: 0 0 20px; color: #1A0A3B;">${businessName}</h1>
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+            <tr><td style="padding: 6px 0; font-size: 12px; color: #6B6480; width: 140px;">Proveedor</td><td style="padding: 6px 0; font-size: 13px; color: #1A0A3B; font-weight: 600;">${exp.proveedor_nombre ?? '—'}</td></tr>
+            <tr><td style="padding: 6px 0; font-size: 12px; color: #6B6480;">OC en QB</td><td style="padding: 6px 0; font-size: 13px; color: #1A0A3B;">${exp.qb_po_folio ? `#${exp.qb_po_folio}` : exp.id.slice(0, 8)}</td></tr>
+            <tr><td style="padding: 6px 0; font-size: 12px; color: #6B6480;">Monto</td><td style="padding: 6px 0; font-size: 13px; color: #1A0A3B; font-weight: 700;">${fmt(Number(exp.oc_monto_mxn ?? 0))}</td></tr>
+          </table>
+          <div style="border-top: 1px solid #F0EDF9; padding-top: 20px; margin-bottom: 20px;">
+            <p style="font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #6B6480; margin: 0 0 8px;">Por qué se escala</p>
+            <p style="font-size: 13px; line-height: 1.65; color: #1A0A3B; margin: 0;">${razon.replace(/</g, '&lt;')}</p>
+          </div>
+          ${pdfUrl ? `<a href="${pdfUrl}" style="display: inline-block; padding: 12px 20px; background: #6C3BFF; color: #fff; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 13px;">Ver PDF de la OC</a>` : ''}
+          <p style="font-size: 11px; color: #9B8FB5; margin: 24px 0 0;">Cuando decidas, responde este correo o firma físicamente el PDF y regrésaselo a ${(agent.agent_name as string | null) ?? 'tu facturista'}.</p>
+        </div>
+      </div>
+    `.trim();
+
+    let enviados = 0;
+    for (const persona of autorizadores) {
+      const ok = await sendEmail({ to: persona.email!, subject, html });
+      if (ok) enviados++;
+    }
+
+    if (enviados === 0) { await refundEsc('email_send_failed'); return { ok: false, error: 'No se pudo enviar el correo a ningún autorizador.' }; }
+
+    await supabase.from('expedientes_compras').update({
+      status:                  exp.status === 'requiere_atencion' ? 'requiere_atencion' : exp.status,
+      requiere_atencion_razon: razon,
+      requiere_atencion_at:    exp.requiere_atencion_at ?? new Date().toISOString(),
+    }).eq('id', exp.id);
+
+    void supabase.from('expediente_eventos').insert({
+      expediente_id: exp.id, portal_email: portalEmail, agent_id: agentId,
+      actor: `meerkat:${(agent.agent_name as string | null)?.toLowerCase() ?? 'nox'}`,
+      tipo: 'nota', from_status: exp.status, to_status: exp.status,
+      detalle: { evento: 'escalacion_firma_humana', destinatarios: autorizadores.length, enviados, razon },
+    });
+
+    return {
+      ok:                true,
+      expediente_id:     exp.id,
+      destinatarios:     autorizadores.map(p => ({ name: p.name, email: p.email })),
+      enviados,
+      message:           `Escalación enviada a ${enviados} autorizador(es). Espero su respuesta para continuar.`,
+    };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // enviar_oc_a_pagos — Nala manda OC firmada al depto de pagos
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'enviar_oc_a_pagos') {
+    const opsCheck = await consumeAiOp(agentId, 1, { source: 'tool_execution', label: 'Ejecución de herramienta interna' });
+    if (!opsCheck.ok) return { ok: false, error: 'Sin tareas disponibles para enviar la OC a pagos.' };
+    const refundEnv = (r: string) => refundOps(agentId, 1, { source: 'tool_execution', label: `Refund enviar_oc_a_pagos: ${r}` });
+
+    const args = toolInput as { expediente_id?: string; datos_bancarios?: string; nota?: string };
+    if (!args.expediente_id) { await refundEnv('missing_expediente'); return { ok: false, error: 'expediente_id es requerido.' }; }
+
+    const { data: exp } = await supabase.from('expedientes_compras')
+      .select('*').eq('id', args.expediente_id).eq('portal_email', portalEmail).single();
+    if (!exp) { await refundEnv('expediente_not_found'); return { ok: false, error: 'Expediente no encontrado.' }; }
+    if (!exp.oc_firmada_at) { await refundEnv('not_signed'); return { ok: false, error: 'La OC aún no está firmada. Firma primero.' }; }
+    if (!exp.oc_pdf_firmado_path) { await refundEnv('no_signed_pdf'); return { ok: false, error: 'No hay PDF firmado. Corre firmar_oc primero.' }; }
+
+    const { loadOrgDirectory } = await import('@/lib/portal/directory');
+    const directory = await loadOrgDirectory(portalEmail, supabase);
+    const pagos = directory.filter(p => p.is_oc_pagos && p.email?.trim());
+    if (pagos.length === 0) { await refundEnv('no_pagos'); return { ok: false, error: 'No hay nadie marcado como depto de pagos en el directorio.' }; }
+
+    const { data: signed } = await supabase.storage.from('cfdi').createSignedUrl(exp.oc_pdf_firmado_path, 60 * 60 * 24 * 7);
+    const pdfUrl = signed?.signedUrl ?? null;
+
+    const fmt = (n: number) => n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+    const subject = `Pago requerido — OC ${exp.qb_po_folio ?? exp.id.slice(0, 8)} · ${exp.proveedor_nombre ?? ''} · ${fmt(Number(exp.oc_monto_mxn ?? 0))}`;
+
+    const html = `
+      <div style="font-family: -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
+        <div style="background: #fff; border-radius: 16px; padding: 32px; border: 1px solid rgba(108,59,255,0.15);">
+          <p style="font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #0ea5e9; margin: 0 0 12px;">OC firmada — listo para pago</p>
+          <h1 style="font-size: 22px; font-weight: 800; margin: 0 0 20px; color: #1A0A3B;">${exp.proveedor_nombre ?? 'Proveedor sin nombre'}</h1>
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+            <tr><td style="padding: 6px 0; font-size: 12px; color: #6B6480; width: 140px;">OC en QB</td><td style="padding: 6px 0; font-size: 13px; color: #1A0A3B;">${exp.qb_po_folio ? `#${exp.qb_po_folio}` : exp.id.slice(0, 8)}</td></tr>
+            <tr><td style="padding: 6px 0; font-size: 12px; color: #6B6480;">Monto a transferir</td><td style="padding: 6px 0; font-size: 14px; color: #1A0A3B; font-weight: 800;">${fmt(Number(exp.oc_monto_mxn ?? 0))}</td></tr>
+            <tr><td style="padding: 6px 0; font-size: 12px; color: #6B6480;">RFC proveedor</td><td style="padding: 6px 0; font-size: 13px; color: #1A0A3B; font-family: monospace;">${exp.proveedor_rfc ?? '—'}</td></tr>
+            ${args.datos_bancarios ? `<tr><td style="padding: 6px 0; font-size: 12px; color: #6B6480; vertical-align: top;">Datos bancarios</td><td style="padding: 6px 0; font-size: 12px; color: #1A0A3B; white-space: pre-wrap;">${String(args.datos_bancarios).replace(/</g, '&lt;')}</td></tr>` : ''}
+          </table>
+          ${args.nota ? `<div style="background: #F5F2FB; padding: 12px 14px; border-radius: 10px; margin-bottom: 20px; font-size: 12px; color: #1A0A3B;">${String(args.nota).replace(/</g, '&lt;')}</div>` : ''}
+          ${pdfUrl ? `<a href="${pdfUrl}" style="display: inline-block; padding: 12px 20px; background: #6C3BFF; color: #fff; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 13px;">OC firmada (PDF)</a>` : ''}
+          <p style="font-size: 11px; color: #9B8FB5; margin: 24px 0 0;">Al hacer la transferencia, respóndeme con el comprobante y lo registro para cerrar el paso.</p>
+        </div>
+      </div>
+    `.trim();
+
+    let enviados = 0;
+    for (const p of pagos) {
+      const ok = await sendEmail({ to: p.email!, subject, html });
+      if (ok) enviados++;
+    }
+    if (enviados === 0) { await refundEnv('email_send_failed'); return { ok: false, error: 'No se pudo enviar el correo al depto de pagos.' }; }
+
+    await supabase.from('expedientes_compras').update({
+      oc_enviada_proveedor_at: exp.oc_enviada_proveedor_at, // no cambia aún — se marca en enviar_oc_a_proveedor
+    }).eq('id', exp.id);
+
+    void supabase.from('expediente_eventos').insert({
+      expediente_id: exp.id, portal_email: portalEmail, agent_id: agentId,
+      actor: `meerkat:${(agent.agent_name as string | null)?.toLowerCase() ?? 'nala'}`,
+      tipo: 'nota', from_status: exp.status, to_status: exp.status,
+      detalle: { evento: 'oc_enviada_a_pagos', destinatarios: pagos.length, enviados, monto: exp.oc_monto_mxn },
+    });
+
+    return {
+      ok:            true,
+      expediente_id: exp.id,
+      destinatarios: pagos.map(p => ({ name: p.name, email: p.email })),
+      enviados,
+      message:       `OC firmada enviada a depto de pagos (${enviados} destinatario(s)). Espero comprobante para registrar el pago.`,
+    };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // registrar_comprobante_pago — Nala guarda comprobante + transiciona a oc_pagada
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'registrar_comprobante_pago') {
+    const opsCheck = await consumeAiOp(agentId, 1, { source: 'tool_execution', label: 'Ejecución de herramienta interna' });
+    if (!opsCheck.ok) return { ok: false, error: 'Sin tareas disponibles para registrar el comprobante de pago.' };
+    const refundReg = (r: string) => refundOps(agentId, 1, { source: 'tool_execution', label: `Refund registrar_comprobante_pago: ${r}` });
+
+    const args = toolInput as { expediente_id?: string; comprobante_base64?: string; extension?: string; comprobante_storage_path?: string; nota?: string };
+    if (!args.expediente_id) { await refundReg('missing_expediente'); return { ok: false, error: 'expediente_id es requerido.' }; }
+    if (!args.comprobante_base64 && !args.comprobante_storage_path) {
+      await refundReg('missing_comprobante');
+      return { ok: false, error: 'Necesito comprobante_base64 (contenido del archivo) o comprobante_storage_path (si ya está en Storage).' };
+    }
+
+    const { data: exp } = await supabase.from('expedientes_compras')
+      .select('id, status, oc_firmada_at, portal_email').eq('id', args.expediente_id).eq('portal_email', portalEmail).single();
+    if (!exp) { await refundReg('expediente_not_found'); return { ok: false, error: 'Expediente no encontrado.' }; }
+
+    let comprobantePath = args.comprobante_storage_path ?? null;
+    if (!comprobantePath && args.comprobante_base64) {
+      const ext = (args.extension ?? 'pdf').replace(/[^a-z0-9]/gi, '').toLowerCase() || 'pdf';
+      const buf = Buffer.from(args.comprobante_base64, 'base64');
+      if (buf.length === 0) { await refundReg('empty_file'); return { ok: false, error: 'El archivo del comprobante está vacío.' }; }
+      if (buf.length > 5 * 1024 * 1024) { await refundReg('file_too_big'); return { ok: false, error: 'El comprobante excede 5 MB.' }; }
+      comprobantePath = `${portalEmail}/oc/${exp.id}_comprobante.${ext}`;
+      const contentType = ext === 'pdf' ? 'application/pdf' : ext === 'png' ? 'image/png' : ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'application/octet-stream';
+      const up = await supabase.storage.from('cfdi').upload(comprobantePath, buf, { contentType, upsert: true });
+      if (up.error) { await refundReg('storage_upload_failed'); return { ok: false, error: `Storage upload: ${up.error.message}` }; }
+    }
+
+    const nowIso = new Date().toISOString();
+    await supabase.from('expedientes_compras').update({
+      status:                   'oc_pagada',
+      oc_pagada_at:             nowIso,
+      oc_comprobante_pago_path: comprobantePath,
+    }).eq('id', exp.id);
+
+    void supabase.from('expediente_eventos').insert({
+      expediente_id: exp.id, portal_email: portalEmail, agent_id: agentId,
+      actor: `meerkat:${(agent.agent_name as string | null)?.toLowerCase() ?? 'nala'}`,
+      tipo: 'oc_pagada', from_status: exp.status, to_status: 'oc_pagada',
+      detalle: { comprobante_path: comprobantePath, nota: args.nota ?? null },
+    });
+
+    return {
+      ok:                true,
+      expediente_id:     exp.id,
+      comprobante_path:  comprobantePath,
+      message:           'Comprobante de pago registrado. Expediente en estado `oc_pagada`. Ya se puede enviar al proveedor.',
+    };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // enviar_oc_a_proveedor — Nala manda OC firmada + comprobante al proveedor
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'enviar_oc_a_proveedor') {
+    const opsCheck = await consumeAiOp(agentId, 1, { source: 'tool_execution', label: 'Ejecución de herramienta interna' });
+    if (!opsCheck.ok) return { ok: false, error: 'Sin tareas disponibles para enviar al proveedor.' };
+    const refundEnv = (r: string) => refundOps(agentId, 1, { source: 'tool_execution', label: `Refund enviar_oc_a_proveedor: ${r}` });
+
+    const args = toolInput as { expediente_id?: string; mensaje?: string };
+    if (!args.expediente_id) { await refundEnv('missing_expediente'); return { ok: false, error: 'expediente_id es requerido.' }; }
+
+    const { data: exp } = await supabase.from('expedientes_compras')
+      .select('*').eq('id', args.expediente_id).eq('portal_email', portalEmail).single();
+    if (!exp) { await refundEnv('expediente_not_found'); return { ok: false, error: 'Expediente no encontrado.' }; }
+    if (!exp.proveedor_email?.trim()) { await refundEnv('no_proveedor_email'); return { ok: false, error: 'El expediente no tiene correo de proveedor.' }; }
+    if (!exp.oc_pdf_firmado_path) { await refundEnv('no_signed_pdf'); return { ok: false, error: 'No hay OC firmada. Corre firmar_oc primero.' }; }
+    if (!exp.oc_pagada_at) { await refundEnv('not_paid'); return { ok: false, error: 'La OC aún no está marcada como pagada. Registra el comprobante primero.' }; }
+
+    // Verifier adversarial — enviamos email externo con datos financieros
+    const { verifyDestructiveAction } = await import('@/lib/tools/verifier');
+    const verdict = await verifyDestructiveAction({
+      action:          'enviar OC firmada + comprobante de pago al proveedor externo (destructivo, cierra ciclo)',
+      target:          exp.proveedor_email,
+      reason:          `Proveedor: ${exp.proveedor_nombre ?? '—'} — OC ${exp.qb_po_folio ?? exp.id.slice(0, 8)} — monto ${exp.oc_monto_mxn}`,
+      businessContext: (agent.knowledge_base as string | null) ?? null,
+      currentIsoDate:  new Date().toISOString(),
+    });
+    if (!verdict.safe) { await refundEnv('verifier_blocked'); return { ok: false, error: `Verificador bloqueó el envío: ${verdict.concern ?? 'sin razón'}.` }; }
+
+    const [pdfSigned, compSigned] = await Promise.all([
+      supabase.storage.from('cfdi').createSignedUrl(exp.oc_pdf_firmado_path, 60 * 60 * 24 * 30),
+      exp.oc_comprobante_pago_path
+        ? supabase.storage.from('cfdi').createSignedUrl(exp.oc_comprobante_pago_path, 60 * 60 * 24 * 30)
+        : Promise.resolve({ data: null }),
+    ]);
+    const pdfUrl = pdfSigned?.data?.signedUrl ?? null;
+    const compUrl = (compSigned as any)?.data?.signedUrl ?? null;
+
+    const fmt = (n: number) => n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+    const subject = `Orden de Compra ${exp.qb_po_folio ?? ''} · ${businessName} · ${fmt(Number(exp.oc_monto_mxn ?? 0))}`;
+    const mensajeCustom = args.mensaje ?? `Adjunto la Orden de Compra firmada y el comprobante de la transferencia realizada. Por favor confírmame recepción y coordinamos la entrega.`;
+
+    const html = `
+      <div style="font-family: -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
+        <div style="background: #fff; border-radius: 16px; padding: 32px; border: 1px solid rgba(108,59,255,0.15);">
+          <p style="font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #22c55e; margin: 0 0 12px;">Pago confirmado</p>
+          <h1 style="font-size: 20px; font-weight: 800; margin: 0 0 20px; color: #1A0A3B;">${businessName}</h1>
+          <p style="font-size: 14px; line-height: 1.65; color: #1A0A3B; margin: 0 0 24px;">${mensajeCustom.replace(/</g, '&lt;')}</p>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;">
+            ${pdfUrl ? `<a href="${pdfUrl}" style="display: inline-block; padding: 12px 18px; background: #6C3BFF; color: #fff; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 13px;">OC firmada (PDF)</a>` : ''}
+            ${compUrl ? `<a href="${compUrl}" style="display: inline-block; padding: 12px 18px; background: #22c55e; color: #fff; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 13px;">Comprobante de pago</a>` : ''}
+          </div>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr><td style="padding: 4px 0; font-size: 11px; color: #6B6480; width: 130px;">OC</td><td style="padding: 4px 0; font-size: 12px; color: #1A0A3B;">${exp.qb_po_folio ? `#${exp.qb_po_folio}` : exp.id.slice(0, 8)}</td></tr>
+            <tr><td style="padding: 4px 0; font-size: 11px; color: #6B6480;">Monto</td><td style="padding: 4px 0; font-size: 12px; color: #1A0A3B; font-weight: 700;">${fmt(Number(exp.oc_monto_mxn ?? 0))}</td></tr>
+          </table>
+        </div>
+      </div>
+    `.trim();
+
+    const ok = await sendEmail({ to: exp.proveedor_email, subject, html });
+    if (!ok) { await refundEnv('email_send_failed'); return { ok: false, error: 'No se pudo enviar el correo al proveedor.' }; }
+
+    const nowIso = new Date().toISOString();
+    await supabase.from('expedientes_compras').update({
+      status:                  'oc_enviada_proveedor',
+      oc_enviada_proveedor_at: nowIso,
+    }).eq('id', exp.id);
+
+    void supabase.from('expediente_eventos').insert({
+      expediente_id: exp.id, portal_email: portalEmail, agent_id: agentId,
+      actor: `meerkat:${(agent.agent_name as string | null)?.toLowerCase() ?? 'nala'}`,
+      tipo: 'oc_enviada_proveedor', from_status: exp.status, to_status: 'oc_enviada_proveedor',
+      detalle: { proveedor_email: exp.proveedor_email, con_comprobante: !!compUrl },
+    });
+
+    return {
+      ok:            true,
+      expediente_id: exp.id,
+      enviado_a:     exp.proveedor_email,
+      message:       `OC firmada + comprobante enviados al proveedor (${exp.proveedor_email}). Expediente en estado \`oc_enviada_proveedor\`.`,
+    };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // archivar_expediente — Nala archiva XML+PDF+acuse a destino configurado
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'archivar_expediente') {
+    const opsCheck = await consumeAiOp(agentId, 1, { source: 'tool_execution', label: 'Ejecución de herramienta interna' });
+    if (!opsCheck.ok) return { ok: false, error: 'Sin tareas disponibles para archivar el expediente.' };
+    const refundArch = (r: string) => refundOps(agentId, 1, { source: 'tool_execution', label: `Refund archivar_expediente: ${r}` });
+
+    const args = toolInput as { expediente_id?: string };
+    if (!args.expediente_id) { await refundArch('missing_expediente'); return { ok: false, error: 'expediente_id es requerido.' }; }
+
+    const { data: exp } = await supabase.from('expedientes_compras')
+      .select('*').eq('id', args.expediente_id).eq('portal_email', portalEmail).single();
+    if (!exp) { await refundArch('expediente_not_found'); return { ok: false, error: 'Expediente no encontrado.' }; }
+    if (!exp.sf_uuid) { await refundArch('no_cfdi'); return { ok: false, error: 'No se puede archivar sin CFDI timbrado (falta sf_uuid).' }; }
+
+    const { data: org } = await supabase.from('organizations')
+      .select('ciclo_oc_config').eq('portal_email', portalEmail).single();
+    const cfg = (org?.ciclo_oc_config as any) ?? {};
+    if (!cfg.archivado_destino) { await refundArch('no_destino'); return { ok: false, error: 'No hay destino de archivado configurado en el portal.' }; }
+
+    // Construir lista de archivos a archivar
+    const files: Array<{ tipo: 'oc_firmada' | 'cfdi_xml' | 'cfdi_pdf' | 'cfdi_acuse'; ext: 'pdf' | 'xml'; srcPath: string }> = [];
+    if (exp.oc_pdf_firmado_path) files.push({ tipo: 'oc_firmada', ext: 'pdf', srcPath: exp.oc_pdf_firmado_path });
+    if (exp.cfdi_xml_path)        files.push({ tipo: 'cfdi_xml',   ext: 'xml', srcPath: exp.cfdi_xml_path });
+    if (exp.cfdi_pdf_path)        files.push({ tipo: 'cfdi_pdf',   ext: 'pdf', srcPath: exp.cfdi_pdf_path });
+    if (exp.cfdi_acuse_path)      files.push({ tipo: 'cfdi_acuse', ext: 'xml', srcPath: exp.cfdi_acuse_path });
+
+    if (files.length === 0) { await refundArch('no_files'); return { ok: false, error: 'No hay archivos para archivar.' }; }
+
+    try {
+      const { archivarExpediente } = await import('@/lib/ciclo-oc/archivo-adapter');
+      const result = await archivarExpediente({
+        portalEmail,
+        expedienteId:    exp.id,
+        proveedorNombre: exp.proveedor_nombre,
+        qbPoFolio:       exp.qb_po_folio,
+        cfdiUuid:        exp.sf_uuid,
+        fechaTimbrado:   exp.cfdi_timbrada_at ? new Date(exp.cfdi_timbrada_at) : new Date(),
+        files,
+      }, cfg, supabase);
+
+      if (!result.ok) { await refundArch('adapter_failed'); return { ok: false, error: result.error ?? 'Archivado falló.' }; }
+
+      const rutaResumen = result.archivados.map(a => a.ruta_destino).join(' | ');
+      const nowIso = new Date().toISOString();
+      const pending = result.archivados.some(a => a.pending);
+
+      await supabase.from('expedientes_compras').update({
+        status:               pending ? exp.status : 'docs_archivados',
+        docs_archivados_at:   pending ? null : nowIso,
+        docs_archivados_ruta: rutaResumen,
+      }).eq('id', exp.id);
+
+      void supabase.from('expediente_eventos').insert({
+        expediente_id: exp.id, portal_email: portalEmail, agent_id: agentId,
+        actor: `meerkat:${(agent.agent_name as string | null)?.toLowerCase() ?? 'nala'}`,
+        tipo: pending ? 'nota' : 'docs_archivados',
+        from_status: exp.status,
+        to_status: pending ? exp.status : 'docs_archivados',
+        detalle: { destino: result.destino, archivados: result.archivados, pending },
+      });
+
+      return {
+        ok:              true,
+        expediente_id:   exp.id,
+        destino:         result.destino,
+        archivos:        result.archivados.length,
+        pending,
+        message:         pending
+          ? `Archivos marcados para pull por agente externo (${result.destino}). Rutas: ${rutaResumen}`
+          : `Archivados ${result.archivados.length} archivos en ${result.destino}: ${rutaResumen}`,
+      };
+    } catch (err) { await refundArch('exception'); return { ok: false, error: String(err) }; }
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
   // revisar_desempeno_equipo — exclusiva de Niva (directora general)
   // ─────────────────────────────────────────────────────────────────────────

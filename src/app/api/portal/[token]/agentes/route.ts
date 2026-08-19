@@ -97,7 +97,7 @@ export async function createPortalAgent({
       auto_refill_minutes:   base.auto_refill_minutes,
       onboarding_completed:  true,
       agent_name:            agentName,
-      role:                  role.id === 'custom' ? null : role.rol,
+      role:                  role.rol,
       features,
       ...(role.voiceId ? { elevenlabs_voice_id: role.voiceId } : {}),
       giro_template:         'general',
@@ -175,7 +175,7 @@ export async function POST(
     return NextResponse.json({ error: eligible.reason, message: eligible.message, contact: eligible.contact }, { status: 409 });
   }
 
-  const agentName = agent_name?.trim() || (role.id === 'custom' ? 'Empleado' : role.nombre);
+  const agentName = agent_name?.trim() || role.nombre;
 
   // Tier del nuevo empleado (viene del body; el frontend MeerkatPicker lo manda).
   // Antes se leía de base.minutes_plan (el del primario) dentro de createPortalAgent,
