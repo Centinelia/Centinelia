@@ -45,7 +45,7 @@ export interface SolicitarFacturaCtx {
   sourceCallId?: string;
   sourceInboxId?: string;
   sourceContext?: string;
-  invoicingEmail?: string;  // features.invoicing_email; fallback portal_email o client_email
+  invoicingEmail?: string;  // organizations.invoicing_email; fallback client_email o portal_email
 }
 
 export interface SolicitarFacturaResult {

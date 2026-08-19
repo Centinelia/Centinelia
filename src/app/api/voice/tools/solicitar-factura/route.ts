@@ -25,12 +25,16 @@ export async function POST(req: NextRequest) {
   const supabase = createAdminClient();
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('id, business_name, portal_email, features, client_email')
+    .select('id, business_name, portal_email, client_email')
     .eq('id', agent_id)
     .single();
   if (!agent) return reply('No pude registrar la solicitud: agente no encontrado.');
 
-  const invoicingEmail = ((agent.features as Record<string, unknown> | undefined)?.invoicing_email as string | undefined)
+  // invoicing_email vive en organizations desde 2026-08-19 (migración desde features.invoicing_email)
+  const { data: org } = agent.portal_email
+    ? await supabase.from('organizations').select('invoicing_email').eq('portal_email', agent.portal_email).maybeSingle()
+    : { data: null };
+  const invoicingEmail = (org?.invoicing_email as string | null | undefined)
     ?? (agent.client_email as string | undefined)
     ?? (agent.portal_email as string | undefined);
 

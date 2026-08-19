@@ -171,10 +171,11 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
   }
 
   const { data: orgRow } = agent.portal_email
-    ? await supabase.from('organizations').select('owner_passphrase, fallback_phone_number').eq('portal_email', agent.portal_email).maybeSingle()
+    ? await supabase.from('organizations').select('owner_passphrase, fallback_phone_number, invoicing_email').eq('portal_email', agent.portal_email).maybeSingle()
     : { data: null };
   const ownerPassphrase      = orgRow?.owner_passphrase ?? '';
   const fallbackPhoneNumber  = (orgRow as any)?.fallback_phone_number as string | null ?? null;
+  const orgInvoicingEmail    = (orgRow as any)?.invoicing_email as string | null ?? '';
 
   // Fetch spam folder stats for the last 7 days
   const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
@@ -523,7 +524,6 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
                       className="mb-4"
                     />
                     <BrandTemplateSection
-                      agentId={agent.id}
                       availableTipos={
                         meerkatId === 'noah'  ? ['propuesta', 'cotizacion', 'one_pager'] :
                         meerkatId === 'nelia' ? ['one_pager'] :
@@ -578,7 +578,7 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
                         tooltip="Cuando el empleado recolecte una solicitud de factura de un cliente, esta persona recibirá el correo con todos los datos para timbrar el CFDI en su sistema fiscal (Solución Factible, CONTPAQ, Aspel, etc.)."
                         className="mb-3"
                       />
-                      <InvoicingEmailEditor token={token} agentId={agent.id as string} initialEmail={((agent as any).features?.invoicing_email as string | undefined) ?? ''} />
+                      <InvoicingEmailEditor token={token} initialEmail={orgInvoicingEmail} />
                     </div>
                   </Card>
                 </div>

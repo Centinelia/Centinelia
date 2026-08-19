@@ -1732,7 +1732,11 @@ async function executeAgentToolInner(
   // al equipo humano (Martha en AC). No timbramos desde Centinelia.
   // ─────────────────────────────────────────────────────────────────────────
   if (toolName === 'solicitar_factura') {
-    const invoicingEmail = ((agent.features as Record<string, unknown> | undefined)?.invoicing_email as string | undefined)
+    // invoicing_email vive en organizations desde 2026-08-19
+    const { data: orgInv } = portalEmail
+      ? await supabase.from('organizations').select('invoicing_email').eq('portal_email', portalEmail).maybeSingle()
+      : { data: null };
+    const invoicingEmail = (orgInv?.invoicing_email as string | null | undefined)
       ?? (agent.client_email as string | undefined)
       ?? portalEmail;
     const res = await solicitarFactura({
