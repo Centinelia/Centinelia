@@ -455,11 +455,9 @@ const EMAIL_TOOL_BY_NAME: Record<string, Anthropic.Tool> = Object.fromEntries(
  * en MEERKAT_VOICE_DISTRIBUTION (mismo pattern que voice + chat).
  */
 function getToolsForRoleEmail(meerkatId: string | null, qbConnected: boolean): Anthropic.Tool[] {
-  // Nash caso especial: es meerkat interno (monitoreo de plataforma), no está
-  // en MEERKAT_VOICE_DISTRIBUTION porque no tiene voz. Data 14 días muestra
-  // que usa 100% tools Nash-only (revisar_incidentes_plataforma, verificar_fix,
-  // etc.) y 0% BASE_EMAIL_TOOLS. Solo le damos las universales como safety net
-  // — sus 6 tools Nash-only se agregan downstream en processInboxEmail().
+  // Nash caso especial: meerkat interno de monitoreo, sin voz. Data 14 días
+  // muestra que usa 100% tools Nash-only (agregadas downstream) y 0% de
+  // BASE_EMAIL_TOOLS. Solo universales como safety net.
   if (meerkatId === 'nash') {
     const tools: Anthropic.Tool[] = [];
     for (const name of UNIVERSAL_TOOLS) {
@@ -469,51 +467,12 @@ function getToolsForRoleEmail(meerkatId: string | null, qbConnected: boolean): A
     return tools;
   }
 
-  const voiceNames = meerkatId && meerkatId !== 'custom'
-    ? MEERKAT_VOICE_DISTRIBUTION[meerkatId] ?? null
-    : null;
-
-  // Custom / unknown → todas las tools (retrocompat)
-  if (!voiceNames) {
-    return [...BASE_EMAIL_TOOLS, ...(qbConnected ? QB_EMAIL_TOOLS : [])];
-  }
-
-  const tools: Anthropic.Tool[] = [];
-  const seen  = new Set<string>();
-
-  // Preset del meerkat
-  for (const voiceName of voiceNames) {
-    const emailName = VOICE_TO_CHAT[voiceName];
-    if (!emailName || seen.has(emailName)) continue;
-    if (!qbConnected && emailName.startsWith('qb_')) continue;
-    const t = EMAIL_TOOL_BY_NAME[emailName];
-    if (t) { tools.push(t); seen.add(emailName); }
-  }
-
-  // Tools email-only (marcar_no_llamar) — LFPDPPP obliga a que cualquier
-  // meerkat que reciba correo pueda dar de baja al remitente.
-  for (const voiceName of EMAIL_ONLY_TOOLS_FROM_VOICE) {
-    if (voiceNames.includes(voiceName)) {
-      const t = EMAIL_TOOL_BY_NAME[voiceName];
-      if (t && !seen.has(voiceName)) { tools.push(t); seen.add(voiceName); }
-    }
-  }
-
-  // Base universal — 6 tools que todo meerkat recibe
-  for (const name of UNIVERSAL_TOOLS) {
-    if (seen.has(name)) continue;
-    const t = EMAIL_TOOL_BY_NAME[name];
-    if (t) { tools.push(t); seen.add(name); }
-  }
-
-  // QB extras (si conectado)
-  if (qbConnected) {
-    for (const t of QB_EMAIL_TOOLS) {
-      if (!seen.has(t.name)) { tools.push(t); seen.add(t.name); }
-    }
-  }
-
-  return tools;
+  // TODO 2026-08-19: definir MEERKAT_EMAIL_DISTRIBUTION explícito por rol.
+  // El intento de reusar MEERKAT_VOICE_DISTRIBUTION rompió Nia/Noah/Nox/Niva
+  // porque voice-preset ≠ email-preset (email hace research profundo, voice es
+  // reactivo). Mientras tanto, todos reciben BASE_EMAIL_TOOLS entero.
+  // Ver [[handoff-tool-bloat-refactor]].
+  return [...BASE_EMAIL_TOOLS, ...(qbConnected ? QB_EMAIL_TOOLS : [])];
 }
 
 export async function processInboxEmail(params: {
