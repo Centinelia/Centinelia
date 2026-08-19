@@ -455,6 +455,20 @@ const EMAIL_TOOL_BY_NAME: Record<string, Anthropic.Tool> = Object.fromEntries(
  * en MEERKAT_VOICE_DISTRIBUTION (mismo pattern que voice + chat).
  */
 function getToolsForRoleEmail(meerkatId: string | null, qbConnected: boolean): Anthropic.Tool[] {
+  // Nash caso especial: es meerkat interno (monitoreo de plataforma), no está
+  // en MEERKAT_VOICE_DISTRIBUTION porque no tiene voz. Data 14 días muestra
+  // que usa 100% tools Nash-only (revisar_incidentes_plataforma, verificar_fix,
+  // etc.) y 0% BASE_EMAIL_TOOLS. Solo le damos las universales como safety net
+  // — sus 6 tools Nash-only se agregan downstream en processInboxEmail().
+  if (meerkatId === 'nash') {
+    const tools: Anthropic.Tool[] = [];
+    for (const name of UNIVERSAL_TOOLS) {
+      const t = EMAIL_TOOL_BY_NAME[name];
+      if (t) tools.push(t);
+    }
+    return tools;
+  }
+
   const voiceNames = meerkatId && meerkatId !== 'custom'
     ? MEERKAT_VOICE_DISTRIBUTION[meerkatId] ?? null
     : null;
