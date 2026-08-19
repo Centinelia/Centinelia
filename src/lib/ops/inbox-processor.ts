@@ -440,9 +440,337 @@ const QB_EMAIL_TOOLS: Anthropic.Tool[] = [
   },
 ];
 
+// ── Pack ciclo OC-CFDI (Nala, AC piloto) ────────────────────────────────
+const CICLO_OC_CFDI_EMAIL_TOOLS: Anthropic.Tool[] = [
+  {
+    name:        'qb_crear_orden_compra',
+    description: 'Crea Orden de Compra en QuickBooks y abre expediente de seguimiento. Úsala cuando llegue por correo una cotización de proveedor aprobada y necesites generar la OC formal (destructiva, 1 op).',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        proveedor_nombre: { type: 'string', description: 'Nombre o razón social del proveedor' },
+        proveedor_rfc:    { type: 'string', description: 'RFC del proveedor (opcional)' },
+        proveedor_email:  { type: 'string', description: 'Email del proveedor (opcional)' },
+        conceptos:        {
+          type: 'array',
+          description: 'Items de la OC (descripcion + cantidad + precio_unitario)',
+          items: {
+            type: 'object',
+            properties: {
+              descripcion:     { type: 'string' },
+              cantidad:        { type: 'number' },
+              precio_unitario: { type: 'number' },
+            },
+            required: ['descripcion', 'cantidad', 'precio_unitario'],
+          },
+        },
+        folio_interno: { type: 'string', description: 'Referencia interna (opcional)' },
+        descripcion:   { type: 'string', description: 'Descripción global de la OC (opcional)' },
+      },
+      required: ['proveedor_nombre', 'conceptos'],
+    },
+  },
+  {
+    name:        'qb_consultar_orden_compra',
+    description: 'Consulta una OC en QuickBooks por ID de QB o por expediente interno. Read-only.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        qb_po_id:      { type: 'string', description: 'ID de la OC en QuickBooks' },
+        expediente_id: { type: 'string', description: 'ID del expediente interno' },
+      },
+    },
+  },
+  {
+    name:        'qb_descargar_oc_pdf',
+    description: 'Descarga el PDF de OC desde QuickBooks y lo archiva en Storage (1 op). Requiere que el expediente ya exista.',
+    input_schema: {
+      type: 'object' as const,
+      properties: { expediente_id: { type: 'string' } },
+      required: ['expediente_id'],
+    },
+  },
+  {
+    name:        'firmar_oc',
+    description: 'Evalúa las reglas de autofirma configuradas para el negocio y aplica la firma digitalizada sobre el PDF de la OC (1 op). Si no cumple reglas, escala a firma humana.',
+    input_schema: {
+      type: 'object' as const,
+      properties: { expediente_id: { type: 'string' } },
+      required: ['expediente_id'],
+    },
+  },
+  {
+    name:        'sf_timbrar_desde_oc',
+    description: 'Timbra CFDI ante el SAT vía Solución Factible copiando conceptos del expediente OC + datos fiscales del cliente (destructivo, 1 op).',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        expediente_id:  { type: 'string' },
+        cliente_nombre: { type: 'string' },
+        cliente_rfc:    { type: 'string' },
+        cliente_email:  { type: 'string' },
+        uso_cfdi:       { type: 'string', description: 'Clave uso CFDI SAT (ej. G03)' },
+        forma_pago:     { type: 'string', description: 'Forma pago SAT (ej. 03)' },
+        metodo_pago:    { type: 'string', enum: ['PUE', 'PPD'] },
+      },
+      required: ['expediente_id', 'cliente_nombre', 'cliente_rfc', 'cliente_email', 'uso_cfdi', 'forma_pago', 'metodo_pago'],
+    },
+  },
+  {
+    name:        'sf_cancelar_cfdi',
+    description: 'Solicita cancelación de CFDI ante el SAT vía Solución Factible. Requiere invoicing_allow_agent_cancellation=true en la org. DESTRUCTIVO IRREVERSIBLE si SAT acepta (1 op).',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        expediente_id:  { type: 'string' },
+        uuid:           { type: 'string', description: 'UUID del CFDI a cancelar' },
+        motivo:         { type: 'string', enum: ['01', '02', '03', '04'], description: '01=comprobante con errores con relación, 02=sin relación, 03=no se llevó a cabo la operación, 04=nominativa relacionada en global' },
+        uuid_sustituto: { type: 'string', description: 'Requerido si motivo=01' },
+        razon_cliente:  { type: 'string' },
+      },
+      required: ['motivo'],
+    },
+  },
+  {
+    name:        'sf_consultar_estado_sat',
+    description: 'Consulta estado real de una cancelación de CFDI ante el SAT (read-only, sin ops).',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        expediente_id: { type: 'string' },
+        uuid:          { type: 'string' },
+      },
+    },
+  },
+  {
+    name:        'qb_crear_orden_compra_desde_cotizacion',
+    description: 'Parsea cotización de proveedor (PDF o imagen adjunta al correo) con Vision AI y crea OC en QB automáticamente. Delega a qb_crear_orden_compra (1 op).',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        cotizacion_base64:       { type: 'string', description: 'Archivo cotización en base64' },
+        cotizacion_storage_path: { type: 'string', description: 'Path en Storage si ya está subida' },
+        mime_type:               { type: 'string', description: 'MIME type (application/pdf, image/png, image/jpeg)' },
+        folio_interno:           { type: 'string' },
+        descripcion:             { type: 'string' },
+      },
+    },
+  },
+  {
+    name:        'enviar_oc_a_pagos',
+    description: 'Envía OC firmada al departamento de pagos por correo para gestionar la transferencia (1 op).',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        expediente_id:  { type: 'string' },
+        datos_bancarios: { type: 'string', description: 'Datos bancarios del proveedor (opcional)' },
+        nota:           { type: 'string' },
+      },
+      required: ['expediente_id'],
+    },
+  },
+  {
+    name:        'registrar_comprobante_pago',
+    description: 'Registra comprobante de pago recibido de depto de pagos y transiciona expediente a oc_pagada (1 op).',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        expediente_id:            { type: 'string' },
+        comprobante_base64:       { type: 'string', description: 'Archivo comprobante en base64' },
+        extension:                { type: 'string', description: 'Extensión (pdf, png, jpg)' },
+        comprobante_storage_path: { type: 'string', description: 'Path en Storage si ya está subido' },
+        nota:                     { type: 'string' },
+      },
+      required: ['expediente_id'],
+    },
+  },
+  {
+    name:        'enviar_oc_a_proveedor',
+    description: 'Envía OC firmada + comprobante de pago al proveedor externo por correo (destructivo, 1 op).',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        expediente_id: { type: 'string' },
+        mensaje:       { type: 'string', description: 'Mensaje personalizado (opcional)' },
+      },
+      required: ['expediente_id'],
+    },
+  },
+  {
+    name:        'archivar_expediente',
+    description: 'Archiva XML+PDF+acuse del expediente en destino configurado (Dropbox, SMB, Windows agent) con nomenclatura del negocio (1 op).',
+    input_schema: {
+      type: 'object' as const,
+      properties: { expediente_id: { type: 'string' } },
+      required: ['expediente_id'],
+    },
+  },
+];
+
+// ── HR (Naia) ────────────────────────────────────────────────────────────
+const HR_EMAIL_TOOLS: Anthropic.Tool[] = [
+  {
+    name:        'registrar_falta',
+    description: 'Registra una falta de empleado en el sistema RRHH cuando el correo reporte ausencia.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        employee_name: { type: 'string', description: 'Nombre del empleado' },
+        start_date:    { type: 'string', description: 'Fecha de la falta YYYY-MM-DD' },
+        reason:        { type: 'string', description: 'Motivo (opcional)' },
+      },
+      required: ['employee_name', 'start_date'],
+    },
+  },
+  {
+    name:        'consultar_vacaciones',
+    description: 'Consulta registros de vacaciones, permisos, faltas o incidencias de un empleado. Read-only.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        employee_name: { type: 'string' },
+        record_type:   { type: 'string', enum: ['falta', 'vacaciones', 'permiso', 'incidencia'], description: 'Filtro por tipo (opcional)' },
+      },
+      required: ['employee_name'],
+    },
+  },
+  {
+    name:        'solicitar_permiso',
+    description: 'Solicita permiso o vacaciones para un empleado en un rango de fechas.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        employee_name: { type: 'string' },
+        start_date:    { type: 'string', description: 'Fecha inicio YYYY-MM-DD' },
+        end_date:      { type: 'string', description: 'Fecha fin YYYY-MM-DD' },
+        record_type:   { type: 'string', enum: ['vacaciones', 'permiso'], description: 'Tipo, default permiso' },
+        reason:        { type: 'string' },
+      },
+      required: ['employee_name', 'start_date', 'end_date'],
+    },
+  },
+  {
+    name:        'verificar_incidencia',
+    description: 'Registra o verifica una incidencia laboral (accidente, atraso, comportamiento) reportada por correo.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        employee_name: { type: 'string' },
+        start_date:    { type: 'string', description: 'Fecha YYYY-MM-DD' },
+        reason:        { type: 'string', description: 'Descripción de la incidencia' },
+      },
+      required: ['employee_name', 'start_date', 'reason'],
+    },
+  },
+];
+
+// ── Gobierno / trámites externos (Nara) ──────────────────────────────────
+const GOBIERNO_EMAIL_TOOLS: Anthropic.Tool[] = [
+  {
+    name:        'consultar_catalogo_externo',
+    description: 'Consulta catálogos de trámites externos del gobierno con filtros opcionales.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        tramite_id:   { type: 'string', description: 'ID del trámite configurado en la org' },
+        catalogo_key: { type: 'string', description: 'Clave del catálogo dentro del trámite' },
+        filtros:      { type: 'object', description: 'Filtros de búsqueda (opcional)' },
+      },
+      required: ['tramite_id', 'catalogo_key'],
+    },
+  },
+  {
+    name:        'buscar_en_padron_externo',
+    description: 'Busca un registro en padrones externos del gobierno (padrón catastral, ciudadano, etc.).',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        tramite_id: { type: 'string' },
+        lookup_key: { type: 'string', description: 'Clave del padrón' },
+        valor:      { type: 'string', description: 'Valor a buscar' },
+      },
+      required: ['tramite_id', 'lookup_key', 'valor'],
+    },
+  },
+  {
+    name:        'enviar_tramite_externo',
+    description: 'Envía formulario de trámite/solicitud al sistema externo del gobierno.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        tramite_id: { type: 'string' },
+        campos:     { type: 'object', description: 'Campos del formulario (opcional)' },
+      },
+      required: ['tramite_id'],
+    },
+  },
+];
+
+// ── Despacho de campo (Nova) ─────────────────────────────────────────────
+const CAMPO_EMAIL_TOOLS: Anthropic.Tool[] = [
+  {
+    name:        'asignar_unidad_campo',
+    description: 'Asigna unidad de despacho a un servicio o registra como pendiente cuando el correo reporta necesidad de servicio en campo.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        service_description: { type: 'string', description: 'Descripción del servicio' },
+        location:            { type: 'string', description: 'Ubicación/dirección' },
+        priority:            { type: 'string', enum: ['baja', 'media', 'alta', 'critica'] },
+        unidad_nombre:       { type: 'string', description: 'Nombre de la unidad asignada (opcional si aún no hay)' },
+        unidad_telefono:     { type: 'string' },
+        eta_minutes:         { type: 'number' },
+        requested_by_name:   { type: 'string' },
+        requested_by_phone:  { type: 'string' },
+        notes:               { type: 'string' },
+      },
+      required: ['service_description'],
+    },
+  },
+  {
+    name:        'consultar_unidades_disponibles',
+    description: 'Consulta estado de asignaciones y unidades de despacho disponibles. Read-only.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        status: { type: 'string', enum: ['pendiente', 'asignado', 'en_ruta', 'completado'] },
+        limit:  { type: 'number', description: 'Máx registros (default 20, max 50)' },
+      },
+    },
+  },
+];
+
+// ── Drive management (Nox) ───────────────────────────────────────────────
+const DRIVE_MGMT_EMAIL_TOOLS: Anthropic.Tool[] = [
+  {
+    name:        'organize_files',
+    description: 'Organiza archivos en Google Drive del negocio: mueve, renombra o crea carpetas. Úsala cuando el correo del owner pida reordenar/archivar documentos.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        action:      { type: 'string', enum: ['mover', 'renombrar', 'crear_carpeta'] },
+        folder_id:   { type: 'string', description: 'ID de carpeta (para mover)' },
+        file_id:     { type: 'string', description: 'ID del archivo (para mover/renombrar)' },
+        destination: { type: 'string', description: 'Destino (para mover)' },
+        new_name:    { type: 'string', description: 'Nuevo nombre (para renombrar)' },
+        folder_name: { type: 'string', description: 'Nombre de la nueva carpeta' },
+      },
+      required: ['action'],
+    },
+  },
+];
+
 // Email tool name → Anthropic.Tool object (para filtrar por preset)
 const EMAIL_TOOL_BY_NAME: Record<string, Anthropic.Tool> = Object.fromEntries(
-  [...BASE_EMAIL_TOOLS, ...QB_EMAIL_TOOLS].map(t => [t.name, t]),
+  [
+    ...BASE_EMAIL_TOOLS,
+    ...QB_EMAIL_TOOLS,
+    ...CICLO_OC_CFDI_EMAIL_TOOLS,
+    ...HR_EMAIL_TOOLS,
+    ...GOBIERNO_EMAIL_TOOLS,
+    ...CAMPO_EMAIL_TOOLS,
+    ...DRIVE_MGMT_EMAIL_TOOLS,
+  ].map(t => [t.name, t]),
 );
 
 /**
