@@ -119,10 +119,14 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
 
   const agentName    = agent.agent_name?.trim() || 'Centinelia';
   const features     = (agent.features ?? {}) as Record<string, unknown>;
-  const roleColor    = (features.role_color as string) || '#6C3BFF';
   const agentRole    = (agent as any).role?.trim() ?? '';
   const meerkatId      = (features.meerkat_role_id as string | null) ?? null;
-  const colorLocked    = !!meerkatId && meerkatId !== 'custom';
+  const meerkatDef     = meerkatId ? (MEERKAT_MAP as Record<string, { color?: string; imagen?: string | null }>)[meerkatId] : null;
+  // Fallback ladder para color y avatar. Ver bug fix 2026-08-19: sin este ladder,
+  // los meerkats canónicos (Nox/Nala) que no tenían features.role_color caían al
+  // morado default sin usar su color de rol.
+  const roleColor    = (features.role_color as string) || meerkatDef?.color || '#6C3BFF';
+  const colorLocked    = !!meerkatId;
   const isCoordinator  = !!meerkatId && (COORDINATOR_ROLE_IDS as readonly string[]).includes(meerkatId);
   const jornadaType    = ((agent as any).jornada_type as string) ?? 'combinada';
   const hasVoice       = !isCoordinator && agent.plan === 'pro' && (!meerkatId || meerkatId === 'custom');
@@ -247,7 +251,7 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
 
         {/* Agent identity header */}
         {(() => {
-          const avatarSrc = (features.avatar as string | null) || null;
+          const avatarSrc = (features.avatar as string | null) || meerkatDef?.imagen || null;
           const initial   = (agentName?.trim() || (agent.business_name as string) || 'C').charAt(0).toUpperCase();
           // Paleta oficial de jornadas: tareas verde, minutos celeste, combinada morado.
           const JORNADA_META: Record<string, { label: string; desc: string; icon: React.ReactNode; color: string }> = {

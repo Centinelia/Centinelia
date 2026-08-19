@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
+import { MEERKAT_MAP } from '@/lib/portal/meerkat-roles';
+import type { MeerkatRoleId } from '@/lib/portal/meerkat-roles';
 
 const COLORS = ['#6C3BFF', '#9B6DFF', '#3b82f6', '#f59e0b', '#22c55e', '#a855f7', '#ef4444', '#06b6d4'];
 function agentColor(id: string) {
@@ -75,9 +77,19 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
 
   const result = agents.map(a => {
     const features  = (a.features ?? {}) as Record<string, unknown>;
-    const roleColor = (features.role_color as string | null) || '#6C3BFF';
-    const avatarSrc = (features.avatar    as string | null) || null;
-    const name      = (a.agent_name as string | null)?.trim() || (a.business_name as string);
+    // Fallback ladder: features.role_color/avatar (custom del owner) →
+    // MEERKAT_MAP[roleId].color/imagen (canónico del rol) → default hash.
+    // Bug 2026-08-19: sin este ladder, Nox/Nala salían con inicial morada
+    // porque nadie set features.role_color/avatar manualmente.
+    const meerkatId  = (features.meerkat_role_id as string | null) || null;
+    const meerkatDef = meerkatId ? MEERKAT_MAP[meerkatId as MeerkatRoleId] ?? null : null;
+    const roleColor  = (features.role_color as string | null)
+                      || meerkatDef?.color
+                      || '#6C3BFF';
+    const avatarSrc  = (features.avatar as string | null)
+                      || meerkatDef?.imagen
+                      || null;
+    const name       = (a.agent_name as string | null)?.trim() || (a.business_name as string);
     return {
       id:        a.id,
       name,
