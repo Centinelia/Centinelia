@@ -29,7 +29,7 @@ const C = {
   bg:      '#FAFBFF',
   bgAlt:   '#F4F0FF',
   accent:  '#6C3BFF',
-  amber:   '#d97706',
+  amber:   '#a16207',
   teal:    '#0d9488',
 };
 

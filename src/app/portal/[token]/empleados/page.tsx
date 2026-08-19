@@ -53,14 +53,14 @@ const TOOL_COLOR: Record<string, string> = {
   qb_crear_factura: '#22c55e',
   qb_crear_cotizacion: '#22c55e', qb_registrar_gasto: '#22c55e', qb_registrar_caja_chica: '#22c55e',
   solicitar_factura: '#eab308', consultar_factura: '#eab308',
-  // Pack ciclo OC-CFDI (Nala + Nox) — color ámbar de Nala
-  qb_crear_orden_compra: '#d97706', qb_consultar_orden_compra: '#d97706', qb_descargar_oc_pdf: '#d97706',
-  qb_crear_orden_compra_desde_cotizacion: '#d97706',
-  firmar_oc: '#d97706', sf_timbrar_desde_oc: '#d97706',
-  enviar_oc_a_firma_humana: '#d97706', enviar_oc_a_pagos: '#d97706',
-  registrar_comprobante_pago: '#d97706', enviar_oc_a_proveedor: '#d97706',
-  archivar_expediente: '#d97706',
-  sf_cancelar_cfdi: '#d97706', sf_consultar_estado_sat: '#d97706',
+  // Pack ciclo OC-CFDI (Nala + Nox) — color marrón dorado de Nala
+  qb_crear_orden_compra: '#a16207', qb_consultar_orden_compra: '#a16207', qb_descargar_oc_pdf: '#a16207',
+  qb_crear_orden_compra_desde_cotizacion: '#a16207',
+  firmar_oc: '#a16207', sf_timbrar_desde_oc: '#a16207',
+  enviar_oc_a_firma_humana: '#a16207', enviar_oc_a_pagos: '#a16207',
+  registrar_comprobante_pago: '#a16207', enviar_oc_a_proveedor: '#a16207',
+  archivar_expediente: '#a16207',
+  sf_cancelar_cfdi: '#a16207', sf_consultar_estado_sat: '#a16207',
   // Helpdesk IT
   crear_ticket: '#ef4444', consultar_incidentes: '#ef4444', buscar_directorio: '#ef4444',
   // Municipal
@@ -98,7 +98,14 @@ const CAPABILITY_GROUPS: { label: string; color: string; tools: string[] }[] = [
   { label: 'MercadoLibre',          color: '#f59e0b', tools: ['analizar_publicaciones_ml', 'crear_publicacion_ml', 'actualizar_publicacion_ml', 'ver_metricas_ml'] },
   { label: 'QuickBooks',            color: '#22c55e', tools: ['qb_consultar_facturas', 'qb_buscar_cliente', 'qb_registrar_pago', 'qb_reporte_ingresos', 'qb_crear_factura', 'qb_crear_cotizacion', 'qb_registrar_gasto', 'qb_registrar_caja_chica'] },
   { label: 'Facturación fiscal',    color: '#eab308', tools: ['solicitar_factura', 'consultar_factura'] },
-  { label: 'Ciclo OC-CFDI',         color: '#d97706', tools: ['qb_crear_orden_compra', 'qb_consultar_orden_compra', 'qb_descargar_oc_pdf', 'qb_crear_orden_compra_desde_cotizacion', 'firmar_oc', 'sf_timbrar_desde_oc', 'enviar_oc_a_firma_humana', 'enviar_oc_a_pagos', 'registrar_comprobante_pago', 'enviar_oc_a_proveedor', 'archivar_expediente', 'sf_cancelar_cfdi', 'sf_consultar_estado_sat'] },
+  // Pack ciclo OC-CFDI dividido en 5 capacidades legibles para los chips del card.
+  // Antes era un solo grupo "Ciclo OC-CFDI" que en el card se veía como una sola capacidad
+  // sin decir qué hace realmente. Ahora Nala muestra 5 chips distintos.
+  { label: 'Crea órdenes de compra',    color: '#a16207', tools: ['qb_crear_orden_compra', 'qb_consultar_orden_compra', 'qb_descargar_oc_pdf', 'qb_crear_orden_compra_desde_cotizacion'] },
+  { label: 'Firma y autoriza OCs',      color: '#a16207', tools: ['firmar_oc', 'enviar_oc_a_firma_humana'] },
+  { label: 'Coordina pagos',            color: '#a16207', tools: ['enviar_oc_a_pagos', 'registrar_comprobante_pago', 'enviar_oc_a_proveedor'] },
+  { label: 'Timbra y cancela CFDIs',    color: '#a16207', tools: ['sf_timbrar_desde_oc', 'sf_cancelar_cfdi', 'sf_consultar_estado_sat'] },
+  { label: 'Archivo fiscal',            color: '#a16207', tools: ['archivar_expediente'] },
   { label: 'Helpdesk IT',           color: '#ef4444', tools: ['crear_ticket', 'consultar_incidentes', 'buscar_directorio'] },
   { label: 'Servicios municipales', color: '#3b82f6', tools: ['create_civic_report', 'lookup_civic_report', 'update_civic_report'] },
   { label: 'Onboarding y bienvenida', color: '#a855f7', tools: ['iniciar_onboarding'] },
@@ -180,9 +187,8 @@ const BUSINESS_CATEGORIES: { label: string; color: string; specialized?: boolean
     ],
   },
   {
-    label: 'Facturación CFDI',
-    color: '#d97706', // nala
-    specialized: true,
+    label: 'Facturación',
+    color: '#a16207', // nala
     tools: [
       { key: 'qb_crear_orden_compra_desde_cotizacion', label: 'Crear OC desde cotización de proveedor (Vision AI)' },
       { key: 'qb_crear_orden_compra',                   label: 'Crear orden de compra en QuickBooks' },
@@ -221,6 +227,7 @@ const BUSINESS_CATEGORIES: { label: string; color: string; specialized?: boolean
   {
     label: 'Helpdesk',
     color: '#06b6d4', // neo
+    specialized: true,
     tools: [
       { key: 'crear_ticket',         label: 'Abrir tickets de soporte' },
       { key: 'consultar_incidentes', label: 'Consultar incidentes abiertos' },
@@ -502,9 +509,14 @@ export default async function AgentesPage({ params }: Props) {
         const isClientPaused  = !!(a.client_paused as boolean) && !isBillingPaused;
         const isOnline        = (a.active as boolean) && !isClientPaused && !isBillingPaused;
         const hasRole         = !!((a.role as string | null)?.trim());
-        const roleColor       = ((a.features as any)?.role_color as string | null) || '#6C3BFF';
         const meerkatId       = ((a.features as any)?.meerkat_role_id as string | null) || null;
         const meerkatDefEarly = meerkatId ? MEERKAT_MAP[meerkatId as MeerkatRoleId] ?? null : null;
+        // Bug 2026-08-19: Nox/Nala aparecían morados porque roleColor caía al
+        // default #6C3BFF cuando features.role_color era null. Ahora usa el
+        // color canónico del MEERKAT_MAP cuando el agent tiene meerkat_role_id.
+        const roleColor       = ((a.features as any)?.role_color as string | null)
+                                || meerkatDefEarly?.color
+                                || '#6C3BFF';
         // Fallback ladder: custom avatar del owner → imagen canónica del meerkat role → initial.
         // Bug 2026-08-19: Nox/Nala mostraban placeholder porque features.avatar era null y
         // el código no caía a role.imagen. Ver AC Proyectos.

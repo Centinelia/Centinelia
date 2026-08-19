@@ -42,7 +42,7 @@ const TEAM = [
   { nombre: 'Nico',  rol: 'Recuperación',      desc: 'Cobra, recuerda pagos y recupera clientes inactivos.',                 color: '#f59e0b', img: '/meerkats/nico.png'  },
   { nombre: 'Nelia', rol: 'Atención al Cliente', desc: 'Responde dudas y acompaña al cliente hasta resolverlas.',            color: '#3b82f6', img: '/meerkats/nelia.png' },
   { nombre: 'Nova',  rol: 'Despacho',         desc: 'Despacha equipos, actualiza estatus y coordina cada salida en campo.',                   color: '#ef4444', img: '/meerkats/nova.png'  },
-  { nombre: 'Nala',  rol: 'Facturación',      desc: 'Timbra CFDIs, archiva comprobantes y mantiene el orden fiscal.',                         color: '#d97706', img: '/meerkats/nala.png'  },
+  { nombre: 'Nala',  rol: 'Facturación',      desc: 'Timbra CFDIs, archiva comprobantes y mantiene el orden fiscal.',                         color: '#a16207', img: '/meerkats/nala.png'  },
 ];
 
 const LIMITS = [
