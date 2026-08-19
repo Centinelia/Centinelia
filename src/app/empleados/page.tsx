@@ -87,9 +87,9 @@ const CONTENT: Record<string, {
     subtitle: 'Prospección y cierre sin descanso',
     bullets:  [
       'Califica prospectos con preguntas clave en la llamada',
-      'Genera cotizaciones y propuestas comerciales al instante',
-      'Sale a buscar clientes con llamadas salientes',
-      'Consulta tu catálogo y publica en MercadoLibre cuando aplica',
+      'Genera cotizaciones directo en QuickBooks o como PDF branded',
+      'Delega a Nala el timbrado del CFDI cuando el cliente acepta',
+      'Sale a buscar clientes con llamadas salientes y reactiva dormidos',
     ],
   },
   nico: {

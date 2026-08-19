@@ -35,7 +35,7 @@ const DIRECTORS = {
 
 const TEAM = [
   { nombre: 'Nia',   rol: 'Recepción',         desc: 'Atiende llamadas, agenda citas y recibe cada solicitud.',              color: '#6C3BFF', img: '/meerkats/nia.png',  imgPad: '0px' },
-  { nombre: 'Noah',  rol: 'Ventas',            desc: 'Llama prospectos, califica leads y cierra oportunidades nuevas.',      color: '#22c55e', img: '/meerkats/noah.png'  },
+  { nombre: 'Noah',  rol: 'Ventas',            desc: 'Llama prospectos, cotiza directo en QuickBooks y cierra oportunidades nuevas.', color: '#22c55e', img: '/meerkats/noah.png'  },
   { nombre: 'Nara',  rol: 'Coordinación',      desc: 'Coordina procesos, da seguimiento y mantiene la operación en orden.',  color: '#f97316', img: '/meerkats/nara.png'  },
   { nombre: 'Neo',   rol: 'Tecnología',        desc: 'Resuelve tickets, gestiona incidentes y mantiene los sistemas activos.', color: '#06b6d4', img: '/meerkats/neo.png'  },
   { nombre: 'Naia',  rol: 'Recursos Humanos',  desc: 'Organiza vacaciones, permisos y expedientes del equipo.',              color: '#ec4899', img: '/meerkats/naia.png'  },

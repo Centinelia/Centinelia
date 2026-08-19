@@ -192,7 +192,7 @@ const ROLE_PREVIEW: Partial<Record<MeerkatRoleId, { subtitle: string; bullets: s
   },
   noah:  {
     subtitle: 'Cierra oportunidades sin parar',
-    bullets:  ['Califica prospectos en la llamada', 'Toma pedidos y los registra', 'Llama a contactos de tu lista', 'Reactiva clientes dormidos'],
+    bullets:  ['Califica prospectos en la llamada', 'Cotiza directo en QuickBooks y toma pedidos', 'Llama a contactos de tu lista', 'Delega a Nala el timbrado cuando cierra'],
   },
   nara:  {
     subtitle: 'Coordinación operativa sin fricciones',

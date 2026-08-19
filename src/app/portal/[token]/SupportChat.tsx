@@ -18,7 +18,7 @@ const NASH_AVATAR_SRC  = '/meerkats/nash.png';
 
 const WELCOME: Message = {
   role: 'assistant',
-  content: 'Hola, soy Nash. Estoy aquí para ayudarte con cualquier cosa del portal y/u oficina: minutos, empleados, configuración, documentos, etc… ¿En qué te apoyo?',
+  content: 'Hola, soy Nash. Estoy aquí para ayudarte con cualquier cosa del portal y/u oficina: minutos, empleados, configuración, documentos, ciclo de compras y facturación CFDI… ¿En qué te apoyo?',
 };
 
 const ERROR_MSG      = 'Se me colgó una pieza. Dame un segundo y prueba de nuevo.';

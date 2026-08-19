@@ -237,7 +237,9 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
   nia:   ['crear_lead', 'crear_contacto_saliente', 'agendar_cita', 'registrar_pedido', 'buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'registrar_encuesta', 'buscar_documento_oficina', 'buscar_correo_enviado', 'agregar_tag_contacto'],
   // Noah — ventas outbound. marcar_no_llamar por regulatorio LFPDPPP. ML tools
   // feature-gated ('mercadolibre') solo suman si org activa la feature.
-  noah:  ['crear_lead', 'crear_contacto_saliente', 'llamar_a', 'notificar_transferencia', 'transferir_llamada', 'buscar_documento_oficina', 'buscar_correo_enviado', 'buscar_producto', 'dropbox_buscar_codigo', 'marcar_no_llamar', 'trigger_outbound_call', 'analizar_publicaciones_ml', 'crear_publicacion_ml', 'actualizar_publicacion_ml', 'ver_metricas_ml', 'generar_propuesta_comercial', 'generar_cotizacion', 'generar_correo_estructurado'],
+  // qb_crear_cotizacion agregada 2026-08-19: ventas cotiza directo en QB cuando
+  // negocia con cliente y delega el timbrado a Nala.
+  noah:  ['crear_lead', 'crear_contacto_saliente', 'llamar_a', 'notificar_transferencia', 'transferir_llamada', 'buscar_documento_oficina', 'buscar_correo_enviado', 'buscar_producto', 'dropbox_buscar_codigo', 'marcar_no_llamar', 'trigger_outbound_call', 'analizar_publicaciones_ml', 'crear_publicacion_ml', 'actualizar_publicacion_ml', 'ver_metricas_ml', 'generar_propuesta_comercial', 'generar_cotizacion', 'generar_correo_estructurado', 'qb_crear_cotizacion'],
   // Nico — cobranza y fiscal (CFDIs + P&L). Owner del pack invoicing_cfdi.
   // QB tools feature-gated ('quickbooks').
   nico:  ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'enviar_correo', 'crear_documento', 'enviar_documento_oficina', 'solicitar_factura', 'consultar_factura', 'qb_consultar_facturas', 'qb_buscar_cliente', 'qb_registrar_pago', 'qb_crear_factura', 'qb_reporte_ingresos', 'generar_correo_estructurado'],
