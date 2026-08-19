@@ -93,8 +93,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     provider:    string;
     auto_reply?: boolean;
     auto_mode?:  'off' | 'auto' | 'always';
+    agentId?:    string;
   };
-  const { provider, auto_reply, auto_mode } = body;
+  const { provider, auto_reply, auto_mode, agentId } = body;
 
   if (!provider) {
     return NextResponse.json({ error: 'provider requerido' }, { status: 400 });
@@ -107,6 +108,25 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (!agent) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   if (session.portalEmail && agent.portal_email && session.portalEmail !== agent.portal_email)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+
+  // auto_mode es per-meerkat: si viene agentId, validar contra roster y usar ese
+  // empleado como target. Sin agentId, default al primary (retrocompat, para
+  // callers legacy). El campo voice_agents.auto_mode es ceremonial hoy — la
+  // lógica real está en resolveAutoMode() (trust_stage per-agent + org kill
+  // switch en organizations.auto_mode_disabled_at).
+  let autoModeTargetId = agent.id;
+  if (agentId && agent.portal_email) {
+    const { data: targetAgent } = await supabase
+      .from('voice_agents')
+      .select('id')
+      .eq('id', agentId)
+      .eq('portal_email', agent.portal_email)
+      .maybeSingle();
+    if (!targetAgent) {
+      return NextResponse.json({ error: 'Empleado no válido para este portal.' }, { status: 403 });
+    }
+    autoModeTargetId = agentId;
+  }
 
   if (agent.portal_email) {
     // Fetch current metadata to merge (preserve last_sync_at etc.)
@@ -157,15 +177,14 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         .eq('provider', provider),
     ];
 
-    // Update voice_agents.auto_mode if provided. Auto_mode es un toggle
-    // org-wide (el comment "single source of truth" refleja el intent),
-    // así que propagamos a TODOS los meerkats del org, no solo al primary.
-    // Ver [[handoff-peer-discrimination-fix]] B1 #1.
+    // auto_mode es per-meerkat. Escribe solo al agent target (validado arriba
+    // contra roster). Decisión producto 2026-08-19: cada meerkat elige su modo
+    // porque la lógica real de auto-reply usa trust_stage per-agent.
     if (auto_mode !== undefined) {
       promises.push(
         supabase.from('voice_agents')
           .update({ auto_mode })
-          .eq('portal_email', agent.portal_email)
+          .eq('id', autoModeTargetId)
       );
     }
 
