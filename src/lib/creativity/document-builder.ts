@@ -70,13 +70,15 @@ export async function buildDocument(
   const filename  = `${slugify(kind)}-${slugify(content.title || 'documento')}-${timestamp}.pdf`;
   const storagePath = `${agent.id}/creativity/${filename}`;
 
-  // Check for custom .docx template
-  const { data: customTpl } = await (supabase as any)
-    .from('document_templates')
-    .select('storage_path, filename')
-    .eq('agent_id', agent.id)
-    .eq('tipo', kind)
-    .maybeSingle();
+  // Check for custom .docx template — org-level desde 2026-08-19
+  const { data: customTpl } = agent.portal_email
+    ? await (supabase as any)
+        .from('document_templates')
+        .select('storage_path, filename')
+        .eq('portal_email', agent.portal_email)
+        .eq('tipo', kind)
+        .maybeSingle()
+    : { data: null };
 
   let pdfBuffer: Buffer;
   let assignedFolio: string | null = null;

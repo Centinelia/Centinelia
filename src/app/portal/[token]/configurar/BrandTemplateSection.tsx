@@ -6,8 +6,11 @@ import { Upload, Trash2, FileText } from 'lucide-react';
 
 type TipoDocumento = 'propuesta' | 'cotizacion' | 'one_pager' | 'correo';
 
+// Templates son org-level desde 2026-08-19: se comparten entre todos los
+// empleados del negocio. Se filtran por availableTipos según el rol del
+// meerkat que abre la página (noah = propuesta/cotización/one_pager, nelia =
+// one_pager), pero al subir/borrar afecta a toda la org.
 interface Props {
-  agentId:        string;
   availableTipos: TipoDocumento[];
 }
 
@@ -24,14 +27,14 @@ const TIPO_LABEL: Record<TipoDocumento, string> = {
   correo:     'Correo estructurado',
 };
 
-export function BrandTemplateSection({ agentId, availableTipos }: Props) {
+export function BrandTemplateSection({ availableTipos }: Props) {
   const { token }                     = useParams<{ token: string }>();
   const [templates, setTemplates]     = useState<TemplateRow[]>([]);
   const [busy, setBusy]               = useState<string | null>(null);
   const [error, setError]             = useState<string | null>(null);
 
   async function fetchAll() {
-    const res = await fetch(`/api/portal/${token}/document-templates?agent_id=${agentId}`);
+    const res = await fetch(`/api/portal/${token}/document-templates`);
     if (res.ok) {
       const j = await res.json() as { templates: TemplateRow[] };
       setTemplates(j.templates ?? []);
@@ -41,7 +44,7 @@ export function BrandTemplateSection({ agentId, availableTipos }: Props) {
   useEffect(() => {
     void fetchAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, agentId]);
+  }, [token]);
 
   async function upload(tipo: string, file: File) {
     setBusy(tipo);
@@ -49,7 +52,7 @@ export function BrandTemplateSection({ agentId, availableTipos }: Props) {
     const form = new FormData();
     form.append('file', file);
     const res = await fetch(
-      `/api/portal/${token}/document-templates?agent_id=${agentId}&tipo=${tipo}`,
+      `/api/portal/${token}/document-templates?tipo=${tipo}`,
       { method: 'POST', body: form }
     );
     if (!res.ok) {
@@ -65,7 +68,7 @@ export function BrandTemplateSection({ agentId, availableTipos }: Props) {
     setBusy(tipo);
     setError(null);
     await fetch(
-      `/api/portal/${token}/document-templates?agent_id=${agentId}&tipo=${tipo}`,
+      `/api/portal/${token}/document-templates?tipo=${tipo}`,
       { method: 'DELETE' }
     );
     await fetchAll();
@@ -75,7 +78,7 @@ export function BrandTemplateSection({ agentId, availableTipos }: Props) {
   return (
     <div className="flex flex-col gap-3">
       <p className="text-[12px] leading-relaxed" style={{ color: '#6B6480' }}>
-        Sube una plantilla .docx para cada tipo de documento. Cuando tu empleado genere uno, usará tu formato en lugar del diseño por defecto. Tamaño máximo: 5 MB. Usa marcadores como {'{title}'}, {'{sections}'} y {'{closing}'} dentro del documento.
+        Sube una plantilla .docx para cada tipo de documento. Estas plantillas son de tu negocio: se comparten entre todos los empleados que las necesiten. Cuando alguno genere un documento, usará tu formato en lugar del diseño por defecto. Tamaño máximo: 5 MB. Usa marcadores como {'{title}'}, {'{sections}'} y {'{closing}'} dentro del documento.
       </p>
 
       <div className="flex flex-col rounded-xl overflow-hidden" style={{ background: '#ffffff', border: '1px solid #E8E3F5' }}>

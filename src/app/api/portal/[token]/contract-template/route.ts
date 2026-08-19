@@ -68,8 +68,9 @@ export async function GET(req: NextRequest, { params }: Params) {
 
   const supabase = createAdminClient();
 
+  // contract_templates es org-level desde 2026-08-19
   const { data: tpl } = await supabase
-    .from('contract_templates').select('*').in('agent_id', access.ids).limit(1).single();
+    .from('contract_templates').select('*').eq('portal_email', access.portalEmail).limit(1).maybeSingle();
 
   // features.contrato_config lives on the primary agent
   const { data: primaryAgent } = await supabase
@@ -98,18 +99,13 @@ export async function PUT(req: NextRequest, { params }: Params) {
   if (auth.portalEmail && access.portalEmail && auth.portalEmail !== access.portalEmail)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
-  const { clauses, agentId } = await req.json();
+  const { clauses } = await req.json();
 
-  // Caller may specify which peer's template to upsert; default to primary.
-  const targetAgentId = (agentId as string | undefined) ?? access.primaryId;
-  if (!access.ids.includes(targetAgentId)) {
-    return NextResponse.json({ error: 'Empleado no válido para este portal' }, { status: 403 });
-  }
-
+  // contract_templates es org-level desde 2026-08-19: un solo template por org
   const supabase = createAdminClient();
   const { error } = await supabase.from('contract_templates').upsert(
-    { agent_id: targetAgentId, clauses, updated_at: new Date().toISOString() },
-    { onConflict: 'agent_id' }
+    { portal_email: access.portalEmail, clauses, updated_at: new Date().toISOString() },
+    { onConflict: 'portal_email' }
   );
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
