@@ -64,7 +64,40 @@ async function getFileConnector(agentId: string, supabase: SupabaseClient) {
     .eq('capability', 'email')
     .neq('status', 'disconnected')
     .maybeSingle();
-  if (!orgAcct) return null;
+  if (!orgAcct) {
+    // Fallback secundario: Dropbox conectado como file provider standalone.
+    // Devuelve un Connector minimal (solo files) para las tools search_files,
+    // read_file, save_to_drive, organize_files. Sin email, contacts, calendar.
+    const { data: dbxAcct } = await supabase
+      .from('integration_accounts')
+      .select('access_token, refresh_token, expires_at, status')
+      .eq('portal_email', portalEmail)
+      .eq('provider', 'dropbox')
+      .eq('capability', 'files')
+      .neq('status', 'disconnected')
+      .maybeSingle();
+    if (!dbxAcct) return null;
+    const { getDropboxAccessToken } = await import('@/lib/catalog/lookup');
+    const { createDropboxConnector } = await import('@/lib/connectors/dropbox');
+    const token = await getDropboxAccessToken(portalEmail, supabase);
+    if (!token) return null;
+    const conn = createDropboxConnector(token);
+    // Synthetic IntegrationRow para no romper el shape del retorno; agent-chat
+    // solo usa .conn.files desde esta rama (nunca .email/.calendar).
+    const synthetic: IntegrationRow = {
+      id:                 `org:${portalEmail}:dropbox`,
+      agent_id:           agentId,
+      provider:           'gmail' as const, // shape compat — el caller solo mira .conn.files
+      email:              '',
+      access_token:       token,
+      refresh_token:      null,
+      token_expires_at:   null,
+      last_sync_at:       null,
+      needs_reauth:       false,
+      reauth_notified_at: null,
+    };
+    return { integration: synthetic, conn };
+  }
 
   // Adapta shape de integration_accounts a IntegrationRow para reusar getConnector.
   // El refresh path escribe a email_integrations por id — este synthetic row no

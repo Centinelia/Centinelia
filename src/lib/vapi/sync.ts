@@ -148,7 +148,7 @@ const TOOL_HUMAN_LABEL: Record<string, string> = {
   sheets_leer:              'leer contenido de un Google Sheet',
   sheets_buscar:            'buscar filas en un Google Sheet por texto',
   buscar_producto:          'consultar catálogo Notion por SKU/nombre (precio real, no inventado)',
-  dropbox_buscar_codigo:    'buscar código de pieza/producto en el catálogo Dropbox del cliente (Excel/CSV)',
+  catalogo_buscar_codigo:   'buscar código de pieza/producto en el catálogo Excel/CSV del cliente (Dropbox, Google Drive u OneDrive)',
 };
 
 function peerToolCapabilities(peer: TeamPeer): string[] {
@@ -239,7 +239,7 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
   // feature-gated ('mercadolibre') solo suman si org activa la feature.
   // qb_crear_cotizacion agregada 2026-08-19: ventas cotiza directo en QB cuando
   // negocia con cliente y delega el timbrado a Nala.
-  noah:  ['crear_lead', 'crear_contacto_saliente', 'llamar_a', 'notificar_transferencia', 'transferir_llamada', 'buscar_documento_oficina', 'buscar_correo_enviado', 'buscar_producto', 'dropbox_buscar_codigo', 'marcar_no_llamar', 'trigger_outbound_call', 'analizar_publicaciones_ml', 'crear_publicacion_ml', 'actualizar_publicacion_ml', 'ver_metricas_ml', 'generar_propuesta_comercial', 'generar_cotizacion', 'generar_correo_estructurado', 'qb_crear_cotizacion'],
+  noah:  ['crear_lead', 'crear_contacto_saliente', 'llamar_a', 'notificar_transferencia', 'transferir_llamada', 'buscar_documento_oficina', 'buscar_correo_enviado', 'buscar_producto', 'catalogo_buscar_codigo', 'marcar_no_llamar', 'trigger_outbound_call', 'analizar_publicaciones_ml', 'crear_publicacion_ml', 'actualizar_publicacion_ml', 'ver_metricas_ml', 'generar_propuesta_comercial', 'generar_cotizacion', 'generar_correo_estructurado', 'qb_crear_cotizacion'],
   // Nico — cobranza y fiscal (CFDIs + P&L). Owner del pack invoicing_cfdi.
   // QB tools feature-gated ('quickbooks').
   nico:  ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'enviar_correo', 'crear_documento', 'enviar_documento_oficina', 'solicitar_factura', 'consultar_factura', 'qb_consultar_facturas', 'qb_buscar_cliente', 'qb_registrar_pago', 'qb_crear_factura', 'qb_reporte_ingresos', 'generar_correo_estructurado'],
@@ -258,7 +258,7 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
   // Nox — coordinador director (rol hub por diseño, excepción a tope 12-15).
   // Contract drafts, sheets, save_to_drive gated por features respectivas.
   // Pack ciclo_oc_cfdi (shared con Nala + escalación humana + admin QB de departamentos).
-  nox:   ['enviar_correo', 'llamar_a', 'crear_documento', 'buscar_documento_oficina', 'buscar_correo_enviado', 'enviar_documento_oficina', 'create_file', 'create_contract_draft', 'buscar_archivo', 'leer_archivo', 'save_to_drive', 'organize_files', 'list_calendar_events', 'create_calendar_event', 'verificar_gasto_recurrente', 'sheets_agregar_fila', 'sheets_actualizar_fila', 'sheets_leer', 'sheets_buscar', 'dropbox_buscar_codigo', 'preparar_brief_del_dia', 'actualizar_disponibilidad_diaria', 'qb_crear_orden_compra', 'qb_consultar_orden_compra', 'qb_descargar_oc_pdf', 'firmar_oc', 'enviar_oc_a_firma_humana', 'qb_crear_cotizacion', 'qb_registrar_gasto', 'qb_registrar_caja_chica'],
+  nox:   ['enviar_correo', 'llamar_a', 'crear_documento', 'buscar_documento_oficina', 'buscar_correo_enviado', 'enviar_documento_oficina', 'create_file', 'create_contract_draft', 'buscar_archivo', 'leer_archivo', 'save_to_drive', 'organize_files', 'list_calendar_events', 'create_calendar_event', 'verificar_gasto_recurrente', 'sheets_agregar_fila', 'sheets_actualizar_fila', 'sheets_leer', 'sheets_buscar', 'catalogo_buscar_codigo', 'preparar_brief_del_dia', 'actualizar_disponibilidad_diaria', 'qb_crear_orden_compra', 'qb_consultar_orden_compra', 'qb_descargar_oc_pdf', 'firmar_oc', 'enviar_oc_a_firma_humana', 'qb_crear_cotizacion', 'qb_registrar_gasto', 'qb_registrar_caja_chica'],
   // Nala — facturista (ejecutor puro del ciclo OC-CFDI). Owner del pack.
   // 12 tools del pack + universales (delegar_tarea, consultar_agente, etc).
   nala:  ['qb_crear_orden_compra', 'qb_consultar_orden_compra', 'qb_descargar_oc_pdf', 'firmar_oc', 'sf_timbrar_desde_oc', 'enviar_oc_a_pagos', 'registrar_comprobante_pago', 'enviar_oc_a_proveedor', 'archivar_expediente', 'qb_crear_orden_compra_desde_cotizacion', 'sf_cancelar_cfdi', 'sf_consultar_estado_sat'],
@@ -453,8 +453,8 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
     case 'buscar_producto':
       return { type: 'function', function: { name: 'buscar_producto', description: 'Busca un producto o servicio en el catálogo de Notion del negocio por SKU o nombre. ÚSALA SIEMPRE antes de mencionar precios al llamante — nunca inventes cifras. Devuelve nombre, SKU, precio formateado y descripción.', parameters: { type: 'object', properties: { query: { type: 'string', description: 'SKU exacto o nombre parcial del producto/servicio a buscar.' } }, required: ['query'] } }, server: server('exec/buscar_producto') };
 
-    case 'dropbox_buscar_codigo':
-      return { type: 'function', function: { name: 'dropbox_buscar_codigo', description: 'Busca un código de pieza o producto en el catálogo Excel/CSV que el cliente mantiene en su Dropbox. Úsala ANTES de llenar una OC o factura cuando necesites el SKU correcto. NO inventes códigos si no encuentras — dile al cliente y ofrece delegar.', parameters: { type: 'object', properties: { query: { type: 'string', description: 'Término a buscar (parte del SKU o descripción).' }, exact: { type: 'boolean', description: 'True para match exacto contra SKU. Default false (fuzzy).' } }, required: ['query'] } }, server: server('exec/dropbox_buscar_codigo') };
+    case 'catalogo_buscar_codigo':
+      return { type: 'function', function: { name: 'catalogo_buscar_codigo', description: 'Busca un código de pieza o producto en el catálogo Excel/CSV que el cliente mantiene en su almacenamiento en la nube (Dropbox, Google Drive u OneDrive). Úsala ANTES de llenar una OC, cotización o factura cuando necesites el SKU correcto. NO inventes códigos si no encuentras — dile al cliente y ofrece delegar.', parameters: { type: 'object', properties: { query: { type: 'string', description: 'Término a buscar (parte del SKU o descripción).' }, exact: { type: 'boolean', description: 'True para match exacto contra SKU. Default false (fuzzy).' } }, required: ['query'] } }, server: server('exec/catalogo_buscar_codigo') };
 
     case 'marcar_no_llamar': return { type: 'function', function: { name: 'marcar_no_llamar', description: 'Marca un número de teléfono como "no volver a llamar". Úsala inmediatamente cuando el ciudadano diga que no quiere recibir más llamadas ("no me llamen", "quítenme de la lista", "no me interesa"). Los futuros crons de llamadas salientes respetarán esta marca. Después de llamar esta herramienta, termina la llamada con cortesía sin insistir.', parameters: { type: 'object', properties: { telefono: { type: 'string', description: 'Número de teléfono del ciudadano tal como está en el sistema (con o sin lada). Se normaliza automáticamente en el servidor.' }, motivo: { type: 'string', description: 'Motivo breve de la solicitud (ej: "no interesado", "número equivocado", "ya no vive aquí"). Opcional.' } }, required: ['telefono'] } }, server: server('marcar-no-llamar') };
 

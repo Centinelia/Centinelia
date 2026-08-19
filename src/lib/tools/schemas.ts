@@ -407,12 +407,13 @@ export const TOOL_SCHEMAS: Record<string, ToolSchema> = {
     voiceServerPath: 'reportar-falla',
   },
 
-  // dropbox_buscar_codigo — pack dropbox_catalog. Consulta el catálogo Excel/CSV
-  // que el cliente mantiene en su Dropbox para llenar OCs y facturas con el
-  // código correcto por pieza. Feature gated: dropbox_catalog. Solo lectura.
-  dropbox_buscar_codigo: {
-    name: 'dropbox_buscar_codigo',
-    description: 'Busca un código de pieza o producto en el catálogo del cliente en Dropbox. Úsala ANTES de llenar una OC o factura cuando necesites el SKU correcto. Devuelve hasta 20 coincidencias con SKU, descripción y precio (si aplica). Si el usuario te da el SKU exacto pasa exact:true. NO inventes códigos si no encuentras — dile al usuario y ofrece delegar a humano.',
+  // catalogo_buscar_codigo — pack cloud_catalog. Consulta el catálogo Excel/CSV
+  // que el cliente mantiene en su almacenamiento en la nube (Dropbox, Google
+  // Drive u OneDrive) para llenar OCs, cotizaciones y facturas con el código
+  // correcto por pieza. Feature gated: cloud_catalog. Solo lectura.
+  catalogo_buscar_codigo: {
+    name: 'catalogo_buscar_codigo',
+    description: 'Busca un código de pieza o producto en el catálogo del cliente en la nube (Dropbox, Google Drive u OneDrive según su config). Úsala ANTES de llenar una OC, cotización o factura cuando necesites el SKU correcto. Devuelve hasta 20 coincidencias con SKU, descripción y precio (si aplica). Si el usuario te da el SKU exacto pasa exact:true. NO inventes códigos si no encuentras — dile al usuario y ofrece delegar a humano.',
     input_schema: {
       type: 'object' as const,
       properties: {

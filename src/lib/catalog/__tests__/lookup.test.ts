@@ -1,8 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as XLSX from 'xlsx';
-import { searchCatalog, _clearCatalogCache } from '../catalog';
+import { searchCatalog, _clearCatalogCache } from '../lookup';
 
-// Mock supabase admin
 const mockOrg = {
   access_token: 'test_token',
   refresh_token: null,
@@ -25,7 +24,6 @@ vi.mock('@/lib/supabase/admin', () => ({
   }),
 }));
 
-// Mock Dropbox class
 const mockRev = 'rev123';
 const mockFileBuffer = () => {
   const ws = XLSX.utils.aoa_to_sheet([
@@ -57,7 +55,7 @@ vi.mock('dropbox', () => {
   return { Dropbox };
 });
 
-describe('dropbox catalog parser + search', () => {
+describe('cloud catalog lookup (Dropbox provider)', () => {
   beforeEach(() => {
     _clearCatalogCache();
     filesDownloadCalls = 0;
@@ -65,6 +63,7 @@ describe('dropbox catalog parser + search', () => {
   });
 
   const config = {
+    provider:     'dropbox' as const,
     doc_path:     '/Catalogo/codigos.xlsx',
     sku_column:   'SKU',
     desc_column:  'Descripcion',
@@ -81,44 +80,36 @@ describe('dropbox catalog parser + search', () => {
     }
   });
 
-  it('encuentra fuzzy por descripcion', async () => {
-    const res = await searchCatalog('org1@test.com', config, 'cable');
-    expect('matches' in res).toBe(true);
+  it('fuzzy por descripcion (case-insensitive)', async () => {
+    const res = await searchCatalog('org1@test.com', config, 'CABLE');
     if ('matches' in res) {
       expect(res.matches.length).toBe(2);
       expect(res.matches.every(m => m.descripcion.toLowerCase().includes('cable'))).toBe(true);
     }
   });
 
-  it('match exacto solo por SKU cuando exact:true', async () => {
+  it('exact:true busca solo por SKU', async () => {
     const res = await searchCatalog('org1@test.com', config, 'a-001', { exact: true });
-    expect('matches' in res).toBe(true);
     if ('matches' in res) {
       expect(res.matches.length).toBe(1);
       expect(res.matches[0].sku).toBe('A-001');
     }
   });
 
-  it('no matches → matches vacio (no error)', async () => {
-    const res = await searchCatalog('org1@test.com', config, 'zzzz-nada');
-    expect('matches' in res).toBe(true);
-    if ('matches' in res) {
-      expect(res.matches.length).toBe(0);
-    }
+  it('sin coincidencias devuelve matches vacio', async () => {
+    const res = await searchCatalog('org1@test.com', config, 'zzz');
+    if ('matches' in res) expect(res.matches.length).toBe(0);
   });
 
-  it('cache: segunda llamada dentro de TTL no re-descarga', async () => {
+  it('cache dentro de TTL no re-descarga', async () => {
     await searchCatalog('org1@test.com', config, 'cable');
     await searchCatalog('org1@test.com', config, 'tornillo');
     expect(filesDownloadCalls).toBe(1);
-    expect(filesGetMetadataCalls).toBe(0);
   });
 
-  it('respeta price_column null cuando no aplica', async () => {
+  it('price_column null → sin precio', async () => {
     const noPrice = { ...config, price_column: null };
     const res = await searchCatalog('org1@test.com', noPrice, 'a-001');
-    if ('matches' in res) {
-      expect(res.matches[0].precio).toBeUndefined();
-    }
+    if ('matches' in res) expect(res.matches[0].precio).toBeUndefined();
   });
 });

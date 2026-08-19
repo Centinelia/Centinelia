@@ -1264,9 +1264,9 @@ const BUSCAR_PRODUCTO_TOOL: Anthropic.Tool = {
   },
 };
 
-const DROPBOX_BUSCAR_CODIGO_TOOL: Anthropic.Tool = {
-  name: 'dropbox_buscar_codigo',
-  description: 'Busca un código de pieza o producto en el catálogo Excel/CSV que el cliente mantiene en su Dropbox. Úsala ANTES de llenar una OC, cotización o factura cuando necesites el SKU correcto. Devuelve hasta 20 coincidencias con SKU, descripción y precio (si aplica). Si pasas exact:true busca match exacto sólo contra SKU. NO inventes códigos si no encuentras — dile al usuario y ofrece delegar a humano.',
+const CATALOGO_BUSCAR_CODIGO_TOOL: Anthropic.Tool = {
+  name: 'catalogo_buscar_codigo',
+  description: 'Busca un código de pieza o producto en el catálogo Excel/CSV que el cliente mantiene en su almacenamiento en la nube (Dropbox, Google Drive u OneDrive según su config). Úsala ANTES de llenar una OC, cotización o factura cuando necesites el SKU correcto. Devuelve hasta 20 coincidencias con SKU, descripción y precio (si aplica). Si pasas exact:true busca match exacto sólo contra SKU. NO inventes códigos si no encuentras — dile al usuario y ofrece delegar a humano.',
   input_schema: {
     type: 'object' as const,
     properties: {
@@ -1386,7 +1386,7 @@ const VOICE_TO_CHAT: Record<string, string | null> = {
   marcar_no_llamar:          null,  // voice-only (no aplica a chat portal — owner no habla con clientes por chat)
   agregar_tag_contacto:      'agregar_tag_contacto',
   pedir_a_humano:            'pedir_a_humano',
-  dropbox_buscar_codigo:     'dropbox_buscar_codigo',
+  catalogo_buscar_codigo:    'catalogo_buscar_codigo',
 };
 
 // Chat tool name → Anthropic.Tool object
@@ -1445,7 +1445,7 @@ const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
   ver_metricas_ml:           ML_VER_METRICAS_TOOL,
   ...Object.fromEntries(QB_TOOLS.map(t => [t.name, t])),
   buscar_producto: BUSCAR_PRODUCTO_TOOL,
-  dropbox_buscar_codigo: DROPBOX_BUSCAR_CODIGO_TOOL,
+  catalogo_buscar_codigo: CATALOGO_BUSCAR_CODIGO_TOOL,
   revisar_incidentes_plataforma: REVISAR_INCIDENTES_PLATAFORMA_TOOL,
   crear_incidente:               CREAR_INCIDENTE_TOOL,
   responder_cliente_afectado:    RESPONDER_CLIENTE_AFECTADO_TOOL,

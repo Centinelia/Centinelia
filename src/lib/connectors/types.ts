@@ -112,7 +112,13 @@ export interface CalendarConnector {
 }
 
 export interface Connector {
-  provider:  'google' | 'microsoft';
+  provider:  'google' | 'microsoft' | 'dropbox';
+  /**
+   * NOTA: Dropbox no provee email real. Retorna un stub que throws si se
+   * invoca (ver createDropboxConnector). Los callers de email-sync solo llegan
+   * aquí con connectors 'google' o 'microsoft'; el fallback dropbox se usa
+   * exclusivamente vía .files.
+   */
   email:     EmailConnector;
   files:     FilesConnector;
   contacts?: ContactsConnector;

@@ -72,7 +72,7 @@ export const TOOL_REGISTRY: ToolEntry[] = [
 
   // productos / ML (feature-gated 'mercadolibre')
   { name: 'buscar_producto',          description: 'Busca producto en catálogo Notion',                     channels: A, category: 'catalog',   destructive: false, gatedByRole: ['noah'], gatedByFeature: null, capability: null, policy: policyFor('buscar_producto') },
-  { name: 'dropbox_buscar_codigo',    description: 'Busca código de pieza/producto en catálogo Excel/CSV del cliente en Dropbox (pack dropbox_catalog)', channels: A, category: 'catalog', destructive: false, gatedByRole: ['nox','noah'], gatedByFeature: 'dropbox_catalog', capability: 'files', policy: DEFAULT_POLICY },
+  { name: 'catalogo_buscar_codigo',   description: 'Busca código de pieza/producto en catálogo Excel/CSV del cliente en la nube — Dropbox, Google Drive u OneDrive (pack cloud_catalog)', channels: A, category: 'catalog', destructive: false, gatedByRole: ['nox','noah'], gatedByFeature: 'cloud_catalog', capability: 'files', policy: DEFAULT_POLICY },
   { name: 'analizar_publicaciones_ml',description: 'Lista publicaciones Mercado Libre (solo chat)',         channels: ['chat'], category: 'mercadolibre', destructive: false, gatedByRole: ['noah','niva'], gatedByFeature: 'mercadolibre', capability: null, policy: policyFor('analizar_publicaciones_ml') },
   { name: 'ver_metricas_ml',          description: 'Métricas Mercado Libre (solo chat)',                    channels: ['chat'], category: 'mercadolibre', destructive: false, gatedByRole: ['noah','niva'], gatedByFeature: 'mercadolibre', capability: null, policy: policyFor('ver_metricas_ml') },
 

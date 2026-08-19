@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Calendar, Mail, MessageSquare, ShoppingCart, ChevronDown, Check, Users, DollarSign, Plug, Sparkles, FileText } from 'lucide-react';
+import { Calendar, Mail, MessageSquare, ShoppingCart, ChevronDown, Check, Users, DollarSign, Plug, Sparkles, FileText, Cloud } from 'lucide-react';
 import type { Plan } from '@/types/agent';
 
 import IntegrationsSection       from './IntegrationsSection';
@@ -13,7 +13,7 @@ import MercadoLibreSection       from './MercadoLibreSection';
 import QuickBooksSection         from './QuickBooksSection';
 import GoogleWorkspaceCard       from './GoogleWorkspaceCard';
 import SolucionFactibleSection   from './oficina/integraciones/solucion-factible/SolucionFactibleSection';
-import DropboxSection            from './DropboxSection';
+import StorageSection            from './StorageSection';
 
 /* ── types ─────────────────────────────────────────────────────────────── */
 
@@ -521,6 +521,15 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
     ? 'Solucion Factible · Timbrado CFDI 4.0'
     : 'Elige tu proveedor y emite CFDI 4.0 automáticamente';
 
+  function buildStorageSubtitle(s: HubStatus): string | undefined {
+    const providers: string[] = [];
+    if (s.emails.find(e => e.provider === 'gmail'))   providers.push('Google Drive');
+    if (s.emails.find(e => e.provider === 'outlook')) providers.push('OneDrive');
+    if (s.dropbox?.connected) providers.push('Dropbox');
+    if (providers.length === 0) return 'Google Drive, OneDrive o Dropbox — conecta el que uses';
+    return providers.join(' · ');
+  }
+
   /* ── summary caps ───────────────────────────────────────────────────── */
 
   const caps: CapabilitySummary[] = [
@@ -657,12 +666,12 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
       children: <SolucionFactibleSection token={token} />,
     },
     {
-      key: 'dropbox',
-      icon: <Plug size={16} style={{ color: '#0061FF' }} />,
-      label: 'Dropbox (catálogo)',
-      subtitle: status.dropbox?.connected ? `Dropbox · ${status.dropbox.email ?? ''}` : undefined,
-      connected: !!status.dropbox?.connected,
-      children: <DropboxSection token={token} />,
+      key: 'storage',
+      icon: <Cloud size={16} style={{ color: '#6C3BFF' }} />,
+      label: 'Almacenamiento en la nube',
+      subtitle: buildStorageSubtitle(status),
+      connected: !!status.dropbox?.connected || !!status.emails.find(e => e.provider === 'gmail' || e.provider === 'outlook'),
+      children: <StorageSection token={token} />,
     },
   ];
 

@@ -390,11 +390,12 @@ NO la uses para:
       required: ['telefono'],
     },
   },
-  // Pack dropbox_catalog — lookup del catálogo Excel/CSV que vive en el
-  // Dropbox del cliente. El executor gate por feature flag y config JSONB.
+  // Pack cloud_catalog — lookup del catálogo Excel/CSV que vive en el
+  // almacenamiento en la nube del cliente (Dropbox, Google Drive u OneDrive).
+  // El executor gate por feature flag cloud_catalog y config JSONB con provider.
   {
-    name:        'dropbox_buscar_codigo',
-    description: 'Busca un código de pieza o producto en el catálogo Excel/CSV que el cliente mantiene en su Dropbox. Úsala ANTES de llenar OC, cotización o factura cuando el correo mencione un SKU o descripción que necesitas mapear al código correcto. NO inventes códigos si no encuentras — dile al remitente y ofrece delegar.',
+    name:        'catalogo_buscar_codigo',
+    description: 'Busca un código de pieza o producto en el catálogo Excel/CSV que el cliente mantiene en su almacenamiento en la nube (Dropbox, Google Drive u OneDrive según su config). Úsala ANTES de llenar OC, cotización o factura cuando el correo mencione un SKU o descripción que necesitas mapear al código correcto. NO inventes códigos si no encuentras — dile al remitente y ofrece delegar.',
     input_schema: {
       type: 'object' as const,
       properties: {
