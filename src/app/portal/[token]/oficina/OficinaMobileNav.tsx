@@ -16,6 +16,7 @@ interface Props {
   hasStripe?: boolean;
   vertical?: string;
   modules?: string[];
+  hasInvoicing?: boolean;
 }
 
 /**

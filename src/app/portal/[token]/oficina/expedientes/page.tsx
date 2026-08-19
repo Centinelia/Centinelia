@@ -4,8 +4,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import {
   FileText, ChevronRight, ChevronDown, CheckCircle, AlertTriangle,
-  Loader2, Upload, Settings, Search, RefreshCw, Trash2, PenLine,
+  Loader2, Upload, Settings, Search, RefreshCw, Trash2, PenLine, FileSignature,
 } from 'lucide-react';
+import { EmptyState } from '@/components/portal-ui';
+import OficinaPageHero from '../OficinaPageHero';
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
 interface ExpedienteRow {
@@ -74,6 +76,50 @@ const DESTINOS = [
   { id: 'smb_local',      label: 'Servidor local (SMB)'            },
   { id: 'windows_agent',  label: 'Agente Windows (filesystem)'     },
 ];
+
+// Estructuras de organización predefinidas para el archivado — evita exponer
+// placeholders {año}/{mes} al usuario final (que no son intuitivos). Cada opción
+// mapea a un template interno que el adapter procesa.
+const ESTRUCTURAS_ARCHIVADO: { id: string; label: string; ejemplo: string; template: string }[] = [
+  {
+    id:      'año_mes_proveedor',
+    label:   'Año → Mes → Proveedor',
+    ejemplo: '2026 / 08 / Proveedor Prueba / cfdi_pdf_2026-08-19_PO-1234.pdf',
+    template:'{año}/{mes}/{proveedor}/{tipo}_{fecha}_{folio}.{ext}',
+  },
+  {
+    id:      'año_mes',
+    label:   'Año → Mes (sin agrupar proveedor)',
+    ejemplo: '2026 / 08 / cfdi_pdf_2026-08-19_Proveedor Prueba_PO-1234.pdf',
+    template:'{año}/{mes}/{tipo}_{fecha}_{proveedor}_{folio}.{ext}',
+  },
+  {
+    id:      'proveedor_año',
+    label:   'Proveedor → Año',
+    ejemplo: 'Proveedor Prueba / 2026 / cfdi_pdf_2026-08-19_PO-1234.pdf',
+    template:'{proveedor}/{año}/{tipo}_{fecha}_{folio}.{ext}',
+  },
+  {
+    id:      'solo_año',
+    label:   'Solo por año',
+    ejemplo: '2026 / cfdi_pdf_2026-08-19_Proveedor Prueba_PO-1234.pdf',
+    template:'{año}/{tipo}_{fecha}_{proveedor}_{folio}.{ext}',
+  },
+  {
+    id:      'plano',
+    label:   'Todo en la misma carpeta',
+    ejemplo: 'cfdi_pdf_2026-08-19_Proveedor Prueba_PO-1234.pdf',
+    template:'{tipo}_{fecha}_{proveedor}_{folio}.{ext}',
+  },
+];
+
+const ESTRUCTURA_POR_DEFAULT = ESTRUCTURAS_ARCHIVADO[0];
+
+function estructuraFromTemplate(tpl: string | undefined): string {
+  if (!tpl) return ESTRUCTURA_POR_DEFAULT.id;
+  const match = ESTRUCTURAS_ARCHIVADO.find(e => e.template === tpl);
+  return match?.id ?? 'custom';
+}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const fmtMxn = (n: number | null) => n == null ? '—' : n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 });
@@ -180,43 +226,45 @@ export default function ExpedientesPage() {
     }
   }
 
+  const totalExpedientes = Object.values(counts).reduce((a, b) => a + b, 0);
+
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-3 mb-6 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold" style={{ color: '#1A0A3B', letterSpacing: '-0.02em' }}>
-            Expedientes de compra
-          </h1>
-          <p className="text-sm mt-1" style={{ color: '#6B6480' }}>
-            Ciclo completo OC → firma → pago → CFDI → archivado. Gestionado por Nox y Nala.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => void loadList()}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold transition-colors"
-            style={{ background: '#F5F2FB', color: '#6C3BFF', border: '1px solid #E8E3F5' }}
-          >
-            <RefreshCw size={13} /> Refrescar
-          </button>
-          <button
-            onClick={() => setConfigPanelOpen(v => !v)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold transition-colors"
-            style={{
-              background: configPanelOpen ? '#6C3BFF' : '#fff',
-              color:      configPanelOpen ? '#fff' : '#6C3BFF',
-              border:     '1px solid #6C3BFF',
-            }}
-          >
-            <Settings size={13} /> Configuración
-          </button>
-        </div>
-      </div>
+    <div id="of-expedientes" className="flex flex-col gap-5 max-w-6xl mx-auto w-full p-4 md:p-6">
+
+      <OficinaPageHero
+        icon={FileSignature}
+        eyebrow="Expedientes OC"
+        title="Expedientes de compra"
+        description={totalExpedientes > 0
+          ? <><strong style={{ color: '#1A0A3B' }}>{totalExpedientes}</strong> {totalExpedientes === 1 ? 'expediente' : 'expedientes'} en el ciclo OC → firma → pago → CFDI → archivado. Gestionados por Nox y Nala.</>
+          : 'Ciclo completo de compras y facturación. Nala crea la OC en QuickBooks, la firma con tus reglas, coordina con pagos y proveedores, timbra el CFDI al cliente y archiva todo. Nox coordina las excepciones.'}
+        right={
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => void loadList()}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[13px] font-semibold transition-colors"
+              style={{ background: '#F5F2FB', color: '#6C3BFF', border: '1px solid #E8E3F5' }}
+            >
+              <RefreshCw size={13} /> Refrescar
+            </button>
+            <button
+              onClick={() => setConfigPanelOpen(v => !v)}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[13px] font-semibold transition-colors"
+              style={{
+                background: configPanelOpen ? '#6C3BFF' : '#fff',
+                color:      configPanelOpen ? '#fff' : '#6C3BFF',
+                border:     '1px solid #6C3BFF',
+              }}
+            >
+              <Settings size={13} /> Configuración
+            </button>
+          </div>
+        }
+      />
 
       {/* Feedback */}
       {msg && (
-        <div className="rounded-lg px-4 py-3 mb-4 text-sm flex items-start gap-2"
+        <div className="rounded-xl px-4 py-3 text-sm flex items-start gap-2"
           style={{
             background: msg.ok ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)',
             border:     msg.ok ? '1px solid rgba(34,197,94,0.25)' : '1px solid rgba(239,68,68,0.25)',
@@ -229,10 +277,11 @@ export default function ExpedientesPage() {
 
       {/* Config panel (colapsable) */}
       {configPanelOpen && (
-        <div className="rounded-2xl mb-6 overflow-hidden" style={{ background: '#fff', border: '1px solid #E8E3F5' }}>
+        <div className="rounded-2xl overflow-hidden"
+          style={{ background: '#fff', border: '1px solid #E8E3F5', boxShadow: '0 1px 2px rgba(26,10,59,0.04)' }}>
           <div className="px-5 py-4" style={{ borderBottom: '1px solid #F0EDF9' }}>
-            <h2 className="text-sm font-bold" style={{ color: '#1A0A3B' }}>Configuración del ciclo</h2>
-            <p className="text-xs mt-1" style={{ color: '#6B6480' }}>
+            <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>Configuración del ciclo</h2>
+            <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>
               Reglas de autofirma, nomenclatura de archivado, imagen de firma digitalizada.
             </p>
           </div>
@@ -273,21 +322,30 @@ export default function ExpedientesPage() {
               </p>
             </div>
 
-            {/* Monto máximo autofirma */}
+            {/* Monto máximo autofirma — formato de moneda MXN */}
             <div>
               <label className="block text-xs font-semibold mb-1.5" style={{ color: '#1A0A3B' }}>
-                Monto máximo para autofirma (MXN)
+                Monto máximo para autofirma
               </label>
               <input
-                type="number"
-                min={0}
-                defaultValue={config.monto_max_autofirma_mxn ?? 0}
-                onBlur={e => { const n = Number(e.currentTarget.value); if (n >= 0 && n !== (config.monto_max_autofirma_mxn ?? 0)) void saveConfig({ monto_max_autofirma_mxn: n }); }}
+                type="text"
+                inputMode="decimal"
+                defaultValue={(config.monto_max_autofirma_mxn ?? 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })}
+                onFocus={e => {
+                  const raw = e.currentTarget.value.replace(/[^0-9.]/g, '');
+                  e.currentTarget.value = raw;
+                  e.currentTarget.select();
+                }}
+                onBlur={e => {
+                  const parsed = Number(e.currentTarget.value.replace(/[^0-9.]/g, '')) || 0;
+                  e.currentTarget.value = parsed.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 });
+                  if (parsed !== (config.monto_max_autofirma_mxn ?? 0)) void saveConfig({ monto_max_autofirma_mxn: parsed });
+                }}
                 className="w-full sm:w-64 rounded-lg px-3 py-2 text-sm"
                 style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }}
               />
               <p className="text-[11px] mt-1.5" style={{ color: '#9B8FB5' }}>
-                Órdenes por debajo o iguales a este monto se firman automáticamente si pasan las reglas de sanidad. 0 = autofirma deshabilitada.
+                Órdenes por debajo o iguales a este monto se firman automáticamente si pasan las reglas de sanidad. $0.00 = autofirma deshabilitada.
               </p>
             </div>
 
@@ -309,20 +367,49 @@ export default function ExpedientesPage() {
               </p>
             </div>
 
-            {/* Nomenclatura archivado */}
+            {/* Estructura de archivado — selector visual con ejemplo real */}
             <div>
               <label className="block text-xs font-semibold mb-1.5" style={{ color: '#1A0A3B' }}>
-                Nomenclatura de archivado
+                Cómo organizar los archivos
               </label>
-              <input
-                type="text"
-                defaultValue={config.archivado_nomenclatura ?? '{año}/{mes}/{proveedor}/{folio}_{fecha}.pdf'}
-                onBlur={e => { const v = e.currentTarget.value.trim(); if (v && v !== config.archivado_nomenclatura) void saveConfig({ archivado_nomenclatura: v }); }}
-                className="w-full rounded-lg px-3 py-2 text-sm font-mono"
-                style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }}
-              />
-              <p className="text-[11px] mt-1.5" style={{ color: '#9B8FB5' }}>
-                Placeholders disponibles: {'{año}'} · {'{mes}'} · {'{proveedor}'} · {'{folio}'} · {'{fecha}'} · {'{uuid}'}.
+              <div className="flex flex-col gap-2">
+                {ESTRUCTURAS_ARCHIVADO.map(e => {
+                  const currentId = estructuraFromTemplate(config.archivado_nomenclatura);
+                  const selected = currentId === e.id;
+                  return (
+                    <button
+                      key={e.id}
+                      type="button"
+                      onClick={() => void saveConfig({ archivado_nomenclatura: e.template })}
+                      className="w-full text-left rounded-lg px-4 py-3 transition-all"
+                      style={{
+                        background: selected ? 'rgba(108,59,255,0.06)' : '#FAFAFB',
+                        border:     selected ? '1.5px solid #6C3BFF' : '1px solid #E8E3F5',
+                        cursor:     'pointer',
+                      }}
+                    >
+                      <div className="flex items-start gap-2.5">
+                        <div className="mt-0.5 flex-shrink-0" style={{
+                          width: 14, height: 14, borderRadius: '50%',
+                          background: selected ? '#6C3BFF' : '#fff',
+                          border:     selected ? '2px solid #6C3BFF' : '1.5px solid #C7BFE0',
+                          boxShadow:  selected ? 'inset 0 0 0 2px #fff' : 'none',
+                        }} />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[13px] font-semibold" style={{ color: selected ? '#6C3BFF' : '#1A0A3B' }}>
+                            {e.label}
+                          </div>
+                          <div className="text-[11px] font-mono mt-1 truncate" style={{ color: '#6B6480' }}>
+                            {e.ejemplo}
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[11px] mt-2" style={{ color: '#9B8FB5' }}>
+                Nala usa esta estructura al archivar el XML, PDF y acuse de cada CFDI en el destino que elijas abajo.
               </p>
             </div>
 
@@ -366,18 +453,18 @@ export default function ExpedientesPage() {
         </div>
       )}
 
-      {/* Filters */}
-      <div className="flex items-center gap-2 mb-4 flex-wrap">
+      {/* Pills filters — patrón consistente con documentos/facturas */}
+      <div className="flex items-center gap-2 flex-wrap">
         <button
           onClick={() => setFilterStatus(null)}
-          className="px-3 py-1.5 rounded-full text-xs font-semibold transition-colors"
+          className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
           style={{
             background: filterStatus === null ? '#1A0A3B' : '#fff',
             color:      filterStatus === null ? '#fff' : '#6B6480',
             border:     '1px solid #E8E3F5',
           }}
         >
-          Todos {Object.values(counts).reduce((a, b) => a + b, 0) > 0 && <span className="opacity-60 ml-1">· {Object.values(counts).reduce((a, b) => a + b, 0)}</span>}
+          Todos {totalExpedientes > 0 && <span className="opacity-60 ml-1">· {totalExpedientes}</span>}
         </button>
         {Object.entries(STATUS_LABELS).map(([sid, label]) => {
           const n = counts[sid] ?? 0;
@@ -388,7 +475,7 @@ export default function ExpedientesPage() {
             <button
               key={sid}
               onClick={() => setFilterStatus(sid)}
-              className="px-3 py-1.5 rounded-full text-xs font-semibold transition-colors"
+              className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
               style={{
                 background: selected ? color : '#fff',
                 color:      selected ? '#fff' : color,
@@ -401,46 +488,76 @@ export default function ExpedientesPage() {
         })}
       </div>
 
-      {/* Search */}
-      <div className="relative mb-4">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#9B8FB5' }} />
-        <input
-          type="text"
-          placeholder="Buscar por folio, proveedor, o número de OC…"
-          value={searchText}
-          onChange={e => setSearchText(e.target.value)}
-          className="w-full pl-9 pr-3 py-2 rounded-lg text-sm"
-          style={{ background: '#fff', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }}
-        />
-      </div>
-
-      {/* Lista */}
-      {loading ? (
-        <div className="flex items-center justify-center py-16 text-sm" style={{ color: '#6B6480' }}>
-          <Loader2 size={16} className="animate-spin mr-2" /> Cargando expedientes…
-        </div>
-      ) : expedientes.length === 0 ? (
-        <div className="rounded-2xl py-16 text-center" style={{ background: '#fff', border: '1px solid #E8E3F5' }}>
-          <FileText size={32} className="mx-auto mb-3" style={{ color: '#C7BFE0' }} />
-          <p className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>Sin expedientes todavía</p>
-          <p className="text-xs mt-1" style={{ color: '#6B6480' }}>
-            Cuando Nala o Nox creen una Orden de Compra en QuickBooks, aparecerá aquí.
-          </p>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-2">
-          {expedientes.map(exp => (
-            <ExpedienteCard
-              key={exp.id}
-              row={exp}
-              expanded={expandedId === exp.id}
-              detail={expandedId === exp.id ? detailData : null}
-              detailLoading={expandedId === exp.id && detailLoading}
-              onToggle={() => void loadDetail(exp.id)}
+      {/* Contenedor principal — card blanco con lista + búsqueda */}
+      <div
+        className="flex flex-col rounded-2xl overflow-hidden"
+        style={{ background: '#fff', border: '1px solid #E8E3F5', boxShadow: '0 1px 2px rgba(26,10,59,0.04)' }}
+      >
+        {/* Header interno del card */}
+        <div className="flex items-center justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
+          <div>
+            <div className="flex items-baseline gap-2">
+              <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>
+                {filterStatus ? STATUS_LABELS[filterStatus] : 'Todos los expedientes'}
+              </h2>
+              {expedientes.length > 0 && (
+                <span className="text-[12px] tabular-nums" style={{ color: '#9B8FB5' }}>
+                  {expedientes.length}
+                </span>
+              )}
+            </div>
+            <p className="text-[12px] mt-0.5" style={{ color: '#6B6480' }}>
+              Click en un expediente para ver el detalle completo del ciclo.
+            </p>
+          </div>
+          <div className="relative flex-1 sm:flex-none sm:min-w-[300px]">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#9B8FB5' }} />
+            <input
+              type="text"
+              placeholder="Folio, proveedor, o número de OC…"
+              value={searchText}
+              onChange={e => setSearchText(e.target.value)}
+              className="w-full pl-9 pr-3 py-1.5 rounded-lg text-[12px]"
+              style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }}
             />
-          ))}
+          </div>
         </div>
-      )}
+
+        {/* Divider antes de la lista */}
+        <div style={{ height: 1, background: '#F0EDF9' }} />
+
+        {/* Lista o empty state */}
+        {loading ? (
+          <div className="flex items-center justify-center py-16 text-[13px]" style={{ color: '#6B6480' }}>
+            <Loader2 size={14} className="animate-spin mr-2" /> Cargando expedientes…
+          </div>
+        ) : expedientes.length === 0 ? (
+          <div className="py-14">
+            <EmptyState
+              icon={FileSignature}
+              title={filterStatus || searchText ? 'Sin resultados' : 'Sin expedientes todavía'}
+              description={
+                filterStatus || searchText
+                  ? 'Ajusta los filtros o la búsqueda para ver más expedientes.'
+                  : 'Cuando Nala o Nox creen una Orden de Compra en QuickBooks, aparecerá aquí con todo su ciclo.'
+              }
+            />
+          </div>
+        ) : (
+          <div className="flex flex-col p-3 gap-2">
+            {expedientes.map(exp => (
+              <ExpedienteCard
+                key={exp.id}
+                row={exp}
+                expanded={expandedId === exp.id}
+                detail={expandedId === exp.id ? detailData : null}
+                detailLoading={expandedId === exp.id && detailLoading}
+                onToggle={() => void loadDetail(exp.id)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

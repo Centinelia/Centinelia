@@ -51,14 +51,15 @@ export default async function OficinaLayout({
   const [poolStatus, { data: orgMeta }] = await Promise.all([
     loadPoolStatus(supabase, lookupEmail, agent as any),
     lookupEmail
-      ? supabase.from('organizations').select('logo_url').eq('portal_email', lookupEmail).maybeSingle()
+      ? supabase.from('organizations').select('logo_url, invoicing_provider').eq('portal_email', lookupEmail).maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
   const { minutesIncluded, minutesUsed, minutesRemain, aiOpsUsed, aiOpsLimit } = poolStatus;
-  const orgLogoUrl = (orgMeta?.logo_url as string | null) ?? null;
-  const hasStripe  = !!(agent as any).stripe_customer_id;
-  const vertical   = ((agent as any).features as any)?.vertical as string | undefined;
-  const modules    = session?.isSubUser ? (session.modules ?? []) : undefined;
+  const orgLogoUrl   = (orgMeta?.logo_url as string | null) ?? null;
+  const hasStripe    = !!(agent as any).stripe_customer_id;
+  const hasInvoicing = !!(orgMeta as any)?.invoicing_provider;
+  const vertical     = ((agent as any).features as any)?.vertical as string | undefined;
+  const modules      = session?.isSubUser ? (session.modules ?? []) : undefined;
 
   // Business switcher options
   const { data: clientAgents } = lookupEmail
@@ -175,6 +176,7 @@ export default async function OficinaLayout({
               hasStripe={hasStripe}
               vertical={vertical}
               modules={modules}
+              hasInvoicing={hasInvoicing}
             />
           }
         />
@@ -190,6 +192,7 @@ export default async function OficinaLayout({
             hasStripe={hasStripe}
             vertical={vertical}
             modules={modules}
+            hasInvoicing={hasInvoicing}
           />
           <main className="flex-1 min-w-0 flex flex-col">
             <div className="px-4 sm:px-6 py-6 flex-1">

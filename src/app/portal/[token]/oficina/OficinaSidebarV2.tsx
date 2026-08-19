@@ -34,6 +34,9 @@ interface NavItem {
   // Usado por Campañas para admitir usuarios con solo `of_encuestas` (unificación
   // de Campañas + Encuestas bajo /oficina/campanas — 2026-08-09).
   moduleIdOr?: string;
+  // Feature gate: si true, solo aparece cuando la org tiene invoicing_provider
+  // configurado (pack ciclo_oc_cfdi requiere PAC conectado). Ver Expedientes OC.
+  requiresInvoicing?: boolean;
 }
 
 interface NavSection { group: string; items: NavItem[]; }
@@ -59,7 +62,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { href: '/documentos',           moduleId: 'of_documentos',           label: 'Documentos',          icon: FolderOpen,     badgeKey: '' },
       { href: '/facturas',             moduleId: 'of_facturas',             label: 'Facturas',            icon: Receipt,        badgeKey: 'facturas' },
-      { href: '/expedientes',          moduleId: 'of_expedientes',          label: 'Expedientes OC',      icon: FileSignature,  badgeKey: '' },
+      { href: '/expedientes',          moduleId: 'of_expedientes',          label: 'Expedientes OC',      icon: FileSignature,  badgeKey: '', requiresInvoicing: true },
       { href: '/contratos',            moduleId: 'of_contratos',            label: 'Contratos',           icon: FileSignature,  badgeKey: '' },
       { href: '/plantillas',           moduleId: 'of_plantillas',           label: 'Plantillas',          icon: LayoutTemplate, badgeKey: '' },
       { href: '/tareas',               moduleId: 'of_tareas_programadas',   label: 'Tareas',              icon: CalendarClock,  badgeKey: '' },
@@ -103,6 +106,7 @@ interface Props {
   hasStripe?:       boolean;
   vertical?:        string;
   modules?:         string[];
+  hasInvoicing?:    boolean;
 }
 
 // Barra de uso — colores contra fondo dark
@@ -115,6 +119,7 @@ function uColorDark(pct: number): string {
 export default function OficinaSidebarV2({
   token, badges = {}, minutesRemain = 0, minutesIncluded = 0,
   aiOpsUsed = 0, aiOpsLimit = 0, hasStripe = false, vertical, modules,
+  hasInvoicing = false,
 }: Props) {
   const pathname = usePathname();
   const base     = `/portal/${token}/oficina`;
@@ -122,6 +127,7 @@ export default function OficinaSidebarV2({
   const activeGroup = NAV_SECTIONS.find(s =>
     s.items
       .filter(i => !i.vertical || i.vertical === vertical)
+      .filter(i => !i.requiresInvoicing || hasInvoicing)
       .filter(i => !modules || modules.includes(i.moduleId) || (i.moduleIdOr && modules.includes(i.moduleIdOr)))
       .some(i => (i.href === ''
         ? pathname === base || pathname === `${base}/`
@@ -166,6 +172,7 @@ export default function OficinaSidebarV2({
         {NAV_SECTIONS.map((section, si) => {
           const visibleItems = section.items
             .filter(item => !item.vertical || item.vertical === vertical)
+            .filter(item => !item.requiresInvoicing || hasInvoicing)
             .filter(item => !modules || modules.includes(item.moduleId) || (item.moduleIdOr && modules.includes(item.moduleIdOr)));
           if (visibleItems.length === 0) return null;
 
