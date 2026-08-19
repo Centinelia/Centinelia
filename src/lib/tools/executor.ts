@@ -1694,32 +1694,34 @@ async function executeAgentToolInner(
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // dropbox_buscar_codigo — pack dropbox_catalog. Lookup en Excel/CSV que el
-  // cliente mantiene en su Dropbox. Feature gated + config JSONB requeridos.
+  // catalogo_buscar_codigo — pack cloud_catalog. Lookup en Excel/CSV que el
+  // cliente mantiene en Dropbox, Google Drive u OneDrive. Feature gated +
+  // config JSONB requeridos. Provider elegido en organizations.catalog_config.
   // ─────────────────────────────────────────────────────────────────────────
-  if (toolName === 'dropbox_buscar_codigo') {
+  if (toolName === 'catalogo_buscar_codigo') {
     const { data: org } = await supabase
       .from('organizations')
-      .select('features, dropbox_catalog_config')
+      .select('catalog_config')
       .eq('portal_email', portalEmail)
       .maybeSingle();
-    const orgFeatures = (org?.features as Record<string, unknown>) ?? {};
-    if (!orgFeatures.dropbox_catalog) {
-      return { ok: false, error: 'El pack Dropbox Catalog no está activo para esta cuenta.' };
+    const agentFeatures = (agent.features as Record<string, unknown> | undefined) ?? {};
+    if (!agentFeatures.cloud_catalog) {
+      return { ok: false, error: 'El pack Catálogo en la nube no está activo para esta cuenta.' };
     }
-    const config = org?.dropbox_catalog_config as {
+    const config = org?.catalog_config as {
+      provider: 'dropbox' | 'google' | 'microsoft';
       doc_path: string; sku_column: string; desc_column: string; price_column?: string | null;
     } | null;
-    if (!config?.doc_path || !config.sku_column || !config.desc_column) {
-      return { ok: false, error: 'Catálogo Dropbox no configurado. Actívalo en Integraciones → Dropbox del portal.' };
+    if (!config?.provider || !config.doc_path || !config.sku_column || !config.desc_column) {
+      return { ok: false, error: 'Catálogo no configurado. Actívalo en Integraciones → Almacenamiento en la nube del portal.' };
     }
     const { query, exact } = toolInput as { query?: string; exact?: boolean };
     if (!query?.trim()) return { ok: false, error: 'Proporciona un término a buscar (SKU o descripción).' };
-    const { searchCatalog } = await import('@/lib/dropbox/catalog');
+    const { searchCatalog } = await import('@/lib/catalog/lookup');
     const res = await searchCatalog(portalEmail, config, query.trim(), { exact: !!exact });
     if ('error' in res) return { ok: false, error: res.error };
     if (res.matches.length === 0) {
-      return { ok: false, error: `Sin coincidencias para "${query}" en el catálogo Dropbox.` };
+      return { ok: false, error: `Sin coincidencias para "${query}" en el catálogo.` };
     }
     return { ok: true, matches: res.matches, total: res.total };
   }
@@ -2010,16 +2012,48 @@ async function executeAgentToolInner(
         if (!vendor) { await refundOc('vendor_create_failed'); return { ok: false, error: 'No se pudo crear el proveedor en QB.' }; }
       }
 
-      const lines = conceptos.map(c => ({
-        DetailType: 'ItemBasedExpenseLineDetail',
-        Amount:     c.cantidad * c.precio_unitario,
-        Description: c.descripcion,
-        ItemBasedExpenseLineDetail: { Qty: c.cantidad, UnitPrice: c.precio_unitario },
-      }));
+      // QB requiere ItemRef o AccountRef en cada línea. Preferimos Item de tipo
+      // Inventory (soporta ItemBasedExpenseLineDetail con Qty+UnitPrice). Si no
+      // hay, usamos AccountBasedExpenseLineDetail contra primera cuenta Expense
+      // (más compat pero pierde granularidad qty/precio en QB).
+      const invItemData = await qb.query(`SELECT Id, Name FROM Item WHERE Type = 'Inventory' MAXRESULTS 1`);
+      const inventoryItem = invItemData?.QueryResponse?.Item?.[0];
+      let accountRef: { Id: string; Name: string } | null = null;
+      if (!inventoryItem) {
+        const acctData = await qb.query(`SELECT Id, Name FROM Account WHERE AccountType = 'Expense' MAXRESULTS 1`);
+        accountRef = acctData?.QueryResponse?.Account?.[0] ?? null;
+        if (!accountRef) { await refundOc('no_item_no_account'); return { ok: false, error: 'QB no tiene Items Inventory ni cuentas de Expense para la OC.' }; }
+      }
+
+      const lines = conceptos.map(c => inventoryItem
+        ? {
+            DetailType: 'ItemBasedExpenseLineDetail',
+            Amount:     c.cantidad * c.precio_unitario,
+            Description: c.descripcion,
+            ItemBasedExpenseLineDetail: {
+              ItemRef:   { value: inventoryItem.Id, name: inventoryItem.Name },
+              Qty:       c.cantidad,
+              UnitPrice: c.precio_unitario,
+            },
+          }
+        : {
+            DetailType: 'AccountBasedExpenseLineDetail',
+            Amount:     c.cantidad * c.precio_unitario,
+            Description: c.descripcion,
+            AccountBasedExpenseLineDetail: {
+              AccountRef: { value: accountRef!.Id, name: accountRef!.Name },
+            },
+          });
+
+      // QB requiere APAccountRef (Accounts Payable). Buscar cuenta tipo AP.
+      const apData = await qb.query(`SELECT Id, Name FROM Account WHERE AccountType = 'Accounts Payable' MAXRESULTS 1`);
+      const apAccount = apData?.QueryResponse?.Account?.[0];
+      if (!apAccount) { await refundOc('no_ap_account'); return { ok: false, error: 'QB no tiene cuenta Accounts Payable. Crea una en QB antes de crear OCs.' }; }
 
       const poBody: any = {
-        VendorRef: { value: vendor.Id, name: vendor.DisplayName },
-        Line:      lines,
+        VendorRef:   { value: vendor.Id, name: vendor.DisplayName },
+        APAccountRef:{ value: apAccount.Id, name: apAccount.Name },
+        Line:        lines,
       };
       const res  = await qb.post('/purchaseorder', poBody);
       const po   = res?.PurchaseOrder;
@@ -2042,7 +2076,7 @@ async function executeAgentToolInner(
 
       if (expErr) { await refundOc('expediente_insert_failed'); return { ok: false, error: `OC creada en QB (${po.Id}) pero no se pudo persistir el expediente: ${expErr.message}` }; }
 
-      void supabase.from('expediente_eventos').insert({
+      await supabase.from('expediente_eventos').insert({
         expediente_id: exp.id, portal_email: portalEmail, agent_id: agentId,
         actor: `meerkat:${(agent.agent_name as string | null)?.toLowerCase() ?? 'unknown'}`,
         tipo: 'oc_creada', from_status: null, to_status: 'oc_creada',
@@ -2126,12 +2160,13 @@ async function executeAgentToolInner(
     if (!qb) { await refundDesc('qb_not_connected'); return { ok: false, error: 'QuickBooks no está conectado.' }; }
 
     try {
-      // QB v3 devuelve PDF binario en /purchaseorder/{id}/pdf con Accept application/pdf
-      const url = `${qb.apiBase}/company/${qb.realmId}/purchaseorder/${exp.qb_po_id}/pdf?minorversion=65`;
+      // QB v3 devuelve PDF binario en /purchaseorder/{id}/pdf con Accept application/pdf.
+      // Ojo: qb.apiBase YA incluye /company/{realmId}, no repetirlo.
+      const url = `${qb.apiBase}/purchaseorder/${exp.qb_po_id}/pdf?minorversion=65`;
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${qb.accessToken}`, Accept: 'application/pdf' },
       });
-      if (!res.ok) { await refundDesc('qb_pdf_fetch_failed'); return { ok: false, error: `QB devolvió ${res.status} al pedir PDF.` }; }
+      if (!res.ok) { await refundDesc('qb_pdf_fetch_failed'); return { ok: false, error: `QB devolvió ${res.status} al pedir PDF (URL: ${url}).` }; }
       const arrayBuf = await res.arrayBuffer();
       const pdfBuf   = Buffer.from(arrayBuf);
 
@@ -2183,7 +2218,7 @@ async function executeAgentToolInner(
         requiere_atencion_at:    new Date().toISOString(),
       }).eq('id', exp.id);
 
-      void supabase.from('expediente_eventos').insert({
+      await supabase.from('expediente_eventos').insert({
         expediente_id: exp.id, portal_email: portalEmail, agent_id: agentId,
         actor: `meerkat:${(agent.agent_name as string | null)?.toLowerCase() ?? 'unknown'}`,
         tipo: 'requiere_atencion', from_status: exp.status, to_status: 'requiere_atencion',
@@ -2235,7 +2270,7 @@ async function executeAgentToolInner(
         oc_firma_reglas_pasadas: { pasadas: evalRes.reglas_pasadas, tope_mxn: evalRes.monto_tope_mxn },
       }).eq('id', exp.id);
 
-      void supabase.from('expediente_eventos').insert({
+      await supabase.from('expediente_eventos').insert({
         expediente_id: exp.id, portal_email: portalEmail, agent_id: agentId,
         actor: `meerkat:${meerkatName.toLowerCase()}`,
         tipo: 'oc_firmada_auto', from_status: exp.status, to_status: 'oc_firmada',
@@ -2351,7 +2386,7 @@ async function executeAgentToolInner(
         factura_request_id:  req.id,
       }).eq('id', exp.id);
 
-      void supabase.from('expediente_eventos').insert({
+      await supabase.from('expediente_eventos').insert({
         expediente_id: exp.id, portal_email: portalEmail, agent_id: agentId,
         actor: `meerkat:${meerkatName.toLowerCase()}`,
         tipo: 'factura_timbrada', from_status: exp.status, to_status: 'factura_timbrada',
@@ -2468,7 +2503,7 @@ async function executeAgentToolInner(
           cancelado_razon: args.razon_cliente ?? submit.message ?? `Cancelación motivo ${args.motivo}`,
         }).eq('id', expedienteId);
 
-        void supabase.from('expediente_eventos').insert({
+        await supabase.from('expediente_eventos').insert({
           expediente_id: expedienteId, portal_email: portalEmail, agent_id: agentId,
           actor: `meerkat:${(agent.agent_name as string | null)?.toLowerCase() ?? 'nala'}`,
           tipo: 'cancelado', from_status: 'factura_timbrada', to_status: 'cancelado',
@@ -2916,7 +2951,7 @@ async function executeAgentToolInner(
       requiere_atencion_at:    exp.requiere_atencion_at ?? new Date().toISOString(),
     }).eq('id', exp.id);
 
-    void supabase.from('expediente_eventos').insert({
+    await supabase.from('expediente_eventos').insert({
       expediente_id: exp.id, portal_email: portalEmail, agent_id: agentId,
       actor: `meerkat:${(agent.agent_name as string | null)?.toLowerCase() ?? 'nox'}`,
       tipo: 'nota', from_status: exp.status, to_status: exp.status,
@@ -2989,7 +3024,7 @@ async function executeAgentToolInner(
       oc_enviada_proveedor_at: exp.oc_enviada_proveedor_at, // no cambia aún — se marca en enviar_oc_a_proveedor
     }).eq('id', exp.id);
 
-    void supabase.from('expediente_eventos').insert({
+    await supabase.from('expediente_eventos').insert({
       expediente_id: exp.id, portal_email: portalEmail, agent_id: agentId,
       actor: `meerkat:${(agent.agent_name as string | null)?.toLowerCase() ?? 'nala'}`,
       tipo: 'nota', from_status: exp.status, to_status: exp.status,
@@ -3043,7 +3078,7 @@ async function executeAgentToolInner(
       oc_comprobante_pago_path: comprobantePath,
     }).eq('id', exp.id);
 
-    void supabase.from('expediente_eventos').insert({
+    await supabase.from('expediente_eventos').insert({
       expediente_id: exp.id, portal_email: portalEmail, agent_id: agentId,
       actor: `meerkat:${(agent.agent_name as string | null)?.toLowerCase() ?? 'nala'}`,
       tipo: 'oc_pagada', from_status: exp.status, to_status: 'oc_pagada',
@@ -3127,7 +3162,7 @@ async function executeAgentToolInner(
       oc_enviada_proveedor_at: nowIso,
     }).eq('id', exp.id);
 
-    void supabase.from('expediente_eventos').insert({
+    await supabase.from('expediente_eventos').insert({
       expediente_id: exp.id, portal_email: portalEmail, agent_id: agentId,
       actor: `meerkat:${(agent.agent_name as string | null)?.toLowerCase() ?? 'nala'}`,
       tipo: 'oc_enviada_proveedor', from_status: exp.status, to_status: 'oc_enviada_proveedor',
@@ -3196,7 +3231,7 @@ async function executeAgentToolInner(
         docs_archivados_ruta: rutaResumen,
       }).eq('id', exp.id);
 
-      void supabase.from('expediente_eventos').insert({
+      await supabase.from('expediente_eventos').insert({
         expediente_id: exp.id, portal_email: portalEmail, agent_id: agentId,
         actor: `meerkat:${(agent.agent_name as string | null)?.toLowerCase() ?? 'nala'}`,
         tipo: pending ? 'nota' : 'docs_archivados',
