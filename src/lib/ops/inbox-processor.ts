@@ -12,6 +12,8 @@ import { classifyEmailDraft, type AutoModeVerdict } from '@/lib/tools/email-clas
 import { recordInboxCreation, transitionInboxItem, type InboxStatus } from '@/lib/state-machines/inbox-item';
 import { logLlmCall } from '@/lib/observability/llm-log';
 import { TOOL_SCHEMAS, toAnthropicTool } from '@/lib/tools/schemas';
+import { MEERKAT_VOICE_DISTRIBUTION } from '@/lib/vapi/sync';
+import { VOICE_TO_CHAT, UNIVERSAL_TOOLS, EMAIL_ONLY_TOOLS_FROM_VOICE } from '@/lib/tools/channel-mapping';
 
 const anthropic = new Anthropic();
 
@@ -116,7 +118,10 @@ function validateProcessedEmail(raw: unknown): ProcessedEmail {
   };
 }
 
-// All tools available in email context (ML tools excluded — require portal cookie)
+// All tools potentially available in email context (ML tools excluded —
+// require portal cookie). El subset que RECIBE cada meerkat se filtra por
+// role via getToolsForRoleEmail() abajo. Antes 2026-08-19 todos los meerkats
+// recibían BASE_EMAIL_TOOLS enteros — tool bloat.
 const BASE_EMAIL_TOOLS: Anthropic.Tool[] = [
   {
     name:        'search_files',
@@ -434,6 +439,68 @@ const QB_EMAIL_TOOLS: Anthropic.Tool[] = [
     input_schema: { type: 'object' as const, properties: { periodo: { type: 'string', enum: ['este_mes', 'mes_pasado', 'este_año', 'año_pasado', 'este_trimestre', 'trimestre_pasado'] } }, required: [] },
   },
 ];
+
+// Email tool name → Anthropic.Tool object (para filtrar por preset)
+const EMAIL_TOOL_BY_NAME: Record<string, Anthropic.Tool> = Object.fromEntries(
+  [...BASE_EMAIL_TOOLS, ...QB_EMAIL_TOOLS].map(t => [t.name, t]),
+);
+
+/**
+ * Filtra BASE_EMAIL_TOOLS al preset del meerkat (mismo pattern que
+ * getToolsForRole en agent-chat). Si no hay preset (meerkat desconocido o
+ * custom), retorna todas las tools por retrocompat.
+ *
+ * Fix 2026-08-19: antes todos los meerkats recibían BASE_EMAIL_TOOLS entero
+ * (~25 tools), degradando calidad LLM. Ahora filtra por preset del meerkat
+ * en MEERKAT_VOICE_DISTRIBUTION (mismo pattern que voice + chat).
+ */
+function getToolsForRoleEmail(meerkatId: string | null, qbConnected: boolean): Anthropic.Tool[] {
+  const voiceNames = meerkatId && meerkatId !== 'custom'
+    ? MEERKAT_VOICE_DISTRIBUTION[meerkatId] ?? null
+    : null;
+
+  // Custom / unknown → todas las tools (retrocompat)
+  if (!voiceNames) {
+    return [...BASE_EMAIL_TOOLS, ...(qbConnected ? QB_EMAIL_TOOLS : [])];
+  }
+
+  const tools: Anthropic.Tool[] = [];
+  const seen  = new Set<string>();
+
+  // Preset del meerkat
+  for (const voiceName of voiceNames) {
+    const emailName = VOICE_TO_CHAT[voiceName];
+    if (!emailName || seen.has(emailName)) continue;
+    if (!qbConnected && emailName.startsWith('qb_')) continue;
+    const t = EMAIL_TOOL_BY_NAME[emailName];
+    if (t) { tools.push(t); seen.add(emailName); }
+  }
+
+  // Tools email-only (marcar_no_llamar) — LFPDPPP obliga a que cualquier
+  // meerkat que reciba correo pueda dar de baja al remitente.
+  for (const voiceName of EMAIL_ONLY_TOOLS_FROM_VOICE) {
+    if (voiceNames.includes(voiceName)) {
+      const t = EMAIL_TOOL_BY_NAME[voiceName];
+      if (t && !seen.has(voiceName)) { tools.push(t); seen.add(voiceName); }
+    }
+  }
+
+  // Base universal — 6 tools que todo meerkat recibe
+  for (const name of UNIVERSAL_TOOLS) {
+    if (seen.has(name)) continue;
+    const t = EMAIL_TOOL_BY_NAME[name];
+    if (t) { tools.push(t); seen.add(name); }
+  }
+
+  // QB extras (si conectado)
+  if (qbConnected) {
+    for (const t of QB_EMAIL_TOOLS) {
+      if (!seen.has(t.name)) { tools.push(t); seen.add(t.name); }
+    }
+  }
+
+  return tools;
+}
 
 export async function processInboxEmail(params: {
   agentId:           string;
@@ -893,14 +960,14 @@ CATEGORÍAS:
 
     // Include QB tools only when connected
     const qbConnected = !!(await getQBClient(portalEmail, supabase));
-    const tools = [
-      ...BASE_EMAIL_TOOLS,
-      ...(qbConnected ? QB_EMAIL_TOOLS : []),
-    ];
+    const inboxMeerkatId = ((agentRow?.features as { meerkat_role_id?: string } | undefined) ?? {}).meerkat_role_id ?? null;
+
+    // Fix 2026-08-19: filtrar tools por preset del meerkat (antes todos
+    // recibían BASE_EMAIL_TOOLS entero → tool bloat degradaba calidad LLM).
+    const tools = getToolsForRoleEmail(inboxMeerkatId, qbConnected);
 
     // preparar_brief_del_dia — Nox exclusivo. Canal voz ausente de forma intencional
     // (Nox nunca tiene vapi_agent_id; ver NON_VOICE_ROLES en sync.ts).
-    const inboxMeerkatId = ((agentRow?.features as { meerkat_role_id?: string } | undefined) ?? {}).meerkat_role_id;
     if (inboxMeerkatId === 'nox') {
       tools.push({
         name: 'preparar_brief_del_dia',
