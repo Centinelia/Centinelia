@@ -4,6 +4,7 @@ import {
   TOOL_TO_PACK,
   resolveActivePacks,
   filterByActivePacks,
+  meerkatActivePacks,
   type OrgPackContext,
 } from './packs';
 import { TOOL_REGISTRY } from './registry';
@@ -80,6 +81,29 @@ describe('filterByActivePacks', () => {
       new Set(['quickbooks']),
     );
     expect(filtered).toEqual(['qb_crear_factura', 'pedir_a_humano']);
+  });
+});
+
+describe('meerkatActivePacks', () => {
+  it('pack sin meerkatGate se mantiene activo si el org lo tiene', () => {
+    const active = meerkatActivePacks(new Set(['quickbooks']), {});
+    expect(active.has('quickbooks')).toBe(true);
+  });
+
+  it('outbound_calls requiere features.outbound_calls === true', () => {
+    const withoutGate = meerkatActivePacks(new Set(['outbound_calls']), {});
+    expect(withoutGate.has('outbound_calls')).toBe(false);
+
+    const gateOff = meerkatActivePacks(new Set(['outbound_calls']), { outbound_calls: false });
+    expect(gateOff.has('outbound_calls')).toBe(false);
+
+    const gateOn = meerkatActivePacks(new Set(['outbound_calls']), { outbound_calls: true });
+    expect(gateOn.has('outbound_calls')).toBe(true);
+  });
+
+  it('pack inactivo org-level nunca aparece aunque meerkatGate pase', () => {
+    const active = meerkatActivePacks(new Set(), { outbound_calls: true });
+    expect(active.has('outbound_calls')).toBe(false);
   });
 });
 

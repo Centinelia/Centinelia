@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildToolGroups, presetForMeerkat } from './available-tools';
+import { formatToolLabel, TOOL_LABELS } from './tool-labels';
 import type { ToolOverrides } from './tool-overrides';
 
 const EMPTY_OVERRIDES: ToolOverrides = { disabled: [], enabled: [] };
@@ -26,14 +27,59 @@ describe('presetForMeerkat', () => {
   });
 });
 
+describe('formatToolLabel', () => {
+  it('devuelve el label del mapping cuando existe', () => {
+    expect(formatToolLabel('agregar_tag_contacto')).toBe('Etiquetar contacto');
+    expect(formatToolLabel('delegar_tarea')).toBe('Delegar tarea a otro empleado');
+  });
+
+  it('cae a Title Case cuando la tool no tiene mapping', () => {
+    expect(formatToolLabel('foo_bar_baz')).toBe('Foo Bar Baz');
+  });
+
+  it('nunca devuelve snake_case crudo', () => {
+    const cases = ['x', 'x_y', 'un_nombre_muy_largo_con_muchas_palabras'];
+    for (const c of cases) expect(formatToolLabel(c)).not.toContain('_');
+  });
+
+  it('las tools universales tienen label', () => {
+    for (const name of ['delegar_tarea', 'consultar_agente', 'pedir_a_humano', 'reportar_falla', 'read_url', 'buscar_en_web']) {
+      expect(TOOL_LABELS[name]).toBeDefined();
+    }
+  });
+});
+
 describe('buildToolGroups', () => {
-  it('devuelve grupo default primero con universales on', () => {
+  it('devuelve universales primero, luego rol, luego packs', () => {
+    const groups = buildToolGroups('nia', EMPTY_OVERRIDES, new Set(['quickbooks']));
+    expect(groups[0].id).toBe('universales');
+    expect(groups[1].id).toBe('rol');
+    expect(groups[2].id).toBe('quickbooks');
+  });
+
+  it('grupo universales contiene delegar_tarea on', () => {
     const groups = buildToolGroups('nia', EMPTY_OVERRIDES, new Set());
-    expect(groups[0].packId).toBe(null);
-    expect(groups[0].label).toBe('Habilitadas por default');
-    const delegar = groups[0].tools.find(t => t.name === 'delegar_tarea');
+    const universales = groups.find(g => g.id === 'universales')!;
+    const delegar = universales.tools.find(t => t.name === 'delegar_tarea');
     expect(delegar?.state).toBe('on');
     expect(delegar?.source).toBe('universal');
+    expect(delegar?.label).toBe('Delegar tarea a otro empleado');
+  });
+
+  it('grupo rol no incluye tools universales', () => {
+    const groups = buildToolGroups('nia', EMPTY_OVERRIDES, new Set());
+    const rol = groups.find(g => g.id === 'rol')!;
+    const names = rol.tools.map(t => t.name);
+    for (const universal of ['delegar_tarea', 'consultar_agente', 'pedir_a_humano', 'reportar_falla', 'read_url', 'buscar_en_web']) {
+      expect(names).not.toContain(universal);
+    }
+  });
+
+  it('grupo rol no incluye tools con pack', () => {
+    const groups = buildToolGroups('nico', EMPTY_OVERRIDES, new Set(['quickbooks']));
+    const rol = groups.find(g => g.id === 'rol')!;
+    const names = rol.tools.map(t => t.name);
+    expect(names).not.toContain('qb_crear_factura');
   });
 
   it('oculta tools de packs inactivos', () => {
@@ -44,28 +90,27 @@ describe('buildToolGroups', () => {
 
   it('muestra pack activo con sus tools', () => {
     const groups = buildToolGroups('nico', EMPTY_OVERRIDES, new Set(['quickbooks']));
-    const qbGroup = groups.find(g => g.packId === 'quickbooks');
-    expect(qbGroup).toBeDefined();
-    expect(qbGroup!.tools.length).toBeGreaterThan(0);
-    const qbFactura = qbGroup!.tools.find(t => t.name === 'qb_crear_factura');
-    expect(qbFactura?.state).toBe('on');
-    expect(qbFactura?.source).toBe('preset');
+    const qb = groups.find(g => g.id === 'quickbooks')!;
+    expect(qb.tools.length).toBeGreaterThan(0);
+    const factura = qb.tools.find(t => t.name === 'qb_crear_factura');
+    expect(factura?.state).toBe('on');
+    expect(factura?.source).toBe('preset');
+    expect(factura?.label).toBe('Crear factura en QuickBooks');
   });
 
-  it('tool de pack activo pero fuera de preset del rol aparece off', () => {
+  it('tool de pack activo pero fuera de preset aparece off', () => {
     const groups = buildToolGroups('nia', EMPTY_OVERRIDES, new Set(['quickbooks']));
-    const qbGroup = groups.find(g => g.packId === 'quickbooks');
-    expect(qbGroup).toBeDefined();
-    const qbFactura = qbGroup!.tools.find(t => t.name === 'qb_crear_factura');
-    expect(qbFactura?.state).toBe('off');
-    expect(qbFactura?.source).toBe('pack');
+    const qb = groups.find(g => g.id === 'quickbooks')!;
+    const factura = qb.tools.find(t => t.name === 'qb_crear_factura');
+    expect(factura?.state).toBe('off');
+    expect(factura?.source).toBe('pack');
   });
 
   it('override.disabled apaga una tool del preset', () => {
     const overrides: ToolOverrides = { disabled: ['crear_lead'], enabled: [] };
     const groups = buildToolGroups('nia', overrides, new Set());
-    const defaultGroup = groups[0];
-    const lead = defaultGroup.tools.find(t => t.name === 'crear_lead');
+    const rol = groups.find(g => g.id === 'rol')!;
+    const lead = rol.tools.find(t => t.name === 'crear_lead');
     expect(lead?.state).toBe('off');
     expect(lead?.disabledByOverride).toBe(true);
   });
@@ -73,47 +118,54 @@ describe('buildToolGroups', () => {
   it('override.enabled prende una tool fuera del preset', () => {
     const overrides: ToolOverrides = { disabled: [], enabled: ['enviar_correo'] };
     const groups = buildToolGroups('nia', overrides, new Set());
-    const defaultGroup = groups[0];
-    const send = defaultGroup.tools.find(t => t.name === 'enviar_correo');
+    const rol = groups.find(g => g.id === 'rol')!;
+    const send = rol.tools.find(t => t.name === 'enviar_correo');
     expect(send?.state).toBe('on');
     expect(send?.source).toBe('extra');
   });
 
-  it('override.disabled prevalece sobre preset', () => {
+  it('override.disabled prevalece sobre preset+enabled', () => {
     const overrides: ToolOverrides = { disabled: ['crear_lead'], enabled: ['crear_lead'] };
     const groups = buildToolGroups('nia', overrides, new Set());
-    const defaultGroup = groups[0];
-    const lead = defaultGroup.tools.find(t => t.name === 'crear_lead');
+    const rol = groups.find(g => g.id === 'rol')!;
+    const lead = rol.tools.find(t => t.name === 'crear_lead');
     expect(lead?.state).toBe('off');
   });
 
-  it('grupo default excluye tools sin pack que no toquen al meerkat', () => {
+  it('grupo rol excluye tools sin pack que no toquen al meerkat', () => {
     const groups = buildToolGroups('nia', EMPTY_OVERRIDES, new Set());
-    const defaultTools = groups[0].tools.map(t => t.name);
-    // iniciar_onboarding es de naia, no de nia — no debe aparecer aunque sea sin pack
-    expect(defaultTools).not.toContain('iniciar_onboarding');
+    const rol = groups.find(g => g.id === 'rol')!;
+    const names = rol.tools.map(t => t.name);
+    expect(names).not.toContain('iniciar_onboarding');
   });
 
-  it('grupos pack ordenados alfabético por label después del default', () => {
+  it('grupos pack ordenados alfabético por label', () => {
     const groups = buildToolGroups(
       'nox',
       EMPTY_OVERRIDES,
       new Set(['quickbooks', 'invoicing_cfdi', 'contratos']),
     );
-    expect(groups[0].packId).toBe(null);
-    const packLabels = groups.slice(1).map(g => g.label);
-    expect(packLabels).toEqual([...packLabels].sort((a, b) => a.localeCompare(b, 'es')));
+    const packGroups = groups.filter(g => g.id !== 'universales' && g.id !== 'rol');
+    const labels = packGroups.map(g => g.label);
+    expect(labels).toEqual([...labels].sort((a, b) => a.localeCompare(b, 'es')));
   });
 
   it('tools on primero, off después dentro de cada grupo', () => {
     const groups = buildToolGroups('nico', EMPTY_OVERRIDES, new Set(['quickbooks']));
-    const qbGroup = groups.find(g => g.packId === 'quickbooks')!;
-    const states = qbGroup.tools.map(t => t.state);
-    // sin descenso off→on una vez que empezamos con off
+    const qb = groups.find(g => g.id === 'quickbooks')!;
+    const states = qb.tools.map(t => t.state);
     let sawOff = false;
     for (const s of states) {
       if (s === 'off') sawOff = true;
-      if (s === 'on' && sawOff) throw new Error('on aparece después de off');
+      if (s === 'on' && sawOff) throw new Error('on after off');
+    }
+  });
+
+  it('todas las tools tienen label no vacío', () => {
+    const groups = buildToolGroups('noah', EMPTY_OVERRIDES, new Set(['quickbooks', 'invoicing_cfdi']));
+    for (const g of groups) for (const t of g.tools) {
+      expect(t.label).toBeTruthy();
+      expect(t.label).not.toContain('_');
     }
   });
 });

@@ -35,6 +35,18 @@ export interface SkillPack {
   tools:        string[];
   source:       string;
   activeCheck:  (ctx: OrgPackContext) => boolean;
+  /**
+   * Gate adicional per-meerkat (opcional). Si está seteado y devuelve false,
+   * el pack se considera inactivo PARA ESE MEERKAT específico aunque
+   * activeCheck (org-level) pase. Se usa cuando una feature tiene un master
+   * switch per-empleado que también debe respetarse (ej. features.outbound_calls
+   * en OutboundToggles).
+   *
+   * Solo consumido por la UI de Tool Overrides (endpoint available-tools).
+   * Runtime de tools NO lo respeta todavía — seguirá entregando tools del pack
+   * si org lo tiene activo. Followup: alinear runtime cuando toque.
+   */
+  meerkatGate?: (meerkatFeatures: Record<string, unknown>) => boolean;
 }
 
 export const SKILL_PACKS: SkillPack[] = [
@@ -76,6 +88,9 @@ export const SKILL_PACKS: SkillPack[] = [
     tools: ['trigger_outbound_call', 'llamar_a', 'marcar_no_llamar'],
     source: 'organizations.outbound_daily_limit',
     activeCheck: ctx => !!ctx.has_outbound,
+    // Master switch: OutboundToggles per-empleado (features.outbound_calls). Si
+    // owner apagó en la sección de arriba, ocultar el pack del Tool Overrides.
+    meerkatGate: f => f?.outbound_calls === true,
   },
   {
     id: 'civic_reports', label: 'Reportes cívicos',
@@ -139,6 +154,22 @@ export const TOOL_TO_PACK: Partial<Record<string, string>> = Object.fromEntries(
 
 export function resolveActivePacks(ctx: OrgPackContext): Set<string> {
   return new Set(SKILL_PACKS.filter(p => p.activeCheck(ctx)).map(p => p.id));
+}
+
+/**
+ * Filtra activePacks (org-level) por meerkatGate per-empleado. Un pack solo
+ * queda activo para este meerkat si (a) el org lo tiene activo y (b) no tiene
+ * meerkatGate o su meerkatGate devuelve true para las features del meerkat.
+ */
+export function meerkatActivePacks(
+  orgActivePacks: Set<string>,
+  meerkatFeatures: Record<string, unknown>,
+): Set<string> {
+  return new Set(
+    SKILL_PACKS
+      .filter(p => orgActivePacks.has(p.id) && (!p.meerkatGate || p.meerkatGate(meerkatFeatures)))
+      .map(p => p.id),
+  );
 }
 
 /**

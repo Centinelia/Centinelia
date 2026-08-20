@@ -5,7 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { resolveOrgFromToken } from '@/lib/portal/org-token';
 import { parseToolOverrides } from '@/lib/tools/tool-overrides';
-import { resolveOrgPackContext, resolveActivePacks } from '@/lib/tools/packs';
+import { resolveOrgPackContext, resolveActivePacks, meerkatActivePacks } from '@/lib/tools/packs';
 import { buildToolGroups } from '@/lib/tools/available-tools';
 
 interface Params { params: Promise<{ token: string; agentId: string }> }
@@ -45,11 +45,13 @@ export async function GET(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const meerkatId = (agent.features as Record<string, unknown> | null)?.meerkat_role_id as string | null ?? null;
+  const features  = (agent.features as Record<string, unknown> | null) ?? {};
+  const meerkatId = (features.meerkat_role_id as string | null) ?? null;
   const overrides = parseToolOverrides(agent.tool_overrides);
 
-  const packCtx     = await resolveOrgPackContext(resolved.portalEmail, supabase);
-  const activePacks = resolveActivePacks(packCtx);
+  const packCtx      = await resolveOrgPackContext(resolved.portalEmail, supabase);
+  const orgActive    = resolveActivePacks(packCtx);
+  const activePacks  = meerkatActivePacks(orgActive, features);
 
   const groups = buildToolGroups(meerkatId, overrides, activePacks);
 

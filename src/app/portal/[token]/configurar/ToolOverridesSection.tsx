@@ -6,15 +6,17 @@ import { toast } from 'sonner';
 
 interface AvailableTool {
   name:               string;
+  label:              string;
   description:        string;
   source:             'universal' | 'preset' | 'extra' | 'pack';
   state:              'on' | 'off';
+  inPreset:           boolean;
   disabledByOverride: boolean;
   enabledByOverride:  boolean;
 }
 
 interface ToolGroup {
-  packId:      string | null;
+  id:          string;
   label:       string;
   description: string | null;
   tools:       AvailableTool[];
@@ -37,12 +39,47 @@ interface Props {
   roleColor:  string;
 }
 
-const SOURCE_LABEL: Record<AvailableTool['source'], string> = {
-  universal: 'Universal',
-  preset:    'Por rol',
-  extra:     'Agregada por ti',
-  pack:      'Disponible',
-};
+function Toggle({ on, onChange, disabled, ariaLabel }: {
+  on:        boolean;
+  onChange:  (v: boolean) => void;
+  disabled:  boolean;
+  ariaLabel: string;
+}) {
+  return (
+    <button
+      role="switch"
+      aria-checked={on}
+      aria-label={ariaLabel}
+      disabled={disabled}
+      onClick={() => onChange(!on)}
+      style={{
+        width:         44,
+        height:        24,
+        borderRadius:  12,
+        border:        'none',
+        cursor:        disabled ? 'default' : 'pointer',
+        background:    on ? '#6C3BFF' : '#FAFAFB',
+        outline:       on ? '2px solid rgba(108,59,255,0.3)' : '1px solid #E8E3F5',
+        outlineOffset: 0,
+        position:      'relative',
+        transition:    'background 0.2s, outline 0.2s',
+        flexShrink:    0,
+      }}
+    >
+      <span style={{
+        position:     'absolute',
+        top:          3,
+        left:         on ? 23 : 3,
+        width:        18,
+        height:       18,
+        borderRadius: '50%',
+        background:   '#fff',
+        transition:   'left 0.18s',
+        boxShadow:    '0 1px 3px rgba(0,0,0,0.3)',
+      }} />
+    </button>
+  );
+}
 
 export default function ToolOverridesSection({ token, agentId, agentName, roleColor }: Props) {
   const [data,    setData]    = useState<ApiResponse | null>(null);
@@ -57,8 +94,8 @@ export default function ToolOverridesSection({ token, agentId, agentName, roleCo
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json() as ApiResponse;
       setData(json);
-      const initialOpen: Record<string, boolean> = { __default__: true };
-      for (const g of json.groups) if (g.packId) initialOpen[g.packId] = false;
+      const initialOpen: Record<string, boolean> = {};
+      for (const g of json.groups) initialOpen[g.id] = false;
       setOpenGroups(initialOpen);
     } catch {
       toast.error('No se pudieron cargar las herramientas.');
@@ -89,28 +126,25 @@ export default function ToolOverridesSection({ token, agentId, agentName, roleCo
     }
   };
 
-  const onToggle = async (tool: AvailableTool) => {
+  const onToggle = async (tool: AvailableTool, next: boolean) => {
     if (!data || saving) return;
     const overrides = data.overrides;
-    const next: Overrides = {
+    const nextOv: Overrides = {
       disabled: [...overrides.disabled],
       enabled:  [...overrides.enabled],
     };
 
-    const isOn = tool.state === 'on';
-    const inPreset = tool.source === 'preset' || tool.source === 'universal';
-
-    if (isOn) {
+    if (!next) {
       if (tool.enabledByOverride) {
-        next.enabled = next.enabled.filter(n => n !== tool.name);
-      } else if (inPreset) {
-        if (!next.disabled.includes(tool.name)) next.disabled.push(tool.name);
+        nextOv.enabled = nextOv.enabled.filter(n => n !== tool.name);
+      } else if (tool.inPreset) {
+        if (!nextOv.disabled.includes(tool.name)) nextOv.disabled.push(tool.name);
       }
     } else {
       if (tool.disabledByOverride) {
-        next.disabled = next.disabled.filter(n => n !== tool.name);
-      } else if (!inPreset) {
-        if (!next.enabled.includes(tool.name)) next.enabled.push(tool.name);
+        nextOv.disabled = nextOv.disabled.filter(n => n !== tool.name);
+      } else if (!tool.inPreset) {
+        if (!nextOv.enabled.includes(tool.name)) nextOv.enabled.push(tool.name);
       }
     }
 
@@ -118,19 +152,15 @@ export default function ToolOverridesSection({ token, agentId, agentName, roleCo
       ...g,
       tools: g.tools.map(t => {
         if (t.name !== tool.name) return t;
-        const nowDisabled = next.disabled.includes(t.name);
-        const nowEnabled  = next.enabled.includes(t.name);
-        const nextState: 'on' | 'off' = (inPreset || nowEnabled) && !nowDisabled ? 'on' : 'off';
+        const nowDisabled = nextOv.disabled.includes(t.name);
+        const nowEnabled  = nextOv.enabled.includes(t.name);
+        const nextState: 'on' | 'off' = (t.inPreset || nowEnabled) && !nowDisabled ? 'on' : 'off';
         return { ...t, state: nextState, disabledByOverride: nowDisabled, enabledByOverride: nowEnabled };
       }),
     }));
-    setData({ overrides: next, groups: nextGroups });
+    setData({ overrides: nextOv, groups: nextGroups });
 
-    try {
-      await patchOverrides(next);
-    } catch {
-      // load() ya restauró
-    }
+    try { await patchOverrides(nextOv); } catch { /* load() ya restauró */ }
   };
 
   return (
@@ -159,19 +189,18 @@ export default function ToolOverridesSection({ token, agentId, agentName, roleCo
       {!loading && data && (
         <div className="flex flex-col gap-2">
           {data.groups.map(group => {
-            const key = group.packId ?? '__default__';
-            const open = !!openGroups[key];
+            const open    = !!openGroups[group.id];
             const onCount = group.tools.filter(t => t.state === 'on').length;
 
             return (
               <div
-                key={key}
+                key={group.id}
                 className="rounded-xl overflow-hidden"
                 style={{ border: '1px solid var(--c-border)', background: 'var(--c-surface)' }}
               >
                 <button
                   type="button"
-                  onClick={() => toggleGroup(key)}
+                  onClick={() => toggleGroup(group.id)}
                   className="w-full flex items-center gap-2 px-4 py-3 text-left transition-opacity hover:opacity-80"
                 >
                   {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
@@ -203,8 +232,7 @@ export default function ToolOverridesSection({ token, agentId, agentName, roleCo
                       <ToolRow
                         key={tool.name}
                         tool={tool}
-                        roleColor={roleColor}
-                        onToggle={() => onToggle(tool)}
+                        onToggle={(next) => onToggle(tool, next)}
                         disabled={saving}
                       />
                     ))}
@@ -220,12 +248,11 @@ export default function ToolOverridesSection({ token, agentId, agentName, roleCo
 }
 
 function ToolRow({
-  tool, roleColor, onToggle, disabled,
+  tool, onToggle, disabled,
 }: {
-  tool:      AvailableTool;
-  roleColor: string;
-  onToggle:  () => void;
-  disabled:  boolean;
+  tool:     AvailableTool;
+  onToggle: (next: boolean) => void;
+  disabled: boolean;
 }) {
   const on = tool.state === 'on';
   return (
@@ -235,14 +262,8 @@ function ToolRow({
     >
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-mono" style={{ color: 'var(--c-text)' }}>
-            {tool.name}
-          </span>
-          <span
-            className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
-            style={{ background: 'var(--c-bg-2, rgba(0,0,0,0.04))', color: 'var(--c-text-3)' }}
-          >
-            {SOURCE_LABEL[tool.source]}
+          <span className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>
+            {tool.label}
           </span>
           {tool.disabledByOverride && (
             <span
@@ -265,24 +286,12 @@ function ToolRow({
           {tool.description}
         </p>
       </div>
-      <button
-        type="button"
-        onClick={onToggle}
+      <Toggle
+        on={on}
+        onChange={onToggle}
         disabled={disabled}
-        aria-pressed={on}
-        aria-label={`${on ? 'Desactivar' : 'Activar'} ${tool.name}`}
-        className="relative flex-shrink-0 w-10 h-6 rounded-full transition-colors"
-        style={{
-          background: on ? roleColor : 'var(--c-border)',
-          opacity:    disabled ? 0.5 : 1,
-          cursor:     disabled ? 'not-allowed' : 'pointer',
-        }}
-      >
-        <span
-          className="absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform"
-          style={{ transform: on ? 'translateX(18px)' : 'translateX(2px)' }}
-        />
-      </button>
+        ariaLabel={`${on ? 'Desactivar' : 'Activar'} ${tool.label}`}
+      />
     </div>
   );
 }
