@@ -11,6 +11,7 @@
  */
 import { TOOL_CAPABILITIES } from '@/lib/policies/engine';
 import { policyFor, DEFAULT_POLICY, type ToolPolicy } from './policies';
+import { TOOL_TO_PACK } from './packs';
 
 export type Channel = 'voice' | 'chat' | 'email';
 
@@ -24,11 +25,12 @@ export interface ToolEntry {
   destructive:  boolean;
   gatedByRole:  string[] | null;   // meerkats donde vive (null = todos)
   gatedByFeature: string | null;   // feature flag
+  pack:         string | null;     // ID del pack en SKILL_PACKS, o null si tool no pertenece a pack
 }
 
 const A: Channel[] = ['voice', 'chat', 'email'];
 
-export const TOOL_REGISTRY: ToolEntry[] = [
+const TOOL_REGISTRY_BASE: Omit<ToolEntry, 'pack'>[] = [
   // read/search
   { name: 'read_url',                 description: 'Lee el contenido de una URL pública',                  channels: A, category: 'web',       destructive: false, gatedByRole: null, gatedByFeature: null,      capability: null, policy: policyFor('read_url') },
   { name: 'buscar_en_web',            description: 'Búsqueda web general (Brave Search)',                   channels: A, category: 'web',       destructive: false, gatedByRole: null, gatedByFeature: null,      capability: null, policy: policyFor('buscar_en_web') },
@@ -189,6 +191,11 @@ export const TOOL_REGISTRY: ToolEntry[] = [
   { name: 'buscar_en_padron_externo',   description: 'Voice-only: busca ciudadano en padrón municipal',            channels: ['voice'], category: 'tramites', destructive: false, gatedByRole: ['nara'], gatedByFeature: 'external_tramites', capability: null, policy: DEFAULT_POLICY },
   { name: 'enviar_tramite_externo',     description: 'Voice-only: envía trámite al backend municipal (destructivo)', channels: ['voice'], category: 'tramites', destructive: true,  gatedByRole: ['nara'], gatedByFeature: 'external_tramites', capability: null, policy: DEFAULT_POLICY },
 ];
+
+export const TOOL_REGISTRY: ToolEntry[] = TOOL_REGISTRY_BASE.map(entry => ({
+  ...entry,
+  pack: TOOL_TO_PACK[entry.name] ?? null,
+}));
 
 export function getToolByName(name: string): ToolEntry | undefined {
   return TOOL_REGISTRY.find(t => t.name === name);

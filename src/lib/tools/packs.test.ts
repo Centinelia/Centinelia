@@ -6,6 +6,7 @@ import {
   filterByActivePacks,
   type OrgPackContext,
 } from './packs';
+import { TOOL_REGISTRY } from './registry';
 
 describe('SKILL_PACKS', () => {
   it('every pack has at least 1 tool', () => {
@@ -79,5 +80,14 @@ describe('filterByActivePacks', () => {
       new Set(['quickbooks']),
     );
     expect(filtered).toEqual(['qb_crear_factura', 'pedir_a_humano']);
+  });
+});
+
+describe('registry ↔ packs consistency', () => {
+  it('every gatedByFeature entry has a pack assigned', () => {
+    const drift = TOOL_REGISTRY.filter(t => t.gatedByFeature && !t.pack);
+    if (drift.length > 0) {
+      throw new Error(`Tools con gatedByFeature sin pack: ${drift.map(t => t.name).join(', ')}`);
+    }
   });
 });
