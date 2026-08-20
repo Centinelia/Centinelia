@@ -240,7 +240,8 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
   // feature-gated ('mercadolibre') solo suman si org activa la feature.
   // qb_crear_cotizacion agregada 2026-08-19: ventas cotiza directo en QB cuando
   // negocia con cliente y delega el timbrado a Nala.
-  noah:  ['crear_lead', 'crear_contacto_saliente', 'llamar_a', 'notificar_transferencia', 'transferir_llamada', 'buscar_documento_oficina', 'buscar_correo_enviado', 'buscar_producto', 'catalogo_buscar_codigo', 'marcar_no_llamar', 'trigger_outbound_call', 'analizar_publicaciones_ml', 'crear_publicacion_ml', 'actualizar_publicacion_ml', 'ver_metricas_ml', 'generar_propuesta_comercial', 'generar_cotizacion', 'generar_correo_estructurado', 'qb_crear_cotizacion'],
+  // ML tools hidden 2026-08-19: 0 orgs activos, código intacto. Reactivar en preset o via pack mercado_libre (Capa 2) cuando llegue cliente.
+  noah:  ['crear_lead', 'crear_contacto_saliente', 'llamar_a', 'notificar_transferencia', 'transferir_llamada', 'buscar_documento_oficina', 'buscar_correo_enviado', 'buscar_producto', 'catalogo_buscar_codigo', 'marcar_no_llamar', 'trigger_outbound_call', 'generar_propuesta_comercial', 'generar_cotizacion', 'generar_correo_estructurado', 'qb_crear_cotizacion'],
   // Nico — cobranza y fiscal (CFDIs + P&L). Owner del pack invoicing_cfdi.
   // QB tools feature-gated ('quickbooks').
   nico:  ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'enviar_correo', 'crear_documento', 'enviar_documento_oficina', 'solicitar_factura', 'consultar_factura', 'qb_consultar_facturas', 'qb_buscar_cliente', 'qb_registrar_pago', 'qb_crear_factura', 'qb_reporte_ingresos', 'generar_correo_estructurado'],
@@ -266,7 +267,8 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
   // Niva — directora general (rol hub por diseño, excepción a tope). Boundary
   // A-F7: SIN delegar_tarea (Niva=decisor). Escala a Nox vía consultar_agente.
   // QB/ML tools feature-gated.
-  niva:  ['enviar_correo', 'llamar_a', 'crear_documento', 'buscar_documento_oficina', 'buscar_correo_enviado', 'enviar_documento_oficina', 'create_file', 'save_to_drive', 'search_leads', 'list_calendar_events', 'create_calendar_event', 'qb_consultar_facturas', 'qb_buscar_cliente', 'analizar_publicaciones_ml', 'ver_metricas_ml', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'revisar_desempeno_equipo', 'aprobar_gasto', 'evaluar_limite_gasto', 'verificar_gasto_recurrente', 'generar_pitch_deck', 'generar_reporte_metricas_excel'],
+  // ML tools hidden 2026-08-19: 0 orgs activos, código intacto. Reactivar via pack mercado_libre (Capa 2) cuando llegue cliente.
+  niva:  ['enviar_correo', 'llamar_a', 'crear_documento', 'buscar_documento_oficina', 'buscar_correo_enviado', 'enviar_documento_oficina', 'create_file', 'save_to_drive', 'search_leads', 'list_calendar_events', 'create_calendar_event', 'qb_consultar_facturas', 'qb_buscar_cliente', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'revisar_desempeno_equipo', 'aprobar_gasto', 'evaluar_limite_gasto', 'verificar_gasto_recurrente', 'generar_pitch_deck', 'generar_reporte_metricas_excel'],
 };
 
 // Universal tools que TODOS los meerkats reciben en voice y chat/email,

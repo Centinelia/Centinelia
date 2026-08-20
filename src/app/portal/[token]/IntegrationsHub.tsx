@@ -638,15 +638,7 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
           children: <TeamsSection token={token} />,
         }]
       : []),
-    {
-      key: 'comercio',
-      icon: <ShoppingCart size={16} style={{ color: '#F5D000' }} />,
-      connectedIcon: RowIcons.mercadolibre,
-      label: 'Comercio',
-      subtitle: mlSubtitle,
-      connected: !!status.ml?.connected,
-      children: <MercadoLibreSection token={token} />,
-    },
+    // MercadoLibre hidden 2026-08-19: 0 orgs activos. Reactivar via pack mercado_libre (Capa 2).
     {
       key: 'finanzas',
       icon: <DollarSign size={16} style={{ color: '#2CA01C' }} />,

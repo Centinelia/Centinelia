@@ -95,7 +95,7 @@ const CAPABILITY_GROUPS: { label: string; color: string; tools: string[] }[] = [
   { label: 'Archivos y Drive',      color: '#0891b2', tools: ['buscar_archivo', 'leer_archivo', 'save_to_drive', 'organize_files'] },
   { label: 'Web e investigación',   color: '#3b82f6', tools: ['buscar_en_web', 'read_url', 'search_leads'] },
   { label: 'Trabajo en equipo',     color: '#0d9488', tools: ['consultar_agente', 'delegar_tarea'] },
-  { label: 'MercadoLibre',          color: '#f59e0b', tools: ['analizar_publicaciones_ml', 'crear_publicacion_ml', 'actualizar_publicacion_ml', 'ver_metricas_ml'] },
+  // MercadoLibre hidden 2026-08-19: 0 orgs activos. Reactivar cuando llegue cliente que lo use.
   { label: 'QuickBooks',            color: '#22c55e', tools: ['qb_consultar_facturas', 'qb_buscar_cliente', 'qb_registrar_pago', 'qb_reporte_ingresos', 'qb_crear_factura', 'qb_crear_cotizacion', 'qb_registrar_gasto', 'qb_registrar_caja_chica'] },
   { label: 'Facturación fiscal',    color: '#eab308', tools: ['solicitar_factura', 'consultar_factura'] },
   // Pack ciclo OC-CFDI dividido en 5 capacidades legibles para los chips del card.
@@ -213,17 +213,7 @@ const BUSINESS_CATEGORIES: { label: string; color: string; specialized?: boolean
       { key: 'delegar_tarea',    label: 'Delegar tareas a otro empleado' },
     ],
   },
-  {
-    label: 'MercadoLibre',
-    color: '#22c55e', // noah
-    specialized: true,
-    tools: [
-      { key: 'analizar_publicaciones_ml',  label: 'Analizar publicaciones' },
-      { key: 'crear_publicacion_ml',       label: 'Crear publicaciones' },
-      { key: 'actualizar_publicacion_ml',  label: 'Actualizar publicaciones' },
-      { key: 'ver_metricas_ml',            label: 'Ver métricas de ventas' },
-    ],
-  },
+  // MercadoLibre hidden 2026-08-19: 0 orgs activos.
   {
     label: 'Helpdesk',
     color: '#06b6d4', // neo
