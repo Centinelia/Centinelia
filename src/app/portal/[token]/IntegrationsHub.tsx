@@ -35,6 +35,12 @@ interface HubStatus    {
   dropbox:    DropboxStatus | null;
 }
 
+interface PacksInfo {
+  activePacks:       string[];
+  allPacks:          Array<{ id: string; label: string; description: string; tools: string[]; source: string }>;
+  meerkatsUsingPack: Record<string, number>;
+}
+
 /* ── provider icons (for workspace callout) ─────────────────────────────── */
 
 const PIcons = {
@@ -370,8 +376,14 @@ function WorkspaceCallout({ provider }: { provider: 'gmail' | 'outlook' | null }
 
 /* ── capability row (dentro del surface único, con divider) ─────────────── */
 
+interface PackBadge {
+  label:        string;
+  tooltip:      string;
+  meerkatsUsing: number;
+}
+
 function CapabilityRow({
-  icon, connectedIcon, label, subtitle, connected, comingSoon, isLast, children,
+  icon, connectedIcon, label, subtitle, connected, comingSoon, isLast, packBadge, children,
 }: {
   icon:           React.ReactNode;
   connectedIcon?: React.ReactNode;
@@ -380,6 +392,7 @@ function CapabilityRow({
   connected?:     boolean;
   comingSoon?:    boolean;
   isLast:         boolean;
+  packBadge?:     PackBadge | null;
   children?:      React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -404,9 +417,18 @@ function CapabilityRow({
         </div>
 
         <div className="flex flex-col flex-1 min-w-0">
-          <span className="text-[13px] font-semibold"
+          <span className="flex items-center gap-1.5 text-[13px] font-semibold flex-wrap"
             style={{ color: comingSoon ? '#9B8FB5' : '#1A0A3B', lineHeight: 1.3 }}>
             {label}
+            {packBadge && (
+              <span
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold"
+                style={{ background: '#dcfce7', color: '#166534', border: '1px solid #86efac' }}
+                title={packBadge.tooltip}
+              >
+                {packBadge.label}
+              </span>
+            )}
           </span>
           {subtitle && (
             <span className="text-[12px] truncate" style={{ color: '#6B6480', marginTop: 1, lineHeight: 1.3 }}>
@@ -458,6 +480,14 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
     cal: null, notion: null, emails: [], teamsEmail: null, ml: null, qb: null, sf: null, dropbox: null,
   });
   const [statusLoaded, setStatusLoaded] = useState(false);
+  const [packsInfo, setPacksInfo] = useState<PacksInfo | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/portal/${token}/packs`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => setPacksInfo(data as PacksInfo | null))
+      .catch(() => setPacksInfo(null));
+  }, [token]);
 
   useEffect(() => {
     Promise.all([
@@ -667,6 +697,35 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
     },
   ];
 
+  /* ── packs badge helpers ─────────────────────────────────────────────── */
+
+  // Maps capability row keys to their associated pack id.
+  // Omitting 'comercio' → 'mercado_libre' (hidden 2026-08-19).
+  const CAPABILITY_TO_PACK: Record<string, string> = {
+    finanzas:          'quickbooks',
+    solucion_factible: 'invoicing_cfdi',
+    storage:           'cloud_catalog',
+  };
+
+  function packForCapability(key: string): PacksInfo['allPacks'][number] | null {
+    if (!packsInfo) return null;
+    const packId = CAPABILITY_TO_PACK[key];
+    if (!packId) return null;
+    return packsInfo.allPacks.find(p => p.id === packId) ?? null;
+  }
+
+  function isPackActive(key: string): boolean {
+    if (!packsInfo) return false;
+    const packId = CAPABILITY_TO_PACK[key];
+    return packId ? packsInfo.activePacks.includes(packId) : false;
+  }
+
+  function meerkatsUsingCap(key: string): number {
+    if (!packsInfo) return 0;
+    const packId = CAPABILITY_TO_PACK[key];
+    return packId ? (packsInfo.meerkatsUsingPack[packId] ?? 0) : 0;
+  }
+
   return (
     <div className="flex flex-col gap-3">
 
@@ -704,19 +763,34 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
         </div>
 
         <div className="flex flex-col" style={{ borderTop: '1px solid #F0EDF9' }}>
-          {rows.map((r, idx) => (
-            <CapabilityRow
-              key={r.key}
-              icon={r.icon}
-              connectedIcon={r.connectedIcon}
-              label={r.label}
-              subtitle={r.subtitle}
-              connected={r.connected}
-              isLast={idx === rows.length - 1}
-            >
-              {r.children}
-            </CapabilityRow>
-          ))}
+          {rows.map((r, idx) => {
+            const pack          = packForCapability(r.key);
+            const active        = isPackActive(r.key);
+            const meerkatsCount = meerkatsUsingCap(r.key);
+
+            const packBadge: PackBadge | null = pack && active
+              ? {
+                  label:         `${pack.tools.length} tools habilitadas`,
+                  tooltip:       `Al conectar habilitas: ${pack.tools.join(', ')}`,
+                  meerkatsUsing: meerkatsCount,
+                }
+              : null;
+
+            return (
+              <CapabilityRow
+                key={r.key}
+                icon={r.icon}
+                connectedIcon={r.connectedIcon}
+                label={r.label}
+                subtitle={r.subtitle}
+                connected={r.connected}
+                isLast={idx === rows.length - 1}
+                packBadge={packBadge}
+              >
+                {r.children}
+              </CapabilityRow>
+            );
+          })}
         </div>
       </div>
     </div>
