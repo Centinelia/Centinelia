@@ -17,7 +17,7 @@ export async function GET(req: NextRequest, { params }: Params) {
   const { token } = await params;
   const resolved  = await resolveOrgFromToken(token);
   if (!resolved?.portalEmail) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  if (session.portalEmail && resolved.portalEmail !== session.portalEmail) {
+  if (resolved.portalEmail !== session.portalEmail) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
@@ -25,7 +25,11 @@ export async function GET(req: NextRequest, { params }: Params) {
   const ctx = await resolveOrgPackContext(resolved.portalEmail, supabase);
   const activePacks = Array.from(resolveActivePacks(ctx));
 
-  // Cuántos meerkats del org tienen al menos una tool de cada pack en su preset voice
+  /**
+   * Counts distinct active meerkats (voice_agents rows) whose voice preset uses
+   * at least one tool from each pack. In this codebase, a meerkat IS a voice_agents
+   * row (1:1 mapping).
+   */
   const { data: agents } = await supabase
     .from('voice_agents')
     .select('features')
