@@ -33,13 +33,13 @@ export const TOOL_REGISTRY: ToolEntry[] = [
   { name: 'read_url',                 description: 'Lee el contenido de una URL pública',                  channels: A, category: 'web',       destructive: false, gatedByRole: null, gatedByFeature: null,      capability: null, policy: policyFor('read_url') },
   { name: 'buscar_en_web',            description: 'Búsqueda web general (Brave Search)',                   channels: A, category: 'web',       destructive: false, gatedByRole: null, gatedByFeature: null,      capability: null, policy: policyFor('buscar_en_web') },
   { name: 'search_leads',             description: 'Búsqueda estructurada de leads/empresas',               channels: A, category: 'web',       destructive: false, gatedByRole: ['niva'], gatedByFeature: null,  capability: null, policy: policyFor('search_leads') },
-  // search_files/read_file son alias chat/email de buscar_archivo/leer_archivo (voice).
-  // Los meerkats que los reciben en runtime son los que tienen los aliases voice en su preset.
-  { name: 'search_files',             description: 'Busca archivos en Drive del negocio',                   channels: A, category: 'drive',     destructive: false, gatedByRole: ['nelia','neo','naia','nox'], gatedByFeature: null, capability: 'files', policy: policyFor('search_files') },
-  { name: 'read_file',                description: 'Lee contenido de archivo del Drive',                    channels: A, category: 'drive',     destructive: false, gatedByRole: ['neo','nox'], gatedByFeature: null, capability: 'files', policy: policyFor('read_file') },
+  // buscar_archivo/leer_archivo: post rename 2026-08-19 son el nombre canonical
+  // en los 3 canales (antes: search_files/read_file en chat/email).
+  { name: 'buscar_archivo',           description: 'Busca archivos en Drive del negocio',                   channels: A, category: 'drive',     destructive: false, gatedByRole: ['nelia','neo','naia','nox'], gatedByFeature: null, capability: 'files', policy: policyFor('buscar_archivo') },
+  { name: 'leer_archivo',             description: 'Lee contenido de archivo del Drive',                    channels: A, category: 'drive',     destructive: false, gatedByRole: ['neo','nox'], gatedByFeature: null, capability: 'files', policy: policyFor('leer_archivo') },
 
   // destructive
-  { name: 'send_email',               description: 'Envía correo directo (verifier antes de send)',         channels: A, category: 'comms',     destructive: true,  gatedByRole: ['nico','nelia','naia','nox','niva'], gatedByFeature: null, capability: 'email', policy: policyFor('send_email') },
+  { name: 'enviar_correo',            description: 'Envía correo directo (verifier antes de send)',         channels: A, category: 'comms',     destructive: true,  gatedByRole: ['nico','nelia','naia','nox','niva'], gatedByFeature: null, capability: 'email', policy: policyFor('enviar_correo') },
   { name: 'trigger_outbound_call',    description: 'Dispara llamada saliente (verifier antes)',             channels: A, category: 'comms',     destructive: true,  gatedByRole: ['noah'], gatedByFeature: 'outbound_calls', capability: 'phone', policy: policyFor('trigger_outbound_call') },
 
   // documents
@@ -77,8 +77,8 @@ export const TOOL_REGISTRY: ToolEntry[] = [
   { name: 'ver_metricas_ml',          description: 'Métricas Mercado Libre (solo chat)',                    channels: ['chat'], category: 'mercadolibre', destructive: false, gatedByRole: ['noah','niva'], gatedByFeature: 'mercadolibre', capability: null, policy: policyFor('ver_metricas_ml') },
 
   // meta
-  { name: 'delegate_task',            description: 'Delega tarea a otro empleado (loop on evidence)',       channels: A, category: 'meta',      destructive: false, gatedByRole: null, gatedByFeature: null,      capability: null, policy: policyFor('delegate_task') },
-  { name: 'consult_agent',            description: 'Consulta síncrona a otro empleado',                     channels: A, category: 'meta',      destructive: false, gatedByRole: null, gatedByFeature: null,      capability: null, policy: policyFor('consult_agent') },
+  { name: 'delegar_tarea',            description: 'Delega tarea a otro empleado (loop on evidence)',       channels: A, category: 'meta',      destructive: false, gatedByRole: null, gatedByFeature: null,      capability: null, policy: policyFor('delegar_tarea') },
+  { name: 'consultar_agente',         description: 'Consulta síncrona a otro empleado',                     channels: A, category: 'meta',      destructive: false, gatedByRole: null, gatedByFeature: null,      capability: null, policy: policyFor('consultar_agente') },
   { name: 'reportar_falla',           description: 'Reporta bug al equipo Centinelia',                      channels: A, category: 'meta',      destructive: false, gatedByRole: null, gatedByFeature: null,      capability: null, policy: DEFAULT_POLICY },
 
   // nash (interno) — solo se expone al meerkat interno Nash

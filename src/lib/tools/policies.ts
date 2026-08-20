@@ -7,7 +7,7 @@
  * El executor consulta este mapa antes de invocar cada tool. Sin policy
  * declarada, se usa `DEFAULT_POLICY` (1 intento, 25s timeout, sin verify).
  *
- * NO retries automáticos para tools destructivas (send_email, llamadas,
+ * NO retries automáticos para tools destructivas (enviar_correo, llamadas,
  * facturación, contratos). Un retry silencioso ahí = doble envío.
  */
 
@@ -40,7 +40,7 @@ export const DEFAULT_POLICY: ToolPolicy = {
  * Categorías:
  *  - safe-read: buscar, leer, lookup. Retry libre.
  *  - safe-idempotent: crear con dedupe key, update por id. Retry libre.
- *  - destructive: send_email, llamadas, factura, contrato. Sin retry silencioso.
+ *  - destructive: enviar_correo, llamadas, factura, contrato. Sin retry silencioso.
  *  - long-io: web search, scrape. Retry limitado.
  */
 export const TOOL_POLICIES: Record<string, ToolPolicy> = {
@@ -48,8 +48,8 @@ export const TOOL_POLICIES: Record<string, ToolPolicy> = {
   read_url:               { ...DEFAULT_POLICY, timeoutMs: 15_000, maxAttempts: 2, backoffMs: 800, retryOnlyTransient: true },
   buscar_en_web:          { ...DEFAULT_POLICY, timeoutMs: 12_000, maxAttempts: 2, backoffMs: 500, retryOnlyTransient: true },
   search_leads:           { ...DEFAULT_POLICY, timeoutMs: 20_000, maxAttempts: 2, backoffMs: 800, retryOnlyTransient: true },
-  search_files:           { ...DEFAULT_POLICY, timeoutMs: 12_000, maxAttempts: 2, backoffMs: 500, retryOnlyTransient: true },
-  read_file:              { ...DEFAULT_POLICY, timeoutMs: 20_000, maxAttempts: 2, backoffMs: 500, retryOnlyTransient: true },
+  buscar_archivo:         { ...DEFAULT_POLICY, timeoutMs: 12_000, maxAttempts: 2, backoffMs: 500, retryOnlyTransient: true },
+  leer_archivo:           { ...DEFAULT_POLICY, timeoutMs: 20_000, maxAttempts: 2, backoffMs: 500, retryOnlyTransient: true },
   list_calendar_events:   { ...DEFAULT_POLICY, timeoutMs: 10_000, maxAttempts: 2, backoffMs: 500, retryOnlyTransient: true },
   qb_consultar_facturas:  { ...DEFAULT_POLICY, timeoutMs: 15_000, maxAttempts: 2, backoffMs: 800, retryOnlyTransient: true },
   qb_buscar_cliente:      { ...DEFAULT_POLICY, timeoutMs: 15_000, maxAttempts: 2, backoffMs: 800, retryOnlyTransient: true },
@@ -73,14 +73,14 @@ export const TOOL_POLICIES: Record<string, ToolPolicy> = {
   create_contract_draft:  { ...DEFAULT_POLICY, timeoutMs: 30_000, budgetOps: 0 },
 
   // destructive — sin retry silencioso, verifier obligatorio
-  send_email:             { ...DEFAULT_POLICY, timeoutMs: 20_000, verifyStrategy: 'external' },
+  enviar_correo:          { ...DEFAULT_POLICY, timeoutMs: 20_000, verifyStrategy: 'external' },
   trigger_outbound_call:  { ...DEFAULT_POLICY, timeoutMs: 15_000, verifyStrategy: 'external' },
   solicitar_factura:      { ...DEFAULT_POLICY, timeoutMs: 20_000, verifyStrategy: 'external' },
   qb_crear_factura:       { ...DEFAULT_POLICY, timeoutMs: 25_000, budgetOps: 1, verifyStrategy: 'external' },
 
   // meta-tools (delegación / consulta) — timeout largo, sin retry
-  delegate_task:          { ...DEFAULT_POLICY, timeoutMs: 90_000 },
-  consult_agent:          { ...DEFAULT_POLICY, timeoutMs: 60_000 },
+  delegar_tarea:          { ...DEFAULT_POLICY, timeoutMs: 90_000 },
+  consultar_agente:       { ...DEFAULT_POLICY, timeoutMs: 60_000 },
 };
 
 export function policyFor(toolName: string): ToolPolicy {

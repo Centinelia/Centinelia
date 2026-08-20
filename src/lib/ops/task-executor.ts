@@ -334,7 +334,7 @@ export async function executeTask(params: {
     '  CORRECTO (copia el valor EXACTO del meet_link del tool_result):',
     '    "Link de Google Meet: https://meet.google.com/xxx-yyyy-zzz"',
     '',
-    'Si intentas enviar correo con un mensaje que menciona Meet SIN incluir la URL válida, el sistema RECHAZARÁ el envío y devolverá un error "send_email_invalid_meet_link". Cuando recibas ese error, REINTENTA send_email con el meet_link real del tool_result (NO abandones la tarea, NO digas "el sistema no devolvió URL", NO alucines otra respuesta — solo corrige el body incluyendo el link literal y reintenta).',
+    'Si intentas enviar correo con un mensaje que menciona Meet SIN incluir la URL válida, el sistema RECHAZARÁ el envío y devolverá un error "enviar_correo_invalid_meet_link". Cuando recibas ese error, REINTENTA enviar_correo con el meet_link real del tool_result (NO abandones la tarea, NO digas "el sistema no devolvió URL", NO alucines otra respuesta — solo corrige el body incluyendo el link literal y reintenta).',
     '',
     callerAgent
       ? `Tu compañero ${callerAgent.agent_name || 'otro empleado'} te ha asignado una tarea. Ejecútala usando las herramientas disponibles pero firma con TU propio nombre.`
@@ -528,7 +528,7 @@ export async function executeTask(params: {
         // enviar_correo ni una vez. Rechazar y forzar al modelo a ejecutar.
         const lowerResultado = resultado.toLowerCase();
         const promiseCheckers: Array<{ pattern: RegExp; requiredTools: string[]; label: string }> = [
-          { pattern: /correo (?:enviad[oa]|de confirmaci[oó]n enviad|se envi[oó]|env[ií]e|envi[eé] el correo|mand[eé]|mandad[oa])|env[ií]e (?:el )?correo|enviamos (?:el )?correo|env[ií] correo/i, requiredTools: ['enviar_correo', 'send_email'], label: 'enviar correo' },
+          { pattern: /correo (?:enviad[oa]|de confirmaci[oó]n enviad|se envi[oó]|env[ií]e|envi[eé] el correo|mand[eé]|mandad[oa])|env[ií]e (?:el )?correo|enviamos (?:el )?correo|env[ií] correo/i, requiredTools: ['enviar_correo'], label: 'enviar correo' },
           { pattern: /cita (?:agend[aeo]|agendada|reservada|creada)|agend[eé] (?:la )?cita/i, requiredTools: ['agendar_cita', 'create_calendar_event'], label: 'agendar cita' },
           { pattern: /evento (?:cread[oa]|agendad[oa]|en el calendario)|cre[eé] (?:el )?evento/i, requiredTools: ['create_calendar_event'], label: 'crear evento en calendario' },
           { pattern: /lead (?:cread[oa]|registrad[oa])|registr[eé] (?:el )?lead/i, requiredTools: ['crear_lead'], label: 'crear lead' },

@@ -124,13 +124,13 @@ function validateProcessedEmail(raw: unknown): ProcessedEmail {
 // recibían BASE_EMAIL_TOOLS enteros — tool bloat.
 const BASE_EMAIL_TOOLS: Anthropic.Tool[] = [
   {
-    name:        'search_files',
+    name:        'buscar_archivo',
     description: 'Busca documentos en Google Drive o OneDrive del negocio para encontrar información relevante al email: contratos, cotizaciones, catálogos, manuales.',
     input_schema: { type: 'object' as const, properties: { query: { type: 'string' } }, required: ['query'] },
   },
   {
-    name:        'read_file',
-    description: 'Lee el contenido de un archivo (PDF, doc, Excel). Úsala DESPUÉS de search_files cuando el archivo encontrado sea relevante para redactar la respuesta.',
+    name:        'leer_archivo',
+    description: 'Lee el contenido de un archivo (PDF, doc, Excel). Úsala DESPUÉS de buscar_archivo cuando el archivo encontrado sea relevante para redactar la respuesta.',
     input_schema: { type: 'object' as const, properties: { file_id: { type: 'string' }, file_name: { type: 'string' }, mime_type: { type: 'string' } }, required: ['file_id', 'file_name'] },
   },
   {
@@ -230,7 +230,7 @@ const BASE_EMAIL_TOOLS: Anthropic.Tool[] = [
     },
   },
   // Migrated to registry: src/lib/tools/schemas.ts
-  toAnthropicTool(TOOL_SCHEMAS['send_email']),
+  toAnthropicTool(TOOL_SCHEMAS['enviar_correo']),
   {
     name:        'trigger_outbound_call',
     description: 'Programa una llamada saliente automatizada. Úsala SOLO si el remitente pide explícitamente que le llames, o si tienes autorización previa para hacer seguimiento telefónico. NUNCA para prospección fría — es más seguro responder por correo primero.',
@@ -250,8 +250,8 @@ const BASE_EMAIL_TOOLS: Anthropic.Tool[] = [
     },
   },
   // Migrated to registry: src/lib/tools/schemas.ts
-  toAnthropicTool(TOOL_SCHEMAS['consult_agent']),
-  toAnthropicTool(TOOL_SCHEMAS['delegate_task']),
+  toAnthropicTool(TOOL_SCHEMAS['consultar_agente']),
+  toAnthropicTool(TOOL_SCHEMAS['delegar_tarea']),
   toAnthropicTool(TOOL_SCHEMAS['reportar_falla']),
   // ── Tags de contactos (CRM) ────────────────────────────────────────────────
   {
@@ -357,8 +357,8 @@ Para llamadas telefónicas:
 - Solo pide llamada a humano si: sin minutos, cliente pidió humano, o conversación delicada
 
 NO la uses para:
-- Info obtenible con search_files, buscar_en_web, o QB
-- Cosas que puede hacer otro agente (usa delegate_task)
+- Info obtenible con buscar_archivo, buscar_en_web, o QB
+- Cosas que puede hacer otro agente (usa delegar_tarea)
 - Llamadas que puedes hacer tú (usa trigger_outbound_call primero)`,
     input_schema: {
       type: 'object' as const,
@@ -788,17 +788,17 @@ const EMAIL_TOOL_BY_NAME: Record<string, Anthropic.Tool> = Object.fromEntries(
  * (qb_crear_orden_compra, firmar_oc, sf_timbrar_desde_oc, etc. — 12 tools).
  */
 const MEERKAT_EMAIL_DISTRIBUTION: Record<string, string[]> = {
-  nia:   ['crear_lead', 'crear_contacto_saliente', 'agendar_cita', 'registrar_pedido', 'buscar_cliente', 'buscar_correo_enviado', 'agregar_tag_contacto', 'registrar_encuesta', 'delegate_task', 'consult_agent', 'pedir_a_humano', 'reportar_falla'],
-  noah:  ['crear_lead', 'crear_contacto_saliente', 'agregar_tag_contacto', 'buscar_cliente', 'buscar_correo_enviado', 'buscar_producto', 'catalogo_buscar_codigo', 'list_calendar_events', 'create_calendar_event', 'generar_propuesta_comercial', 'generar_cotizacion', 'delegate_task', 'consult_agent', 'pedir_a_humano'],
-  nico:  ['buscar_cliente', 'buscar_correo_enviado', 'buscar_documento_oficina', 'solicitar_factura', 'consultar_factura', 'solicitar_cancelacion_factura', 'qb_consultar_facturas', 'qb_buscar_cliente', 'qb_registrar_pago', 'qb_crear_factura', 'qb_reporte_ingresos', 'enviar_documento_oficina', 'delegate_task', 'consult_agent', 'pedir_a_humano'],
-  nelia: ['buscar_cliente', 'buscar_correo_enviado', 'buscar_documento_oficina', 'search_files', 'enviar_documento_oficina', 'generar_one_pager', 'generar_correo_estructurado', 'generar_reporte_metricas_excel', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'create_document', 'create_file', 'save_to_drive', 'delegate_task', 'consult_agent', 'pedir_a_humano'],
-  neo:   ['crear_ticket', 'consultar_incidentes', 'buscar_directorio', 'search_files', 'read_file', 'buscar_correo_enviado', 'buscar_documento_oficina', 'enviar_documento_oficina', 'buscar_cliente', 'reportar_falla', 'delegate_task', 'consult_agent', 'pedir_a_humano'],
-  nara:  ['create_civic_report', 'lookup_civic_report', 'update_civic_report', 'consultar_catalogo_externo', 'buscar_en_padron_externo', 'enviar_tramite_externo', 'buscar_cliente', 'buscar_correo_enviado', 'generar_reporte_metricas_excel', 'search_files', 'read_file', 'delegate_task', 'consult_agent', 'pedir_a_humano'],
-  naia:  ['iniciar_onboarding', 'agendar_cita', 'list_calendar_events', 'create_calendar_event', 'delete_calendar_event', 'buscar_cliente', 'buscar_correo_enviado', 'buscar_documento_oficina', 'search_files', 'read_file', 'registrar_falta', 'consultar_vacaciones', 'solicitar_permiso', 'verificar_incidencia', 'generar_correo_estructurado', 'create_document', 'save_to_drive', 'delegate_task', 'consult_agent', 'pedir_a_humano'],
-  nova:  ['asignar_unidad_campo', 'consultar_unidades_disponibles', 'crear_ticket', 'buscar_cliente', 'buscar_correo_enviado', 'buscar_documento_oficina', 'search_files', 'read_file', 'enviar_documento_oficina', 'create_document', 'extraer_voz_del_cliente', 'delegate_task', 'consult_agent', 'pedir_a_humano'],
-  nox:   ['create_document', 'create_file', 'create_contract_draft', 'save_to_drive', 'organize_files', 'buscar_documento_oficina', 'enviar_documento_oficina', 'search_files', 'read_file', 'buscar_cliente', 'buscar_correo_enviado', 'catalogo_buscar_codigo', 'list_calendar_events', 'create_calendar_event', 'verificar_gasto_recurrente', 'sheets_agregar_fila', 'sheets_actualizar_fila', 'sheets_leer', 'sheets_buscar', 'preparar_brief_del_dia', 'delegate_task', 'consult_agent', 'pedir_a_humano', 'reportar_falla'],
-  niva:  ['create_document', 'create_file', 'save_to_drive', 'buscar_documento_oficina', 'enviar_documento_oficina', 'search_files', 'read_file', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'revisar_desempeno_equipo', 'generar_pitch_deck', 'generar_reporte_metricas_excel', 'aprobar_gasto', 'evaluar_limite_gasto', 'verificar_gasto_recurrente', 'list_calendar_events', 'search_leads', 'delegate_task', 'consult_agent', 'pedir_a_humano'],
-  nala:  ['qb_crear_orden_compra', 'qb_consultar_orden_compra', 'qb_descargar_oc_pdf', 'firmar_oc', 'sf_timbrar_desde_oc', 'sf_cancelar_cfdi', 'sf_consultar_estado_sat', 'enviar_oc_a_pagos', 'registrar_comprobante_pago', 'enviar_oc_a_proveedor', 'archivar_expediente', 'qb_crear_orden_compra_desde_cotizacion', 'search_files', 'read_file', 'delegate_task', 'consult_agent', 'pedir_a_humano'],
+  nia:   ['crear_lead', 'crear_contacto_saliente', 'agendar_cita', 'registrar_pedido', 'buscar_cliente', 'buscar_correo_enviado', 'agregar_tag_contacto', 'registrar_encuesta', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano', 'reportar_falla'],
+  noah:  ['crear_lead', 'crear_contacto_saliente', 'agregar_tag_contacto', 'buscar_cliente', 'buscar_correo_enviado', 'buscar_producto', 'catalogo_buscar_codigo', 'list_calendar_events', 'create_calendar_event', 'generar_propuesta_comercial', 'generar_cotizacion', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
+  nico:  ['buscar_cliente', 'buscar_correo_enviado', 'buscar_documento_oficina', 'solicitar_factura', 'consultar_factura', 'solicitar_cancelacion_factura', 'qb_consultar_facturas', 'qb_buscar_cliente', 'qb_registrar_pago', 'qb_crear_factura', 'qb_reporte_ingresos', 'enviar_documento_oficina', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
+  nelia: ['buscar_cliente', 'buscar_correo_enviado', 'buscar_documento_oficina', 'buscar_archivo', 'enviar_documento_oficina', 'generar_one_pager', 'generar_correo_estructurado', 'generar_reporte_metricas_excel', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'create_document', 'create_file', 'save_to_drive', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
+  neo:   ['crear_ticket', 'consultar_incidentes', 'buscar_directorio', 'buscar_archivo', 'leer_archivo', 'buscar_correo_enviado', 'buscar_documento_oficina', 'enviar_documento_oficina', 'buscar_cliente', 'reportar_falla', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
+  nara:  ['create_civic_report', 'lookup_civic_report', 'update_civic_report', 'consultar_catalogo_externo', 'buscar_en_padron_externo', 'enviar_tramite_externo', 'buscar_cliente', 'buscar_correo_enviado', 'generar_reporte_metricas_excel', 'buscar_archivo', 'leer_archivo', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
+  naia:  ['iniciar_onboarding', 'agendar_cita', 'list_calendar_events', 'create_calendar_event', 'delete_calendar_event', 'buscar_cliente', 'buscar_correo_enviado', 'buscar_documento_oficina', 'buscar_archivo', 'leer_archivo', 'registrar_falta', 'consultar_vacaciones', 'solicitar_permiso', 'verificar_incidencia', 'generar_correo_estructurado', 'create_document', 'save_to_drive', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
+  nova:  ['asignar_unidad_campo', 'consultar_unidades_disponibles', 'crear_ticket', 'buscar_cliente', 'buscar_correo_enviado', 'buscar_documento_oficina', 'buscar_archivo', 'leer_archivo', 'enviar_documento_oficina', 'create_document', 'extraer_voz_del_cliente', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
+  nox:   ['create_document', 'create_file', 'create_contract_draft', 'save_to_drive', 'organize_files', 'buscar_documento_oficina', 'enviar_documento_oficina', 'buscar_archivo', 'leer_archivo', 'buscar_cliente', 'buscar_correo_enviado', 'catalogo_buscar_codigo', 'list_calendar_events', 'create_calendar_event', 'verificar_gasto_recurrente', 'sheets_agregar_fila', 'sheets_actualizar_fila', 'sheets_leer', 'sheets_buscar', 'preparar_brief_del_dia', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano', 'reportar_falla'],
+  niva:  ['create_document', 'create_file', 'save_to_drive', 'buscar_documento_oficina', 'enviar_documento_oficina', 'buscar_archivo', 'leer_archivo', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'revisar_desempeno_equipo', 'generar_pitch_deck', 'generar_reporte_metricas_excel', 'aprobar_gasto', 'evaluar_limite_gasto', 'verificar_gasto_recurrente', 'list_calendar_events', 'search_leads', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
+  nala:  ['qb_crear_orden_compra', 'qb_consultar_orden_compra', 'qb_descargar_oc_pdf', 'firmar_oc', 'sf_timbrar_desde_oc', 'sf_cancelar_cfdi', 'sf_consultar_estado_sat', 'enviar_oc_a_pagos', 'registrar_comprobante_pago', 'enviar_oc_a_proveedor', 'archivar_expediente', 'qb_crear_orden_compra_desde_cotizacion', 'buscar_archivo', 'leer_archivo', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
 };
 
 /**
@@ -1062,7 +1062,7 @@ Estas reglas se verifican con un safety net post-generación. Violarlas causa qu
 
 3. POLÍTICAS DEL NEGOCIO (garantías, plazos, procesos): si no está en el KB o Drive, NO la fabriques. Admite honestamente que necesitas verificar o usa pedir_a_humano.
 
-4. CASOS DE ÉXITO, TESTIMONIOS, REFERENCIAS: si search_files no los encuentra, usa pedir_a_humano({type:'info', description:'Cliente pide casos de éxito de X. Drive no tiene. ¿Cuáles puedo compartir?'}).
+4. CASOS DE ÉXITO, TESTIMONIOS, REFERENCIAS: si buscar_archivo no los encuentra, usa pedir_a_humano({type:'info', description:'Cliente pide casos de éxito de X. Drive no tiene. ¿Cuáles puedo compartir?'}).
 
 5. COMPROMISOS QUE EXCEDEN TU AUTORIDAD: descuentos, plazos especiales, condiciones no estándar → pedir_a_humano({type:'approval', ...}).
 
@@ -1072,7 +1072,7 @@ Estas reglas se verifican con un safety net post-generación. Violarlas causa qu
 
 8. LECTURA DE ADJUNTOS Y LINKS ENTRANTES: si el correo entrante trae adjuntos (PDF/DOCX/imagen), estos YA vienen procesados en el body ("Contenido de documentos adjuntos") o como bloques image que puedes ver directamente. Úsalos. Si el correo tiene un LINK a un documento (típico en facturas Netsuite/Nayax: "Ver factura aquí" con URL), usa read_url para descargar y leer el contenido antes de clasificar como discrepancia. NO marques "requiere lectura manual" sin haber intentado read_url primero. Un correo de factura con link válido que no leíste es un fallo tuyo, no del sistema.
 
-9. COORDINACIÓN CON EL EQUIPO — si una tool devuelve "deduped: true" (mensaje tipo "<compañero> ya se encargó de este reporte…"), NO es un error. Otro empleado del mismo negocio ya envió lo mismo al mismo destinatario y el sistema evitó cobrar dos veces al cliente. NO reintentes con la misma tool ni con otra (nada de cambiar send_email por WhatsApp, ni escalar con pedir_a_humano para "asegurar"). Anota en tu draft o resumen que el compañero ya se encargó y sigue con la parte que aún no se atienda. Aplica a send_email, enviar_documento_oficina, responder_cliente_afectado, escalar_al_owner, pedir_a_humano(target=owner) y delegar_tarea.
+9. COORDINACIÓN CON EL EQUIPO — si una tool devuelve "deduped: true" (mensaje tipo "<compañero> ya se encargó de este reporte…"), NO es un error. Otro empleado del mismo negocio ya envió lo mismo al mismo destinatario y el sistema evitó cobrar dos veces al cliente. NO reintentes con la misma tool ni con otra (nada de cambiar enviar_correo por WhatsApp, ni escalar con pedir_a_humano para "asegurar"). Anota en tu draft o resumen que el compañero ya se encargó y sigue con la parte que aún no se atienda. Aplica a enviar_correo, enviar_documento_oficina, responder_cliente_afectado, escalar_al_owner, pedir_a_humano(target=owner) y delegar_tarea.
 
 Regla de oro: PEDIR AYUDA es SIEMPRE mejor que INVENTAR. Un correo con "voy a verificar y te contesto pronto" es MEJOR que un correo con datos fabricados. Fabricar rompe la confianza; verificar la construye.
 
@@ -1148,7 +1148,7 @@ REGLA DE ORO — NO NEGOCIABLE:
 
 Eres un empleado competente, no un triador tímido. Si la primera tool no encontró lo que buscabas, EL PROBLEMA ES TU QUERY, NO QUE LA INFO NO EXISTA:
 
-1. **search_files** devolvió 0 resultados → REPHRASEA con sinónimos y REINTENTA (ej. "cotización" → "propuesta económica", "precio", "presupuesto"). Prueba con términos del cliente O términos del negocio.
+1. **buscar_archivo** devolvió 0 resultados → REPHRASEA con sinónimos y REINTENTA (ej. "cotización" → "propuesta económica", "precio", "presupuesto"). Prueba con términos del cliente O términos del negocio.
 2. Si el KB del negocio no tiene la respuesta → **buscar_en_web** con contexto ("horarios notaría 5 Monterrey" no "horarios notaría"). Puedes intentar 2-3 queries diferentes antes de rendirte.
 3. Si necesitas conocimiento de otro rol (contador, RH, cocinero) → **consultar_agente** con el rol correcto, no escales al humano.
 4. Si el remitente tiene la info que falta (ej. RFC para factura, alcance para cotizar) → **needs_info + request_to_sender**.
@@ -1795,7 +1795,7 @@ CATEGORÍAS:
                 messages.push({ role: 'assistant', content: response.content });
                 messages.push({
                   role: 'user',
-                  content: `Espera — no llamaste ninguna herramienta. Antes de emitir draft=null, DEBES intentar al menos: search_files (con 2 queries diferentes si la primera no devuelve) y buscar_en_web si el KB no tiene. Reintenta con las tools disponibles.`,
+                  content: `Espera — no llamaste ninguna herramienta. Antes de emitir draft=null, DEBES intentar al menos: buscar_archivo (con 2 queries diferentes si la primera no devuelve) y buscar_en_web si el KB no tiene. Reintenta con las tools disponibles.`,
                 });
                 continue;
               }

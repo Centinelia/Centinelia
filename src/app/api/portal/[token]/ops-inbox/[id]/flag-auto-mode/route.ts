@@ -20,7 +20,7 @@ function buildLearningContent(
   switch (category) {
     case 'alucinacion':
       return {
-        content: `Alucinación reportada en correo "${subj}". Detalle: ${detail}. Antes de mencionar horarios/precios/políticas: verificar con list_calendar_events, search_files, o usar pedir_a_humano si no puedes verificar.`,
+        content: `Alucinación reportada en correo "${subj}". Detalle: ${detail}. Antes de mencionar horarios/precios/políticas: verificar con list_calendar_events, buscar_archivo, o usar pedir_a_humano si no puedes verificar.`,
         category: 'guardrails',
       };
     case 'tono':
@@ -30,7 +30,7 @@ function buildLearningContent(
       };
     case 'info_incorrecta':
       return {
-        content: `Info incorrecta reportada en correo "${subj}". Detalle: ${detail}. Verificar datos con search_files o buscar_en_web antes de incluirlos en respuestas.`,
+        content: `Info incorrecta reportada en correo "${subj}". Detalle: ${detail}. Verificar datos con buscar_archivo o buscar_en_web antes de incluirlos en respuestas.`,
         category: 'guardrails',
       };
     case 'no_debia_responder':

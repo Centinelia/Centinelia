@@ -1,6 +1,6 @@
 /**
  * Dropbox como FilesConnector — parte del set genérico junto a Google Drive y
- * OneDrive. Habilita search_files, read_file, save_to_drive, organize_files
+ * OneDrive. Habilita buscar_archivo, leer_archivo, save_to_drive, organize_files
  * también contra Dropbox cuando la org lo conecta desde el portal.
  *
  * Dropbox usa PATHS ('/Carpeta/archivo.xlsx') no IDs opacos. En este connector

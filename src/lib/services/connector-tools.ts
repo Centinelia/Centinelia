@@ -66,8 +66,8 @@ async function getFileConnector(agentId: string, supabase: SupabaseClient) {
     .maybeSingle();
   if (!orgAcct) {
     // Fallback secundario: Dropbox conectado como file provider standalone.
-    // Devuelve un Connector minimal (solo files) para las tools search_files,
-    // read_file, save_to_drive, organize_files. Sin email, contacts, calendar.
+    // Devuelve un Connector minimal (solo files) para las tools buscar_archivo,
+    // leer_archivo, save_to_drive, organize_files. Sin email, contacts, calendar.
     const { data: dbxAcct } = await supabase
       .from('integration_accounts')
       .select('access_token, refresh_token, expires_at, status')
@@ -162,7 +162,7 @@ export async function executeSendEmail(
   // completo. Sin esto el modelo sigue escribiendo "te llegará por separado".
   const meetCheck = detectInvalidMeetReference(body);
   if (meetCheck.invalid) {
-    return { ok: false, error: `send_email_invalid_meet_link: ${meetCheck.reason}` };
+    return { ok: false, error: `enviar_correo_invalid_meet_link: ${meetCheck.reason}` };
   }
 
   // Convertir markdown básico a HTML — meerkats escriben con **bold**, *italic*,

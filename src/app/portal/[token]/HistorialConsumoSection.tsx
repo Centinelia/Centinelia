@@ -43,6 +43,9 @@ const SOURCE_META: Record<string, { label: string; trigger: string }> = {
   // Backfill histórico (pre-refactor): tareas de agent_tasks importadas
   agent_task_historical: { label: 'Tarea del agente',           trigger: 'manual' },
   // Nuevos sources (segunda pasada audit 2026-08-10)
+  consultar_agente:    { label: 'Consulta a compañero especialista', trigger: 'chat' },
+  // Alias retrocompat: source string usado antes del rename 2026-08-19
+  // (consult_agent → consultar_agente). Registros históricos siguen con label bonito.
   consult_agent:       { label: 'Consulta a compañero especialista', trigger: 'chat' },
   batch_eval:          { label: 'Evaluación CES + auto-eval (batch)', trigger: 'schedule' },
   // Terceros deudas cerradas (N6)

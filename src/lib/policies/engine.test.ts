@@ -54,8 +54,8 @@ describe('getToolCapability', () => {
 // ---------------------------------------------------------------------------
 
 describe('TOOL_CAPABILITIES pre-existing entries', () => {
-  it('send_email maps to email', () => {
-    expect(TOOL_CAPABILITIES['send_email']).toBe('email');
+  it('enviar_correo maps to email', () => {
+    expect(TOOL_CAPABILITIES['enviar_correo']).toBe('email');
   });
 
   it('trigger_outbound_call maps to phone', () => {

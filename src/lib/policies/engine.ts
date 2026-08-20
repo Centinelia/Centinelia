@@ -88,9 +88,9 @@ export async function checkPolicy({
 
 // Map from tool name to capability string
 export const TOOL_CAPABILITIES: Record<string, string> = {
-  send_email:            'email',
-  search_files:          'files',
-  read_file:             'files',
+  enviar_correo:         'email',
+  buscar_archivo:        'files',
+  leer_archivo:          'files',
   save_to_drive:         'files',
   organize_files:        'files',
   trigger_outbound_call: 'phone',

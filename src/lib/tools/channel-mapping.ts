@@ -9,19 +9,22 @@
  *
  * Origen: feedback-tool-bloat-reglas regla #1 (2026-08-18). Los presets
  * en MEERKAT_VOICE_DISTRIBUTION ya no listan las universales.
+ *
+ * Rename 2026-08-19: las 5 tools que antes tenían nombre distinto en voice vs
+ * chat/email (enviar_correo ↔ send_email, consultar_agente ↔ consult_agent,
+ * delegar_tarea ↔ delegate_task, buscar_archivo ↔ search_files, leer_archivo
+ * ↔ read_file) ahora se llaman igual en los 3 canales. Se eliminaron esas
+ * entradas de este mapping — sobreviven solo las que siguen teniendo un
+ * nombre distinto de verdad (llamar_a → trigger_outbound_call) o las que
+ * necesitan marcarse como voice-only (null).
  */
 
 export const VOICE_TO_CHAT: Record<string, string | null> = {
-  // Renombres voice → chat/email
-  enviar_correo:             'send_email',
+  // Renombres voice → chat/email (los últimos que quedan tras el rename 2026-08-19)
   crear_documento:           'create_document',
   buscar_documento_oficina:  'buscar_documento_oficina',
   enviar_documento_oficina:  'enviar_documento_oficina',
   llamar_a:                  'trigger_outbound_call',
-  buscar_archivo:            'search_files',
-  leer_archivo:              'read_file',
-  consultar_agente:          'consult_agent',
-  delegar_tarea:             'delegate_task',
 
   // Voice-only (no aplica a chat/email)
   notificar_transferencia:   null,
@@ -39,6 +42,13 @@ export const VOICE_TO_CHAT: Record<string, string | null> = {
   consultar_incidentes:      'consultar_incidentes',
   buscar_directorio:         'buscar_directorio',
   iniciar_onboarding:        'iniciar_onboarding',
+
+  // Mismo nombre en los 3 canales (post rename 2026-08-19)
+  enviar_correo:             'enviar_correo',
+  consultar_agente:          'consultar_agente',
+  delegar_tarea:             'delegar_tarea',
+  buscar_archivo:            'buscar_archivo',
+  leer_archivo:              'leer_archivo',
 
   // Same name in both channels
   create_contract_draft:     'create_contract_draft',
@@ -88,7 +98,7 @@ export const VOICE_TO_CHAT: Record<string, string | null> = {
  * Los presets en MEERKAT_VOICE_DISTRIBUTION ya no listan estas.
  */
 export const UNIVERSAL_TOOLS: string[] = [
-  'delegate_task', 'consult_agent', 'pedir_a_humano',
+  'delegar_tarea', 'consultar_agente', 'pedir_a_humano',
   'reportar_falla', 'read_url', 'buscar_en_web',
 ];
 

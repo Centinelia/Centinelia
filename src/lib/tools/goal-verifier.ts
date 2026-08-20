@@ -10,7 +10,7 @@
  *   const check = await verifyGoalResponse({
  *     userIntent:    userMessage,
  *     agentResponse: draftReply,
- *     toolsInvoked:  ['send_email', 'save_to_drive'],  // solo las que ok:true
+ *     toolsInvoked:  ['enviar_correo', 'save_to_drive'],  // solo las que ok:true
  *   });
  *   if (!check.met) {  // halucinación de acción — no auto-enviar }
  *
@@ -37,7 +37,7 @@ const RESPONSE_VERIFIER_SYSTEM = `Actúas como auditor de completitud de un agen
 El agente recibió una petición y respondió al usuario. Tu tarea: detectar el patrón peligroso donde el agente DICE que hizo algo pero no ejecutó el tool correspondiente (halucinación de acción).
 
 Ejemplos que DEBES marcar como no cumplido:
-- Agente dice "te envié el correo" pero no aparece send_email en tools invocadas
+- Agente dice "te envié el correo" pero no aparece enviar_correo en tools invocadas
 - Agente dice "ya lo guardé en Drive" pero no aparece save_to_drive
 - Agente dice "agendé tu cita" pero no aparece create_calendar_event
 - Agente dice "creé el documento" pero no aparece create_document / create_file

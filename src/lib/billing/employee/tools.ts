@@ -506,10 +506,10 @@ export function buildEmployeeTools(toolsCtx: ToolsContext): EmployeeTool[] {
     },
 
     // -------------------------------------------------------------------------
-    // send_email
+    // enviar_correo
     // -------------------------------------------------------------------------
     {
-      name: 'send_email',
+      name: 'enviar_correo',
       description:
         'Envia un correo saliente. Usar para comunicaciones proactivas (reportes, alertas informativas). ' +
         'Para responder al correo original usar reply_email.',

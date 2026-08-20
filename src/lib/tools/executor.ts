@@ -244,9 +244,9 @@ async function executeAgentToolInner(
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // send_email
+  // enviar_correo
   // ─────────────────────────────────────────────────────────────────────────
-  if (toolName === 'send_email') {
+  if (toolName === 'enviar_correo') {
     // F4.1 — verifier adversarial: envío directo (sin approval humano).
     // El agente principal declaró en `subject` y `body` — el verifier
     // decide si el destinatario + contenido son legítimos.
@@ -274,7 +274,7 @@ async function executeAgentToolInner(
       agentId,
       agentName,
       extraDedupe: (toolInput.body as string ?? '').slice(0, 800),
-      sourceContext: { tool: 'send_email', channel: ctx.channel ?? 'chat' },
+      sourceContext: { tool: 'enviar_correo', channel: ctx.channel ?? 'chat' },
     });
     if (!claim.claimed) {
       return {
@@ -650,10 +650,10 @@ async function executeAgentToolInner(
   if (toolName === 'organize_files') {
     return executeOrganizeFiles(agentId, { action: toolInput.action as string, folderId: toolInput.folder_id as string | undefined, fileId: toolInput.file_id as string | undefined, destination: toolInput.destination as string | undefined, newName: toolInput.new_name as string | undefined, folderName: toolInput.folder_name as string | undefined }, supabase);
   }
-  if (toolName === 'search_files') {
+  if (toolName === 'buscar_archivo') {
     return executeSearchFiles(agentId, toolInput.query as string, supabase);
   }
-  if (toolName === 'read_file') {
+  if (toolName === 'leer_archivo') {
     return executeReadFile(agentId, toolInput.file_id as string, toolInput.file_name as string, (toolInput.mime_type as string | undefined) ?? '', supabase);
   }
 
@@ -1550,9 +1550,9 @@ async function executeAgentToolInner(
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // delegate_task
+  // delegar_tarea
   // ─────────────────────────────────────────────────────────────────────────
-  if (toolName === 'delegate_task') {
+  if (toolName === 'delegar_tarea') {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
     const internalHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
     if (process.env.VAPI_SERVER_SECRET) internalHeaders['x-vapi-secret'] = process.env.VAPI_SERVER_SECRET;
@@ -1583,22 +1583,22 @@ async function executeAgentToolInner(
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // consult_agent
+  // consultar_agente
   // ─────────────────────────────────────────────────────────────────────────
-  if (toolName === 'consult_agent') {
+  if (toolName === 'consultar_agente') {
     const cRol  = toolInput.rol      as string;
     const cTask = toolInput.tarea    as string;
     const cCtx  = (toolInput.contexto as string | undefined) ?? '';
     // A-F5 fix chaining bug #2: caller_verified gate. ANTES: executor no leía
     // caller_verified. Chat auto-inyecta true, pero inbox-processor pasaba lo
     // que el modelo elegía (default false). Email externo podía leer info
-    // interna vía consult_agent que buscaba en Drive. Ver Scope A A3 CRIT #2.
+    // interna vía consultar_agente que buscaba en Drive. Ver Scope A A3 CRIT #2.
     const cVerified = (toolInput.caller_verified as boolean | undefined) ?? false;
     if (!cRol || !cTask) return { ok: false, error: 'Parámetros insuficientes.' };
 
     // Cobra 1 op upfront por la consulta al compañero. Iteraciones adicionales
     // dentro del loop de investigación (hasta 4 más) se cobran por iteración.
-    const consultBaseOps = await consumeAiOp(agentId, 1, { source: 'consult_agent', label: 'Consulta a compañero especialista' });
+    const consultBaseOps = await consumeAiOp(agentId, 1, { source: 'consultar_agente', label: 'Consulta a compañero especialista' });
     if (!consultBaseOps.ok) return { ok: false, error: 'Sin operaciones disponibles para consultar al compañero.' };
 
     const { data: sibs } = await supabase.from('voice_agents').select('id, agent_name, role, knowledge_base, role_knowledge_base').eq('portal_email', portalEmail).eq('active', true).neq('id', agentId);
@@ -1643,7 +1643,7 @@ async function executeAgentToolInner(
         // Iteraciones adicionales (past first) cobran 1 op cada una. Si no hay
         // saldo, corta el loop y devuelve la mejor respuesta acumulada.
         if (ct > 0) {
-          const iterOps = await consumeAiOp(agentId, 1, { source: 'consult_agent', label: `Consulta a compañero (iter ${ct + 1})` });
+          const iterOps = await consumeAiOp(agentId, 1, { source: 'consultar_agente', label: `Consulta a compañero (iter ${ct + 1})` });
           if (!iterOps.ok) break;
         }
         const __t = Date.now();
@@ -4140,7 +4140,7 @@ async function executeAgentToolInner(
       const result = await buildDocument(kind as 'propuesta' | 'cotizacion' | 'one_pager', content, { id: agentId, agent_name: agentName, portal_email: portalEmail }, supabase);
       if (!result.ok) { await refundCreativity(result.error ?? 'buildDocument_failed'); return result; }
       // A-F5 fix chaining bug #1: NO expusimos `file_id` (Supabase storage path)
-      // en el output para que el modelo no lo pase a send_email pensando que es
+      // en el output para que el modelo no lo pase a enviar_correo pensando que es
       // Drive ID → correo sin adjunto silent. Ver Scope A A3 CRITICAL #1.
       // Modelo debe usar `enviar_documento_oficina({document_id, to, subject, body})`
       // para enviar por email. `document_id` = uuid de ops_documents (renombrado
@@ -4150,7 +4150,7 @@ async function executeAgentToolInner(
       return {
         ...safeResult,
         document_id: result.document_id,
-        message: `Documento generado: ${content.title}.\n\nEnlace de descarga temporal (1 hora): ${result.url}\n\nPARA ENVIAR POR CORREO: invoca enviar_documento_oficina con document_id="${result.document_id}", to, subject, body. NO uses send_email con este archivo (el file_id no funciona para send_email — solo enviar_documento_oficina sabe cómo descargarlo).`,
+        message: `Documento generado: ${content.title}.\n\nEnlace de descarga temporal (1 hora): ${result.url}\n\nPARA ENVIAR POR CORREO: invoca enviar_documento_oficina con document_id="${result.document_id}", to, subject, body. NO uses enviar_correo con este archivo (el file_id no funciona para enviar_correo — solo enviar_documento_oficina sabe cómo descargarlo).`,
       };
     }
   }

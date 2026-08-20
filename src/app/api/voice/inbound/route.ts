@@ -1433,8 +1433,8 @@ Para llamadas telefónicas:
 - Solo pide llamada a humano si: sin minutos, cliente pidió humano, o conversación delicada
 
 NO la uses para:
-- Info obtenible con search_files, buscar_en_web, o QB
-- Cosas que puede hacer otro agente (usa delegate_task)
+- Info obtenible con buscar_archivo, buscar_en_web, o QB
+- Cosas que puede hacer otro agente (usa delegar_tarea)
 - Llamadas que puedes hacer tú (usa trigger_outbound_call primero)`,
         parameters: {
           type: 'object',

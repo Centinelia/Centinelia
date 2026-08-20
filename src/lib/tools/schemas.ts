@@ -8,8 +8,8 @@
  * MIGRATED TOOLS (15):
  *   crear_lead, crear_contacto_saliente, agendar_cita, list_calendar_events,
  *   create_calendar_event, delete_calendar_event, save_to_drive,
- *   buscar_documento_oficina, enviar_documento_oficina, send_email (enviar_correo),
- *   consult_agent (consultar_agente), delegate_task (delegar_tarea),
+ *   buscar_documento_oficina, enviar_documento_oficina, enviar_correo,
+ *   consultar_agente, delegar_tarea,
  *   buscar_correo_enviado, buscar_cliente, reportar_falla
  *
  * DRIFT RESOLVED (winner noted per tool):
@@ -22,9 +22,15 @@
  *   - save_to_drive: chat won (clearer storage_path note)
  *   - buscar_documento_oficina: chat won (richer kind enum explanations)
  *   - enviar_documento_oficina: parity — both channels identical
- *   - send_email: chat won (has cc field, full params)
- *   - consult_agent: chat won (has caller_verified param)
- *   - delegate_task: chat won (has caller_verified + success_criteria + max_iterations)
+ *   - enviar_correo: chat won (has cc field, full params). Rename 2026-08-19 unificó
+ *     voice+chat+email bajo el mismo nombre español (antes: send_email en chat/email,
+ *     enviar_correo en voice).
+ *   - consultar_agente: chat won (has caller_verified param). Rename 2026-08-19 unificó
+ *     voice+chat+email bajo el mismo nombre español (antes: consult_agent en chat/email,
+ *     consultar_agente en voice).
+ *   - delegar_tarea: chat won (has caller_verified + success_criteria + max_iterations).
+ *     Rename 2026-08-19 unificó voice+chat+email bajo el mismo nombre español
+ *     (antes: delegate_task en chat/email, delegar_tarea en voice).
  *   - buscar_correo_enviado: chat won (richer description; voice/email identical)
  *   - buscar_cliente: chat won (mentions calls/leads/pedidos/citas in description)
  *   - reportar_falla: chat won (better-scoped: "not for auth errors")
@@ -226,13 +232,13 @@ export const TOOL_SCHEMAS: Record<string, ToolSchema> = {
     voiceServerPath: 'enviar-documento-oficina',
   },
 
-  // 10. send_email — chat version won (has cc + attachment params).
-  //     Voice uses tool name 'enviar_correo'; chat/email use 'send_email'.
-  //     Voice adapter maps via voiceServerPath; the name in this entry is
-  //     the Anthropic/chat-canonical name. buildToolDef in sync.ts handles
-  //     the voice-side rename via the case 'enviar_correo' wrapper.
-  send_email: {
-    name: 'send_email',
+  // 10. enviar_correo — chat version won (has cc + attachment params).
+  //     Rename 2026-08-19: voice+chat+email ahora comparten el mismo nombre.
+  //     El voiceServerPath 'enviar-correo' apunta al route legacy con la ruta
+  //     kebab-case; sync.ts sigue teniendo un case override para inyectar la
+  //     variante voice-friendly (sin cc, params reducidos) pero el name coincide.
+  enviar_correo: {
+    name: 'enviar_correo',
     description: 'Envía un correo electrónico a cualquier destinatario en nombre del negocio. Puede incluir un archivo adjunto de Google Drive o OneDrive. Úsala cuando el dueño te pida enviar un correo, con o sin adjunto.',
     input_schema: {
       type: 'object' as const,
@@ -241,23 +247,22 @@ export const TOOL_SCHEMAS: Record<string, ToolSchema> = {
         subject:              { type: 'string', description: 'Asunto del correo' },
         body:                 { type: 'string', description: 'Cuerpo del correo en texto. Puedes usar saltos de línea.' },
         cc:                   { type: 'string', description: 'Dirección en copia (opcional)' },
-        attachment_file_id:   { type: 'string', description: 'ID del archivo de Drive/OneDrive a adjuntar (obtenido de search_files). Opcional.' },
+        attachment_file_id:   { type: 'string', description: 'ID del archivo de Drive/OneDrive a adjuntar (obtenido de buscar_archivo). Opcional.' },
         attachment_file_name: { type: 'string', description: 'Nombre del archivo adjunto con extensión. Ej: propuesta-acme.pdf' },
-        attachment_mime_type: { type: 'string', description: 'Tipo MIME del archivo (de search_files). Ej: application/vnd.google-apps.document' },
+        attachment_mime_type: { type: 'string', description: 'Tipo MIME del archivo (de buscar_archivo). Ej: application/vnd.google-apps.document' },
       },
       required: ['to', 'subject', 'body'],
     },
-    channels: ['chat', 'email', 'delegate'],
-    // NOTE: voice uses tool name 'enviar_correo' with voiceServerPath 'enviar-correo'.
-    // The voice case is kept inline in sync.ts under case 'enviar_correo' to avoid
-    // name collision. This registry entry is used by chat/email/delegate only.
+    channels: ['voice', 'chat', 'email', 'delegate'],
+    voiceServerPath: 'enviar-correo',
   },
 
-  // 11. consult_agent — chat version won (has caller_verified param).
-  //     Voice uses name 'consultar_agente'; chat uses 'consult_agent'.
-  //     This entry is named 'consult_agent' (chat canonical).
-  consult_agent: {
-    name: 'consult_agent',
+  // 11. consultar_agente — chat version won (has caller_verified param).
+  //     Rename 2026-08-19: voice+chat+email ahora comparten el mismo nombre. Se
+  //     eliminó la entry duplicada voice-only con schema más pobre; el schema
+  //     rico (con caller_verified) es el canonical para los 3 canales.
+  consultar_agente: {
+    name: 'consultar_agente',
     description: 'Consulta a otro empleado del equipo cuando no tienes la información y esa es su área de especialidad. El compañero puede buscar en su Drive e internet si tampoco la tiene en su base de conocimiento. Úsala cuando necesites información que está fuera de tu área.',
     input_schema: {
       type: 'object' as const,
@@ -281,38 +286,17 @@ export const TOOL_SCHEMAS: Record<string, ToolSchema> = {
       },
       required: ['rol', 'tarea'],
     },
-    channels: ['chat', 'email', 'delegate'],
-    // NOTE: voice uses name 'consultar_agente' with voiceServerPath 'consultar-agente'.
-    // That case stays inline in sync.ts. This entry is for chat/email/delegate.
-  },
-
-  // Also register the voice-side name as an alias pointing to the same schema but voice name.
-  // This lets getAnthropicToolsByNames('consultar_agente') work for the voice channel.
-  consultar_agente: {
-    name: 'consultar_agente',
-    description: 'Pregunta a otro agente del equipo algo que está fuera de tu conocimiento y necesitas su respuesta para continuar la conversación. El agente consultado responde con información o criterio experto. NO ejecuta acciones — solo responde. Úsala cuando necesites información que tiene otro especialista.',
-    input_schema: {
-      type: 'object' as const,
-      properties: {
-        rol:      { type: 'string', description: 'Nombre o rol del agente a consultar.' },
-        tarea:    { type: 'string', description: 'Pregunta específica que le haces al agente.' },
-        contexto: { type: 'string', description: 'Contexto relevante de la conversación (opcional).' },
-        caller_verified: {
-          type: 'boolean',
-          description: 'OBLIGATORIO cuando la consulta requiere info interna. Pon TRUE solo si el llamante ya se verificó con passphrase o número reconocido. Pon FALSE si es cliente externo o si dudas. Con FALSE, el compañero consultado rechazará compartir info interna automáticamente. Default: false.',
-        },
-      },
-      required: ['rol', 'tarea'],
-    },
-    channels: ['voice'],
+    channels: ['voice', 'chat', 'email', 'delegate'],
     voiceServerPath: 'consultar-agente',
   },
 
-  // 12. delegate_task — chat version won (caller_verified + success_criteria + max_iterations).
-  //     Voice uses name 'delegar_tarea'; chat uses 'delegate_task'.
-  delegate_task: {
-    name: 'delegate_task',
-    description: 'Pide a un compañero que EJECUTE una tarea concreta (crear factura, agendar cita, hacer llamada, subir archivo). Úsala cuando la acción está fuera de tu alcance. Diferente de consult_agent, que solo pide información sin ejecutar. Con success_criteria activas el loop-engineering: el compañero itera hasta cumplir el criterio.',
+  // 12. delegar_tarea — chat version won (caller_verified + success_criteria + max_iterations).
+  //     Rename 2026-08-19: voice+chat+email ahora comparten el mismo nombre. Se
+  //     eliminó la entry duplicada voice-only con schema más pobre; el schema
+  //     rico (con success_criteria + max_iterations) es el canonical para los 3 canales.
+  delegar_tarea: {
+    name: 'delegar_tarea',
+    description: 'Pide a un compañero que EJECUTE una tarea concreta (crear factura, agendar cita, hacer llamada, subir archivo). Úsala cuando la acción está fuera de tu alcance. Diferente de consultar_agente, que solo pide información sin ejecutar. Con success_criteria activas el loop-engineering: el compañero itera hasta cumplir el criterio.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -325,26 +309,7 @@ export const TOOL_SCHEMAS: Record<string, ToolSchema> = {
       },
       required: ['agente', 'tarea'],
     },
-    channels: ['chat', 'email', 'delegate'],
-    // NOTE: voice uses name 'delegar_tarea' with voiceServerPath 'delegar-tarea'.
-    // That case stays inline in sync.ts.
-  },
-
-  // Voice-side alias for delegar_tarea (used by sync.ts via registry)
-  delegar_tarea: {
-    name: 'delegar_tarea',
-    description: 'Delega una tarea a otro agente del equipo para que la EJECUTE. El agente delegado toma acción real: envía correos, crea tickets, genera documentos, etc. Úsala cuando recibas una tarea que corresponde a otro especialista y que debes pasarle para que él la lleve a cabo. Espera la confirmación de lo que hizo.',
-    input_schema: {
-      type: 'object' as const,
-      properties: {
-        agente:          { type: 'string', description: 'Nombre o rol del agente que debe ejecutar la tarea.' },
-        tarea:           { type: 'string', description: 'Descripción detallada de la tarea a ejecutar, incluyendo toda la información necesaria (nombres, correos, teléfonos, detalles).' },
-        contexto:        { type: 'string', description: 'Contexto de la conversación o solicitud original (opcional pero recomendado).' },
-        caller_verified: { type: 'boolean', description: 'OBLIGATORIO cuando la tarea requiere acceso interno (docs, contratos, plantillas, datos fiscales, clientes existentes). Pon TRUE solo si el llamante ya se verificó con passphrase o número reconocido de tu equipo. Pon FALSE si es un cliente externo o si no estás seguro. Con FALSE, el agente delegado rechazará acciones sensibles automáticamente. Default: false.' },
-      },
-      required: ['agente', 'tarea'],
-    },
-    channels: ['voice'],
+    channels: ['voice', 'chat', 'email', 'delegate'],
     voiceServerPath: 'delegar-tarea',
   },
 

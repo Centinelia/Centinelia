@@ -145,7 +145,7 @@ const CREATE_CONTRACT_DRAFT_TOOL: Anthropic.Tool = {
 };
 
 // Migrated to registry: src/lib/tools/schemas.ts
-const SEND_EMAIL_TOOL: Anthropic.Tool = toAnthropicTool(TOOL_SCHEMAS['send_email']);
+const ENVIAR_CORREO_TOOL: Anthropic.Tool = toAnthropicTool(TOOL_SCHEMAS['enviar_correo']);
 
 const ACTUALIZAR_DISPONIBILIDAD_DIARIA_TOOL: Anthropic.Tool = {
   name: 'actualizar_disponibilidad_diaria',
@@ -421,8 +421,8 @@ const TRIGGER_CALL_TOOL: Anthropic.Tool = {
   },
 };
 
-const SEARCH_FILES_TOOL: Anthropic.Tool = {
-  name: 'search_files',
+const BUSCAR_ARCHIVO_TOOL: Anthropic.Tool = {
+  name: 'buscar_archivo',
   description: 'Busca archivos en Google Drive o OneDrive del dueño del negocio. Úsala cuando el dueño pida buscar un documento o archivo en su almacenamiento en la nube.',
   input_schema: {
     type: 'object' as const,
@@ -433,15 +433,15 @@ const SEARCH_FILES_TOOL: Anthropic.Tool = {
   },
 };
 
-const READ_FILE_TOOL: Anthropic.Tool = {
-  name: 'read_file',
-  description: 'Lee el contenido de un archivo de Google Drive o OneDrive. Úsala después de search_files cuando el dueño quiera ver el contenido de un archivo específico.',
+const LEER_ARCHIVO_TOOL: Anthropic.Tool = {
+  name: 'leer_archivo',
+  description: 'Lee el contenido de un archivo de Google Drive o OneDrive. Úsala después de buscar_archivo cuando el dueño quiera ver el contenido de un archivo específico.',
   input_schema: {
     type: 'object' as const,
     properties: {
-      file_id:   { type: 'string', description: 'ID del archivo obtenido de search_files' },
+      file_id:   { type: 'string', description: 'ID del archivo obtenido de buscar_archivo' },
       file_name: { type: 'string', description: 'Nombre del archivo para referencia' },
-      mime_type: { type: 'string', description: 'Tipo MIME del archivo (de search_files)' },
+      mime_type: { type: 'string', description: 'Tipo MIME del archivo (de buscar_archivo)' },
     },
     required: ['file_id', 'file_name'],
   },
@@ -830,8 +830,8 @@ Para llamadas telefónicas:
 - Solo pide llamada a humano si: sin minutos, cliente pidió humano, o conversación delicada
 
 NO la uses para:
-- Info obtenible con search_files, buscar_en_web, o QB
-- Cosas que puede hacer otro agente (usa delegate_task)
+- Info obtenible con buscar_archivo, buscar_en_web, o QB
+- Cosas que puede hacer otro agente (usa delegar_tarea)
 - Llamadas que puedes hacer tú (usa trigger_outbound_call primero)`,
   input_schema: {
     type: 'object' as const,
@@ -852,10 +852,10 @@ NO la uses para:
 const REPORT_ISSUE_TOOL: Anthropic.Tool = toAnthropicTool(TOOL_SCHEMAS['reportar_falla']);
 
 // Migrated to registry: src/lib/tools/schemas.ts
-const DELEGATE_TASK_TOOL: Anthropic.Tool = toAnthropicTool(TOOL_SCHEMAS['delegate_task']);
+const DELEGAR_TAREA_TOOL: Anthropic.Tool = toAnthropicTool(TOOL_SCHEMAS['delegar_tarea']);
 
 // Migrated to registry: src/lib/tools/schemas.ts
-const CONSULT_AGENT_TOOL: Anthropic.Tool = toAnthropicTool(TOOL_SCHEMAS['consult_agent']);
+const CONSULTAR_AGENTE_TOOL: Anthropic.Tool = toAnthropicTool(TOOL_SCHEMAS['consultar_agente']);
 
 const QB_TOOLS: Anthropic.Tool[] = [
   {
@@ -1279,10 +1279,10 @@ const CATALOGO_BUSCAR_CODIGO_TOOL: Anthropic.Tool = {
 };
 
 const ALL_TOOLS = [
-  DELEGATE_TASK_TOOL,
-  CONSULT_AGENT_TOOL,
+  DELEGAR_TAREA_TOOL,
+  CONSULTAR_AGENTE_TOOL,
   CREATE_CONTRACT_DRAFT_TOOL,
-  SEND_EMAIL_TOOL,
+  ENVIAR_CORREO_TOOL,
   CREATE_DOCUMENT_TOOL,
   SOLICITAR_FACTURA_TOOL,
   CONSULTAR_FACTURA_TOOL,
@@ -1290,8 +1290,8 @@ const ALL_TOOLS = [
   SAVE_TO_DRIVE_TOOL,
   ORGANIZE_FILES_TOOL,
   TRIGGER_CALL_TOOL,
-  SEARCH_FILES_TOOL,
-  READ_FILE_TOOL,
+  BUSCAR_ARCHIVO_TOOL,
+  LEER_ARCHIVO_TOOL,
   LIST_CALENDAR_EVENTS_TOOL,
   CREATE_CALENDAR_EVENT_TOOL,
   DELETE_CALENDAR_EVENT_TOOL,
@@ -1326,10 +1326,10 @@ const ALL_TOOLS = [
 
 // Chat tool name → Anthropic.Tool object
 const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
-  delegate_task:             DELEGATE_TASK_TOOL,
-  consult_agent:             CONSULT_AGENT_TOOL,
+  delegar_tarea:             DELEGAR_TAREA_TOOL,
+  consultar_agente:          CONSULTAR_AGENTE_TOOL,
   create_contract_draft:     CREATE_CONTRACT_DRAFT_TOOL,
-  send_email:                SEND_EMAIL_TOOL,
+  enviar_correo:             ENVIAR_CORREO_TOOL,
   create_document:           CREATE_DOCUMENT_TOOL,
   buscar_documento_oficina:  BUSCAR_DOCUMENTO_OFICINA_TOOL,
   enviar_documento_oficina:  ENVIAR_DOCUMENTO_OFICINA_TOOL,
@@ -1350,8 +1350,8 @@ const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
   save_to_drive:             SAVE_TO_DRIVE_TOOL,
   organize_files:            ORGANIZE_FILES_TOOL,
   trigger_outbound_call:     TRIGGER_CALL_TOOL,
-  search_files:              SEARCH_FILES_TOOL,
-  read_file:                 READ_FILE_TOOL,
+  buscar_archivo:            BUSCAR_ARCHIVO_TOOL,
+  leer_archivo:              LEER_ARCHIVO_TOOL,
   list_calendar_events:      LIST_CALENDAR_EVENTS_TOOL,
   create_calendar_event:     CREATE_CALENDAR_EVENT_TOOL,
   delete_calendar_event:     DELETE_CALENDAR_EVENT_TOOL,
@@ -1894,11 +1894,11 @@ Si una tool responde con \`deduped: true\` (mensaje tipo "<compañero> ya se enc
 
 Cosas que NO debes hacer al ver \`deduped: true\`:
 - Reintentar la misma tool con args similares.
-- Cambiar de canal para el mismo mensaje (ej: send_email deduped → intentar WhatsApp del mismo contenido).
+- Cambiar de canal para el mismo mensaje (ej: enviar_correo deduped → intentar WhatsApp del mismo contenido).
 - Escalar con reportar_falla, pedir_a_humano o enviar_a_claude_code "para asegurar".
 - Delegar a otro compañero pidiendo que reintente.
 
-Aplica a: send_email, enviar_documento_oficina, responder_cliente_afectado, escalar_al_owner, pedir_a_humano (con target=owner), delegar_tarea. La deduplicación tiene ventana de horas — si el mismo asunto reaparece días después, la tool volverá a funcionar normalmente.
+Aplica a: enviar_correo, enviar_documento_oficina, responder_cliente_afectado, escalar_al_owner, pedir_a_humano (con target=owner), delegar_tarea. La deduplicación tiene ventana de horas — si el mismo asunto reaparece días después, la tool volverá a funcionar normalmente.
 
 ## Autonomía y toma de decisiones
 
@@ -1906,7 +1906,7 @@ Actúa ÚNICAMENTE cuando el dueño te lo pida de forma explícita en este chat,
 
 Si notas una situación que podría requerir acción pero nadie te lo ha pedido:
 1. Si hay otros agentes en el equipo del negocio, evalúa la situación con ellos usando toda la información disponible. Si llegan a un consenso claro de que se debe actuar, aun así espera la confirmación del dueño antes de ejecutar cualquier herramienta.
-2. Si estás trabajando solo sin equipo, o si los agentes no llegan a un acuerdo, usa send_email para escribirle al dueño (${(agent.portal_email as string | null) ?? 'el correo del dueño'}) con un mensaje breve: qué observaste, qué opciones ves y qué necesitas que decida. No ejecutes ninguna acción hasta recibir respuesta.
+2. Si estás trabajando solo sin equipo, o si los agentes no llegan a un acuerdo, usa enviar_correo para escribirle al dueño (${(agent.portal_email as string | null) ?? 'el correo del dueño'}) con un mensaje breve: qué observaste, qué opciones ves y qué necesitas que decida. No ejecutes ninguna acción hasta recibir respuesta.
 
 Nunca envíes correos, hagas llamadas, modifiques archivos ni ejecutes cualquier herramienta de forma autónoma sin que el dueño te lo haya pedido explícitamente en esta sesión de chat.
 
@@ -2149,11 +2149,11 @@ ${context}`;
 
           for (const call of pendingToolCalls) {
             // El chat del portal viene del owner con sesión verificada por cookie.
-            // Auto-inyectamos caller_verified=true para consult_agent / delegate_task
+            // Auto-inyectamos caller_verified=true para consultar_agente / delegar_tarea
             // — si no lo hacemos, el peer agent trata al owner como externo y
             // rechaza acceso a Drive/data interna (bug 2026-08-10: Niva delegada
             // por Sofia no accedió al Drive porque caller_verified quedó en false).
-            if ((call.name === 'consult_agent' || call.name === 'delegate_task') && call.input.caller_verified === undefined) {
+            if ((call.name === 'consultar_agente' || call.name === 'delegar_tarea') && call.input.caller_verified === undefined) {
               call.input.caller_verified = true;
             }
             const toolResult = await executeAgentTool(
