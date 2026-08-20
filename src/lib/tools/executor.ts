@@ -375,6 +375,19 @@ async function executeAgentToolInner(
       const brand        = brandKitFromAgent(agent, orgBrand as Record<string, unknown> | null);
       const title        = toolInput.title as string;
       const templateType = (toolInput.template_type as string | undefined) ?? 'general';
+
+      // Guard 2026-08-20: rechazar template='factura'. Antes cualquier LLM podía
+      // usar create_document con template=factura como sustituto de un CFDI real,
+      // generando un PDF que parecía factura fiscal pero no era timbrado. Los
+      // schemas ya no listan 'factura' en el enum (chat/voice/email/inbox), pero
+      // este guard atrapa llamadas heredadas o manuales.
+      if (templateType === 'factura') {
+        return {
+          ok:    false,
+          error: 'No existe plantilla de factura fiscal en create_document. Los CFDIs se emiten con solicitar_factura vía el PAC del negocio (Solución Factible, CONTPAQi). Si el negocio no tiene PAC conectado, registra un lead con los datos fiscales del cliente para escalar a facturación.',
+        };
+      }
+
       const slug         = ((toolInput.filename as string | null) ?? title)
         .toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').slice(0, 40);
       const filename = `${slug}-${Date.now()}.pdf`;

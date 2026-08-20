@@ -181,7 +181,7 @@ const BASE_EMAIL_TOOLS: Anthropic.Tool[] = [
       type: 'object' as const,
       properties: {
         title: { type: 'string' }, content: { type: 'string' }, filename: { type: 'string' },
-        template_type: { type: 'string', enum: ['general', 'proposal', 'letter', 'factura', 'orden_compra'] },
+        template_type: { type: 'string', enum: ['general', 'proposal', 'letter', 'orden_compra', 'cotizacion', 'nota_venta'] },
         client_name: { type: 'string' }, client_email: { type: 'string' }, client_rfc: { type: 'string' },
         total_price: { type: 'string' }, validity_days: { type: 'number' },
         recipient_name: { type: 'string' }, recipient_email: { type: 'string' },

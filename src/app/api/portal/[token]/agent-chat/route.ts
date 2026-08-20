@@ -167,14 +167,14 @@ const ACTUALIZAR_DISPONIBILIDAD_DIARIA_TOOL: Anthropic.Tool = {
 
 const CREATE_DOCUMENT_TOOL: Anthropic.Tool = {
   name: 'create_document',
-  description: 'Genera un documento PDF con branding del negocio (logo y colores). Elige el template correcto según el tipo: "proposal" para propuestas de servicios/cotizaciones, "letter" para cartas formales, "factura" para facturas con conceptos e IVA (usa items[]), "orden_compra" para órdenes de compra a proveedores (usa items[]), "general" para cualquier otro documento.',
+  description: 'Genera un documento PDF con branding del negocio (logo y colores). Elige el template correcto según el tipo: "proposal" para propuestas de servicios/cotizaciones, "letter" para cartas formales, "orden_compra" para órdenes de compra a proveedores (usa items[]), "nota_venta" para recibos simples no fiscales, "general" para cualquier otro documento. NO existe template de factura fiscal: los CFDIs se emiten con solicitar_factura (requiere PAC conectado); nunca uses este tool como sustituto.',
   input_schema: {
     type: 'object' as const,
     properties: {
       title:         { type: 'string', description: 'Título del documento (aparece en el encabezado)' },
       content:       { type: 'string', description: 'Contenido completo. Usa # para secciones y ## para subsecciones. Para factura/orden_compra: notas adicionales (puede quedar vacío).' },
       filename:      { type: 'string', description: 'Nombre del archivo sin extensión. Usa guiones, sin espacios.' },
-      template_type: { type: 'string', enum: ['general', 'proposal', 'letter', 'factura', 'orden_compra', 'cotizacion', 'nota_venta'], description: '"cotizacion" para cotizaciones al cliente (pre-venta). "nota_venta" para recibo simple (post-venta, NO es factura fiscal). "factura" para facturas fiscales (con IVA). "orden_compra" para órdenes de compra a proveedores. "proposal" para propuestas comerciales largas. "letter" para cartas formales. "general" para todo lo demás.' },
+      template_type: { type: 'string', enum: ['general', 'proposal', 'letter', 'orden_compra', 'cotizacion', 'nota_venta'], description: '"cotizacion" para cotizaciones al cliente (pre-venta). "nota_venta" para recibo simple no fiscal (post-venta). "orden_compra" para órdenes de compra a proveedores. "proposal" para propuestas comerciales largas. "letter" para cartas formales. "general" para todo lo demás. NUNCA para facturas fiscales — los CFDIs los emite solicitar_factura vía el PAC del negocio.' },
       client_name:   { type: 'string', description: 'Nombre del cliente o receptor (para proposal y factura)' },
       client_email:  { type: 'string', description: 'Correo del cliente (para proposal y factura)' },
       client_rfc:    { type: 'string', description: 'RFC del receptor (solo para factura)' },
@@ -1895,6 +1895,17 @@ Cuando el dueño te pida generar propuesta/cotización/one_pager/correo, tu PRIM
 - Si mencionó un TEMA/SERVICIO (ej "sobre CRM", "sobre reactivación de clientes"): query = palabra clave del tema.
 - Si no dio ni cliente ni tema: query = tipo de documento (ej "propuesta", "one-pager").
 Sin excepciones. Narrar "reviso si hay algo previo" o "déjame checar" o "primero busco" SIN invocar la tool en el mismo turno es una FALLA — el tool_use debe ir ANTES o INMEDIATAMENTE al lado del texto narrativo, nunca solo el texto.
+
+## Facturación CFDI (no confundir con documentos)
+
+Facturas fiscales (CFDIs) NO se emiten con create_document. create_document genera PDFs; los CFDIs los timbra el PAC del negocio (Solución Factible, CONTPAQi, Aspel).
+
+- Si tienes solicitar_factura en tus herramientas: úsala directamente cuando el dueño te pida emitir una factura. Recopila los 6 datos fiscales (razón social, RFC, correo, uso CFDI, forma pago, método pago) + conceptos, y luego invoca.
+- Si NO tienes solicitar_factura: NO uses create_document como sustituto (no existe el template "factura" ahí y aunque lo pidieras el sistema lo rechaza). En su lugar:
+  1. Recopila los 6 datos igual.
+  2. Si hay un compañero facturista en tu equipo (Nico, Nala, Noah), delega con delegar_tarea pasándole los datos completos.
+  3. Si no hay compañero facturista o el negocio no tiene PAC configurado, registra los datos con crear_lead + notes "SOLICITUD DE FACTURA PENDIENTE — negocio necesita conectar PAC o asignar facturista. Datos: RFC X, correo Y, uso CFDI Z, ..." para que el dueño lo resuelva después.
+- Nunca respondas "ya emití tu factura" sin haber invocado solicitar_factura (o sin que delegar_tarea haya confirmado emisión real). Un PDF de create_document no es un CFDI.
 
 ## Feedback sobre bugs de la plataforma
 

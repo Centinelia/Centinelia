@@ -986,7 +986,7 @@ async function buildTools(agent: VoiceAgent, qbConnected = false, orgCalendar: O
           title:          { type: 'string', description: 'Título del documento' },
           content:        { type: 'string', description: 'Contenido. Usa # para secciones y ## para subsecciones.' },
           filename:       { type: 'string', description: 'Nombre del archivo sin extensión' },
-          template_type:  { type: 'string', enum: ['general', 'proposal', 'letter', 'factura', 'orden_compra', 'cotizacion', 'nota_venta'], description: 'Tipo de plantilla' },
+          template_type:  { type: 'string', enum: ['general', 'proposal', 'letter', 'orden_compra', 'cotizacion', 'nota_venta'], description: 'Tipo de plantilla (NO existe factura fiscal: los CFDIs los emite solicitar_factura vía el PAC del negocio)' },
           client_name:    { type: 'string', description: 'Nombre del cliente (proposal, factura)' },
           client_email:   { type: 'string', description: 'Correo del cliente (proposal, factura)' },
           client_rfc:     { type: 'string', description: 'RFC del receptor (factura)' },
