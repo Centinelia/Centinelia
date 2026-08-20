@@ -131,8 +131,9 @@ export const SKILL_PACKS: SkillPack[] = [
 /**
  * Índice inverso: tool name → pack id (o undefined si no pertenece a ningún pack).
  * Tools que no aparecen aquí siempre pasan el filtro (no están gatadas por pack).
+ * Tipo `Partial<Record>` refleja que el lookup puede retornar undefined.
  */
-export const TOOL_TO_PACK: Record<string, string> = Object.fromEntries(
+export const TOOL_TO_PACK: Partial<Record<string, string>> = Object.fromEntries(
   SKILL_PACKS.flatMap(p => p.tools.map(t => [t, p.id])),
 );
 
@@ -171,6 +172,11 @@ export async function resolveOrgPackContext(
     supabase.from('integration_accounts').select('id').eq('portal_email', portalEmail).eq('provider', 'mercadolibre').limit(1),
     supabase.from('voice_agents').select('features').eq('portal_email', portalEmail),
   ]);
+
+  // Log Supabase errors (fail-open — pack quedará inactivo si query falla, es la dirección segura).
+  for (const [name, res] of [['qb_integrations', qb], ['organizations', org], ['sheets_mappings', sheets], ['integration_accounts.ml', ml], ['voice_agents', agents]] as const) {
+    if (res.error) console.error(`[resolveOrgPackContext] ${name} query failed for ${portalEmail}:`, res.error.message);
+  }
 
   const agentRows = (agents.data ?? []) as Array<{ features: unknown }>;
   const anyFeature = (key: string) =>
