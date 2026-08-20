@@ -9,6 +9,7 @@ import { resolveMeerkatVersionForAgent } from '@/lib/feature-flags/version-flag-
 import { TOOL_SCHEMAS, toVapiToolDef } from '@/lib/tools/schemas';
 import { getOrgIndustry, INDUSTRIES_WITH_DAILY_AVAILABILITY } from '@/lib/industry';
 import { parseToolOverrides } from '@/lib/tools/tool-overrides';
+import { resolveOrgPackContext, resolveActivePacks, TOOL_TO_PACK } from '@/lib/tools/packs';
 
 const VAPI_URL = 'https://api.vapi.ai';
 const VAPI_KEY = process.env.VAPI_API_KEY!;
@@ -597,8 +598,19 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
   // El warm transfer a peer es reactivable cuando Vapi documente el pattern
   // correcto o cuando cambiemos a Vapi Squads.
 
+  // Capa 2 tool-bloat: filtrar por packs activos del org.
+  const supabaseSyncPacks = createAdminClient();
+  const packCtx     = await resolveOrgPackContext((agent as unknown as { portal_email?: string | null }).portal_email ?? '', supabaseSyncPacks);
+  const activePacks = resolveActivePacks(packCtx);
+  // Aplicar filtro siempre (sin guard): tools de packs inactivos se dropean.
+  for (let i = tools.length - 1; i >= 0; i--) {
+    const fname = ((tools[i].function as { name?: string } | undefined))?.name;
+    if (!fname) continue;
+    const packId = TOOL_TO_PACK[fname];
+    if (packId && !activePacks.has(packId)) tools.splice(i, 1);
+  }
+
   // Capa 3 tool-bloat: overrides finos por meerkat (voice_agents.tool_overrides).
-  // Aplicar después de todas las adiciones condicionales (org toggles, industria).
   const overrides = parseToolOverrides((agent as unknown as { tool_overrides?: unknown }).tool_overrides);
   if (overrides.disabled.length > 0) {
     const disabled = new Set(overrides.disabled);
@@ -611,6 +623,9 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
     const present = new Set(tools.map(t => ((t.function as { name?: string } | undefined))?.name).filter(Boolean));
     for (const name of overrides.enabled) {
       if (present.has(name)) continue;
+      // Respetar gate de pack: no agregar si pack inactivo
+      const packId = TOOL_TO_PACK[name];
+      if (packId && !activePacks.has(packId)) continue;
       const def = buildToolDef(name, agent, server);
       if (def) tools.push(def);
     }
