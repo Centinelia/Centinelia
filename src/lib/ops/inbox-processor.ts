@@ -15,6 +15,7 @@ import { TOOL_SCHEMAS, toAnthropicTool } from '@/lib/tools/schemas';
 import { MEERKAT_VOICE_DISTRIBUTION } from '@/lib/vapi/sync';
 import { VOICE_TO_CHAT, UNIVERSAL_TOOLS, EMAIL_ONLY_TOOLS_FROM_VOICE } from '@/lib/tools/channel-mapping';
 import { parseToolOverrides, applyToolOverrides } from '@/lib/tools/tool-overrides';
+import { resolveOrgPackContext, resolveActivePacks, TOOL_TO_PACK } from '@/lib/tools/packs';
 
 const anthropic = new Anthropic();
 
@@ -1309,10 +1310,22 @@ CATEGORÍAS:
     // recibían BASE_EMAIL_TOOLS entero → tool bloat degradaba calidad LLM).
     const presetTools = getToolsForRoleEmail(inboxMeerkatId, qbConnected);
 
-    // Capa 3 tool-bloat: aplicar overrides finos por meerkat.
-    // El owner puede deshabilitar tools del preset o agregar extras.
+    // Capa 2 tool-bloat: filtrar por packs activos del org (después del preset,
+    // antes de los overrides). Tools que no pertenecen a ningún pack pasan siempre.
+    const packCtx     = await resolveOrgPackContext(portalEmail, supabase);
+    const activePacks = resolveActivePacks(packCtx);
+    const packFiltered = presetTools.filter(t => {
+      const packId = TOOL_TO_PACK[t.name];
+      return !packId || activePacks.has(packId);
+    });
+
+    // Capa 3 overrides: enabled respeta gate de pack (no puede agregar tool de pack inactivo).
     const overrides = parseToolOverrides((agentRow as { tool_overrides?: unknown } | null)?.tool_overrides);
-    const tools = applyToolOverrides(presetTools, overrides, name => EMAIL_TOOL_BY_NAME[name]);
+    const tools = applyToolOverrides(packFiltered, overrides, name => {
+      const packId = TOOL_TO_PACK[name];
+      if (packId && !activePacks.has(packId)) return undefined;
+      return EMAIL_TOOL_BY_NAME[name];
+    });
 
     // preparar_brief_del_dia — Nox exclusivo. Canal voz ausente de forma intencional
     // (Nox nunca tiene vapi_agent_id; ver NON_VOICE_ROLES en sync.ts).
