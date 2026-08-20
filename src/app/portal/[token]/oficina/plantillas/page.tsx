@@ -640,73 +640,6 @@ function TemplateRow({
   );
 }
 
-// ─── Factura config ───────────────────────────────────────────────────────────
-
-function FacturaConfig({ token, onStatsLoad }: { token: string; onStatsLoad?: (cfg: FacturaConfig) => void }) {
-  const [cfg, setCfg]         = useState<FacturaConfig>({});
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving]   = useState(false);
-  const [saved, setSaved]     = useState(false);
-  const [autoFilled, setAutoFilled] = useState(false);
-
-  useEffect(() => {
-    fetch(`/api/portal/${token}/factura-config`).then(r => r.json()).then(d => {
-      setCfg(d.config ?? {});
-      onStatsLoad?.(d.config ?? {});
-      setLoading(false);
-    }).catch(() => setLoading(false));
-  }, [token, onStatsLoad]);
-
-  const upd = (key: keyof FacturaConfig) => (v: string | boolean) =>
-    setCfg(prev => ({ ...prev, [key]: v }));
-
-  async function save() {
-    setSaving(true);
-    try {
-      await fetch(`/api/portal/${token}/factura-config`, {
-        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg),
-      });
-      setSaved(true); setTimeout(() => setSaved(false), 2500);
-    } finally { setSaving(false); }
-  }
-
-  if (loading) return <p className="text-xs py-4 text-center" style={{ color: '#9B8FB5' }}>Cargando...</p>;
-
-  return (
-    <>
-      <PlaceholderGuide docType="factura" color="#f59e0b" />
-      <UploadZone
-        token={token} docType="factura"
-        templateName={cfg.template_name}
-        templatePath={cfg.template_path}
-        validation={cfg.template_validation}
-        color="#f59e0b"
-        onUploaded={data => setCfg(prev => ({ ...prev, template_name: data.name, template_path: data.path, template_validation: data.validation }))}
-        onDeleted={() => setCfg(prev => { const { template_name: _, template_path: __, template_validation: ___, ...r } = prev; return r; })}
-        onExtracted={fields => { setCfg(prev => ({ ...prev, ...fields })); setAutoFilled(true); setTimeout(() => setAutoFilled(false), 5000); }}
-      />
-      {autoFilled && (
-        <div className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg"
-          style={{ background: 'rgba(108,59,255,0.08)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.15)' }}>
-          <Wand2 size={11} /> Campos detectados automáticamente del documento
-        </div>
-      )}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Field label="RFC del emisor" hint="Aparece en cada factura que genera el empleado."
-          value={cfg.rfc ?? ''} onChange={upd('rfc') as (v: string) => void} placeholder="XAXX010101000" />
-        <Field label="Prefijo de folio" hint="FAC genera folios FAC-20260721-5892."
-          value={cfg.folio_prefix ?? ''} onChange={upd('folio_prefix') as (v: string) => void} placeholder="FAC" />
-        <Field label="Dirección fiscal" value={cfg.direccion ?? ''} as="textarea"
-          onChange={upd('direccion') as (v: string) => void} placeholder="Av. Ejemplo 123, Col. Centro, Monterrey, NL" />
-      </div>
-      <CondicionesPagoField value={cfg.condiciones_pago ?? ''} onChange={upd('condiciones_pago') as (v: string) => void} />
-      <Toggle checked={cfg.incluir_iva !== false} onChange={v => setCfg(p => ({ ...p, incluir_iva: v }))}
-        label="Incluir IVA 16%" hint="Se calcula automáticamente sobre el subtotal" />
-      <SaveRow saving={saving} saved={saved} onClick={save} />
-    </>
-  );
-}
-
 // ─── Orden config ─────────────────────────────────────────────────────────────
 
 
@@ -1117,12 +1050,10 @@ function ContratoConfig({ token, onConfiguredLoad }: { token: string; onConfigur
 export default function PlantillasPage() {
   const { token } = useParams<{ token: string }>();
 
-  const [facturaStats,    setFacturaStats]    = useState<TemplateStats>({ count: 0, lastUsed: null });
   const [ordenStats,      setOrdenStats]      = useState<TemplateStats>({ count: 0, lastUsed: null });
   const [cotizacionStats, setCotizacionStats] = useState<TemplateStats>({ count: 0, lastUsed: null });
   const [notaVentaStats,  setNotaVentaStats]  = useState<TemplateStats>({ count: 0, lastUsed: null });
   const [contratoStats,   setContratoStats]   = useState<TemplateStats>({ count: 0, lastUsed: null });
-  const [facturaCfg,      setFacturaCfg]      = useState<FacturaConfig>({});
   const [ordenCfg,        setOrdenCfg]        = useState<OrdenConfig>({});
   const [cotizacionCfg,   setCotizacionCfg]   = useState<CotizacionConfig>({});
   const [notaVentaCfg,    setNotaVentaCfg]    = useState<NotaVentaConfig>({});
@@ -1132,21 +1063,18 @@ export default function PlantillasPage() {
     Promise.all([
       fetch(`/api/portal/${token}/ops-documents`).then(r => r.json()),
       fetch(`/api/portal/${token}/contract-drafts`).then(r => r.json()),
-      fetch(`/api/portal/${token}/factura-config`).then(r => r.json()),
       fetch(`/api/portal/${token}/orden-config`).then(r => r.json()),
       fetch(`/api/portal/${token}/cotizacion-config`).then(r => r.json()).catch(() => ({ config: {} })),
       fetch(`/api/portal/${token}/nota-venta-config`).then(r => r.json()).catch(() => ({ config: {} })),
       fetch(`/api/portal/${token}/contract-template`).then(r => r.json()),
-    ]).then(([{ documents = [] }, { drafts = [] }, { config: fCfg }, { config: oCfg }, { config: cCfg }, { config: nCfg }, { isConfigured: contrIsConfigured }]) => {
+    ]).then(([{ documents = [] }, { drafts = [] }, { config: oCfg }, { config: cCfg }, { config: nCfg }, { isConfigured: contrIsConfigured }]) => {
       const byType = (type: string) => (documents as Array<{ template_type: string; created_at: string }>)
         .filter(d => d.template_type === type)
         .sort((a, b) => b.created_at.localeCompare(a.created_at));
 
-      const factDocs = byType('factura');
       const ordDocs  = byType('orden_compra');
       const cotDocs  = byType('cotizacion');
       const nvDocs   = byType('nota_venta');
-      setFacturaStats({ count: factDocs.length, lastUsed: factDocs[0]?.created_at ?? null });
       setOrdenStats({ count: ordDocs.length,    lastUsed: ordDocs[0]?.created_at  ?? null });
       setCotizacionStats({ count: cotDocs.length, lastUsed: cotDocs[0]?.created_at ?? null });
       setNotaVentaStats({ count: nvDocs.length,  lastUsed: nvDocs[0]?.created_at  ?? null });
@@ -1155,7 +1083,6 @@ export default function PlantillasPage() {
         .sort((a, b) => b.created_at.localeCompare(a.created_at));
       setContratoStats({ count: sorted.length, lastUsed: sorted[0]?.created_at ?? null });
 
-      if (fCfg) setFacturaCfg(fCfg);
       if (oCfg) setOrdenCfg(oCfg);
       if (cCfg) setCotizacionCfg(cCfg);
       if (nCfg) setNotaVentaCfg(nCfg);
@@ -1164,7 +1091,6 @@ export default function PlantillasPage() {
   }, [token]);
 
   const totalTemplates =
-    (isConfigured(facturaCfg)                                ? 1 : 0) +
     (isConfigured(ordenCfg)                                  ? 1 : 0) +
     (isConfigured(cotizacionCfg as unknown as FacturaConfig) ? 1 : 0) +
     (isConfigured(notaVentaCfg  as unknown as FacturaConfig) ? 1 : 0) +
@@ -1178,7 +1104,7 @@ export default function PlantillasPage() {
         eyebrow="Plantillas"
         title="Plantillas de documentos"
         description={totalTemplates > 0
-          ? <><strong style={{ color: '#1A0A3B' }}>{totalTemplates}</strong> de 5 plantillas configuradas. Tus empleados usan tu formato Word cada vez que generan un documento.</>
+          ? <><strong style={{ color: '#1A0A3B' }}>{totalTemplates}</strong> de 4 plantillas configuradas. Tus empleados usan tu formato Word cada vez que generan un documento.</>
           : 'Sube tu formato Word y tus empleados lo usarán igual cada vez que generen un documento.'}
       />
 
@@ -1202,15 +1128,6 @@ export default function PlantillasPage() {
         </div>
 
         <div className="flex flex-col" style={{ borderTop: '1px solid #F0EDF9' }}>
-          <TemplateRow
-            id="factura" icon={FileText} title="Factura"
-            subtitle="Documento de cobro con conceptos, subtotal e IVA"
-            color="#f59e0b" stats={facturaStats} configured={isConfigured(facturaCfg)} token={token}
-            isLast={false}
-          >
-            <FacturaConfig token={token} onStatsLoad={setFacturaCfg} />
-          </TemplateRow>
-
           <TemplateRow
             id="orden" icon={ShoppingCart} title="Orden de compra"
             subtitle="Solicitud formal de productos o servicios a proveedores"
@@ -1266,7 +1183,7 @@ export default function PlantillasPage() {
           {
             n: '3',
             t: 'El empleado lo produce',
-            d: 'Pídele "genera una factura para..." y sale con tu diseño exacto en PDF, listo para enviar.',
+            d: 'Pídele "genera una cotización para..." y sale con tu diseño exacto en PDF, listo para enviar.',
             gradient: 'linear-gradient(270deg, rgba(108,59,255,0.14) 0%, rgba(108,59,255,0.02) 100%)',
           },
         ].map(s => (
