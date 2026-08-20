@@ -44,6 +44,7 @@ import { getKnowledgeBase } from '@/lib/knowledge-base';
 import { MEERKAT_VOICE_DISTRIBUTION } from '@/lib/vapi/sync';
 import { VOICE_TO_CHAT, UNIVERSAL_TOOLS } from '@/lib/tools/channel-mapping';
 import { parseToolOverrides, applyToolOverrides } from '@/lib/tools/tool-overrides';
+import { resolveOrgPackContext, resolveActivePacks, TOOL_TO_PACK } from '@/lib/tools/packs';
 import { getOrgIndustry, INDUSTRIES_WITH_DAILY_AVAILABILITY } from '@/lib/industry';
 import { formatDailyAvailabilityForPrompt } from '@/lib/daily-availability';
 import {
@@ -1645,9 +1646,21 @@ export async function POST(req: NextRequest, { params }: Params) {
     }
   }
 
-  // Capa 3 tool-bloat: overrides finos por meerkat (post preset + additions)
+  // Capa 2 tool-bloat: filtrar por packs activos (después de preset + adiciones)
+  const packCtx     = await resolveOrgPackContext(accountAgent.portal_email ?? '', supabase);
+  const activePacks = resolveActivePacks(packCtx);
+  const packFiltered = sessionTools.filter(t => {
+    const packId = TOOL_TO_PACK[t.name];
+    return !packId || activePacks.has(packId);
+  });
+
+  // Capa 3 tool-bloat: overrides finos por meerkat. enabled respeta gate de pack.
   const overrides = parseToolOverrides((agent as { tool_overrides?: unknown }).tool_overrides);
-  const finalTools = applyToolOverrides(sessionTools, overrides, name => CHAT_TOOL_BY_NAME[name]);
+  const finalTools = applyToolOverrides(packFiltered, overrides, name => {
+    const packId = TOOL_TO_PACK[name];
+    if (packId && !activePacks.has(packId)) return undefined;
+    return CHAT_TOOL_BY_NAME[name];
+  });
   // Reasignar para preservar shape esperado en el resto del handler
   sessionTools.length = 0;
   sessionTools.push(...finalTools);
