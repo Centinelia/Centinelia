@@ -37,6 +37,7 @@ import { BriefDelDiaSection } from './BriefDelDiaSection';
 import { BrandTemplateSection } from './BrandTemplateSection';
 import ApprovalSettingsSection from './ApprovalSettingsSection';
 import InstantProcessingSection from './InstantProcessingSection';
+import ToolOverridesSection from './ToolOverridesSection';
 import ConfigurarTabs from './ConfigurarTabs';
 import OutboundToggles from '../OutboundToggles';
 import EmpleadoPickerChips from './EmpleadoPickerChips';
@@ -668,6 +669,19 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
 
               {/* Sheets del negocio — vive en Organización (?tab=organizacion#sheets-crm)
                   porque es config per-organización, no per-empleado. */}
+
+              {isOwner && (
+                <div id="herramientas-finas" style={SCROLL_STYLE}>
+                  <Card border elevated={false} padding="sm">
+                    <ToolOverridesSection
+                      token={token}
+                      agentId={agent.id as string}
+                      agentName={agentName}
+                      roleColor={roleColor}
+                    />
+                  </Card>
+                </div>
+              )}
 
             </div>
 

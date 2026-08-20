@@ -789,7 +789,7 @@ const EMAIL_TOOL_BY_NAME: Record<string, Anthropic.Tool> = Object.fromEntries(
  * buscar_en_padron_externo, enviar_tramite_externo), y pack ciclo OC-CFDI
  * (qb_crear_orden_compra, firmar_oc, sf_timbrar_desde_oc, etc. — 12 tools).
  */
-const MEERKAT_EMAIL_DISTRIBUTION: Record<string, string[]> = {
+export const MEERKAT_EMAIL_DISTRIBUTION: Record<string, string[]> = {
   nia:   ['crear_lead', 'crear_contacto_saliente', 'agendar_cita', 'registrar_pedido', 'buscar_cliente', 'buscar_correo_enviado', 'agregar_tag_contacto', 'registrar_encuesta', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano', 'reportar_falla'],
   noah:  ['crear_lead', 'crear_contacto_saliente', 'agregar_tag_contacto', 'buscar_cliente', 'buscar_correo_enviado', 'buscar_producto', 'catalogo_buscar_codigo', 'list_calendar_events', 'create_calendar_event', 'generar_propuesta_comercial', 'generar_cotizacion', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
   nico:  ['buscar_cliente', 'buscar_correo_enviado', 'buscar_documento_oficina', 'solicitar_factura', 'consultar_factura', 'solicitar_cancelacion_factura', 'qb_consultar_facturas', 'qb_buscar_cliente', 'qb_registrar_pago', 'qb_crear_factura', 'qb_reporte_ingresos', 'enviar_documento_oficina', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
