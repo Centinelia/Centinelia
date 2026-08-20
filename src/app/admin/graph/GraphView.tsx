@@ -39,7 +39,7 @@ const MACHINE_ACCENTS: Record<string, string> = {
 const MACHINE_EMPTY_HINT: Record<string, string> = {
   agent_tasks:          'Aparecerá cuando un empleado use delegar_tarea con otro.',
   ops_inbox:            'Aparecerá cuando llegue el primer correo procesado.',
-  contract_drafts:      'Aparecerá cuando un empleado genere un contrato con create_contract_draft.',
+  contract_drafts:      'Aparecerá cuando un empleado genere un contrato con crear_borrador_contrato.',
   outbound_contacts:    'Aparecerá cuando subas una campaña saliente o el equipo agende llamadas.',
   onboarding_instances: 'Aparecerá cuando Naia envíe un onboarding a un cliente nuevo.',
 };

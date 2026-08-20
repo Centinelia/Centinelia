@@ -53,15 +53,15 @@ export const TOOL_POLICIES: Record<string, ToolPolicy> = {
   list_calendar_events:   { ...DEFAULT_POLICY, timeoutMs: 10_000, maxAttempts: 2, backoffMs: 500, retryOnlyTransient: true },
   qb_consultar_facturas:  { ...DEFAULT_POLICY, timeoutMs: 15_000, maxAttempts: 2, backoffMs: 800, retryOnlyTransient: true },
   qb_buscar_cliente:      { ...DEFAULT_POLICY, timeoutMs: 15_000, maxAttempts: 2, backoffMs: 800, retryOnlyTransient: true },
-  lookup_civic_report:    { ...DEFAULT_POLICY, timeoutMs: 10_000, maxAttempts: 2, backoffMs: 500, retryOnlyTransient: true },
+  consultar_reporte_civico: { ...DEFAULT_POLICY, timeoutMs: 10_000, maxAttempts: 2, backoffMs: 500, retryOnlyTransient: true },
   consultar_factura:      { ...DEFAULT_POLICY, timeoutMs: 10_000, maxAttempts: 2, backoffMs: 500, retryOnlyTransient: true },
   buscar_producto:        { ...DEFAULT_POLICY, timeoutMs: 10_000, maxAttempts: 2, backoffMs: 500, retryOnlyTransient: true },
   analizar_publicaciones_ml: { ...DEFAULT_POLICY, timeoutMs: 15_000, maxAttempts: 2, backoffMs: 800, retryOnlyTransient: true },
   ver_metricas_ml:        { ...DEFAULT_POLICY, timeoutMs: 15_000, maxAttempts: 2, backoffMs: 800, retryOnlyTransient: true },
 
   // safe-idempotent (creación con id/dedupe)
-  create_civic_report:    { ...DEFAULT_POLICY, timeoutMs: 15_000 },
-  update_civic_report:    { ...DEFAULT_POLICY, timeoutMs: 10_000, maxAttempts: 2, backoffMs: 500, retryOnlyTransient: true },
+  crear_reporte_civico:      { ...DEFAULT_POLICY, timeoutMs: 15_000 },
+  actualizar_reporte_civico: { ...DEFAULT_POLICY, timeoutMs: 10_000, maxAttempts: 2, backoffMs: 500, retryOnlyTransient: true },
   create_calendar_event:  { ...DEFAULT_POLICY, timeoutMs: 15_000 },
   delete_calendar_event:  { ...DEFAULT_POLICY, timeoutMs: 10_000 },
   save_to_drive:          { ...DEFAULT_POLICY, timeoutMs: 25_000, budgetOps: 0 },
@@ -70,7 +70,7 @@ export const TOOL_POLICIES: Record<string, ToolPolicy> = {
   // long-io — generación de documentos
   create_document:        { ...DEFAULT_POLICY, timeoutMs: 45_000, budgetOps: 1 },
   create_file:            { ...DEFAULT_POLICY, timeoutMs: 45_000, budgetOps: 1 },
-  create_contract_draft:  { ...DEFAULT_POLICY, timeoutMs: 30_000, budgetOps: 0 },
+  crear_borrador_contrato: { ...DEFAULT_POLICY, timeoutMs: 30_000, budgetOps: 0 },
 
   // destructive — sin retry silencioso, verifier obligatorio
   enviar_correo:          { ...DEFAULT_POLICY, timeoutMs: 20_000, verifyStrategy: 'external' },

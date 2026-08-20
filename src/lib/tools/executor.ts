@@ -209,9 +209,9 @@ async function executeAgentToolInner(
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // create_contract_draft
+  // crear_borrador_contrato
   // ─────────────────────────────────────────────────────────────────────────
-  if (toolName === 'create_contract_draft') {
+  if (toolName === 'crear_borrador_contrato') {
     const { data: tpl } = await supabase.from('contract_templates').select('clauses').eq('agent_id', agentId).single();
     const DEFAULT_IDS = ['partes','objeto','vigencia','contraprestacion','pago','confidencialidad','propiedad','responsabilidad','terminacion','jurisdiccion','aceptacion'];
     type Clause = { id: string; title: string; body: string; required: boolean; enabled: boolean };
@@ -698,7 +698,7 @@ async function executeAgentToolInner(
   // ─────────────────────────────────────────────────────────────────────────
   // Civic reports
   // ─────────────────────────────────────────────────────────────────────────
-  if (toolName === 'create_civic_report') {
+  if (toolName === 'crear_reporte_civico') {
     const { category, description, location_text, caller_name, caller_number } = toolInput as Record<string, string | undefined>;
     const folio = await generateFolio(agentId, supabase);
     const { error } = await supabase.from('civic_reports').insert({ agent_id: agentId, folio, category: category ?? 'otro', description: description ?? null, location_text: location_text ?? null, caller_name: caller_name ?? null, caller_number: caller_number ?? null, status: 'abierto' });
@@ -708,7 +708,7 @@ async function executeAgentToolInner(
     return { ok: true, folio, attach_url: attachUrl, message: `Reporte registrado con folio ${folio}. Si tiene fotos, puede subirlas aquí: ${attachUrl}` };
   }
 
-  if (toolName === 'lookup_civic_report') {
+  if (toolName === 'consultar_reporte_civico') {
     const { folio: qf, caller_number: qp } = toolInput as { folio?: string; caller_number?: string };
     if (!qf && !qp) return { ok: false, error: 'Proporciona folio o número de teléfono.' };
     let q = supabase.from('civic_reports').select('folio,category,description,location_text,status,notes,created_at').eq('agent_id', agentId);
@@ -721,7 +721,7 @@ async function executeAgentToolInner(
     return { ok: true, reports: list, message: `${list.length} reporte(s):\n${lines.join('\n')}` };
   }
 
-  if (toolName === 'update_civic_report') {
+  if (toolName === 'actualizar_reporte_civico') {
     const { folio, status: uStatus, notes } = toolInput as { folio: string; status?: string; notes?: string };
     const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (uStatus) { updates.status = uStatus; if (uStatus === 'resuelto' || uStatus === 'cerrado') updates.resolved_at = new Date().toISOString(); }

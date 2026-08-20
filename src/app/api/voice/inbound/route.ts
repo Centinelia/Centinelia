@@ -1059,7 +1059,7 @@ async function buildTools(agent: VoiceAgent, qbConnected = false, orgCalendar: O
       {
         type: 'function',
         function: {
-          name: 'create_civic_report',
+          name: 'crear_reporte_civico',
           description: 'Registra un nuevo reporte ciudadano (bache, luminaria, basura, agua, ruido, etc.) y genera un folio de seguimiento.',
           parameters: {
             type: 'object',
@@ -1072,13 +1072,13 @@ async function buildTools(agent: VoiceAgent, qbConnected = false, orgCalendar: O
             },
             required: ['category', 'description'],
           },
-          serverUrl: `${execBase}/create_civic_report?agent_id=${agent.id}`,
+          serverUrl: `${execBase}/crear_reporte_civico?agent_id=${agent.id}`,
         },
       },
       {
         type: 'function',
         function: {
-          name: 'lookup_civic_report',
+          name: 'consultar_reporte_civico',
           description: 'Consulta el estado de un reporte ciudadano por folio o por número de teléfono del ciudadano.',
           parameters: {
             type: 'object',
@@ -1088,13 +1088,13 @@ async function buildTools(agent: VoiceAgent, qbConnected = false, orgCalendar: O
             },
             required: [],
           },
-          serverUrl: `${execBase}/lookup_civic_report?agent_id=${agent.id}`,
+          serverUrl: `${execBase}/consultar_reporte_civico?agent_id=${agent.id}`,
         },
       },
       {
         type: 'function',
         function: {
-          name: 'update_civic_report',
+          name: 'actualizar_reporte_civico',
           description: 'Actualiza el estado o agrega notas a un reporte ciudadano existente.',
           parameters: {
             type: 'object',
@@ -1105,7 +1105,7 @@ async function buildTools(agent: VoiceAgent, qbConnected = false, orgCalendar: O
             },
             required: ['folio'],
           },
-          serverUrl: `${execBase}/update_civic_report?agent_id=${agent.id}`,
+          serverUrl: `${execBase}/actualizar_reporte_civico?agent_id=${agent.id}`,
         },
       },
     );
@@ -1169,12 +1169,12 @@ async function buildTools(agent: VoiceAgent, qbConnected = false, orgCalendar: O
     );
   }
 
-  // create_contract_draft — for NOX and coordinator-type agents
+  // crear_borrador_contrato — for NOX and coordinator-type agents
   if (meerkatRole === 'nox' || agent.features.contract_drafts) {
     tools.push({
       type: 'function',
       function: {
-        name: 'create_contract_draft',
+        name: 'crear_borrador_contrato',
         description: 'Crea un borrador de contrato de prestación de servicios. Úsala cuando el dueño pida preparar un contrato con un cliente.',
         parameters: {
           type: 'object',
@@ -1187,7 +1187,7 @@ async function buildTools(agent: VoiceAgent, qbConnected = false, orgCalendar: O
           },
           required: [],
         },
-        serverUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools/exec/create_contract_draft?agent_id=${agent.id}`,
+        serverUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools/exec/crear_borrador_contrato?agent_id=${agent.id}`,
       },
     });
   }

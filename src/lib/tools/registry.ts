@@ -47,7 +47,7 @@ const TOOL_REGISTRY_BASE: Omit<ToolEntry, 'pack'>[] = [
   // documents
   { name: 'create_document',          description: 'Genera PDF (factura, orden, cotización, general)',      channels: A, category: 'docs',      destructive: false, gatedByRole: ['nico','naia','nova','nox','niva'], gatedByFeature: null, capability: null, policy: policyFor('create_document') },
   { name: 'create_file',              description: 'Genera archivo Excel/Word/PowerPoint',                  channels: A, category: 'docs',      destructive: false, gatedByRole: ['nox','niva'], gatedByFeature: null, capability: null, policy: policyFor('create_file') },
-  { name: 'create_contract_draft',    description: 'Crea borrador de contrato',                             channels: A, category: 'docs',      destructive: true,  gatedByRole: ['nox'], gatedByFeature: 'contract_drafts', capability: null, policy: policyFor('create_contract_draft') },
+  { name: 'crear_borrador_contrato',   description: 'Crea borrador de contrato',                             channels: A, category: 'docs',      destructive: true,  gatedByRole: ['nox'], gatedByFeature: 'contract_drafts', capability: null, policy: policyFor('crear_borrador_contrato') },
 
   // drive
   { name: 'save_to_drive',            description: 'Sube archivo local al Drive del negocio',               channels: A, category: 'drive',     destructive: false, gatedByRole: ['nox','niva'], gatedByFeature: null, capability: 'files', policy: policyFor('save_to_drive') },
@@ -59,9 +59,9 @@ const TOOL_REGISTRY_BASE: Omit<ToolEntry, 'pack'>[] = [
   { name: 'delete_calendar_event',    description: 'Elimina evento del calendario',                         channels: A, category: 'calendar',  destructive: true,  gatedByRole: ['naia'], gatedByFeature: null, capability: null, policy: policyFor('delete_calendar_event') },
 
   // civic
-  { name: 'create_civic_report',      description: 'Reporte cívico municipal',                              channels: A, category: 'gobierno',  destructive: false, gatedByRole: ['nara'], gatedByFeature: 'civic_reports', capability: null, policy: policyFor('create_civic_report') },
-  { name: 'lookup_civic_report',      description: 'Consulta reporte cívico por folio',                     channels: A, category: 'gobierno',  destructive: false, gatedByRole: ['nara'], gatedByFeature: 'civic_reports', capability: null, policy: policyFor('lookup_civic_report') },
-  { name: 'update_civic_report',      description: 'Actualiza estado de reporte cívico',                    channels: A, category: 'gobierno',  destructive: false, gatedByRole: ['nara'], gatedByFeature: 'civic_reports', capability: null, policy: policyFor('update_civic_report') },
+  { name: 'crear_reporte_civico',      description: 'Reporte cívico municipal',                              channels: A, category: 'gobierno',  destructive: false, gatedByRole: ['nara'], gatedByFeature: 'civic_reports', capability: null, policy: policyFor('crear_reporte_civico') },
+  { name: 'consultar_reporte_civico', description: 'Consulta reporte cívico por folio',                     channels: A, category: 'gobierno',  destructive: false, gatedByRole: ['nara'], gatedByFeature: 'civic_reports', capability: null, policy: policyFor('consultar_reporte_civico') },
+  { name: 'actualizar_reporte_civico', description: 'Actualiza estado de reporte cívico',                   channels: A, category: 'gobierno',  destructive: false, gatedByRole: ['nara'], gatedByFeature: 'civic_reports', capability: null, policy: policyFor('actualizar_reporte_civico') },
 
   // QB (feature-gated 'quickbooks')
   { name: 'qb_consultar_facturas',    description: 'Consulta facturas en QuickBooks',                       channels: A, category: 'quickbooks', destructive: false, gatedByRole: ['nico','niva'], gatedByFeature: 'quickbooks', capability: null, policy: policyFor('qb_consultar_facturas') },

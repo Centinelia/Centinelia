@@ -51,7 +51,7 @@ export const VOICE_TO_CHAT: Record<string, string | null> = {
   leer_archivo:              'leer_archivo',
 
   // Same name in both channels
-  create_contract_draft:     'create_contract_draft',
+  crear_borrador_contrato:   'crear_borrador_contrato',
   create_file:               'create_file',
   save_to_drive:             'save_to_drive',
   organize_files:            'organize_files',
@@ -63,9 +63,9 @@ export const VOICE_TO_CHAT: Record<string, string | null> = {
   list_calendar_events:      'list_calendar_events',
   create_calendar_event:     'create_calendar_event',
   delete_calendar_event:     'delete_calendar_event',
-  create_civic_report:       'create_civic_report',
-  lookup_civic_report:       'lookup_civic_report',
-  update_civic_report:       'update_civic_report',
+  crear_reporte_civico:      'crear_reporte_civico',
+  consultar_reporte_civico:  'consultar_reporte_civico',
+  actualizar_reporte_civico: 'actualizar_reporte_civico',
   analizar_publicaciones_ml: 'analizar_publicaciones_ml',
   crear_publicacion_ml:      'crear_publicacion_ml',
   actualizar_publicacion_ml: 'actualizar_publicacion_ml',

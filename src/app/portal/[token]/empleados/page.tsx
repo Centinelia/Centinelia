@@ -35,7 +35,7 @@ const TOOL_COLOR: Record<string, string> = {
   // Comunicación saliente
   llamar_a: '#06b6d4', enviar_correo: '#06b6d4',
   // Documentos
-  crear_documento: '#06b6d4', create_file: '#06b6d4', create_contract_draft: '#06b6d4',
+  crear_documento: '#06b6d4', create_file: '#06b6d4', crear_borrador_contrato: '#06b6d4',
   buscar_documento_oficina: '#06b6d4', enviar_documento_oficina: '#06b6d4',
   // Drive / archivos externos
   buscar_archivo: '#0891b2', leer_archivo: '#0891b2',
@@ -64,7 +64,7 @@ const TOOL_COLOR: Record<string, string> = {
   // Helpdesk IT
   crear_ticket: '#ef4444', consultar_incidentes: '#ef4444', buscar_directorio: '#ef4444',
   // Municipal
-  create_civic_report: '#3b82f6', lookup_civic_report: '#3b82f6', update_civic_report: '#3b82f6',
+  crear_reporte_civico: '#3b82f6', consultar_reporte_civico: '#3b82f6', actualizar_reporte_civico: '#3b82f6',
   // Onboarding
   iniciar_onboarding: '#a855f7',
   // Marca / insights
@@ -91,7 +91,7 @@ const CAPABILITY_GROUPS: { label: string; color: string; tools: string[] }[] = [
   { label: 'Agenda y citas',        color: '#3b82f6', tools: ['agendar_cita', 'list_calendar_events', 'create_calendar_event', 'delete_calendar_event'] },
   { label: 'Transfiere llamadas',   color: '#6C3BFF', tools: ['notificar_transferencia', 'transferir_llamada'] },
   { label: 'Llama saliente',        color: '#06b6d4', tools: ['llamar_a'] },
-  { label: 'Correo y documentos',   color: '#06b6d4', tools: ['enviar_correo', 'crear_documento', 'create_file', 'create_contract_draft', 'buscar_documento_oficina', 'enviar_documento_oficina'] },
+  { label: 'Correo y documentos',   color: '#06b6d4', tools: ['enviar_correo', 'crear_documento', 'create_file', 'crear_borrador_contrato', 'buscar_documento_oficina', 'enviar_documento_oficina'] },
   { label: 'Archivos y Drive',      color: '#0891b2', tools: ['buscar_archivo', 'leer_archivo', 'save_to_drive', 'organize_files'] },
   { label: 'Web e investigación',   color: '#3b82f6', tools: ['buscar_en_web', 'read_url', 'search_leads'] },
   { label: 'Trabajo en equipo',     color: '#0d9488', tools: ['consultar_agente', 'delegar_tarea'] },
@@ -107,7 +107,7 @@ const CAPABILITY_GROUPS: { label: string; color: string; tools: string[] }[] = [
   { label: 'Timbra y cancela CFDIs',    color: '#a16207', tools: ['sf_timbrar_desde_oc', 'sf_cancelar_cfdi', 'sf_consultar_estado_sat'] },
   { label: 'Archivo fiscal',            color: '#a16207', tools: ['archivar_expediente'] },
   { label: 'Helpdesk IT',           color: '#ef4444', tools: ['crear_ticket', 'consultar_incidentes', 'buscar_directorio'] },
-  { label: 'Servicios municipales', color: '#3b82f6', tools: ['create_civic_report', 'lookup_civic_report', 'update_civic_report'] },
+  { label: 'Servicios municipales', color: '#3b82f6', tools: ['crear_reporte_civico', 'consultar_reporte_civico', 'actualizar_reporte_civico'] },
   { label: 'Onboarding y bienvenida', color: '#a855f7', tools: ['iniciar_onboarding'] },
   { label: 'Insights de marca',     color: '#c084fc', tools: ['extraer_voz_del_cliente', 'extraer_tono_de_marca'] },
   { label: 'Dirección general',     color: '#8b5cf6', tools: ['revisar_desempeno_equipo', 'aprobar_gasto'] },
@@ -157,7 +157,7 @@ const BUSINESS_CATEGORIES: { label: string; color: string; specialized?: boolean
     tools: [
       { key: 'crear_documento',       label: 'Crear documentos' },
       { key: 'create_file',           label: 'Crear archivos de texto' },
-      { key: 'create_contract_draft', label: 'Redactar contratos' },
+      { key: 'crear_borrador_contrato', label: 'Redactar contratos' },
       { key: 'buscar_archivo',        label: 'Buscar archivos' },
       { key: 'leer_archivo',          label: 'Leer contenido de archivos' },
       { key: 'save_to_drive',         label: 'Guardar archivos en la nube' },
@@ -229,9 +229,9 @@ const BUSINESS_CATEGORIES: { label: string; color: string; specialized?: boolean
     color: '#f97316', // nara
     specialized: true,
     tools: [
-      { key: 'create_civic_report', label: 'Registrar reporte ciudadano' },
-      { key: 'lookup_civic_report', label: 'Consultar estado de reporte' },
-      { key: 'update_civic_report', label: 'Actualizar reporte ciudadano' },
+      { key: 'crear_reporte_civico', label: 'Registrar reporte ciudadano' },
+      { key: 'consultar_reporte_civico', label: 'Consultar estado de reporte' },
+      { key: 'actualizar_reporte_civico', label: 'Actualizar reporte ciudadano' },
     ],
   },
 ];

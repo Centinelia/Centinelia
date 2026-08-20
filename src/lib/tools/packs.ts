@@ -80,14 +80,14 @@ export const SKILL_PACKS: SkillPack[] = [
   {
     id: 'civic_reports', label: 'Reportes cívicos',
     description: 'Registrar y consultar reportes ciudadanos municipales',
-    tools: ['create_civic_report', 'lookup_civic_report', 'update_civic_report'],
+    tools: ['crear_reporte_civico', 'consultar_reporte_civico', 'actualizar_reporte_civico'],
     source: 'features.civic_reports',
     activeCheck: ctx => !!ctx.has_civic,
   },
   {
     id: 'contratos', label: 'Contratos',
     description: 'Generar borradores de contrato',
-    tools: ['create_contract_draft'],
+    tools: ['crear_borrador_contrato'],
     source: 'features.contract_drafts',
     activeCheck: ctx => !!ctx.has_contracts,
   },

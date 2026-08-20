@@ -160,17 +160,17 @@ const BASE_EMAIL_TOOLS: Anthropic.Tool[] = [
   toAnthropicTool(TOOL_SCHEMAS['create_calendar_event']),
   toAnthropicTool(TOOL_SCHEMAS['delete_calendar_event']),
   {
-    name:        'create_civic_report',
+    name:        'crear_reporte_civico',
     description: 'Registra un reporte ciudadano (bache, luminaria, basura, agua, ruido, etc.) cuando el email es una queja o reporte de servicio municipal.',
     input_schema: { type: 'object' as const, properties: { category: { type: 'string', enum: ['bache', 'luminaria', 'basura', 'agua', 'ruido', 'parque', 'transporte', 'otro'] }, description: { type: 'string' }, location_text: { type: 'string' }, caller_name: { type: 'string' }, caller_number: { type: 'string' } }, required: ['category', 'description'] },
   },
   {
-    name:        'lookup_civic_report',
+    name:        'consultar_reporte_civico',
     description: 'Consulta el estatus de un reporte ciudadano por folio o teléfono del remitente.',
     input_schema: { type: 'object' as const, properties: { folio: { type: 'string' }, caller_number: { type: 'string' } }, required: [] },
   },
   {
-    name:        'update_civic_report',
+    name:        'actualizar_reporte_civico',
     description: 'Actualiza el estatus o agrega notas a un reporte ciudadano existente.',
     input_schema: { type: 'object' as const, properties: { folio: { type: 'string' }, status: { type: 'string', enum: ['abierto', 'en_proceso', 'resuelto', 'cerrado'] }, notes: { type: 'string' } }, required: ['folio'] },
   },
@@ -218,7 +218,7 @@ const BASE_EMAIL_TOOLS: Anthropic.Tool[] = [
     input_schema: { type: 'object' as const, properties: { query: { type: 'string' } }, required: ['query'] },
   },
   {
-    name:        'create_contract_draft',
+    name:        'crear_borrador_contrato',
     description: 'Crea un borrador de contrato cuando el email resulta en un acuerdo comercial.',
     input_schema: {
       type: 'object' as const,
@@ -795,10 +795,10 @@ const MEERKAT_EMAIL_DISTRIBUTION: Record<string, string[]> = {
   nico:  ['buscar_cliente', 'buscar_correo_enviado', 'buscar_documento_oficina', 'solicitar_factura', 'consultar_factura', 'solicitar_cancelacion_factura', 'qb_consultar_facturas', 'qb_buscar_cliente', 'qb_registrar_pago', 'qb_crear_factura', 'qb_reporte_ingresos', 'enviar_documento_oficina', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
   nelia: ['buscar_cliente', 'buscar_correo_enviado', 'buscar_documento_oficina', 'buscar_archivo', 'enviar_documento_oficina', 'generar_one_pager', 'generar_correo_estructurado', 'generar_reporte_metricas_excel', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'create_document', 'create_file', 'save_to_drive', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
   neo:   ['crear_ticket', 'consultar_incidentes', 'buscar_directorio', 'buscar_archivo', 'leer_archivo', 'buscar_correo_enviado', 'buscar_documento_oficina', 'enviar_documento_oficina', 'buscar_cliente', 'reportar_falla', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
-  nara:  ['create_civic_report', 'lookup_civic_report', 'update_civic_report', 'consultar_catalogo_externo', 'buscar_en_padron_externo', 'enviar_tramite_externo', 'buscar_cliente', 'buscar_correo_enviado', 'generar_reporte_metricas_excel', 'buscar_archivo', 'leer_archivo', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
+  nara:  ['crear_reporte_civico', 'consultar_reporte_civico', 'actualizar_reporte_civico', 'consultar_catalogo_externo', 'buscar_en_padron_externo', 'enviar_tramite_externo', 'buscar_cliente', 'buscar_correo_enviado', 'generar_reporte_metricas_excel', 'buscar_archivo', 'leer_archivo', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
   naia:  ['iniciar_onboarding', 'agendar_cita', 'list_calendar_events', 'create_calendar_event', 'delete_calendar_event', 'buscar_cliente', 'buscar_correo_enviado', 'buscar_documento_oficina', 'buscar_archivo', 'leer_archivo', 'registrar_falta', 'consultar_vacaciones', 'solicitar_permiso', 'verificar_incidencia', 'generar_correo_estructurado', 'create_document', 'save_to_drive', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
   nova:  ['asignar_unidad_campo', 'consultar_unidades_disponibles', 'crear_ticket', 'buscar_cliente', 'buscar_correo_enviado', 'buscar_documento_oficina', 'buscar_archivo', 'leer_archivo', 'enviar_documento_oficina', 'create_document', 'extraer_voz_del_cliente', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
-  nox:   ['create_document', 'create_file', 'create_contract_draft', 'save_to_drive', 'organize_files', 'buscar_documento_oficina', 'enviar_documento_oficina', 'buscar_archivo', 'leer_archivo', 'buscar_cliente', 'buscar_correo_enviado', 'catalogo_buscar_codigo', 'list_calendar_events', 'create_calendar_event', 'verificar_gasto_recurrente', 'sheets_agregar_fila', 'sheets_actualizar_fila', 'sheets_leer', 'sheets_buscar', 'preparar_brief_del_dia', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano', 'reportar_falla'],
+  nox:   ['create_document', 'create_file', 'crear_borrador_contrato', 'save_to_drive', 'organize_files', 'buscar_documento_oficina', 'enviar_documento_oficina', 'buscar_archivo', 'leer_archivo', 'buscar_cliente', 'buscar_correo_enviado', 'catalogo_buscar_codigo', 'list_calendar_events', 'create_calendar_event', 'verificar_gasto_recurrente', 'sheets_agregar_fila', 'sheets_actualizar_fila', 'sheets_leer', 'sheets_buscar', 'preparar_brief_del_dia', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano', 'reportar_falla'],
   niva:  ['create_document', 'create_file', 'save_to_drive', 'buscar_documento_oficina', 'enviar_documento_oficina', 'buscar_archivo', 'leer_archivo', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'revisar_desempeno_equipo', 'generar_pitch_deck', 'generar_reporte_metricas_excel', 'aprobar_gasto', 'evaluar_limite_gasto', 'verificar_gasto_recurrente', 'list_calendar_events', 'search_leads', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
   nala:  ['qb_crear_orden_compra', 'qb_consultar_orden_compra', 'qb_descargar_oc_pdf', 'firmar_oc', 'sf_timbrar_desde_oc', 'sf_cancelar_cfdi', 'sf_consultar_estado_sat', 'enviar_oc_a_pagos', 'registrar_comprobante_pago', 'enviar_oc_a_proveedor', 'archivar_expediente', 'qb_crear_orden_compra_desde_cotizacion', 'buscar_archivo', 'leer_archivo', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
 };

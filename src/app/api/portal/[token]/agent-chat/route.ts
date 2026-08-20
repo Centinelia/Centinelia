@@ -115,8 +115,8 @@ function assertToolUsePairing(msgs: Anthropic.MessageParam[]): void {
 
 // ── Tool definitions ──────────────────────────────────────────────────────────
 
-const CREATE_CONTRACT_DRAFT_TOOL: Anthropic.Tool = {
-  name: 'create_contract_draft',
+const CREAR_BORRADOR_CONTRATO_TOOL: Anthropic.Tool = {
+  name: 'crear_borrador_contrato',
   description: 'Crea un borrador de contrato de prestación de servicios para un cliente específico, basado en la plantilla del negocio. Úsala cuando el dueño te pida generar un contrato para un cliente, o cuando la conversación (llamada/correo) haya resultado en un acuerdo comercial.',
   input_schema: {
     type: 'object' as const,
@@ -575,8 +575,8 @@ const ORGANIZE_FILES_TOOL: Anthropic.Tool = {
   },
 };
 
-const CREATE_CIVIC_REPORT_TOOL: Anthropic.Tool = {
-  name: 'create_civic_report',
+const CREAR_REPORTE_CIVICO_TOOL: Anthropic.Tool = {
+  name: 'crear_reporte_civico',
   description: 'Registra un nuevo reporte ciudadano (bache, luminaria, basura, agua, ruido, etc.) y genera un folio de seguimiento. Úsala cuando alguien reporte un problema en la vía pública o servicios municipales.',
   input_schema: {
     type: 'object' as const,
@@ -591,8 +591,8 @@ const CREATE_CIVIC_REPORT_TOOL: Anthropic.Tool = {
   },
 };
 
-const LOOKUP_CIVIC_REPORT_TOOL: Anthropic.Tool = {
-  name: 'lookup_civic_report',
+const CONSULTAR_REPORTE_CIVICO_TOOL: Anthropic.Tool = {
+  name: 'consultar_reporte_civico',
   description: 'Consulta el estatus de uno o varios reportes ciudadanos por folio o por número de teléfono del ciudadano.',
   input_schema: {
     type: 'object' as const,
@@ -604,8 +604,8 @@ const LOOKUP_CIVIC_REPORT_TOOL: Anthropic.Tool = {
   },
 };
 
-const UPDATE_CIVIC_REPORT_TOOL: Anthropic.Tool = {
-  name: 'update_civic_report',
+const ACTUALIZAR_REPORTE_CIVICO_TOOL: Anthropic.Tool = {
+  name: 'actualizar_reporte_civico',
   description: 'Actualiza el estatus o las notas internas de un reporte ciudadano. Úsala cuando el dueño quiera marcar un reporte como en proceso, resuelto o cerrado.',
   input_schema: {
     type: 'object' as const,
@@ -1283,7 +1283,7 @@ const CATALOGO_BUSCAR_CODIGO_TOOL: Anthropic.Tool = {
 const ALL_TOOLS = [
   DELEGAR_TAREA_TOOL,
   CONSULTAR_AGENTE_TOOL,
-  CREATE_CONTRACT_DRAFT_TOOL,
+  CREAR_BORRADOR_CONTRATO_TOOL,
   ENVIAR_CORREO_TOOL,
   CREATE_DOCUMENT_TOOL,
   SOLICITAR_FACTURA_TOOL,
@@ -1299,9 +1299,9 @@ const ALL_TOOLS = [
   DELETE_CALENDAR_EVENT_TOOL,
   SEARCH_LEADS_TOOL,
   READ_URL_TOOL,
-  CREATE_CIVIC_REPORT_TOOL,
-  LOOKUP_CIVIC_REPORT_TOOL,
-  UPDATE_CIVIC_REPORT_TOOL,
+  CREAR_REPORTE_CIVICO_TOOL,
+  CONSULTAR_REPORTE_CIVICO_TOOL,
+  ACTUALIZAR_REPORTE_CIVICO_TOOL,
   WEB_SEARCH_TOOL,
   EXTRAER_VOZ_TOOL,
   EXTRAER_TONO_TOOL,
@@ -1330,7 +1330,7 @@ const ALL_TOOLS = [
 const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
   delegar_tarea:             DELEGAR_TAREA_TOOL,
   consultar_agente:          CONSULTAR_AGENTE_TOOL,
-  create_contract_draft:     CREATE_CONTRACT_DRAFT_TOOL,
+  crear_borrador_contrato:   CREAR_BORRADOR_CONTRATO_TOOL,
   enviar_correo:             ENVIAR_CORREO_TOOL,
   create_document:           CREATE_DOCUMENT_TOOL,
   buscar_documento_oficina:  BUSCAR_DOCUMENTO_OFICINA_TOOL,
@@ -1359,9 +1359,9 @@ const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
   delete_calendar_event:     DELETE_CALENDAR_EVENT_TOOL,
   search_leads:              SEARCH_LEADS_TOOL,
   read_url:                  READ_URL_TOOL,
-  create_civic_report:       CREATE_CIVIC_REPORT_TOOL,
-  lookup_civic_report:       LOOKUP_CIVIC_REPORT_TOOL,
-  update_civic_report:       UPDATE_CIVIC_REPORT_TOOL,
+  crear_reporte_civico:      CREAR_REPORTE_CIVICO_TOOL,
+  consultar_reporte_civico:  CONSULTAR_REPORTE_CIVICO_TOOL,
+  actualizar_reporte_civico: ACTUALIZAR_REPORTE_CIVICO_TOOL,
   buscar_en_web:             WEB_SEARCH_TOOL,
   extraer_voz_del_cliente:   EXTRAER_VOZ_TOOL,
   extraer_tono_de_marca:     EXTRAER_TONO_TOOL,

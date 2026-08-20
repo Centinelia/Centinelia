@@ -30,7 +30,7 @@ const TOOL_LABELS: Record<string, string> = {
   buscar_cliente:                 'Buscando cliente',
   delegar_tarea:                  'Delegando tarea',
   consultar_agente:               'Consultando compañero',
-  create_contract_draft:          'Creando borrador de contrato',
+  crear_borrador_contrato:        'Creando borrador de contrato',
   list_calendar_events:           'Consultando agenda',
   create_calendar_event:          'Agendando en calendario',
   reportar_falla:                 'Reportando falla al equipo',
