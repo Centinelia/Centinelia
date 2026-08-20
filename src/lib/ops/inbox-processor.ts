@@ -14,6 +14,7 @@ import { logLlmCall } from '@/lib/observability/llm-log';
 import { TOOL_SCHEMAS, toAnthropicTool } from '@/lib/tools/schemas';
 import { MEERKAT_VOICE_DISTRIBUTION } from '@/lib/vapi/sync';
 import { VOICE_TO_CHAT, UNIVERSAL_TOOLS, EMAIL_ONLY_TOOLS_FROM_VOICE } from '@/lib/tools/channel-mapping';
+import { parseToolOverrides, applyToolOverrides } from '@/lib/tools/tool-overrides';
 
 const anthropic = new Anthropic();
 
@@ -1306,7 +1307,12 @@ CATEGORÍAS:
 
     // Fix 2026-08-19: filtrar tools por preset del meerkat (antes todos
     // recibían BASE_EMAIL_TOOLS entero → tool bloat degradaba calidad LLM).
-    const tools = getToolsForRoleEmail(inboxMeerkatId, qbConnected);
+    const presetTools = getToolsForRoleEmail(inboxMeerkatId, qbConnected);
+
+    // Capa 3 tool-bloat: aplicar overrides finos por meerkat.
+    // El owner puede deshabilitar tools del preset o agregar extras.
+    const overrides = parseToolOverrides((agentRow as { tool_overrides?: unknown } | null)?.tool_overrides);
+    const tools = applyToolOverrides(presetTools, overrides, name => EMAIL_TOOL_BY_NAME[name]);
 
     // preparar_brief_del_dia — Nox exclusivo. Canal voz ausente de forma intencional
     // (Nox nunca tiene vapi_agent_id; ver NON_VOICE_ROLES en sync.ts).

@@ -43,6 +43,7 @@ import { extractChatLearnings } from '@/lib/ai/chat-learning';
 import { getKnowledgeBase } from '@/lib/knowledge-base';
 import { MEERKAT_VOICE_DISTRIBUTION } from '@/lib/vapi/sync';
 import { VOICE_TO_CHAT, UNIVERSAL_TOOLS } from '@/lib/tools/channel-mapping';
+import { parseToolOverrides, applyToolOverrides } from '@/lib/tools/tool-overrides';
 import { getOrgIndustry, INDUSTRIES_WITH_DAILY_AVAILABILITY } from '@/lib/industry';
 import { formatDailyAvailabilityForPrompt } from '@/lib/daily-availability';
 import {
@@ -1643,6 +1644,13 @@ export async function POST(req: NextRequest, { params }: Params) {
       sessionTools.push(ACTUALIZAR_DISPONIBILIDAD_DIARIA_TOOL);
     }
   }
+
+  // Capa 3 tool-bloat: overrides finos por meerkat (post preset + additions)
+  const overrides = parseToolOverrides((agent as { tool_overrides?: unknown }).tool_overrides);
+  const finalTools = applyToolOverrides(sessionTools, overrides, name => CHAT_TOOL_BY_NAME[name]);
+  // Reasignar para preservar shape esperado en el resto del handler
+  sessionTools.length = 0;
+  sessionTools.push(...finalTools);
 
   const toolsListText = sessionTools.length
     ? 'Herramientas disponibles:\n' + sessionTools.map(t => `- ${t.name}: ${t.description}`).join('\n')
