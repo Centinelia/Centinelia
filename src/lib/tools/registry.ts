@@ -24,7 +24,7 @@ export interface ToolEntry {
   policy:       ToolPolicy;
   destructive:  boolean;
   gatedByRole:  string[] | null;   // meerkats donde vive (null = todos)
-  gatedByFeature: string | null;   // feature flag
+  gatedByFeature: string | null;   // DEPRECATED — usar pack. Se removerá en Fase 2.
   pack:         string | null;     // ID del pack en SKILL_PACKS, o null si tool no pertenece a pack
 }
 
