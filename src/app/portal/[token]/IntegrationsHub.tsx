@@ -771,7 +771,7 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
             const packBadge: PackBadge | null = pack && active
               ? {
                   label:         `${pack.tools.length} tools habilitadas`,
-                  tooltip:       `Al conectar habilitas: ${pack.tools.join(', ')}`,
+                  tooltip:       `Incluye: ${pack.tools.join(', ')}`,
                   meerkatsUsing: meerkatsCount,
                 }
               : null;
