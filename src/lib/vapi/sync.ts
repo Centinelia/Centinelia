@@ -9,7 +9,7 @@ import { resolveMeerkatVersionForAgent } from '@/lib/feature-flags/version-flag-
 import { TOOL_SCHEMAS, toVapiToolDef } from '@/lib/tools/schemas';
 import { getOrgIndustry, INDUSTRIES_WITH_DAILY_AVAILABILITY } from '@/lib/industry';
 import { parseToolOverrides } from '@/lib/tools/tool-overrides';
-import { resolveOrgPackContext, resolveActivePacks, TOOL_TO_PACK } from '@/lib/tools/packs';
+import { resolveOrgPackContext, resolveActivePacks, meerkatActivePacks, TOOL_TO_PACK } from '@/lib/tools/packs';
 
 const VAPI_URL = 'https://api.vapi.ai';
 const VAPI_KEY = process.env.VAPI_API_KEY!;
@@ -599,9 +599,12 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
   // correcto o cuando cambiemos a Vapi Squads.
 
   // Capa 2 tool-bloat: filtrar por packs activos del org.
+  // Además respeta meerkatGate per-empleado (features.outbound_calls, etc.)
+  // vía meerkatActivePacks — alineado 2026-08-20 con la UI de Tool Overrides.
   const supabaseSyncPacks = createAdminClient();
   const packCtx     = await resolveOrgPackContext((agent as unknown as { portal_email?: string | null }).portal_email ?? '', supabaseSyncPacks);
-  const activePacks = resolveActivePacks(packCtx);
+  const orgActive   = resolveActivePacks(packCtx);
+  const activePacks = meerkatActivePacks(orgActive, (agent.features ?? {}) as unknown as Record<string, unknown>);
   // Aplicar filtro siempre (sin guard): tools de packs inactivos se dropean.
   for (let i = tools.length - 1; i >= 0; i--) {
     const fname = ((tools[i].function as { name?: string } | undefined))?.name;

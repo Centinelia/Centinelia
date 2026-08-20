@@ -15,7 +15,7 @@ import { TOOL_SCHEMAS, toAnthropicTool } from '@/lib/tools/schemas';
 import { MEERKAT_VOICE_DISTRIBUTION } from '@/lib/vapi/sync';
 import { VOICE_TO_CHAT, UNIVERSAL_TOOLS, EMAIL_ONLY_TOOLS_FROM_VOICE } from '@/lib/tools/channel-mapping';
 import { parseToolOverrides, applyToolOverrides } from '@/lib/tools/tool-overrides';
-import { resolveOrgPackContext, resolveActivePacks, TOOL_TO_PACK } from '@/lib/tools/packs';
+import { resolveOrgPackContext, resolveActivePacks, meerkatActivePacks, TOOL_TO_PACK } from '@/lib/tools/packs';
 
 const anthropic = new Anthropic();
 
@@ -1312,8 +1312,12 @@ CATEGORÍAS:
 
     // Capa 2 tool-bloat: filtrar por packs activos del org (después del preset,
     // antes de los overrides). Tools que no pertenecen a ningún pack pasan siempre.
+    // meerkatActivePacks también aplica gates per-empleado (features.outbound_calls,
+    // etc.) alineado 2026-08-20 con la UI de Tool Overrides.
     const packCtx     = await resolveOrgPackContext(portalEmail, supabase);
-    const activePacks = resolveActivePacks(packCtx);
+    const orgActive   = resolveActivePacks(packCtx);
+    const agentFeat   = ((agentRow?.features as Record<string, unknown> | undefined) ?? {});
+    const activePacks = meerkatActivePacks(orgActive, agentFeat);
     const packFiltered = presetTools.filter(t => {
       const packId = TOOL_TO_PACK[t.name];
       return !packId || activePacks.has(packId);

@@ -44,7 +44,7 @@ import { getKnowledgeBase } from '@/lib/knowledge-base';
 import { MEERKAT_VOICE_DISTRIBUTION } from '@/lib/vapi/sync';
 import { VOICE_TO_CHAT, UNIVERSAL_TOOLS } from '@/lib/tools/channel-mapping';
 import { parseToolOverrides, applyToolOverrides } from '@/lib/tools/tool-overrides';
-import { resolveOrgPackContext, resolveActivePacks, TOOL_TO_PACK } from '@/lib/tools/packs';
+import { resolveOrgPackContext, resolveActivePacks, meerkatActivePacks, TOOL_TO_PACK } from '@/lib/tools/packs';
 import { getOrgIndustry, INDUSTRIES_WITH_DAILY_AVAILABILITY } from '@/lib/industry';
 import { formatDailyAvailabilityForPrompt } from '@/lib/daily-availability';
 import {
@@ -1647,8 +1647,11 @@ export async function POST(req: NextRequest, { params }: Params) {
   }
 
   // Capa 2 tool-bloat: filtrar por packs activos (después de preset + adiciones)
+  // meerkatActivePacks respeta gates per-empleado (features.outbound_calls,
+  // etc.) alineado 2026-08-20 con la UI de Tool Overrides.
   const packCtx     = await resolveOrgPackContext(accountAgent.portal_email ?? '', supabase);
-  const activePacks = resolveActivePacks(packCtx);
+  const orgActive   = resolveActivePacks(packCtx);
+  const activePacks = meerkatActivePacks(orgActive, ((agent as { features?: Record<string, unknown> }).features ?? {}));
   const packFiltered = sessionTools.filter(t => {
     const packId = TOOL_TO_PACK[t.name];
     return !packId || activePacks.has(packId);
