@@ -482,38 +482,58 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
   const [statusLoaded, setStatusLoaded] = useState(false);
   const [packsInfo, setPacksInfo] = useState<PacksInfo | null>(null);
 
+  // Refetch de packs — al mount y cada vez que la tab recupera foco (cubre
+  // OAuth callback: usuario conecta QB en popup → vuelve a la pestaña → focus
+  // → badges de packs se actualizan sin reload manual).
   useEffect(() => {
-    fetch(`/api/portal/${token}/packs`)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => setPacksInfo(data as PacksInfo | null))
-      .catch(() => setPacksInfo(null));
+    let cancelled = false;
+    const fetchPacks = () => {
+      fetch(`/api/portal/${token}/packs`)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => { if (!cancelled) setPacksInfo(data as PacksInfo | null); })
+        .catch(() => { if (!cancelled) setPacksInfo(null); });
+    };
+    fetchPacks();
+    const onFocus = () => fetchPacks();
+    window.addEventListener('focus', onFocus);
+    return () => { cancelled = true; window.removeEventListener('focus', onFocus); };
   }, [token]);
 
+  // Refetch de status — mismo pattern: mount + focus. Cubre el mismo caso
+  // (integraciones OAuth conectadas/desconectadas via popup externo).
   useEffect(() => {
-    Promise.all([
-      fetch(`/api/portal/${token}/integrations`).then(r => r.json()).catch(() => null),
-      fetch(`/api/portal/${token}/notion`).then(r => r.json()).catch(() => null),
-      fetch(`/api/portal/${token}/email-oauth`).then(r => r.json()).catch(() => null),
-      fetch(`/api/portal/${token}/ml-oauth`).then(r => r.json()).catch(() => null),
-      fetch(`/api/portal/${token}/qb-oauth`).then(r => r.json()).catch(() => null),
-      hasOpsAgent
-        ? fetch(`/api/portal/${token}/teams`).then(r => r.json()).catch(() => null)
-        : Promise.resolve(null),
-      fetch(`/api/portal/${token}/invoicing/config`).then(r => r.json()).catch(() => null),
-      fetch(`/api/portal/${token}/dropbox-oauth`).then(r => r.json()).catch(() => null),
-    ]).then(([calData, notionData, emailData, mlData, qbData, teamsData, sfData, dropboxData]) => {
-      setStatus({
-        cal:        calData    ?? null,
-        notion:     notionData ?? null,
-        emails:     (emailData?.integrations ?? []).map((i: any) => ({ provider: i.provider, email: i.email })),
-        teamsEmail: teamsData?.teams_user_email ?? null,
-        ml:         mlData    ?? null,
-        qb:         qbData    ?? null,
-        sf:         sfData    ?? null,
-        dropbox:    dropboxData ?? null,
+    let cancelled = false;
+    const fetchStatus = () => {
+      Promise.all([
+        fetch(`/api/portal/${token}/integrations`).then(r => r.json()).catch(() => null),
+        fetch(`/api/portal/${token}/notion`).then(r => r.json()).catch(() => null),
+        fetch(`/api/portal/${token}/email-oauth`).then(r => r.json()).catch(() => null),
+        fetch(`/api/portal/${token}/ml-oauth`).then(r => r.json()).catch(() => null),
+        fetch(`/api/portal/${token}/qb-oauth`).then(r => r.json()).catch(() => null),
+        hasOpsAgent
+          ? fetch(`/api/portal/${token}/teams`).then(r => r.json()).catch(() => null)
+          : Promise.resolve(null),
+        fetch(`/api/portal/${token}/invoicing/config`).then(r => r.json()).catch(() => null),
+        fetch(`/api/portal/${token}/dropbox-oauth`).then(r => r.json()).catch(() => null),
+      ]).then(([calData, notionData, emailData, mlData, qbData, teamsData, sfData, dropboxData]) => {
+        if (cancelled) return;
+        setStatus({
+          cal:        calData    ?? null,
+          notion:     notionData ?? null,
+          emails:     (emailData?.integrations ?? []).map((i: any) => ({ provider: i.provider, email: i.email })),
+          teamsEmail: teamsData?.teams_user_email ?? null,
+          ml:         mlData    ?? null,
+          qb:         qbData    ?? null,
+          sf:         sfData    ?? null,
+          dropbox:    dropboxData ?? null,
+        });
+        setStatusLoaded(true);
       });
-      setStatusLoaded(true);
-    });
+    };
+    fetchStatus();
+    const onFocus = () => fetchStatus();
+    window.addEventListener('focus', onFocus);
+    return () => { cancelled = true; window.removeEventListener('focus', onFocus); };
   }, [token, hasOpsAgent]);
 
   /* ── computed subtitles ─────────────────────────────────────────────── */
