@@ -23,6 +23,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ result: 'Necesito el título y el contenido del documento.' });
   }
 
+  // Guard 2026-08-20: rechazar template='factura'. Complemento al guard en
+  // executor.ts (usado por chat/email). Este endpoint voice sirve el mismo
+  // tool con lógica standalone, así que el guard debe existir en ambos lugares.
+  if (template_type === 'factura') {
+    return NextResponse.json({ result: 'No existe plantilla de factura fiscal. Los CFDIs se emiten con solicitar_factura vía el PAC del negocio (Solución Factible, CONTPAQi). Si el negocio no tiene PAC conectado, registra un lead con los datos fiscales del cliente.' });
+  }
+
   const supabase = createAdminClient();
   const { data: agent } = await supabase
     .from('voice_agents')
