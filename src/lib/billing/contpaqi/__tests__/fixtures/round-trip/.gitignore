@@ -1,0 +1,7 @@
+# Real client CFDIs from CONTPAQi — NEVER commit these
+*.contpaqi.xml
+*.input.json
+
+# Exceptions: the safe dummy fixture lives in the repo
+!dummy.contpaqi.xml
+!dummy.input.json

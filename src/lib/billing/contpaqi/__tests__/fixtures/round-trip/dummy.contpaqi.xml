@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cfdi:Comprobante
+  xmlns:cfdi="http://www.sat.gob.mx/cfd/4"
+  xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.sat.gob.mx/cfd/4 cfdv40.xsd http://www.sat.gob.mx/TimbreFiscalDigital TimbreFiscalDigitalv11.xsd"
+  Version="4.0"
+  Serie="A"
+  Folio="1"
+  Fecha="2026-08-17T10:00:00"
+  Sello="BASE64SELLO=="
+  FormaPago="03"
+  NoCertificado="20001000000300022762"
+  Certificado="BASE64CERT=="
+  SubTotal="90.00"
+  Moneda="MXN"
+  Total="90.00"
+  TipoDeComprobante="I"
+  Exportacion="01"
+  MetodoPago="PUE"
+  LugarExpedicion="64000">
+  <cfdi:Emisor
+    Rfc="EJEM010101AAA"
+    Nombre="EMPRESA EJEMPLO SA DE CV"
+    RegimenFiscal="601"/>
+  <cfdi:Receptor
+    Rfc="XAXX010101000"
+    Nombre="PUBLICO EN GENERAL"
+    DomicilioFiscalReceptor="64000"
+    RegimenFiscalReceptor="616"
+    UsoCFDI="G03"/>
+  <cfdi:Conceptos>
+    <cfdi:Concepto
+      ClaveProdServ="50161509"
+      NoIdentificacion="TOR-MAI-KG"
+      Cantidad="5"
+      ClaveUnidad="KGM"
+      Unidad="kg"
+      Descripcion="Tortilla de maiz"
+      ValorUnitario="18.00"
+      Importe="90.00"
+      ObjetoImp="01"/>
+  </cfdi:Conceptos>
+  <cfdi:Impuestos/>
+  <cfdi:Complemento>
+    <tfd:TimbreFiscalDigital
+      xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital"
+      Version="1.1"
+      UUID="A1B2C3D4-E5F6-7890-ABCD-EF1234567890"
+      FechaTimbrado="2026-08-17T10:01:30"
+      RfcProvCertif="SAT800000000"
+      NoCertificadoSAT="20001000000300022763"
+      SelloSAT="BASE64SELLOSAT=="
+      SelloCFD="BASE64SELLO=="/>
+  </cfdi:Complemento>
+</cfdi:Comprobante>
