@@ -30,6 +30,7 @@ import { SnapshotStorage } from '@/lib/billing/storage/snapshot';
 import { ExcelWorkbook } from '@/lib/billing/excel/workbook';
 import { PendingClientSchema, HistoryMonthlySchema } from '@/lib/billing/excel/schemas';
 import { sanitizeRfc } from '@/lib/billing/util/rfc';
+import { decryptDropboxToken } from '@/lib/billing/adapters';
 
 export const dynamic    = 'force-dynamic';
 export const maxDuration = 300;
@@ -111,7 +112,9 @@ export async function processPeriodicCutForClient(
     .maybeSingle();
 
   const dropboxToken: string =
-    (integration?.config as Record<string, unknown> | null)?.['dropbox_token'] as string
+    decryptDropboxToken(
+      (integration?.config as Record<string, unknown> | null)?.['dropbox_token'] as string | undefined,
+    )
     ?? process.env.BILLING_DROPBOX_TOKEN
     ?? '';
 
