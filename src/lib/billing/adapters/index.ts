@@ -15,6 +15,7 @@ import type { BillingAdapter } from '../adapter';
 import { CONTPAQiAdapter } from './contpaqi';
 import { MockBillingAdapter } from './mock';
 import { DropboxClient } from '../storage/dropbox';
+import { encrypt, decrypt } from '@/lib/crypto';
 
 // ---------------------------------------------------------------------------
 // OrganizationIntegrationConfig
@@ -67,6 +68,34 @@ export interface OrganizationIntegrationConfig {
 }
 
 // ---------------------------------------------------------------------------
+// Token helpers (cifrado at-rest para dropbox_token en JSONB)
+// ---------------------------------------------------------------------------
+
+/**
+ * Descifra el `dropbox_token` leído del JSONB de `organization_integrations`.
+ *
+ * Usa `decrypt` de `@/lib/crypto`, que tiene fallback graceful: si el input
+ * no está en formato encriptado (o si `ENCRYPTION_KEY` no está configurada),
+ * retorna el valor tal cual. Esto permite convivir con tokens legacy en
+ * plaintext sin migración forzosa.
+ */
+export function decryptDropboxToken(raw: string | undefined | null): string | undefined {
+  if (!raw) return undefined;
+  return decrypt(raw);
+}
+
+/**
+ * Cifra un `dropbox_token` en plaintext antes de escribirlo al JSONB.
+ *
+ * Requiere `ENCRYPTION_KEY` configurada (throw si falta). Usar desde admin
+ * endpoints o scripts de seed. NO llamar desde código que corre en request
+ * path del cliente final.
+ */
+export function encryptDropboxToken(plaintext: string): string {
+  return encrypt(plaintext);
+}
+
+// ---------------------------------------------------------------------------
 // buildAdapter
 // ---------------------------------------------------------------------------
 
@@ -100,7 +129,7 @@ export function buildAdapter(config: OrganizationIntegrationConfig): BillingAdap
       }
 
       return new CONTPAQiAdapter({
-        dropboxClient: new DropboxClient(config.dropbox_token),
+        dropboxClient: new DropboxClient(decryptDropboxToken(config.dropbox_token)!),
         basePath: config.dropbox_base_path,
         staleWarningMinutes: config.scheduled_task.stale_warning_minutes,
         staleEscalationHours: config.scheduled_task.stale_escalation_hours,

@@ -17,6 +17,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
 import { buildDailyReport, sendDailyReport } from '@/lib/billing/reports/daily';
+import { decryptDropboxToken } from '@/lib/billing/adapters';
 
 export const dynamic    = 'force-dynamic';
 export const maxDuration = 60;
@@ -80,7 +81,7 @@ export async function GET(req: Request) {
 
   for (const integ of activeIntegrations) {
     const cfg          = integ.config ?? {};
-    const dropboxToken = (cfg['dropbox_token']   as string | undefined) ?? process.env.BILLING_DROPBOX_TOKEN ?? '';
+    const dropboxToken = decryptDropboxToken(cfg['dropbox_token'] as string | undefined) ?? process.env.BILLING_DROPBOX_TOKEN ?? '';
     const basePath     = (cfg['dropbox_base_path'] as string | undefined) ?? process.env.BILLING_DROPBOX_BASE_PATH ?? '/Facturacion';
 
     const configuredRecipients = (cfg['report_recipients'] as string[] | undefined) ?? [];
