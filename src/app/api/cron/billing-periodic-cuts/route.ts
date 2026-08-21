@@ -30,6 +30,7 @@ import { SnapshotStorage } from '@/lib/billing/storage/snapshot';
 import { ExcelWorkbook } from '@/lib/billing/excel/workbook';
 import { PendingClientSchema, HistoryMonthlySchema } from '@/lib/billing/excel/schemas';
 import { sanitizeRfc } from '@/lib/billing/util/rfc';
+import { buildPendingPath } from '@/lib/billing/rules/paths';
 
 export const dynamic    = 'force-dynamic';
 export const maxDuration = 300;
@@ -71,11 +72,6 @@ export interface PeriodicCutResult {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function buildPendingPath(basePath: string, rfc: string): string {
-  const cleanBase = basePath.replace(/\/$/, '');
-  return `${cleanBase}/Clientes_Periodicos/${sanitizeRfc(rfc)}/Pendientes.xlsx`;
-}
 
 function buildHistoryPath(basePath: string, rfc: string, year: number): string {
   const cleanBase = basePath.replace(/\/$/, '');

@@ -34,7 +34,7 @@ import { SnapshotStorage } from '../storage/snapshot';
 import { ExcelWorkbook } from '../excel/workbook';
 import { PendingClientSchema } from '../excel/schemas';
 import type { OrgCtx } from '../matching/client';
-import { sanitizeRfc } from '../util/rfc';
+import { buildPendingPath } from './paths';
 
 // ---------------------------------------------------------------------------
 // Tipos publicos
@@ -61,21 +61,6 @@ export interface BillingSale {
 
 /** Decision de frecuencia retornada por applyRuleToSale. */
 export type RuleDecision = 'daily' | 'weekly' | 'monthly' | 'no_rule';
-
-// ---------------------------------------------------------------------------
-// Helpers internos
-// ---------------------------------------------------------------------------
-
-/**
- * Construye la ruta absoluta del Pendientes.xlsx del cliente.
- *
- * Formato: <basePath>/Clientes_Periodicos/<RFC_sanitized>/Pendientes.xlsx
- */
-function buildPendingPath(basePath: string, rfc: string): string {
-  const cleanBase = basePath.replace(/\/$/, '');
-  const rfcSafe   = sanitizeRfc(rfc);
-  return `${cleanBase}/Clientes_Periodicos/${rfcSafe}/Pendientes.xlsx`;
-}
 
 // ---------------------------------------------------------------------------
 // applyRuleToSale
