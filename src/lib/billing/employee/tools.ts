@@ -27,6 +27,7 @@ import { ExcelWorkbook } from '../excel/workbook';
 import { DailySalesSchema, PendingClientSchema } from '../excel/schemas';
 import { sendBillingMail, replyToInboundEmail } from '../mail/send';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { buildPendingPath } from '../rules/paths';
 
 // ---------------------------------------------------------------------------
 // Tipos internos
@@ -425,7 +426,8 @@ export function buildEmployeeTools(toolsCtx: ToolsContext): EmployeeTool[] {
     {
       name: 'append_pending_client_sale',
       description:
-        'Agrega una fila al Excel de pendientes del cliente (Pendientes_<RFC>.xlsx). ' +
+        'Agrega una fila al Excel de pendientes del cliente ' +
+        '(Clientes_Periodicos/<RFC>/Pendientes.xlsx). ' +
         'Usar para clientes con facturacion semanal o mensual.',
       input_schema: {
         type: 'object',
@@ -466,8 +468,7 @@ export function buildEmployeeTools(toolsCtx: ToolsContext): EmployeeTool[] {
         referencia?: string;
       }) => {
         const fecha = input.fecha ?? new Date().toISOString().slice(0, 10);
-        const fileName = `Pendientes_${input.rfc}.xlsx`;
-        const fullPath = `${dropboxBasePath}/${fileName}`;
+        const fullPath = buildPendingPath(dropboxBasePath, input.rfc);
 
         let buffer: Buffer;
         let isNew = false;
@@ -501,7 +502,7 @@ export function buildEmployeeTools(toolsCtx: ToolsContext): EmployeeTool[] {
         const newBuffer = await wb.toBuffer();
         await dropbox.writeFile(fullPath, newBuffer);
 
-        return { ok: true, snapshotId, fileName, num };
+        return { ok: true, snapshotId, path: fullPath, num };
       },
     },
 
