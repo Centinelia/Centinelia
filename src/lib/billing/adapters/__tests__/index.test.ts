@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { buildAdapter } from '../index';
+import { buildAdapter, decryptDropboxToken, encryptDropboxToken } from '../index';
 import { CONTPAQiAdapter } from '../contpaqi';
 import { MockBillingAdapter } from '../mock';
 
@@ -89,5 +89,36 @@ describe('buildAdapter', () => {
     // and the returned adapter has the correct name.
     const adapter = buildAdapter(CONTPAQI_CONFIG);
     expect(adapter.name).toBe('CONTPAQi Comercial Pro');
+  });
+});
+
+describe('decryptDropboxToken', () => {
+  it('retorna undefined si input es undefined/null/string vacio', () => {
+    expect(decryptDropboxToken(undefined)).toBeUndefined();
+    expect(decryptDropboxToken(null)).toBeUndefined();
+    expect(decryptDropboxToken('')).toBeUndefined();
+  });
+
+  it('retorna el input tal cual si no está en formato encriptado (legacy plaintext)', () => {
+    // decrypt() en crypto.ts tiene fallback graceful: si no es formato válido, retorna el input.
+    // Esto es intencional para tokens legacy que se metieron plaintext antes de este cifrado.
+    expect(decryptDropboxToken('sl.plaintext-legacy-token')).toBe('sl.plaintext-legacy-token');
+  });
+
+  it('round-trip: encryptDropboxToken → decryptDropboxToken recupera el original', () => {
+    // ENCRYPTION_KEY debe estar disponible en el entorno de test; si no, encrypt lanza y skippeamos.
+    const originalKey = process.env.ENCRYPTION_KEY;
+    process.env.ENCRYPTION_KEY = 'a'.repeat(64); // 32 bytes hex
+
+    try {
+      const plaintext  = 'sl.AbCdEfGhIjKlMnOpQrStUvWx1234567890';
+      const encrypted  = encryptDropboxToken(plaintext);
+      expect(encrypted).not.toBe(plaintext); // ciphertext debe diferir
+      const decrypted  = decryptDropboxToken(encrypted);
+      expect(decrypted).toBe(plaintext);
+    } finally {
+      if (originalKey === undefined) delete process.env.ENCRYPTION_KEY;
+      else process.env.ENCRYPTION_KEY = originalKey;
+    }
   });
 });

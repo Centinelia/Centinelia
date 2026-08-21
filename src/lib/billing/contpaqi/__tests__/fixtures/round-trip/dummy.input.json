@@ -1,0 +1,24 @@
+{
+  "invoice": {
+    "clientRFC": "XAXX010101000",
+    "date": "2026-08-17",
+    "lines": [
+      {
+        "sku": "TOR-MAI-KG",
+        "qty": 5,
+        "unitPrice": 18.00,
+        "ivaTasa": 0
+      }
+    ],
+    "paymentMethod": "transferencia",
+    "usoCFDI": "G03",
+    "serie": "A"
+  },
+  "config": {
+    "serie": "A",
+    "rfcEmisor": "EJEM010101AAA",
+    "regimenFiscal": "601",
+    "lugarExpedicion": "64000",
+    "usoCFDIDefault": "G03"
+  }
+}

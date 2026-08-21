@@ -27,6 +27,7 @@ import { verifyCronAuth } from '@/lib/auth/cron-auth';
 import { DropboxClient } from '@/lib/billing/storage/dropbox';
 import { SnapshotStorage } from '@/lib/billing/storage/snapshot';
 import { sendBillingMail } from '@/lib/billing/mail/send';
+import { decryptDropboxToken } from '@/lib/billing/adapters';
 
 export const dynamic    = 'force-dynamic';
 export const maxDuration = 300;
@@ -88,7 +89,7 @@ export async function applyRetentionForIntegration(
   nowMonth: number,
 ): Promise<RetentionResult> {
   const cfg    = integ.config ?? {};
-  const token  = (cfg['dropbox_token']  as string | undefined) ?? process.env.BILLING_DROPBOX_TOKEN ?? '';
+  const token  = decryptDropboxToken(cfg['dropbox_token'] as string | undefined) ?? process.env.BILLING_DROPBOX_TOKEN ?? '';
   const base   = normBase((cfg['dropbox_base_path'] as string | undefined) ?? process.env.BILLING_DROPBOX_BASE_PATH ?? '/Facturacion');
 
   const diariosActiveMonths      = (cfg['diarios_active_months']       as number | undefined) ?? DEFAULT_DIARIOS_ACTIVE_MONTHS;
