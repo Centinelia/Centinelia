@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { CheckCircle, AlertTriangle, MessageCircleQuestion, Archive, Loader2, Inbox, MoreHorizontal, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { EmptyState as PortalEmptyState } from '@/components/portal-ui';
+import { resolveAttachmentHref } from '@/lib/portal/attachment-url';
 
 interface InvoiceItem {
   id:                  string;
@@ -273,7 +274,7 @@ export default function ReceivedInvoicesSection({ token }: { token: string }) {
                             {item.attachments.slice(0, 2).map((att, i) => (
                               <a
                                 key={i}
-                                href={att.url}
+                                href={resolveAttachmentHref(att.url, token, item.agent_id, att.name, att.type)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center gap-1 hover:opacity-70"
