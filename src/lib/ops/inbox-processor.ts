@@ -98,6 +98,43 @@ function strOrNull(v: unknown, max = 5000): string | null {
 // Valida el JSON que devuelve el modelo antes de escribir a DB o disparar
 // acciones (envío de correo, escalación). Evita: category basura entrando a la
 // tabla, needsInfo=string truthy triggereando escalation por error.
+/**
+ * Heurística barata: detecta si el remitente es probablemente una notificación
+ * automática de una herramienta (Vercel, GitHub, Stripe, alerts de infra, etc.).
+ *
+ * Sirve como default seguro para cuando el classifier LLM crashea y cae al
+ * default agresivo (`action_required=true`). Sin esto, un fallo intermitente
+ * del LLM llenaba Pendientes de notifs de tools con banner "requiere tu acción"
+ * — pasó con 9 correos de Pneuma Studio (screenshot 2026-08-22).
+ *
+ * El LLM sigue corriendo y puede override este default si detecta que el
+ * correo sí requiere acción (ver validateProcessedEmail — respeta lo que el
+ * LLM devuelva). Solo se pega si el LLM falla.
+ */
+function isProbablyToolNotification(emailFrom: string): boolean {
+  const raw = (emailFrom || '').toLowerCase();
+  const match = raw.match(/<([^>]+@[^>]+)>|([^\s<>"]+@[^\s<>"]+)/);
+  const email = (match?.[1] ?? match?.[2] ?? '').trim();
+  if (!email) return false;
+  const [local, domain] = email.split('@');
+  if (!local || !domain) return false;
+
+  // Local parts que gritan "automatizado" independiente del dominio.
+  const automatedLocals = /^(notifications?|noreply|no-reply|donotreply|do-not-reply|alerts?|notify|automated|robot|bot|mailer|mailer-daemon|postmaster|deploy|deployments?|billing|receipts?|monitoring|status)$/i;
+  if (automatedLocals.test(local)) return true;
+
+  // Dominios que son casi exclusivamente tool notifications (no correspondencia humana).
+  const toolDomains = new Set([
+    'vercel.com', 'sentry.io', 'datadog.com', 'newrelic.com',
+    'cloudflare.com', 'render.com', 'netlify.com', 'railway.app',
+    'supabase.io', 'supabase.com', 'stripe.com', 'twilio.com',
+    'sendgrid.net', 'mailgun.org', 'postmarkapp.com',
+  ]);
+  if (toolDomains.has(domain)) return true;
+
+  return false;
+}
+
 function validateProcessedEmail(raw: unknown): ProcessedEmail {
   const r = (raw ?? {}) as Record<string, unknown>;
   const rawCat = isStr(r.category) ? r.category.toLowerCase().trim() : '';
@@ -1232,9 +1269,16 @@ CATEGORÍAS:
 - spam → publicidad no deseada. action_required=false
 - otro → si el correo pide respuesta acción, action_required=true; si es solo informativo, action_required=false`;
 
+  // Default seguro: si el remitente parece tool (notifications@, noreply@,
+  // dominios de infra), inicializamos como notificacion + action_required=false.
+  // El LLM puede override si detecta que sí requiere acción; pero si el LLM
+  // crashea, no ensuciamos Pendientes con banners falsos.
+  const seemsToolSender = isProbablyToolNotification(emailFrom);
   let result: ProcessedEmail = {
-    category:           'otro',
-    summary:            'Email recibido.',
+    category:           seemsToolSender ? 'notificacion' : 'otro',
+    summary:            seemsToolSender
+                          ? `Notificación automática: ${emailSubject}`
+                          : 'Email recibido.',
     draft:              null,
     invoiceData:        null,
     invoiceValid:       null,
@@ -1242,7 +1286,7 @@ CATEGORÍAS:
     needsInfo:          false,
     infoNeeded:         null,
     requestToSender:    null,
-    actionRequired:     true,
+    actionRequired:     !seemsToolSender,
   };
 
   // L3 — verifier: tools que completaron OK durante el tool loop; se lee en la etapa auto_replied.

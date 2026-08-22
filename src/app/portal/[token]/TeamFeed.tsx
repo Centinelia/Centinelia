@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Building2, ArrowRight, RefreshCw, Paperclip } from 'lucide-react';
+import { resolveAttachmentHref } from '@/lib/portal/attachment-url';
 
 const POLL_MS = 15_000;
 
@@ -256,7 +257,7 @@ export default function TeamFeed({ token }: { token: string }) {
                         {attachments.map((att, i) => (
                           <a
                             key={i}
-                            href={att.url}
+                            href={resolveAttachmentHref(att.url, token, msg.from_agent_id ?? '', att.name, att.type)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs no-underline transition-opacity hover:opacity-80"

@@ -41,6 +41,7 @@ export { default as KpiCard }           from './patterns/KpiCard';
 export { default as RankRow }           from './patterns/RankRow';
 export { default as ActivityEventCard } from './patterns/ActivityEventCard';
 export { default as DataTable }         from './patterns/DataTable';
+export { default as FormattedText }     from './patterns/FormattedText';
 
 export type { CardProps }                              from './patterns/Card';
 export type { SectionHeaderProps, HeadingLevel }       from './patterns/SectionHeader';
@@ -53,6 +54,7 @@ export type { KpiCardProps, KpiTrend }                 from './patterns/KpiCard'
 export type { RankRowProps, RankRowMetric, RankRowIndicator } from './patterns/RankRow';
 export type { ActivityEventCardProps, EventType }      from './patterns/ActivityEventCard';
 export type { DataTableProps, DataTableColumn, SortDirection } from './patterns/DataTable';
+export type { FormattedTextProps }                     from './patterns/FormattedText';
 
 // ─── Primitives (Fase 2B-3) ───────────────────────────────────────────
 export { default as Label }    from './primitives/Label';

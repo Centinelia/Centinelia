@@ -11,6 +11,7 @@ import type { CategorySlug } from './inbox/categories';
 import InboxRow from './inbox/InboxRow';
 import InboxZone from './inbox/InboxZone';
 import CategoryChips from './inbox/CategoryChips';
+import { resolveAttachmentHref } from '@/lib/portal/attachment-url';
 
 interface InboxItem {
   id:                  string;
@@ -88,7 +89,7 @@ const URGENCY_COLORS: Record<string, string> = {
   alta:  '#ef4444',
 };
 
-type Tab = 'pendientes' | 'auto' | 'notificaciones' | 'spam' | 'rechazados' | 'reportados' | 'todo';
+type Tab = 'pendientes' | 'escalados' | 'auto' | 'notificaciones' | 'spam' | 'rechazados' | 'reportados' | 'todo';
 
 const FLAG_CATEGORIES: { key: string; label: string; hint: string }[] = [
   { key: 'alucinacion',        label: 'Alucinación',                     hint: 'Datos inventados (horarios, precios, políticas)' },
@@ -112,11 +113,14 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
   const [trustStage, setTrustStage]     = useState<number>(3);
   const [loading, setLoading]           = useState(true);
   const [expandedId, setExpanded]       = useState<string | null>(null);
-  const [acting, setActing]             = useState<string | null>(null);
+  const [acting, setActing]             = useState<{ id: string; kind: 'approved' | 'rejected' | 'unspam' } | null>(null);
   const searchParams = useSearchParams();
   const initialTab: Tab = (() => {
     const t = searchParams.get('tab');
-    if (t === 'auto' || t === 'spam' || t === 'reportados' || t === 'todo' || t === 'pendientes') return t;
+    if (
+      t === 'auto' || t === 'spam' || t === 'reportados' || t === 'todo' ||
+      t === 'pendientes' || t === 'escalados' || t === 'notificaciones' || t === 'rechazados'
+    ) return t;
     return 'pendientes';
   })();
   const [activeTab, setActiveTab]       = useState<Tab>(initialTab);
@@ -164,8 +168,8 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
     router.replace(qs ? `?${qs}` : '?', { scroll: false });
   }, [router, searchParams]);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     try {
       const res = await fetch(`/api/portal/${token}/ops-inbox`);
       if (res.ok) {
@@ -175,7 +179,7 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
         setReauthNeeded(data.integrationsNeedingReauth ?? []);
         if (typeof data.trustStage === 'number') setTrustStage(data.trustStage);
       }
-    } finally { setLoading(false); }
+    } finally { if (!opts?.silent) setLoading(false); }
   }, [token]);
 
   const markRead = useCallback((id: string) => {
@@ -303,7 +307,7 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
         if (!ok) return;
       }
     }
-    setActing(id);
+    setActing({ id, kind: status });
     try {
       const editedDraft = draftEdits[id];
       const payload: Record<string, unknown> = { id, status };
@@ -322,11 +326,12 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
           delete next[id];
           return next;
         });
-        // Re-fetch en vez de mutar in-place. Antes: setItems(prev => prev.map)
-        // mostraba solo el cambio local, pero cualquier drift entre UI y DB
-        // se veía como bug ("desapareció el otro también"). Ahora el estado
-        // refleja la verdad del servidor tras cada acción.
-        await load();
+        // Update optimista: mutar solo el status del item afectado. El item
+        // desaparece del tab actual (Pendientes/Escalados) sin ocultar el
+        // resto de la lista con el spinner. Luego refetch silencioso valida
+        // contra el server (si hay drift, el estado se corrige sin flash).
+        setItems(prev => prev.map(x => x.id === id ? { ...x, status } : x));
+        void load({ silent: true });
       } else {
         // Sin toast el usuario ve "Procesando..." y luego nada — parece que
         // el botón no hizo nada. Mejor comunicar el error.
@@ -339,7 +344,7 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
   };
 
   const unspam = async (id: string) => {
-    setActing(id);
+    setActing({ id, kind: 'unspam' });
     try {
       const res = await fetch(`/api/portal/${token}/ops-inbox`, {
         method:  'PATCH',
@@ -367,7 +372,8 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
 
   // Tab-filtered ops_inbox items
   const tabItems = useMemo<InboxItem[]>(() => {
-    if (activeTab === 'pendientes')  return nonInvoiceItems.filter(i => !isFyi(i) && ['pending', 'escalated', 'info_requested'].includes(i.status));
+    if (activeTab === 'pendientes')  return nonInvoiceItems.filter(i => !isFyi(i) && ['pending', 'info_requested'].includes(i.status));
+    if (activeTab === 'escalados')   return nonInvoiceItems.filter(i => !isFyi(i) && i.status === 'escalated');
     if (activeTab === 'auto')        return nonInvoiceItems.filter(i => !isFyi(i) && i.status === 'auto_replied' && i.auto_mode_decision === 'send');
     if (activeTab === 'notificaciones') return nonInvoiceItems.filter(i => isFyi(i) && i.category !== 'spam');
     if (activeTab === 'spam')        return nonInvoiceItems.filter(i => i.status === 'skipped' && i.category === 'spam');
@@ -409,8 +415,9 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
   );
 
   // Badge counts — sobre nonInvoiceItems (facturas viven en /oficina/facturas)
-  const pendingOpsCount    = nonInvoiceItems.filter(i => !isFyi(i) && ['pending', 'escalated', 'info_requested'].includes(i.status)).length;
+  const pendingOpsCount    = nonInvoiceItems.filter(i => !isFyi(i) && ['pending', 'info_requested'].includes(i.status)).length;
   const pendingBadgeCount  = pendingOpsCount + humanRequests.length;
+  const escalatedCount     = nonInvoiceItems.filter(i => !isFyi(i) && i.status === 'escalated').length;
   const autoCount          = nonInvoiceItems.filter(i => !isFyi(i) && i.status === 'auto_replied' && i.auto_mode_decision === 'send').length;
   const notifCount         = nonInvoiceItems.filter(i => isFyi(i) && i.category !== 'spam').length;
   const spamCount          = nonInvoiceItems.filter(i => i.status === 'skipped' && i.category === 'spam').length;
@@ -420,7 +427,9 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
   const TAB_CONFIG: { key: Tab; label: string; count?: number; tooltip?: string }[] = [
     { key: 'pendientes', label: 'Pendientes',    count: pendingBadgeCount > 0 ? pendingBadgeCount : undefined,
       tooltip: 'Correos que esperan tu aprobación o requieren info del cliente.' },
-    { key: 'auto',       label: 'Auto-enviados', count: autoCount > 0 ? autoCount : undefined,
+    { key: 'escalados',  label: 'Escalados',     count: escalatedCount > 0 ? escalatedCount : undefined,
+      tooltip: 'Correos donde el empleado te pidió decisión antes de responder.' },
+    { key: 'auto',       label: 'Respondidos sin ti', count: autoCount > 0 ? autoCount : undefined,
       tooltip: 'Correos que el empleado respondió por su cuenta sin pedir tu aprobación. Aquí puedes reportar mal envío y enviar corrección al cliente si algo salió mal.' },
     { key: 'notificaciones', label: 'Notificaciones', count: notifCount > 0 ? notifCount : undefined,
       tooltip: 'Recibos, alertas y avisos automáticos de plataformas (Vercel, Stripe, GitHub, etc.). Puramente informativos — no requieren respuesta.' },
@@ -434,20 +443,25 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
       tooltip: 'Todos los correos, sin importar estado.' },
   ];
 
-  const applyPartition = activeTab !== 'reportados' && attentionItems.length > 0;
+  // En 'escalados' todos los items son attention por definición — mostrar
+  // una sola lista limpia, sin doble encabezado "Requieren tu acción" + "Al día".
+  const applyPartition = activeTab !== 'reportados' && activeTab !== 'escalados' && attentionItems.length > 0;
 
   const renderItem = (item: InboxItem, showStateBadge: boolean) => {
     const isExpanded  = expandedId === item.id;
     const catColorObj = CATEGORY_COLORS[normalizeCategory(item.category)];
     const catColorHex = catColorObj.fg;
     // "actionable": el humano puede aprobar/rechazar/editar el borrador.
-    // Incluye info_requested — son drafts donde Nash pidió más info al cliente
-    // y el humano debe validar antes de que salga.
-    const isPending       = item.status === 'pending' || item.status === 'info_requested';
-    // info_requested = decisión explícita del empleado de escalar al humano
-    // (no es un "no supe procesar"). Los botones deben aparecer siempre, sin
-    // importar el trustStage ni si auto_mode_decision está lleno.
+    // Incluye info_requested y escalated — son drafts donde el empleado pidió
+    // intervención humana (info al cliente o decisión) y el humano debe
+    // validar antes de que salga.
+    const isPending       = item.status === 'pending' || item.status === 'info_requested' || item.status === 'escalated';
+    // info_requested / escalated = decisión explícita del empleado de escalar
+    // al humano (no es un "no supe procesar"). Los botones deben aparecer
+    // siempre, sin importar el trustStage ni si auto_mode_decision está lleno.
     const isInfoRequested = item.status === 'info_requested';
+    const isEscalated     = item.status === 'escalated';
+    const isExplicitEscalation = isInfoRequested || isEscalated;
 
     return (
       <div
@@ -475,12 +489,15 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
         {isExpanded && (
           <div className="px-4 pb-4" style={{ borderTop: `1px solid ${catColorHex}20` }}>
 
-            {/* Advertencia: el cliente respondió mientras el draft esperaba aprobación */}
-            {item.client_replied_at && isPending && (
+            {/* Advertencia: el remitente respondió mientras el draft esperaba aprobación.
+                Copy neutralizado — el remitente puede ser cliente, proveedor,
+                herramienta, etc. Antes decía "El cliente respondió" y sonaba
+                falso en notificaciones de Vercel/Stripe/GitHub. */}
+            {item.client_replied_at && isPending && item.ai_draft && (
               <div className="mt-3 mb-3 px-3 py-2.5 rounded-lg flex items-start gap-2" style={{ background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.35)' }}>
                 <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" style={{ color: '#f59e0b' }} />
                 <div>
-                  <p className="text-xs font-semibold" style={{ color: '#f59e0b' }}>El cliente respondió a este hilo</p>
+                  <p className="text-xs font-semibold" style={{ color: '#f59e0b' }}>El remitente respondió a este hilo</p>
                   <p className="text-xs mt-0.5" style={{ color: '#6B6480' }}>
                     Nuevo mensaje recibido el {new Date(item.client_replied_at).toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}. Este borrador puede estar desactualizado; revisa la bandeja por un correo más reciente antes de aprobar.
                   </p>
@@ -541,7 +558,9 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
             {item.attachments?.length > 0 && (
               <div className="mb-3 flex flex-wrap gap-1.5">
                 {item.attachments.map((att, i) => (
-                  <a key={i} href={att.url} target="_blank" rel="noreferrer"
+                  <a key={i}
+                    href={resolveAttachmentHref(att.url, token, item.agent_id, att.name, att.type)}
+                    target="_blank" rel="noreferrer"
                     className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
                     style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#6B6480' }}>
                     <FileText size={10} />{att.name}
@@ -550,36 +569,62 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
               </div>
             )}
 
-            {/* Actions — respetan trust_stage:
-                  Observador (1): sin botones (usuario escribe desde cero fuera del sistema).
-                  Supervisado (2): botones siempre en cada pending (usuario eligió aprobar todo).
-                  Autónomo (3): botones SOLO cuando el classifier explícitamente pidió humano
-                    (auto_mode_decision='human'). Si es edge case sin decision, mostramos
-                    banner "el empleado no pudo procesar" en vez de botones falsos.
+            {/* Actions — respetan trust_stage y presencia de borrador:
+                  Sin borrador: no hay "aprobar y enviar" (no hay qué enviar).
+                    Mostramos mensaje + botón "Marcar como atendido" para sacarlo
+                    de Pendientes cuando el humano ya lo respondió por fuera.
+                  Con borrador:
+                    Observador (1): sin botones (usuario escribe desde cero fuera).
+                    Supervisado (2): botones siempre.
+                    Autónomo (3): botones SOLO cuando classifier pidió humano
+                      (auto_mode_decision='human') o el empleado escaló explícito.
                 Ver [[feedback-empleados-inteligentes]] + audit sesión post-F2. */}
-            {isPending && !isInfoRequested && trustStage === 1 && (
+            {isPending && !item.ai_draft && !isFyi(item) && (
+              // info_requested + escalated deberían venir siempre con draft. Si no,
+              // es row legacy o data corrupta — no inventamos sub-narrativa: un solo
+              // mensaje honesto pidiendo al humano responder desde su correo.
+              // Excluimos isFyi: notificaciones de tools (Vercel, Stripe, GitHub)
+              // no requieren "atender", son puramente informativas.
+              <div className="mt-2 flex flex-col gap-2">
+                <div className="px-3 py-2.5 rounded-lg text-xs" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', color: '#92400E' }}>
+                  El empleado no dejó un borrador listo. Revísalo y responde desde tu correo; luego márcalo como atendido.
+                </div>
+                <button onClick={() => act(item.id, 'rejected')} disabled={!!acting}
+                  className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90"
+                  style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.25)', color: '#6C3BFF' }}>
+                  {acting?.id === item.id && acting.kind === 'rejected'
+                    ? 'Guardando…'
+                    : <><Check size={12} />Marcar como atendido</>}
+                </button>
+              </div>
+            )}
+            {isPending && item.ai_draft && !isExplicitEscalation && trustStage === 1 && (
               <div className="mt-2 px-3 py-2.5 rounded-lg text-xs" style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#6B6480' }}>
                 Modo Observador — el empleado solo triage. Tú redactas la respuesta desde tu correo.
               </div>
             )}
-            {isPending && !isInfoRequested && trustStage === 3 && !item.auto_mode_decision && (
+            {isPending && item.ai_draft && !isExplicitEscalation && trustStage === 3 && !item.auto_mode_decision && (
               <div className="mt-2 px-3 py-2.5 rounded-lg text-xs" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', color: '#92400E' }}>
                 El empleado no pudo procesar este correo automáticamente. Revísalo y responde desde tu correo, o baja al modo Supervisado si prefieres siempre aprobar borradores.
               </div>
             )}
-            {isPending && (isInfoRequested || trustStage === 2 || (trustStage === 3 && item.auto_mode_decision === 'human')) && (() => {
+            {isPending && item.ai_draft && (isExplicitEscalation || trustStage === 2 || (trustStage === 3 && item.auto_mode_decision === 'human')) && (() => {
               const wasEdited = !!draftEdits[item.id] && draftEdits[item.id].trim() !== (item.ai_draft ?? '').trim();
               return (
                 <div className="flex gap-2 mt-2">
                   <button onClick={() => act(item.id, 'approved')} disabled={!!acting}
                     className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90"
                     style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e' }}>
-                    {acting === item.id ? 'Procesando…' : <><Check size={12} />{item.item_type === 'invoice' ? 'Aprobar factura' : wasEdited ? 'Enviar con tus cambios' : 'Aprobar y enviar'}</>}
+                    {acting?.id === item.id && acting.kind === 'approved'
+                      ? 'Procesando…'
+                      : <><Check size={12} />{item.item_type === 'invoice' ? 'Aprobar factura' : wasEdited ? 'Enviar con tus cambios' : 'Aprobar y enviar'}</>}
                   </button>
                   <button onClick={() => act(item.id, 'rejected')} disabled={!!acting}
                     className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90"
                     style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444' }}>
-                    <X size={12} />Rechazar
+                    {acting?.id === item.id && acting.kind === 'rejected'
+                      ? 'Procesando…'
+                      : <><X size={12} />Rechazar</>}
                   </button>
                 </div>
               );
@@ -591,7 +636,9 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
                 <button onClick={() => unspam(item.id)} disabled={!!acting}
                   className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90"
                   style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.25)', color: '#6C3BFF' }}>
-                  {acting === item.id ? 'Rescatando…' : <><RotateCcw size={12} />Rescatar (no era spam)</>}
+                  {acting?.id === item.id && acting.kind === 'unspam'
+                    ? 'Rescatando…'
+                    : <><RotateCcw size={12} />Rescatar (no era spam)</>}
                 </button>
               </div>
             )}
@@ -755,7 +802,7 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
         tooltip={`¿Cuántas tareas consume?\n1 tarea por cada correo entrante que el empleado analiza y clasifica.\n\nNo consumen tareas: aprobar, editar antes de enviar, rechazar, rescatar spam, reportar mal envío, enviar corrección al cliente.`}
         right={
           <div className="flex items-center gap-2">
-            <button onClick={load} className="p-1.5 rounded-lg transition-colors" style={{ color: '#9B8FB5' }}>
+            <button onClick={() => void load()} className="p-1.5 rounded-lg transition-colors" style={{ color: '#9B8FB5' }}>
               <RefreshCw size={12} />
             </button>
           </div>
@@ -793,9 +840,11 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
         </div>
       )}
 
-      {/* Tabs — segmented control style */}
+      {/* Tabs — segmented control style. Cada tab mide su contenido; el espacio
+          libre se distribuye entre ellos con justify-between. En viewports
+          estrechos hace scroll horizontal. */}
       <div
-        className="inline-flex items-center gap-1 p-1 rounded-xl overflow-x-auto whitespace-nowrap [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex w-full items-stretch justify-between gap-2 p-1 rounded-xl overflow-x-auto whitespace-nowrap [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         style={{ background: '#F5F2FB', border: '1px solid #E8E3F5' }}
       >
         {TAB_CONFIG.map(tab => {
@@ -809,7 +858,7 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
                 changeCategory(null);
               }}
               title={tab.tooltip}
-              className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] transition-all"
+              className="shrink-0 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] transition-all"
               style={{
                 background: isActive ? '#ffffff' : 'transparent',
                 color:      isActive ? '#1A0A3B' : '#6B6480',
@@ -836,7 +885,7 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
         })}
       </div>
 
-      {/* Hint contextual — explica qué son los auto-enviados y qué puedes hacer */}
+      {/* Hint contextual — explica qué son y qué puedes hacer */}
       {activeTab === 'auto' && (
         <div
           className="flex items-start gap-2.5 px-4 py-3 rounded-xl"
@@ -844,7 +893,7 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
         >
           <AlertTriangle size={14} strokeWidth={2} className="mt-0.5 flex-shrink-0" style={{ color: '#6C3BFF' }} />
           <p className="text-[12px] leading-relaxed" style={{ color: '#4A3D6B' }}>
-            <strong style={{ color: '#1A0A3B' }}>Correos que tu empleado envió por su cuenta.</strong>
+            <strong style={{ color: '#1A0A3B' }}>Correos que tu empleado respondió sin pedirte aprobación.</strong>
             {' '}Si algo salió mal, expande el correo y usa <strong>Reportar mal envío</strong> — el empleado aprende de inmediato para que no vuelva a pasar.
             Después puedes <strong>Enviar corrección al cliente</strong> con una respuesta corregida.
           </p>

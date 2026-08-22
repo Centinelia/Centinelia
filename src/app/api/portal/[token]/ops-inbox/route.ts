@@ -21,12 +21,38 @@ export async function GET(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   const agentIds = await getAccountAgentIds(supabase, acct.portal_email);
-  const { data: items } = await supabase
-    .from('ops_inbox')
-    .select('id, agent_id, email_from, email_subject, category, ai_summary, ai_draft, item_type, invoice_data, invoice_valid, invoice_discrepancy, status, attachments, sent_at, created_at, auto_mode_decision, auto_mode_reason, auto_mode_flagged_at, auto_mode_flag_reason, auto_mode_flag_category, client_replied_at, origin_scope, assigned_by, assignment_confidence, assignment_metadata, action_required')
-    .in('agent_id', agentIds)
-    .order('created_at', { ascending: false })
-    .limit(100);
+  // Read-path fidelity: antes .limit(100) ordenado por created_at DESC empujaba
+  // items accionables (pending/escalated/info_requested) fuera de la ventana
+  // en orgs con alto volumen de notificaciones/auto_replied. Resultado: KPI
+  // "30 pendientes" pero solo 1 visible en el tab. Fix: siempre traer TODOS
+  // los accionables + últimos 200 de otras categorías. Se mergea y ordena.
+  const ITEM_COLS = 'id, agent_id, email_from, email_subject, category, ai_summary, ai_draft, item_type, invoice_data, invoice_valid, invoice_discrepancy, status, attachments, sent_at, created_at, auto_mode_decision, auto_mode_reason, auto_mode_flagged_at, auto_mode_flag_reason, auto_mode_flag_category, client_replied_at, origin_scope, assigned_by, assignment_confidence, assignment_metadata, action_required';
+  const [actionableRes, recentRes] = await Promise.all([
+    supabase
+      .from('ops_inbox')
+      .select(ITEM_COLS)
+      .in('agent_id', agentIds)
+      .in('status', ['pending', 'escalated', 'info_requested'])
+      .order('created_at', { ascending: false })
+      .limit(500),
+    supabase
+      .from('ops_inbox')
+      .select(ITEM_COLS)
+      .in('agent_id', agentIds)
+      .not('status', 'in', '(pending,escalated,info_requested)')
+      .order('created_at', { ascending: false })
+      .limit(200),
+  ]);
+  const seen = new Set<string>();
+  const items: NonNullable<typeof actionableRes.data> = [];
+  for (const row of [...(actionableRes.data ?? []), ...(recentRes.data ?? [])]) {
+    if (seen.has(row.id as string)) continue;
+    seen.add(row.id as string);
+    items.push(row);
+  }
+  items.sort((a, b) =>
+    new Date(b.created_at as string).getTime() - new Date(a.created_at as string).getTime()
+  );
 
   const { data: humanReqs } = await supabase
     .from('human_requests')
@@ -69,7 +95,7 @@ export async function GET(req: NextRequest, { params }: Params) {
   }
 
   return NextResponse.json({
-    items:                    items ?? [],
+    items,
     humanRequests:            humanReqs ?? [],
     integrationsNeedingReauth,
     // Frontend usa trust_stage para decidir si mostrar botones Aprobar/Rechazar.
@@ -119,11 +145,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return NextResponse.json({ ok: true });
   }
 
-  // Los info_requested son drafts en los que Nash/inbox pidió al humano
-  // aprobar el "pedir más info al cliente" — mismo flow que pending para
-  // approve/reject/edit. Antes 409 porque solo se aceptaba pending → borrador
-  // atascado sin botones en el portal.
-  if (item.status !== 'pending' && item.status !== 'info_requested') {
+  // info_requested / escalated son drafts en los que el empleado pidió al
+  // humano decidir. Mismo flow que pending para approve/reject/edit. Antes
+  // 409 → borrador atascado sin botones en el portal.
+  if (item.status !== 'pending' && item.status !== 'info_requested' && item.status !== 'escalated') {
     return NextResponse.json({ error: 'Already processed' }, { status: 409 });
   }
 
@@ -195,12 +220,12 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   // Guard TOCTOU: dos requests simultáneos ambos pasaron la validación de línea 82;
   // el .in('status', ...) asegura que solo el primero muta el estado desde uno
-  // de los estados accionables (pending o info_requested).
+  // de los estados accionables (pending, info_requested o escalated).
   const { data: updated, error } = await supabase
     .from('ops_inbox')
     .update(update)
     .eq('id', item.id)
-    .in('status', ['pending', 'info_requested'])
+    .in('status', ['pending', 'info_requested', 'escalated'])
     .select('id')
     .maybeSingle();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
