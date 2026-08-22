@@ -60,17 +60,25 @@ export default async function BandejaPage({ params }: Props) {
   }
 
   // ── Contadores del hero ───────────────────────────────────────────────────
+  // Read-path fidelity: los KPI aplican los mismos filtros que el tab en
+  // OpsInboxSection — facturas viven en /oficina/facturas y FYIs
+  // (action_required=false o category='notificacion') solo aparecen en el
+  // tab Notificaciones. Sin esto, el KPI decía 35 pero el tab mostraba 1.
   const agentIds = access?.ids ?? [];
   const dayAgo   = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
 
+  const buildBase = () =>
+    supabase.from('ops_inbox').select('id', { count: 'exact', head: true })
+      .in('agent_id', agentIds)
+      .eq('item_type', 'email')
+      .or('action_required.is.null,action_required.eq.true')
+      .or('category.is.null,category.neq.notificacion');
+
   const [pendingRes, escalatedRes, todayRes] = agentIds.length > 0
     ? await Promise.all([
-        supabase.from('ops_inbox').select('id', { count: 'exact', head: true })
-          .in('agent_id', agentIds).in('status', ['pending', 'info_requested']),
-        supabase.from('ops_inbox').select('id', { count: 'exact', head: true })
-          .in('agent_id', agentIds).eq('status', 'escalated'),
-        supabase.from('ops_inbox').select('id', { count: 'exact', head: true })
-          .in('agent_id', agentIds).gte('created_at', dayAgo),
+        buildBase().in('status', ['pending', 'info_requested']),
+        buildBase().eq('status', 'escalated'),
+        buildBase().gte('created_at', dayAgo),
       ])
     : [{ count: 0 }, { count: 0 }, { count: 0 }];
 
@@ -157,7 +165,11 @@ export default async function BandejaPage({ params }: Props) {
         className="grid grid-cols-3 rounded-2xl overflow-hidden"
         style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 2px rgba(26,10,59,0.04)' }}
       >
-        <div className="flex flex-col gap-2 px-5 py-4" style={{ borderRight: '1px solid #F0EDF9' }}>
+        <Link
+          href={`/portal/${token}/oficina/bandeja?tab=pendientes`}
+          className="flex flex-col gap-2 px-5 py-4 transition-colors hover:bg-[#FAFAFB]"
+          style={{ borderRight: '1px solid #F0EDF9', textDecoration: 'none' }}
+        >
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
               style={{ background: 'rgba(108,59,255,0.1)', border: '1px solid rgba(108,59,255,0.22)' }}>
@@ -173,8 +185,12 @@ export default async function BandejaPage({ params }: Props) {
           <p className="text-[11px]" style={{ color: '#9B8FB5' }}>
             {pendCount === 0 ? 'Todo revisado' : 'Esperan tu decisión'}
           </p>
-        </div>
-        <div className="flex flex-col gap-2 px-5 py-4" style={{ borderRight: '1px solid #F0EDF9', opacity: escCount === 0 ? 0.7 : 1 }}>
+        </Link>
+        <Link
+          href={`/portal/${token}/oficina/bandeja?tab=escalados`}
+          className="flex flex-col gap-2 px-5 py-4 transition-colors hover:bg-[#FAFAFB]"
+          style={{ borderRight: '1px solid #F0EDF9', opacity: escCount === 0 ? 0.7 : 1, textDecoration: 'none' }}
+        >
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
               style={{ background: escCount > 0 ? 'rgba(239,68,68,0.10)' : '#FAFAFB', border: `1px solid ${escCount > 0 ? 'rgba(239,68,68,0.25)' : '#E8E3F5'}` }}>
@@ -190,8 +206,12 @@ export default async function BandejaPage({ params }: Props) {
           <p className="text-[11px]" style={{ color: '#9B8FB5' }}>
             {escCount === 0 ? 'Sin escalaciones' : 'Requieren tu revisión'}
           </p>
-        </div>
-        <div className="flex flex-col gap-2 px-5 py-4">
+        </Link>
+        <Link
+          href={`/portal/${token}/oficina/bandeja?tab=todo`}
+          className="flex flex-col gap-2 px-5 py-4 transition-colors hover:bg-[#FAFAFB]"
+          style={{ textDecoration: 'none' }}
+        >
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
               style={{ background: 'rgba(14,165,233,0.10)', border: '1px solid rgba(14,165,233,0.25)' }}>
@@ -207,7 +227,7 @@ export default async function BandejaPage({ params }: Props) {
           <p className="text-[11px]" style={{ color: '#9B8FB5' }}>
             {todayCnt === 0 ? 'Sin actividad' : 'Correos recibidos'}
           </p>
-        </div>
+        </Link>
       </div>
 
       {/* ── Tabs Recibidos / Enviados ─────────────────────────────────────── */}
