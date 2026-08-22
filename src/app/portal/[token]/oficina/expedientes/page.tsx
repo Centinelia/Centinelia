@@ -59,16 +59,18 @@ const STATUS_LABELS: Record<string, string> = {
   requiere_atencion:   'Requiere atención',
 };
 
+// Paleta canónica del design system: info (#0EA5E9), success (#22c55e),
+// warning (#f59e0b), danger (#ef4444), neutral purple (#6C3BFF / sub #9B8FB5).
 const STATUS_COLORS: Record<string, string> = {
-  oc_creada:           '#6b7280',
-  oc_firmada:          '#3b82f6',
-  oc_pagada:           '#0ea5e9',
-  oc_enviada_proveedor:'#06b6d4',
-  mercancia_recibida:  '#84cc16',
-  factura_timbrada:    '#22c55e',
-  docs_archivados:     '#16a34a',
-  cancelado:           '#9ca3af',
-  requiere_atencion:   '#f59e0b',
+  oc_creada:           '#9B8FB5', // neutral (sub text)
+  oc_firmada:          '#6C3BFF', // primary purple (en proceso)
+  oc_pagada:           '#0EA5E9', // info
+  oc_enviada_proveedor:'#0EA5E9', // info
+  mercancia_recibida:  '#22c55e', // success (paso positivo)
+  factura_timbrada:    '#22c55e', // success
+  docs_archivados:     '#22c55e', // success (final)
+  cancelado:           '#9B8FB5', // neutral apagado
+  requiere_atencion:   '#f59e0b', // warning
 };
 
 const DESTINOS = [
@@ -266,9 +268,9 @@ export default function ExpedientesPage() {
       {msg && (
         <div className="rounded-xl px-4 py-3 text-sm flex items-start gap-2"
           style={{
-            background: msg.ok ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)',
+            background: msg.ok ? 'rgba(34,197,94,0.10)' : 'rgba(239,68,68,0.08)',
             border:     msg.ok ? '1px solid rgba(34,197,94,0.25)' : '1px solid rgba(239,68,68,0.25)',
-            color:      msg.ok ? '#15803d' : '#b91c1c',
+            color:      msg.ok ? '#22c55e' : '#ef4444',
           }}>
           {msg.ok ? <CheckCircle size={14} /> : <AlertTriangle size={14} />}
           <span>{msg.text}</span>
@@ -288,29 +290,29 @@ export default function ExpedientesPage() {
           <div className="p-5 flex flex-col gap-5">
             {/* Firma digitalizada */}
             <div>
-              <p className="text-xs font-semibold mb-2" style={{ color: '#1A0A3B' }}>Firma digitalizada</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: '#9B8FB5' }}>Firma digitalizada</p>
               <div className="flex items-center gap-2 flex-wrap">
                 {firmaCargada ? (
                   <>
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold"
-                      style={{ background: 'rgba(34,197,94,0.1)', color: '#15803d', border: '1px solid rgba(34,197,94,0.25)' }}>
-                      <PenLine size={12} /> Cargada
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider"
+                      style={{ background: 'rgba(34,197,94,0.10)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.25)' }}>
+                      <PenLine size={10} /> Cargada
                     </span>
                     <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer"
-                      style={{ background: '#F5F2FB', color: '#6C3BFF', border: '1px solid #E8E3F5' }}>
+                      style={{ background: 'rgba(108,59,255,0.10)', color: '#6C3BFF', border: '1px solid rgba(108,59,255,0.30)' }}>
                       <Upload size={12} /> Reemplazar
                       <input type="file" accept="image/png,image/jpeg" hidden
                         onChange={e => { const f = e.target.files?.[0]; if (f) void uploadFirma(f); }} />
                     </label>
                     <button onClick={deleteFirma} disabled={busy}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50"
-                      style={{ background: 'rgba(239,68,68,0.06)', color: '#dc2626', border: '1px solid rgba(239,68,68,0.22)' }}>
+                      style={{ background: 'rgba(239,68,68,0.08)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.25)' }}>
                       <Trash2 size={12} /> Eliminar
                     </button>
                   </>
                 ) : (
-                  <label className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer"
-                    style={{ background: '#6C3BFF', color: '#fff' }}>
+                  <label className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold cursor-pointer hover:opacity-90 transition-opacity"
+                    style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}>
                     <Upload size={13} /> Subir imagen firma (PNG o JPG, max 2 MB)
                     <input type="file" accept="image/png,image/jpeg" hidden
                       onChange={e => { const f = e.target.files?.[0]; if (f) void uploadFirma(f); }} />
@@ -324,7 +326,7 @@ export default function ExpedientesPage() {
 
             {/* Monto máximo autofirma — formato de moneda MXN */}
             <div>
-              <label className="block text-xs font-semibold mb-1.5" style={{ color: '#1A0A3B' }}>
+              <label className="block text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: '#9B8FB5' }}>
                 Monto máximo para autofirma
               </label>
               <input
@@ -351,7 +353,7 @@ export default function ExpedientesPage() {
 
             {/* Ventana anti-duplicados */}
             <div>
-              <label className="block text-xs font-semibold mb-1.5" style={{ color: '#1A0A3B' }}>
+              <label className="block text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: '#9B8FB5' }}>
                 Ventana de detección de OC duplicadas (horas)
               </label>
               <input
@@ -369,7 +371,7 @@ export default function ExpedientesPage() {
 
             {/* Estructura de archivado — selector visual con ejemplo real */}
             <div>
-              <label className="block text-xs font-semibold mb-1.5" style={{ color: '#1A0A3B' }}>
+              <label className="block text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: '#9B8FB5' }}>
                 Cómo organizar los archivos
               </label>
               <div className="flex flex-col gap-2">
@@ -415,7 +417,7 @@ export default function ExpedientesPage() {
 
             {/* Destino archivado */}
             <div>
-              <label className="block text-xs font-semibold mb-1.5" style={{ color: '#1A0A3B' }}>
+              <label className="block text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: '#9B8FB5' }}>
                 Destino de archivado
               </label>
               <select
@@ -432,7 +434,7 @@ export default function ExpedientesPage() {
             {/* Root path */}
             {config.archivado_destino && (
               <div>
-                <label className="block text-xs font-semibold mb-1.5" style={{ color: '#1A0A3B' }}>
+                <label className="block text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: '#9B8FB5' }}>
                   Ruta raíz {config.archivado_destino === 'smb_local' ? '(SMB)' : ''}
                 </label>
                 <input
@@ -572,7 +574,7 @@ function ExpedienteCard({
   detailLoading: boolean;
   onToggle: () => void;
 }) {
-  const color = STATUS_COLORS[row.status] ?? '#6b7280';
+  const color = STATUS_COLORS[row.status] ?? '#9B8FB5';
   return (
     <div className="rounded-xl overflow-hidden transition-shadow"
       style={{ background: '#fff', border: `1px solid ${expanded ? color + '55' : '#E8E3F5'}`, boxShadow: expanded ? `0 4px 20px ${color}18` : undefined }}>
@@ -613,7 +615,7 @@ function ExpedienteCard({
 
       {row.requiere_atencion_razon && !expanded && (
         <div className="px-4 py-2 flex items-start gap-2 text-[11px]"
-          style={{ background: 'rgba(245,158,11,0.06)', borderTop: '1px solid rgba(245,158,11,0.2)', color: '#92400E' }}>
+          style={{ background: 'rgba(245,158,11,0.08)', borderTop: '1px solid rgba(245,158,11,0.25)', color: '#f59e0b' }}>
           <AlertTriangle size={11} style={{ marginTop: 1, flexShrink: 0 }} />
           <span>{row.requiere_atencion_razon}</span>
         </div>
@@ -674,7 +676,7 @@ function ExpedienteDetail({ row, detail }: {
 
       {/* Eventos timeline */}
       <div className="md:col-span-3">
-        <h3 className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: '#6B6480' }}>
+        <h3 className="text-[10px] font-bold uppercase tracking-widest mb-3" style={{ color: '#9B8FB5' }}>
           Historial ({detail.eventos.length})
         </h3>
         {detail.eventos.length === 0 ? (
@@ -706,7 +708,7 @@ function ExpedienteDetail({ row, detail }: {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-2">
-      <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: '#6B6480' }}>{title}</h3>
+      <h3 className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9B8FB5' }}>{title}</h3>
       <div className="flex flex-col gap-1.5">{children}</div>
     </div>
   );

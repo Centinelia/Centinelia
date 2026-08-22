@@ -32,15 +32,15 @@ interface Draft {
   sent_at:      string | null;
 }
 
-const TYPE_CFG: Record<string, { label: string; color: string; bg: string }> = {
-  proposal:     { label: 'Propuesta',       color: '#6C3BFF', bg: 'rgba(108,59,255,0.1)'  },
-  letter:       { label: 'Carta',           color: '#0ea5e9', bg: 'rgba(14,165,233,0.1)'  },
-  general:      { label: 'Documento',       color: '#22c55e', bg: 'rgba(34,197,94,0.1)'   },
-  factura:      { label: 'Factura',         color: '#f59e0b', bg: 'rgba(245,158,11,0.1)'  },
-  orden_compra: { label: 'Orden de compra', color: '#3b82f6', bg: 'rgba(59,130,246,0.1)'  },
-  excel:        { label: 'Excel',           color: '#16a34a', bg: 'rgba(22,163,74,0.1)'   },
-  word:         { label: 'Word',            color: '#2563eb', bg: 'rgba(37,99,235,0.1)'   },
-  powerpoint:   { label: 'PowerPoint',      color: '#dc2626', bg: 'rgba(220,38,38,0.1)'   },
+const TYPE_CFG: Record<string, { label: string; color: string; bg: string; border: string }> = {
+  proposal:     { label: 'Propuesta',       color: '#6C3BFF', bg: 'rgba(108,59,255,0.10)', border: 'rgba(108,59,255,0.25)' },
+  letter:       { label: 'Carta',           color: '#0EA5E9', bg: 'rgba(14,165,233,0.10)', border: 'rgba(14,165,233,0.25)' },
+  general:      { label: 'Documento',       color: '#22c55e', bg: 'rgba(34,197,94,0.10)',  border: 'rgba(34,197,94,0.25)'  },
+  factura:      { label: 'Factura',         color: '#f59e0b', bg: 'rgba(245,158,11,0.10)', border: 'rgba(245,158,11,0.25)' },
+  orden_compra: { label: 'Orden de compra', color: '#0EA5E9', bg: 'rgba(14,165,233,0.10)', border: 'rgba(14,165,233,0.25)' },
+  excel:        { label: 'Excel',           color: '#22c55e', bg: 'rgba(34,197,94,0.10)',  border: 'rgba(34,197,94,0.25)'  },
+  word:         { label: 'Word',            color: '#0EA5E9', bg: 'rgba(14,165,233,0.10)', border: 'rgba(14,165,233,0.25)' },
+  powerpoint:   { label: 'PowerPoint',      color: '#ef4444', bg: 'rgba(239,68,68,0.08)',  border: 'rgba(239,68,68,0.25)'  },
 };
 
 type Pill = 'todos' | 'facturas' | 'ocs' | 'contratos' | 'otros';
@@ -249,9 +249,9 @@ export default function DocumentosPage() {
       {/* Download error */}
       {downloadError && (
         <div className="flex items-center gap-3 rounded-xl px-4 py-3"
-          style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.25)' }}>
+          style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}>
           <AlertTriangle size={14} style={{ color: '#ef4444', flexShrink: 0 }} />
-          <p className="text-[12px]" style={{ color: '#b91c1c' }}>{downloadError}</p>
+          <p className="text-[12px] font-medium" style={{ color: '#ef4444' }}>{downloadError}</p>
         </div>
       )}
 
@@ -319,6 +319,9 @@ export default function DocumentosPage() {
             {/* Header interno */}
             <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
               <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest mb-1.5" style={{ color: '#9B8FB5' }}>
+                  Archivo
+                </p>
                 <div className="flex items-baseline gap-2">
                   <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>
                     Documentos
@@ -334,8 +337,8 @@ export default function DocumentosPage() {
                 </p>
               </div>
               {porVencer.length > 0 && (
-                <div className="flex items-center gap-1.5 px-2.5 h-8 rounded-lg text-[11px] font-medium"
-                  style={{ background: 'rgba(245,158,11,0.1)', color: '#b45309', border: '1px solid rgba(245,158,11,0.25)' }}>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider"
+                  style={{ background: 'rgba(245,158,11,0.08)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.25)' }}>
                   <AlertTriangle size={11} />
                   {porVencer.length} por vencer
                 </div>
@@ -364,13 +367,17 @@ export default function DocumentosPage() {
                     <div key={doc.id}
                       className="px-5 py-4 flex items-center gap-4"
                       style={{ borderBottom: idx === docsForPill.length - 1 ? 'none' : '1px solid #F0EDF9' }}>
-                      <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: typeCfg.bg }}>
+                      <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                        style={{ background: typeCfg.bg, border: `1px solid ${typeCfg.border}` }}>
                         <FileCheck size={16} style={{ color: typeCfg.color }} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-[13px] font-semibold truncate" style={{ color: '#1A0A3B' }}>{doc.title}</p>
-                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                          <span className="text-[11px] px-1.5 py-0.5 rounded-full font-medium" style={{ background: typeCfg.bg, color: typeCfg.color }}>{typeCfg.label}</span>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider"
+                            style={{ background: typeCfg.bg, color: typeCfg.color, border: `1px solid ${typeCfg.border}` }}>
+                            {typeCfg.label}
+                          </span>
                           {agentNames[doc.agent_id] && <span className="text-[11px]" style={{ color: '#9B8FB5' }}>Creado por {agentNames[doc.agent_id]}</span>}
                           <span className="text-[11px]" style={{ color: '#9B8FB5' }}>{timeAgo(doc.created_at)}</span>
                         </div>
@@ -389,8 +396,8 @@ export default function DocumentosPage() {
                               : <Eye size={12} />}
                           </button>
                           <button onClick={() => handleConservar(doc)} disabled={isCons} title="Conservar 30 días más"
-                            className="flex items-center gap-1.5 px-2.5 h-7 rounded-lg text-[11px] font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
-                            style={{ background: '#FAFAFB', color: '#6C3BFF', border: '1px solid #E8E3F5' }}>
+                            className="flex items-center gap-1.5 px-2.5 h-7 rounded-lg text-[11px] font-semibold transition-opacity hover:opacity-80 disabled:opacity-50"
+                            style={{ background: 'rgba(108,59,255,0.10)', color: '#6C3BFF', border: '1px solid rgba(108,59,255,0.30)' }}>
                             <BookmarkPlus size={11} />
                             {isCons ? 'Conservando...' : 'Conservar'}
                           </button>
@@ -402,7 +409,7 @@ export default function DocumentosPage() {
                           </button>
                           <button onClick={() => handleDelete(doc.id)} disabled={isDel}
                             className="w-7 h-7 flex items-center justify-center rounded-lg transition-opacity hover:opacity-80 disabled:opacity-50"
-                            style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.12)', color: '#ef4444' }}
+                            style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#ef4444' }}
                             title="Eliminar documento">
                             <Trash2 size={12} />
                           </button>
@@ -517,6 +524,9 @@ function EmptyStart({ token, employeeName }: { token: string; employeeName: stri
       }}
     >
       <div className="px-5 pt-5 pb-4">
+        <p className="text-[10px] font-bold uppercase tracking-widest mb-1.5" style={{ color: '#9B8FB5' }}>
+          Primeros pasos
+        </p>
         <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>
           Empieza a generar documentos
         </h2>
@@ -527,7 +537,8 @@ function EmptyStart({ token, employeeName }: { token: string; employeeName: stri
       <div className="grid grid-cols-1 sm:grid-cols-2" style={{ borderTop: '1px solid #F0EDF9' }}>
         <div className="px-5 py-5 flex flex-col items-start gap-3"
           style={{ borderRight: '1px solid #F0EDF9' }}>
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(108,59,255,0.08)' }}>
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+            style={{ background: 'rgba(108,59,255,0.10)', border: '1px solid rgba(108,59,255,0.25)' }}>
             <MessageSquare size={18} style={{ color: '#6C3BFF' }} />
           </div>
           <div>
@@ -546,7 +557,8 @@ function EmptyStart({ token, employeeName }: { token: string; employeeName: stri
           </Link>
         </div>
         <div className="px-5 py-5 flex flex-col items-start gap-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(108,59,255,0.08)' }}>
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+            style={{ background: 'rgba(108,59,255,0.10)', border: '1px solid rgba(108,59,255,0.25)' }}>
             <FileText size={18} style={{ color: '#6C3BFF' }} />
           </div>
           <div>
@@ -557,8 +569,8 @@ function EmptyStart({ token, employeeName }: { token: string; employeeName: stri
           </div>
           <Link
             href={`/portal/${token}/oficina/plantillas`}
-            className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-[12px] font-medium transition-opacity hover:opacity-70"
-            style={{ background: '#FAFAFB', color: '#6B6480', border: '1px solid #E8E3F5', textDecoration: 'none' }}
+            className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-[12px] font-semibold transition-opacity hover:opacity-80"
+            style={{ background: 'rgba(108,59,255,0.10)', color: '#6C3BFF', border: '1px solid rgba(108,59,255,0.30)', textDecoration: 'none' }}
           >
             <FileText size={12} />
             Agregar plantilla

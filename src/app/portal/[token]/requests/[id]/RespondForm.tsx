@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Loader2, Check, Upload, FileText, X, Image as ImageIcon, UserPlus, SkipForward } from 'lucide-react';
+import { Loader2, Check, Upload, FileText, X, Image as ImageIcon, UserPlus, SkipForward, Mail } from 'lucide-react';
 import { toast } from 'sonner';
+import { FormattedText } from '@/components/portal-ui';
 
 function humanSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -202,17 +203,48 @@ export default function RespondForm(props: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="p-5 rounded-2xl" style={SURFACE_STYLE}>
-        <p className="text-sm font-semibold mb-2" style={{ color: '#1A0A3B' }}>{props.title}</p>
-        <p className="text-sm whitespace-pre-wrap" style={{ color: '#1A0A3B', lineHeight: 1.6 }}>{props.description}</p>
+      {/* Descripción — FormattedText auto-detecta listas, bullets, URLs, bold. */}
+      <div className="p-5 rounded-2xl flex flex-col gap-3" style={SURFACE_STYLE}>
+        <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9B8FB5', letterSpacing: '0.08em' }}>
+          Qué necesita el empleado
+        </p>
+        <h2 className="text-[15px] font-bold" style={{ color: '#1A0A3B' }}>{props.title}</h2>
+        <FormattedText
+          text={props.description}
+          className="flex flex-col gap-3 text-[14px] leading-relaxed"
+          color="#1A0A3B"
+        />
       </div>
 
       {props.originalEmail && (
-        <details className="p-4 rounded-2xl" style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
-          <summary className="text-xs cursor-pointer" style={{ color: '#6B6480' }}>Contexto: correo original</summary>
-          <p className="text-xs mt-2 mb-1" style={{ color: '#6B6480' }}>De: {props.originalEmail.from}</p>
-          <p className="text-xs mb-2" style={{ color: '#6B6480' }}>Asunto: {props.originalEmail.subject}</p>
-          <p className="text-xs whitespace-pre-wrap" style={{ color: '#6B6480', lineHeight: 1.5 }}>{props.originalEmail.body.slice(0, 3000)}</p>
+        <details className="rounded-2xl overflow-hidden" style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 2px rgba(26,10,59,0.04)' }}>
+          <summary
+            className="flex items-center gap-2 cursor-pointer px-4 py-3 transition-colors list-none hover:bg-[#FAFAFB]"
+            style={{ color: '#6B6480' }}
+          >
+            <Mail size={13} strokeWidth={2.25} style={{ color: '#6C3BFF' }} />
+            <span className="text-[12px] font-semibold">Correo original</span>
+            <span className="text-[11px]" style={{ color: '#9B8FB5' }}>(clic para ver el contexto)</span>
+          </summary>
+          <div className="px-4 pb-4 flex flex-col gap-2" style={{ borderTop: '1px solid #F0EDF9' }}>
+            <div className="flex flex-col gap-1 pt-3">
+              <p className="text-[11px]" style={{ color: '#9B8FB5' }}>
+                <span className="font-bold uppercase tracking-widest">De</span>
+                <span className="ml-2" style={{ color: '#1A0A3B' }}>{props.originalEmail.from}</span>
+              </p>
+              <p className="text-[11px]" style={{ color: '#9B8FB5' }}>
+                <span className="font-bold uppercase tracking-widest">Asunto</span>
+                <span className="ml-2" style={{ color: '#1A0A3B' }}>{props.originalEmail.subject}</span>
+              </p>
+            </div>
+            <div className="mt-1 pt-3" style={{ borderTop: '1px solid #F0EDF9' }}>
+              <FormattedText
+                text={props.originalEmail.body.slice(0, 3000)}
+                className="flex flex-col gap-2 text-[12px] leading-relaxed"
+                color="#6B6480"
+              />
+            </div>
+          </div>
         </details>
       )}
 

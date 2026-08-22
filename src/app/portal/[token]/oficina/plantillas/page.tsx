@@ -262,7 +262,7 @@ function TemplateValidationBadge({ validation, color }: { validation: TemplateVa
   }
   return (
     <div className="flex items-start gap-2 text-xs px-3 py-2 rounded-lg"
-      style={{ background: 'rgba(245,158,11,0.06)', color: '#d97706', border: '1px solid rgba(245,158,11,0.25)' }}>
+      style={{ background: 'rgba(245,158,11,0.08)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.25)' }}>
       <AlertTriangle size={12} style={{ flexShrink: 0, marginTop: 1 }} />
       <div className="flex-1">
         <p className="font-semibold">Faltan marcadores en tu plantilla:</p>
@@ -404,7 +404,7 @@ function UploadZone({ token, docType, templateName, templatePath, validation, on
             )}
             <button onClick={handleDelete} disabled={deleting}
               className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg transition-opacity hover:opacity-70 disabled:opacity-50"
-              style={{ background: 'rgba(239,68,68,0.08)', color: '#f87171' }}>
+              style={{ background: 'rgba(239,68,68,0.08)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.25)' }}>
               <Trash2 size={11} /> {deleting ? 'Eliminando...' : 'Quitar'}
             </button>
           </div>
@@ -449,7 +449,7 @@ function UploadZone({ token, docType, templateName, templatePath, validation, on
         )}
       </div>
       {uploadError && (
-        <p className="text-xs px-1 mt-1" style={{ color: '#f87171' }}>{uploadError}</p>
+        <p className="text-xs px-1 mt-1" style={{ color: '#ef4444' }}>{uploadError}</p>
       )}
 
       {previewData && (
@@ -541,7 +541,7 @@ function AutoTemplatizePreviewModal({ data, color, docType, onConfirm, onReject 
               <div className="flex flex-wrap gap-1">
                 {notAppliedFields.map((f, i) => (
                   <span key={i} className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md"
-                    style={{ background: 'rgba(245,158,11,0.08)', color: '#d97706', border: '1px solid rgba(245,158,11,0.25)' }}
+                    style={{ background: 'rgba(245,158,11,0.08)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.25)' }}
                     title={`Valor: ${f.value}`}>
                     {f.key}
                   </span>
@@ -593,8 +593,8 @@ function TemplateRow({
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-[13px] font-semibold" style={{ color: '#1A0A3B' }}>{title}</p>
             {configured
-              ? <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(34,197,94,0.1)', color: '#16a34a' }}>Lista</span>
-              : <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: '#F0EDF9', color: '#9B8FB5' }}>Sin configurar</span>
+              ? <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ background: 'rgba(34,197,94,0.10)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.25)' }}>Lista</span>
+              : <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ background: '#F0EDF9', color: '#9B8FB5', border: '1px solid #E8E3F5' }}>Sin configurar</span>
             }
           </div>
           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
@@ -688,7 +688,7 @@ function OrdenConfig({ token, onStatsLoad }: { token: string; onStatsLoad?: (cfg
       />
       {autoFilled && (
         <div className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg"
-          style={{ background: 'rgba(59,130,246,0.08)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.15)' }}>
+          style={{ background: 'rgba(14,165,233,0.10)', color: '#0EA5E9', border: '1px solid rgba(14,165,233,0.25)' }}>
           <Wand2 size={11} /> Campos detectados automáticamente del documento
         </div>
       )}
@@ -753,7 +753,7 @@ function CotizacionConfigSection({ token, onStatsLoad }: { token: string; onStat
       />
       {autoFilled && (
         <div className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg"
-          style={{ background: 'rgba(16,185,129,0.08)', color: '#10b981', border: '1px solid rgba(16,185,129,0.15)' }}>
+          style={{ background: 'rgba(34,197,94,0.10)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.25)' }}>
           <Wand2 size={11} /> Campos detectados automáticamente del documento
         </div>
       )}
@@ -805,7 +805,8 @@ function NotaVentaConfigSection({ token, onStatsLoad }: { token: string; onStats
 
   return (
     <>
-      <div className="flex items-start gap-2 rounded-lg px-3 py-2 text-xs" style={{ background: 'rgba(245,158,11,0.06)', color: '#92400e', border: '1px solid rgba(245,158,11,0.2)' }}>
+      <div className="flex items-start gap-2 rounded-lg px-3 py-2 text-xs" style={{ background: 'rgba(245,158,11,0.08)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.25)' }}>
+        <AlertTriangle size={12} style={{ flexShrink: 0, marginTop: 1 }} />
         <span>La nota de venta <strong>no sustituye una factura fiscal (CFDI)</strong>. Si tu cliente necesita comprobante fiscal, deberá pedir su factura por los canales normales de tu negocio.</span>
       </div>
       <PlaceholderGuide docType="nota_venta" color="#ec4899" />
@@ -821,7 +822,7 @@ function NotaVentaConfigSection({ token, onStatsLoad }: { token: string; onStats
       />
       {autoFilled && (
         <div className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg"
-          style={{ background: 'rgba(236,72,153,0.08)', color: '#ec4899', border: '1px solid rgba(236,72,153,0.15)' }}>
+          style={{ background: 'rgba(236,72,153,0.08)', color: '#ec4899', border: '1px solid rgba(236,72,153,0.25)' }}>
           <Wand2 size={11} /> Campos detectados automáticamente del documento
         </div>
       )}
@@ -845,8 +846,8 @@ function SaveRow({ saving, saved, onClick }: { saving: boolean; saved: boolean; 
   return (
     <div className="flex items-center gap-3">
       <button onClick={onClick} disabled={saving}
-        className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80 disabled:opacity-50"
-        style={{ background: '#6C3BFF', color: '#fff' }}>
+        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
+        style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}>
         <Save size={13} />
         {saving ? 'Guardando...' : 'Guardar cambios'}
       </button>
@@ -932,8 +933,8 @@ function ContratoConfig({ token, onConfiguredLoad }: { token: string; onConfigur
           </div>
           <button
             onClick={() => setClauses(defaults)}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80"
-            style={{ background: '#8b5cf6', color: '#fff' }}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90"
+            style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}
           >
             <Plus size={14} /> Cargar cláusulas estándar
           </button>
@@ -949,17 +950,17 @@ function ContratoConfig({ token, onConfiguredLoad }: { token: string; onConfigur
         </p>
         <button onClick={save} disabled={saving}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all"
-          style={{ background: saved ? 'rgba(34,197,94,0.15)' : '#8b5cf6', color: saved ? '#22c55e' : '#fff', border: saved ? '1px solid rgba(34,197,94,0.3)' : 'none' }}>
+          style={{ background: saved ? 'rgba(34,197,94,0.10)' : '#8b5cf6', color: saved ? '#22c55e' : '#fff', border: saved ? '1px solid rgba(34,197,94,0.25)' : 'none' }}>
           {saved ? <><Check size={12} /> Guardada</> : saving ? 'Guardando...' : 'Guardar plantilla'}
         </button>
       </div>
 
       {/* Variables hint */}
-      <div className="rounded-xl p-3" style={{ background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)' }}>
-        <p className="text-xs font-semibold mb-2" style={{ color: '#8b5cf6' }}>Variables disponibles</p>
+      <div className="rounded-xl p-3" style={{ background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.25)' }}>
+        <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: '#8b5cf6' }}>Variables disponibles</p>
         <div className="flex flex-wrap gap-1.5">
           {VARIABLES_HINT.map(v => (
-            <code key={v} className="text-xs px-2 py-0.5 rounded" style={{ background: 'rgba(139,92,246,0.12)', color: '#c4b5fd', fontFamily: 'monospace' }}>{v}</code>
+            <code key={v} className="text-xs px-2 py-0.5 rounded" style={{ background: 'rgba(139,92,246,0.12)', color: '#8b5cf6', fontFamily: 'monospace' }}>{v}</code>
           ))}
         </div>
         <p className="text-xs mt-2" style={{ color: '#9B8FB5' }}>Tu empleado sustituirá estas variables con los datos del cliente al generar un borrador.</p>
@@ -987,7 +988,7 @@ function ContratoConfig({ token, onConfiguredLoad }: { token: string; onConfigur
                 )}
                 <div className="flex items-center gap-1.5 shrink-0">
                   {clause.required ? (
-                    <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'rgba(239,68,68,0.1)', color: '#f87171' }}>Requerida</span>
+                    <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ background: 'rgba(239,68,68,0.08)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.25)' }}>Requerida</span>
                   ) : (
                     <button onClick={() => updateClause(clause.id, { enabled: !clause.enabled })}
                       title={clause.enabled ? 'Desactivar cláusula' : 'Activar cláusula'}>
@@ -1001,7 +1002,7 @@ function ContratoConfig({ token, onConfiguredLoad }: { token: string; onConfigur
                     <Edit2 size={13} />
                   </button>
                   {!clause.required && (
-                    <button onClick={() => removeClause(clause.id)} className="p-1 rounded" style={{ color: '#f87171' }}>
+                    <button onClick={() => removeClause(clause.id)} className="p-1 rounded" style={{ color: '#ef4444' }}>
                       <X size={13} />
                     </button>
                   )}
