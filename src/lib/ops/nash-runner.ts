@@ -23,6 +23,12 @@ const MAX_ITERATIONS  = 8;
 const MAX_TOKENS      = 4096;
 const NASH_PORTAL     = 'hola@centinelia.mx';
 const NASH_LAST_RUN_KEY = 'nash_last_run_at';
+const NASH_LAST_ANOMALY_CHECK_KEY = 'nash_last_anomaly_check_at';
+// Anomaly detection corre cada N minutos, no cada 10. Ver comentario del user
+// 2026-08-24. Balance entre latencia de detección (30 min es aceptable, un
+// drain lleva horas hasta ser detectable de todos modos) y costo de queries
+// (144 corridas × ~20 queries = 2900/día → 48 corridas × 20 = 960/día).
+const NASH_ANOMALY_CHECK_INTERVAL_MS = 30 * 60_000;
 // Nunca miramos más atrás que esta ventana. Alinea con el default del tool
 // revisar_incidentes_plataforma (days=7). Si Nash lleva más de 7 días sin
 // correr y no hay signals frescos, no rescatamos backlog viejo.
@@ -256,12 +262,31 @@ export async function hasNewSignalsForNash(
   return { hasWork, reason, ...counts };
 }
 
-async function detectPlatformAnomaliesSafe(): Promise<PortalAnomaly[]> {
+async function detectPlatformAnomaliesSafe(supabase: SupabaseAdmin): Promise<PortalAnomaly[]> {
+  // Throttle: solo corre la detección si pasaron NASH_ANOMALY_CHECK_INTERVAL_MS
+  // desde la última corrida. Skipeamos silenciosamente si es muy pronto.
+  const { data: lastCheck } = await supabase
+    .from('platform_settings')
+    .select('value')
+    .eq('key', NASH_LAST_ANOMALY_CHECK_KEY)
+    .maybeSingle();
+  const lastAt = lastCheck?.value ? new Date(lastCheck.value) : null;
+  const now = Date.now();
+  if (lastAt && Number.isFinite(lastAt.getTime()) && (now - lastAt.getTime()) < NASH_ANOMALY_CHECK_INTERVAL_MS) {
+    return [];
+  }
+
   // Wrapper defensivo: si la detección falla (query lenta, table lock, etc)
   // NO tumbamos el cron entero. Nash sigue con su ciclo normal y en la
   // siguiente corrida se reintenta.
   try {
-    return await detectPlatformAnomalies();
+    const result = await detectPlatformAnomalies();
+    // Marcamos check hecho aunque no encontráramos nada — la próxima corrida
+    // no debe re-verificar hasta que pase el intervalo.
+    await supabase
+      .from('platform_settings')
+      .upsert({ key: NASH_LAST_ANOMALY_CHECK_KEY, value: new Date(now).toISOString() }, { onConflict: 'key' });
+    return result;
   } catch (err) {
     console.error('[nash-monitor] detectPlatformAnomalies falló', err);
     return [];
@@ -303,21 +328,27 @@ export async function runNashMonitor(): Promise<NashRunResult> {
   }
 
   // 2) Detección de anomalías de consumo (silent-drain guard 2026-08-24).
-  // Corre en cada ciclo aunque el probe estándar diga "no hay trabajo": es
-  // su propia clase de señal, independiente de bug_reports/errors/inbox.
-  // notifyConsumptionAnomaly() dedupe internamente por (portal_email, semana)
-  // así que no inunda al owner con la misma alerta.
-  const consumptionAnomalies = await detectPlatformAnomaliesSafe();
+  // Corre en cada ciclo pero solo cuenta como "trabajo nuevo" si dispara una
+  // notification_events nueva (dedupe semanal en notifyConsumptionAnomaly).
+  // Si la anomalía ya fue notificada esta semana, Nash NO fuerza el loop
+  // aunque siga siendo detectable — evita quemar $$$ en Sonnet cada 10 min
+  // procesando la misma anomalía persistente. Ver comentario del user
+  // 2026-08-24: "no consumiría muchas ops Nash diarias por esto?"
+  const consumptionAnomalies = await detectPlatformAnomaliesSafe(supabase);
+  const newAnomalies: PortalAnomaly[] = [];
   for (const anomaly of consumptionAnomalies) {
-    try { await notifyConsumptionAnomaly(anomaly); } catch { /* log-only */ }
+    try {
+      const result = await notifyConsumptionAnomaly(anomaly);
+      if (result.inserted) newAnomalies.push(anomaly);
+    } catch { /* log-only */ }
   }
 
   // 3) Anti-waste probe: skip LLM loop si no hay señales nuevas desde la
   // última corrida real de Nash. Kill switch: features.nash_probe_bypass=true
-  // fuerza el loop aunque el probe diga que no hay trabajo. Nota: si hubo
-  // anomalías de consumo, forzamos el loop para que Nash las procese como
-  // incidentes independientemente del probe.
-  if (features.nash_probe_bypass !== true && consumptionAnomalies.length === 0) {
+  // fuerza el loop aunque el probe diga que no hay trabajo. Nota: solo si
+  // hubo anomalías NUEVAS (no notificadas esta semana) forzamos el loop.
+  // Anomalías ya notificadas no vuelven a disparar Nash.
+  if (features.nash_probe_bypass !== true && newAnomalies.length === 0) {
     const lastRunAt = await getNashLastRunAt(supabase);
     const since = lastRunAt
       ? new Date(Math.max(lastRunAt.getTime(), Date.now() - NASH_MAX_LOOKBACK_MS))
@@ -338,8 +369,10 @@ export async function runNashMonitor(): Promise<NashRunResult> {
   // 4) LLM loop
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const system = buildSystemPrompt(nash as { agent_name: string | null });
-  const consumptionContext = consumptionAnomalies.length > 0
-    ? `\n\nANOMALÍAS DE CONSUMO DETECTADAS (${consumptionAnomalies.length} portal(es)):\n${consumptionAnomalies.map(a =>
+  // Solo pasamos las anomalías NUEVAS al LLM (las ya notificadas esta semana
+  // ya se procesaron en el ciclo que disparó la notificación original).
+  const consumptionContext = newAnomalies.length > 0
+    ? `\n\nANOMALÍAS DE CONSUMO NUEVAS DETECTADAS (${newAnomalies.length} portal(es)):\n${newAnomalies.map(a =>
         `- ${a.portal_email}: ${a.ratio_findings.length} ratio anomalies + ${a.spike_findings.length} spikes. Corre audit_ops_consumption con portal_email='${a.portal_email}' para el detalle.`
       ).join('\n')}\n\nProcesa cada uno: llama audit_ops_consumption para el detalle, decide si crear_incidente + escalar_al_owner con urgencia=high (si ratio > 5 o spike > 10x) o solo crear_incidente con priority=med.`
     : '';
