@@ -16,6 +16,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { executeAgentTool, type AgentToolContext } from '@/lib/tools/executor';
 import { logLlmCall } from '@/lib/observability/llm-log';
 import { MEERKAT_MAP } from '@/lib/portal/meerkat-roles';
+import { detectPlatformAnomalies, notifyConsumptionAnomaly, type PortalAnomaly } from '@/lib/ops/consumption-audit';
 
 const MODEL           = 'claude-sonnet-4-6';
 const MAX_ITERATIONS  = 8;
@@ -114,6 +115,18 @@ const NASH_TOOLS: Anthropic.Tool[] = [
       required: ['incidente_id'],
     },
   },
+  {
+    name: 'audit_ops_consumption',
+    description: 'Audita el consumo de ops de un portal. Detecta dos anomalías: (1) ratio events/refs > 1.5 en ai_ops_log (posible re-cobro del mismo item), (2) spike del consumo semanal > 3x del promedio de las 4 semanas previas. Devuelve por fuente: total_ops, events, distinct_refs, ratio, baseline. Uso proactivo cuando el pre-loop detecta anomalías, o reactivo cuando el owner pregunta "cómo va mi consumo".',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        portal_email: { type: 'string', description: 'Portal a auditar. Requerido.' },
+        days:         { type: 'number', description: 'Ventana en días para el ratio audit. Default 7.' },
+      },
+      required: ['portal_email'],
+    },
+  },
 ];
 
 // ── System prompt ─────────────────────────────────────────────────────────────
@@ -137,6 +150,7 @@ Este es un ciclo de monitoreo automático (cron cada 10 min). No hay usuario esp
    d) Si es bug de código reportado por un cliente (source='bug_report' SIN el marcador de reapertura del punto b): crear_incidente + enviar_a_claude_code con prompt completo (contexto, evidencia, reproducción sugerida, hipótesis) + responder_cliente_afectado con canal='email' e incidente_id (mismo ACK del punto c). El cliente reportó, merece confirmación de que llegó y va en proceso.
    e) Si es bug interno sin cliente identificable (error_log recurrente, patrón anómalo): crear_incidente + enviar_a_claude_code. Sin responder_cliente_afectado.
    f) Si es CRÍTICO (cobro mal aplicado, datos en riesgo, mismo incidente 3+ veces): escalar_al_owner con urgencia=critical.
+   g) **ANOMALÍA DE CONSUMO** (llegan pre-flageadas en el user message al inicio de este ciclo): llama audit_ops_consumption con el portal_email señalado para ver el detalle. Si ratio_anomalies contiene fuentes con ratio > 5 O spike_anomalies contiene fuentes con ratio_vs_baseline > 10 → crear_incidente(priority=high, source='nash_self_discovery', source_id='consumption:PORTAL:SEMANA') + escalar_al_owner(urgencia=high) con explicación breve de qué fuente drena y desde cuándo. Si son moderadas → crear_incidente(priority=med) sin escalar. Estas anomalías las inserta detectPlatformAnomalies() y ya se notifican al owner vía notification_events; tu trabajo es asegurar que quede tracking en platform_incidents para follow-up y, si es severo, ping proactivo por WhatsApp.
 3. Recorre pending_verification que devuelve revisar_incidentes_plataforma. Para cada incidente ahí (están en sent_to_claude_code o awaiting_verification), llama verificar_fix con su id. La verificación es automática por dos vías: (a) si el GitHub issue del incidente está cerrado, se marca resolved; (b) si la señal fuente desapareció, también. Si ninguna aplica, queda awaiting_verification.
 
    3a. **OBLIGATORIO — CIERRE DE LOOP CON EL CLIENTE**: Si verificar_fix devuelve new_status='resolved' Y el incidente tiene affected_agent_id (o affected_portal_email), llama SIEMPRE responder_cliente_afectado con canal='email', incidente_id (el mismo que verificaste) y un mensaje afirmativo que confirme que el fix está hecho. NO lo saltes. NO uses tono tentativo tipo "estamos revisando" o "vamos a verificar" — el fix YA está aplicado, comunícalo con certeza. Estructura del mensaje (3 líneas):
@@ -242,6 +256,18 @@ export async function hasNewSignalsForNash(
   return { hasWork, reason, ...counts };
 }
 
+async function detectPlatformAnomaliesSafe(): Promise<PortalAnomaly[]> {
+  // Wrapper defensivo: si la detección falla (query lenta, table lock, etc)
+  // NO tumbamos el cron entero. Nash sigue con su ciclo normal y en la
+  // siguiente corrida se reintenta.
+  try {
+    return await detectPlatformAnomalies();
+  } catch (err) {
+    console.error('[nash-monitor] detectPlatformAnomalies falló', err);
+    return [];
+  }
+}
+
 // ── Runner ────────────────────────────────────────────────────────────────────
 
 export interface NashRunResult {
@@ -276,10 +302,22 @@ export async function runNashMonitor(): Promise<NashRunResult> {
     return { ok: true, skipped_reason: 'nash_cron_enabled=false (opt-in requerido)' };
   }
 
-  // 2) Anti-waste probe: skip LLM loop si no hay señales nuevas desde la
+  // 2) Detección de anomalías de consumo (silent-drain guard 2026-08-24).
+  // Corre en cada ciclo aunque el probe estándar diga "no hay trabajo": es
+  // su propia clase de señal, independiente de bug_reports/errors/inbox.
+  // notifyConsumptionAnomaly() dedupe internamente por (portal_email, semana)
+  // así que no inunda al owner con la misma alerta.
+  const consumptionAnomalies = await detectPlatformAnomaliesSafe();
+  for (const anomaly of consumptionAnomalies) {
+    try { await notifyConsumptionAnomaly(anomaly); } catch { /* log-only */ }
+  }
+
+  // 3) Anti-waste probe: skip LLM loop si no hay señales nuevas desde la
   // última corrida real de Nash. Kill switch: features.nash_probe_bypass=true
-  // fuerza el loop aunque el probe diga que no hay trabajo.
-  if (features.nash_probe_bypass !== true) {
+  // fuerza el loop aunque el probe diga que no hay trabajo. Nota: si hubo
+  // anomalías de consumo, forzamos el loop para que Nash las procese como
+  // incidentes independientemente del probe.
+  if (features.nash_probe_bypass !== true && consumptionAnomalies.length === 0) {
     const lastRunAt = await getNashLastRunAt(supabase);
     const since = lastRunAt
       ? new Date(Math.max(lastRunAt.getTime(), Date.now() - NASH_MAX_LOOKBACK_MS))
@@ -297,11 +335,16 @@ export async function runNashMonitor(): Promise<NashRunResult> {
     }
   }
 
-  // 3) LLM loop
+  // 4) LLM loop
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const system = buildSystemPrompt(nash as { agent_name: string | null });
+  const consumptionContext = consumptionAnomalies.length > 0
+    ? `\n\nANOMALÍAS DE CONSUMO DETECTADAS (${consumptionAnomalies.length} portal(es)):\n${consumptionAnomalies.map(a =>
+        `- ${a.portal_email}: ${a.ratio_findings.length} ratio anomalies + ${a.spike_findings.length} spikes. Corre audit_ops_consumption con portal_email='${a.portal_email}' para el detalle.`
+      ).join('\n')}\n\nProcesa cada uno: llama audit_ops_consumption para el detalle, decide si crear_incidente + escalar_al_owner con urgencia=high (si ratio > 5 o spike > 10x) o solo crear_incidente con priority=med.`
+    : '';
   const messages: Anthropic.MessageParam[] = [
-    { role: 'user', content: 'Corre tu ciclo de monitoreo ahora.' },
+    { role: 'user', content: `Corre tu ciclo de monitoreo ahora.${consumptionContext}` },
   ];
 
   const ctx: AgentToolContext = {

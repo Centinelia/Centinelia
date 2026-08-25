@@ -964,6 +964,7 @@ async function executeAgentToolInner(
     'escalar_al_owner',
     'verificar_fix',
     'consultar_billing_org',
+    'audit_ops_consumption',
   ].includes(toolName)) {
     const features = (agent.features as Record<string, unknown> | null) ?? {};
     if (features.meerkat_role_id !== 'nash') {
@@ -1514,6 +1515,37 @@ async function executeAgentToolInner(
         .eq('id', incidentId);
       if (updErr) return { ok: false, error: updErr.message };
       return { ok: true, verified: false, new_status: 'awaiting_verification', notes };
+    }
+
+    if (toolName === 'audit_ops_consumption') {
+      // Detección de silent-drain: analiza ratio events/refs (posible re-cobro)
+      // y baseline moving-average (spike vs 4 semanas previas) para un portal.
+      // Uso: cuando el owner pregunta sobre el pool, o proactivamente cuando
+      // detectPlatformAnomalies() lo señala como sospechoso.
+      const { auditConsumption, compareWithBaseline } = await import('@/lib/ops/consumption-audit');
+      const targetEmail = String(toolInput.portal_email ?? '').trim().toLowerCase();
+      if (!targetEmail) return { ok: false, error: 'portal_email es obligatorio' };
+      const days = Number(toolInput.days ?? 7);
+      const [ratioAudit, baselineAudit] = await Promise.all([
+        auditConsumption(targetEmail, days),
+        compareWithBaseline(targetEmail),
+      ]);
+      const ratioAnomalies = ratioAudit.filter(r => r.is_anomalous_ratio);
+      const spikeAnomalies = baselineAudit.filter(b => b.is_anomalous_spike);
+      return {
+        ok:                     true,
+        portal_email:           targetEmail,
+        window_days:            days,
+        sources_analyzed:       ratioAudit.length,
+        ratio_findings:         ratioAudit,
+        ratio_anomalies:        ratioAnomalies,
+        baseline_comparisons:   baselineAudit,
+        spike_anomalies:        spikeAnomalies,
+        anomaly_count:          ratioAnomalies.length + spikeAnomalies.length,
+        interpretation:         (ratioAnomalies.length === 0 && spikeAnomalies.length === 0)
+          ? 'Sin anomalías detectadas. Consumo dentro de rangos esperados.'
+          : `⚠️ ${ratioAnomalies.length} ratio anomalies (posible re-cobro) + ${spikeAnomalies.length} spikes vs baseline. Revisar sources listadas en ratio_anomalies y spike_anomalies.`,
+      };
     }
   }
 
