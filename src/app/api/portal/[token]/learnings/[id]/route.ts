@@ -15,8 +15,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Sin permiso' }, { status: 403 });
 
   const { token, id } = await params;
-  const { action, content: editedContent, category: categoryOverride } = (await req.json()) as { action: 'approve' | 'reject'; content?: string; category?: 'role_kb' | 'guardrails' };
-  if (action !== 'approve' && action !== 'reject') {
+  const { action, content: editedContent, category: categoryOverride } = (await req.json()) as { action: 'approve' | 'reject' | 'restore'; content?: string; category?: 'role_kb' | 'guardrails' };
+  if (action !== 'approve' && action !== 'reject' && action !== 'restore') {
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
   }
 
@@ -34,7 +34,18 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     .eq('id', id)
     .eq('portal_email', tokenAgent.portal_email)
     .single();
-  if (!learning)                    return NextResponse.json({ error: 'Not found' },        { status: 404 });
+  if (!learning) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+  // restore: rejected → pending (permite reconsiderar un descartado). Único
+  // caso donde el status previo NO tiene que ser 'pending'.
+  if (action === 'restore') {
+    if (learning.status !== 'rejected') {
+      return NextResponse.json({ error: 'Solo se pueden restaurar aprendizajes descartados' }, { status: 409 });
+    }
+    await supabase.from('agent_learnings').update({ status: 'pending' }).eq('id', id);
+    return NextResponse.json({ ok: true });
+  }
+
   if (learning.status !== 'pending') return NextResponse.json({ error: 'Already processed' }, { status: 409 });
 
   if (action === 'reject') {

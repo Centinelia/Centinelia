@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Brain, Check, X, Clock, ChevronDown, BookOpen, ShieldCheck, Trash2 } from 'lucide-react';
+import { Brain, Check, X, Clock, ChevronDown, ChevronUp, BookOpen, ShieldCheck, Trash2, Search, RotateCcw } from 'lucide-react';
 import { EmptyState } from '@/components/portal-ui';
 import { MEERKAT_MAP } from '@/lib/portal/meerkat-roles';
 
@@ -174,8 +174,28 @@ export default function LearningsSection({ token, canApprove = true }: { token: 
   }
 
   const [showAllApproved, setShowAllApproved] = useState(false);
+  const [showAllRejected, setShowAllRejected] = useState(false);
+  const [rejectedOpen,    setRejectedOpen]    = useState(false);
+  const [approvedSearch,  setApprovedSearch]  = useState('');
   const [removing,        setRemoving]        = useState<Record<string, boolean>>({});
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
+  const [restoring,       setRestoring]       = useState<Record<string, boolean>>({});
+
+  async function restoreRejected(id: string) {
+    setRestoring(p => ({ ...p, [id]: true }));
+    try {
+      const res = await fetch(`/api/portal/${token}/learnings/${id}`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ action: 'restore' }),
+      });
+      if (res.ok) {
+        setLearnings(prev => prev.map(l => l.id === id ? { ...l, status: 'pending' } : l));
+      }
+    } finally {
+      setRestoring(p => { const n = { ...p }; delete n[id]; return n; });
+    }
+  }
 
   async function removeApproved(id: string) {
     setRemoving(p => ({ ...p, [id]: true }));
@@ -195,7 +215,18 @@ export default function LearningsSection({ token, canApprove = true }: { token: 
   const rejected = learnings.filter(l => l.status === 'rejected');
   const groups   = groupByAgent(pending);
 
-  const visibleApproved = showAllApproved ? approved : approved.slice(0, 12);
+  const approvedQuery = approvedSearch.trim().toLowerCase();
+  const filteredApproved = approvedQuery
+    ? approved.filter(l => {
+        if (l.content?.toLowerCase().includes(approvedQuery)) return true;
+        const label = agentLabel(l).toLowerCase();
+        if (label.includes(approvedQuery)) return true;
+        if (l.source && (SOURCE_LABELS[l.source] ?? l.source).toLowerCase().includes(approvedQuery)) return true;
+        return false;
+      })
+    : approved;
+  const visibleApproved = showAllApproved ? filteredApproved : filteredApproved.slice(0, 12);
+  const visibleRejected = showAllRejected ? rejected : rejected.slice(0, 12);
 
   return (
     <div className="flex flex-col gap-4">
@@ -471,7 +502,7 @@ export default function LearningsSection({ token, canApprove = true }: { token: 
                   Ya incorporado
                 </h2>
                 <span className="text-[13px] font-medium tabular-nums" style={{ color: '#9B8FB5' }}>
-                  {approved.length}
+                  {approvedQuery ? `${filteredApproved.length} de ${approved.length}` : approved.length}
                 </span>
               </div>
               <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>
@@ -480,14 +511,40 @@ export default function LearningsSection({ token, canApprove = true }: { token: 
             </div>
           </div>
 
-          <div className="flex flex-col" style={{ borderTop: '1px solid #F0EDF9' }}>
+          {approved.length > 5 && (
+            <div className="px-5 pb-3">
+              <div className="relative">
+                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                  style={{ color: '#9B8FB5' }} />
+                <input
+                  type="text"
+                  value={approvedSearch}
+                  onChange={e => { setApprovedSearch(e.target.value); setShowAllApproved(false); }}
+                  placeholder="Buscar por palabra clave, empleado o fuente…"
+                  className="w-full pl-9 pr-3 py-2 rounded-lg text-[12px] outline-none"
+                  style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
+                />
+              </div>
+            </div>
+          )}
+
+          {approvedQuery && filteredApproved.length === 0 && (
+            <div className="px-5 pb-4">
+              <p className="text-[12px] text-center py-4 rounded-lg"
+                style={{ color: '#9B8FB5', background: '#FAFAFB', border: '1px dashed #E8E3F5' }}>
+                Ningún aprendizaje coincide con &quot;{approvedSearch}&quot;.
+              </p>
+            </div>
+          )}
+
+          <div className="flex flex-col" style={{ borderTop: filteredApproved.length > 0 ? '1px solid #F0EDF9' : 'none' }}>
             {visibleApproved.map((l, idx) => {
               const mk = meerkatFor(l.voice_agents);
               const agentColor = mk.color ?? '#6B6480';
               return (
               <div key={l.id}
                 className="group flex items-start gap-2.5 px-5 py-3"
-                style={{ borderBottom: idx === visibleApproved.length - 1 && approved.length <= 12 ? 'none' : '1px solid #F0EDF9' }}>
+                style={{ borderBottom: idx === visibleApproved.length - 1 && filteredApproved.length <= 12 ? 'none' : '1px solid #F0EDF9' }}>
                 <Check size={13} style={{ color: '#22c55e', flexShrink: 0, marginTop: 2 }} />
                 <div className="flex-1 min-w-0">
                   <p className="text-[12px] leading-relaxed" style={{ color: '#1A0A3B' }}>
@@ -555,24 +612,29 @@ export default function LearningsSection({ token, canApprove = true }: { token: 
               </div>
               );
             })}
-            {approved.length > 12 && (
+            {filteredApproved.length > 12 && (
               <button
                 onClick={() => setShowAllApproved(v => !v)}
                 className="text-[12px] py-3 transition-opacity hover:opacity-70"
                 style={{ color: '#6B6480', background: '#FAFAFB', border: 'none', borderTop: '1px solid #F0EDF9', cursor: 'pointer' }}
               >
-                {showAllApproved ? 'Ver menos' : `Ver ${approved.length - 12} más`}
+                {showAllApproved ? 'Ver menos' : `Ver ${filteredApproved.length - 12} más`}
               </button>
             )}
           </div>
         </div>
       )}
 
-      {/* Rejected — surface único compact */}
+      {/* Rejected — colapsado por default, paginado, con restore */}
       {rejected.length > 0 && (
         <div className="flex flex-col rounded-2xl overflow-hidden"
           style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 2px rgba(26,10,59,0.04)' }}>
-          <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
+          <button
+            type="button"
+            onClick={() => setRejectedOpen(v => !v)}
+            className="w-full flex items-center justify-between gap-3 px-5 pt-5 pb-4 text-left"
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
+          >
             <div>
               <div className="flex items-baseline gap-2">
                 <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>
@@ -582,20 +644,53 @@ export default function LearningsSection({ token, canApprove = true }: { token: 
                   {rejected.length}
                 </span>
               </div>
-            </div>
-          </div>
-          <div className="flex flex-col" style={{ borderTop: '1px solid #F0EDF9' }}>
-            {rejected.map((l, idx) => (
-              <div key={l.id}
-                className="flex items-start gap-2.5 px-5 py-2.5"
-                style={{ borderBottom: idx === rejected.length - 1 ? 'none' : '1px solid #F0EDF9' }}>
-                <X size={12} style={{ color: '#ef4444', flexShrink: 0, marginTop: 2 }} />
-                <p className="text-[12px] leading-relaxed line-through" style={{ color: '#9B8FB5' }}>
-                  {l.content}
+              {!rejectedOpen && (
+                <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>
+                  Click para revisar y recuperar si aplica.
                 </p>
-              </div>
-            ))}
-          </div>
+              )}
+            </div>
+            {rejectedOpen
+              ? <ChevronUp size={14} style={{ color: '#9B8FB5' }} />
+              : <ChevronDown size={14} style={{ color: '#9B8FB5' }} />}
+          </button>
+          {rejectedOpen && (
+            <div className="flex flex-col" style={{ borderTop: '1px solid #F0EDF9' }}>
+              {visibleRejected.map((l, idx) => {
+                const isRestoring = restoring[l.id];
+                return (
+                  <div key={l.id}
+                    className="group flex items-start gap-2.5 px-5 py-2.5"
+                    style={{ borderBottom: idx === visibleRejected.length - 1 && rejected.length <= 12 ? 'none' : '1px solid #F0EDF9' }}>
+                    <X size={12} style={{ color: '#ef4444', flexShrink: 0, marginTop: 2 }} />
+                    <p className="text-[12px] leading-relaxed line-through flex-1 min-w-0" style={{ color: '#9B8FB5' }}>
+                      {l.content}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => restoreRejected(l.id)}
+                      disabled={isRestoring}
+                      title="Restaurar como pendiente"
+                      className="flex-shrink-0 flex items-center gap-1 text-[11px] font-medium px-2 h-6 rounded transition-opacity opacity-0 group-hover:opacity-100 focus:opacity-100 disabled:opacity-50"
+                      style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#6B6480', cursor: 'pointer' }}
+                    >
+                      <RotateCcw size={10} />
+                      {isRestoring ? 'Restaurando…' : 'Restaurar'}
+                    </button>
+                  </div>
+                );
+              })}
+              {rejected.length > 12 && (
+                <button
+                  onClick={() => setShowAllRejected(v => !v)}
+                  className="text-[12px] py-3 transition-opacity hover:opacity-70"
+                  style={{ color: '#6B6480', background: '#FAFAFB', border: 'none', borderTop: '1px solid #F0EDF9', cursor: 'pointer' }}
+                >
+                  {showAllRejected ? 'Ver menos' : `Ver ${rejected.length - 12} más`}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
