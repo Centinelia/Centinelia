@@ -146,11 +146,19 @@ export default async function OficinaHome({ params }: Props) {
   const weekAgo    = new Date(Date.now() - 7 * 86400000);
 
   // KPIs — 4 métricas del día
+  // Read-path fidelity: bandeja KPI aplica los mismos filtros que el hero de
+  // /oficina/bandeja (item_type='email', no-FYI, no-notificacion). Sin esto
+  // contaba facturas que ya viven en /oficina/facturas y notifs de tools que
+  // solo aparecen en el tab Notificaciones — divergía del número que el user
+  // ve al hacer click. Mismo fix que se aplicó en bandeja/page.tsx 2026-08-22.
   const [bandejaRes, tareasRes, llamadasRes, docsRes] = agentIds.length > 0
     ? await Promise.all([
         supabase.from('ops_inbox')
           .select('id', { count: 'exact', head: true })
           .in('agent_id', agentIds)
+          .eq('item_type', 'email')
+          .or('action_required.is.null,action_required.eq.true')
+          .or('category.is.null,category.neq.notificacion')
           .in('status', ['pending', 'escalated', 'info_requested']),
         supabase.from('agent_tasks')
           .select('id', { count: 'exact', head: true })
