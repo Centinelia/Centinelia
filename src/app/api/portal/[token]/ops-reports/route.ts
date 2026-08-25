@@ -23,7 +23,7 @@ export async function GET(req: NextRequest, { params }: Params) {
 
   const { data: reports } = await supabase
     .from('ops_reports')
-    .select('id, agent_id, name, frequency, schedule, data_sources, recipients, report_instructions, last_run_at, next_run_at, active, created_at')
+    .select('id, agent_id, name, frequency, schedule, focus_prompt, recipients, report_instructions, last_run_at, next_run_at, active, created_at')
     .in('agent_id', agentIds)
     .order('created_at', { ascending: false });
 
@@ -51,8 +51,11 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (auth.portalEmail && acct.portal_email && auth.portalEmail !== acct.portal_email)
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
-  const { name, frequency, schedule, data_sources, recipients, report_instructions, agent_id } = body;
+  const { name, frequency, schedule, focus_prompt, recipients, report_instructions, agent_id } = body;
   if (!name || !frequency || !schedule) return NextResponse.json({ error: 'Faltan campos' }, { status: 400 });
+  if (!focus_prompt || typeof focus_prompt !== 'string' || !focus_prompt.trim()) {
+    return NextResponse.json({ error: 'Describe qué debe reportar el empleado' }, { status: 400 });
+  }
 
   // Verify agent belongs to this account
   const agentIds = await getAccountAgentIds(supabase, acct.portal_email);
@@ -68,7 +71,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       name,
       frequency,
       schedule,
-      data_sources:        data_sources ?? [],
+      focus_prompt:        focus_prompt.trim(),
       recipients:          recipients ?? [],
       report_instructions: report_instructions ?? null,
       next_run_at:         next_run_at.toISOString(),
@@ -96,7 +99,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   const agentIds = await getAccountAgentIds(supabase, acct.portal_email);
-  const allowed  = ['name', 'frequency', 'schedule', 'data_sources', 'recipients', 'report_instructions', 'active'];
+  const allowed  = ['name', 'frequency', 'schedule', 'focus_prompt', 'recipients', 'report_instructions', 'active'];
   const update   = Object.fromEntries(Object.entries(body).filter(([k]) => allowed.includes(k)));
 
   if (update.frequency || update.schedule) {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, BarChart2, Trash2, ToggleLeft, ToggleRight, ChevronDown, ChevronUp, Check, Loader2, Search, Send, SearchX } from 'lucide-react';
+import { Plus, BarChart2, Trash2, ToggleLeft, ToggleRight, ChevronDown, ChevronUp, Loader2, Search, Send, SearchX } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EmptyState } from '@/components/portal-ui';
 import InfoTooltip from '@/components/InfoTooltip';
@@ -15,7 +15,7 @@ interface OpsReport {
   name:                string;
   frequency:           'weekly' | 'monthly';
   schedule:            { day_of_week?: number; day_of_month?: number; hour?: number };
-  data_sources:        string[];
+  focus_prompt:        string | null;
   recipients:          Array<{ email: string; name?: string }>;
   report_instructions: string | null;
   last_run_at:         string | null;
@@ -39,18 +39,11 @@ function fmtH(h: number): string {
   return `${h12}:00 ${period}`;
 }
 
-const DATA_SOURCE_OPTIONS: { id: string; label: string }[] = [
-  { id: 'centinelia_calls',        label: 'Llamadas' },
-  { id: 'centinelia_leads',        label: 'Leads' },
-  { id: 'centinelia_orders',       label: 'Pedidos' },
-  { id: 'centinelia_appointments', label: 'Citas' },
-];
-
 const empty = (): Partial<OpsReport & { recipientInput: string }> => ({
   name:                '',
   frequency:           'weekly',
   schedule:            { day_of_week: 1, hour: 8 },
-  data_sources:        ['centinelia_calls', 'centinelia_leads'],
+  focus_prompt:        '',
   recipients:          [],
   report_instructions: '',
   recipientInput:      '',
@@ -151,7 +144,7 @@ export default function OpsReportsSection({ token, agents, meerkatRoleId, report
   useEffect(() => { load(); }, [load]);
 
   const handleCreate = async () => {
-    if (!form.name?.trim()) return;
+    if (!form.name?.trim() || !form.focus_prompt?.trim()) return;
     setSaving(true);
     setCreateError(null);
     try {
@@ -163,7 +156,7 @@ export default function OpsReportsSection({ token, agents, meerkatRoleId, report
           name:                form.name,
           frequency:           form.frequency,
           schedule:            form.schedule,
-          data_sources:        form.data_sources,
+          focus_prompt:        form.focus_prompt,
           recipients:          form.recipients,
           report_instructions: form.report_instructions || null,
         }),
@@ -233,14 +226,6 @@ export default function OpsReportsSection({ token, agents, meerkatRoleId, report
 
   const removeRecipient = (email: string) =>
     setForm(f => ({ ...f, recipients: (f.recipients ?? []).filter(r => r.email !== email) }));
-
-  const toggleSource = (id: string) =>
-    setForm(f => ({
-      ...f,
-      data_sources: (f.data_sources ?? []).includes(id)
-        ? (f.data_sources ?? []).filter(s => s !== id)
-        : [...(f.data_sources ?? []), id],
-    }));
 
   const lastRunFor = (id: string) =>
     runs.filter(r => r.report_id === id).sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
@@ -364,7 +349,7 @@ export default function OpsReportsSection({ token, agents, meerkatRoleId, report
                   <OficinaModal.PrimaryAction
                     onClick={handleCreate}
                     loading={saving}
-                    disabled={!form.name?.trim()}
+                    disabled={!form.name?.trim() || !form.focus_prompt?.trim()}
                   >
                     Crear reporte
                   </OficinaModal.PrimaryAction>
@@ -438,23 +423,16 @@ export default function OpsReportsSection({ token, agents, meerkatRoleId, report
                   </div>
                 </OficinaModal.Field>
 
-                <OficinaModal.Field label="Datos a incluir">
-                  <div className="flex flex-wrap gap-2">
-                    {DATA_SOURCE_OPTIONS.map(s => {
-                      const active = (form.data_sources ?? []).includes(s.id);
-                      return (
-                        <button key={s.id} type="button" onClick={() => toggleSource(s.id)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all"
-                          style={{
-                            background: active ? 'rgba(108,59,255,0.1)' : '#ffffff',
-                            border:     `1px solid ${active ? 'rgba(108,59,255,0.4)' : '#E8E3F5'}`,
-                            color:      active ? '#6C3BFF' : '#6B6480',
-                          }}>
-                          {active && <Check size={10} />}{s.label}
-                        </button>
-                      );
-                    })}
-                  </div>
+                <OficinaModal.Field label="¿Qué debe reportar?" hint="requerido">
+                  <textarea value={form.focus_prompt ?? ''}
+                    onChange={e => setForm(f => ({ ...f, focus_prompt: e.target.value }))}
+                    rows={4}
+                    placeholder="Ej: Revisa correos y solicitudes de la semana, resume qué clientes escribieron, qué pedidos entraron, qué facturas quedaron pendientes y qué juntas o documentos se generaron. Destaca lo urgente."
+                    className="w-full rounded-lg px-3 py-2.5 text-[12px] outline-none resize-none leading-relaxed"
+                    style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }} />
+                  <p className="text-[11px] mt-1.5 leading-relaxed" style={{ color: '#9B8FB5' }}>
+                    Tu empleado revisa correos, documentos, tareas, contratos, juntas, llamadas y pedidos del período. Este campo le dice en qué enfocarse.
+                  </p>
                 </OficinaModal.Field>
 
                 <OficinaModal.Field label="Destinatarios" hint="además del email del cliente">
@@ -615,10 +593,14 @@ export default function OpsReportsSection({ token, agents, meerkatRoleId, report
                     {isExpanded && (
                       <div className="px-5 pb-4" style={{ borderTop: '1px solid #F0EDF9' }}>
                         <div className="mt-3 flex flex-col gap-2">
-                          <p className="text-[12px]" style={{ color: '#6B6480' }}>
-                            <span style={{ color: '#9B8FB5' }}>Datos:</span>{' '}
-                            {r.data_sources.map(s => DATA_SOURCE_OPTIONS.find(o => o.id === s)?.label ?? s).join(', ') || 'Ninguno'}
-                          </p>
+                          {r.focus_prompt && (
+                            <div className="text-[12px] leading-relaxed" style={{ color: '#6B6480' }}>
+                              <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: '#9B8FB5' }}>
+                                Enfoque
+                              </p>
+                              <p style={{ whiteSpace: 'pre-wrap' }}>{r.focus_prompt}</p>
+                            </div>
+                          )}
                           {r.recipients.length > 0 && (
                             <p className="text-[12px]" style={{ color: '#6B6480' }}>
                               <span style={{ color: '#9B8FB5' }}>Destinatarios adicionales:</span>{' '}

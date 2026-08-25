@@ -6,14 +6,6 @@ import { logLlmCall } from '@/lib/observability/llm-log';
 
 const anthropic = new Anthropic();
 
-export interface ReportDataSources {
-  centinelia_calls?:        boolean;
-  centinelia_leads?:        boolean;
-  centinelia_orders?:       boolean;
-  centinelia_appointments?: boolean;
-  notion?:                  boolean;
-}
-
 export async function runReport(reportId: string): Promise<{ ok: boolean; error?: string; skipped?: boolean; reason?: string }> {
   const supabase = createAdminClient();
 
@@ -27,11 +19,21 @@ export async function runReport(reportId: string): Promise<{ ok: boolean; error?
 
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('id, business_name, agent_name, knowledge_base, role, role_knowledge_base, notion_client_id, portal_email')
+    .select('id, business_name, agent_name, role, role_knowledge_base, portal_email')
     .eq('id', report.agent_id)
     .single();
 
   if (!agent) return { ok: false, error: 'Agent not found' };
+
+  // knowledge_base vive en organizations desde commit e372013 (2026-07-20).
+  // role_knowledge_base y role siguen en voice_agents (verificado 2026-08-24).
+  const { data: org } = agent.portal_email
+    ? await supabase
+        .from('organizations')
+        .select('knowledge_base')
+        .eq('portal_email', agent.portal_email)
+        .maybeSingle()
+    : { data: null as { knowledge_base?: string | null } | null };
 
   // Create the run record
   const { data: run } = await supabase
@@ -43,114 +45,195 @@ export async function runReport(reportId: string): Promise<{ ok: boolean; error?
   if (!run) return { ok: false, error: 'Failed to create run record' };
 
   try {
-    const dataSources = report.data_sources as string[] ?? [];
     const snapshot: Record<string, unknown> = {};
     const dataBlocks: string[] = [];
-
-    // Collect Centinelia data
     const since = getPeriodStart(report.schedule as Record<string, number>);
+    const sinceIso = since.toISOString();
+    const agentIdStr = agent.id as string;
 
-    if (dataSources.includes('centinelia_calls')) {
-      const { data: calls } = await supabase
-        .from('voice_calls')
-        .select('duration_seconds, outcome, created_at')
-        .eq('agent_id', agent.id)
-        .gte('created_at', since.toISOString());
+    // Todas las señales del período — en paralelo. El focus_prompt del usuario
+    // decide qué destaca el reporte, no qué se jala. Antes había 4 checkboxes
+    // hardcoded (calls, leads, orders, appointments) que dejaban fuera correos,
+    // documentos, tareas y contratos — inútil para negocios no-call-center.
+    const [callsR, leadsR, ordersR, apptsR, inboxR, docsR, tasksR, contractsR, meetingsR, outboundR] = await Promise.all([
+      supabase.from('voice_calls').select('duration_seconds, outcome, created_at').eq('agent_id', agentIdStr).gte('created_at', sinceIso),
+      supabase.from('leads_voice').select('nombre, servicio, presupuesto, created_at').eq('agent_id', agentIdStr).gte('created_at', sinceIso),
+      supabase.from('orders_voice').select('items, total, status, created_at').eq('agent_id', agentIdStr).gte('created_at', sinceIso),
+      supabase.from('appointments_voice').select('fecha, hora, servicio, cliente_nombre, created_at').eq('agent_id', agentIdStr).gte('created_at', sinceIso),
+      supabase.from('ops_inbox').select('email_from, email_subject, ai_summary, category, item_type, status, created_at').eq('agent_id', agentIdStr).gte('created_at', sinceIso),
+      supabase.from('ops_documents').select('title, filename, template_type, created_at').eq('agent_id', agentIdStr).gte('created_at', sinceIso),
+      supabase.from('agent_tasks').select('title, status, created_at').eq('assigned_to', agentIdStr).gte('created_at', sinceIso),
+      supabase.from('ops_contracts').select('id, status, created_at').eq('agent_id', agentIdStr).gte('created_at', sinceIso),
+      supabase.from('ops_meetings').select('title, status, created_at').eq('agent_id', agentIdStr).gte('created_at', sinceIso),
+      supabase.from('outbound_emails').select('subject, created_at').eq('agent_id', agentIdStr).gte('created_at', sinceIso),
+    ]);
 
-      const total     = calls?.length ?? 0;
-      const leads     = calls?.filter(c => c.outcome === 'lead_created').length ?? 0;
-      const appts     = calls?.filter(c => c.outcome === 'appointment_booked').length ?? 0;
-      const orders    = calls?.filter(c => c.outcome === 'order_taken').length ?? 0;
-      const totalMins = Math.round((calls?.reduce((s, c) => s + (c.duration_seconds ?? 0), 0) ?? 0) / 60);
-
-      snapshot.calls = { total, leads, appts, orders, totalMins };
+    // LLAMADAS
+    const calls = callsR.data ?? [];
+    if (calls.length > 0) {
+      const leads     = calls.filter(c => c.outcome === 'lead_created').length;
+      const appts     = calls.filter(c => c.outcome === 'appointment_booked').length;
+      const orders    = calls.filter(c => c.outcome === 'order_taken').length;
+      const totalMins = Math.round(calls.reduce((s, c) => s + ((c.duration_seconds as number) ?? 0), 0) / 60);
+      snapshot.calls = { total: calls.length, leads, appts, orders, totalMins };
       dataBlocks.push(`LLAMADAS (${formatPeriod(since)}):
-Total: ${total}
+Total: ${calls.length}
 Leads: ${leads}
 Citas: ${appts}
 Pedidos: ${orders}
 Tiempo total: ${totalMins} min`);
     }
 
-    if (dataSources.includes('centinelia_leads')) {
-      const { data: leads } = await supabase
-        .from('leads_voice')
-        .select('nombre, servicio, presupuesto, created_at')
-        .eq('agent_id', agent.id)
-        .gte('created_at', since.toISOString());
-
-      snapshot.leads = leads?.length ?? 0;
-      if (leads?.length) {
-        dataBlocks.push(`LEADS CAPTURADOS (${formatPeriod(since)}):
-${leads.slice(0, 20).map(l => `- ${l.nombre ?? 'Sin nombre'}: ${l.servicio ?? 'N/A'}${l.presupuesto ? ` ($${l.presupuesto})` : ''}`).join('\n')}`);
-      }
+    // LEADS
+    const leadsList = leadsR.data ?? [];
+    if (leadsList.length > 0) {
+      snapshot.leads = leadsList.length;
+      dataBlocks.push(`LEADS CAPTURADOS (${formatPeriod(since)}):
+${leadsList.slice(0, 20).map(l => `- ${l.nombre ?? 'Sin nombre'}: ${l.servicio ?? 'N/A'}${l.presupuesto ? ` ($${l.presupuesto})` : ''}`).join('\n')}`);
     }
 
-    if (dataSources.includes('centinelia_orders')) {
-      const { data: orders } = await supabase
-        .from('orders_voice')
-        .select('items, total, status, created_at')
-        .eq('agent_id', agent.id)
-        .gte('created_at', since.toISOString());
-
-      snapshot.orders = orders?.length ?? 0;
-      if (orders?.length) {
-        const totalAmount = orders.reduce((s, o) => s + ((o.total as number) ?? 0), 0);
-        dataBlocks.push(`PEDIDOS (${formatPeriod(since)}):
-Total: ${orders.length}
+    // PEDIDOS
+    const ordersList = ordersR.data ?? [];
+    if (ordersList.length > 0) {
+      const totalAmount = ordersList.reduce((s, o) => s + ((o.total as number) ?? 0), 0);
+      snapshot.orders = ordersList.length;
+      dataBlocks.push(`PEDIDOS (${formatPeriod(since)}):
+Total: ${ordersList.length}
 Valor total: $${totalAmount.toLocaleString('es-MX')}`);
-      }
     }
 
-    if (dataSources.includes('centinelia_appointments')) {
-      const { data: appts } = await supabase
-        .from('appointments_voice')
-        .select('fecha, hora, servicio, cliente_nombre, created_at')
-        .eq('agent_id', agent.id)
-        .gte('created_at', since.toISOString());
-
-      snapshot.appointments = appts?.length ?? 0;
-      if (appts?.length) {
-        dataBlocks.push(`CITAS (${formatPeriod(since)}):
+    // CITAS
+    const appts = apptsR.data ?? [];
+    if (appts.length > 0) {
+      snapshot.appointments = appts.length;
+      dataBlocks.push(`CITAS (${formatPeriod(since)}):
 ${appts.slice(0, 15).map(a => `- ${a.fecha ?? ''} ${a.hora ?? ''}: ${a.cliente_nombre ?? 'N/A'} — ${a.servicio ?? 'N/A'}`).join('\n')}`);
-      }
     }
 
-    if (dataSources.includes('notion') && agent.notion_client_id) {
-      // Notion data would be fetched here if there's a notion integration
-      dataBlocks.push(`[Datos de Notion no disponibles en este ciclo]`);
+    // BANDEJA (ops_inbox) — resumen por status/categoria + muestra de asuntos accionables
+    const inbox = inboxR.data ?? [];
+    if (inbox.length > 0) {
+      const emails      = inbox.filter(i => i.item_type === 'email');
+      const pending     = inbox.filter(i => i.status === 'pending' || i.status === 'info_requested');
+      const escalated   = inbox.filter(i => i.status === 'escalated');
+      const answered    = inbox.filter(i => i.status === 'answered' || i.status === 'auto_replied');
+      const byCategory  = inbox.reduce<Record<string, number>>((acc, i) => {
+        const k = (i.category as string) || 'sin_categoria';
+        acc[k] = (acc[k] ?? 0) + 1;
+        return acc;
+      }, {});
+      snapshot.inbox = { total: inbox.length, pending: pending.length, escalated: escalated.length, answered: answered.length };
+
+      const catLine = Object.entries(byCategory)
+        .sort((a, b) => b[1] - a[1])
+        .map(([k, v]) => `${k}: ${v}`)
+        .join(', ');
+      const sampleAccionables = [...pending, ...escalated]
+        .slice(0, 10)
+        .map(i => `- [${i.status}] ${i.email_from ?? ''}: ${i.email_subject ?? ''}${i.ai_summary ? ` — ${(i.ai_summary as string).slice(0, 140)}` : ''}`)
+        .join('\n');
+
+      dataBlocks.push(`BANDEJA (${formatPeriod(since)}):
+Total recibidos: ${inbox.length} (correos: ${emails.length})
+Estados: pendientes ${pending.length} · escalados ${escalated.length} · atendidos ${answered.length}
+Por categoría: ${catLine || 'ninguna'}${sampleAccionables ? `\n\nMuestra accionables:\n${sampleAccionables}` : ''}`);
+    }
+
+    // CORREOS ENVIADOS
+    const outbound = outboundR.data ?? [];
+    if (outbound.length > 0) {
+      snapshot.outbound = outbound.length;
+      dataBlocks.push(`CORREOS ENVIADOS (${formatPeriod(since)}):
+Total: ${outbound.length}
+Muestra: ${outbound.slice(0, 8).map(o => `"${o.subject ?? '(sin asunto)'}"`).join(', ')}`);
+    }
+
+    // DOCUMENTOS
+    const docs = docsR.data ?? [];
+    if (docs.length > 0) {
+      const byType = docs.reduce<Record<string, number>>((acc, d) => {
+        const k = (d.template_type as string) || 'otro';
+        acc[k] = (acc[k] ?? 0) + 1;
+        return acc;
+      }, {});
+      snapshot.documents = docs.length;
+      dataBlocks.push(`DOCUMENTOS (${formatPeriod(since)}):
+Total: ${docs.length}
+Por tipo: ${Object.entries(byType).map(([k, v]) => `${k}: ${v}`).join(', ')}
+Muestra: ${docs.slice(0, 6).map(d => `"${d.title ?? d.filename ?? 'sin título'}"`).join(', ')}`);
+    }
+
+    // TAREAS
+    const tasks = tasksR.data ?? [];
+    if (tasks.length > 0) {
+      const byStatus = tasks.reduce<Record<string, number>>((acc, t) => {
+        const k = (t.status as string) || 'sin_status';
+        acc[k] = (acc[k] ?? 0) + 1;
+        return acc;
+      }, {});
+      snapshot.tasks = tasks.length;
+      dataBlocks.push(`TAREAS (${formatPeriod(since)}):
+Total: ${tasks.length}
+Por estado: ${Object.entries(byStatus).map(([k, v]) => `${k}: ${v}`).join(', ')}
+Muestra: ${tasks.slice(0, 6).map(t => `"${t.title ?? 'sin título'}"`).join(', ')}`);
+    }
+
+    // CONTRATOS
+    const contracts = contractsR.data ?? [];
+    if (contracts.length > 0) {
+      const byStatus = contracts.reduce<Record<string, number>>((acc, c) => {
+        const k = (c.status as string) || 'sin_status';
+        acc[k] = (acc[k] ?? 0) + 1;
+        return acc;
+      }, {});
+      snapshot.contracts = contracts.length;
+      dataBlocks.push(`CONTRATOS (${formatPeriod(since)}):
+Total: ${contracts.length}
+Por estado: ${Object.entries(byStatus).map(([k, v]) => `${k}: ${v}`).join(', ')}`);
+    }
+
+    // JUNTAS
+    const meetings = meetingsR.data ?? [];
+    if (meetings.length > 0) {
+      snapshot.meetings = meetings.length;
+      dataBlocks.push(`JUNTAS (${formatPeriod(since)}):
+Total: ${meetings.length}
+Muestra: ${meetings.slice(0, 5).map(m => `"${m.title ?? 'sin título'}"`).join(', ')}`);
     }
 
     // Generate narrative with Anthropic
     const contextBlocks: string[] = [];
-    if (agent.knowledge_base) contextBlocks.push(`NEGOCIO:\n${agent.knowledge_base}`);
+    if (org?.knowledge_base) contextBlocks.push(`NEGOCIO:\n${org.knowledge_base}`);
     if (agent.role && agent.role_knowledge_base) contextBlocks.push(`ROL: ${agent.role}\n${agent.role_knowledge_base}`);
     const contextSection = contextBlocks.length ? `\n\n${contextBlocks.join('\n\n')}` : '';
 
-    const customInstructions = report.report_instructions as string | null;
+    const focusPrompt        = ((report.focus_prompt        as string | null) ?? '').trim();
+    const customInstructions = ((report.report_instructions as string | null) ?? '').trim();
     const systemPrompt = `Eres un asistente de análisis de negocio. Generas reportes ejecutivos concisos y accionables en español para ${agent.business_name}.${contextSection}`;
 
-    const userPrompt = `Genera un reporte ejecutivo con estos datos:
+    const userPrompt = `El usuario configuró este reporte con este enfoque:
+"""
+${focusPrompt || '(sin enfoque específico — genera un resumen ejecutivo del período)'}
+"""
 
-${dataBlocks.join('\n\n')}
+Datos disponibles del período:
 
-${customInstructions ? `INSTRUCCIONES ADICIONALES:\n${customInstructions}\n\n` : ''}El reporte debe:
-1. Comenzar con un resumen de 2-3 oraciones del período
-2. Destacar los números más importantes
-3. Identificar tendencias o puntos de atención
-4. Terminar con 1-2 recomendaciones concretas
+${dataBlocks.length > 0 ? dataBlocks.join('\n\n') : '(sin actividad registrada en el período)'}
+
+${customInstructions ? `INSTRUCCIONES ADICIONALES DEL USUARIO:\n${customInstructions}\n\n` : ''}El reporte debe:
+1. Enfocarse en lo que el usuario pidió arriba. Si pidió algo específico y no hay datos que lo respalden, dilo con transparencia en vez de rellenar.
+2. Comenzar con un resumen de 2-3 oraciones del período orientado a ese enfoque.
+3. Destacar los números más relevantes al enfoque pedido.
+4. Identificar tendencias o puntos de atención.
+5. Terminar con 1-2 recomendaciones concretas.
 
 Sé directo, ejecutivo y sin relleno. Máximo 400 palabras.`;
 
-    // Probe: si el periodo no tuvo NINGUNA actividad, no generar reporte
-    // ni cobrar op ni mandar correo. Marca 'skipped_empty' en el run para
-    // trazabilidad. Fix 2026-08-10.
-    const hasActivity =
-      (((snapshot.calls as { total?: number } | undefined)?.total) ?? 0) > 0 ||
-      ((snapshot.leads        as number | undefined) ?? 0) > 0 ||
-      ((snapshot.orders       as number | undefined) ?? 0) > 0 ||
-      ((snapshot.appointments as number | undefined) ?? 0) > 0;
-    if (!hasActivity) {
+    // Probe: si el periodo no tuvo ninguna actividad de NINGUNA fuente, no
+    // generar reporte ni cobrar op ni mandar correo. Marca 'skipped_empty' en
+    // el run para trazabilidad. Fix 2026-08-10, ampliado 2026-08-24 con las
+    // nuevas fuentes (email inbox, docs, tasks, contracts, meetings, outbound).
+    if (dataBlocks.length === 0) {
       await supabase.from('ops_report_runs')
         .update({ status: 'skipped_empty', completed_at: new Date().toISOString() })
         .eq('id', run.id);
