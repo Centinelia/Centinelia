@@ -39,6 +39,14 @@ export async function GET(req: NextRequest) {
   if (!claim.ok) return NextResponse.json({ ok: true, skipped: claim.reason });
   const now = new Date();
 
+  // Nash health check (2026-08-24): independiente del propio Nash para
+  // romper la circularidad "quién vigila al vigilante". Corre cada hora
+  // (frecuencia de este cron) y alerta al owner si Nash lleva >2h sin
+  // ejecutar. Dedup 6h para no inundar.
+  await checkNashHealth(supabase, now).catch(err =>
+    console.error('[daily-digest] Nash health check falló', err),
+  );
+
   // Fetch orgs que quieren notificaciones (al menos un agente con notify_email=true).
   const { data: agents } = await supabase
     .from('voice_agents')
@@ -256,4 +264,90 @@ function formatTime(date: Date, tz: string): string {
   } catch {
     return date.toLocaleTimeString('es-MX');
   }
+}
+
+// ─── Nash health check ────────────────────────────────────────────────────
+// Cierra la brecha "quis custodiet ipsos custodes": Nash monitorea toda la
+// plataforma, pero nadie monitorea a Nash. Si nash-monitor no corre por
+// algún bug de Vercel o del propio código, silent-fail total y nadie se
+// entera hasta que un cliente reclama que su bug no se resolvió.
+//
+// Este check corre desde daily-digest (que sí corre cada hora), lee
+// platform_settings.nash_last_run_at, y si lleva >2h stale despacha una
+// alerta directa al owner por email (bypass de notification_events para
+// evitar depender de la misma tubería que podría estar rota).
+
+const NASH_STALE_THRESHOLD_MS = 2 * 60 * 60_000;   // 2h sin correr = alerta
+const NASH_HEALTH_DEDUP_MS    = 6 * 60 * 60_000;   // no re-alertar más de cada 6h
+const NASH_HEALTH_ALERT_KEY   = 'nash_health_alert_sent_at';
+const NASH_OWNER_EMAIL        = 'hola@centinelia.mx';
+
+type SupabaseAdmin = ReturnType<typeof createAdminClient>;
+
+async function checkNashHealth(supabase: SupabaseAdmin, now: Date): Promise<void> {
+  // 1) Verificar cuándo corrió Nash por última vez
+  const { data: lastRunRow } = await supabase
+    .from('platform_settings')
+    .select('value')
+    .eq('key', 'nash_last_run_at')
+    .maybeSingle();
+
+  if (!lastRunRow?.value) return; // Nash nunca ha corrido — probablemente disabled, no alertar
+  const lastRun = new Date(lastRunRow.value);
+  if (!Number.isFinite(lastRun.getTime())) return;
+
+  const staleMs = now.getTime() - lastRun.getTime();
+  if (staleMs < NASH_STALE_THRESHOLD_MS) return; // Nash corrió reciente, todo bien
+
+  // 2) Dedup: si ya alertamos en las últimas 6h, no repetir
+  const { data: lastAlertRow } = await supabase
+    .from('platform_settings')
+    .select('value')
+    .eq('key', NASH_HEALTH_ALERT_KEY)
+    .maybeSingle();
+  const lastAlert = lastAlertRow?.value ? new Date(lastAlertRow.value) : null;
+  if (lastAlert && Number.isFinite(lastAlert.getTime()) && (now.getTime() - lastAlert.getTime()) < NASH_HEALTH_DEDUP_MS) {
+    return;
+  }
+
+  // 3) Enviar alerta directa (bypass notification_events)
+  const hoursStale = Math.floor(staleMs / 3_600_000);
+  const html = `<!doctype html>
+<html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:600px;margin:0 auto;padding:24px;color:#1A0A3B;background:#FAFBFF">
+  <h1 style="font-size:20px;font-weight:700;margin:0 0 16px">Nash no ha corrido en las últimas horas</h1>
+  <div style="background:#fff;border:1px solid #E8E3F5;border-radius:12px;padding:16px;margin-bottom:12px">
+    Última corrida de nash-monitor: <strong>${lastRun.toISOString()}</strong> (hace ~${hoursStale}h).
+  </div>
+  <div style="background:#fff;border:1px solid #E8E3F5;border-radius:12px;padding:16px;margin-bottom:12px">
+    Sin Nash corriendo no hay monitoreo de plataforma: bugs de clientes se acumulan sin triaje, anomalías de consumo no se detectan, incidentes escalados no se procesan.
+  </div>
+  <div style="background:#fff;border:1px solid #E8E3F5;border-radius:12px;padding:16px">
+    Chequea Vercel cron logs y <code>/api/cron/nash-monitor</code>. Si el endpoint responde 200 pero no procesa, revisa <code>features.nash_cron_enabled</code> del agente Nash y logs de <code>llm_call_log</code> con <code>source=nash-monitor</code>.
+  </div>
+</body></html>`;
+
+  try {
+    await sendEmail({
+      to:      NASH_OWNER_EMAIL,
+      subject: `Nash está atascado (${hoursStale}h sin correr)`,
+      html,
+    });
+  } catch (err) {
+    console.error('[daily-digest/nash-health] sendEmail falló', err);
+    return;
+  }
+
+  // 4) También registrar en notification_events (para historial, no para delivery)
+  await supabase.from('notification_events').insert({
+    portal_email: 'hola@centinelia.mx',
+    kind:         'nash_stuck',
+    urgent:       true,
+    payload:      { last_run_at: lastRun.toISOString(), stale_hours: hoursStale },
+    delivered_at: now.toISOString(), // marcado delivered para no duplicar
+  });
+
+  // 5) Marcar alerta enviada
+  await supabase
+    .from('platform_settings')
+    .upsert({ key: NASH_HEALTH_ALERT_KEY, value: now.toISOString() }, { onConflict: 'key' });
 }
