@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
   // (2) query excluye 'ended' (legacy pre-fix) y 'retrieved' (post-fix).
   const { data: batches } = await supabase
     .from('anthropic_batches')
-    .select('id, batch_id, status')
+    .select('id, batch_id, status, charged_call_ids')
     .eq('kind', 'call_eval')
     .in('status', ['in_progress', 'validating'])
     .limit(10);
@@ -56,10 +56,6 @@ export async function GET(req: NextRequest) {
 
   let updated = 0;
   const errors: string[] = [];
-  // Fix N4 audit 2026-08-10: cobrar 1 op por call evaluado (CES+SE cuentan como 1
-  // op total; el batch API es 50% off vs sync así que subsidiamos suavemente).
-  // Set evita doble cargo si mismo callId tiene CES + SE en el mismo batch.
-  const chargedCallIds = new Set<string>();
 
   for (const b of batches) {
     try {
@@ -68,6 +64,15 @@ export async function GET(req: NextRequest) {
         await supabase.from('anthropic_batches').update({ status: remote.processing_status }).eq('id', b.id);
         continue;
       }
+
+      // Mid-loop resilience (2026-08-24): hidratamos el Set con los callIds
+      // ya cobrados en corridas previas de este mismo batch. Si el cron
+      // muere después de cobrar N y antes de marcar 'retrieved', la siguiente
+      // corrida arranca desde donde quedó en vez de re-cobrar desde cero.
+      // El Set vive por batch (antes vivía por invocación → doble cobro entre
+      // batches del mismo callId, aunque en la práctica los callIds solo
+      // aparecen en un batch por diseño del creador).
+      const chargedCallIds = new Set<string>((b.charged_call_ids as string[] | null) ?? []);
 
       const results = await anthropic.messages.batches.results(b.batch_id as string);
       for await (const item of results) {
@@ -94,10 +99,19 @@ export async function GET(req: NextRequest) {
               .maybeSingle();
             if (callRow?.agent_id) {
               await consumeAiOp(callRow.agent_id as string, 1, {
-                source: 'batch_eval',
-                label:  'Evaluación CES + auto-evaluación (batch)',
-                context: `call_id=${callId}`,
+                source:       'batch_eval',
+                label:        'Evaluación CES + auto-evaluación (batch)',
+                reference_id: callId,
+                context:      `batch_id=${b.batch_id}`,
               });
+              // Persistir inmediatamente que este callId ya fue cobrado.
+              // Un fallo aquí NO revierte el cobro (ya sucedió en el pool);
+              // pero sí abre ventana a re-cobro en la próxima corrida.
+              // Es best-effort: si el UPDATE falla, log-only.
+              await supabase
+                .from('anthropic_batches')
+                .update({ charged_call_ids: Array.from(chargedCallIds) })
+                .eq('id', b.id);
             }
           } catch (chargeErr) {
             console.error('[batch-eval-retrieve] cobro de op falló', chargeErr);
