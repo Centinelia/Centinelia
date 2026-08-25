@@ -205,10 +205,10 @@ export default function CheckinsSection({ token, agents }: Props) {
             </button>
 
             {isExpanded && (
-              <div className="px-4 pb-4" style={{ borderTop: `1px solid ${info.color}20` }}>
+              <div className="px-5 pb-5" style={{ borderTop: `1px solid ${info.color}20` }}>
                 <div
-                  className="text-xs leading-relaxed mt-3 mb-3 prose prose-sm max-w-none"
-                  style={{ color: 'var(--c-text-2)' }}
+                  className="checkin-md mt-4 mb-4"
+                  style={{ ['--accent' as string]: info.color }}
                   dangerouslySetInnerHTML={{ __html: marked.parse(run.content_md) as string }}
                 />
                 <button

@@ -476,3 +476,85 @@ select option {
   box-shadow: 0 12px 40px rgba(108,59,255,0.12);
   border-color: rgba(108,59,255,0.28) !important;
 }
+
+/* ── Check-in report body (Nox / Niva heartbeat reports) ─────────────────
+   Renderiza el content_md de heartbeat_runs con jerarquía clara y ritmo
+   visual. El wrapper recibe --accent inline (color del meerkat). Ver
+   src/app/portal/[token]/reportes/CheckinsSection.tsx.                    */
+.checkin-md {
+  --checkin-accent: var(--accent, #6C3BFF);
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--text-secondary, #3F3D56);
+  word-wrap: break-word;
+}
+.checkin-md > *:first-child { margin-top: 0 !important; }
+.checkin-md > *:last-child  { margin-bottom: 0 !important; }
+
+/* H1 = título completo del reporte. Redundante con el subject en el header
+   colapsable — lo ocultamos para no repetir. */
+.checkin-md h1 { display: none; }
+
+/* H2 = secciones (RESUMEN, PUNTOS ACCIONABLES, RECOMENDACIÓN). Eyebrow. */
+.checkin-md h2 {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-tertiary, #6B7280);
+  margin: 26px 0 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-subtle, rgba(26,10,59,0.08));
+}
+.checkin-md h2:first-child { margin-top: 4px; }
+
+/* H3 = ítems numerados accionables. Card visual con acento del meerkat. */
+.checkin-md h3 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary, #1A0A3B);
+  margin: 20px 0 8px;
+  padding: 4px 0 4px 12px;
+  border-left: 3px solid var(--checkin-accent);
+  line-height: 1.35;
+}
+.checkin-md h3 strong { font-weight: 700; }
+
+.checkin-md p {
+  margin: 10px 0;
+}
+.checkin-md p strong { font-weight: 600; color: var(--text-primary, #1A0A3B); }
+
+.checkin-md ul,
+.checkin-md ol {
+  margin: 12px 0;
+  padding-left: 22px;
+}
+.checkin-md li {
+  margin: 6px 0;
+  padding-left: 4px;
+}
+.checkin-md li::marker {
+  color: var(--checkin-accent);
+  font-weight: 600;
+}
+
+.checkin-md hr {
+  margin: 24px 0;
+  border: none;
+  border-top: 1px dashed var(--border-subtle, rgba(26,10,59,0.08));
+}
+
+.checkin-md a {
+  color: var(--checkin-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.checkin-md code {
+  font-size: 12px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--surface-sunken, #F5F5F7);
+  color: var(--text-primary, #1A0A3B);
+}
