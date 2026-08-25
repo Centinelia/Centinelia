@@ -321,7 +321,7 @@ export async function POST(req: NextRequest) {
 
   // Fix N6 audit 2026-08-10: cobrar 1 op por respuesta WhatsApp (antes silent).
   // Refund si el LLM falla — el cliente no debe pagar por errores nuestros.
-  const waOpsCharge = await consumeAiOp(agent.id as string, 1, { source: 'whatsapp_reply', label: 'Respuesta WhatsApp' });
+  const waOpsCharge = await consumeAiOp(agent.id as string, 1, { source: 'whatsapp_reply', reference_id: messageSid || undefined, label: 'Respuesta WhatsApp' });
 
   try {
     const __waT = Date.now();

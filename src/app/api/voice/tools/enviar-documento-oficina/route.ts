@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ results: [{ toolCallId, result: 'Esta cuenta no puede enviar correos ahora.' }] });
   }
 
-  const opsResult = await consumeAiOp(agent_id, 1, { source: 'tool_enviar_documento_oficina', label: 'Envío de documento (oficina)' });
+  const opsResult = await consumeAiOp(agent_id, 1, { source: 'tool_enviar_documento_oficina', reference_id: parsed.document_id, label: 'Envío de documento (oficina)' });
   if (!opsResult.ok) {
     return NextResponse.json({ results: [{ toolCallId, result: 'No hay operaciones IA disponibles este mes.' }] });
   }

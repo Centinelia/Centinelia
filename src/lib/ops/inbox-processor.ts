@@ -1297,7 +1297,7 @@ CATEGORÍAS:
   // Observador (Trust Stage 1): triage-only. Sin borrador, sin tools, sin classifier.
   // Categoría + resumen para que el humano lo lea y responda desde cero.
   if (autoMode === 'observador') {
-    const obsOps = await consumeAiOp(agentId, 1, { source: 'inbox_processor', label: 'Procesamiento de bandeja (correo/tarea)' });
+    const obsOps = await consumeAiOp(agentId, 1, { source: 'inbox_processor', reference_id: existingInboxId ?? rawMessageId, label: 'Procesamiento de bandeja (correo/tarea)' });
     if (obsOps.ok) {
       const __obsT = Date.now();
       const __obsM = 'claude-haiku-4-5-20251001';
@@ -1324,7 +1324,7 @@ CATEGORÍAS:
 
   const opsResult = autoMode === 'observador'
     ? { ok: false as const, error: 'skipped_observador_mode' as const }
-    : await consumeAiOp(agentId, 1, { source: 'inbox_processor', label: 'Procesamiento de bandeja (correo/tarea)' });
+    : await consumeAiOp(agentId, 1, { source: 'inbox_processor', reference_id: existingInboxId ?? rawMessageId, label: 'Procesamiento de bandeja (correo/tarea)' });
 
   // Instrumentación F3 — declaradas al scope del summary log al final del archivo.
   // Se actualizan dentro del loop del tool-use (path opsResult.ok && portalEmail).
@@ -1821,7 +1821,7 @@ CATEGORÍAS:
 
         // Charge 1 op per iteration after the first (first was charged above)
         if (i > 0) {
-          const midOps = await consumeAiOp(agentId, 1, { source: 'inbox_processor', label: 'Procesamiento de bandeja (correo/tarea)' });
+          const midOps = await consumeAiOp(agentId, 1, { source: 'inbox_processor', reference_id: existingInboxId ?? rawMessageId, label: 'Procesamiento de bandeja (correo/tarea)' });
           if (!midOps.ok) break;
         }
 

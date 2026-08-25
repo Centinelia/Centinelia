@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ result: 'El agente no está configurado para llamadas salientes. Resincroniza desde el portal.' });
   }
 
-  const opsResult = await consumeAiOp(agent_id, 1, { source: 'tool_llamar_a', label: 'Llamada saliente iniciada' });
+  const opsResult = await consumeAiOp(agent_id, 1, { source: 'tool_llamar_a', reference_id: sessionId ?? undefined, label: 'Llamada saliente iniciada' });
   if (!opsResult.ok) {
     return NextResponse.json({ result: 'No tienes operaciones IA disponibles este mes para realizar llamadas.' });
   }

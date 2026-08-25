@@ -56,7 +56,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   }
 
   const { consumeAiOp } = await import('@/lib/ai/ops-guard');
-  const opsResult = await consumeAiOp(nox.id, 5, { source: 'nox_brief_manual', label: 'Brief del día bajo demanda' });
+  const opsResult = await consumeAiOp(nox.id, 5, { source: 'nox_brief_manual', reference_id: `${nox.id as string}:${new Date().toISOString().slice(0, 10)}`, label: 'Brief del día bajo demanda' });
   if (!opsResult.ok) {
     return NextResponse.json({ ok: false, error: 'Sin operaciones disponibles este mes. Compra más o espera al ciclo siguiente.' }, { status: 429 });
   }

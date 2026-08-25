@@ -23,7 +23,7 @@ export async function extractAndSaveLearnings(opts: {
     .eq('status', 'pending');
   if ((count ?? 0) >= 10) return;
 
-  const opsResult = await consumeAiOp(agentId, 1, { source: 'extract_learnings', label: 'Extracción de aprendizajes de conversación' });
+  const opsResult = await consumeAiOp(agentId, 1, { source: 'extract_learnings', reference_id: vapiCallId ?? undefined, label: 'Extracción de aprendizajes de conversación' });
   if (!opsResult.ok) return;
 
   const __t = Date.now();

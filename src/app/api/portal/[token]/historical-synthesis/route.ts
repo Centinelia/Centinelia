@@ -101,7 +101,7 @@ export async function POST(
   }
 
   // Consume 6 ops for batch analysis (solo si sí hay data suficiente)
-  const opsResult = await consumeAiOp(agent.id, 6, { source: 'historical_synthesis', label: 'Síntesis del historial de llamadas' });
+  const opsResult = await consumeAiOp(agent.id, 6, { source: 'historical_synthesis', reference_id: `${agent.id}:${new Date().toISOString().slice(0, 10)}`, label: 'Síntesis del historial de llamadas' });
   if (!opsResult.ok) {
     return NextResponse.json({ error: 'Sin tareas disponibles para esta operación.' }, { status: 402 });
   }

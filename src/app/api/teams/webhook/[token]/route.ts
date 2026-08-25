@@ -131,7 +131,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const __t = Date.now();
   const __m = 'claude-haiku-4-5-20251001';
   // Fix N6 audit: cobrar 1 op por respuesta Teams (antes silent).
-  const teamsCharge = await consumeAiOp(agent.id, 1, { source: 'teams_reply', label: 'Respuesta Microsoft Teams' });
+  const teamsCharge = await consumeAiOp(agent.id, 1, { source: 'teams_reply', reference_id: eventId, label: 'Respuesta Microsoft Teams' });
   try {
     const msg = await anthropic.messages.create({
       model:      __m,

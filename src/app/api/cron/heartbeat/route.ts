@@ -89,7 +89,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Consume ops (solo si sí hay data para reportar)
-    const opsResult = await consumeAiOp(agent.id, 5, { source: 'heartbeat', label: 'Check-in automático diario' });
+    const opsResult = await consumeAiOp(agent.id, 5, { source: 'heartbeat', reference_id: `${agent.id}:${localNow.toISOString().slice(0, 10)}`, label: 'Check-in automático diario' });
     if (!opsResult.ok) {
       await maybeSendQuotaEmail(agent, 'heartbeat');
       continue;

@@ -72,7 +72,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     }
   }
 
-  const ops = await consumeAiOp(agent.id, OPS_COST, { source: 'generate_kb', label: 'Generación de manual con IA' });
+  const ops = await consumeAiOp(agent.id, OPS_COST, { source: 'generate_kb', reference_id: `${agent.id}:${new Date().toISOString().slice(0, 16)}`, label: 'Generación de manual con IA' });
   if (!ops.ok)
     return NextResponse.json(
       { error: `Sin tareas disponibles (${ops.used}/${ops.limit} usadas)` },

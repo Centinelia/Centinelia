@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ result: msg });
   }
 
-  const opsResult = await consumeAiOp(agent_id, 1, { source: 'tool_enviar_correo', label: 'Correo enviado durante llamada' });
+  const opsResult = await consumeAiOp(agent_id, 1, { source: 'tool_enviar_correo', reference_id: sessionId ?? undefined, label: 'Correo enviado durante llamada' });
   if (!opsResult.ok) {
     const msg = 'No tienes operaciones IA disponibles este mes para enviar correos.';
     traceResp({ error: 'ops_exhausted', message: msg }, false);
