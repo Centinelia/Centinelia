@@ -48,20 +48,32 @@ export async function checkExpiringContracts(): Promise<{ alerted: number }> {
     const ownerEmail    = agent?.client_email as string | null;
     if (!ownerEmail) continue;
 
-    // Generate renewal draft if not already present
+    // Generate renewal draft if not already present.
+    // Orden: generate → write DB → cobrar. Antes cobrábamos primero y si el
+    // LLM o la escritura fallaban, el próximo run veía renewal_draft=null y
+    // re-cobraba (audit 2026-08-24). Ahora si el LLM falla no hay cobro; si
+    // la DB write falla el user no paga y podemos re-intentar en la próxima
+    // alerta; si el consumeAiOp falla al final, el user tiene su draft pero
+    // Centinelia se comió el costo Anthropic — leak aceptable en nuestra
+    // dirección.
     let renewalDraft = contract.renewal_draft as string | null;
     if (!renewalDraft) {
-      const opsResult = await consumeAiOp(contract.agent_id as string, 1, { source: 'contracts_monitor', label: 'Monitoreo de contratos' });
-      if (opsResult.ok) {
-        renewalDraft = await generateRenewalDraft({
-          contractName:  contract.name as string,
-          contractType:  contract.contract_type as string,
-          counterparty:  contract.counterparty as string | null,
-          daysLeft,
-          businessName:  agent.business_name as string,
-          knowledgeBase: agent.knowledge_base as string | null,
+      const generated = await generateRenewalDraft({
+        contractName:  contract.name as string,
+        contractType:  contract.contract_type as string,
+        counterparty:  contract.counterparty as string | null,
+        daysLeft,
+        businessName:  agent.business_name as string,
+        knowledgeBase: agent.knowledge_base as string | null,
+      });
+      if (generated) {
+        await supabase.from('ops_contracts').update({ renewal_draft: generated }).eq('id', contract.id);
+        renewalDraft = generated;
+        await consumeAiOp(contract.agent_id as string, 1, {
+          source:       'contracts_monitor',
+          label:        'Monitoreo de contratos',
+          reference_id: contract.id as string,
         });
-        await supabase.from('ops_contracts').update({ renewal_draft: renewalDraft }).eq('id', contract.id);
       }
     }
 

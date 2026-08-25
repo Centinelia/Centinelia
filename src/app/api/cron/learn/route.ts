@@ -207,12 +207,10 @@ export async function GET(req: NextRequest) {
       const totalSources = emails.length + activity.calls.length + activity.docs.length + activity.tasks.length;
       if (totalSources === 0) continue;
 
-      const ops = await consumeAiOp(agent.id, 40, { source: 'learn', label: 'Aprendizaje continuo del negocio' }); // learn is heavy (multi-source)
-      if (!ops.ok) {
-        await maybeSendQuotaEmail(agent, 'learn');
-        continue;
-      }
-
+      // Orden LLM → cobrar (fix 2026-08-24): antes cobrábamos 40 ops antes
+      // del LLM, así que si Anthropic fallaba se perdían 40 ops sin obtener
+      // nada. Ahora extraemos primero; si el LLM falla, no hay cobro. El
+      // check quotaExceeded se hace después del LLM.
       const extracted = await extractLearnings({
         businessName: agent.business_name,
         role:         agent.role ?? '',
@@ -225,6 +223,16 @@ export async function GET(req: NextRequest) {
       });
 
       if (!extracted.length) continue;
+
+      const ops = await consumeAiOp(agent.id, 40, {
+        source:       'learn',
+        label:        'Aprendizaje continuo del negocio',
+        reference_id: agent.id,
+      });
+      if (!ops.ok) {
+        await maybeSendQuotaEmail(agent, 'learn');
+        continue;
+      }
 
       const saved = await saveLearnings(
         extracted.map(e => ({
