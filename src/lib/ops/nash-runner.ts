@@ -24,11 +24,13 @@ const MAX_TOKENS      = 4096;
 const NASH_PORTAL     = 'hola@centinelia.mx';
 const NASH_LAST_RUN_KEY = 'nash_last_run_at';
 const NASH_LAST_ANOMALY_CHECK_KEY = 'nash_last_anomaly_check_at';
-// Anomaly detection corre cada N minutos, no cada 10. Ver comentario del user
-// 2026-08-24. Balance entre latencia de detección (30 min es aceptable, un
-// drain lleva horas hasta ser detectable de todos modos) y costo de queries
-// (144 corridas × ~20 queries = 2900/día → 48 corridas × 20 = 960/día).
-const NASH_ANOMALY_CHECK_INTERVAL_MS = 30 * 60_000;
+// Anomaly detection corre cada 60 min, no cada 10 (cron cadence). El
+// detection floor real es de horas (ratio necesita >20 events con reference_id
+// para flagear, spike vs baseline necesita 1-2 días de acumulación para
+// superar el umbral 3x). 60 min está dentro de ese floor, ahorra ~90% de
+// queries vs 10 min y mantiene el mismo comportamiento operacional.
+// Ver conversación 2026-08-24 con Nazre.
+const NASH_ANOMALY_CHECK_INTERVAL_MS = 60 * 60_000;
 // Nunca miramos más atrás que esta ventana. Alinea con el default del tool
 // revisar_incidentes_plataforma (days=7). Si Nash lleva más de 7 días sin
 // correr y no hay signals frescos, no rescatamos backlog viejo.
