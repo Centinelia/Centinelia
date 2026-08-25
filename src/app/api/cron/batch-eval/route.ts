@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
   // Recoge calls que no tienen CES + calls que no tienen self_eval, dentro del último día
   const { data: pending } = await supabase
     .from('voice_calls')
-    .select('id, transcript, ces_data, self_eval_score, outcome, duration_seconds, created_at')
+    .select('id, agent_id, transcript, ces_data, self_eval_score, outcome, duration_seconds, created_at')
     .lt('created_at', fiveMinAgo)
     .gte('created_at', oneDayAgo)
     .neq('outcome', 'unanswered')
@@ -68,6 +68,50 @@ export async function GET(req: NextRequest) {
     .limit(200);
 
   if (!pending?.length) return NextResponse.json({ ok: true, processed: 0 });
+
+  // Dedup: excluir calls que ya están encoladas en un batch in_progress/validating.
+  // Antes de este fix, cada 30 min el cron creaba un batch NUEVO con los mismos
+  // call_ids que aún no habían sido retrieveados (típicamente <1h de latencia).
+  // Resultado: acumulación de decenas/cientos de batches duplicados que luego
+  // cobraban ops múltiples veces al descargarse. Ver anthropic_batches: había
+  // 126 in_progress acumulados en Aug 2026 antes de este fix.
+  const { data: activeBatches } = await supabase
+    .from('anthropic_batches')
+    .select('request_ids')
+    .eq('kind', 'call_eval')
+    .in('status', ['in_progress', 'validating']);
+  const alreadyQueued = new Set<string>();
+  for (const b of activeBatches ?? []) {
+    for (const rid of ((b.request_ids as string[] | null) ?? [])) {
+      alreadyQueued.add(rid.replace(/^(ces_|se_)/, ''));
+    }
+  }
+  const notQueued = pending.filter(c => !alreadyQueued.has(c.id as string));
+  if (notQueued.length === 0) {
+    return NextResponse.json({ ok: true, processed: 0, skipped_already_queued: pending.length });
+  }
+
+  // Resolver portal_email para particionar por org: un batch = una org.
+  // Antes los batches mezclaban calls de todos los portales; si algo fallaba
+  // era imposible atribuir el fallo o el consumo. Ahora cada batch es
+  // aislable, auditables y no puede impactar orgs distintas.
+  const agentIds = [...new Set(notQueued.map(c => c.agent_id as string).filter(Boolean))];
+  const { data: agents } = await supabase
+    .from('voice_agents')
+    .select('id, portal_email')
+    .in('id', agentIds);
+  const agentToOrg = new Map<string, string>();
+  for (const a of agents ?? []) {
+    if (a.portal_email) agentToOrg.set(a.id as string, a.portal_email as string);
+  }
+
+  const callsByOrg = new Map<string, typeof notQueued>();
+  for (const c of notQueued) {
+    const org = agentToOrg.get(c.agent_id as string);
+    if (!org) continue;
+    if (!callsByOrg.has(org)) callsByOrg.set(org, []);
+    callsByOrg.get(org)!.push(c);
+  }
 
   interface BatchReq {
     custom_id: string;
@@ -79,54 +123,54 @@ export async function GET(req: NextRequest) {
     };
   }
 
-  const requests: BatchReq[] = [];
-  for (const c of pending) {
-    if (!c.transcript || typeof c.transcript !== 'string') continue;
-    if (!c.ces_data) {
-      requests.push({
-        custom_id: `ces_${c.id}`,
-        params: {
-          model:      'claude-haiku-4-5-20251001',
-          max_tokens: 600,
-          system:  [{ type: 'text', text: CES_PROMPT_STABLE, cache_control: { type: 'ephemeral' } }],
-          messages: [{ role: 'user', content: `TRANSCRIPT:\n${(c.transcript as string).slice(0, 5000)}` }],
-        },
-      });
+  const batchesCreated: Array<{ portal_email: string; batch_id: string; request_count: number }> = [];
+  for (const [portalEmail, calls] of callsByOrg) {
+    const requests: BatchReq[] = [];
+    for (const c of calls) {
+      if (!c.transcript || typeof c.transcript !== 'string') continue;
+      if (!c.ces_data) {
+        requests.push({
+          custom_id: `ces_${c.id}`,
+          params: {
+            model:      'claude-haiku-4-5-20251001',
+            max_tokens: 600,
+            system:  [{ type: 'text', text: CES_PROMPT_STABLE, cache_control: { type: 'ephemeral' } }],
+            messages: [{ role: 'user', content: `TRANSCRIPT:\n${(c.transcript as string).slice(0, 5000)}` }],
+          },
+        });
+      }
+      if (c.self_eval_score === null) {
+        requests.push({
+          custom_id: `se_${c.id}`,
+          params: {
+            model:      'claude-haiku-4-5-20251001',
+            max_tokens: 250,
+            system:  [{ type: 'text', text: SELF_EVAL_PROMPT_STABLE, cache_control: { type: 'ephemeral' } }],
+            messages: [{ role: 'user', content: `Outcome: ${c.outcome}\nTRANSCRIPT:\n${(c.transcript as string).slice(0, 4000)}` }],
+          },
+        });
+      }
     }
-    if (c.self_eval_score === null) {
-      requests.push({
-        custom_id: `se_${c.id}`,
-        params: {
-          model:      'claude-haiku-4-5-20251001',
-          max_tokens: 250,
-          system:  [{ type: 'text', text: SELF_EVAL_PROMPT_STABLE, cache_control: { type: 'ephemeral' } }],
-          messages: [{ role: 'user', content: `Outcome: ${c.outcome}\nTRANSCRIPT:\n${(c.transcript as string).slice(0, 4000)}` }],
-        },
-      });
-    }
+    if (requests.length === 0) continue;
+
+    const batch = await anthropic.messages.batches.create({
+      requests: requests as unknown as Parameters<typeof anthropic.messages.batches.create>[0]['requests'],
+    });
+    await supabase.from('anthropic_batches').insert({
+      batch_id:     batch.id,
+      portal_email: portalEmail,
+      kind:         'call_eval',
+      request_ids:  requests.map(r => r.custom_id),
+      status:       batch.processing_status ?? 'in_progress',
+    });
+    batchesCreated.push({ portal_email: portalEmail, batch_id: batch.id, request_count: requests.length });
   }
 
-  if (requests.length === 0) return NextResponse.json({ ok: true, processed: 0 });
-
-  // Batch API acepta hasta 100k requests por batch. Nosotros mandamos como mucho 400.
-  // Retorno inmediato con batch id; los resultados se recogen en la siguiente corrida
-  // del cron (o con una segunda ruta dedicada al retrieve — pendiente si hace falta).
-  const batch = await anthropic.messages.batches.create({
-    requests: requests as unknown as Parameters<typeof anthropic.messages.batches.create>[0]['requests'],
-  });
-
-  // Guarda el batch_id en una tabla auxiliar para retrieve posterior
-  await supabase.from('anthropic_batches').insert({
-    batch_id:    batch.id,
-    kind:        'call_eval',
-    request_ids: requests.map(r => r.custom_id),
-    status:      batch.processing_status ?? 'in_progress',
-  });
-
   return NextResponse.json({
-    ok:              true,
-    batch_id:        batch.id,
-    request_count:   requests.length,
-    status:          batch.processing_status ?? 'in_progress',
+    ok:               true,
+    batches_created:  batchesCreated.length,
+    calls_processed:  notQueued.length,
+    calls_skipped:    pending.length - notQueued.length,
+    batches:          batchesCreated,
   });
 }

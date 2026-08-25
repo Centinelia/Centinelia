@@ -39,11 +39,17 @@ export async function GET(req: NextRequest) {
   const claim = await claimCronRun(supabase, 'batch-eval-retrieve', 25 * 60 * 1000);
   if (!claim.ok) return NextResponse.json({ ok: true, skipped: claim.reason });
 
+  // Solo procesar batches que aún NO se descargaron. Antes incluíamos 'ended'
+  // aquí, pero el update final (línea de más abajo) también escribía 'ended'
+  // → mismo batch se re-pescaba en la siguiente corrida, se re-descargaban
+  // resultados y se re-cobraban ops. Bug de doble/N-cobro. Fix 2026-08-24:
+  // (1) status terminal nuevo 'retrieved' escrito al terminar de descargar,
+  // (2) query excluye 'ended' (legacy pre-fix) y 'retrieved' (post-fix).
   const { data: batches } = await supabase
     .from('anthropic_batches')
     .select('id, batch_id, status')
     .eq('kind', 'call_eval')
-    .in('status', ['in_progress', 'validating', 'ended'])
+    .in('status', ['in_progress', 'validating'])
     .limit(10);
 
   if (!batches?.length) return NextResponse.json({ ok: true, processed: 0 });
@@ -129,7 +135,9 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      await supabase.from('anthropic_batches').update({ status: 'ended', ended_at: new Date().toISOString() }).eq('id', b.id);
+      // Terminal: 'retrieved' evita que la próxima corrida re-descargue este
+      // batch y re-cobre ops por los mismos callIds. Ver comentario del query.
+      await supabase.from('anthropic_batches').update({ status: 'retrieved', ended_at: new Date().toISOString() }).eq('id', b.id);
     } catch (err) {
       errors.push(`${b.batch_id}: ${String(err)}`);
     }
