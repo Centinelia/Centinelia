@@ -209,7 +209,7 @@ function AvailabilityBadge({ avail }: { avail: Availability }) {
   );
   if (avail.state === 'available') return (
     <span className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: '#16a34a' }}>
-      <Check size={10} /> Disponible ({avail.count})
+      <Check size={10} /> Disponible
     </span>
   );
   if (avail.state === 'unavailable') return (
