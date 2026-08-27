@@ -46,7 +46,7 @@ const NOAH_CONFIGS: MeerkatConfigVersions = {
   //
   // punctuationBoundaries sin ',' y minChars 60: chunks cubren cláusulas
   // completas, direcciones no suenan staccato.
-  1: { provider: 'anthropic', model: 'claude-sonnet-4-6', temperature: 0.60, maxTokens: 150, speed: 1.00, minChars: 60, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3', punctuationBoundaries: ['.', '!', '?'] },
+  1: { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.60, maxTokens: 150, speed: 1.00, minChars: 60, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3', punctuationBoundaries: ['.', '!', '?'] },
 };
 
 const NICO_CONFIGS: MeerkatConfigVersions = {

@@ -660,7 +660,9 @@ async function executeAgentToolInner(
       }
       // Fallback motivo: outbound_contact activo del call actual. Sin el
       // customer_number del call context solo tomamos el pending más reciente
-      // del agente como best-effort.
+      // del agente como best-effort. IMPORTANTE: separar teléfono en oración
+      // aparte — si va pegado al nombre el TTS lo lee como parte del nombre
+      // ("Nazre test plus 5 2 8 1 1 2 8 0..."), sonando fatal.
       if (!motivo) {
         const { data: recent } = await supabase
           .from('outbound_contacts')
@@ -671,7 +673,8 @@ async function executeAgentToolInner(
           .limit(1)
           .maybeSingle();
         if (recent?.motivo) {
-          motivo = `El cliente ${recent.nombre ?? 'anónimo'} (${recent.telefono ?? 'sin teléfono'}) ${recent.motivo}. Favor de verificar y contactar al cliente directamente.`;
+          const clienteName = recent.nombre ?? 'un cliente';
+          motivo = `El cliente ${clienteName} ${recent.motivo}. Favor de verificar el pedido y contactarlo directamente para resolverlo.`;
         }
       }
     }
