@@ -31,13 +31,19 @@ const NIA_CONFIGS: MeerkatConfigVersions = {
 };
 
 const NOAH_CONFIGS: MeerkatConfigVersions = {
-  // Noah lee motivos largos con direcciones y comas ("Avenida Test 123,
-  // colonia Prueba, Monterrey, y quisiera saber si..."). Con el default de
-  // punctuationBoundaries incluyendo ',', ElevenLabs corta en cada coma y
-  // suena golpeado/staccato. Quitando la coma del boundary y subiendo
-  // minChars a 60, cada chunk cubre una cláusula completa y suena natural.
-  // Nazre lo pidió tras la primera prueba real 2026-08-27.
-  1: { provider: 'anthropic', model: 'claude-sonnet-4-6', temperature: 0.60, maxTokens: 150, speed: 1.00, minChars: 60, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3', punctuationBoundaries: ['.', '!', '?'] },
+  // Sonnet 4.6 → Haiku 4.5 (2026-08-27): con Sonnet salía ~$0.24/min de puro
+  // LLM (motivo: ~15k tokens de system prompt con 20 tools + personality +
+  // KB). Vendiendo la jornada alta demanda a 6 MXN/min y sumando Twilio +
+  // ElevenLabs + Vapi platform, no hay margen. Haiku 4.5 baja el LLM a
+  // ~$0.03-0.05/min. Trade-off: Haiku es menos capaz razonando, riesgo de
+  // más errores en tool calls con 20 tools disponibles. Validar en llamadas
+  // reales; si degrada la calidad activamos use_custom_llm + prompt caching
+  // como capa adicional (10% cost por turno tras el primero).
+  //
+  // punctuationBoundaries y minChars ver 2026-08-27 iteración anterior: sin
+  // la coma como boundary y con chunks de 60+ chars, direcciones no suenan
+  // staccato.
+  1: { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.60, maxTokens: 150, speed: 1.00, minChars: 60, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3', punctuationBoundaries: ['.', '!', '?'] },
 };
 
 const NICO_CONFIGS: MeerkatConfigVersions = {
