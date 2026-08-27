@@ -462,12 +462,11 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
                   );
                 })()}
 
-                {/* Lada del teléfono: los coordinadores NO reciben número, así
-                    que se oculta. En jornada=tareas el picker se muestra en
-                    gris (informativo) porque el user puede regresar arriba a
-                    cambiar a combinada/minutos. */}
-                {!((selected.features as any)?.is_coordinator) && (
-                  <LadaPicker token={token} value={areaCode} onChange={setAreaCode} disabled={jornada === 'tareas'} />
+                {/* Lada del teléfono — solo cuando el empleado recibirá número.
+                    Coordinadores (tareas-only) y jornada=tareas NO reciben
+                    teléfono, así que ocultamos el selector. */}
+                {!((selected.features as any)?.is_coordinator) && jornada !== 'tareas' && (
+                  <LadaPicker token={token} value={areaCode} onChange={setAreaCode} />
                 )}
 
                 {/* Tier mensual */}
