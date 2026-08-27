@@ -20,7 +20,7 @@ export default async function SeguimientosPage({ params }: Props) {
   const description = initialized
     ? (pending.length > 0
         ? `${pending.length} seguimiento${pending.length === 1 ? '' : 's'} agendado${pending.length === 1 ? '' : 's'}. Tus empleados los llamarán en la fecha programada.`
-        : 'Sin seguimientos agendados. Cuando un empleado registre un pedido, agenda automáticamente una llamada de vuelta.')
+        : 'Sin seguimientos agendados. Aquí aparecen las llamadas de vuelta que tus empleados programan tras un pedido, una cotización, una consulta u otra conversación que necesita seguimiento.')
     : 'Los seguimientos se activan cuando algún empleado tiene llamadas salientes encendidas.';
 
   return (

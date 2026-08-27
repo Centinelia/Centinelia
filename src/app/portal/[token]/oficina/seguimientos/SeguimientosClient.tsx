@@ -213,7 +213,7 @@ export default function SeguimientosClient({
           <CalendarClock size={20} style={{ color: '#9B8FB5', margin: '0 auto 8px' }} />
           <p className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>Nada agendado por ahora</p>
           <p className="text-xs mt-1" style={{ color: '#6B6480' }}>
-            Cuando un empleado registre un pedido, aparecerá aquí la llamada de seguimiento programada.
+            Aquí aparecen las llamadas de vuelta que tus empleados agenden después de un pedido, una cotización, una consulta u otra conversación con seguimiento pendiente.
           </p>
         </div>
       ) : (
