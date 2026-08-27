@@ -19,7 +19,7 @@ import {
   Activity, BarChart2, Mic, UserCheck,
   ArrowLeft, Search, CreditCard, FolderOpen,
   ClipboardList, Gavel, Headphones, PieChart, Brain,
-  ChevronDown, ChevronRight, Phone, LayoutTemplate, CalendarClock,
+  ChevronDown, ChevronRight, Phone, PhoneOutgoing, LayoutTemplate, CalendarClock,
   Inbox, FileSignature, Receipt, Megaphone, Users,
 } from 'lucide-react';
 
@@ -80,7 +80,7 @@ const NAV_SECTIONS: NavSection[] = [
       { href: '/contactos',      moduleId: 'of_contactos',  moduleIdOr: 'campanas', label: 'Contactos',    icon: Users,         badgeKey: '' },
       // Seguimientos: agenda de callbacks auto-programados por registrar_pedido
       // + los que el owner reprograma manualmente. Gate compartido con Contactos.
-      { href: '/seguimientos',   moduleId: 'of_contactos',  moduleIdOr: 'campanas', label: 'Seguimientos', icon: CalendarClock, badgeKey: '' },
+      { href: '/seguimientos',   moduleId: 'of_contactos',  moduleIdOr: 'campanas', label: 'Seguimientos', icon: PhoneOutgoing, badgeKey: '' },
       // Campañas unifica salientes + encuestas (+ correos futuro). Accesible
       // con permiso `campanas` O `of_encuestas` — la UI muestra solo las tabs
       // permitidas al sub-user (ver CampanasClient.visibleTabs).

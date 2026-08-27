@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { notFound } from 'next/navigation';
-import { PhoneOutgoing, CalendarClock } from 'lucide-react';
+import { PhoneOutgoing } from 'lucide-react';
 import { Card } from '@/components/portal-ui';
 import { EmptyState } from '@/components/ui/empty-state';
 import OficinaPageHero from '../OficinaPageHero';
@@ -26,7 +26,7 @@ export default async function SeguimientosPage({ params }: Props) {
   return (
     <div className="flex flex-col gap-5 max-w-6xl mx-auto w-full p-4 md:p-6">
       <OficinaPageHero
-        icon={CalendarClock}
+        icon={PhoneOutgoing}
         eyebrow="Seguimientos"
         title="Llamadas de vuelta programadas"
         description={description}
