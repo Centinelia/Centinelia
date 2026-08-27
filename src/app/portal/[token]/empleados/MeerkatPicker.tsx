@@ -6,6 +6,7 @@ import { Plus, X, Check, ArrowLeft, Clock, Zap, Phone }         from 'lucide-rea
 import { PUBLIC_MEERKAT_ROLES, type MeerkatRole, type MeerkatRoleId }  from '@/lib/portal/meerkat-roles';
 import { JORNADA_CONFIG, FEATURE_PLAN_CONFIG, MONTHLY_CONFIG, MINUTES_TIER_CONFIG } from '@/lib/billing/plans';
 import type { JornadaType }                                      from '@/types/agent';
+import LadaPicker                                                from '../LadaPicker';
 
 type Plan        = 'pro';
 type MinutesTier = 'starter' | 'growth' | 'scale';
@@ -87,6 +88,7 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
   const [agentName,    setAgentName]    = useState('');
   const [tier,         setTier]         = useState<MinutesTier>(defaultTier);
   const [jornada,      setJornada]      = useState<JornadaType>('combinada');
+  const [areaCode,     setAreaCode]     = useState('');
   const [loading,      setLoading]      = useState(false);
   const [error,        setError]        = useState('');
   const router = useRouter();
@@ -103,7 +105,7 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
         .sort((a, b) => (recMap[b.id]?.newCats.length ?? 0) - (recMap[a.id]?.newCats.length ?? 0))
     : PUBLIC_MEERKAT_ROLES;
 
-  const reset = () => { setSelected(null); setExpandedRole(null); setAgentName(''); setError(''); setTier(defaultTier); setJornada('combinada'); };
+  const reset = () => { setSelected(null); setExpandedRole(null); setAgentName(''); setError(''); setTier(defaultTier); setJornada('combinada'); setAreaCode(''); };
 
   const openPicker = () => {
     setOpen(true);
@@ -135,10 +137,19 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
     const isCoord         = !!(selected.features as any)?.is_coordinator;
     const effectiveJornada: JornadaType = isCoord ? 'tareas' : jornada;
     try {
+      // Solo mandamos area_code cuando el empleado va a tener canal de voz.
+      // Coordinadores (tareas-only) no reciben número.
+      const includeLada = effectiveJornada !== 'tareas' && /^\d{2,3}$/.test(areaCode);
       const res  = await fetch(`/api/portal/${token}/agentes`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ meerkat_role_id: selected.id, agent_name: agentName.trim(), minutes_plan: tier, jornada_type: effectiveJornada }),
+        body:    JSON.stringify({
+          meerkat_role_id: selected.id,
+          agent_name:      agentName.trim(),
+          minutes_plan:    tier,
+          jornada_type:    effectiveJornada,
+          ...(includeLada ? { area_code: areaCode } : {}),
+        }),
       });
       const data = await res.json() as { token?: string; agent_id?: string; checkoutUrl?: string; error?: string };
       if (data.token) {
@@ -450,6 +461,13 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
                     </div>
                   );
                 })()}
+
+                {/* Lada del teléfono — solo cuando el empleado recibirá número.
+                    Coordinadores (tareas-only) NO reciben teléfono, así que
+                    ocultamos el selector para no confundir. */}
+                {!((selected.features as any)?.is_coordinator) && jornada !== 'tareas' && (
+                  <LadaPicker token={token} value={areaCode} onChange={setAreaCode} />
+                )}
 
                 {/* Tier mensual */}
                 <div className="flex flex-col gap-2">

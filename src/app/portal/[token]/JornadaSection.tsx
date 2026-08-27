@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Check, Phone, AlertTriangle } from 'lucide-react';
+import LadaPicker from './LadaPicker';
 
 export default function JornadaSection({
   token,
@@ -15,6 +16,7 @@ export default function JornadaSection({
   const [activating, setActivating] = useState(false);
   const [activated,  setActivated]  = useState(false);
   const [error,      setError]      = useState('');
+  const [areaCode,   setAreaCode]   = useState('');
 
   // Solo aplica cuando jornada=tareas (empleado sin canal de voz).
   // El chip de la jornada actual se muestra en el header de configurar/page.tsx.
@@ -24,10 +26,14 @@ export default function JornadaSection({
     setActivating(true);
     setError('');
     try {
+      const includeLada = /^\d{2,3}$/.test(areaCode);
       const res  = await fetch(`/api/portal/${token}/activate-voice`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ ...(agentId ? { agentId } : {}) }),
+        body:    JSON.stringify({
+          ...(agentId ? { agentId } : {}),
+          ...(includeLada ? { areaCode } : {}),
+        }),
       });
       const data = await res.json() as { error?: string; success?: boolean; checkoutUrl?: string };
       if (data.checkoutUrl) {
@@ -74,13 +80,16 @@ export default function JornadaSection({
           <Check size={12} /> Canal activado. Recargando...
         </div>
       ) : (
-        <button
-          onClick={handleActivateVoice}
-          disabled={activating}
-          className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
-          style={{ background: '#6C3BFF', color: '#fff', border: 'none', cursor: activating ? 'wait' : 'pointer' }}>
-          {activating ? 'Procesando...' : <><Phone size={12} /> Contratar canal de voz</>}
-        </button>
+        <>
+          <LadaPicker token={token} value={areaCode} onChange={setAreaCode} />
+          <button
+            onClick={handleActivateVoice}
+            disabled={activating}
+            className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
+            style={{ background: '#6C3BFF', color: '#fff', border: 'none', cursor: activating ? 'wait' : 'pointer' }}>
+            {activating ? 'Procesando...' : <><Phone size={12} /> Contratar canal de voz</>}
+          </button>
+        </>
       )}
 
       {error && (
