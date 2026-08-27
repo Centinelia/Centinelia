@@ -31,19 +31,22 @@ const NIA_CONFIGS: MeerkatConfigVersions = {
 };
 
 const NOAH_CONFIGS: MeerkatConfigVersions = {
-  // Sonnet 4.6 → Haiku 4.5 (2026-08-27): con Sonnet salía ~$0.24/min de puro
-  // LLM (motivo: ~15k tokens de system prompt con 20 tools + personality +
-  // KB). Vendiendo la jornada alta demanda a 6 MXN/min y sumando Twilio +
-  // ElevenLabs + Vapi platform, no hay margen. Haiku 4.5 baja el LLM a
-  // ~$0.03-0.05/min. Trade-off: Haiku es menos capaz razonando, riesgo de
-  // más errores en tool calls con 20 tools disponibles. Validar en llamadas
-  // reales; si degrada la calidad activamos use_custom_llm + prompt caching
-  // como capa adicional (10% cost por turno tras el primero).
+  // REVERT a Sonnet 4.6 (2026-08-27): Haiku no pudo con el flow de tortillería
+  // (buscar_directorio → trigger_outbound_call). Aunque el endpoint devolvía
+  // el ejemplo exacto en el error message, Haiku llamó trigger_outbound_call
+  // con {} tres veces sin corregir. Prompt-following con args estructurados
+  // complejos y tools encadenadas está fuera de su rango.
   //
-  // punctuationBoundaries y minChars ver 2026-08-27 iteración anterior: sin
-  // la coma como boundary y con chunks de 60+ chars, direcciones no suenan
-  // staccato.
-  1: { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.60, maxTokens: 150, speed: 1.00, minChars: 60, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3', punctuationBoundaries: ['.', '!', '?'] },
+  // Con Sonnet 4.6 el flow funciona pero el margen es apretado (~$0.24/min
+  // LLM sobre precio de venta ~6 MXN/min). Siguiente palanca: activar
+  // use_custom_llm en Noah (feature flag) para usar /api/voice/llm con
+  // prompt caching Anthropic, baja Sonnet a ~$0.05-0.08/min post-primer
+  // turno. Pendiente validar que la ruta llm/chat/completions tenga el
+  // cache_control totalmente implementado.
+  //
+  // punctuationBoundaries sin ',' y minChars 60: chunks cubren cláusulas
+  // completas, direcciones no suenan staccato.
+  1: { provider: 'anthropic', model: 'claude-sonnet-4-6', temperature: 0.60, maxTokens: 150, speed: 1.00, minChars: 60, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3', punctuationBoundaries: ['.', '!', '?'] },
 };
 
 const NICO_CONFIGS: MeerkatConfigVersions = {
