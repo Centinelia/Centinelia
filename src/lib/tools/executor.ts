@@ -23,6 +23,7 @@ import { generateFolio, STATUS_LABELS } from '@/lib/civic/folio';
 import {
   getNextTicketFolio, getCurrentOnCall,
   type GuardiaArea, type GuardiaSchedule, type DirectorioContacto,
+  type DirectoryPerson,
 } from '@/lib/helpdesk/folio';
 import { scrapeWebsite } from '@/lib/scrape/website';
 import { checkPolicy, TOOL_CAPABILITIES } from '@/lib/policies/engine';
@@ -3830,28 +3831,74 @@ async function executeAgentToolInner(
 
   // ─────────────────────────────────────────────────────────────────────────
   // buscar_directorio
+  // Dos modos: (1) tipo_contacto = búsqueda directa por flag de DirectoryPerson
+  // (contacto_operaciones, autorizador_oc, encargado_pagos, dueno); (2) tipo_-
+  // problema = búsqueda libre por área/expertise (Neo helpdesk). Lee de
+  // organizations.directory (fuente actual). Voice endpoint hace lo mismo:
+  // src/app/api/voice/tools/buscar-directorio/route.ts — mantener alineado.
   // ─────────────────────────────────────────────────────────────────────────
   if (toolName === 'buscar_directorio') {
+    const tipoContacto = (toolInput.tipo_contacto as string | undefined) ?? null;
     const q = ((toolInput.tipo_problema as string | undefined) ?? '').toLowerCase();
 
     const { data: agentRow } = await supabase.from('voice_agents')
-      .select('directorio_interno, guardia_schedule, timezone')
+      .select('portal_email, timezone')
       .eq('id', agentId).single();
 
-    const directorio = (agentRow?.directorio_interno ?? []) as DirectorioContacto[];
-    const guardia    = ((agentRow?.guardia_schedule as GuardiaSchedule | null)?.areas ?? []) as GuardiaArea[];
-    const tz         = (agentRow?.timezone as string | null) ?? 'America/Monterrey';
-    const lines: string[] = [];
+    const orgEmail = (agentRow?.portal_email as string | null) ?? null;
+    const { data: org } = orgEmail
+      ? await supabase.from('organizations')
+          .select('directory, guardia_schedule')
+          .eq('portal_email', orgEmail)
+          .single()
+      : { data: null };
 
-    if (directorio.length && q) {
-      const match = directorio.find(c =>
-        c.atiende.toLowerCase().split(/[\s,]+/).some(kw => kw.length > 3 && q.includes(kw)) ||
-        c.area.toLowerCase().split(/\s+/).some(kw => q.includes(kw))
-      );
+    const directory: DirectoryPerson[] = ((org as any)?.directory ?? []);
+    const guardia   = (((org as any)?.guardia_schedule as GuardiaSchedule | null)?.areas ?? []) as GuardiaArea[];
+    const tz        = (agentRow?.timezone as string | null) ?? 'America/Monterrey';
+
+    // Rama por flag: mapping en un solo lugar. Ver también voice endpoint.
+    const FLAG_LOOKUPS: Record<string, keyof DirectoryPerson> = {
+      contacto_operaciones: 'is_operations_contact',
+      autorizador_oc:       'is_oc_autorizador',
+      encargado_pagos:      'is_oc_pagos',
+      dueno:                'is_owner',
+    };
+
+    if (tipoContacto) {
+      const flagKey = FLAG_LOOKUPS[tipoContacto];
+      if (!flagKey) {
+        return { ok: false, error: `Tipo de contacto "${tipoContacto}" no reconocido. Válidos: ${Object.keys(FLAG_LOOKUPS).join(', ')}.` };
+      }
+      const matches = directory.filter(p => !!(p as any)[flagKey]);
+      if (matches.length === 0) {
+        return { ok: true, message: `No hay nadie marcado como ${tipoContacto.replace('_', ' ')} en el directorio de la organización. El dueño lo configura en el portal.` };
+      }
+      const summary = matches.map((p, i) => {
+        const parts = [p.name];
+        if (p.role)      parts.push(`(${p.role})`);
+        if (p.phone)     parts.push(`— ${p.phone}`);
+        if (p.email)     parts.push(`· ${p.email}`);
+        if (p.extension) parts.push(`ext. ${p.extension}`);
+        return matches.length > 1 ? `${i + 1}. ${parts.join(' ')}` : parts.join(' ');
+      }).join('\n');
+      return { ok: true, message: summary };
+    }
+
+    // Rama helpdesk (Neo): match por expertise/departamento + guardia.
+    const lines: string[] = [];
+    if (directory.length && q) {
+      const match = directory.find(p => {
+        const expertise = (p.helpdesk_expertise ?? '').toLowerCase();
+        const dept      = (p.department ?? '').toLowerCase();
+        return expertise.split(/[\s,]+/).some(kw => kw.length > 3 && q.includes(kw))
+            || dept.split(/\s+/).some(kw => q.includes(kw));
+      });
       if (match) {
         const ext = match.extension ? ` (ext. ${match.extension})` : '';
-        const tel = match.telefono  ? `, ${match.telefono}` : '';
-        lines.push(`${match.nombre} atiende ${match.area}${ext}${tel}.`);
+        const tel = match.phone     ? `, ${match.phone}` : '';
+        const dep = match.department ? ` se encarga de ${match.department}` : '';
+        lines.push(`${match.name}${dep}${ext}${tel}.`);
       } else {
         lines.push('No encontré un especialista exacto en el directorio.');
       }

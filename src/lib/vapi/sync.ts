@@ -10,6 +10,7 @@ import { TOOL_SCHEMAS, toVapiToolDef } from '@/lib/tools/schemas';
 import { getOrgIndustry, INDUSTRIES_WITH_DAILY_AVAILABILITY } from '@/lib/industry';
 import { parseToolOverrides } from '@/lib/tools/tool-overrides';
 import { resolveOrgPackContext, resolveActivePacks, meerkatActivePacks, TOOL_TO_PACK } from '@/lib/tools/packs';
+import { MEERKAT_ROLES } from '@/lib/portal/meerkat-roles';
 
 const VAPI_URL = 'https://api.vapi.ai';
 const VAPI_KEY = process.env.VAPI_API_KEY!;
@@ -242,7 +243,7 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
   // qb_crear_cotizacion agregada 2026-08-19: ventas cotiza directo en QB cuando
   // negocia con cliente y delega el timbrado a Nala.
   // ML tools hidden 2026-08-19: 0 orgs activos, código intacto. Reactivar en preset o via pack mercado_libre (Capa 2) cuando llegue cliente.
-  noah:  ['crear_lead', 'crear_contacto_saliente', 'llamar_a', 'notificar_transferencia', 'transferir_llamada', 'buscar_documento_oficina', 'buscar_correo_enviado', 'buscar_producto', 'catalogo_buscar_codigo', 'marcar_no_llamar', 'trigger_outbound_call', 'generar_propuesta_comercial', 'generar_cotizacion', 'generar_correo_estructurado', 'qb_crear_cotizacion'],
+  noah:  ['crear_lead', 'crear_contacto_saliente', 'agregar_tag_contacto', 'registrar_pedido', 'buscar_cliente', 'buscar_directorio', 'enviar_correo', 'llamar_a', 'notificar_transferencia', 'transferir_llamada', 'buscar_documento_oficina', 'buscar_correo_enviado', 'buscar_producto', 'catalogo_buscar_codigo', 'marcar_no_llamar', 'trigger_outbound_call', 'generar_propuesta_comercial', 'generar_cotizacion', 'generar_correo_estructurado', 'qb_crear_cotizacion'],
   // Nico — cobranza y fiscal (CFDIs + P&L). Owner del pack invoicing_cfdi.
   // QB tools feature-gated ('quickbooks').
   nico:  ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'enviar_correo', 'crear_documento', 'enviar_documento_oficina', 'solicitar_factura', 'consultar_factura', 'qb_consultar_facturas', 'qb_buscar_cliente', 'qb_registrar_pago', 'qb_crear_factura', 'qb_reporte_ingresos', 'generar_correo_estructurado'],
@@ -373,7 +374,7 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
 
     case 'consultar_incidentes': return { type: 'function', function: { name: 'consultar_incidentes', description: 'Consulta si hay incidentes activos en el sistema. Úsala al inicio de cada llamada de soporte para avisar al usuario sobre problemas conocidos antes de crear un ticket.', parameters: { type: 'object', properties: { tema: { type: 'string', description: 'Tema o sistema sobre el que pregunta el usuario (ej: internet, SAP, correo). Opcional.' } } } }, server: server('consultar-incidentes') };
 
-    case 'buscar_directorio': return { type: 'function', function: { name: 'buscar_directorio', description: 'Busca en el directorio interno quién atiende un tipo de problema específico. Úsala para referir al usuario con el técnico o área correcta.', parameters: { type: 'object', properties: { tipo_problema: { type: 'string', description: 'Tipo de problema o área que se busca (ej: red, VPN, impresoras, SAP)' } }, required: ['tipo_problema'] } }, server: server('buscar-directorio') };
+    case 'buscar_directorio': return { type: 'function', function: { name: 'buscar_directorio', description: 'Consulta el directorio interno de la organización para encontrar al responsable de algo. Dos modos: (1) búsqueda libre por área/expertise con `tipo_problema` — útil para tickets IT ("VPN caída", "impresora del piso 3"); (2) búsqueda directa por rol con `tipo_contacto` — útil para escalar de forma inequívoca al encargado de operaciones/envíos, al autorizador de OCs, o al encargado de pagos.', parameters: { type: 'object', properties: { tipo_problema: { type: 'string', description: 'Palabras clave del problema o área (ej: red, VPN, impresoras, SAP). Solo úsalo cuando la persona no tenga un flag específico.' }, tipo_contacto: { type: 'string', enum: ['contacto_operaciones', 'autorizador_oc', 'encargado_pagos', 'dueno'], description: 'Rol conocido a buscar. Prefiérelo sobre tipo_problema cuando aplique. Ej: "contacto_operaciones" para el encargado de envíos o dispatcher del negocio.' } } } }, server: server('buscar-directorio') };
 
     case 'buscar_en_web': return { type: 'function', function: { name: 'buscar_en_web', description: 'Busca información actualizada en internet sobre un tema, empresa, producto o persona.', parameters: { type: 'object', properties: { query: { type: 'string', description: 'Término de búsqueda o pregunta a investigar' } }, required: ['query'] } }, server: server('buscar-en-web') };
 
@@ -766,7 +767,18 @@ async function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], pee
     model: modelBlock,
     voice: {
       provider: '11labs',
-      voiceId: agent.elevenlabs_voice_id || '9Godp7dNohUvXk6qp0gS',
+      // Fallback dinámico contra meerkat-roles cuando el agente no tiene
+      // elevenlabs_voice_id explícito. Antes: hardcoded a la voz de Nia →
+      // cualquier Noah/Nova/Nala/etc creado por admin/agentes o SQL directo
+      // sonaba con voz de Nia. Landing y portal add-employee sí llenaban
+      // elevenlabs_voice_id correctamente. Ver [[handoff-nova-fleet-reports-2026-08-26]]
+      // sección "issues descubiertos en test E2E".
+      voiceId: agent.elevenlabs_voice_id
+        || (() => {
+             const roleId = (agent.features as { meerkat_role_id?: string } | null)?.meerkat_role_id;
+             return roleId ? MEERKAT_ROLES.find(r => r.id === roleId)?.voiceId ?? null : null;
+           })()
+        || '9Godp7dNohUvXk6qp0gS',
       model: cfg.voiceModel ?? 'eleven_turbo_v2_5',
       stability: 0.35,
       similarityBoost: 0.75,

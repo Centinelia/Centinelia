@@ -57,6 +57,14 @@ export interface DirectoryPerson {
   // del ciclo OC-CFDI por correo. Ver [[project-ciclo-oc-cfdi-pack]].
   is_oc_autorizador?:  boolean;        // recibe OCs que no pasan autofirma
   is_oc_pagos?:        boolean;        // recibe OCs firmadas para hacer transferencia bancaria
+
+  // Contacto operativo del negocio: encargado de envíos / dispatcher /
+  // coordinador de servicio / responsable de campo, según el giro. Noah lo
+  // busca (vía buscar_directorio con tipo=contacto_operaciones) cuando en un
+  // seguimiento el cliente reporta un problema con la entrega o el servicio.
+  // Genérico a propósito para servir a tortillerías, talleres, consultorios,
+  // distribuidores, etc. — user-facing label: "Contacto de operaciones".
+  is_operations_contact?: boolean;
 }
 
 /** @deprecated usar DirectoryPerson (organizations.directory) */

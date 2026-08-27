@@ -41,12 +41,12 @@ const TOOL_REGISTRY_BASE: Omit<ToolEntry, 'pack'>[] = [
   { name: 'leer_archivo',             description: 'Lee contenido de archivo del Drive',                    channels: A, category: 'drive',     destructive: false, gatedByRole: ['neo','nox'], gatedByFeature: null, capability: 'files', policy: policyFor('leer_archivo') },
 
   // destructive
-  { name: 'enviar_correo',            description: 'Envía correo directo (verifier antes de send)',         channels: A, category: 'comms',     destructive: true,  gatedByRole: ['nico','nelia','naia','nox','niva'], gatedByFeature: null, capability: 'email', policy: policyFor('enviar_correo') },
+  { name: 'enviar_correo',            description: 'Envía correo directo (verifier antes de send)',         channels: A, category: 'comms',     destructive: true,  gatedByRole: ['nico','nelia','naia','nox','niva','noah'], gatedByFeature: null, capability: 'email', policy: policyFor('enviar_correo') },
   { name: 'trigger_outbound_call',    description: 'Dispara llamada saliente (verifier antes)',             channels: A, category: 'comms',     destructive: true,  gatedByRole: ['noah'], gatedByFeature: 'outbound_calls', capability: 'phone', policy: policyFor('trigger_outbound_call') },
 
   // documents
   { name: 'create_document',          description: 'Genera PDF (factura, orden, cotización, general)',      channels: A, category: 'docs',      destructive: false, gatedByRole: ['nico','naia','nova','nox','niva'], gatedByFeature: null, capability: null, policy: policyFor('create_document') },
-  { name: 'create_file',              description: 'Genera archivo Excel/Word/PowerPoint',                  channels: A, category: 'docs',      destructive: false, gatedByRole: ['nox','niva'], gatedByFeature: null, capability: null, policy: policyFor('create_file') },
+  { name: 'create_file',              description: 'Genera archivo Excel/Word/PowerPoint',                  channels: A, category: 'docs',      destructive: false, gatedByRole: ['nox','niva','nova'], gatedByFeature: null, capability: null, policy: policyFor('create_file') },
   { name: 'crear_borrador_contrato',   description: 'Crea borrador de contrato',                             channels: A, category: 'docs',      destructive: true,  gatedByRole: ['nox'], gatedByFeature: 'contract_drafts', capability: null, policy: policyFor('crear_borrador_contrato') },
 
   // drive
@@ -143,16 +143,16 @@ const TOOL_REGISTRY_BASE: Omit<ToolEntry, 'pack'>[] = [
   { name: 'crear_lead',               description: 'Registra un lead con nombre/telefono/interés',                 channels: A, category: 'crm',       destructive: false, gatedByRole: ['nia','noah'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
   { name: 'crear_contacto_saliente',  description: 'Crea contacto en outbound_contacts para campañas',             channels: A, category: 'crm',       destructive: false, gatedByRole: ['nia','noah'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
   { name: 'agendar_cita',             description: 'Registra cita en la agenda del negocio',                       channels: A, category: 'crm',       destructive: false, gatedByRole: ['nia','naia'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
-  { name: 'registrar_pedido',         description: 'Registra pedido de cliente (producto, cantidad, entrega)',     channels: A, category: 'crm',       destructive: false, gatedByRole: ['nia'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
-  { name: 'buscar_cliente',           description: 'Busca cliente existente por nombre/telefono',                  channels: A, category: 'crm',       destructive: false, gatedByRole: ['nia','nico','nelia','nara','naia','nova'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
+  { name: 'registrar_pedido',         description: 'Registra pedido de cliente (producto, cantidad, entrega)',     channels: A, category: 'crm',       destructive: false, gatedByRole: ['nia','noah'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
+  { name: 'buscar_cliente',           description: 'Busca cliente existente por nombre/telefono',                  channels: A, category: 'crm',       destructive: false, gatedByRole: ['nia','noah','nico','nelia','nara','naia','nova'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
   { name: 'buscar_correo_enviado',    description: 'Busca correos enviados previamente para dar seguimiento',      channels: A, category: 'crm',       destructive: false, gatedByRole: ['nia','noah','nico','nelia','naia','nox','niva'], gatedByFeature: null, capability: 'email', policy: DEFAULT_POLICY },
-  { name: 'agregar_tag_contacto',     description: 'Agrega tag a contacto para segmentación de campañas',          channels: A, category: 'crm',       destructive: false, gatedByRole: ['nia'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
+  { name: 'agregar_tag_contacto',     description: 'Agrega tag a contacto para segmentación de campañas',          channels: A, category: 'crm',       destructive: false, gatedByRole: ['nia','noah'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
   { name: 'marcar_no_llamar',         description: 'Marca teléfono como "no volver a llamar" (regulatorio LFPDPPP)', channels: ['voice', 'email'], category: 'crm', destructive: true, gatedByRole: ['noah'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
 
   // helpdesk IT
   { name: 'crear_ticket',             description: 'Crea ticket de soporte IT con categoría y prioridad',          channels: A, category: 'helpdesk',  destructive: false, gatedByRole: ['neo','nova'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
   { name: 'consultar_incidentes',     description: 'Consulta incidentes activos por tema',                         channels: A, category: 'helpdesk',  destructive: false, gatedByRole: ['neo'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
-  { name: 'buscar_directorio',        description: 'Busca en directorio interno quién atiende un problema',        channels: A, category: 'helpdesk',  destructive: false, gatedByRole: ['neo'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
+  { name: 'buscar_directorio',        description: 'Busca en directorio interno de la org por área/expertise (helpdesk) o por rol (contacto_operaciones, autorizador_oc, encargado_pagos, dueno)', channels: A, category: 'helpdesk',  destructive: false, gatedByRole: ['neo','noah'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
   { name: 'iniciar_onboarding',       description: 'Dispara onboarding con correo de bienvenida',                  channels: A, category: 'helpdesk',  destructive: true,  gatedByRole: ['naia'], gatedByFeature: null, capability: 'email', policy: DEFAULT_POLICY },
 
   // voice-only (transferencias telefónicas y encuestas en llamada)

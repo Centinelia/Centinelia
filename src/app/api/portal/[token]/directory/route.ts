@@ -61,6 +61,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       // Flags pack ciclo_oc_cfdi
       ...(p.is_oc_autorizador  ? { is_oc_autorizador:  true }                        : {}),
       ...(p.is_oc_pagos        ? { is_oc_pagos:        true }                        : {}),
+      // Contacto de operaciones (encargado de envíos / dispatcher / coordinador
+      // de servicio). Noah lo usa en el flow de seguimientos cuando el cliente
+      // reporta problemas con la entrega.
+      ...(p.is_operations_contact ? { is_operations_contact: true }                  : {}),
     }));
 
   // Sub-users no pueden modificar/eliminar al dueño (defense in depth — el gate

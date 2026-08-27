@@ -14,7 +14,7 @@
  */
 
 import { useState } from 'react';
-import { Plus, X, Crown, Pencil, Save, Lock, Eye, EyeOff, BookUser, Users, PenLine, DollarSign, Mail } from 'lucide-react';
+import { Plus, X, Crown, Pencil, Save, Lock, Eye, EyeOff, BookUser, Users, PenLine, DollarSign, Mail, Truck } from 'lucide-react';
 import { v4 as uuid } from 'uuid';
 import type { DirectoryPerson } from '@/lib/helpdesk/folio';
 
@@ -330,6 +330,13 @@ function PersonRow({
                 <DollarSign size={9} /> Pagos OC
               </span>
             )}
+            {person.is_operations_contact && (
+              <span className="text-[10px] px-2 py-0.5 rounded font-semibold flex items-center gap-1"
+                style={{ background: 'rgba(34,197,94,0.12)', color: '#15803d' }}
+                title="Encargado de operaciones/envíos que Noah contacta cuando hay un problema con la entrega">
+                <Truck size={9} /> Operaciones
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2 flex-wrap mt-0.5">
             {person.phone && (
@@ -411,6 +418,27 @@ function PersonRow({
               <span style={{ color: '#1A0A3B', fontWeight: 500 }}>Departamento de pagos</span>
               <div className="text-[11px]" style={{ color: '#9B8FB5' }}>
                 Recibe por correo las OCs firmadas para hacer la transferencia bancaria al proveedor.
+              </div>
+            </div>
+          </label>
+        </div>
+      )}
+
+      {/* Rol operativo — Noah lo contacta por teléfono cuando el cliente
+          reporta un problema con la entrega o el servicio. Requiere teléfono
+          (no correo) porque el flow es una llamada saliente. */}
+      {(person.phone ?? '').trim() && (
+        <div className="flex flex-col gap-1.5 pt-1 pb-1 px-1">
+          <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#9B8FB5' }}>
+            Rol operativo
+          </p>
+          <label className="flex items-start gap-2 text-[12px] cursor-pointer" style={{ color: '#6B6480' }}>
+            <input type="checkbox" className="mt-0.5" checked={!!person.is_operations_contact}
+              onChange={e => onUpdate({ is_operations_contact: e.target.checked })} />
+            <div>
+              <span style={{ color: '#1A0A3B', fontWeight: 500 }}>Contacto de operaciones</span>
+              <div className="text-[11px]" style={{ color: '#9B8FB5' }}>
+                Encargado de envíos, dispatcher o coordinador de servicio. Tu empleado le llama cuando un cliente reporta que no recibió su pedido o hubo un problema con la entrega.
               </div>
             </div>
           </label>
