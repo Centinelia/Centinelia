@@ -155,6 +155,8 @@ export const ROUTE_MODULE_MAP: Record<string, string | string[]> = {
   // Sub-user necesita `of_contactos` O `campanas` (retrocompat con quien
   // ya podía manejar contactos dentro del tab viejo).
   'oficina/contactos':             ['of_contactos', 'campanas'],
+  // Seguimientos comparte gate con Contactos (mismo underlying data).
+  'oficina/seguimientos':          ['of_contactos', 'campanas'],
   // Unificado 2026-08-09: /oficina/campanas agrupa salientes + encuestas
   // (+ correos futuro). Sub-user necesita CUALQUIERA de los dos módulos.
   'oficina/campanas':              ['campanas', 'of_encuestas'],

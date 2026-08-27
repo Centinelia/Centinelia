@@ -77,7 +77,10 @@ const NAV_SECTIONS: NavSection[] = [
       { href: '/llamadas',   moduleId: 'llamadas',      label: 'Llamadas',   icon: Phone,     badgeKey: '' },
       // Contactos vive fuera de Campañas (2026-08-10) — es asset transversal.
       // Retrocompat: sub-users con `campanas` también entran.
-      { href: '/contactos',  moduleId: 'of_contactos',  moduleIdOr: 'campanas',     label: 'Contactos', icon: Users,     badgeKey: '' },
+      { href: '/contactos',      moduleId: 'of_contactos',  moduleIdOr: 'campanas', label: 'Contactos',    icon: Users,         badgeKey: '' },
+      // Seguimientos: agenda de callbacks auto-programados por registrar_pedido
+      // + los que el owner reprograma manualmente. Gate compartido con Contactos.
+      { href: '/seguimientos',   moduleId: 'of_contactos',  moduleIdOr: 'campanas', label: 'Seguimientos', icon: CalendarClock, badgeKey: '' },
       // Campañas unifica salientes + encuestas (+ correos futuro). Accesible
       // con permiso `campanas` O `of_encuestas` — la UI muestra solo las tabs
       // permitidas al sub-user (ver CampanasClient.visibleTabs).

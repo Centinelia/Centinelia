@@ -31,6 +31,11 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const body = await req.json() as {
     tags?: unknown; motivo?: string; nombre?: string;
     telefono?: string; email?: string; password?: string;
+    // Reprogramar / cancelar seguimiento — ninguno cambia la identidad del
+    // contacto así que NO requieren password. status solo acepta un subset
+    // seguro (canceled / pending). Ver /oficina/seguimientos.
+    scheduled_at?: string;
+    status?: 'pending' | 'canceled';
   };
 
   const touchesSensitive =
@@ -73,6 +78,21 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     update.telefono = clean;
   }
   if (typeof body.email    === 'string') update.email    = body.email.trim().toLowerCase() || null;
+
+  // Reprogramar: validar ISO. Cancelar/reactivar: solo el whitelist.
+  if (typeof body.scheduled_at === 'string') {
+    const d = new Date(body.scheduled_at);
+    if (isNaN(d.getTime())) {
+      return NextResponse.json({ error: 'scheduled_at inválido' }, { status: 400 });
+    }
+    update.scheduled_at = d.toISOString();
+  }
+  if (typeof body.status === 'string') {
+    if (body.status !== 'canceled' && body.status !== 'pending') {
+      return NextResponse.json({ error: 'status inválido' }, { status: 400 });
+    }
+    update.status = body.status;
+  }
 
   if (!Object.keys(update).length) {
     return NextResponse.json({ error: 'Nada que actualizar' }, { status: 400 });
