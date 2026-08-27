@@ -719,7 +719,7 @@ async function executeAgentToolInner(
     const parentContactPhone = (toolInput as any).__parent_contact_phone as string | undefined;
     try {
       const now = new Date().toISOString();
-      const { data: contactRow } = await supabase.from('outbound_contacts').insert({
+      const contactPayload = {
         agent_id:        agentId,
         nombre:          name ?? null,
         telefono:        phone,
@@ -729,11 +729,26 @@ async function executeAgentToolInner(
         source:          'agent_escalation',
         ...(parentContactId    ? { external_source: 'agent_escalation_from', external_id: parentContactId } : {}),
         ...(parentContactPhone ? { tags: [`escalado_por_cliente:${parentContactPhone.replace(/\D/g, '').slice(-10)}`] } : {}),
-      }).select('id').single();
-      if (contactRow?.id && r.callId) {
+      };
+      const { data: contactRow, error: insertErr } = await supabase
+        .from('outbound_contacts').insert(contactPayload).select('id').single();
+
+      // Si ya existía un contacto con (agent_id, phone) — típico en tests
+      // donde cliente y encargado comparten teléfono, o cuando el encargado
+      // ya está registrado desde escalaciones previas — reutilizamos su id.
+      let contactId = contactRow?.id as string | undefined;
+      if (!contactId && insertErr) {
+        const { data: existing } = await supabase
+          .from('outbound_contacts').select('id')
+          .eq('agent_id', agentId).eq('telefono', phone)
+          .order('created_at', { ascending: false }).limit(1).maybeSingle();
+        contactId = existing?.id as string | undefined;
+      }
+
+      if (contactId && r.callId) {
         await supabase.from('outbound_calls').insert({
           agent_id:     agentId,
-          contact_id:   contactRow.id,
+          contact_id:   contactId,
           telefono:     phone,
           nombre:       name ?? null,
           motivo,
