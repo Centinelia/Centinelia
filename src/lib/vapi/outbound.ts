@@ -1,6 +1,14 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { buildOutboundSystemPrompt } from '@/lib/voice/outbound-prompt-builder';
+import { expandForSpeech } from '@/lib/voice/tts-normalize';
 import type { VoiceAgent } from '@/types/agent';
+
+// Pausa al inicio del firstMessage. Sin esto, Vapi empieza a hablar en el
+// instante que Twilio detecta que el cliente contestó — pero el cliente todavía
+// no llegó el teléfono a la oreja, así que se pierde las primeras 2-3 palabras.
+// `<break time="1500ms" />` es SSML soportado por ElevenLabs Turbo v2.5.
+// Nazre lo pidió tras el primer test de Noah 2026-08-27.
+const FIRST_MESSAGE_LEAD_PAUSE = '<break time="2500ms" /> ';
 
 type SurveyQ = {
   id:         string;
@@ -160,14 +168,17 @@ export async function triggerOutboundCall({
     }
   }
 
-  const isFormal  = (agent.speech_style ?? 'usted') !== 'tu';
-  const notice    = 'Esta llamada puede ser grabada.';
-  const firstName = resolvedName ? ` ${resolvedName.split(' ')[0]}` : '';
-  const greeting  = resolvedName ? `Hola${firstName}` : 'Hola';
+  const isFormal    = (agent.speech_style ?? 'usted') !== 'tu';
+  const notice      = 'Esta llamada puede ser grabada.';
+  const firstName   = resolvedName ? ` ${resolvedName.split(' ')[0]}` : '';
+  const greeting    = resolvedName ? `Hola${firstName}` : 'Hola';
+  // Expandir "Ave" → "Avenida", "Col." → "Colonia" etc antes de TTS. El motivo
+  // suele venir con la dirección tal cual el cliente la dictó.
+  const spokenMotivo = motivo ? expandForSpeech(motivo).toLowerCase() : '';
 
   const firstMessage = isCallback
-    ? `Hola${firstName}, ${isFormal ? 'le' : 'te'} hablamos de ${agent.business_name}. ${notice} Nos llamaste hace un momento y no pudimos contestar, ${isFormal ? 'le ofrecemos una disculpa' : 'te pedimos una disculpa'}, pero ${isFormal ? 'díganos' : 'dinos'}, ¿en qué ${isFormal ? 'le' : 'te'} podemos servir?`
-    : `${greeting}, le habla ${agent.business_name}. ${notice}${motivo ? ` Le llamo porque ${motivo.toLowerCase()}.` : ''} ¿Tiene un momento?`;
+    ? `${FIRST_MESSAGE_LEAD_PAUSE}Hola${firstName}, ${isFormal ? 'le' : 'te'} hablamos de ${agent.business_name}. ${notice} Nos llamaste hace un momento y no pudimos contestar, ${isFormal ? 'le ofrecemos una disculpa' : 'te pedimos una disculpa'}, pero ${isFormal ? 'díganos' : 'dinos'}, ¿en qué ${isFormal ? 'le' : 'te'} podemos servir?`
+    : `${FIRST_MESSAGE_LEAD_PAUSE}${greeting}, le habla ${agent.business_name}. ${notice}${spokenMotivo ? ` Le llamo porque ${spokenMotivo}.` : ''} ¿Tiene un momento?`;
 
   // Inject end_of_outbound_call surveys unless this call already has an embedded survey
   let finalCampaignInstructions = campaignInstructions;
@@ -178,7 +189,11 @@ export async function triggerOutboundCall({
     }
   }
 
-  const systemPrompt = buildOutboundSystemPrompt(agent, resolvedName, motivo, customerContext, finalCampaignInstructions);
+  // Motivo expandido también al system prompt para que el LLM lo referencie
+  // hablado (no solo el firstMessage). Si un cliente pregunta "¿por qué me
+  // llamas?" a mitad de conversación, la respuesta también sonará expandida.
+  const expandedMotivo = motivo ? expandForSpeech(motivo) : undefined;
+  const systemPrompt   = buildOutboundSystemPrompt(agent, resolvedName, expandedMotivo, customerContext, finalCampaignInstructions);
 
   const res = await fetch(`${VAPI_URL}/call`, {
     method: 'POST',
