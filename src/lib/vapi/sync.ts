@@ -1198,7 +1198,7 @@ export async function pushConversationalPromptsToAllAgents(): Promise<{ synced: 
 export async function assignAssistantToPhone(
   phoneNumber: string,
   vapiAssistantId: string,
-  concurrencyLimit?: number,
+  _concurrencyLimit?: number,
 ): Promise<boolean> {
   const listRes = await fetch(`${VAPI_URL}/phone-number`, { headers: headers() });
   if (!listRes.ok) return false;
@@ -1211,11 +1211,12 @@ export async function assignAssistantToPhone(
   }
 
   const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/webhook?secret=${process.env.VAPI_SERVER_SECRET ?? ''}`;
+  // concurrencyLimit removido del endpoint /phone-number en Vapi API — ahora vive
+  // a nivel assistant. Ver mismo fix en provision.ts assignAssistant (2026-08-26).
   const patch: Record<string, unknown> = {
     assistantId: vapiAssistantId,
     serverUrl:   webhookUrl,
   };
-  if (concurrencyLimit !== undefined) patch.concurrencyLimit = concurrencyLimit;
 
   const res = await fetch(`${VAPI_URL}/phone-number/${phone.id}`, {
     method: 'PATCH',
