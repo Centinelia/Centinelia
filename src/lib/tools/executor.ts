@@ -632,9 +632,18 @@ async function executeAgentToolInner(
         return { ok: false, error: 'No tienes permiso para iniciar llamadas salientes. Pide al dueño de la cuenta que te habilite el módulo "llamadas" o "campanas".' };
       }
     }
-    const phone  = toolInput.phone_number as string;
+    const phone  = toolInput.phone_number as string | undefined;
     const name   = (toolInput.contact_name as string | null) ?? undefined;
-    const motivo = toolInput.message as string;
+    const motivo = toolInput.message as string | undefined;
+    // Guía al LLM cuando llama sin los args obligatorios. Haiku 4.5 a veces
+    // llama con {} después de un buscar_directorio exitoso, olvidando pasar
+    // el teléfono que acaba de recibir. Este mensaje lo empuja a reintentar.
+    if (!phone || !motivo) {
+      return {
+        ok:    false,
+        error: 'Faltan datos. Debes pasar phone_number (E.164) y message (motivo detallado). Ejemplo: phone_number: "+528112803360", contact_name: "Encargado Prueba", message: "El cliente Nazre en Avenida Test 123, colonia Prueba, no recibió su pedido de 5 kilos de tortilla de maíz del lunes pasado. Favor de verificar y contactarlo directamente." Reutiliza el teléfono y nombre que te devolvió buscar_directorio.',
+      };
+    }
     if (!(agent.features as any)?.outbound_calls) return { ok: false, error: 'Llamadas salientes no habilitadas.' };
     if (!agent.vapi_agent_id) return { ok: false, error: 'El agente no está sincronizado con Vapi.' };
 
