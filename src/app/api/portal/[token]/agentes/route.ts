@@ -137,8 +137,13 @@ export async function POST(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
   }
 
-  const body = await req.json() as { meerkat_role_id: MeerkatRoleId; agent_name?: string; minutes_plan?: string; jornada_type?: JornadaType };
+  const body = await req.json() as { meerkat_role_id: MeerkatRoleId; agent_name?: string; minutes_plan?: string; jornada_type?: JornadaType; area_code?: string };
   const { meerkat_role_id, agent_name, minutes_plan, jornada_type } = body;
+  // area_code opcional: si el cliente eligió lada, la pasamos a metadata para
+  // que el webhook post-pago la lea al provisionar Twilio. Solo 2-3 dígitos;
+  // cualquier otra cosa se ignora (fallback a "cualquier lada MX disponible").
+  const rawAreaCode = body.area_code?.trim();
+  const areaCode = rawAreaCode && /^\d{2,3}$/.test(rawAreaCode) ? rawAreaCode : undefined;
 
   const role = MEERKAT_MAP[meerkat_role_id];
   if (!role) return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
@@ -247,6 +252,7 @@ export async function POST(
         agent_token:  pendingAgent.portal_token,
         minutes_plan: tier,
         jornada_type: effectiveJornada,
+        ...(areaCode ? { area_code: areaCode } : {}),
       },
       subscription_data: {
         metadata: { agent_id: pendingAgent.id, minutes_plan: tier },

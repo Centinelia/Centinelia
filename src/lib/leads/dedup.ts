@@ -159,10 +159,36 @@ async function findRecentOutboundDuplicate(
   return data?.[0]?.id ?? null;
 }
 
+// Normaliza cualquier input humano a E.164. Vapi rechaza con 400
+// "customer.number must be a valid phone number in the E.164 format" si el
+// número no viene con `+` y código de país. El LLM captura teléfonos en el
+// formato que el cliente los dicta ("8112803360", "81-1280-3360",
+// "(81) 1280 3360", "52 81 1280 3360"), así que centralizamos aquí:
+// - Preservamos `+` inicial si viene.
+// - Strip todo lo no-dígito.
+// - 10 dígitos → asumir México, prepend "+52".
+// - 12 dígitos empezando en "52" → prepend "+".
+// - 11 dígitos empezando en "1" → US/CA, prepend "+".
+// - resto → prepend "+" best-effort (validatePhone abajo rechaza si <7 dígitos).
+export function normalizeToE164(raw: string): string {
+  const trimmed = raw.trim();
+  if (trimmed.startsWith('+')) {
+    const digits = trimmed.slice(1).replace(/\D/g, '');
+    return `+${digits}`;
+  }
+  const digits = trimmed.replace(/\D/g, '');
+  if (digits.length === 10)                       return `+52${digits}`;
+  if (digits.length === 12 && digits.startsWith('52')) return `+${digits}`;
+  if (digits.length === 11 && digits.startsWith('1'))  return `+${digits}`;
+  return `+${digits}`;
+}
+
 // Rechaza phones que en realidad son emails o strings sin dígitos. El cron de
 // outbound intenta marcar y falla silencioso si el "número" es "cliente@x.com".
 // El modelo a veces mete el email en telefono cuando el cliente sólo dio uno de
 // los dos — mejor rechazar temprano y forzar retry con datos correctos.
+// Devuelve el número normalizado a E.164 (con `+` y código de país). Vapi
+// rechaza cualquier otra forma con 400 en el cron outbound.
 function validatePhoneOrThrow(telefono: string, email?: string | null): string {
   const t = telefono.trim();
   if (t.length === 0) {
@@ -176,7 +202,7 @@ function validatePhoneOrThrow(telefono: string, email?: string | null): string {
   if (digitCount < 7) {
     throw new Error(`outbound_contact_invalid_phone: telefono "${t}" tiene menos de 7 dígitos, no es un número marcable. Consigue el número completo con lada o usa crear_lead.`);
   }
-  return t;
+  return normalizeToE164(t);
 }
 
 // Verifica que el agente tenga capability outbound_calls. Si no, intenta
@@ -208,6 +234,68 @@ async function ensureOutboundAgent(supabase: SupabaseClient, requestedAgentId: s
     throw new Error(`outbound_contact_no_outbound_agent: ningún empleado de la organización tiene outbound_calls activo. Activa outbound en Configurar > empleado > Llamadas salientes antes de registrar contactos para llamar.`);
   }
   return outboundPeer.id as string;
+}
+
+// Follow-up de pedido: busca CUALQUIER outbound_contact pending del mismo
+// (agent_id, telefono), sin ventana de tiempo. A diferencia de upsertOutbound-
+// ContactWithDedup (ventana 10 min anti-spam del LLM), aquí el disparador es
+// registrar_pedido — un evento discreto que ya ocurrió. Si el cliente ya tiene
+// un follow-up agendado, actualizamos scheduled_at + motivo (para no perder el
+// último pedido) en vez de crear uno nuevo. El constraint DB único (agent_id,
+// telefono) además impide race conditions.
+export async function upsertFollowupContactForOrder(
+  supabase: SupabaseClient,
+  input:    OutboundContactInput,
+): Promise<OutboundContactUpsertResult> {
+  const normalizedPhone = validatePhoneOrThrow(input.telefono, input.email ?? null);
+  const targetAgentId   = await ensureOutboundAgent(supabase, input.agentId);
+  input = { ...input, telefono: normalizedPhone, agentId: targetAgentId };
+
+  const { data: existing } = await supabase
+    .from('outbound_contacts')
+    .select('id')
+    .eq('agent_id',  input.agentId)
+    .eq('telefono',  input.telefono)
+    .eq('status',    'pending')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (existing?.id) {
+    const patch = pruneNulls({
+      nombre:       input.nombre,
+      motivo:       input.motivo,
+      scheduled_at: input.scheduledAt,
+      tags:         input.tags,
+    });
+    if (Object.keys(patch).length > 0) {
+      await supabase.from('outbound_contacts').update(patch).eq('id', existing.id);
+    }
+    return { id: existing.id as string, action: 'updated' };
+  }
+
+  const insertPayload: Record<string, unknown> = {
+    agent_id:     input.agentId,
+    nombre:       input.nombre ?? null,
+    telefono:     input.telefono,
+    motivo:       input.motivo ?? null,
+    scheduled_at: input.scheduledAt ?? new Date().toISOString(),
+    status:       'pending',
+    source:       input.source ?? 'auto_pedido_followup',
+  };
+  if (input.tags && input.tags.length > 0) insertPayload.tags = input.tags;
+
+  const { data, error } = await supabase
+    .from('outbound_contacts')
+    .insert(insertPayload)
+    .select('id')
+    .single();
+
+  if (error || !data) {
+    throw new Error(`Failed to insert follow-up outbound_contact: ${error?.message ?? 'unknown'}`);
+  }
+
+  return { id: data.id, action: 'created' };
 }
 
 export async function upsertOutboundContactWithDedup(

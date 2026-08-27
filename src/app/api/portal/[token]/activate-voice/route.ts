@@ -25,8 +25,16 @@ export async function POST(req: NextRequest, { params }: Params) {
   // al primary por retrocompat (bug histórico: siempre activaba al primary
   // aunque el user estuviera editando otro peer).
   // Ver [[handoff-peer-discrimination-fix]] B1 #2.
-  const body = await req.json().catch(() => ({} as { agentId?: string }));
+  // areaCode opcional: si el cliente eligió lada, la pasamos a provisionPhone-
+  // Number (bypass) o a metadata Stripe (checkout). Sin areaCode, Twilio elige
+  // cualquier número MX disponible. Ver [[handoff-sesion-2026-08-26-completo]]
+  // sección "Bug 3".
+  const body = await req.json().catch(() => ({} as { agentId?: string; areaCode?: string }));
   const bodyAgentId = (body as { agentId?: string }).agentId;
+  const rawAreaCode = (body as { areaCode?: string }).areaCode?.trim() || null;
+  // Solo dígitos, máximo 3 (Twilio lada MX es 2 o 3 dígitos). Cualquier otra
+  // cosa la ignoramos silenciosamente para no romper el flow.
+  const areaCode = rawAreaCode && /^\d{2,3}$/.test(rawAreaCode) ? rawAreaCode : undefined;
 
   const access = await getAgentAccess(token, req);
   if (!access) return NextResponse.json({ error: 'Agente no encontrado' }, { status: 404 });
@@ -79,6 +87,7 @@ export async function POST(req: NextRequest, { params }: Params) {
           agent_id:     agent.id,
           agent_token:  token,
           minutes_plan: tier,
+          ...(areaCode ? { area_code: areaCode } : {}),
         },
         subscription_data: {
           metadata: { agent_id: agent.id, minutes_plan: tier, jornada_type: 'combinada' },
@@ -108,7 +117,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   // 2. Provision phone number
   const concurrencyLimit = PLAN_CONCURRENT_CALLS[(fullAgent.plan ?? 'pro') as Plan];
-  const provisioned = await provisionPhoneNumber(vapiId, undefined, concurrencyLimit);
+  const provisioned = await provisionPhoneNumber(vapiId, areaCode, concurrencyLimit);
 
   if (!provisioned) {
     return NextResponse.json({ error: 'No se pudo asignar un número de teléfono. Intenta de nuevo.' }, { status: 500 });

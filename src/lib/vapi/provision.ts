@@ -11,7 +11,7 @@ function twilioBasicAuth() {
   return `Basic ${Buffer.from(`${sid}:${token}`).toString('base64')}`;
 }
 
-async function searchTwilioNumbers(areaCode?: string): Promise<string[]> {
+export async function searchTwilioNumbers(areaCode?: string): Promise<string[]> {
   const sid    = process.env.TWILIO_ACCOUNT_SID!;
   const params = new URLSearchParams({ VoiceEnabled: 'true', Limit: '5' });
   if (areaCode) params.set('AreaCode', areaCode);
@@ -110,13 +110,17 @@ async function importToVapi(phoneNumber: string): Promise<string | null> {
   return null;
 }
 
-async function assignAssistant(vapiPhoneId: string, vapiAssistantId: string, concurrencyLimit?: number): Promise<boolean> {
+async function assignAssistant(vapiPhoneId: string, vapiAssistantId: string, _concurrencyLimit?: number): Promise<boolean> {
   const appUrl  = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
   const secret  = process.env.VAPI_SERVER_SECRET ?? '';
   const serverUrl = `${appUrl}/api/voice/inbound?secret=${secret}`;
 
+  // concurrencyLimit se removió del endpoint /phone-number en Vapi API — ahora
+  // vive a nivel assistant (assistant.maxCallDuration/etc). El param queda en
+  // la firma con guion bajo para no romper callers, pero NO se envía al PATCH.
+  // Antes: Vapi respondía 400 "property concurrencyLimit should not exist" y
+  // el assistant quedaba sin asignar al número (llamadas rechazadas).
   const patch: Record<string, unknown> = { assistantId: vapiAssistantId, serverUrl };
-  if (concurrencyLimit !== undefined) patch.concurrencyLimit = concurrencyLimit;
 
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {

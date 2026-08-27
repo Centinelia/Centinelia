@@ -425,7 +425,11 @@ export async function POST(req: NextRequest) {
         // 4. Provisionar número Twilio + asignarlo al assistant.
         if (vapiId) {
           const concurrency = PLAN_CONCURRENT_CALLS[plan];
-          const provisioned = await provisionPhoneNumber(vapiId, undefined, concurrency);
+          // area_code viene de activate-voice/route.ts si el cliente eligió
+          // lada. Sin ella Twilio elige cualquier número MX disponible. Antes:
+          // hardcoded a undefined aunque el cliente hubiera pedido lada.
+          const areaCode = session.metadata?.area_code || undefined;
+          const provisioned = await provisionPhoneNumber(vapiId, areaCode, concurrency);
           if (provisioned) {
             const alloc = JORNADA_CONFIG['combinada'][tierMeta];
             await supabase.from('voice_agents').update({
