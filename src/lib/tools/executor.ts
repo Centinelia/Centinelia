@@ -666,7 +666,7 @@ async function executeAgentToolInner(
       if (!motivo) {
         const { data: recent } = await supabase
           .from('outbound_contacts')
-          .select('nombre, motivo, telefono')
+          .select('id, nombre, motivo, telefono')
           .eq('agent_id', agentId)
           .in('status', ['calling', 'pending'])
           .order('created_at', { ascending: false })
@@ -675,6 +675,11 @@ async function executeAgentToolInner(
         if (recent?.motivo) {
           const clienteName = recent.nombre ?? 'un cliente';
           motivo = `El cliente ${clienteName} ${recent.motivo}. Favor de verificar el pedido y contactarlo directamente para resolverlo.`;
+          // Guardamos el id del contact origen para ligarlo abajo cuando
+          // registramos la escalación. Permite navegar cliente → escalación
+          // y viceversa en /oficina/seguimientos.
+          (toolInput as any).__parent_contact_id = recent.id;
+          (toolInput as any).__parent_contact_phone = recent.telefono;
         }
       }
     }
@@ -702,7 +707,47 @@ async function executeAgentToolInner(
     }
 
     const r = await triggerOutboundCall({ agent: agent as any, customerNumber: phone, customerName: name, motivo });
-    return r.ok ? { ok: true, callId: r.callId, message: `Llamada iniciada a ${phone}${name ? ` (${name})` : ''}.` } : { ok: false, error: r.error };
+    if (!r.ok) return { ok: false, error: r.error };
+
+    // Registrar la escalación en outbound_contacts (source='agent_escalation')
+    // para que el owner la vea en /oficina/seguimientos historial: ciclo completo
+    // pending del cliente → escalación → resultado. Y outbound_calls para
+    // ligarla al webhook de Vapi que actualiza status/duration/minutos.
+    // Si conocemos el contact origen (cliente que reportó el problema) lo
+    // guardamos en external_source/external_id para tener el link parent→child.
+    const parentContactId    = (toolInput as any).__parent_contact_id as string | undefined;
+    const parentContactPhone = (toolInput as any).__parent_contact_phone as string | undefined;
+    try {
+      const now = new Date().toISOString();
+      const { data: contactRow } = await supabase.from('outbound_contacts').insert({
+        agent_id:        agentId,
+        nombre:          name ?? null,
+        telefono:        phone,
+        motivo,
+        scheduled_at:    now,
+        status:          'calling',
+        source:          'agent_escalation',
+        ...(parentContactId    ? { external_source: 'agent_escalation_from', external_id: parentContactId } : {}),
+        ...(parentContactPhone ? { tags: [`escalado_por_cliente:${parentContactPhone.replace(/\D/g, '').slice(-10)}`] } : {}),
+      }).select('id').single();
+      if (contactRow?.id && r.callId) {
+        await supabase.from('outbound_calls').insert({
+          agent_id:     agentId,
+          contact_id:   contactRow.id,
+          telefono:     phone,
+          nombre:       name ?? null,
+          motivo,
+          vapi_call_id: r.callId,
+          status:       'calling',
+          called_at:    now,
+        });
+      }
+    } catch (err) {
+      // Falla de registro no debe reventar la escalación; ya se disparó la llamada.
+      console.error('[trigger_outbound_call] registro de escalación falló (non-blocking):', err);
+    }
+
+    return { ok: true, callId: r.callId, message: `Llamada iniciada a ${phone}${name ? ` (${name})` : ''}.` };
   }
 
   // ─────────────────────────────────────────────────────────────────────────

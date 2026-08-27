@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Phone, PhoneCall, X, CalendarClock, Check, AlertCircle, Loader2, ChevronDown, ChevronRight, Clock } from 'lucide-react';
+import { Phone, PhoneCall, X, CalendarClock, Check, AlertCircle, Loader2, ChevronDown, ChevronRight, Clock, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import type { SeguimientoRow } from './loadSeguimientosData';
 
 type ActionState = null | { id: string; kind: 'llamar' | 'cancelar' | 'reprogramar' };
@@ -12,6 +12,7 @@ const SOURCE_LABEL: Record<string, string> = {
   manual:               'Manual',
   csv:                  'CSV',
   llamada_entrante:     'Detectado en llamada',
+  agent_escalation:     'Escalación del empleado',
 };
 
 function formatWhen(iso: string | null): { label: string; tone: 'overdue' | 'today' | 'soon' | 'later' } {
@@ -317,6 +318,24 @@ export default function SeguimientosClient({
                         style={{ background: 'rgba(108,59,255,0.08)', color: '#6C3BFF' }}
                       >
                         {SOURCE_LABEL[row.source]}
+                      </span>
+                    )}
+                    {row.escalated_to_name && (
+                      <span
+                        className="text-[10px] font-medium px-1.5 py-0.5 rounded flex items-center gap-1"
+                        style={{ background: 'rgba(220,38,38,0.08)', color: '#b91c1c' }}
+                        title={`Escalación disparada al encargado: ${row.escalated_to_name}`}
+                      >
+                        <ArrowUpRight size={9} /> Escaló a {row.escalated_to_name}
+                      </span>
+                    )}
+                    {row.escalated_from_name && (
+                      <span
+                        className="text-[10px] font-medium px-1.5 py-0.5 rounded flex items-center gap-1"
+                        style={{ background: 'rgba(34,197,94,0.08)', color: '#15803d' }}
+                        title={`Escalación originada por el cliente: ${row.escalated_from_name}`}
+                      >
+                        <ArrowDownLeft size={9} /> Por reporte de {row.escalated_from_name}
                       </span>
                     )}
                   </div>

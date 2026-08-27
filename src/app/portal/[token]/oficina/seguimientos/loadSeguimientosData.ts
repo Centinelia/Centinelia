@@ -3,18 +3,25 @@ import { getAgentAccess }           from '@/lib/portal/agent-access';
 import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 
 export interface SeguimientoRow {
-  id:            string;
-  agent_id:      string;
-  agent_name:    string | null;
-  business_name: string | null;
-  nombre:        string | null;
-  telefono:      string;
-  motivo:        string | null;
-  source:        string | null;
-  status:        string;
-  scheduled_at:  string | null;
-  created_at:    string;
-  tags:          string[] | null;
+  id:              string;
+  agent_id:        string;
+  agent_name:      string | null;
+  business_name:   string | null;
+  nombre:          string | null;
+  telefono:        string;
+  motivo:          string | null;
+  source:          string | null;
+  status:          string;
+  scheduled_at:    string | null;
+  created_at:      string;
+  tags:            string[] | null;
+  // Link parent → escalación disparada. Cuando esta fila es la del cliente
+  // que reportó el problema y Noah escaló al encargado, escalated_to_name
+  // trae "Encargado Prueba" (o similar). Cuando esta fila es la escalación
+  // misma (source='agent_escalation'), escalated_from_name trae el nombre
+  // del cliente original.
+  escalated_to_name?:   string | null;
+  escalated_from_name?: string | null;
 }
 
 export interface SeguimientosPageData {
@@ -67,14 +74,14 @@ export async function loadSeguimientosData(token: string): Promise<SeguimientosP
     ? await Promise.all([
         supabase
           .from('outbound_contacts')
-          .select('id,agent_id,nombre,telefono,motivo,source,status,scheduled_at,created_at,tags')
+          .select('id,agent_id,nombre,telefono,motivo,source,status,scheduled_at,created_at,tags,external_source,external_id')
           .in('agent_id', agentIds)
           .eq('status', 'pending')
           .order('scheduled_at', { ascending: true, nullsFirst: false })
           .limit(200),
         supabase
           .from('outbound_contacts')
-          .select('id,agent_id,nombre,telefono,motivo,source,status,scheduled_at,created_at,tags')
+          .select('id,agent_id,nombre,telefono,motivo,source,status,scheduled_at,created_at,tags,external_source,external_id')
           .in('agent_id', agentIds)
           .in('status', ['completed', 'calling', 'failed', 'canceled'])
           .gte('created_at', monthAgoIso)
@@ -95,26 +102,55 @@ export async function loadSeguimientosData(token: string): Promise<SeguimientosP
     rows.map(r => {
       const peer = peerNameMap.get(r.agent_id as string);
       return {
-        id:            r.id as string,
-        agent_id:      r.agent_id as string,
-        agent_name:    peer?.agent_name ?? null,
-        business_name: peer?.business_name ?? null,
-        nombre:        (r.nombre as string | null) ?? null,
-        telefono:      r.telefono as string,
-        motivo:        (r.motivo as string | null) ?? null,
-        source:        (r.source as string | null) ?? null,
-        status:        r.status as string,
-        scheduled_at:  (r.scheduled_at as string | null) ?? null,
-        created_at:    r.created_at as string,
-        tags:          (r.tags as string[] | null) ?? null,
+        id:              r.id as string,
+        agent_id:        r.agent_id as string,
+        agent_name:      peer?.agent_name ?? null,
+        business_name:   peer?.business_name ?? null,
+        nombre:          (r.nombre as string | null) ?? null,
+        telefono:        r.telefono as string,
+        motivo:          (r.motivo as string | null) ?? null,
+        source:          (r.source as string | null) ?? null,
+        status:          r.status as string,
+        scheduled_at:    (r.scheduled_at as string | null) ?? null,
+        created_at:      r.created_at as string,
+        tags:            (r.tags as string[] | null) ?? null,
+        // Los links se resuelven abajo con un pass posterior sobre todas las
+        // filas agregadas (necesitamos el universo completo para el join).
+        escalated_to_name:   null,
+        escalated_from_name: null,
       };
     });
+
+  const pending   = hydrate((pendingRes.data ?? []) as Record<string, unknown>[]);
+  const historial = hydrate((historialRes.data ?? []) as Record<string, unknown>[]);
+
+  // Resolver links parent ↔ escalación. Recorremos las escalaciones y por
+  // cada una: (1) marcamos su parent contact con escalated_to_name, (2) le
+  // ponemos su escalated_from_name mirando al parent.
+  const universeById = new Map<string, SeguimientoRow>();
+  for (const r of [...pending, ...historial]) universeById.set(r.id, r);
+  const rawUniverse: Array<Record<string, unknown>> = [
+    ...((pendingRes.data ?? []) as Record<string, unknown>[]),
+    ...((historialRes.data ?? []) as Record<string, unknown>[]),
+  ];
+  for (const raw of rawUniverse) {
+    const source        = raw.source as string | null;
+    const externalSource = raw.external_source as string | null;
+    const externalId     = raw.external_id as string | null;
+    if (source !== 'agent_escalation' || externalSource !== 'agent_escalation_from' || !externalId) continue;
+    const escalation = universeById.get(raw.id as string);
+    const parent     = universeById.get(externalId);
+    if (escalation && parent) {
+      parent.escalated_to_name       = escalation.nombre ?? escalation.telefono;
+      escalation.escalated_from_name = parent.nombre ?? parent.telefono;
+    }
+  }
 
   return {
     showOutbound,
     initialized,
-    pending:   hydrate((pendingRes.data ?? []) as Record<string, unknown>[]),
-    historial: hydrate((historialRes.data ?? []) as Record<string, unknown>[]),
+    pending,
+    historial,
     agents:    outboundAgents,
   };
 }
