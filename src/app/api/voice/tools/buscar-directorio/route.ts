@@ -28,8 +28,15 @@ export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const agentId = req.nextUrl.searchParams.get('agent_id') ?? '';
   const body    = await req.json();
-  const args    = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
+  const rawArgs = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
   const toolId  = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.id ?? 'tool';
+  // Vapi manda arguments como string JSON (formato OpenAI-compatible). Si no
+  // se parsea, el destructuring devuelve undefined en todos los campos y el
+  // endpoint cae al fallback helpdesk aunque el LLM sí haya mandado
+  // tipo_contacto correcto. Bug del 2026-08-27 test Noah.
+  const args = typeof rawArgs === 'string'
+    ? (() => { try { return JSON.parse(rawArgs); } catch { return {}; } })()
+    : (rawArgs as Record<string, unknown>);
 
   const { tipo_problema, tipo_contacto } = args as { tipo_problema?: string; tipo_contacto?: string };
   const q = (tipo_problema ?? '').toLowerCase();

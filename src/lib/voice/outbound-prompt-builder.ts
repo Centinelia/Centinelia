@@ -1,5 +1,6 @@
 import type { VoiceAgent } from '@/types/agent';
 import { VOICE_RULES } from '@/lib/voice/rules';
+import { MEERKAT_MAP, type MeerkatRoleId } from '@/lib/portal/meerkat-roles';
 
 export function buildOutboundSystemPrompt(
   agent: VoiceAgent,
@@ -40,6 +41,17 @@ Si no puede atenderte ahora, pregunta cuándo sería buen momento para volver a 
 ${isGobierno ? 'IDENTIFÍCATE como sistema automatizado desde el inicio: "Le llama un sistema automatizado de {business_name}." Esto es requerido para transparencia gubernamental. Puedes usar tu nombre después, pero la primera frase debe dejar claro que es un sistema.' : 'Nunca menciones que eres una IA a menos que te pregunten directamente.'}
 - TRATO AL CLIENTE: ${isFormal ? 'Trata al cliente de usted en todo momento, usa "usted", "le", "su".' : 'Tutea al cliente en todo momento, usa "tú", "te", "tu".'} Mantén este trato durante toda la llamada sin mezclar.`
   );
+
+  // ── Personalidad del meerkat (role-specific) ──────────────────────────────
+  // Sin esto el outbound queda solo con las reglas genéricas y features. Los
+  // flows específicos (ej. escalación de Noah a contacto_operaciones cuando el
+  // cliente reporta que no recibió su pedido) viven en promptPersonalidad y
+  // deben propagarse tanto a inbound como a outbound.
+  const meerkatId = (f as { meerkat_role_id?: string }).meerkat_role_id as MeerkatRoleId | undefined;
+  const meerkat   = meerkatId ? MEERKAT_MAP[meerkatId] : null;
+  if (meerkat?.promptPersonalidad) {
+    blocks.push(meerkat.promptPersonalidad);
+  }
 
   // ── Compliance gobierno (LFPDPPP + transparencia) ─────────────────────────
   if (isGobierno) {

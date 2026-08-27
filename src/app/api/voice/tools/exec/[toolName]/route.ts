@@ -28,7 +28,12 @@ export async function POST(
   if (!agent_id) return NextResponse.json({ result: 'Error de configuración: agent_id requerido.' }, { status: 400 });
 
   const body = await req.json().catch(() => ({}));
-  const toolInput = (body.toolCallList?.[0]?.function?.arguments ?? body) as Record<string, unknown>;
+  const rawArgs   = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
+  // Vapi manda arguments como string JSON. Sin parseo el executor recibe
+  // undefined en todos los campos y falla en silencio o cae al fallback.
+  const toolInput: Record<string, unknown> = typeof rawArgs === 'string'
+    ? (() => { try { return JSON.parse(rawArgs); } catch { return {}; } })()
+    : (rawArgs as Record<string, unknown>);
 
   const supabase = createAdminClient();
   const { data: agent } = await supabase
