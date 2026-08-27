@@ -632,17 +632,55 @@ async function executeAgentToolInner(
         return { ok: false, error: 'No tienes permiso para iniciar llamadas salientes. Pide al dueño de la cuenta que te habilite el módulo "llamadas" o "campanas".' };
       }
     }
-    const phone  = toolInput.phone_number as string | undefined;
-    const name   = (toolInput.contact_name as string | null) ?? undefined;
-    const motivo = toolInput.message as string | undefined;
-    // Guía al LLM cuando llama sin los args obligatorios. Haiku 4.5 a veces
-    // llama con {} después de un buscar_directorio exitoso, olvidando pasar
-    // el teléfono que acaba de recibir. Este mensaje lo empuja a reintentar.
+    let phone   = toolInput.phone_number as string | undefined;
+    let name    = (toolInput.contact_name as string | null) ?? undefined;
+    let motivo  = toolInput.message as string | undefined;
+
+    // Smart-fallback: los LLMs (Sonnet y Haiku vía Vapi) a veces llaman
+    // trigger_outbound_call({}) sin args a pesar del schema required. En vez
+    // de forzar N reintentos con error messages (que hacen loop de fillers
+    // "un momento…"), rescatamos el call context:
+    // 1. Si falta phone → buscamos el is_operations_contact del org.
+    // 2. Si falta motivo → armamos desde el outbound_contact activo del
+    //    número que estamos llamando (caller_number del call context).
     if (!phone || !motivo) {
-      return {
-        ok:    false,
-        error: 'Faltan datos. Debes pasar phone_number (E.164) y message (motivo detallado). Ejemplo: phone_number: "+528112803360", contact_name: "Encargado Prueba", message: "El cliente Nazre en Avenida Test 123, colonia Prueba, no recibió su pedido de 5 kilos de tortilla de maíz del lunes pasado. Favor de verificar y contactarlo directamente." Reutiliza el teléfono y nombre que te devolvió buscar_directorio.',
-      };
+      // Fallback phone: primer operations_contact del directorio.
+      if (!phone) {
+        const { data: org } = await supabase
+          .from('organizations')
+          .select('directory')
+          .eq('portal_email', portalEmail)
+          .maybeSingle();
+        const dir = ((org?.directory ?? []) as Array<Record<string, unknown>>);
+        const ops = dir.find(p => p.is_operations_contact === true);
+        if (ops && typeof ops.phone === 'string') {
+          phone = ops.phone;
+          if (!name && typeof ops.name === 'string') name = ops.name;
+        }
+      }
+      // Fallback motivo: outbound_contact activo del call actual. Sin el
+      // customer_number del call context solo tomamos el pending más reciente
+      // del agente como best-effort.
+      if (!motivo) {
+        const { data: recent } = await supabase
+          .from('outbound_contacts')
+          .select('nombre, motivo, telefono')
+          .eq('agent_id', agentId)
+          .in('status', ['calling', 'pending'])
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (recent?.motivo) {
+          motivo = `El cliente ${recent.nombre ?? 'anónimo'} (${recent.telefono ?? 'sin teléfono'}) ${recent.motivo}. Favor de verificar y contactar al cliente directamente.`;
+        }
+      }
+    }
+
+    if (!phone) {
+      return { ok: false, error: 'No hay teléfono destino y el directorio de la organización no tiene ningún contacto marcado como is_operations_contact. Pídele al dueño configurarlo.' };
+    }
+    if (!motivo) {
+      motivo = 'Escalamiento de un cliente que reporta un problema. Favor de revisar la última interacción.';
     }
     if (!(agent.features as any)?.outbound_calls) return { ok: false, error: 'Llamadas salientes no habilitadas.' };
     if (!agent.vapi_agent_id) return { ok: false, error: 'El agente no está sincronizado con Vapi.' };
