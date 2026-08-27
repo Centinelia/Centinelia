@@ -58,6 +58,18 @@ export async function POST(req: NextRequest) {
   const directory: DirectoryPerson[] = ((org as any)?.directory ?? []);
   const tz        = (agent?.timezone as string | null) ?? 'America/Monterrey';
 
+  // Sin ningún parámetro: guía al LLM a reintentar con el correcto en vez de
+  // caer al fallback helpdesk vacío. Haiku a veces llama con {} y sin señal
+  // asume que la tool "no funciona". Con este hint reintenta y llega al match.
+  if (!tipo_contacto && !q) {
+    return NextResponse.json({
+      results: [{
+        toolCallId: toolId,
+        result: 'Necesito saber a quién buscas. Vuelve a llamar esta tool con uno de estos parámetros: tipo_contacto: "contacto_operaciones" (para encargado de envíos, dispatcher, coordinador de servicio), tipo_contacto: "autorizador_oc", tipo_contacto: "encargado_pagos", tipo_contacto: "dueno", o tipo_problema: "<área o expertise>" para técnico de IT.',
+      }],
+    });
+  }
+
   // Rama 1: búsqueda directa por flag (Noah para operaciones, Nala para OC).
   // Prioritaria sobre helpdesk: si el LLM pasó tipo_contacto explícitamente,
   // sabe exactamente a quién quiere y devolvemos sin ambigüedad.
