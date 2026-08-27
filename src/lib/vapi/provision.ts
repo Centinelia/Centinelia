@@ -11,18 +11,31 @@ function twilioBasicAuth() {
   return `Basic ${Buffer.from(`${sid}:${token}`).toString('base64')}`;
 }
 
-export async function searchTwilioNumbers(areaCode?: string): Promise<string[]> {
+// MX tiene dos tipos comerciales: Local (geográfico) y Mobile (celular). El
+// param `AreaCode` de Twilio SÓLO funciona para US (donde el "area code" son
+// los primeros 3 dígitos después de +1). Para MX numeración es +52NN... y hay
+// que filtrar con `Contains=+52${lada}` para que Twilio matchee el inicio del
+// número. Antes con `AreaCode=81` Twilio regresaba 0 aunque hubiera 5 números
+// +5281XXXXXXXX disponibles — bug que hacía el LadaPicker inútil.
+const MX_NUMBER_TYPES = ['Local', 'Mobile'] as const;
+
+async function searchTwilioNumbersOfType(type: string, areaCode?: string): Promise<string[]> {
   const sid    = process.env.TWILIO_ACCOUNT_SID!;
-  const params = new URLSearchParams({ VoiceEnabled: 'true', Limit: '5' });
-  if (areaCode) params.set('AreaCode', areaCode);
+  const params = new URLSearchParams({ VoiceEnabled: 'true', PageSize: '5' });
+  if (areaCode) params.set('Contains', `+52${areaCode}`);
 
   const res = await fetch(
-    `https://api.twilio.com/2010-04-01/Accounts/${sid}/AvailablePhoneNumbers/MX/Local.json?${params}`,
+    `https://api.twilio.com/2010-04-01/Accounts/${sid}/AvailablePhoneNumbers/MX/${type}.json?${params}`,
     { headers: { Authorization: twilioBasicAuth() } }
   );
   if (!res.ok) return [];
   const { available_phone_numbers } = await res.json();
   return (available_phone_numbers ?? []).map((n: any) => n.phone_number as string);
+}
+
+export async function searchTwilioNumbers(areaCode?: string): Promise<string[]> {
+  const results = await Promise.all(MX_NUMBER_TYPES.map(t => searchTwilioNumbersOfType(t, areaCode)));
+  return results.flat();
 }
 
 async function buyTwilioNumber(areaCode?: string): Promise<{ number: string; ladaFallback: boolean } | null> {
