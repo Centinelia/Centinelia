@@ -44,11 +44,20 @@ export async function processDueOutboundContacts(limit: number = 20): Promise<Ou
     if (!claimed) continue;
 
     try {
+      // Propaga external_source + external_id al outbound trigger para que el
+      // system prompt sepa qué incident/pedido/lead viene atrás — necesario
+      // para que las tools de verificación (verificar_recepcion_incidencia,
+      // etc) reciban el id correcto sin que el LLM lo tenga que adivinar.
+      const externalSource = (contact as unknown as { external_source?: string }).external_source ?? null;
+      const externalId     = (contact as unknown as { external_id?: string }).external_id     ?? null;
+
       const result = await triggerOutboundCall({
         agent:          agent as never,
         customerNumber: contact.telefono,
         customerName:   contact.nombre ?? undefined,
         motivo:         contact.motivo ?? undefined,
+        externalSource: externalSource ?? undefined,
+        externalId:     externalId     ?? undefined,
       });
 
       if (result.ok) {

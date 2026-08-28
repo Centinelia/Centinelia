@@ -113,6 +113,8 @@ export async function triggerOutboundCall({
   motivo,
   isCallback = false,
   campaignInstructions,
+  externalSource,
+  externalId,
 }: {
   agent:                 VoiceAgent;
   customerNumber:        string;
@@ -120,6 +122,8 @@ export async function triggerOutboundCall({
   motivo?:               string;
   isCallback?:           boolean;
   campaignInstructions?: string;
+  externalSource?:       string;
+  externalId?:           string;
 }): Promise<{ ok: boolean; callId?: string; error?: string }> {
   if (!agent.vapi_agent_id) {
     return { ok: false, error: 'El agente no está sincronizado con Vapi' };
@@ -195,7 +199,17 @@ export async function triggerOutboundCall({
   // hablado (no solo el firstMessage). Si un cliente pregunta "¿por qué me
   // llamas?" a mitad de conversación, la respuesta también sonará expandida.
   const expandedMotivo = motivo ? expandForSpeech(motivo) : undefined;
-  const systemPrompt   = buildOutboundSystemPrompt(agent, resolvedName, expandedMotivo, customerContext, finalCampaignInstructions);
+
+  // Injectamos el external context al customerContext para que las tools de
+  // verificación tengan el id que necesitan. Antes el LLM lo tenía que
+  // adivinar → nunca invocaba verificar_recepcion_incidencia porque el arg
+  // incident_id venía undefined. Bug 2026-08-28.
+  const externalContextBlock = externalId && externalSource
+    ? `\nCONTEXTO DE ORIGEN DE ESTA LLAMADA:\n- external_source: ${externalSource}\n- external_id: ${externalId}\n\nCuando invoques cualquier tool de verificación / seguimiento que requiera un identificador (ej. incident_id, pedido_id, lead_id), USA el external_id de arriba tal cual: "${externalId}".`
+    : '';
+  const enrichedContext = (customerContext ?? '') + externalContextBlock;
+
+  const systemPrompt   = buildOutboundSystemPrompt(agent, resolvedName, expandedMotivo, enrichedContext, finalCampaignInstructions);
 
   // Resolver la config real del meerkat (mismo path que sync.ts inbound). Antes
   // este bloque hardcodeaba Haiku 4.5 ignorando la config → outbound de meerkats
