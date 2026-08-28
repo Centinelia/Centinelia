@@ -210,6 +210,24 @@ export async function triggerOutboundCall({
   const appUrl          = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
   const vapiSecret      = process.env.VAPI_SERVER_SECRET  ?? '';
 
+  // Fetch assistant's current toolIds. Sin esto, assistantOverrides.model
+  // borra los tools del assistant → LLM no tiene acceso a las tools →
+  // no puede invocar (ni siquiera si el prompt lo manda). Bug 2026-08-28:
+  // Nelia outbound alucinaba respuestas sin invocar verificar_recepcion_incidencia
+  // porque el override le quitaba la tool.
+  let existingToolIds: string[] = [];
+  try {
+    const asRes = await fetch(`${VAPI_URL}/assistant/${agent.vapi_agent_id}`, { headers: headers() });
+    if (asRes.ok) {
+      const asData = await asRes.json();
+      existingToolIds = (asData?.model?.toolIds as string[] | undefined) ?? [];
+    } else {
+      console.warn('[triggerOutboundCall] fetch assistant failed:', asRes.status);
+    }
+  } catch (err) {
+    console.warn('[triggerOutboundCall] fetch assistant threw:', err);
+  }
+
   const modelOverride = useCustomLlm && meerkatCfg
     ? {
         provider:    'custom-llm',
@@ -219,12 +237,14 @@ export async function triggerOutboundCall({
         temperature: meerkatCfg.temperature,
         maxTokens:   meerkatCfg.maxTokens,
         metadataSendMode: 'off',
+        ...(existingToolIds.length > 0 ? { toolIds: existingToolIds } : {}),
       }
     : {
         provider:    meerkatCfg?.provider ?? 'anthropic',
         model:       meerkatCfg?.model    ?? 'claude-haiku-4-5-20251001',
         messages:    [{ role: 'system', content: systemPrompt }],
         ...(meerkatCfg ? { temperature: meerkatCfg.temperature, maxTokens: meerkatCfg.maxTokens } : {}),
+        ...(existingToolIds.length > 0 ? { toolIds: existingToolIds } : {}),
       };
 
   const res = await fetch(`${VAPI_URL}/call`, {
