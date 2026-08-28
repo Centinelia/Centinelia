@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { CheckCircle, AlertCircle, Loader2, RefreshCw, Globe } from 'lucide-react';
 import InfoTooltip from '@/components/InfoTooltip';
+import DnsTutorialAccordion from './DnsTutorialAccordion';
 
 interface DnsRecord {
   type:   string;
@@ -227,6 +228,8 @@ export default function EmailSettings({ token }: { token: string }) {
               Puede tardar hasta 24h en propagarse.
             </span>
           </div>
+
+          <DnsTutorialAccordion />
         </div>
       )}
 
@@ -237,7 +240,7 @@ export default function EmailSettings({ token }: { token: string }) {
       >
         <AlertCircle size={15} style={{ color: '#6C3BFF', flexShrink: 0, marginTop: 1 }} />
         <p className="text-[12px] leading-relaxed" style={{ color: '#6B6480' }}>
-          Aplica solo a correos automáticos post-llamada (confirmación de cita, acuse de lead, seguimientos programados). Las respuestas que tu empleado escribe a mano usan tu Gmail/Outlook conectado, no este dominio. El logo, color y pie de página vienen de <strong style={{ color: '#1A0A3B' }}>Identidad visual</strong> arriba.
+          Aplica a los correos automáticos que tus empleados generan sin tener Gmail o Outlook conectado: confirmaciones de cita, acuses de lead, reportes de incidencia al encargado, seguimientos programados. Si tu empleado tiene Gmail/Outlook conectado, sus correos salen desde ahí y este dominio no aplica. El logo, color y pie vienen de <strong style={{ color: '#1A0A3B' }}>Identidad visual</strong> arriba.
         </p>
       </div>
     </div>
