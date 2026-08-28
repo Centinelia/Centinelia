@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
 import { processDueOutboundContacts } from '@/lib/outbound/process-due-contacts';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { finalizeOrphanIncidents } from '@/lib/incidents/finalize';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,5 +12,15 @@ export async function GET(req: NextRequest) {
   }
 
   const result = await processDueOutboundContacts();
-  return NextResponse.json({ ok: true, ...result });
+
+  let incidentsFinalized = 0;
+  try {
+    const supabase = createAdminClient();
+    const fin = await finalizeOrphanIncidents(supabase);
+    incidentsFinalized = fin.finalized;
+  } catch (err) {
+    console.error('[cron/outbound] finalizeOrphanIncidents failed:', err);
+  }
+
+  return NextResponse.json({ ok: true, ...result, incidents_finalized: incidentsFinalized });
 }
