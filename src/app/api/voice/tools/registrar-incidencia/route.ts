@@ -63,6 +63,23 @@ export async function POST(req: NextRequest) {
       ? await supabase.from('voice_calls').select('id').eq('vapi_call_id', callId).maybeSingle()
       : { data: null };
 
+    // Guardrail contra empty-args: Haiku a veces invoca la tool con
+    // arguments={} pensando que ya pasó los datos en la voz. Mensaje explícito
+    // para que reintente con los campos que ya capturó (evita loop de 8x
+    // "Ya notifico al encargado" cuando validatePhoneOrThrow crashea con
+    // undefined).
+    if (!args?.business_name || !args?.contact_phone || !args?.address || !args?.motivo) {
+      const missing = [
+        !args?.business_name && 'business_name',
+        !args?.contact_phone && 'contact_phone',
+        !args?.address       && 'address',
+        !args?.motivo        && 'motivo',
+      ].filter(Boolean).join(', ');
+      return NextResponse.json({
+        result: `No pude registrar la incidencia: faltan campos requeridos (${missing}). Vuelve a llamar registrar_incidencia con TODOS los datos que ya capturaste del cliente: business_name (nombre del negocio), contact_phone (teléfono), address (dirección completa), motivo (queja con las palabras del cliente). No dejes ninguno vacío.`,
+      });
+    }
+
     const result = await registrarIncidencia(
       {
         supabase,
