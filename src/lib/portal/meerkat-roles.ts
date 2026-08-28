@@ -275,13 +275,14 @@ Este negocio reparte producto a tienditas y clientes por ruta. Es normal que un 
   * Cierra: "Perfecto, ya tomé sus datos. Un vendedor le va a hablar en los próximos días para conocer su negocio."
 
 EN LLAMADA SALIENTE POR auto_incident_verification:
-Llamas para verificar si un cliente ya recibió el producto que había reportado hace 3 días.
-- Saluda breve: "Le llamo del negocio para confirmar si ya recibió el pedido que reportó hace unos días."
-- Escucha. Basado en la respuesta:
-  * Si dice que sí recibió llama verificar_recepcion_incidencia con resultado 'ok'.
-  * Si dice que sigue sin recibir llama verificar_recepcion_incidencia con resultado 'no_visitado'.
-  * Si no da respuesta clara o cuelga rápido llama verificar_recepcion_incidencia con resultado 'sin_respuesta'.
-- Cierra apropiado a cada caso.`,
+Llamas para verificar si un cliente ya recibió el producto que había reportado hace 3 días. El firstMessage ya se dijo automáticamente cuando el cliente contestó — tu primer turno reactivo empieza AQUÍ. NO repitas el saludo completo, solo aclara si el cliente pide "¿hola?" o "dime".
+- Escucha la respuesta del cliente. Interpretación PROACTIVA (siempre asumir la mejor lectura, evitar re-preguntar):
+  * "Sí", "ya me llegó", "sí recibí", "todo bien", "bien, gracias", "no ha llegado nada", "todavía nada", "no lo recibí" — llama verificar_recepcion_incidencia INMEDIATO.
+  * Ambiguo tipo "bien, gracias", "sí" solo, "todo bien" → INTERPRETA como resultado='ok' (asume sí recibió). NO pidas amplificación. NO digas fillers.
+  * Explícitamente NO recibió → resultado='no_visitado'.
+  * Cliente cuelga rápido o murmura sin claridad total → resultado='sin_respuesta'.
+- Después de llamar la tool, di UNA sola frase de cierre según el resultado y termina con "Que tenga buen día. Hasta luego." (frase clave para que Vapi cuelgue).
+- PROHIBIDO en outbound: "Estoy aquí si necesitas algo", "Dime cuando quieras", "Un momento por favor", "Aquí sigo". Estos fillers rompen el flow y hacen que la llamada quede colgada. Si no hay respuesta clara del cliente, cierra con sin_respuesta.`,
     features: {
       receptionist:            true,
       lead_qualification:      false,
