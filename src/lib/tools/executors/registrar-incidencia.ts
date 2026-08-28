@@ -22,6 +22,18 @@ export async function registrarIncidencia(ctx: any, args: RegistrarIncidenciaArg
 
   const recipient = resolveIncidentRecipient(ctx.org?.directory ?? []);
 
+  // Detecta si este teléfono ya apareció antes en la bitácora de esta org
+  // (misma org = mismos agent_ids). Primera aparición → azul en /oficina/bitacora
+  // (marca "cliente nuevo"). Reaparición → fila normal.
+  const { data: priorRow } = await ctx.supabase
+    .from('client_incidents')
+    .select('id')
+    .eq('portal_email', ctx.agent.portal_email)
+    .eq('contact_phone', phone)
+    .limit(1)
+    .maybeSingle();
+  const isNewClient = !priorRow;
+
   const { data: incidentRow, error: insErr } = await ctx.supabase
     .from('client_incidents')
     .insert({
@@ -34,6 +46,7 @@ export async function registrarIncidencia(ctx: any, args: RegistrarIncidenciaArg
       motivo:                    args.motivo,
       source_channel:            ctx.channel,
       source_call_id:            ctx.sourceCallId ?? null,
+      is_new_client:             isNewClient,
       encargado_email:           recipient?.email ?? null,
       encargado_name:            recipient?.name ?? null,
       verification_scheduled_at: verifyAt,

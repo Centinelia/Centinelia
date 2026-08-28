@@ -13,7 +13,7 @@ vi.mock('../../../incidents/scheduling', () => ({
   upsertFollowupContactForIncident: vi.fn(() => Promise.resolve({ outbound_contact_id: 'oc-1' })),
 }));
 
-function makeCtx(overrides = {}) {
+function makeCtx(overrides: any = {}) {
   const insertedRow = { id: 'inc-1' };
   const supabase: any = {
     from: vi.fn(() => supabase),
@@ -21,7 +21,10 @@ function makeCtx(overrides = {}) {
     update: vi.fn(() => supabase),
     eq:     vi.fn(() => supabase),
     select: vi.fn(() => supabase),
+    limit:  vi.fn(() => supabase),
     single: vi.fn(() => Promise.resolve({ data: insertedRow, error: null })),
+    // Default: no prior row → is_new_client=true. Override in tests that need recurring.
+    maybeSingle: vi.fn(() => Promise.resolve({ data: overrides.priorRow ?? null, error: null })),
   };
   return {
     supabase,
@@ -89,6 +92,34 @@ describe('registrarIncidencia', () => {
     });
     expect(capturedPayload).not.toBeNull();
     expect(capturedPayload.source_call_id).toBe('call-1');
+  });
+
+  it('sets is_new_client=true when no prior client_incidents row for this phone', async () => {
+    const ctx = makeCtx({ priorRow: null });
+    let capturedPayload: any = null;
+    ctx.supabase.insert = vi.fn((payload: any) => {
+      capturedPayload = payload;
+      return ctx.supabase;
+    });
+    await registrarIncidencia(ctx as any, {
+      business_name: 'Abarrotes Nueva', contact_phone: '8199990000', address: 'Y', motivo: 'Z',
+    });
+    expect(capturedPayload).not.toBeNull();
+    expect(capturedPayload.is_new_client).toBe(true);
+  });
+
+  it('sets is_new_client=false when phone already appears in client_incidents', async () => {
+    const ctx = makeCtx({ priorRow: { id: 'prior-inc-999' } });
+    let capturedPayload: any = null;
+    ctx.supabase.insert = vi.fn((payload: any) => {
+      capturedPayload = payload;
+      return ctx.supabase;
+    });
+    await registrarIncidencia(ctx as any, {
+      business_name: 'Abarrotes Recurrente', contact_phone: '8112345678', address: 'Y', motivo: 'Z',
+    });
+    expect(capturedPayload).not.toBeNull();
+    expect(capturedPayload.is_new_client).toBe(false);
   });
 
   it('when sendEmail throws, flow still completes with email_sent=false and callback scheduled', async () => {
