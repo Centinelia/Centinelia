@@ -1,6 +1,7 @@
 import type { createAdminClient } from '@/lib/supabase/admin';
-import { getConnector, type IntegrationRow, type Attachment } from '@/lib/connectors';
-import { sendEmail } from '@/lib/email/send';
+import { type IntegrationRow, type Attachment } from '@/lib/connectors';
+import { getFileConnector, NO_DRIVE_ERROR } from '@/lib/email/agent-connector';
+import { sendMeerkatHtmlEmail } from '@/lib/email/send-as-agent';
 import { SUPPORT_EMAIL, SUPPORT_WA } from '@/lib/constants';
 
 type SupabaseClient = ReturnType<typeof createAdminClient>;
@@ -34,91 +35,6 @@ export interface OrganizeFilesInput {
   folderName?:  string;
 }
 
-const NO_DRIVE_ERROR = `No tienes Google Drive ni OneDrive conectado. Conéctalo desde el portal en Integraciones → Correo. Si necesitas ayuda para configurar la integración, contacta a Centinelia: ${SUPPORT_EMAIL} o WhatsApp ${SUPPORT_WA}.`;
-
-async function getFileConnector(agentId: string, supabase: SupabaseClient) {
-  // 1. Legacy path — email_integrations per-agent
-  const { data } = await supabase
-    .from('email_integrations')
-    .select('*')
-    .eq('agent_id', agentId)
-    .single();
-  if (data) {
-    const conn = await getConnector(data as IntegrationRow, supabase);
-    return { integration: data as IntegrationRow, conn };
-  }
-
-  // 2. Fallback org-level — cualquier agente hereda el email conectado por su portal
-  const { data: agentRow } = await supabase
-    .from('voice_agents')
-    .select('portal_email')
-    .eq('id', agentId)
-    .single();
-  const portalEmail = agentRow?.portal_email as string | null | undefined;
-  if (!portalEmail) return null;
-
-  const { data: orgAcct } = await supabase
-    .from('integration_accounts')
-    .select('provider, account_label, access_token, refresh_token, expires_at, status')
-    .eq('portal_email', portalEmail)
-    .eq('capability', 'email')
-    .neq('status', 'disconnected')
-    .maybeSingle();
-  if (!orgAcct) {
-    // Fallback secundario: Dropbox conectado como file provider standalone.
-    // Devuelve un Connector minimal (solo files) para las tools buscar_archivo,
-    // leer_archivo, save_to_drive, organize_files. Sin email, contacts, calendar.
-    const { data: dbxAcct } = await supabase
-      .from('integration_accounts')
-      .select('access_token, refresh_token, expires_at, status')
-      .eq('portal_email', portalEmail)
-      .eq('provider', 'dropbox')
-      .eq('capability', 'files')
-      .neq('status', 'disconnected')
-      .maybeSingle();
-    if (!dbxAcct) return null;
-    const { getDropboxAccessToken } = await import('@/lib/catalog/lookup');
-    const { createDropboxConnector } = await import('@/lib/connectors/dropbox');
-    const token = await getDropboxAccessToken(portalEmail, supabase);
-    if (!token) return null;
-    const conn = createDropboxConnector(token);
-    // Synthetic IntegrationRow para no romper el shape del retorno; agent-chat
-    // solo usa .conn.files desde esta rama (nunca .email/.calendar).
-    const synthetic: IntegrationRow = {
-      id:                 `org:${portalEmail}:dropbox`,
-      agent_id:           agentId,
-      provider:           'gmail' as const, // shape compat — el caller solo mira .conn.files
-      email:              '',
-      access_token:       token,
-      refresh_token:      null,
-      token_expires_at:   null,
-      last_sync_at:       null,
-      needs_reauth:       false,
-      reauth_notified_at: null,
-    };
-    return { integration: synthetic, conn };
-  }
-
-  // Adapta shape de integration_accounts a IntegrationRow para reusar getConnector.
-  // El refresh path escribe a email_integrations por id — este synthetic row no
-  // tiene id real, así que si el token expira aquí, el refresh graba en un lugar
-  // que nadie relee. Aceptable temporalmente; TODO migrar refresh a leer/escribir
-  // integration_accounts cuando venga de esta rama.
-  const synthetic: IntegrationRow = {
-    id:                 `org:${portalEmail}:${orgAcct.provider}` as string,
-    agent_id:           agentId,
-    provider:           orgAcct.provider as 'gmail' | 'outlook',
-    email:              (orgAcct.account_label as string | null) ?? '',
-    access_token:       (orgAcct.access_token as string | null) ?? '',
-    refresh_token:      (orgAcct.refresh_token as string | null) ?? null,
-    token_expires_at:   (orgAcct.expires_at as string | null) ?? null,
-    last_sync_at:       null,
-    needs_reauth:       orgAcct.status === 'needs_reauth',
-    reauth_notified_at: null,
-  };
-  const conn = await getConnector(synthetic, supabase);
-  return { integration: synthetic, conn };
-}
 
 // Detecta si un correo menciona Google Meet pero omite o falsifica el link.
 // Bloquea el envío para forzar al modelo a incluir el meet_link real que
@@ -193,32 +109,35 @@ export async function executeSendEmail(
   </body></html>`;
 
   let attachment: Attachment | undefined;
-  let sent = false;
 
+  // Resolvemos el connector una sola vez para (a) descargar el adjunto si el
+  // meerkat tiene Gmail/Outlook conectado y (b) pasarlo a sendMeerkatHtmlEmail
+  // sin re-query.
   const ic = await getFileConnector(agentId, supabase);
-  const sendFrom = ic ? ((ic.integration as unknown as Record<string, unknown>).send_as_email as string | null | undefined) ?? undefined : undefined;
-
-  if (ic) {
-    if (attFileId) {
-      const dl = await ic.conn.files.download(attFileId, attMimeType ?? '');
-      if (dl) attachment = { filename: attFileName ?? 'adjunto', content: dl.buffer, mimeType: dl.contentType };
-    }
-    try {
-      await ic.conn.email.send(to, subject, body, attachment, sendFrom, htmlBody);
-      if (cc) await ic.conn.email.send(cc, subject, body, undefined, sendFrom, htmlBody);
-      sent = true;
-    } catch { /* fall through to Resend */ }
+  if (ic && attFileId) {
+    const dl = await ic.conn.files.download(attFileId, attMimeType ?? '');
+    if (dl) attachment = { filename: attFileName ?? 'adjunto', content: dl.buffer, mimeType: dl.contentType };
   }
 
-  if (!sent) {
-    const resendAtts = attachment
-      ? [{ filename: attachment.filename, content: attachment.content.toString('base64') }]
-      : undefined;
-    const fromAddr = sendFrom ? sendFrom : `notificaciones@centinelia.mx`;
-    const fromHeader = `${businessName} <${fromAddr}>`;
-    const ok = await sendEmail({ to, subject, html: htmlBody, from: fromHeader, replyTo, attachments: resendAtts });
-    if (ok && cc) await sendEmail({ to: cc, subject, html: htmlBody, from: fromHeader, replyTo });
-    sent = ok;
+  // From header para el fallback Resend cuando no hay OAuth: businessName +
+  // send_as_email si existe (dominio del cliente), si no notificaciones@centinelia.mx.
+  // sendMeerkatHtmlEmail lo ignora si el path OAuth funciona.
+  const sendFrom = ic ? ((ic.integration as unknown as Record<string, unknown>).send_as_email as string | null | undefined) ?? undefined : undefined;
+  const fromAddr = sendFrom ?? 'notificaciones@centinelia.mx';
+  const fromHeader = `${businessName} <${fromAddr}>`;
+
+  const mainRes = await sendMeerkatHtmlEmail({
+    agentId, to, subject, html: htmlBody, from: fromHeader,
+    replyTo, attachment,
+  }, supabase, ic);
+  let sent = mainRes.ok;
+
+  // CC en segundo envío separado (mismo comportamiento que antes).
+  if (sent && cc) {
+    const ccRes = await sendMeerkatHtmlEmail({
+      agentId, to: cc, subject, html: htmlBody, from: fromHeader, replyTo,
+    }, supabase, ic);
+    sent = ccRes.ok;
   }
 
   const attNote = attachment ? ` con adjunto "${attachment.filename}"` : '';

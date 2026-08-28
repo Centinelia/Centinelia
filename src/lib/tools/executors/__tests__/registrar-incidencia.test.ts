@@ -1,12 +1,11 @@
 // src/lib/tools/executors/__tests__/registrar-incidencia.test.ts
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { registrarIncidencia } from '../registrar-incidencia';
-import { sendEmail } from '../../../email/send';
+import { sendMeerkatHtmlEmail } from '../../../email/send-as-agent';
 import { upsertFollowupContactForIncident } from '../../../incidents/scheduling';
 
-vi.mock('../../../email/send', () => ({
-  sendEmail:          vi.fn(() => Promise.resolve({ id: 'msg-1' })),
-  agentBrandedFrom:   vi.fn(() => 'Nelia <nelia@test.mx>'),
+vi.mock('../../../email/send-as-agent', () => ({
+  sendMeerkatHtmlEmail: vi.fn(() => Promise.resolve({ ok: true, provider: 'resend' })),
 }));
 
 vi.mock('../../../incidents/scheduling', () => ({
@@ -122,8 +121,8 @@ describe('registrarIncidencia', () => {
     expect(capturedPayload.is_new_client).toBe(false);
   });
 
-  it('when sendEmail throws, flow still completes with email_sent=false and callback scheduled', async () => {
-    (sendEmail as any).mockRejectedValueOnce(new Error('SMTP boom'));
+  it('when sendMeerkatHtmlEmail returns ok=false, flow completes with email_sent=false and callback scheduled', async () => {
+    (sendMeerkatHtmlEmail as any).mockResolvedValueOnce({ ok: false, provider: 'none' });
     const ctx = makeCtx();
     const res = await registrarIncidencia(ctx as any, {
       business_name: 'X', contact_phone: '8112345678', address: 'Y', motivo: 'Z',
@@ -134,5 +133,16 @@ describe('registrarIncidencia', () => {
     expect((upsertFollowupContactForIncident as any)).toHaveBeenCalledTimes(1);
     expect(res.verification_at).toBeTruthy();
     expect(new Date(res.verification_at).getTime()).toBeGreaterThan(Date.now() + 2.5*86400*1000);
+  });
+
+  it('when sendMeerkatHtmlEmail throws, flow still completes (defensive try/catch)', async () => {
+    (sendMeerkatHtmlEmail as any).mockRejectedValueOnce(new Error('network boom'));
+    const ctx = makeCtx();
+    const res = await registrarIncidencia(ctx as any, {
+      business_name: 'X', contact_phone: '8112345678', address: 'Y', motivo: 'Z',
+    });
+    expect(res.ok).toBe(true);
+    expect(res.email_sent).toBe(false);
+    expect((upsertFollowupContactForIncident as any)).toHaveBeenCalledTimes(1);
   });
 });

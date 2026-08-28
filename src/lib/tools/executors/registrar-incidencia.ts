@@ -3,7 +3,7 @@ import { validatePhoneOrThrow } from '../../leads/dedup';
 import { resolveIncidentRecipient } from '../../incidents/directory';
 import { renderIncidentCardEmail } from '../../incidents/email-template';
 import { upsertFollowupContactForIncident } from '../../incidents/scheduling';
-import { sendEmail, agentBrandedFrom } from '../../email/send';
+import { sendMeerkatHtmlEmail } from '../../email/send-as-agent';
 
 export interface RegistrarIncidenciaArgs {
   business_name: string;
@@ -68,22 +68,28 @@ export async function registrarIncidencia(ctx: any, args: RegistrarIncidenciaArg
       agentDisplayName: `${ctx.agent.agent_name} · ${ctx.agent.business_name ?? ''}`.trim(),
     });
     try {
-      await sendEmail({
+      const sendRes = await sendMeerkatHtmlEmail({
+        agentId: ctx.agent.id,
         to:      recipient.email,
-        from:    agentBrandedFrom({
+        subject,
+        html,
+        agent: {
           agent_name:            ctx.agent.agent_name,
           business_name:         ctx.agent.business_name,
           email_from:            ctx.agent.email_from,
           email_domain_verified: ctx.agent.email_domain_verified,
-        }),
-        subject, html,
-      });
-      await ctx.supabase.from('client_incidents')
-        .update({ email_sent_at: new Date().toISOString() })
-        .eq('id', incidentId);
-      emailSent = true;
+        },
+      }, ctx.supabase);
+      if (sendRes.ok) {
+        await ctx.supabase.from('client_incidents')
+          .update({ email_sent_at: new Date().toISOString() })
+          .eq('id', incidentId);
+        emailSent = true;
+      } else {
+        console.warn('registrar_incidencia email failed silently:', sendRes.error);
+      }
     } catch (err) {
-      console.error('registrar_incidencia sendEmail failed:', err);
+      console.error('registrar_incidencia sendMeerkatHtmlEmail threw:', err);
     }
   }
 
