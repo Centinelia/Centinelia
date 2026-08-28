@@ -520,10 +520,17 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
         },
       },
       server: server('verificar-recepcion-incidencia'),
-      // Filler natural mientras la tool corre (~1-2s). Neutral para que
-      // aplique a resultado ok / no_visitado / sin_respuesta sin que suene
-      // dissonante. Reemplaza el silencio incómodo del smoke test 20:xx UTC.
-      messages: [{ type: 'request-start', content: 'Perfecto, déjeme dejar registrada su respuesta.' }],
+      // Filler por caso — Vapi elige según arg `resultado`. Positivo suena a
+      // "cerrando el caso"; negativo reconoce la falla + promete seguimiento
+      // humano; sin_respuesta neutral.
+      messages: [
+        { type: 'request-start', content: 'Perfecto, déjeme dejar registrada su respuesta.',
+          conditions: [{ param: 'resultado', operator: 'eq', value: 'ok' }] },
+        { type: 'request-start', content: 'Entiendo, déjeme escalar esto con el equipo para que se comuniquen con usted a la brevedad.',
+          conditions: [{ param: 'resultado', operator: 'eq', value: 'no_visitado' }] },
+        { type: 'request-start', content: 'De acuerdo, déjeme dejarlo anotado.',
+          conditions: [{ param: 'resultado', operator: 'eq', value: 'sin_respuesta' }] },
+      ],
     };
 
     // actualizar_disponibilidad_diaria — gateado por industria en createVapiTools.
