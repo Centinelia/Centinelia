@@ -442,6 +442,18 @@ function PersonRow({
               </div>
             </div>
           </label>
+          {(person.email ?? '').trim() && (
+            <label className="flex items-start gap-2 text-[12px] cursor-pointer" style={{ color: '#6B6480' }}>
+              <input type="checkbox" className="mt-0.5" checked={!!person.receives_incident_reports}
+                onChange={e => onUpdate({ receives_incident_reports: e.target.checked })} />
+              <div>
+                <span style={{ color: '#1A0A3B', fontWeight: 500 }}>Recibe reportes de incidencias por correo</span>
+                <div className="text-[11px]" style={{ color: '#9B8FB5' }}>
+                  Se envían notificaciones automáticas de problemas en operaciones y entregas a este correo.
+                </div>
+              </div>
+            </label>
+          )}
         </div>
       )}
 

@@ -3822,6 +3822,22 @@ async function executeAgentToolInner(
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // registrar_incidencia
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'registrar_incidencia') {
+    const { registrarIncidencia } = await import('./executors/registrar-incidencia');
+    return registrarIncidencia(ctx, toolInput as any);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // verificar_recepcion_incidencia
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'verificar_recepcion_incidencia') {
+    const { verificarRecepcionIncidencia } = await import('./executors/verificar-recepcion-incidencia');
+    return verificarRecepcionIncidencia(ctx, toolInput as any);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   // buscar_cliente
   // ─────────────────────────────────────────────────────────────────────────
   if (toolName === 'buscar_cliente') {

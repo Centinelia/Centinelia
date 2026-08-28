@@ -189,7 +189,7 @@ export function normalizeToE164(raw: string): string {
 // los dos — mejor rechazar temprano y forzar retry con datos correctos.
 // Devuelve el número normalizado a E.164 (con `+` y código de país). Vapi
 // rechaza cualquier otra forma con 400 en el cron outbound.
-function validatePhoneOrThrow(telefono: string, email?: string | null): string {
+export function validatePhoneOrThrow(telefono: string, email?: string | null): string {
   const t = telefono.trim();
   if (t.length === 0) {
     throw new Error('outbound_contact_invalid_phone: telefono vacío. Sin número no se puede marcar. Si sólo tienes email, guarda como lead (crear_lead) en vez de contacto saliente.');

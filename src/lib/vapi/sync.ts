@@ -249,7 +249,7 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
   nico:  ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'enviar_correo', 'crear_documento', 'enviar_documento_oficina', 'solicitar_factura', 'consultar_factura', 'qb_consultar_facturas', 'qb_buscar_cliente', 'qb_registrar_pago', 'qb_crear_factura', 'qb_reporte_ingresos', 'generar_correo_estructurado'],
   // Nelia — servicio al cliente + contenido postventa. Owner de extraer_voz
   // (insights de cliente) + generar_one_pager (contenido postventa).
-  nelia: ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'registrar_encuesta', 'enviar_correo', 'buscar_archivo', 'buscar_documento_oficina', 'buscar_correo_enviado', 'enviar_documento_oficina', 'extraer_voz_del_cliente', 'generar_one_pager', 'generar_correo_estructurado', 'generar_reporte_metricas_excel'],
+  nelia: ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'registrar_encuesta', 'enviar_correo', 'buscar_archivo', 'buscar_documento_oficina', 'buscar_correo_enviado', 'enviar_documento_oficina', 'extraer_voz_del_cliente', 'generar_one_pager', 'generar_correo_estructurado', 'generar_reporte_metricas_excel', 'registrar_incidencia', 'verificar_recepcion_incidencia'],
   // Neo — helpdesk IT. `llamar_a` para escalar responsable (Scope A A1 CRITICAL #1).
   neo:   ['crear_ticket', 'consultar_incidentes', 'buscar_directorio', 'buscar_archivo', 'leer_archivo', 'llamar_a'],
   // Nara — municipal (civic reports + trámites externos si feature activa).

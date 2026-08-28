@@ -372,6 +372,40 @@ export const TOOL_SCHEMAS: Record<string, ToolSchema> = {
     voiceServerPath: 'reportar-falla',
   },
 
+  // registrar_incidencia — pack incidencia_flow. Tortillería Estrella piloto.
+  registrar_incidencia: {
+    name: 'registrar_incidencia',
+    description: 'Registra una queja/incidencia de un cliente existente que reporta no haber recibido su pedido o servicio. Manda correo al encargado y agenda llamada de verificación en 3 días.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        business_name: { type: 'string', description: 'Nombre del negocio del cliente (ej: "Abarrotes Charro").' },
+        contact_name:  { type: 'string', description: 'Nombre de la persona que habla (opcional si no lo da).' },
+        contact_phone: { type: 'string', description: 'Teléfono de contacto en formato E.164 (ej: +528112345678) o 10 dígitos MX.' },
+        address:       { type: 'string', description: 'Dirección exacta del negocio: calle, número, colonia, ciudad.' },
+        motivo:        { type: 'string', description: 'Qué reporta el cliente en sus propias palabras (2-3 frases máx).' },
+      },
+      required: ['business_name', 'contact_phone', 'address', 'motivo'] as const,
+    },
+    channels: ['voice', 'chat', 'email'] as const,
+  },
+
+  // verificar_recepcion_incidencia — llamadas salientes de verificación 3 días.
+  verificar_recepcion_incidencia: {
+    name: 'verificar_recepcion_incidencia',
+    description: 'Marca el resultado de la llamada de verificación de 3 días. Solo se usa en llamadas salientes disparadas por auto_incident_verification.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        incident_id: { type: 'string', description: 'ID del incidente (viene en el contexto de la llamada saliente).' },
+        resultado:   { type: 'string', enum: ['ok','no_visitado','sin_respuesta'] as const, description: 'ok si ya recibió, no_visitado si sigue sin recibir, sin_respuesta si no dio respuesta clara.' },
+        notas:       { type: 'string', description: 'Detalle adicional en máximo una frase (opcional).' },
+      },
+      required: ['incident_id', 'resultado'] as const,
+    },
+    channels: ['voice', 'chat', 'email'] as const,
+  },
+
   // catalogo_buscar_codigo — pack cloud_catalog. Consulta el catálogo Excel/CSV
   // que el cliente mantiene en su almacenamiento en la nube (Dropbox, Google
   // Drive u OneDrive) para llenar OCs, cotizaciones y facturas con el código

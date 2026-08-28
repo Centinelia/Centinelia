@@ -26,6 +26,7 @@ export interface OrgPackContext {
   has_hr?:              boolean;
   has_field_dispatch?:  boolean;
   has_tramites?:        boolean;
+  has_incidencia_flow?: boolean;
 }
 
 export interface SkillPack {
@@ -141,6 +142,13 @@ export const SKILL_PACKS: SkillPack[] = [
     source: 'features.tramites_externos',
     activeCheck: ctx => !!ctx.has_tramites,
   },
+  {
+    id: 'incidencia_flow', label: 'Flujo de incidencias',
+    description: 'Registrar quejas/incidencias de clientes B2B con notificación al encargado y llamada de verificación a 3 días',
+    tools: ['registrar_incidencia', 'verificar_recepcion_incidencia'],
+    source: 'organizations.incidencia_flow_enabled',
+    activeCheck: ctx => !!ctx.has_incidencia_flow,
+  },
 ];
 
 /**
@@ -198,7 +206,7 @@ export async function resolveOrgPackContext(
 ): Promise<OrgPackContext> {
   const [qb, org, sheets, ml, agents] = await Promise.all([
     supabase.from('qb_integrations').select('realm_id').eq('portal_email', portalEmail).maybeSingle(),
-    supabase.from('organizations').select('invoicing_provider, catalog_config, outbound_daily_limit').eq('portal_email', portalEmail).maybeSingle(),
+    supabase.from('organizations').select('invoicing_provider, catalog_config, outbound_daily_limit, incidencia_flow_enabled').eq('portal_email', portalEmail).maybeSingle(),
     supabase.from('sheets_mappings').select('id').eq('portal_email', portalEmail).limit(1),
     supabase.from('integration_accounts').select('id').eq('portal_email', portalEmail).eq('provider', 'mercadolibre').limit(1),
     supabase.from('voice_agents').select('features').eq('portal_email', portalEmail),
@@ -225,5 +233,6 @@ export async function resolveOrgPackContext(
     has_hr:              anyFeature('hr_enabled'),
     has_field_dispatch:  anyFeature('field_dispatch'),
     has_tramites:        anyFeature('tramites_externos'),
+    has_incidencia_flow: org.data?.incidencia_flow_enabled === true,
   };
 }

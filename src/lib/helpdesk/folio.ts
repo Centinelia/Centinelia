@@ -65,6 +65,7 @@ export interface DirectoryPerson {
   // Genérico a propósito para servir a tortillerías, talleres, consultorios,
   // distribuidores, etc. — user-facing label: "Contacto de operaciones".
   is_operations_contact?: boolean;
+  receives_incident_reports?: boolean;
 }
 
 /** @deprecated usar DirectoryPerson (organizations.directory) */
