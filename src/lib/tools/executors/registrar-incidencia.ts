@@ -70,7 +70,12 @@ export async function registrarIncidencia(ctx: any, args: RegistrarIncidenciaArg
     try {
       await sendEmail({
         to:      recipient.email,
-        from:    agentBrandedFrom({ agent_name: ctx.agent.agent_name, business_name: ctx.agent.business_name }),
+        from:    agentBrandedFrom({
+          agent_name:            ctx.agent.agent_name,
+          business_name:         ctx.agent.business_name,
+          email_from:            ctx.agent.email_from,
+          email_domain_verified: ctx.agent.email_domain_verified,
+        }),
         subject, html,
       });
       await ctx.supabase.from('client_incidents')
