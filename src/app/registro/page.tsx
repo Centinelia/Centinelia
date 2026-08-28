@@ -158,9 +158,9 @@ const AGENT_PLANS: AgentPlanDef[] = [
 type TierDef = { id: FormTier; label: string; minutes: number; aiOps: number; price: number; popular?: boolean };
 
 const TIERS: TierDef[] = [
-  { id: 'starter', label: 'Media Jornada',    minutes: 300,  aiOps: 120, price: 2997 },
-  { id: 'growth',  label: 'Jornada Completa', minutes: 600,  aiOps: 220, price: 5994, popular: true },
-  { id: 'scale',   label: 'Alta Demanda',     minutes: 1200, aiOps: 320, price: 11988 },
+  { id: 'starter', label: 'Media Jornada',    minutes: 300,  aiOps: 320, price: 2997 },
+  { id: 'growth',  label: 'Jornada Completa', minutes: 600,  aiOps: 420, price: 5994, popular: true },
+  { id: 'scale',   label: 'Alta Demanda',     minutes: 1200, aiOps: 520, price: 11988 },
 ];
 
 // Ops-only tiers for Nox (no minutes cost)

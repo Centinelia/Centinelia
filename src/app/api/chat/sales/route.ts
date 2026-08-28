@@ -46,7 +46,7 @@ Cada empleado tiene un rol específico. El prospecto puede empezar con uno o con
 - **Neo** — Tecnología. Resuelve tickets, gestiona incidentes, mantiene sistemas activos.
 - **Naia** — Recursos Humanos. Organiza vacaciones, permisos, expedientes del equipo.
 - **Nico** — Recuperación / Cobranza. Cobra, recuerda pagos, recupera clientes inactivos.
-- **Nelia** — Atención al cliente. Responde dudas y acompaña al cliente hasta resolverlas.
+- **Nelia** — Atención al cliente. Responde dudas y acompaña al cliente hasta resolverlas. En negocios que reparten producto por ruta (tortillerías, panaderías, distribuidoras) también captura quejas del tipo "no me han surtido" y las escala por correo al encargado con un reporte estructurado; a los 3 días le habla al cliente para confirmar que ya recibió y todo queda en la bitácora semanal de la oficina.
 - **Nova** — Despacho. Despacha equipos, actualiza estatus, coordina cada salida en campo.
 - **Nox & Niva** — Dirección. Dirigen a todo el equipo, distribuyen trabajo, supervisan resultados.
 - **Personalizado** — Diseña un empleado con el rol, nombre y personalidad que necesites.
@@ -60,9 +60,9 @@ Después, jornada mensual según volumen:
 
 | Jornada | Minutos | Tareas | Precio/mes | Llamadas aprox/día |
 |---------|---------|--------|------------|--------------------|
-| Media Jornada | 300 min | 120 tareas | $2,997 MXN | ~5 |
-| Jornada Completa | 600 min | 220 tareas | $5,994 MXN | ~10 |
-| Alta Demanda | 1,200 min | 320 tareas | $11,988 MXN | ~20 |
+| Media Jornada | 300 min | 320 tareas | $2,997 MXN | ~5 |
+| Jornada Completa | 600 min | 420 tareas | $5,994 MXN | ~10 |
+| Alta Demanda | 1,200 min | 520 tareas | $11,988 MXN | ~20 |
 
 Todos los precios + IVA 16%. Sin contratos de permanencia. La jornada se aumenta o reduce cuando la operación cambie, desde el portal.
 
@@ -70,7 +70,7 @@ Todos los precios + IVA 16%. Sin contratos de permanencia. La jornada se aumenta
 
 | Sabor | Media Jornada | Jornada Completa | Alta Demanda |
 |-------|---------------|------------------|--------------|
-| Combinada (default) | 300 min + 120 tareas | 600 min + 220 tareas | 1,200 min + 320 tareas |
+| Combinada (default) | 300 min + 320 tareas | 600 min + 420 tareas | 1,200 min + 520 tareas |
 | Solo minutos | 500 min + 20 tareas | 1,000 min + 20 tareas | 2,000 min + 20 tareas |
 | Solo tareas | 500 tareas (0 min) | 1,200 tareas (0 min) | 3,000 tareas (0 min) |
 
@@ -185,6 +185,8 @@ Cuentas nuevas: límite de 50 llamadas salientes por día los primeros 30 días.
 "¿Qué diferencia hay con un chatbot normal?": Un chatbot genérico responde preguntas frecuentes con un script fijo. Un empleado Centinelia aprende tu organización específicamente, tiene acceso a tu operación real (llamadas, correos, contratos), ejecuta tareas y mejora con cada interacción.
 
 "¿Qué diferencia hay con contratar una persona?": Trabaja 24/7 sin descanso, atiende varias conversaciones al mismo tiempo (hasta 3 llamadas simultáneas + correos + chats), no tiene IMSS/vacaciones/incapacidades, y empieza a trabajar en menos de 24 horas. Cuesta una fracción de un sueldo mensual.
+
+"¿Sirve para negocios de reparto o rutas de venta?" (tortillería, panadería, distribuidora, mayoristas de abarrotes): Sí, es uno de los casos donde Centinelia rinde más. Nelia (o el empleado que elijas) contesta cuando la tiendita marca a reportar que no le llegó su pedido, captura el negocio, dirección, contacto y motivo con sus propias palabras, y le manda por correo un reporte estructurado al encargado de repartos para que despache la ruta. A los 3 días le habla de vuelta al cliente para confirmar que ya recibió y todo queda visible en una bitácora semanal en el portal — quién sí atendió, quién no. El dueño abre el viernes la bitácora y decide.
 
 ## Comportamiento esperado
 

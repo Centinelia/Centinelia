@@ -43,6 +43,7 @@ const TEAM = [
   { nombre: 'Nelia', rol: 'Atención al Cliente', desc: 'Responde dudas y acompaña al cliente hasta resolverlas.',            color: '#3b82f6', img: '/meerkats/nelia.png' },
   { nombre: 'Nova',  rol: 'Despacho',         desc: 'Despacha equipos, actualiza estatus y coordina cada salida en campo.',                   color: '#ef4444', img: '/meerkats/nova.png'  },
   { nombre: 'Nala',  rol: 'Facturación',      desc: 'Timbra CFDIs, archiva comprobantes y mantiene el orden fiscal.',                         color: '#a16207', img: '/meerkats/nala.png'  },
+  { nombre: 'Nami',  rol: 'Inventarios',      desc: 'Lleva el conteo del inventario, detecta faltantes y dispara reposiciones.',              color: '#6C3BFF', img: '/meerkats/nami.png'  },
 ];
 
 const LIMITS = [
@@ -92,8 +93,9 @@ const AGENT_TYPES: {
 ];
 
 // MINUTE_TIERS eliminado 2026-08-11: landmine con ops 100/200/300 stale
-// (real es 120/220/320 según JORNADA_CONFIG.combinada). La landing renderiza
-// PricingSection.tsx que lee de plans.ts en runtime. Ver
+// (real es 320/420/520 según JORNADA_CONFIG.combinada — bump +200 el 2026-08-28
+// para que las jornadas combinadas tengan mix trabajable de tareas). La landing
+// renderiza PricingSection.tsx que lee de plans.ts en runtime. Ver
 // [[feedback-audit-read-path-fidelity]].
 
 const DIFFERENTIATORS = [
@@ -568,8 +570,8 @@ export default function LandingPage() {
             ))}
           </div>
 
-          {/* Fila 2 — 5 empleados, expandida 125% para igualar tamaño de tarjetas */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-3 sm:-mx-[12.5%]">
+          {/* Fila 2 — 6 empleados, expandida 150% para igualar tamaño de tarjetas de la fila 1 (4 vs 6 = 1.5×) */}
+          <div className="grid grid-cols-2 sm:grid-cols-6 gap-3 mt-3 sm:-mx-[25%]">
             {TEAM.slice(4).map((m, i, arr) => {
               const isLastOdd = i === arr.length - 1 && arr.length % 2 !== 0;
               return (
