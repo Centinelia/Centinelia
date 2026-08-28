@@ -97,7 +97,11 @@ export async function registrarIncidencia(ctx: any, args: RegistrarIncidenciaArg
     incidentId,
     agentId:     ctx.agent.id,
     telefono:    phone,
-    motivo:      `Verificar si ya recibió pedido reportado el ${now.toLocaleDateString('es-MX')}`,
+    // Motivo NATURAL — se inyecta después de "Le llamo porque..." en el
+    // firstMessage de outbound. Evitar fechas formato numérico (28/8/2026
+    // se pronuncia "h h o two thousand twenty six" en TTS) y verbos infinitivos
+    // que rompen la gramática con el prefijo del template. Bug 2026-08-28.
+    motivo:      `quiero saber si ya recibió el pedido que reportó hace unos días`,
     scheduledAt: verifyAt,
   });
   await ctx.supabase.from('client_incidents')
