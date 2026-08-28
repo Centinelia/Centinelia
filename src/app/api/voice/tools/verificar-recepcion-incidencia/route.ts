@@ -25,11 +25,15 @@ export async function POST(req: NextRequest) {
     }
 
     const result = await verificarRecepcionIncidencia({ supabase, agent }, args);
-    return NextResponse.json({ results: [{ toolCallId, result }] });
+    // Formato {result: string} — mismo cambio que registrar-incidencia (ver 2026-08-28).
+    const msg = result.verification_result === 'ok'
+      ? 'Verificación registrada como recibida. Caso cerrado.'
+      : result.verification_result === 'no_visitado'
+      ? 'Verificación registrada como NO visitado — queda en rojo en la bitácora esta semana.'
+      : 'Verificación registrada como sin respuesta — queda en gris en la bitácora.';
+    return NextResponse.json({ result: msg });
   } catch (err: any) {
     console.error('[verificar_recepcion_incidencia] unhandled:', err);
-    return NextResponse.json({
-      results: [{ toolCallId, result: { error: err?.message ?? 'internal_error' } }],
-    });
+    return NextResponse.json({ result: `Error al registrar la verificación: ${err?.message ?? 'error interno'}.` });
   }
 }

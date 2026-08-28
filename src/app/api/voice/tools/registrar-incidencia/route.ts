@@ -51,11 +51,17 @@ export async function POST(req: NextRequest) {
       },
       args,
     );
-    return NextResponse.json({ results: [{ toolCallId, result }] });
+    // Formato {result: string} — probado en registrar_pedido, funciona sin
+    // problemas con el retry loop de Vapi. Antes usábamos
+    // {results:[{toolCallId,result:{obj}}]} pero Vapi retriaba porque no
+    // reconocía el ack — 8x "Ya notifico" en un solo call, cero rows en DB
+    // pese a endpoint respondiendo 200. Ver smoke 2026-08-28 18:15 UTC.
+    const msg = result.email_sent
+      ? 'Registrado. Correo enviado al encargado y llamada de verificación agendada para dentro de 3 días.'
+      : 'Registrado en el sistema. No pude notificar al encargado por correo (no hay encargado configurado), pero quedó agendada la llamada de verificación en 3 días.';
+    return NextResponse.json({ result: msg });
   } catch (err: any) {
     console.error('[registrar_incidencia] unhandled:', err);
-    return NextResponse.json({
-      results: [{ toolCallId, result: { error: err?.message ?? 'internal_error' } }],
-    });
+    return NextResponse.json({ result: `Error al registrar la incidencia: ${err?.message ?? 'error interno'}. Intenta capturar los datos de nuevo.` });
   }
 }
