@@ -6,16 +6,38 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   let toolCallId: string | undefined;
+  let debugAgentId: string | null = null;
+  let debugBodyStr: string | null = null;
   try {
     const url = new URL(req.url);
     const agentId = url.searchParams.get('agent_id');
+    debugAgentId = agentId;
     if (!agentId) return NextResponse.json({ error: 'agent_id required' }, { status: 400 });
 
     const body = await req.json();
+    debugBodyStr = JSON.stringify(body).slice(0, 2000);
     const toolCall = body?.message?.toolCallList?.[0] ?? body?.message?.toolCalls?.[0];
     toolCallId = toolCall?.id ?? toolCall?.toolCallId;
     const rawArgs = toolCall?.function?.arguments ?? toolCall?.arguments ?? {};
     const args = typeof rawArgs === 'string' ? JSON.parse(rawArgs) : rawArgs;
+
+    // Trace persistente para debug post-facto (bug 2026-08-28: Vapi request-start
+    // fire pero endpoint nunca crea row → sospecha payload shape distinto). Best
+    // effort, no bloquea el flow.
+    try {
+      const traceSupabase = createAdminClient();
+      await traceSupabase.from('tool_call_log').insert({
+        agent_id:    agentId,
+        channel:     'voice',
+        tool_name:   'registrar_incidencia',
+        input_json:  { args, body_head: debugBodyStr.slice(0, 500), toolCallId },
+        ok:          true,
+        latency_ms:  0,
+        attempt:     1,
+      });
+    } catch (traceErr) {
+      console.warn('[registrar_incidencia] trace log failed:', traceErr);
+    }
 
     const supabase = createAdminClient();
     const { data: agent, error: agentErr } = await supabase.from('voice_agents').select('*').eq('id', agentId).single();
@@ -61,7 +83,22 @@ export async function POST(req: NextRequest) {
       : 'Registrado en el sistema. No pude notificar al encargado por correo (no hay encargado configurado), pero quedó agendada la llamada de verificación en 3 días.';
     return NextResponse.json({ result: msg });
   } catch (err: any) {
-    console.error('[registrar_incidencia] unhandled:', err);
+    console.error('[registrar_incidencia] unhandled:', err, { debugAgentId, debugBodyStr });
+    // Trace del error también
+    try {
+      const traceSupabase = createAdminClient();
+      await traceSupabase.from('tool_call_log').insert({
+        agent_id:    debugAgentId ?? '00000000-0000-0000-0000-000000000000',
+        channel:     'voice',
+        tool_name:   'registrar_incidencia',
+        input_json:  { body_head: debugBodyStr ?? 'no-body' },
+        output_json: { error: err?.message ?? 'error interno' },
+        ok:          false,
+        error:       err?.message ?? 'error interno',
+        latency_ms:  0,
+        attempt:     1,
+      });
+    } catch { /* best effort */ }
     return NextResponse.json({ result: `Error al registrar la incidencia: ${err?.message ?? 'error interno'}. Intenta capturar los datos de nuevo.` });
   }
 }
