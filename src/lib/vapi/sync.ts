@@ -7,6 +7,7 @@ import { MEERKAT_PROMPT_TIER } from '@/lib/voice/rules';
 import { resolveMeerkatConfig, type MeerkatModelConfig } from './resolve-meerkat';
 import { resolveMeerkatVersionForAgent } from '@/lib/feature-flags/version-flag-resolver';
 import { TOOL_SCHEMAS, toVapiToolDef } from '@/lib/tools/schemas';
+import { getToolByName } from '@/lib/tools/registry';
 import { getOrgIndustry, INDUSTRIES_WITH_DAILY_AVAILABILITY } from '@/lib/industry';
 import { parseToolOverrides } from '@/lib/tools/tool-overrides';
 import { resolveOrgPackContext, resolveActivePacks, meerkatActivePacks, TOOL_TO_PACK } from '@/lib/tools/packs';
@@ -481,6 +482,46 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
     case 'solicitar_permiso': return { type: 'function', function: { name: 'solicitar_permiso', description: 'Registra una solicitud de permiso o vacaciones de un empleado. Queda en estado "registrada" hasta que el owner/RH la apruebe.', parameters: { type: 'object', properties: { employee_name: { type: 'string' }, record_type: { type: 'string', enum: ['vacaciones','permiso'] }, start_date: { type: 'string' }, end_date: { type: 'string' }, reason: { type: 'string' } }, required: ['employee_name', 'record_type', 'start_date', 'end_date'] } }, server: server('exec/solicitar_permiso') };
     case 'verificar_incidencia': return { type: 'function', function: { name: 'verificar_incidencia', description: 'Registra o consulta una incidencia disciplinaria/operativa de un empleado (retardo, error, conducta).', parameters: { type: 'object', properties: { employee_name: { type: 'string' }, start_date: { type: 'string' }, reason: { type: 'string' } }, required: ['employee_name', 'start_date', 'reason'] } }, server: server('exec/verificar_incidencia') };
 
+    // Flow de incidencias tortillería (pack incidencia_flow).
+    case 'registrar_incidencia': return {
+      type: 'function',
+      function: {
+        name: 'registrar_incidencia',
+        description: 'Registra una queja/incidencia de un cliente existente que reporta no haber recibido su pedido o servicio. Manda correo estructurado al encargado (receives_incident_reports del directorio) y agenda llamada de verificación en 3 días. Los 4 datos requeridos son: nombre del negocio, dirección exacta, teléfono, motivo (frase inicial del cliente). NO pidas amplificación del motivo — con la frase que dijo al inicio es suficiente.',
+        parameters: {
+          type: 'object',
+          properties: {
+            business_name: { type: 'string', description: 'Nombre del negocio del cliente (ej: "Abarrotes Charro").' },
+            contact_name:  { type: 'string', description: 'Nombre de la persona que llama (opcional si no lo da).' },
+            contact_phone: { type: 'string', description: 'Teléfono en E.164 (+52...) o 10 dígitos MX. Es el teléfono que dictó el cliente, no necesariamente el caller_number.' },
+            address:       { type: 'string', description: 'Dirección completa: calle, número, colonia, municipio.' },
+            motivo:        { type: 'string', description: 'Motivo puntual con las palabras del cliente (2-3 frases máx).' },
+          },
+          required: ['business_name', 'contact_phone', 'address', 'motivo'],
+        },
+      },
+      server: server('registrar-incidencia'),
+      messages: [{ type: 'request-start', content: 'Ya notifico al encargado.' }],
+    };
+
+    case 'verificar_recepcion_incidencia': return {
+      type: 'function',
+      function: {
+        name: 'verificar_recepcion_incidencia',
+        description: 'Marca el resultado de la llamada de verificación de 3 días. Solo se usa en llamadas salientes disparadas por auto_incident_verification. El incident_id viene en el contexto de la llamada.',
+        parameters: {
+          type: 'object',
+          properties: {
+            incident_id: { type: 'string', description: 'ID del incidente (viene en el motivo/contexto de la llamada saliente).' },
+            resultado:   { type: 'string', enum: ['ok', 'no_visitado', 'sin_respuesta'], description: 'ok = cliente confirmó recibió; no_visitado = sigue sin recibir; sin_respuesta = colgó rápido o no dio respuesta clara.' },
+            notas:       { type: 'string', description: 'Detalle adicional en una frase (opcional).' },
+          },
+          required: ['incident_id', 'resultado'],
+        },
+      },
+      server: server('verificar-recepcion-incidencia'),
+    };
+
     // actualizar_disponibilidad_diaria — gateado por industria en createVapiTools.
     // buildToolDef solo construye la definicion; la decision de incluirla la toma
     // el gate dual (industria + rol) despues del loop principal.
@@ -539,8 +580,25 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
     const merged = Array.from(new Set([...UNIVERSAL_VOICE_TOOLS, ...roleTools]));
     for (const toolName of merged) {
       if (EXTRA_GATED_TOOLS.has(toolName)) continue; // handled below with extra gates
+
+      // Guardrail: si la tool está en el preset voz pero registry.ts la declara
+      // como chat/email-only, no la mandamos a Vapi (no hay handler voice).
+      // Sin este check, buildToolDef retorna null y el silent-drop hace que el
+      // meerkat halucine haber llamado la tool. Ver 2026-08-28 smoke test Nelia.
+      const registryEntry = getToolByName(toolName);
+      if (registryEntry && !registryEntry.channels.includes('voice')) {
+        continue;
+      }
+
       const def = buildToolDef(toolName, agent, server);
-      if (def) tools.push(def);
+      if (!def) {
+        // Silent drop histórico: tool en preset voz + buildToolDef sin case →
+        // Vapi nunca recibe la definición → LLM cree que la tiene y alucina la
+        // invocación. Error log ruidoso para que la próxima regresión se vea.
+        console.error(`[createVapiTools] MEERKAT_VOICE_DISTRIBUTION[${meerkatId}] incluye "${toolName}" pero buildToolDef no tiene case. El meerkat NO puede invocarla y probablemente alucine haberlo hecho. Agregar case en buildToolDef.`);
+        continue;
+      }
+      tools.push(def);
     }
   } else {
     // Fallback: feature-flag gating for custom agents
