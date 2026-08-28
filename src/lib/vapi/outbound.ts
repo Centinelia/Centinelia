@@ -1,6 +1,8 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { buildOutboundSystemPrompt } from '@/lib/voice/outbound-prompt-builder';
 import { expandForSpeech } from '@/lib/voice/tts-normalize';
+import { resolveMeerkatConfig } from '@/lib/vapi/resolve-meerkat';
+import { resolveMeerkatVersionForAgent } from '@/lib/feature-flags/version-flag-resolver';
 import type { VoiceAgent } from '@/types/agent';
 
 // Pausa al inicio del firstMessage. Sin esto, Vapi empieza a hablar en el
@@ -195,6 +197,36 @@ export async function triggerOutboundCall({
   const expandedMotivo = motivo ? expandForSpeech(motivo) : undefined;
   const systemPrompt   = buildOutboundSystemPrompt(agent, resolvedName, expandedMotivo, customerContext, finalCampaignInstructions);
 
+  // Resolver la config real del meerkat (mismo path que sync.ts inbound). Antes
+  // este bloque hardcodeaba Haiku 4.5 ignorando la config → outbound de meerkats
+  // con Sonnet corría en Haiku (mal), y meerkats con use_custom_llm=true
+  // brincaban el cache prompt de Anthropic → costo y quality degradados. Bug
+  // 2026-08-28 con Nelia: "hablaba con embolia" + switch a inglés = Haiku
+  // confundido con el prompt largo destinado a Sonnet.
+  const meerkatId       = (agent.features as { meerkat_role_id?: string } | undefined)?.meerkat_role_id;
+  const pinnedVersion   = meerkatId ? await resolveMeerkatVersionForAgent(meerkatId, { portal_email: agent.portal_email ?? null, features: (agent.features ?? {}) as unknown as Record<string, unknown> }) : null;
+  const meerkatCfg      = meerkatId ? await resolveMeerkatConfig(meerkatId, pinnedVersion) : null;
+  const useCustomLlm    = !!(agent.features as unknown as Record<string, unknown>)?.use_custom_llm;
+  const appUrl          = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
+  const vapiSecret      = process.env.VAPI_SERVER_SECRET  ?? '';
+
+  const modelOverride = useCustomLlm && meerkatCfg
+    ? {
+        provider:    'custom-llm',
+        url:         vapiSecret ? `${appUrl}/api/voice/llm?secret=${encodeURIComponent(vapiSecret)}` : `${appUrl}/api/voice/llm`,
+        model:       meerkatCfg.model,
+        messages:    [{ role: 'system', content: systemPrompt }],
+        temperature: meerkatCfg.temperature,
+        maxTokens:   meerkatCfg.maxTokens,
+        metadataSendMode: 'off',
+      }
+    : {
+        provider:    meerkatCfg?.provider ?? 'anthropic',
+        model:       meerkatCfg?.model    ?? 'claude-haiku-4-5-20251001',
+        messages:    [{ role: 'system', content: systemPrompt }],
+        ...(meerkatCfg ? { temperature: meerkatCfg.temperature, maxTokens: meerkatCfg.maxTokens } : {}),
+      };
+
   const res = await fetch(`${VAPI_URL}/call`, {
     method: 'POST',
     headers: headers(),
@@ -207,15 +239,7 @@ export async function triggerOutboundCall({
       },
       assistantOverrides: {
         firstMessage,
-        model: {
-          // Vapi requires provider + model when overriding messages. Reuse
-          // the meerkat's configured model (falls back to Haiku 4.5). For
-          // custom-llm agents this override still points Vapi back at our
-          // /api/voice/llm endpoint by inheriting the assistant's url.
-          provider: 'anthropic',
-          model:    'claude-haiku-4-5-20251001',
-          messages: [{ role: 'system', content: systemPrompt }],
-        },
+        model: modelOverride,
       },
     }),
   });
