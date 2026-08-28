@@ -520,6 +520,10 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
         },
       },
       server: server('verificar-recepcion-incidencia'),
+      // Filler natural mientras la tool corre (~1-2s). Neutral para que
+      // aplique a resultado ok / no_visitado / sin_respuesta sin que suene
+      // dissonante. Reemplaza el silencio incómodo del smoke test 20:xx UTC.
+      messages: [{ type: 'request-start', content: 'Perfecto, déjeme dejar registrada su respuesta.' }],
     };
 
     // actualizar_disponibilidad_diaria — gateado por industria en createVapiTools.
