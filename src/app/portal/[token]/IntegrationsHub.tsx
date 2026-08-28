@@ -588,7 +588,7 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
     { id: 'crm',      label: 'Conocimiento del cliente', connected: !!status.notion?.connected },
     ...(hasOpsAgent ? [{ id: 'mensajeria', label: 'Mensajería', connected: !!status.teamsEmail }] : []),
     { id: 'comercio',    label: 'Comercio',    connected: !!status.ml?.connected },
-    { id: 'finanzas',    label: 'Finanzas',    connected: !!status.qb?.connected },
+    // 'finanzas' (QuickBooks) hidden 2026-08-28. Ver comentario en rows[] abajo.
     { id: 'facturacion', label: 'Facturación', connected: !!status.sf?.connected },
   ];
 
@@ -689,15 +689,9 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
         }]
       : []),
     // MercadoLibre hidden 2026-08-19: 0 orgs activos. Reactivar via pack mercado_libre (Capa 2).
-    {
-      key: 'finanzas',
-      icon: <DollarSign size={16} style={{ color: '#2CA01C' }} />,
-      connectedIcon: RowIcons.quickbooks,
-      label: 'Finanzas',
-      subtitle: qbSubtitle,
-      connected: !!status.qb?.connected,
-      children: <QuickBooksSection token={token} />,
-    },
+    // QuickBooks (Finanzas) hidden 2026-08-28: piloto AC nunca conectó cuenta real,
+    // cero orgs en prod. QuickBooksSection component preservado + tools/executors/routes
+    // dormidos en código para reactivación futura. Ver pack `quickbooks` en packs.ts.
     {
       key: 'solucion_factible',
       icon: <FileText size={16} style={{ color: '#1A56DB' }} />,

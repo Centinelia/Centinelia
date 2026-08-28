@@ -39,9 +39,10 @@ describe('resolveActivePacks', () => {
     expect(active.size).toBe(0);
   });
 
-  it('qb_realm_id activates quickbooks pack', () => {
+  it('quickbooks pack está DESACTIVADO 2026-08-28 (activeCheck hardcoded false)', () => {
+    // qb_realm_id se ignora — pack no se activa hasta reactivación manual.
     const active = resolveActivePacks({ qb_realm_id: 'realm-123' });
-    expect(active.has('quickbooks')).toBe(true);
+    expect(active.has('quickbooks')).toBe(false);
     expect(active.has('mercado_libre')).toBe(false);
   });
 
@@ -50,9 +51,9 @@ describe('resolveActivePacks', () => {
     expect(active.has('invoicing_cfdi')).toBe(true);
   });
 
-  it('multiple flags activate multiple packs', () => {
+  it('multiple flags activate multiple packs (excepto quickbooks desactivado)', () => {
     const active = resolveActivePacks({ qb_realm_id: 'r', has_ml: true, has_outbound: true });
-    expect(active.has('quickbooks')).toBe(true);
+    expect(active.has('quickbooks')).toBe(false); // desactivado 2026-08-28
     expect(active.has('mercado_libre')).toBe(true);
     expect(active.has('outbound_calls')).toBe(true);
   });

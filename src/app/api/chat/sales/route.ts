@@ -136,7 +136,6 @@ Cuando pides un documento (propuesta, presentación, carta, reporte), el emplead
 - **Google Drive / OneDrive:** guarda, busca, lee y organiza archivos.
 - **Correo con dominio propio:** los empleados responden con la dirección del negocio.
 - **Mercado Libre:** revisa publicaciones, actualiza y ve métricas de ventas.
-- **QuickBooks:** los empleados registran facturas y consultan status contable.
 - **Microsoft Teams:** enviar/recibir mensajes en canal.
 
 ## Industrias con precedente

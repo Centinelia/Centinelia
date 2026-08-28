@@ -52,6 +52,12 @@ export interface SkillPack {
 
 export const SKILL_PACKS: SkillPack[] = [
   {
+    // Pack quickbooks DESACTIVADO 2026-08-28: piloto AC nunca conectó, cero orgs
+    // en prod usando QB tools. Se conservan definiciones + TOOL_TO_PACK mapping
+    // para reactivación futura, pero activeCheck retorna false hardcoded para
+    // que las tools NUNCA se expongan al meerkat aunque queden en algún preset.
+    // Para reactivar: cambiar activeCheck a `ctx => !!ctx.qb_realm_id` + re-agregar
+    // tools a los presets de nox/nala/nico/noah/niva según necesidad.
     id: 'quickbooks', label: 'QuickBooks',
     description: 'Facturación, cobros, órdenes de compra y reportes en QB',
     tools: [
@@ -61,8 +67,8 @@ export const SKILL_PACKS: SkillPack[] = [
       'qb_crear_orden_compra_desde_cotizacion', 'qb_crear_cotizacion',
       'qb_registrar_gasto', 'qb_registrar_caja_chica',
     ],
-    source: 'qb_integrations.realm_id',
-    activeCheck: ctx => !!ctx.qb_realm_id,
+    source: 'DESACTIVADO 2026-08-28 (qb_integrations.realm_id sin uso)',
+    activeCheck: () => false,
   },
   {
     id: 'invoicing_cfdi', label: 'Facturación CFDI',
