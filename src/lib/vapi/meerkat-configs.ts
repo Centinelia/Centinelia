@@ -55,6 +55,12 @@ const NICO_CONFIGS: MeerkatConfigVersions = {
 
 const NELIA_CONFIGS: MeerkatConfigVersions = {
   1: { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.40, maxTokens: 110, speed: 0.98, minChars: 28, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3' },
+  // v2 2026-08-28: upgrade a Sonnet 4.6 por el mismo bug que Noah v1 hit
+  // (comment arriba): Haiku 4.5 emite tool calls con arguments={} para
+  // registrar_incidencia + ignora el error message del tool response y
+  // alucina éxito. Trace confirma en tool_call_log 2026-08-28 18:52-19:00 UTC.
+  // maxTokens subido a 200 para Sonnet.
+  2: { provider: 'anthropic', model: 'claude-sonnet-4-6',       temperature: 0.40, maxTokens: 200, speed: 0.98, minChars: 28, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3' },
 };
 
 const NARA_CONFIGS: MeerkatConfigVersions = {
