@@ -10,12 +10,25 @@ interface IncidentEmailInput {
 
 const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
+// Zona MX estándar. Vercel corre en UTC → getHours() da hora UTC (bug
+// 2026-08-28: correos mostraban 19:28 cuando el evento pasó 13:28 MTY).
+// Intl formatea directo en la tz correcta sin ajustes manuales.
+const MX_TZ = 'America/Monterrey';
+
 function formatFecha(d: Date): string {
-  return `${String(d.getDate()).padStart(2, '0')}-${MONTHS[d.getMonth()]}-${String(d.getFullYear()).slice(2)}`;
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: MX_TZ, day: '2-digit', month: 'numeric', year: '2-digit',
+  }).formatToParts(d);
+  const day = parts.find(p => p.type === 'day')?.value ?? '00';
+  const monthNum = Number(parts.find(p => p.type === 'month')?.value ?? '1') - 1;
+  const year = parts.find(p => p.type === 'year')?.value ?? '00';
+  return `${day}-${MONTHS[monthNum]}-${year}`;
 }
 
 function formatHora(d: Date): string {
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  return new Intl.DateTimeFormat('es-MX', {
+    timeZone: MX_TZ, hour: '2-digit', minute: '2-digit', hour12: false,
+  }).format(d);
 }
 
 function contactoLine(name: string | null | undefined, phone: string): string {
