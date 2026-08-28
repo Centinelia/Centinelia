@@ -857,6 +857,10 @@ async function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], pee
       const notice  = 'Esta llamada puede ser grabada.';
       const noNotice = !!agent.features.skip_recording_notice;
       const custom  = agent.first_message?.trim();
+      // Pronunciation overrides para nombres que el TTS mispronuncia sin acento.
+      // Nelia sin acento se lee "ne-LI-a"; con acento se lee "NÉ-lia" (correcto).
+      const TTS_PRONUNCIATIONS: Record<string, string> = { 'Nelia': 'Nélia' };
+      const ttsAgentName = TTS_PRONUNCIATIONS[agentName] ?? agentName;
       if (custom) {
         if (noNotice || custom.toLowerCase().includes('grabada')) return custom;
         return `${custom} ${notice}`;
@@ -866,7 +870,7 @@ async function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], pee
       // En que le puedo ayudar?') pesaba 17 palabras / ~7s de TTS a speed=0.91.
       // Este es 15 palabras / ~5.5s: mismo cumplimiento LFPDPPP, sin 'buenos dias'
       // (que depende del horario), pero mantiene el CTA final para invitar a hablar.
-      return `Le habla ${agentName} de ${agent.business_name}, su llamada puede ser grabada. ¿En qué le puedo ayudar?`;
+      return `Le habla ${ttsAgentName} de ${agent.business_name}, su llamada puede ser grabada. ¿En qué le puedo ayudar?`;
     })(),
     endCallMessage: 'Hasta luego.',
     // Solo frases INEQUÍVOCAS de cierre. "gracias por llamar" y "gracias por
