@@ -592,10 +592,11 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
 
       const def = buildToolDef(toolName, agent, server);
       if (!def) {
-        // Silent drop histórico: tool en preset voz + buildToolDef sin case →
-        // Vapi nunca recibe la definición → LLM cree que la tiene y alucina la
-        // invocación. Error log ruidoso para que la próxima regresión se vea.
-        console.error(`[createVapiTools] MEERKAT_VOICE_DISTRIBUTION[${meerkatId}] incluye "${toolName}" pero buildToolDef no tiene case. El meerkat NO puede invocarla y probablemente alucine haberlo hecho. Agregar case en buildToolDef.`);
+        // Puede ser: (a) case falta en buildToolDef → meerkat va a alucinar,
+        // (b) case existe pero retorna null por condición runtime válida (ej.
+        // transferir_llamada sin transfer_number). Warn para visibilidad sin
+        // pánico — filtro manual si sale ruido persistente.
+        console.warn(`[createVapiTools] tool "${toolName}" declarada en preset ${meerkatId} pero buildToolDef retornó null (case falta o condición runtime no cumplida). Si es lo primero el meerkat va a alucinar la invocación — agregar case en buildToolDef.`);
         continue;
       }
       tools.push(def);
