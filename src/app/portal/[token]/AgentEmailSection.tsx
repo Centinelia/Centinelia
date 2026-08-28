@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Mail, CheckCircle, Loader2, Trash2, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Mail, CheckCircle, Loader2, Trash2, AlertTriangle, RefreshCw, Globe, ChevronDown } from 'lucide-react';
+import EmailSettings from './EmailSettings';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -63,6 +64,7 @@ export default function AgentEmailSection({ token }: { token: string }) {
   const [loading,       setLoading]       = useState(true);
   const [disconnecting, setDisconnecting] = useState<string | null>(null);
   const [justConnected, setJustConnected] = useState<string | null>(null);
+  const [otroExpanded,  setOtroExpanded]  = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -245,6 +247,68 @@ export default function AgentEmailSection({ token }: { token: string }) {
             </div>
           );
         })}
+
+        {/* Tercera opción: correo con dominio propio via Resend + DNS.
+             Para orgs sin Google Workspace / Microsoft 365 (Zoho, Titan,
+             hosting propio, iCloud). Ver copy en el card + DnsTutorialAccordion. */}
+        <div
+          className="rounded-xl overflow-hidden"
+          style={{
+            background: '#ffffff',
+            border:     '1px solid #F0EDF9',
+          }}
+        >
+          <button
+            onClick={() => setOtroExpanded(v => !v)}
+            className="w-full flex items-start gap-3 p-4 text-left transition-colors hover:bg-gray-50"
+            style={{ cursor: 'pointer' }}
+          >
+            <div
+              className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}
+            >
+              <Globe size={18} style={{ color: '#6C3BFF' }} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>
+                  Otro correo
+                </span>
+                <span className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ background: '#FAFAFB', color: '#9B8FB5', border: '1px solid #E8E3F5' }}>
+                  Setup técnico
+                </span>
+              </div>
+              <p className="text-xs mt-0.5" style={{ color: '#6B6480' }}>
+                Tu dominio con Zoho, Titan, hosting propio, iCloud. Requiere agregar registros DNS.
+              </p>
+            </div>
+            <ChevronDown
+              size={16}
+              style={{
+                color: '#6B6480',
+                transition: 'transform 200ms',
+                transform: otroExpanded ? 'rotate(180deg)' : 'rotate(0)',
+                flexShrink: 0,
+                marginTop: 8,
+              }}
+            />
+          </button>
+
+          {otroExpanded && (
+            <div className="px-4 pb-4" style={{ borderTop: '1px solid #F0EDF9' }}>
+              <div
+                className="mt-3 mb-4 flex gap-2 rounded-lg px-3 py-2.5"
+                style={{ background: 'rgba(108,59,255,0.05)', border: '1px solid rgba(108,59,255,0.12)' }}
+              >
+                <Mail size={12} style={{ color: '#9B6DFF', flexShrink: 0, marginTop: 2 }} />
+                <p className="text-[12px] leading-relaxed" style={{ color: '#6B6480' }}>
+                  Si tienes Gmail Workspace o Outlook/Microsoft 365, usa esas opciones — es mucho más simple (un click de OAuth). Esta ruta es sólo para dominios que no viven en Google ni Microsoft. Requiere agregar 2-3 registros DNS en tu proveedor.
+                </p>
+              </div>
+              <EmailSettings token={token} />
+            </div>
+          )}
+        </div>
 
         <div
           className="flex gap-2 rounded-lg px-3 py-2"

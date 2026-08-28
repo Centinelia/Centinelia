@@ -8,7 +8,7 @@ import IntegrationsSection       from './IntegrationsSection';
 import NotionSection             from './NotionSection';
 import NotionSchemasSection      from './NotionSchemasSection';
 import TeamsSection              from './TeamsSection';
-import EmailChannelPicker        from './EmailChannelPicker';
+import EmailOAuthSection         from './EmailOAuthSection';
 import MercadoLibreSection       from './MercadoLibreSection';
 import QuickBooksSection         from './QuickBooksSection';
 import GoogleWorkspaceCard       from './GoogleWorkspaceCard';
@@ -631,7 +631,7 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
               </p>
             </div>
           </div>
-          <EmailChannelPicker
+          <EmailOAuthSection
             token={token}
             workspacePanel={
               emailConn?.provider === 'gmail' || !emailConn ? (
