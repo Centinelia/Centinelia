@@ -23,7 +23,7 @@ interface Body {
 export async function POST(req: NextRequest) {
   let body: Body;
   try { body = await req.json() as Body; }
-  catch { return NextResponse.json({ error: 'Body invalido.' }, { status: 400 }); }
+  catch { return NextResponse.json({ error: 'Body inválido.' }, { status: 400 }); }
 
   const business_name       = (body.business_name       ?? '').trim();
   const contact_name        = (body.contact_name        ?? '').trim();
@@ -38,9 +38,9 @@ export async function POST(req: NextRequest) {
   if (!business_name)       return NextResponse.json({ error: 'Falta nombre del negocio.' },  { status: 400 });
   if (!contact_name)        return NextResponse.json({ error: 'Falta tu nombre.' },           { status: 400 });
   if (!/^\S+@\S+\.\S+$/.test(contact_email))
-                            return NextResponse.json({ error: 'Correo no valido.' },          { status: 400 });
+                            return NextResponse.json({ error: 'Correo no válido.' },          { status: 400 });
   if (!rol_imaginado)       return NextResponse.json({ error: 'Describe el rol imaginado.' }, { status: 400 });
-  if (!funciones_esperadas) return NextResponse.json({ error: 'Describe qué haria el empleado.' }, { status: 400 });
+  if (!funciones_esperadas) return NextResponse.json({ error: 'Describe qué haría el empleado.' }, { status: 400 });
 
   // Guardar en DB
   const supabase = createAdminClient();
@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
         </table>
 
         <div style="border-top: 1px solid rgba(108,59,255,0.12); padding-top: 20px;">
-          <p style="font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(26,10,59,0.55); margin: 0 0 10px;">Que haria dia a dia</p>
+          <p style="font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(26,10,59,0.55); margin: 0 0 10px;">Qué haría día a día</p>
           <p style="font-size: 13px; line-height: 1.65; color: #1A0A3B; white-space: pre-wrap; margin: 0;">${escapeHtml(funciones_esperadas)}</p>
         </div>
 

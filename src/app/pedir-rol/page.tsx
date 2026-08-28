@@ -24,10 +24,11 @@ const INTEGRACIONES_DISPONIBLES = [
   'Dropbox',
   'Google Calendar',
   'Mercado Libre',
-  'WhatsApp',
+  'WhatsApp (mensajes entrantes)',
   'Correo (Gmail / Outlook)',
-  'CRM propio (API)',
-  'ERP propio (SAT / CONTPAQi / Aspel)',
+  'CRM (HubSpot, Salesforce, propio)',
+  'ERP fiscal (CONTPAQi / Aspel / Bind)',
+  'Facturación CFDI (SAT vía PAC)',
   'Otro',
 ];
 
@@ -136,7 +137,7 @@ export default function PedirRolPage() {
               color: C.text, lineHeight: 1.05, letterSpacing: '-0.03em',
               marginBottom: 20,
             }}>
-              ¿Necesitas un empleado que no está en el roster?
+              ¿Necesitas un empleado que no esté en el roster?
             </h1>
             <p style={{ color: C.textSub, fontSize: 'clamp(1rem, 1.8vw, 1.15rem)', lineHeight: 1.65, maxWidth: 620, margin: '0 auto' }}>
               Cada especialista del equipo nació de una necesidad real. Cuéntanos qué rol te falta, qué haría y con qué sistemas trabajaría. Si es viable, lo diseñamos y lo sumamos al roster oficial.
@@ -157,6 +158,10 @@ export default function PedirRolPage() {
                 marginInline: 20,
               }}
             >
+              <p style={{ fontSize: 11, color: C.textSub, marginBottom: 18, textAlign: 'right' }}>
+                Campos con <span style={{ color: C.accent, fontWeight: 700 }}>*</span> son obligatorios.
+              </p>
+
               {/* Sección 1: Negocio + Contacto */}
               <FieldLabel>Nombre del negocio *</FieldLabel>
               <Input value={businessName} onChange={setBusinessName} placeholder="Ej. Aire Acondicionado Proyectos" required />
@@ -201,7 +206,7 @@ export default function PedirRolPage() {
                 }}
               />
 
-              <FieldLabel style={{ marginTop: 16 }}>Tono deseado</FieldLabel>
+              <FieldLabel style={{ marginTop: 16 }}>Tono deseado (opcional)</FieldLabel>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 mt-1">
                 {TONOS.map(t => {
                   const selected = tonoDeseado === t.id;
@@ -224,7 +229,7 @@ export default function PedirRolPage() {
                 })}
               </div>
 
-              <FieldLabel style={{ marginTop: 20 }}>¿Con qué sistemas necesita integrarse?</FieldLabel>
+              <FieldLabel style={{ marginTop: 20 }}>¿Con qué sistemas necesita integrarse? (opcional)</FieldLabel>
               <div className="flex flex-wrap gap-2 mt-1">
                 {INTEGRACIONES_DISPONIBLES.map(name => {
                   const selected = integraciones.includes(name);
