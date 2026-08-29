@@ -33,6 +33,50 @@ const RESULT_MARK: Record<'ok'|'no_visitado'|'sin_respuesta', string> = {
 };
 
 /**
+ * Convenciones de color/underline por fila del incident (mismo criterio que
+ * el formato default hardcoded en build-excel.ts):
+ * - Alta cliente nuevo (is_new_client / type='alta') → azul subrayado
+ * - verification_result no_visitado → texto rojo
+ * - verification_result sin_respuesta → rojo subrayado
+ * - OK o pendiente → sin estilo especial
+ */
+function rowStyle(inc: IncidentRow): { color?: string; underline?: boolean } {
+  if (inc.is_new_client || inc.type === 'alta') {
+    return { color: 'FF1D4ED8', underline: true };
+  }
+  if (inc.verification_result === 'no_visitado') {
+    return { color: 'FFDC2626' };
+  }
+  if (inc.verification_result === 'sin_respuesta') {
+    return { color: 'FFDC2626', underline: true };
+  }
+  return {};
+}
+
+/** Aplica color/underline a las cells mapeadas + grid de una row. */
+function applyRowStyle(row: ReturnType<Worksheet['getRow']>, mapping: TemplateMapping, style: { color?: string; underline?: boolean }): void {
+  if (!style.color && !style.underline) return;
+  const cols: number[] = [];
+  for (const letter of Object.keys(mapping.columns)) cols.push(colLetterToNumber(letter));
+  if (mapping.verification_grid) {
+    for (const key of GRID_DAY_KEYS) {
+      const letter = mapping.verification_grid[key];
+      if (letter) cols.push(colLetterToNumber(letter));
+    }
+  }
+  for (const c of cols) {
+    const cell = row.getCell(c);
+    const existing = (cell.font ?? {}) as Record<string, unknown>;
+    cell.font = {
+      ...existing,
+      ...(style.color     ? { color: { argb: style.color } } : {}),
+      ...(style.underline ? { underline: true }              : {}),
+    };
+  }
+}
+
+
+/**
  * Escribe el estado de cada intento de verificación en la col correcta del
  * grid semanal L/M/MI/J/V/S, si el mapping tiene verification_grid definido.
  *
@@ -183,6 +227,37 @@ export function cleanCellsBeyondMappedArea(ws: Worksheet, mapping: TemplateMappi
 }
 
 /**
+ * Uniforma tipografía en todas las cells del sheet. Cliente sube templates
+ * con fuentes/tamaños mezclados (heredados de años de edición manual) —
+ * "letra chica, letra grande, un tipo de letra y otro". Al generar el correo
+ * normalizamos todo a Calibri con tamaños consistentes:
+ * - 12 para títulos (row 1, cells mergeadas grandes)
+ * - 11 para el rango
+ * - 10 para todo lo demás (col headers, data, letras)
+ *
+ * Preserva bold/italic si el cliente los aplicó — solo cambia name y size.
+ */
+export function unifyFonts(ws: Worksheet, insertionRow: number): void {
+  ws.eachRow({ includeEmpty: false }, (row, rowNum) => {
+    row.eachCell({ includeEmpty: false }, (cell) => {
+      const existing = (cell.font ?? {}) as { bold?: boolean; italic?: boolean; underline?: boolean; color?: unknown };
+      const size =
+        rowNum === 1                    ? 12 :
+        rowNum < insertionRow           ? 11 :
+                                          10;
+      cell.font = {
+        name:      'Calibri',
+        size,
+        bold:      existing.bold ?? false,
+        italic:    existing.italic ?? false,
+        underline: existing.underline,
+        color:     (existing.color as { argb?: string } | undefined) ?? undefined,
+      };
+    });
+  });
+}
+
+/**
  * Limpia rows de "data histórica" del template (todo debajo de insertion_row).
  * Preserva header rows (1..insertion_row-1) + la template row (insertion_row)
  * con sus estilos, pero limpia valores de la template row. Se usa cuando
@@ -233,10 +308,20 @@ function fieldValue(inc: IncidentRow, field: CanonicalField): string {
       return inc.motivo ?? '';
     case 'tipo':
       return inc.type === 'alta' ? 'Alta' : 'Queja';
-    case 'verification_date':
+    case 'verification_date': {
+      // Si hay historial de intentos, mostrar TODAS las fechas de llamadas
+      // reales (una línea por intento). Si no hay intentos aún, mostrar la
+      // fecha planeada (verification_scheduled_at) como referencia.
+      const attempts = Array.isArray(inc.verification_attempts) ? inc.verification_attempts : [];
+      if (attempts.length > 0) {
+        return attempts
+          .map(a => new Date(a.called_at).toLocaleDateString('es-MX'))
+          .join('\n');
+      }
       return inc.verification_scheduled_at
         ? new Date(inc.verification_scheduled_at).toLocaleDateString('es-MX')
         : '';
+    }
     case 'verification_result':
       if (inc.type === 'alta') return '';
       if (!inc.verification_result) return 'pendiente';
@@ -349,6 +434,7 @@ export function upsertSheetWithIncidents(
         row.getCell(colNum).value = fieldValue(inc, field);
       }
       writeVerificationGrid(row, mapping, inc, weekStart, weekEnd);
+      applyRowStyle(row, mapping, rowStyle(inc));
       // Reafirmar incident_id en col oculta (defensivo)
       row.getCell(hiddenCol).value = inc.id;
     } else {
@@ -362,10 +448,12 @@ export function upsertSheetWithIncidents(
       }
       writeVerificationGrid(newRow, mapping, inc, weekStart, weekEnd);
       newRow.getCell(hiddenCol).value = inc.id;
-      // Aplicar estilos base
+      // Aplicar estilos base (fill/border desde template row), luego overlay
+      // color/underline según status del incident (altas/no_visitado/sin_respuesta).
       sampleStyles.forEach((style, colNum) => {
         if (style) newRow.getCell(colNum).style = JSON.parse(JSON.stringify(style));
       });
+      applyRowStyle(newRow, mapping, rowStyle(inc));
     }
   }
 }
