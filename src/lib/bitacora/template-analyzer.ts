@@ -52,9 +52,23 @@ export interface TemplateMapping {
   notes?: string;
 }
 
+/** Sugerencia final del analizador para mejorar la plantilla. Se muestra al
+ *  cliente como recomendación read-only — sin ida y vuelta con la AI. El
+ *  cliente decide si editar su archivo local y re-subir, o ignorar. */
+export interface TemplateSuggestion {
+  type:      'rename_header' | 'add_header' | 'remove_col' | 'widen_col' | 'simplify_grid' | 'other';
+  col?:      string;
+  current?:  string | null;
+  proposed?: string | null;
+  /** Descripción en español para el cliente. Debe ser accionable y concreta. */
+  rationale: string;
+  severity:  'info' | 'warning' | 'important';
+}
+
 interface AnalyzeResult {
-  mapping: TemplateMapping;
-  usage:   { input_tokens: number; output_tokens: number };
+  mapping:     TemplateMapping;
+  suggestions: TemplateSuggestion[];
+  usage:       { input_tokens: number; output_tokens: number };
 }
 
 /**
@@ -117,10 +131,24 @@ Regla mapping: solo mapea columnas cuya semántica sea CLARA. Si dudas, no la ma
 Regla human_only: incluye letras de columnas que el empleado digital debe respetar aunque estén mapeadas (initial-write con dato de DB si aplica, después nunca sobrescribir).
 Regla grid: el grid es 6 días L-S. Las cols del grid NO se incluyen en columns ni en human_only_columns — van solo en verification_grid.
 
+Adicionalmente, identifica hasta 5 sugerencias FINALES para el cliente (no ida y vuelta, no diálogo). Van en el array \`suggestions\`. Estas son mejoras que el cliente puede aplicar editando su xlsx local y re-subiendo. Tipos:
+
+- rename_header: header ambiguo o incorrecto. Ej: col dice "COMENTARIO" pero contenido histórico es motivo/queja del cliente → sugerir renombrar a "MOTIVO".
+- add_header: col con contenido histórico pero sin header en row 2 → sugerir agregar header descriptivo.
+- remove_col: col completamente duplicada o vacía sin uso claro (ej: dos cols contiguas con mismo header y una siempre vacía en la data).
+- widen_col: header no cabe en el ancho de la col (se ve wrap-eado feo, tipo "FECHA\\nSEGUIMIENTO"). Sugerir aumentar ancho.
+- simplify_grid: si el grid semanal tiene formato inconsistente (ej: primera col dice "L 09/oct", segunda dice "M" solo, sexta dice "S 14/oct", séptima "L 16 oct" mezclando semanas) → sugerir simplificar a "rango de fechas mergeado arriba, letras del día abajo".
+- other: cualquier otra observación importante.
+
+Regla sugerencias: solo si es CLARAMENTE una mejora. Si dudas, omite. Máximo 5. Rationale en español, accionable ("Renombra col C a X porque..."). Severity:
+- info: cosmético, opcional
+- warning: puede confundir al operador humano
+- important: causa problemas de datos o UX
+
 Estructura del archivo (primeras 6 filas de cada sheet):
 ${JSON.stringify(sheetsData, null, 2)}
 
-Responde SOLO con JSON válido en este shape (nada más, sin markdown). El campo verification_grid es opcional; inclúyelo solo si detectaste el grid:
+Responde SOLO con JSON válido en este shape (nada más, sin markdown). Los campos verification_grid y suggestions son opcionales; inclúyelos solo si aplica:
 {
   "sheet_name": "nombre exacto del sheet",
   "insertion_row": 3,
@@ -132,12 +160,22 @@ Responde SOLO con JSON válido en este shape (nada más, sin markdown). El campo
   },
   "human_only_columns": ["D"],
   "verification_grid": { "L": "K", "M": "L", "MI": "M", "J": "N", "V": "O", "S": "P" },
+  "suggestions": [
+    {
+      "type": "rename_header",
+      "col": "H",
+      "current": "COMENTARIO",
+      "proposed": "MOTIVO",
+      "rationale": "El contenido histórico de esta columna describe el motivo de la queja del cliente. Cambiar el header a 'MOTIVO' hace la plantilla más clara.",
+      "severity": "info"
+    }
+  ],
   "notes": "opcional, si detectaste ambigüedad"
 }`;
 
   const response = await client.messages.create({
     model:      'claude-sonnet-4-6',
-    max_tokens: 1024,
+    max_tokens: 1536,
     messages: [{ role: 'user', content: prompt }],
   });
 
@@ -152,6 +190,7 @@ Responde SOLO con JSON válido en este shape (nada más, sin markdown). El campo
     columns?:            Record<string, string>;
     human_only_columns?: string[];
     verification_grid?:  Record<string, string>;
+    suggestions?:        unknown[];
     notes?:              string;
   };
 
@@ -192,6 +231,34 @@ Responde SOLO con JSON válido en este shape (nada más, sin markdown). El campo
     if (count >= 3) verificationGrid = cleaned;
   }
 
+  // Parse suggestions — filtro por type válido, severity válido, y rationale no-vacía.
+  const VALID_TYPES: TemplateSuggestion['type'][] = ['rename_header','add_header','remove_col','widen_col','simplify_grid','other'];
+  const VALID_SEVERITY: TemplateSuggestion['severity'][] = ['info','warning','important'];
+  const suggestions: TemplateSuggestion[] = Array.isArray(parsed.suggestions)
+    ? parsed.suggestions
+        .map((raw): TemplateSuggestion | null => {
+          if (!raw || typeof raw !== 'object') return null;
+          const r = raw as Record<string, unknown>;
+          const type     = String(r.type ?? '');
+          const severity = String(r.severity ?? 'info');
+          const rationale = typeof r.rationale === 'string' ? r.rationale.trim() : '';
+          if (!(VALID_TYPES as string[]).includes(type)) return null;
+          if (rationale.length === 0) return null;
+          return {
+            type:     type as TemplateSuggestion['type'],
+            col:      typeof r.col === 'string' ? r.col.toUpperCase() : undefined,
+            current:  typeof r.current === 'string' ? r.current : (r.current === null ? null : undefined),
+            proposed: typeof r.proposed === 'string' ? r.proposed : (r.proposed === null ? null : undefined),
+            rationale,
+            severity: (VALID_SEVERITY as string[]).includes(severity)
+              ? severity as TemplateSuggestion['severity']
+              : 'info',
+          };
+        })
+        .filter((s): s is TemplateSuggestion => s !== null)
+        .slice(0, 5)
+    : [];
+
   return {
     mapping: {
       columns:            validColumns,
@@ -201,6 +268,7 @@ Responde SOLO con JSON válido en este shape (nada más, sin markdown). El campo
       verification_grid:  verificationGrid,
       notes:              parsed.notes,
     },
+    suggestions,
     usage: {
       input_tokens:  response.usage.input_tokens,
       output_tokens: response.usage.output_tokens,

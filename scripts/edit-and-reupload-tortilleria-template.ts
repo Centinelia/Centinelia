@@ -57,6 +57,13 @@ async function main() {
   }
   console.log(`  human_only: ${JSON.stringify(analysis.mapping.human_only_columns)}`);
   console.log(`  grid: ${JSON.stringify(analysis.mapping.verification_grid ?? {})}`);
+  console.log(`  suggestions (${analysis.suggestions.length}):`);
+  for (const s of analysis.suggestions) {
+    console.log(`    [${s.severity}] ${s.type}${s.col ? ` col ${s.col}` : ''}`);
+    console.log(`      current: ${s.current === null ? 'null' : JSON.stringify(s.current)}`);
+    console.log(`      proposed: ${s.proposed === null ? 'null' : JSON.stringify(s.proposed)}`);
+    console.log(`      rationale: ${s.rationale}`);
+  }
   console.log();
 
   // Override: forzar col I marcada como human_only aunque no esté en el columns mapping.
@@ -84,6 +91,7 @@ async function main() {
     url:            storagePath,
     filename:       FILENAME,
     mapping:        analysis.mapping,
+    suggestions:    analysis.suggestions,
     uploaded_at:    new Date().toISOString(),
     uploaded_by:    'admin-script',
     ai_usage:       analysis.usage,

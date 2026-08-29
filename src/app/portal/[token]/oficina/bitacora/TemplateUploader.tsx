@@ -1,7 +1,16 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { FileSpreadsheet, Upload, RotateCcw, Loader2, CheckCircle2, User, Bot } from 'lucide-react';
+import { FileSpreadsheet, Upload, RotateCcw, Loader2, CheckCircle2, User, Bot, Lightbulb, AlertTriangle, Info } from 'lucide-react';
+
+interface TemplateSuggestion {
+  type:      'rename_header' | 'add_header' | 'remove_col' | 'widen_col' | 'simplify_grid' | 'other';
+  col?:      string;
+  current?:  string | null;
+  proposed?: string | null;
+  rationale: string;
+  severity:  'info' | 'warning' | 'important';
+}
 
 interface CurrentTemplate {
   filename?:    string;
@@ -12,6 +21,7 @@ interface CurrentTemplate {
     human_only_columns?: string[];
     notes?:              string;
   };
+  suggestions?: TemplateSuggestion[];
 }
 
 interface Props {
@@ -58,6 +68,7 @@ export function TemplateUploader({ token, agentId, current, uploadCost }: Props)
         filename:    file.name,
         uploaded_at: new Date().toISOString(),
         mapping:     body.mapping,
+        suggestions: body.suggestions ?? [],
       });
     } catch (e) {
       setError((e as Error).message);
@@ -202,6 +213,70 @@ export function TemplateUploader({ token, agentId, current, uploadCost }: Props)
               Nota: {state.mapping.notes}
             </p>
           )}
+        </div>
+      )}
+
+      {hasCustom && (state?.suggestions?.length ?? 0) > 0 && (
+        <div
+          className="rounded-lg p-3 mb-3"
+          style={{ background: 'rgba(234,179,8,0.06)', border: '1px solid rgba(234,179,8,0.25)' }}
+        >
+          <div className="flex items-start gap-2 mb-2">
+            <Lightbulb size={14} style={{ color: '#B45309', marginTop: 2 }} />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold" style={{ color: '#78350F' }}>
+                Sugerencias para tu plantilla
+              </p>
+              <p className="text-[11px]" style={{ color: '#6B6480' }}>
+                Recomendaciones para mejorar cómo se ve el reporte. Son opcionales — edita tu archivo en Excel y súbelo de nuevo si quieres aplicarlas.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-col gap-2 mt-2">
+            {state!.suggestions!.map((s, idx) => {
+              const sevColor = s.severity === 'important' ? '#DC2626'
+                            : s.severity === 'warning'   ? '#B45309'
+                            : '#6B6480';
+              const SevIcon = s.severity === 'important' ? AlertTriangle
+                           : s.severity === 'warning'   ? AlertTriangle
+                           : Info;
+              return (
+                <div
+                  key={idx}
+                  className="rounded p-2"
+                  style={{ background: '#ffffff', border: '1px solid #E8E3F5' }}
+                >
+                  <div className="flex items-start gap-2">
+                    <SevIcon size={12} style={{ color: sevColor, marginTop: 2, flexShrink: 0 }} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px]" style={{ color: '#1A0A3B' }}>
+                        {s.col && (
+                          <>
+                            <strong>Col {s.col}</strong>
+                            <span className="mx-1.5" style={{ color: '#9B8FB5' }}>·</span>
+                          </>
+                        )}
+                        {s.rationale}
+                      </p>
+                      {(s.current !== undefined || s.proposed !== undefined) && (s.current !== null || s.proposed !== null) && (
+                        <p className="text-[10px] mt-1" style={{ color: '#6B6480' }}>
+                          {s.current !== null && s.current !== undefined && (
+                            <>Actual: <span style={{ color: '#DC2626' }}>&ldquo;{s.current}&rdquo;</span></>
+                          )}
+                          {s.current !== null && s.current !== undefined && s.proposed !== null && s.proposed !== undefined && (
+                            <span className="mx-1.5">→</span>
+                          )}
+                          {s.proposed !== null && s.proposed !== undefined && (
+                            <>Propuesto: <span style={{ color: '#16a34a' }}>&ldquo;{s.proposed}&rdquo;</span></>
+                          )}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 

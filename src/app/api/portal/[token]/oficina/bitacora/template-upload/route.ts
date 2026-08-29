@@ -100,6 +100,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     url:            storagePath,
     filename:       file.name,
     mapping:        analysis.mapping,
+    suggestions:    analysis.suggestions,
     uploaded_at:    new Date().toISOString(),
     uploaded_by:    resolved.portalEmail,
     ai_usage:       analysis.usage,
@@ -117,6 +118,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
   return NextResponse.json({
     ok:            true,
     mapping:       analysis.mapping,
+    suggestions:   analysis.suggestions,
     columns_count: columnsCount,
     charged_tasks: BITACORA_TEMPLATE_UPLOAD_TASKS,
   });
