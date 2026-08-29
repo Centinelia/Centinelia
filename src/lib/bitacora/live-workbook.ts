@@ -2,7 +2,7 @@ import { Workbook, Worksheet } from 'exceljs';
 import type { createAdminClient } from '@/lib/supabase/admin';
 import type { IncidentRow } from '@/app/portal/[token]/oficina/bitacora/loadBitacoraData';
 import type { TemplateMapping } from './template-analyzer';
-import { upsertSheetWithIncidents, clearHistoricalDataRows, cleanCellsBeyondMappedArea } from './template-render';
+import { upsertSheetWithIncidents, clearHistoricalDataRows, cleanCellsBeyondMappedArea, unifyFonts } from './template-render';
 
 /** Placeholder que el cliente puede poner en su template. Se reemplaza en
  *  cada sheet clonada con el rango real de la semana ("24-30 AGO"). */
@@ -122,6 +122,8 @@ export async function updateLiveWorkbook(input: UpdateLiveInput): Promise<Buffer
     // Limpiar data histórica del cliente (rows debajo del insertion_row del
     // template que son data de meses/años previos que no aplica al nuevo mes).
     clearHistoricalDataRows(templateSheet, input.mapping.insertion_row);
+    // Uniformar tipografía (Calibri, tamaños consistentes por rol de la row).
+    unifyFonts(templateSheet, input.mapping.insertion_row);
     // Renombrar template sheet a "Semana N" del primer week + inyectar rango
     templateSheet.name = `Semana ${input.weeks[0].weekNumber}`;
     injectWeekRange(templateSheet, input.weeks[0].weekStart);
@@ -143,6 +145,7 @@ export async function updateLiveWorkbook(input: UpdateLiveInput): Promise<Buffer
       // template (mismas razones que en el fresh path).
       cleanCellsBeyondMappedArea(ws, input.mapping);
       clearHistoricalDataRows(ws, input.mapping.insertion_row);
+      unifyFonts(ws, input.mapping.insertion_row);
       // Inyectar rango de fechas de esta semana en el placeholder del header
       injectWeekRange(ws, week.weekStart);
     }
