@@ -178,38 +178,58 @@ async function main() {
       });
     }
 
-    console.log('\n═══ STEP 8: Editar vendedor manual (simula humano) ═══\n');
-    // Escoger el primer incident y ponerle vendedor "Juan Pérez"
+    console.log('\n═══ STEP 8: Simular ediciones del cliente en el live file ═══\n');
     const firstIncidentId = monthIncidents[0].id;
-    console.log(`  Editando col F (vendedor) para incident ${firstIncidentId} → "Juan Pérez"`);
     const wb2 = new Workbook();
     await wb2.xlsx.load(liveBuf1 as any);
-    // Encontrar el sheet + row con ese incident_id
-    let edited = false;
+    let sheetTarget: any = null;
+    let hiddenCol = 0;
+    let targetRowNum = 0;
     for (const ws of wb2.worksheets) {
-      // Encontrar col oculta con incident_id
-      let hiddenCol = 0;
+      let hc = 0;
       ws.getRow(1).eachCell({ includeEmpty: true }, (cell, col) => {
-        if (cell.value === '_incident_id') hiddenCol = col;
+        if (cell.value === '_incident_id') hc = col;
       });
-      if (!hiddenCol) continue;
+      if (!hc) continue;
       ws.eachRow({ includeEmpty: false }, (row, r) => {
         if (r < mapping.insertion_row) return;
-        if (row.getCell(hiddenCol).value === firstIncidentId) {
-          row.getCell(6).value = 'Juan Pérez'; // col F
-          edited = true;
+        if (row.getCell(hc).value === firstIncidentId) {
+          sheetTarget = ws;
+          hiddenCol = hc;
+          targetRowNum = r;
         }
       });
+      if (sheetTarget) break;
     }
-    if (!edited) throw new Error(`No encontré row con incident_id ${firstIncidentId}`);
+    if (!sheetTarget) throw new Error(`No encontré row con incident_id ${firstIncidentId}`);
+
+    // Edición 1: col F vendedor (human_only) — DEBE persistir
+    console.log(`  [ed1] col F (vendedor, human_only) → "Juan Pérez"`);
+    sheetTarget.getCell(targetRowNum, 6).value = 'Juan Pérez';
+
+    // Edición 2: col E motivo (NO human_only) — DEBE ser sobrescrito por DB
+    console.log(`  [ed2] col E (motivo, no human_only) → "EDITADO A MANO — se debe sobrescribir"`);
+    sheetTarget.getCell(targetRowNum, 5).value = 'EDITADO A MANO — se debe sobrescribir';
+
+    // Edición 3: agregar row nueva del cliente (sin incident_id) — DEBE persistir
+    const customRowNum = sheetTarget.lastRow.number + 1;
+    console.log(`  [ed3] row ${customRowNum} nueva del cliente en col B → "Nota manual del jefe"`);
+    sheetTarget.getCell(customRowNum, 2).value = 'Nota manual del jefe';
+    sheetTarget.getCell(customRowNum, 5).value = 'Punto pendiente para la junta';
+
+    // Edición 4: agregar col nueva fuera del mapping — DEBE persistir
+    console.log(`  [ed4] col H (fuera de mapping) → "Prioridad Alta"`);
+    sheetTarget.getRow(1).getCell(8).value = 'Prioridad';
+    sheetTarget.getCell(targetRowNum, 8).value = 'Alta';
+
     const editedBuf = Buffer.from(await wb2.xlsx.writeBuffer());
     await supabase.storage.from('bitacora-live').upload(livePath, editedBuf, {
       contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       upsert:      true,
     });
-    console.log('  Live file editado y re-subido a storage');
+    console.log('  Live file editado y re-subido');
 
-    console.log('\n═══ STEP 9: Segundo run — debe preservar "Juan Pérez" ═══\n');
+    console.log('\n═══ STEP 9: Segundo run (upsert no destructivo) ═══\n');
     const liveBuf3 = await updateLiveWorkbook({
       supabase,
       templateBuffer,
@@ -217,48 +237,72 @@ async function main() {
       mapping: mapping as any,
       weeks,
     });
+    await supabase.storage.from('bitacora-live').upload(livePath, liveBuf3, {
+      contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      upsert:      true,
+    });
     console.log(`  Buffer size: ${liveBuf3.length} bytes`);
 
-    console.log('\n═══ STEP 10: Verificar que vendedor persistió ═══\n');
+    console.log('\n═══ STEP 10: Verificar preservación ═══\n');
     const wb3 = new Workbook();
     await wb3.xlsx.load(liveBuf3 as any);
-    const preservedMap = new Map<string, string>();
-    for (const ws of wb3.worksheets) {
-      const perSheet = extractHumanEditedValues(ws, mapping as any);
-      for (const [id, vals] of perSheet) {
-        const v = vals.get('F');
-        if (v) preservedMap.set(id, v);
-      }
-    }
-    const foundVendedor = preservedMap.get(firstIncidentId);
-    if (foundVendedor === 'Juan Pérez') {
-      console.log(`  ✅ PASS — vendedor "Juan Pérez" preservado en incident ${firstIncidentId}`);
-    } else {
-      console.log(`  ❌ FAIL — esperaba "Juan Pérez", encontré "${foundVendedor ?? '(vacío)'}"`);
-    }
+    const targetSheet3 = wb3.getWorksheet(sheetTarget.name);
+    if (!targetSheet3) throw new Error('sheet target no encontrada en wb3');
 
-    console.log('\n═══ STEP 11: Verificar otras cols se re-generaron desde DB ═══\n');
-    const inc = monthIncidents[0];
-    for (const ws of wb3.worksheets) {
-      let hiddenCol = 0;
-      ws.getRow(1).eachCell({ includeEmpty: true }, (cell, col) => {
-        if (cell.value === '_incident_id') hiddenCol = col;
-      });
-      if (!hiddenCol) continue;
-      ws.eachRow({ includeEmpty: false }, (row, r) => {
-        if (r < mapping.insertion_row) return;
-        if (row.getCell(hiddenCol).value === firstIncidentId) {
-          const businessName = row.getCell(2).value;
-          const motivo = row.getCell(5).value;
-          const dbBusiness = inc.business_name;
-          const dbMotivo   = inc.motivo;
-          console.log(`  Business (col B): "${businessName}" vs DB "${dbBusiness}"`);
-          console.log(`  Motivo   (col E): "${motivo}" vs DB "${dbMotivo}"`);
-          if (businessName === dbBusiness) console.log('  ✅ business_name reflect DB');
-          else console.log('  ❌ business_name NO refleja DB (bug)');
-        }
-      });
-    }
+    // Encontrar la row del incident target
+    let hiddenCol3 = 0;
+    targetSheet3.getRow(1).eachCell({ includeEmpty: true }, (cell, col) => {
+      if (cell.value === '_incident_id') hiddenCol3 = col;
+    });
+    let targetRow3 = 0;
+    targetSheet3.eachRow({ includeEmpty: false }, (row, r) => {
+      if (r < mapping.insertion_row) return;
+      if (row.getCell(hiddenCol3).value === firstIncidentId) targetRow3 = r;
+    });
+
+    const results = { pass: 0, fail: 0 };
+    const check = (name: string, actual: any, expected: any) => {
+      const ok = actual === expected;
+      console.log(`  ${ok ? '✅' : '❌'} ${name}`);
+      console.log(`     actual:   "${actual}"`);
+      console.log(`     expected: "${expected}"`);
+      ok ? results.pass++ : results.fail++;
+    };
+
+    // Check 1: vendedor persistió (human_only)
+    check(
+      'Vendedor "Juan Pérez" persiste (col F, human_only)',
+      targetSheet3.getCell(targetRow3, 6).value,
+      'Juan Pérez',
+    );
+
+    // Check 2: motivo sobrescrito con DB (no human_only)
+    check(
+      'Motivo sobrescrito por DB (col E, NO human_only)',
+      targetSheet3.getCell(targetRow3, 5).value,
+      monthIncidents[0].motivo,
+    );
+
+    // Check 3: row del cliente persiste (sin incident_id)
+    let foundCustomRow = false;
+    targetSheet3.eachRow({ includeEmpty: false }, (row, r) => {
+      if (row.getCell(2).value === 'Nota manual del jefe') foundCustomRow = true;
+    });
+    check('Row manual del cliente persiste (sin incident_id)', foundCustomRow, true);
+
+    // Check 4: col nueva del cliente persiste
+    check(
+      'Col H "Prioridad" persiste en header',
+      targetSheet3.getRow(1).getCell(8).value,
+      'Prioridad',
+    );
+    check(
+      'Col H "Alta" persiste en row del incident',
+      targetSheet3.getCell(targetRow3, 8).value,
+      'Alta',
+    );
+
+    console.log(`\n  RESULTADO: ${results.pass} pass / ${results.fail} fail`);
 
   } finally {
     console.log('\n═══ CLEANUP ═══\n');

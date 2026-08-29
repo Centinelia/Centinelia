@@ -2,7 +2,7 @@ import { Workbook, Worksheet } from 'exceljs';
 import type { createAdminClient } from '@/lib/supabase/admin';
 import type { IncidentRow } from '@/app/portal/[token]/oficina/bitacora/loadBitacoraData';
 import type { TemplateMapping } from './template-analyzer';
-import { populateSheetWithIncidents, extractHumanEditedValues } from './template-render';
+import { upsertSheetWithIncidents } from './template-render';
 
 type SupabaseClient = ReturnType<typeof createAdminClient>;
 
@@ -27,76 +27,76 @@ export interface UpdateLiveInput {
 }
 
 /**
- * Regenera el archivo persistente del mes preservando valores humanos.
+ * Actualiza el archivo persistente del mes vía UPSERT no destructivo.
+ *
+ * Filosofía: el archivo del cliente es la fuente de verdad para todo lo que
+ * no sean cols mapeadas no-human_only. Rows nuevas del cliente, cols que
+ * agregó, formato personalizado, hojas extra que armó: todo se preserva.
  *
  * Flujo:
- * 1. Descarga el archivo live existente (si hay). Extrae { incident_id →
- *    { colLetter → valor } } para cols marcadas como human_only (vendedor,
- *    notas, etc). Esto captura cualquier edición manual del cliente.
- * 2. Crea workbook fresh desde el template. Ese template tiene 1 sheet
- *    estructural.
- * 3. Renombra la sheet a "Semana 1" (o la weekNumber correspondiente) y la
- *    llena con los incidents de la semana 1. Overlay los valores preservados
- *    en cols human_only.
- * 4. Para cada semana adicional del mes: clona el template en una nueva
- *    sheet, la llena. Overlay preservados.
- * 5. Retorna el buffer resultante.
+ * 1. Descarga el live existente (si hay). Si no, crea uno nuevo desde el
+ *    template como base (primer envío del mes).
+ * 2. Para cada semana requerida:
+ *    a. Busca la sheet "Semana N" en el workbook.
+ *    b. Si no existe: la clona del template (mismo estructura visual).
+ *    c. Corre upsertSheetWithIncidents en ella: UPDATE cols mapeadas no-human
+ *       en rows con incident_id conocido, INSERT rows nuevas al final. NO toca
+ *       nada más (rows sin incident_id, cols no mapeadas, cols human_only).
+ * 3. Retorna el buffer.
  *
- * El caller es responsable de guardar el buffer al storage bucket.
+ * Sheets extra del cliente (que no correspondan a "Semana N"): se preservan.
+ * Rows manuales del cliente dentro de una sheet: se preservan.
+ * Ediciones del cliente en cols human_only: se preservan.
+ * Ediciones del cliente en cols mapeadas no-human: se sobrescriben con DB
+ *   (DB es fuente de verdad para esas). Si quiere que persistan, marque la
+ *   col como human_only en el toggle del template.
  */
 export async function updateLiveWorkbook(input: UpdateLiveInput): Promise<Buffer> {
   if (input.weeks.length === 0) throw new Error('no weeks to render');
 
-  // 1. Descargar live existente y extraer preserved values
-  const allPreserved = new Map<string, Map<string, string>>();
+  // 1. Load existing live o create fresh desde template
+  let outWb: Workbook | null = null;
   try {
     const { data, error } = await input.supabase.storage.from('bitacora-live').download(input.livePath);
     if (data && !error) {
       const buf = Buffer.from(await data.arrayBuffer());
-      const oldWb = new Workbook();
-      await oldWb.xlsx.load(buf as unknown as ArrayBuffer);
-      for (const ws of oldWb.worksheets) {
-        const perSheet = extractHumanEditedValues(ws, input.mapping);
-        for (const [id, vals] of perSheet) allPreserved.set(id, vals);
-      }
+      outWb = new Workbook();
+      await outWb.xlsx.load(buf as unknown as ArrayBuffer);
     }
   } catch (err) {
     console.warn('[bitacora-live] existing file load failed, starting fresh:', err);
+    outWb = null;
   }
 
-  // 2. Crear workbook base desde el template
-  const outWb = new Workbook();
-  await outWb.xlsx.load(input.templateBuffer as unknown as ArrayBuffer);
-
-  const templateSheet = outWb.getWorksheet(input.mapping.sheet_name) ?? outWb.worksheets[0];
-  if (!templateSheet) throw new Error('template sheet missing after load');
-
-  // Descartar sheets extras que no sean la target (si el template tenía varias)
-  const targetName = templateSheet.name;
-  for (const ws of [...outWb.worksheets]) {
-    if (ws.name !== targetName) outWb.removeWorksheet(ws.id);
+  if (!outWb) {
+    // Primer envío del mes: cargar template como base
+    outWb = new Workbook();
+    await outWb.xlsx.load(input.templateBuffer as unknown as ArrayBuffer);
+    const templateSheet = outWb.getWorksheet(input.mapping.sheet_name) ?? outWb.worksheets[0];
+    if (!templateSheet) throw new Error('template sheet missing after load');
+    // Descartar sheets extras del template (queda solo la target)
+    const targetName = templateSheet.name;
+    for (const ws of [...outWb.worksheets]) {
+      if (ws.name !== targetName) outWb.removeWorksheet(ws.id);
+    }
+    // Renombrar template sheet a "Semana N" del primer week
+    templateSheet.name = `Semana ${input.weeks[0].weekNumber}`;
   }
 
-  // 3. Renombrar la primera sheet y llenar con semana[0]
-  templateSheet.name = `Semana ${input.weeks[0].weekNumber}`;
-  populateSheetWithIncidents(templateSheet, input.mapping, input.weeks[0].incidents, {
-    preservedValues:         allPreserved,
-    includeHiddenIncidentId: true,
-  });
-
-  // 4. Semanas adicionales: clone del template + populate
-  for (let i = 1; i < input.weeks.length; i++) {
-    const week = input.weeks[i];
-    const clonedSheet = await cloneSheetIntoWorkbook(
-      input.templateBuffer,
-      input.mapping.sheet_name,
-      outWb,
-      `Semana ${week.weekNumber}`,
-    );
-    populateSheetWithIncidents(clonedSheet, input.mapping, week.incidents, {
-      preservedValues:         allPreserved,
-      includeHiddenIncidentId: true,
-    });
+  // 2. Para cada semana: upsert
+  for (const week of input.weeks) {
+    const sheetName = `Semana ${week.weekNumber}`;
+    let ws = outWb.getWorksheet(sheetName);
+    if (!ws) {
+      // Sheet no existe (nueva semana del mes) — clonar del template
+      ws = await cloneSheetIntoWorkbook(
+        input.templateBuffer,
+        input.mapping.sheet_name,
+        outWb,
+        sheetName,
+      );
+    }
+    upsertSheetWithIncidents(ws, input.mapping, week.incidents);
   }
 
   return Buffer.from(await outWb.xlsx.writeBuffer());

@@ -49,6 +49,89 @@ export function colLetterToNumber(letter: string): number {
   return n;
 }
 
+/**
+ * Puebla una sheet existente vía UPSERT no destructivo: preserva rows del
+ * cliente que no correspondan a incidents, preserva cols human_only, y solo
+ * modifica cells de rows/cols específicas.
+ *
+ * - Rows con incident_id conocido: UPDATE cells de cols mapeadas no-human_only.
+ * - Incidents sin row previa: INSERT nueva row al final del bloque de datos.
+ * - Rows del cliente (sin incident_id): NO tocadas.
+ * - Cols human_only: NO tocadas.
+ * - Cols no mapeadas: NO tocadas (cliente puede haber agregado sus propias).
+ *
+ * Usada por el cron persistente cuando el live file existe y queremos
+ * preservar cualquier edición estructural que el cliente haya hecho.
+ */
+export function upsertSheetWithIncidents(
+  ws:        Worksheet,
+  mapping:   TemplateMapping,
+  incidents: IncidentRow[],
+): void {
+  const humanOnly = new Set((mapping.human_only_columns ?? []).map(c => c.toUpperCase()));
+
+  // Determinar hidden col (o crearla si la sheet no la tiene)
+  let hiddenCol = findHiddenIdCol(ws);
+  if (!hiddenCol) {
+    // Sheet nueva o cliente borró la col oculta. Ubicamos al final del rango
+    // de cols mapeadas + 1 (fuera del área visible).
+    let maxMapped = 1;
+    for (const colLetter of Object.keys(mapping.columns)) {
+      const n = colLetterToNumber(colLetter);
+      if (n > maxMapped) maxMapped = n;
+    }
+    hiddenCol = maxMapped + 1;
+    ws.getRow(1).getCell(hiddenCol).value = HIDDEN_ID_HEADER;
+    ws.getColumn(hiddenCol).hidden = true;
+  }
+
+  // Escanear rows existentes con incident_id
+  const existingRows = scanExistingIncidentRows(ws, mapping);
+
+  // Determinar última row usada (para saber dónde apendear nuevas)
+  let lastRow = mapping.insertion_row - 1;
+  ws.eachRow({ includeEmpty: false }, (_row, rowNum) => {
+    if (rowNum > lastRow) lastRow = rowNum;
+  });
+
+  // Cache estilos de la insertion_row (para aplicar a nuevas rows)
+  const sampleRow = ws.getRow(mapping.insertion_row);
+  const sampleStyles: (unknown | undefined)[] = [];
+  sampleRow.eachCell({ includeEmpty: true }, (cell, colNum) => {
+    sampleStyles[colNum] = cell.style;
+  });
+
+  for (const inc of incidents) {
+    const existingRowNum = existingRows.get(inc.id);
+    if (existingRowNum) {
+      // UPDATE cols mapeadas no-human_only
+      const row = ws.getRow(existingRowNum);
+      for (const [colLetter, field] of Object.entries(mapping.columns)) {
+        if (!field) continue;
+        if (humanOnly.has(colLetter.toUpperCase())) continue;
+        const colNum = colLetterToNumber(colLetter);
+        row.getCell(colNum).value = fieldValue(inc, field);
+      }
+      // Reafirmar incident_id en col oculta (defensivo)
+      row.getCell(hiddenCol).value = inc.id;
+    } else {
+      // INSERT nueva row al final
+      lastRow++;
+      const newRow = ws.getRow(lastRow);
+      for (const [colLetter, field] of Object.entries(mapping.columns)) {
+        if (!field) continue;
+        const colNum = colLetterToNumber(colLetter);
+        newRow.getCell(colNum).value = fieldValue(inc, field);
+      }
+      newRow.getCell(hiddenCol).value = inc.id;
+      // Aplicar estilos base
+      sampleStyles.forEach((style, colNum) => {
+        if (style) newRow.getCell(colNum).style = JSON.parse(JSON.stringify(style));
+      });
+    }
+  }
+}
+
 export interface RenderOptions {
   /** Map de incident_id → { colLetter → valor previamente escrito por humano }.
    *  Sirve para preservar ediciones manuales en cols marcadas como human_only
@@ -170,6 +253,39 @@ export function populateSheetWithIncidents(
     if (!headerCell.value) headerCell.value = HIDDEN_ID_HEADER;
     ws.getColumn(hiddenIdCol).hidden = true;
   }
+}
+
+/**
+ * Encuentra la col oculta con HIDDEN_ID_HEADER en una sheet ya poblada.
+ * Retorna el número de columna o null si no existe.
+ */
+export function findHiddenIdCol(ws: Worksheet): number | null {
+  let hiddenIdCol: number | null = null;
+  ws.getRow(1).eachCell({ includeEmpty: true }, (cell, colNum) => {
+    if (cell.value === HIDDEN_ID_HEADER) hiddenIdCol = colNum;
+  });
+  return hiddenIdCol;
+}
+
+/**
+ * Escanea la sheet y retorna { incident_id → rowNum } de todas las rows que
+ * ya tienen un incident_id en la col oculta. Sirve para el flow de upsert.
+ */
+export function scanExistingIncidentRows(
+  ws:      Worksheet,
+  mapping: TemplateMapping,
+): Map<string, number> {
+  const result = new Map<string, number>();
+  const hiddenCol = findHiddenIdCol(ws);
+  if (!hiddenCol) return result;
+  ws.eachRow({ includeEmpty: false }, (row, rowNum) => {
+    if (rowNum < mapping.insertion_row) return;
+    const id = row.getCell(hiddenCol).value;
+    if (typeof id === 'string' && id.length > 0) {
+      result.set(id, rowNum);
+    }
+  });
+  return result;
 }
 
 /**
