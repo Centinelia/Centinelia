@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { loadBitacoraData } from '@/app/portal/[token]/oficina/bitacora/loadBitacoraData';
-import { buildBitacoraExcel, sanitizeBusinessName } from '@/lib/bitacora/build-excel';
+import { buildBitacoraExcelForOrg, sanitizeBusinessName } from '@/lib/bitacora/build-excel';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { resolveOrgFromToken } from '@/lib/portal/org-token';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,7 +17,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
     return NextResponse.json({ error: 'not available' }, { status: 404 });
   }
 
-  const buffer = await buildBitacoraExcel({
+  const resolved = await resolveOrgFromToken(token);
+  const supabase = createAdminClient();
+  const buffer = await buildBitacoraExcelForOrg(supabase, resolved!.portalEmail, {
     incidents:     data.incidents,
     businessName:  data.agent.business_name,
     rangeStartISO: data.weekStart,

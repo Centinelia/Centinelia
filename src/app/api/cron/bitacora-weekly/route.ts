@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
 import { sendMeerkatHtmlEmail } from '@/lib/email/send-as-agent';
-import { buildBitacoraExcel, sanitizeBusinessName } from '@/lib/bitacora/build-excel';
+import { buildBitacoraExcelForOrg, sanitizeBusinessName } from '@/lib/bitacora/build-excel';
 import type { IncidentRow } from '@/app/portal/[token]/oficina/bitacora/loadBitacoraData';
 import { nowInMX, isLastSaturdayOfMonth, weekStartMonday, monthStart } from '@/lib/bitacora/schedule';
 
@@ -131,7 +131,7 @@ export async function GET(req: NextRequest) {
       .lt('created_at', nextMonday.toISOString())
       .order('created_at', { ascending: true });
 
-    const weeklyBuf = await buildBitacoraExcel({
+    const weeklyBuf = await buildBitacoraExcelForOrg(supabase, portalEmail, {
       incidents:     (weekIncidents ?? []) as IncidentRow[],
       businessName:  agent.business_name,
       rangeStartISO: monday.toISOString(),
@@ -175,7 +175,7 @@ export async function GET(req: NextRequest) {
         .lt('created_at', mEnd.toISOString())
         .order('created_at', { ascending: true });
 
-      const monthlyBuf = await buildBitacoraExcel({
+      const monthlyBuf = await buildBitacoraExcelForOrg(supabase, portalEmail, {
         incidents:     (monthIncidents ?? []) as IncidentRow[],
         businessName:  agent.business_name,
         rangeStartISO: mStart.toISOString(),
