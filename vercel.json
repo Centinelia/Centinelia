@@ -2,6 +2,10 @@
   "ignoreCommand": "DIFF=$(git diff --name-only ${VERCEL_GIT_PREVIOUS_SHA:-HEAD^} HEAD 2>/dev/null); if [ -z \"$DIFF\" ]; then exit 1; fi; echo \"$DIFF\" | grep -qvE '^(docs|\\.claude|tests|sql|migrations|supabase|audit|fixtures|scripts)/|\\.md$' && exit 1 || exit 0",
   "crons": [
     {
+      "path": "/api/cron/bitacora-weekly",
+      "schedule": "0 * * * *"
+    },
+    {
       "path": "/api/cron/ops-reports",
       "schedule": "0 8 * * *"
     },
