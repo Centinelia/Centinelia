@@ -60,7 +60,10 @@ const NELIA_CONFIGS: MeerkatConfigVersions = {
   // registrar_incidencia + ignora el error message del tool response y
   // alucina éxito. Trace confirma en tool_call_log 2026-08-28 18:52-19:00 UTC.
   // maxTokens subido a 200 para Sonnet.
-  2: { provider: 'anthropic', model: 'claude-sonnet-4-6',       temperature: 0.40, maxTokens: 200, speed: 0.98, minChars: 28, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3' },
+  // STT nova-2 (no nova-3): mejor español para nombres propios. Test 2026-08-29:
+  // nova-3 confundió Charro→Carro, Meche→Mertxe, Fondita→Condita. nova-2 tiene
+  // +latencia pero mejor accuracy en dialectos MX + nombres.
+  2: { provider: 'anthropic', model: 'claude-sonnet-4-6',       temperature: 0.40, maxTokens: 200, speed: 0.98, minChars: 28, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-2' },
 };
 
 const NARA_CONFIGS: MeerkatConfigVersions = {

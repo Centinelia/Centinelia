@@ -1034,6 +1034,13 @@ async function resolveObservabilitySnapshot(
 function detectOutcome(message: any, structured: any): string {
   const toolCalls: string[] = (message.toolCallResults ?? []).map((r: any) => r.name ?? '');
 
+  // Tools específicas primero — más precisas que el fallback structured.
+  // registrar_incidencia y registrar_cliente_nuevo van antes que crear_lead
+  // porque una queja o alta puede a la vez completar el structured.tipo=lead
+  // (misma llamada captura datos de contacto), y queremos el outcome más
+  // específico.
+  if (toolCalls.includes('registrar_incidencia'))        return 'incident_registered';
+  if (toolCalls.includes('registrar_cliente_nuevo'))     return 'lead_created';
   if (toolCalls.includes('crear_lead'))                  return 'lead_created';
   if (toolCalls.includes('agendar_cita'))                return 'appointment_booked';
   if (toolCalls.includes('registrar_pedido'))            return 'order_taken';
