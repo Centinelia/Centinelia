@@ -6,6 +6,8 @@ import OficinaPageHero from '../OficinaPageHero';
 import { loadBitacoraData } from './loadBitacoraData';
 import { BitacoraClient } from './BitacoraClient';
 import { BitacoraTabs } from './BitacoraTabs';
+import { LiveFileControls } from './LiveFileControls';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 interface Props {
   params:       Promise<{ token: string }>;
@@ -17,6 +19,16 @@ export default async function BitacoraPage({ params, searchParams }: Props) {
   const { week, agent_id } = await searchParams;
   const data = await loadBitacoraData(token, week, 'weekly', agent_id);
   if (!data) notFound();
+
+  // Check si el agent activo tiene template custom (para decidir si mostrar
+  // botón de subir versión editada).
+  const supabaseCheck = createAdminClient();
+  const { data: agentTemplateCheck } = await supabaseCheck
+    .from('voice_agents')
+    .select('bitacora_template')
+    .eq('id', data.agent.id)
+    .maybeSingle();
+  const hasCustomTemplate = !!(agentTemplateCheck?.bitacora_template as { url?: string } | null)?.url;
 
   if (!data.enabled) {
     return (
@@ -52,6 +64,12 @@ export default async function BitacoraPage({ params, searchParams }: Props) {
       />
       <BitacoraTabs token={token} activeId={data.agent.id} agents={data.bitacoraAgents} />
       <BitacoraClient token={token} initial={data} />
+      <LiveFileControls
+        token={token}
+        agentId={data.agent.id}
+        agentName={data.agent.agent_name ?? 'empleado'}
+        hasCustomTemplate={hasCustomTemplate}
+      />
     </div>
   );
 }
