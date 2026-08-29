@@ -45,3 +45,39 @@ export function monthStart(date: Date): Date {
   d.setHours(0, 0, 0, 0);
   return d;
 }
+
+/**
+ * Número de semana dentro del mes basado en el día del sábado (o cualquier
+ * fecha). Cae en el mismo bucket todo el rango del mes:
+ *   días  1-7  → Semana 1
+ *   días  8-14 → Semana 2
+ *   días 15-21 → Semana 3
+ *   días 22-28 → Semana 4
+ *   días 29-31 → Semana 5
+ *
+ * NOTA: no coincide con "semana ISO"; se usa la convención más natural para
+ * clientes non-técnicos ("semana X del mes").
+ */
+export function weekNumberInMonth(date: Date): number {
+  return Math.floor((date.getDate() - 1) / 7) + 1;
+}
+
+/**
+ * Lista los sábados del mes de `date` hasta y incluyendo `date` (si es sábado).
+ * Se usa para saber cuántas semanas del mes tenemos que llenar en el archivo
+ * persistente en el cron actual.
+ */
+export function saturdaysInMonthUpTo(date: Date): Date[] {
+  const result: Date[] = [];
+  const first = monthStart(date);
+  // Primer sábado del mes
+  const firstDay = first.getDay(); // 0=dom..6=sab
+  const daysToFirstSat = (6 - firstDay + 7) % 7;
+  const cursor = new Date(first);
+  cursor.setDate(1 + daysToFirstSat);
+  while (cursor <= date && cursor.getMonth() === first.getMonth()) {
+    result.push(new Date(cursor));
+    cursor.setDate(cursor.getDate() + 7);
+  }
+  return result;
+}
