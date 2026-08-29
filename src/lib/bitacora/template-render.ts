@@ -33,29 +33,36 @@ const RESULT_MARK: Record<'ok'|'no_visitado'|'sin_respuesta', string> = {
 };
 
 /**
- * Convenciones de color/underline por fila del incident (mismo criterio que
- * el formato default hardcoded en build-excel.ts):
- * - Alta cliente nuevo (is_new_client / type='alta') → azul subrayado
- * - verification_result no_visitado → texto rojo
- * - verification_result sin_respuesta → rojo subrayado
+ * Convenciones visuales por fila del incident:
+ * - Alta cliente nuevo (is_new_client / type='alta') → borde inferior AZUL de la fila
+ * - verification_result no_visitado → texto ROJO
+ * - verification_result sin_respuesta → borde inferior ROJO de la fila
  * - OK o pendiente → sin estilo especial
+ *
+ * NOTA: "subrayado" en el requerimiento se refiere a un underline VISUAL de
+ * la fila (borde bottom más pronunciado), NO al atributo underline de la fuente.
  */
-function rowStyle(inc: IncidentRow): { color?: string; underline?: boolean } {
+interface RowVisualStyle {
+  textColor?:      string;  // ARGB, aplica al color de fuente de las cells
+  rowUnderline?:   string;  // ARGB, aplica como border bottom medium en las cells
+}
+
+function rowStyle(inc: IncidentRow): RowVisualStyle {
   if (inc.is_new_client || inc.type === 'alta') {
-    return { color: 'FF1D4ED8', underline: true };
+    return { rowUnderline: 'FF1D4ED8' };
   }
   if (inc.verification_result === 'no_visitado') {
-    return { color: 'FFDC2626' };
+    return { textColor: 'FFDC2626' };
   }
   if (inc.verification_result === 'sin_respuesta') {
-    return { color: 'FFDC2626', underline: true };
+    return { rowUnderline: 'FFDC2626' };
   }
   return {};
 }
 
-/** Aplica color/underline a las cells mapeadas + grid de una row. */
-function applyRowStyle(row: ReturnType<Worksheet['getRow']>, mapping: TemplateMapping, style: { color?: string; underline?: boolean }): void {
-  if (!style.color && !style.underline) return;
+/** Aplica color de texto y/o borde inferior a las cells mapeadas + grid de una row. */
+function applyRowStyle(row: ReturnType<Worksheet['getRow']>, mapping: TemplateMapping, style: RowVisualStyle): void {
+  if (!style.textColor && !style.rowUnderline) return;
   const cols: number[] = [];
   for (const letter of Object.keys(mapping.columns)) cols.push(colLetterToNumber(letter));
   if (mapping.verification_grid) {
@@ -66,12 +73,17 @@ function applyRowStyle(row: ReturnType<Worksheet['getRow']>, mapping: TemplateMa
   }
   for (const c of cols) {
     const cell = row.getCell(c);
-    const existing = (cell.font ?? {}) as Record<string, unknown>;
-    cell.font = {
-      ...existing,
-      ...(style.color     ? { color: { argb: style.color } } : {}),
-      ...(style.underline ? { underline: true }              : {}),
-    };
+    if (style.textColor) {
+      const existing = (cell.font ?? {}) as Record<string, unknown>;
+      cell.font = { ...existing, color: { argb: style.textColor } };
+    }
+    if (style.rowUnderline) {
+      const existing = (cell.border ?? {}) as Record<string, unknown>;
+      cell.border = {
+        ...existing,
+        bottom: { style: 'medium', color: { argb: style.rowUnderline } },
+      };
+    }
   }
 }
 
