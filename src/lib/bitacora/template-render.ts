@@ -34,35 +34,32 @@ const RESULT_MARK: Record<'ok'|'no_visitado'|'sin_respuesta', string> = {
 
 /**
  * Convenciones visuales por fila del incident:
- * - Alta cliente nuevo (is_new_client / type='alta') → borde inferior AZUL de la fila
- * - verification_result no_visitado → texto ROJO
- * - verification_result sin_respuesta → borde inferior ROJO de la fila
+ * - Alta cliente nuevo (is_new_client / type='alta') → FONDO AZUL en toda la fila
+ * - verification_result no_visitado → TEXTO ROJO
+ * - verification_result sin_respuesta → FONDO ROJO en toda la fila
  * - OK o pendiente → sin estilo especial
- *
- * NOTA: "subrayado" en el requerimiento se refiere a un underline VISUAL de
- * la fila (borde bottom más pronunciado), NO al atributo underline de la fuente.
  */
 interface RowVisualStyle {
-  textColor?:      string;  // ARGB, aplica al color de fuente de las cells
-  rowUnderline?:   string;  // ARGB, aplica como border bottom medium en las cells
+  textColor?: string;  // ARGB, aplica al color de fuente de las cells
+  fillColor?: string;  // ARGB, aplica al background de las cells
 }
 
 function rowStyle(inc: IncidentRow): RowVisualStyle {
   if (inc.is_new_client || inc.type === 'alta') {
-    return { rowUnderline: 'FF1D4ED8' };
+    return { fillColor: 'FFDBEAFE' };  // azul claro
   }
   if (inc.verification_result === 'no_visitado') {
-    return { textColor: 'FFDC2626' };
+    return { textColor: 'FFDC2626' };  // texto rojo
   }
   if (inc.verification_result === 'sin_respuesta') {
-    return { rowUnderline: 'FFDC2626' };
+    return { fillColor: 'FFFECACA' };  // rojo claro
   }
   return {};
 }
 
-/** Aplica color de texto y/o borde inferior a las cells mapeadas + grid de una row. */
+/** Aplica color de texto y/o fondo a las cells mapeadas + grid de una row. */
 function applyRowStyle(row: ReturnType<Worksheet['getRow']>, mapping: TemplateMapping, style: RowVisualStyle): void {
-  if (!style.textColor && !style.rowUnderline) return;
+  if (!style.textColor && !style.fillColor) return;
   const cols: number[] = [];
   for (const letter of Object.keys(mapping.columns)) cols.push(colLetterToNumber(letter));
   if (mapping.verification_grid) {
@@ -77,12 +74,8 @@ function applyRowStyle(row: ReturnType<Worksheet['getRow']>, mapping: TemplateMa
       const existing = (cell.font ?? {}) as Record<string, unknown>;
       cell.font = { ...existing, color: { argb: style.textColor } };
     }
-    if (style.rowUnderline) {
-      const existing = (cell.border ?? {}) as Record<string, unknown>;
-      cell.border = {
-        ...existing,
-        bottom: { style: 'medium', color: { argb: style.rowUnderline } },
-      };
+    if (style.fillColor) {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: style.fillColor } } as never;
     }
   }
 }
