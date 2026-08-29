@@ -1032,19 +1032,44 @@ async function resolveObservabilitySnapshot(
 }
 
 function detectOutcome(message: any, structured: any): string {
-  const toolCalls: string[] = (message.toolCallResults ?? []).map((r: any) => r.name ?? '');
+  // Vapi expone las tool calls en varios shapes según el tipo de mensaje.
+  // En end-of-call-report NO llega `toolCallResults`, sino que las invocaciones
+  // aparecen dentro de `message.artifact.messages[]` como entries con role
+  // 'tool_calls' (contiene toolCalls[]) o con `role: 'assistant'` + toolCalls
+  // en el mismo objeto. También intentamos leer el field legacy por si acaso.
+  const tools = new Set<string>();
+  const legacyResults = message.toolCallResults ?? message.toolCalls ?? [];
+  for (const r of legacyResults) {
+    const name = r?.name ?? r?.function?.name;
+    if (name) tools.add(name);
+  }
+  const artifactMessages = message.artifact?.messages ?? message.call?.artifact?.messages ?? [];
+  for (const m of artifactMessages) {
+    // Caso 1: entry con role='tool_calls' — el objeto contiene toolCalls[]
+    // Caso 2: entry con role='assistant' que también trae toolCalls[]
+    // Caso 3: entry con role='tool_call_result' con { name, result }
+    const calls = m?.toolCalls ?? [];
+    for (const c of calls) {
+      const name = c?.function?.name ?? c?.name;
+      if (name) tools.add(name);
+    }
+    if (m?.role === 'tool' || m?.role === 'tool_call_result') {
+      const name = m.name ?? m.toolName;
+      if (name) tools.add(name);
+    }
+  }
 
   // Tools específicas primero — más precisas que el fallback structured.
   // registrar_incidencia y registrar_cliente_nuevo van antes que crear_lead
   // porque una queja o alta puede a la vez completar el structured.tipo=lead
   // (misma llamada captura datos de contacto), y queremos el outcome más
   // específico.
-  if (toolCalls.includes('registrar_incidencia'))        return 'incident_registered';
-  if (toolCalls.includes('registrar_cliente_nuevo'))     return 'lead_created';
-  if (toolCalls.includes('crear_lead'))                  return 'lead_created';
-  if (toolCalls.includes('agendar_cita'))                return 'appointment_booked';
-  if (toolCalls.includes('registrar_pedido'))            return 'order_taken';
-  if (toolCalls.includes('notificar_transferencia'))     return 'transferred';
+  if (tools.has('registrar_incidencia'))        return 'incident_registered';
+  if (tools.has('registrar_cliente_nuevo'))     return 'lead_created';
+  if (tools.has('crear_lead'))                  return 'lead_created';
+  if (tools.has('agendar_cita'))                return 'appointment_booked';
+  if (tools.has('registrar_pedido'))            return 'order_taken';
+  if (tools.has('notificar_transferencia'))     return 'transferred';
 
   if (structured) {
     const tipo = structured.tipo_contacto ?? '';

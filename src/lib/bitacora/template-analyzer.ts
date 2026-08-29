@@ -45,7 +45,7 @@ interface AnalyzeResult {
  * canónicos usando Claude Sonnet. El caller es responsable de:
  * 1. Verificar que hay capacidad de pool antes de invocar
  * 2. Cobrar tareas post-success
- * 3. Guardar el mapping en organizations.bitacora_template
+ * 3. Guardar el mapping en voice_agents.bitacora_template
  */
 export async function analyzeTemplate(buffer: Buffer): Promise<AnalyzeResult> {
   const wb = new Workbook();
