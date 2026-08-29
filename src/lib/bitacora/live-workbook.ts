@@ -139,7 +139,7 @@ export async function updateLiveWorkbook(input: UpdateLiveInput): Promise<Buffer
       // Inyectar rango de fechas de esta semana en el placeholder del header
       injectWeekRange(ws, week.weekStart);
     }
-    upsertSheetWithIncidents(ws, input.mapping, week.incidents);
+    upsertSheetWithIncidents(ws, input.mapping, week.incidents, week.weekStart, week.weekEnd);
   }
 
   return Buffer.from(await outWb.xlsx.writeBuffer());

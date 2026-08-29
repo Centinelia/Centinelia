@@ -23,24 +23,38 @@ function dateToGridKey(d: Date): GridDayKey | null {
 }
 
 /**
- * Escribe el estado de seguimiento del día en la col correcta del grid
- * L/M/MI/J/V/S, si el mapping tiene verification_grid definido y el incident
- * tiene verification_called_at. Antes de escribir, limpia todas las cols del
- * grid (DB es fuente de verdad para el día del OK — si cambió, se refleja).
- * Solo escribe cuando verification_result === 'ok'. Otros resultados
- * (no_visitado, sin_respuesta) dejan las celdas vacías, igual que el flow
- * default en build-excel.ts.
+ * Marcas cortas por resultado que se escriben en las celdas del grid.
+ * OK (recibió) / NV (no visitado) / NC (no contestó).
+ */
+const RESULT_MARK: Record<'ok'|'no_visitado'|'sin_respuesta', string> = {
+  ok:             'OK',
+  no_visitado:    'NV',
+  sin_respuesta:  'NC',
+};
+
+/**
+ * Escribe el estado de cada intento de verificación en la col correcta del
+ * grid semanal L/M/MI/J/V/S, si el mapping tiene verification_grid definido.
+ *
+ * Multi-intento: itera `verification_attempts` (historial completo). Si el
+ * caller pasa `weekStart`+`weekEnd`, solo se muestran attempts que cayeron
+ * DENTRO de esa semana — attempts en otras semanas quedan solo en el portal.
+ * Sin weekStart, se usa el último intento (backwards compat con call sites
+ * previos).
+ *
+ * Antes de escribir, limpia todas las cols del grid (DB fuente de verdad —
+ * si un attempt cambió de día o result, se refleja).
  */
 function writeVerificationGrid(
-  row:     ReturnType<Worksheet['getRow']>,
-  mapping: TemplateMapping,
-  inc:     IncidentRow,
+  row:       ReturnType<Worksheet['getRow']>,
+  mapping:   TemplateMapping,
+  inc:       IncidentRow,
+  weekStart?: Date,
+  weekEnd?:   Date,
 ): void {
   const grid = mapping.verification_grid;
   if (!grid) return;
 
-  // Limpiar todas las cols del grid (defensivo: si el día cambió, no queremos
-  // dejar el OK anterior).
   for (const key of GRID_DAY_KEYS) {
     const colLetter = grid[key];
     if (colLetter) {
@@ -48,15 +62,38 @@ function writeVerificationGrid(
     }
   }
 
+  // Determinar qué attempts vamos a mostrar
+  const attempts = Array.isArray(inc.verification_attempts) ? inc.verification_attempts : [];
+  const relevantAttempts = (weekStart && weekEnd)
+    ? attempts.filter(a => {
+        const t = new Date(a.called_at).getTime();
+        return t >= weekStart.getTime() && t < weekEnd.getTime();
+      })
+    : [];
+
+  if (weekStart && weekEnd) {
+    // Multi-attempt path con week bounds: escribir marca solo para attempts
+    // que cayeron DENTRO de esta semana. Attempts en otras semanas quedan
+    // solo en el portal (no se dibuja falso OK en día equivocado).
+    for (const a of relevantAttempts) {
+      const key = dateToGridKey(new Date(a.called_at));
+      if (!key) continue;
+      const colLetter = grid[key];
+      if (!colLetter) continue;
+      const mark = RESULT_MARK[a.result];
+      row.getCell(colLetterToNumber(colLetter)).value = mark;
+    }
+    return;
+  }
+
+  // Sin week bounds: fallback single-attempt legacy (test paths y cualquier
+  // caller que no maneje semanas). Solo escribe OK si result==='ok'.
   if (inc.verification_result !== 'ok') return;
   if (!inc.verification_called_at) return;
-
   const key = dateToGridKey(new Date(inc.verification_called_at));
   if (!key) return;
-
   const colLetter = grid[key];
   if (!colLetter) return;
-
   row.getCell(colLetterToNumber(colLetter)).value = 'OK';
 }
 
@@ -181,6 +218,11 @@ export function upsertSheetWithIncidents(
   ws:        Worksheet,
   mapping:   TemplateMapping,
   incidents: IncidentRow[],
+  /** Semana Lun-Dom de esta sheet. Si se pasa, el grid multi-intento solo
+   *  refleja attempts que cayeron dentro de este rango. Sin week, cae a
+   *  comportamiento single-attempt (útil para tests). */
+  weekStart?: Date,
+  weekEnd?:   Date,
 ): void {
   const humanOnly = new Set((mapping.human_only_columns ?? []).map(c => c.toUpperCase()));
 
@@ -221,7 +263,7 @@ export function upsertSheetWithIncidents(
         const colNum = colLetterToNumber(colLetter);
         row.getCell(colNum).value = fieldValue(inc, field);
       }
-      writeVerificationGrid(row, mapping, inc);
+      writeVerificationGrid(row, mapping, inc, weekStart, weekEnd);
       // Reafirmar incident_id en col oculta (defensivo)
       row.getCell(hiddenCol).value = inc.id;
     } else {
@@ -233,7 +275,7 @@ export function upsertSheetWithIncidents(
         const colNum = colLetterToNumber(colLetter);
         newRow.getCell(colNum).value = fieldValue(inc, field);
       }
-      writeVerificationGrid(newRow, mapping, inc);
+      writeVerificationGrid(newRow, mapping, inc, weekStart, weekEnd);
       newRow.getCell(hiddenCol).value = inc.id;
       // Aplicar estilos base
       sampleStyles.forEach((style, colNum) => {
