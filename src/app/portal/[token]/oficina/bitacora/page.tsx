@@ -5,40 +5,18 @@ import { ClipboardList } from 'lucide-react';
 import OficinaPageHero from '../OficinaPageHero';
 import { loadBitacoraData } from './loadBitacoraData';
 import { BitacoraClient } from './BitacoraClient';
-import { DeliveryConfig } from './DeliveryConfig';
-import { TemplateUploader } from './TemplateUploader';
-import { createAdminClient } from '@/lib/supabase/admin';
-import { resolveOrgFromToken } from '@/lib/portal/org-token';
-import { BITACORA_TEMPLATE_UPLOAD_TASKS } from '@/app/api/portal/[token]/oficina/bitacora/template-upload/route';
+import { BitacoraTabs } from './BitacoraTabs';
 
 interface Props {
   params:       Promise<{ token: string }>;
-  searchParams: Promise<{ week?: string }>;
+  searchParams: Promise<{ week?: string; agent_id?: string }>;
 }
-
-const DEFAULT_DELIVERY_CFG = {
-  enabled:                       false,
-  day_of_week:                   6,
-  hour:                          14,
-  recipients:                    [] as string[],
-  include_monthly_last_saturday: true,
-};
 
 export default async function BitacoraPage({ params, searchParams }: Props) {
   const { token } = await params;
-  const { week }  = await searchParams;
-  const data = await loadBitacoraData(token, week);
+  const { week, agent_id } = await searchParams;
+  const data = await loadBitacoraData(token, week, 'weekly', agent_id);
   if (!data) notFound();
-
-  // Cargar config de envío (independiente del enabled del feature — puede
-  // mostrarse aunque no haya incidencias todavía).
-  const resolved = await resolveOrgFromToken(token);
-  const supabase = createAdminClient();
-  const { data: org } = resolved
-    ? await supabase.from('organizations').select('bitacora_weekly_config, bitacora_template').eq('portal_email', resolved.portalEmail).maybeSingle()
-    : { data: null };
-  const deliveryCfg = (org?.bitacora_weekly_config as typeof DEFAULT_DELIVERY_CFG | null) ?? DEFAULT_DELIVERY_CFG;
-  const templateCfg = (org?.bitacora_template as { filename?: string; uploaded_at?: string; mapping?: any } | null) ?? null;
 
   if (!data.enabled) {
     return (
@@ -70,11 +48,10 @@ export default async function BitacoraPage({ params, searchParams }: Props) {
         icon={ClipboardList}
         eyebrow="Bitacora"
         title="Bitacora semanal"
-        description="Registro de incidencias de clientes para la semana seleccionada. Puedes asignar o corregir el vendedor responsable directamente en la tabla."
+        description="Registro semanal por empleado. La plantilla, el envío automático y las columnas se configuran en la ficha del empleado."
       />
+      <BitacoraTabs token={token} activeId={data.agent.id} agents={data.bitacoraAgents} />
       <BitacoraClient token={token} initial={data} />
-      <TemplateUploader token={token} current={templateCfg} uploadCost={BITACORA_TEMPLATE_UPLOAD_TASKS} />
-      <DeliveryConfig token={token} initial={deliveryCfg} />
     </div>
   );
 }

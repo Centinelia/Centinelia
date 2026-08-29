@@ -39,6 +39,9 @@ import ApprovalSettingsSection from './ApprovalSettingsSection';
 import InstantProcessingSection from './InstantProcessingSection';
 import ToolOverridesSection from './ToolOverridesSection';
 import ConfigurarTabs from './ConfigurarTabs';
+import { TemplateUploader } from '../oficina/bitacora/TemplateUploader';
+import { DeliveryConfig } from '../oficina/bitacora/DeliveryConfig';
+import { BITACORA_TEMPLATE_UPLOAD_TASKS } from '@/app/api/portal/[token]/oficina/bitacora/template-upload/route';
 import OutboundToggles from '../OutboundToggles';
 import EmpleadoPickerChips from './EmpleadoPickerChips';
 import { Card, SectionHeader } from '@/components/portal-ui';
@@ -793,6 +796,23 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
                 <ResyncButton token={token} />
               </Card>
 
+            </div>
+
+            {/* 5to tab: Bitácora — plantilla custom y envío automático per-empleado */}
+            <div className="flex flex-col gap-5">
+              <TemplateUploader
+                token={token}
+                agentId={agent.id as string}
+                current={(agent.bitacora_template as any) ?? null}
+                uploadCost={BITACORA_TEMPLATE_UPLOAD_TASKS}
+              />
+              <DeliveryConfig
+                token={token}
+                agentId={agent.id as string}
+                initial={(agent.bitacora_weekly_config as any) ?? {
+                  enabled: false, day_of_week: 6, hour: 14, recipients: [], include_monthly_last_saturday: true,
+                }}
+              />
             </div>
 
           </ConfigurarTabs>

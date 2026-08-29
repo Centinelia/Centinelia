@@ -15,6 +15,7 @@ const TAB_DEFS = [
   { value: 'conocimiento', label: 'Conocimiento' },
   { value: 'tools',        label: 'Herramientas' },
   { value: 'autonomia',    label: 'Autonomía y Avisos' },
+  { value: 'bitacora',     label: 'Bitácora' },
 ] as const;
 
 // Retrocompat: legacy ?tab=knowledge / ?tab=voz / ?tab=rol / ?tab=horarios / ?tab=marca

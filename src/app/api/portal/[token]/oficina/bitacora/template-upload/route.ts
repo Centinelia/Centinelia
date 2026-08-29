@@ -13,6 +13,21 @@ export const BITACORA_TEMPLATE_UPLOAD_TASKS = 3;
 /** Max file size 5MB — plantillas xlsx no suelen pasar de 1MB. */
 const MAX_BYTES = 5 * 1024 * 1024;
 
+/** Verifica que el agent pertenezca a la org del token (evita IDOR). */
+async function verifyAgentOwnership(
+  supabase: ReturnType<typeof createAdminClient>,
+  agentId:  string,
+  portalEmail: string,
+): Promise<{ id: string; portal_email: string } | null> {
+  const { data } = await supabase
+    .from('voice_agents')
+    .select('id, portal_email')
+    .eq('id', agentId)
+    .eq('portal_email', portalEmail)
+    .maybeSingle();
+  return data as { id: string; portal_email: string } | null;
+}
+
 export async function POST(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   const resolved = await resolveOrgFromToken(token);
@@ -20,16 +35,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
 
   const supabase = createAdminClient();
 
-  // Primer agente activo para poder cobrar (consumeAiOp requiere agent_id).
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('id')
-    .eq('portal_email', resolved.portalEmail)
-    .eq('active', true)
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  if (!agent) return NextResponse.json({ error: 'no active agent for org' }, { status: 400 });
+  const agentId = req.nextUrl.searchParams.get('agent_id');
+  if (!agentId) return NextResponse.json({ error: 'agent_id query param required' }, { status: 400 });
+
+  const agent = await verifyAgentOwnership(supabase, agentId, resolved.portalEmail);
+  if (!agent) return NextResponse.json({ error: 'agent not found or not in org' }, { status: 404 });
 
   const form = await req.formData().catch(() => null);
   const file = form?.get('file');
@@ -60,8 +70,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     }, { status: 422 });
   }
 
-  // Cobrar tareas ahora que el análisis fue exitoso.
-  const consume = await consumeAiOp(agent.id, BITACORA_TEMPLATE_UPLOAD_TASKS, {
+  const consume = await consumeAiOp(agentId, BITACORA_TEMPLATE_UPLOAD_TASKS, {
     label:  'bitacora_template_upload',
     source: 'portal_bitacora',
   });
@@ -71,9 +80,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     }, { status: 402 });
   }
 
-  // Subir a storage. Path: {portal_email}/template-{timestamp}.xlsx
+  // Path: {portal_email}/{agent_id}/template-{timestamp}.xlsx — namespacea por
+  // empleado para evitar colisiones entre plantillas de diferentes agentes
+  // en la misma org.
   const timestamp = Date.now();
-  const storagePath = `${resolved.portalEmail}/template-${timestamp}.xlsx`;
+  const storagePath = `${resolved.portalEmail}/${agentId}/template-${timestamp}.xlsx`;
   const { error: uploadErr } = await supabase.storage
     .from('bitacora-templates')
     .upload(storagePath, buffer, {
@@ -85,7 +96,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     return NextResponse.json({ error: 'no se pudo guardar la plantilla' }, { status: 500 });
   }
 
-  // Guardar el mapping en organizations.bitacora_template
   const templatePayload = {
     url:            storagePath,
     filename:       file.name,
@@ -96,9 +106,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     charged_tasks:  BITACORA_TEMPLATE_UPLOAD_TASKS,
   };
   const { error: updateErr } = await supabase
-    .from('organizations')
+    .from('voice_agents')
     .update({ bitacora_template: templatePayload })
-    .eq('portal_email', resolved.portalEmail);
+    .eq('id', agentId);
   if (updateErr) {
     console.error('[bitacora template-upload] db update failed:', updateErr);
     return NextResponse.json({ error: 'no se pudo guardar el mapping' }, { status: 500 });
@@ -119,21 +129,27 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ t
 
   const supabase = createAdminClient();
 
-  const { data: org } = await supabase
-    .from('organizations')
+  const agentId = req.nextUrl.searchParams.get('agent_id');
+  if (!agentId) return NextResponse.json({ error: 'agent_id query param required' }, { status: 400 });
+
+  const agent = await verifyAgentOwnership(supabase, agentId, resolved.portalEmail);
+  if (!agent) return NextResponse.json({ error: 'agent not found or not in org' }, { status: 404 });
+
+  const { data: row } = await supabase
+    .from('voice_agents')
     .select('bitacora_template')
-    .eq('portal_email', resolved.portalEmail)
+    .eq('id', agentId)
     .maybeSingle();
 
-  const url = (org?.bitacora_template as { url?: string } | null)?.url;
+  const url = ((row as { bitacora_template: { url?: string } | null } | null)?.bitacora_template)?.url;
   if (url) {
     await supabase.storage.from('bitacora-templates').remove([url]);
   }
 
   const { error } = await supabase
-    .from('organizations')
+    .from('voice_agents')
     .update({ bitacora_template: null })
-    .eq('portal_email', resolved.portalEmail);
+    .eq('id', agentId);
   if (error) return NextResponse.json({ error: 'no se pudo eliminar' }, { status: 500 });
 
   return NextResponse.json({ ok: true });

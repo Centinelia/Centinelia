@@ -13,6 +13,7 @@ interface Config {
 
 interface Props {
   token:   string;
+  agentId: string;
   initial: Config;
 }
 
@@ -30,7 +31,7 @@ function isValidEmail(s: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
 }
 
-export function DeliveryConfig({ token, initial }: Props) {
+export function DeliveryConfig({ token, agentId, initial }: Props) {
   const [cfg,      setCfg]      = useState<Config>(initial);
   const [newEmail, setNewEmail] = useState('');
   const [saving,   setSaving]   = useState(false);
@@ -56,7 +57,7 @@ export function DeliveryConfig({ token, initial }: Props) {
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch(`/api/portal/${token}/oficina/bitacora/delivery-config`, {
+      const res = await fetch(`/api/portal/${token}/oficina/bitacora/delivery-config?agent_id=${agentId}`, {
         method:  'PATCH',
         headers: { 'content-type': 'application/json' },
         body:    JSON.stringify(cfg),

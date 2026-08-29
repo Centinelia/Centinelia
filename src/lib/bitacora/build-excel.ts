@@ -19,21 +19,24 @@ interface TemplateConfig {
 }
 
 /**
- * Resuelve si la org tiene custom template. Si sí, descarga + renderiza con
- * mapping. Si no, cae al buildBitacoraExcel default (formato Centinelia).
+ * Resuelve si el empleado tiene custom template. Si sí, descarga + renderiza
+ * con mapping. Si no, cae al buildBitacoraExcel default (formato Centinelia).
+ *
+ * Empleado-level: la bitácora es concepto del empleado (Nelia lleva incidencias,
+ * Noah puede llevar ventas). Cada empleado su plantilla.
  */
-export async function buildBitacoraExcelForOrg(
-  supabase:    ReturnType<typeof createAdminClient>,
-  portalEmail: string,
-  input:       BuildBitacoraExcelInput,
+export async function buildBitacoraExcelForAgent(
+  supabase: ReturnType<typeof createAdminClient>,
+  agentId:  string,
+  input:    BuildBitacoraExcelInput,
 ): Promise<Buffer> {
-  const { data: org } = await supabase
-    .from('organizations')
+  const { data: agent } = await supabase
+    .from('voice_agents')
     .select('bitacora_template')
-    .eq('portal_email', portalEmail)
+    .eq('id', agentId)
     .maybeSingle();
 
-  const template = org?.bitacora_template as TemplateConfig | null;
+  const template = (agent as { bitacora_template: TemplateConfig | null } | null)?.bitacora_template;
   if (!template?.url || !template.mapping) {
     return buildBitacoraExcel(input);
   }

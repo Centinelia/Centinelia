@@ -34,6 +34,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ to
   const resolved = await resolveOrgFromToken(token);
   if (!resolved) return NextResponse.json({ error: 'invalid token' }, { status: 404 });
 
+  const agentId = req.nextUrl.searchParams.get('agent_id');
+  if (!agentId) return NextResponse.json({ error: 'agent_id query param required' }, { status: 400 });
+
+  const supabase = createAdminClient();
+
+  // Verifica ownership: el agent debe pertenecer a la org del token.
+  const { data: agent } = await supabase
+    .from('voice_agents')
+    .select('id, portal_email')
+    .eq('id', agentId)
+    .eq('portal_email', resolved.portalEmail)
+    .maybeSingle();
+  if (!agent) return NextResponse.json({ error: 'agent not found or not in org' }, { status: 404 });
+
   let body: ConfigInput;
   try {
     body = await req.json();
@@ -43,16 +57,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ to
 
   const cfg = normalize(body);
 
-  // Guardrail: si enabled=true, exigir al menos 1 recipient.
   if (cfg.enabled && cfg.recipients.length === 0) {
     return NextResponse.json({ error: 'Agrega al menos un destinatario antes de activar' }, { status: 400 });
   }
 
-  const supabase = createAdminClient();
   const { error } = await supabase
-    .from('organizations')
+    .from('voice_agents')
     .update({ bitacora_weekly_config: cfg })
-    .eq('portal_email', resolved.portalEmail);
+    .eq('id', agentId);
 
   if (error) {
     console.error('[delivery-config] update failed:', error);

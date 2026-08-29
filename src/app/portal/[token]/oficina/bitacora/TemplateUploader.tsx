@@ -15,6 +15,7 @@ interface CurrentTemplate {
 
 interface Props {
   token:         string;
+  agentId:       string;
   current:       CurrentTemplate | null;
   uploadCost:    number;
 }
@@ -33,7 +34,7 @@ const FIELD_LABELS: Record<string, string> = {
   vendedor:           'Vendedor',
 };
 
-export function TemplateUploader({ token, current, uploadCost }: Props) {
+export function TemplateUploader({ token, agentId, current, uploadCost }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [state,   setState]   = useState<CurrentTemplate | null>(current);
   const [loading, setLoading] = useState(false);
@@ -45,7 +46,7 @@ export function TemplateUploader({ token, current, uploadCost }: Props) {
     try {
       const form = new FormData();
       form.append('file', file);
-      const res = await fetch(`/api/portal/${token}/oficina/bitacora/template-upload`, {
+      const res = await fetch(`/api/portal/${token}/oficina/bitacora/template-upload?agent_id=${agentId}`, {
         method: 'POST',
         body:   form,
       });
@@ -69,7 +70,7 @@ export function TemplateUploader({ token, current, uploadCost }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/portal/${token}/oficina/bitacora/template-upload`, {
+      const res = await fetch(`/api/portal/${token}/oficina/bitacora/template-upload?agent_id=${agentId}`, {
         method: 'DELETE',
       });
       if (!res.ok) {

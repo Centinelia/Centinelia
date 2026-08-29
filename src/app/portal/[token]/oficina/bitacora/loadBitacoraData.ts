@@ -34,26 +34,23 @@ export type BitacoraRangeMode = 'weekly' | 'monthly';
  * `weekStart` en el retorno mantiene semántica del rango start (compat con
  * el UI existente que solo hace formato/navegación por semana).
  */
+export interface BitacoraAgentSummary {
+  id:            string;
+  agent_name:    string;
+  business_name: string;
+  incident_count: number;
+}
+
 export async function loadBitacoraData(
   token: string,
   rangeStartISO?: string,
   mode: BitacoraRangeMode = 'weekly',
+  targetAgentId?: string,
 ) {
   const supabase = createAdminClient();
 
   const resolved = await resolveOrgFromToken(token);
   if (!resolved) return null;
-
-  const { data: agentRow } = await supabase
-    .from('voice_agents')
-    .select('id, portal_email, business_name')
-    .eq('portal_email', resolved.portalEmail)
-    .eq('active', true)
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle() as { data: { id: string; portal_email: string; business_name: string } | null };
-
-  if (!agentRow) return null;
 
   const { data: org } = await supabase
     .from('organizations')
@@ -63,14 +60,51 @@ export async function loadBitacoraData(
 
   const enabled = !!org?.incidencia_flow_enabled;
 
-  // All agent_ids for this org (for the query scope)
+  // Todos los agentes activos del org
   const { data: agentRows } = await supabase
     .from('voice_agents')
-    .select('id')
+    .select('id, agent_name, business_name')
     .eq('portal_email', resolved.portalEmail)
-    .eq('active', true) as { data: Array<{ id: string }> | null };
+    .eq('active', true)
+    .order('created_at', { ascending: true }) as {
+      data: Array<{ id: string; agent_name: string; business_name: string }> | null
+    };
 
-  const agentIds = (agentRows ?? []).map(a => a.id);
+  if (!agentRows || agentRows.length === 0) return null;
+
+  const agentIds = agentRows.map(a => a.id);
+
+  // Empleados con actividad histórica en bitácora (al menos 1 incident registrada)
+  // — sirven para poblar los tabs de la página.
+  const { data: countRows } = enabled
+    ? await supabase
+        .from('client_incidents')
+        .select('agent_id')
+        .in('agent_id', agentIds) as { data: Array<{ agent_id: string }> | null }
+    : { data: [] };
+
+  const countByAgent = new Map<string, number>();
+  (countRows ?? []).forEach(r => {
+    countByAgent.set(r.agent_id, (countByAgent.get(r.agent_id) ?? 0) + 1);
+  });
+
+  const bitacoraAgents: BitacoraAgentSummary[] = agentRows
+    .filter(a => (countByAgent.get(a.id) ?? 0) > 0)
+    .map(a => ({
+      id:            a.id,
+      agent_name:    a.agent_name,
+      business_name: a.business_name,
+      incident_count: countByAgent.get(a.id) ?? 0,
+    }));
+
+  // Empleado activo (tab seleccionada). Si no viene param, usa el primero
+  // con incidencias. Si no hay ninguno con incidencias, usa el primer agente
+  // activo (para que la página tenga contexto de "quién es" aunque tabla vacía).
+  const activeAgent = targetAgentId
+    ? agentRows.find(a => a.id === targetAgentId)
+    : (bitacoraAgents[0] ? agentRows.find(a => a.id === bitacoraAgents[0].id) : agentRows[0]);
+
+  if (!activeAgent) return null;
 
   const now = new Date();
   const rangeStart = rangeStartISO
@@ -99,7 +133,7 @@ export async function loadBitacoraData(
     ? await supabase
         .from('client_incidents')
         .select('*')
-        .in('agent_id', agentIds)
+        .eq('agent_id', activeAgent.id)
         .gte('created_at', rangeStart.toISOString())
         .lt('created_at', rangeEnd.toISOString())
         .order('created_at', { ascending: true })
@@ -107,7 +141,8 @@ export async function loadBitacoraData(
 
   return {
     enabled,
-    agent: agentRow,
+    agent: activeAgent,
+    bitacoraAgents,
     weekStart: rangeStart.toISOString(),
     rangeEnd:  rangeEnd.toISOString(),
     mode,
