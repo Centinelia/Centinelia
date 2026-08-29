@@ -6,6 +6,90 @@ import type { TemplateMapping, CanonicalField } from './template-analyzer';
 export const HIDDEN_ID_HEADER = '_incident_id';
 
 /**
+ * Días L-S en el orden que aparecen en el grid de seguimiento semanal.
+ * Domingo se ignora (poco común en tortillerías).
+ */
+const GRID_DAY_KEYS = ['L', 'M', 'MI', 'J', 'V', 'S'] as const;
+type GridDayKey = typeof GRID_DAY_KEYS[number];
+
+/**
+ * Convierte un Date → key del grid (L..S). Domingo devuelve null.
+ * getDay(): 0=Dom, 1=Lun, ..., 6=Sáb.
+ */
+function dateToGridKey(d: Date): GridDayKey | null {
+  const day = d.getDay();
+  if (day === 0) return null;
+  return GRID_DAY_KEYS[day - 1];
+}
+
+/**
+ * Escribe el estado de seguimiento del día en la col correcta del grid
+ * L/M/MI/J/V/S, si el mapping tiene verification_grid definido y el incident
+ * tiene verification_called_at. Antes de escribir, limpia todas las cols del
+ * grid (DB es fuente de verdad para el día del OK — si cambió, se refleja).
+ * Solo escribe cuando verification_result === 'ok'. Otros resultados
+ * (no_visitado, sin_respuesta) dejan las celdas vacías, igual que el flow
+ * default en build-excel.ts.
+ */
+function writeVerificationGrid(
+  row:     ReturnType<Worksheet['getRow']>,
+  mapping: TemplateMapping,
+  inc:     IncidentRow,
+): void {
+  const grid = mapping.verification_grid;
+  if (!grid) return;
+
+  // Limpiar todas las cols del grid (defensivo: si el día cambió, no queremos
+  // dejar el OK anterior).
+  for (const key of GRID_DAY_KEYS) {
+    const colLetter = grid[key];
+    if (colLetter) {
+      row.getCell(colLetterToNumber(colLetter)).value = null;
+    }
+  }
+
+  if (inc.verification_result !== 'ok') return;
+  if (!inc.verification_called_at) return;
+
+  const key = dateToGridKey(new Date(inc.verification_called_at));
+  if (!key) return;
+
+  const colLetter = grid[key];
+  if (!colLetter) return;
+
+  row.getCell(colLetterToNumber(colLetter)).value = 'OK';
+}
+
+/**
+ * Limpia rows de "data histórica" del template (todo debajo de insertion_row).
+ * Preserva header rows (1..insertion_row-1) + la template row (insertion_row)
+ * con sus estilos, pero limpia valores de la template row. Se usa cuando
+ * cargamos el template del cliente como base del archivo del mes en curso —
+ * el cliente puede haber subido su xlsx con data de meses/años previos y
+ * eso no debe aparecer en el correo.
+ */
+export function clearHistoricalDataRows(ws: Worksheet, insertionRow: number): void {
+  // Encontrar última row con contenido
+  let lastRow = 0;
+  ws.eachRow({ includeEmpty: false }, (_r, n) => { if (n > lastRow) lastRow = n; });
+
+  // Splice todas las rows > insertion_row (si las hay). Iteramos de abajo hacia
+  // arriba una a una — spliceRows(start, count>1) en exceljs no elimina
+  // correctamente cuando el rango contiene celdas mergeadas.
+  if (lastRow > insertionRow) {
+    for (let r = lastRow; r > insertionRow; r--) {
+      ws.spliceRows(r, 1);
+    }
+  }
+
+  // Limpiar valores de la template row (mantener estilos)
+  const tplRow = ws.getRow(insertionRow);
+  tplRow.eachCell({ includeEmpty: true }, (cell) => {
+    if (cell.value != null) cell.value = null;
+  });
+}
+
+/**
  * Extrae el valor de un incident correspondiente a un campo canónico.
  * Format: fecha ES-MX corto (28/8/2026), phone raw, resto string.
  */
@@ -38,6 +122,36 @@ function fieldValue(inc: IncidentRow, field: CanonicalField): string {
     case 'vendedor':
       return inc.vendedor ?? '';
   }
+}
+
+/**
+ * Elige la col oculta para `_incident_id` una posición después de la última
+ * col usada por la plantilla: mapeadas + verification_grid + cualquier col con
+ * header no vacío en row 1. Esto evita colisionar con cols del grid semanal
+ * o con cols extra del cliente que no están en el mapping (tipo "Prioridad").
+ */
+function pickHiddenColAfterUsed(ws: Worksheet, mapping: TemplateMapping): number {
+  let maxUsed = 1;
+  for (const colLetter of Object.keys(mapping.columns)) {
+    const n = colLetterToNumber(colLetter);
+    if (n > maxUsed) maxUsed = n;
+  }
+  if (mapping.verification_grid) {
+    for (const key of GRID_DAY_KEYS) {
+      const colLetter = mapping.verification_grid[key];
+      if (colLetter) {
+        const n = colLetterToNumber(colLetter);
+        if (n > maxUsed) maxUsed = n;
+      }
+    }
+  }
+  // También considerar cualquier header no vacío en row 1 (cols del cliente
+  // que no están en mapping).
+  const headerRow = ws.getRow(1);
+  headerRow.eachCell({ includeEmpty: false }, (_cell, colNum) => {
+    if (colNum > maxUsed) maxUsed = colNum;
+  });
+  return maxUsed + 1;
 }
 
 export function colLetterToNumber(letter: string): number {
@@ -74,13 +188,8 @@ export function upsertSheetWithIncidents(
   let hiddenCol = findHiddenIdCol(ws);
   if (!hiddenCol) {
     // Sheet nueva o cliente borró la col oculta. Ubicamos al final del rango
-    // de cols mapeadas + 1 (fuera del área visible).
-    let maxMapped = 1;
-    for (const colLetter of Object.keys(mapping.columns)) {
-      const n = colLetterToNumber(colLetter);
-      if (n > maxMapped) maxMapped = n;
-    }
-    hiddenCol = maxMapped + 1;
+    // de cols usadas (mapeadas + grid + col con contenido en headers) + 1.
+    hiddenCol = pickHiddenColAfterUsed(ws, mapping);
     ws.getRow(1).getCell(hiddenCol).value = HIDDEN_ID_HEADER;
     ws.getColumn(hiddenCol).hidden = true;
   }
@@ -112,6 +221,7 @@ export function upsertSheetWithIncidents(
         const colNum = colLetterToNumber(colLetter);
         row.getCell(colNum).value = fieldValue(inc, field);
       }
+      writeVerificationGrid(row, mapping, inc);
       // Reafirmar incident_id en col oculta (defensivo)
       row.getCell(hiddenCol).value = inc.id;
     } else {
@@ -123,6 +233,7 @@ export function upsertSheetWithIncidents(
         const colNum = colLetterToNumber(colLetter);
         newRow.getCell(colNum).value = fieldValue(inc, field);
       }
+      writeVerificationGrid(newRow, mapping, inc);
       newRow.getCell(hiddenCol).value = inc.id;
       // Aplicar estilos base
       sampleStyles.forEach((style, colNum) => {
@@ -197,7 +308,7 @@ export function populateSheetWithIncidents(
     if (n > maxCol) maxCol = n;
   }
 
-  const hiddenIdCol = options.includeHiddenIncidentId ? maxCol + 1 : null;
+  const hiddenIdCol = options.includeHiddenIncidentId ? pickHiddenColAfterUsed(ws, mapping) : null;
 
   // Borrar la fila template
   ws.spliceRows(mapping.insertion_row, 1);
@@ -233,6 +344,8 @@ export function populateSheetWithIncidents(
       // extractHumanEditedValues (solo esas cols se extraen en el próximo ciclo).
       void humanOnly;
     }
+
+    writeVerificationGrid(newRow, mapping, inc);
 
     // Col oculta con incident_id
     if (hiddenIdCol) {

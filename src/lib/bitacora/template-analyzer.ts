@@ -22,6 +22,12 @@ export const CANONICAL_FIELDS = [
 ] as const;
 export type CanonicalField = typeof CANONICAL_FIELDS[number];
 
+/**
+ * Días del grid de seguimiento semanal (Lun a Sáb). Domingo se ignora — poco
+ * común en tortillerías y negocios similares que usan la bitácora.
+ */
+export type GridDayKey = 'L' | 'M' | 'MI' | 'J' | 'V' | 'S';
+
 export interface TemplateMapping {
   /** Mapping de letra de columna (A, B, C…) a campo canónico. Cols no
    *  mapeadas quedan vacías al llenar. */
@@ -37,6 +43,11 @@ export interface TemplateMapping {
    *  (vendedor asignado, notas del gerente, prioridad, seguimiento, etc);
    *  el cliente puede overridear desde el UI. */
   human_only_columns: string[];
+  /** Grid semanal L/M/MI/J/V/S de seguimiento post-llamada. Cuando el
+   *  incident tiene verification_result === 'ok', el empleado escribe "OK"
+   *  en la col del día del verification_called_at. Otros resultados dejan la
+   *  celda vacía. Opcional — muchas plantillas no tienen este grid. */
+  verification_grid?: Partial<Record<GridDayKey, string>>;
   /** Comentarios que Claude puso sobre el mapping (ambigüedades detectadas). */
   notes?: string;
 }
@@ -87,6 +98,7 @@ Tu tarea:
 ${CANONICAL_FIELDS.map(f => `   - ${f}`).join('\n')}
 3. Identifica en qué número de fila arrancan los DATOS (la primera fila donde iría un registro real, después de los headers/títulos).
 4. Identifica cuáles columnas son "solo humano" — cols donde el usuario final escribe manualmente sus notas y NO deben ser sobreescritas por el empleado digital. Patrones típicos: "vendedor asignado", "responsable", "notas del gerente", "prioridad", "seguimiento", "comentarios internos", "estatus interno". La col "vendedor" casi siempre entra aquí (el humano asigna quién atiende).
+5. Identifica un grid de seguimiento semanal si existe: 6 columnas contiguas con headers de días L, M, MI (o "Mi"), J, V, S (Lunes a Sábado). También aceptan variantes como "Lun Mar Mie Jue Vie Sab", "L M M J V S", etc. Este grid se usa para marcar "OK" en el día que se confirmó el seguimiento con el cliente. Si detectas este grid, incluye verification_grid con las letras de las cols de cada día. Si no lo detectas, OMITE el campo verification_grid en tu respuesta.
 
 Campos:
 - fecha: fecha de la incidencia
@@ -103,11 +115,12 @@ Campos:
 
 Regla mapping: solo mapea columnas cuya semántica sea CLARA. Si dudas, no la mapeas (mejor faltante que erróneo).
 Regla human_only: incluye letras de columnas que el empleado digital debe respetar aunque estén mapeadas (initial-write con dato de DB si aplica, después nunca sobrescribir).
+Regla grid: el grid es 6 días L-S. Las cols del grid NO se incluyen en columns ni en human_only_columns — van solo en verification_grid.
 
 Estructura del archivo (primeras 6 filas de cada sheet):
 ${JSON.stringify(sheetsData, null, 2)}
 
-Responde SOLO con JSON válido en este shape (nada más, sin markdown):
+Responde SOLO con JSON válido en este shape (nada más, sin markdown). El campo verification_grid es opcional; inclúyelo solo si detectaste el grid:
 {
   "sheet_name": "nombre exacto del sheet",
   "insertion_row": 3,
@@ -118,6 +131,7 @@ Responde SOLO con JSON válido en este shape (nada más, sin markdown):
     "D": "vendedor"
   },
   "human_only_columns": ["D"],
+  "verification_grid": { "L": "K", "M": "L", "MI": "M", "J": "N", "V": "O", "S": "P" },
   "notes": "opcional, si detectaste ambigüedad"
 }`;
 
@@ -137,6 +151,7 @@ Responde SOLO con JSON válido en este shape (nada más, sin markdown):
     insertion_row?:      number;
     columns?:            Record<string, string>;
     human_only_columns?: string[];
+    verification_grid?:  Record<string, string>;
     notes?:              string;
   };
 
@@ -159,12 +174,31 @@ Responde SOLO con JSON válido en este shape (nada más, sin markdown):
         .filter(c => c in validColumns)
     : [];
 
+  // Normalizar verification_grid: solo keys válidos L/M/MI/J/V/S, cols uppercase.
+  // Requiere que al menos 3 días estén presentes (si no, probablemente Claude
+  // se confundió con otra cosa que no es el grid).
+  const VALID_GRID_KEYS: Array<'L' | 'M' | 'MI' | 'J' | 'V' | 'S'> = ['L', 'M', 'MI', 'J', 'V', 'S'];
+  let verificationGrid: Partial<Record<'L' | 'M' | 'MI' | 'J' | 'V' | 'S', string>> | undefined;
+  if (parsed.verification_grid && typeof parsed.verification_grid === 'object') {
+    const cleaned: Partial<Record<'L' | 'M' | 'MI' | 'J' | 'V' | 'S', string>> = {};
+    let count = 0;
+    for (const key of VALID_GRID_KEYS) {
+      const raw = parsed.verification_grid[key];
+      if (typeof raw === 'string' && /^[A-Z]{1,3}$/i.test(raw)) {
+        cleaned[key] = raw.toUpperCase();
+        count++;
+      }
+    }
+    if (count >= 3) verificationGrid = cleaned;
+  }
+
   return {
     mapping: {
       columns:            validColumns,
       insertion_row:      parsed.insertion_row,
       sheet_name:         parsed.sheet_name,
       human_only_columns: humanOnly,
+      verification_grid:  verificationGrid,
       notes:              parsed.notes,
     },
     usage: {

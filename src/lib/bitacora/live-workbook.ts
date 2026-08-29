@@ -2,7 +2,7 @@ import { Workbook, Worksheet } from 'exceljs';
 import type { createAdminClient } from '@/lib/supabase/admin';
 import type { IncidentRow } from '@/app/portal/[token]/oficina/bitacora/loadBitacoraData';
 import type { TemplateMapping } from './template-analyzer';
-import { upsertSheetWithIncidents } from './template-render';
+import { upsertSheetWithIncidents, clearHistoricalDataRows } from './template-render';
 
 type SupabaseClient = ReturnType<typeof createAdminClient>;
 
@@ -79,6 +79,9 @@ export async function updateLiveWorkbook(input: UpdateLiveInput): Promise<Buffer
     for (const ws of [...outWb.worksheets]) {
       if (ws.name !== targetName) outWb.removeWorksheet(ws.id);
     }
+    // Limpiar data histórica del cliente (rows debajo del insertion_row del
+    // template que son data de meses/años previos que no aplica al nuevo mes).
+    clearHistoricalDataRows(templateSheet, input.mapping.insertion_row);
     // Renombrar template sheet a "Semana N" del primer week
     templateSheet.name = `Semana ${input.weeks[0].weekNumber}`;
   }
@@ -95,6 +98,8 @@ export async function updateLiveWorkbook(input: UpdateLiveInput): Promise<Buffer
         outWb,
         sheetName,
       );
+      // Limpiar data histórica clonada del template (misma razón que arriba).
+      clearHistoricalDataRows(ws, input.mapping.insertion_row);
     }
     upsertSheetWithIncidents(ws, input.mapping, week.incidents);
   }
