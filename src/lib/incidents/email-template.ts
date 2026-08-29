@@ -1,5 +1,6 @@
 interface IncidentEmailInput {
   businessName: string;
+  sucursal?:    string | null;
   contactName?: string | null;
   contactPhone: string;
   address: string;
@@ -44,6 +45,9 @@ export function renderIncidentCardEmail(input: IncidentEmailInput): { subject: s
   const hora = formatHora(input.capturedAt);
   const contacto = contactoLine(input.contactName, input.contactPhone);
   const subject = `Reporte de incidencia: ${input.businessName} (${fecha})`;
+  const sucursalRow = input.sucursal
+    ? `<tr><td style="background-color: #f9e04c; font-weight: bold;">SUCURSAL</td><td>${input.sucursal}</td></tr>`
+    : '';
   const html = `
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
   <p style="margin: 0 0 16px 0; color: #333;">
@@ -53,6 +57,7 @@ export function renderIncidentCardEmail(input: IncidentEmailInput): { subject: s
     <tr><td style="background-color: #f9e04c; font-weight: bold; width: 35%;">FECHA</td><td>${fecha}</td></tr>
     <tr><td style="background-color: #f9e04c; font-weight: bold;">HORA</td><td>${hora}</td></tr>
     <tr><td style="background-color: #f9e04c; font-weight: bold;">NOMBRE DEL NEGOCIO</td><td>${input.businessName}</td></tr>
+    ${sucursalRow}
     <tr><td style="background-color: #f9e04c; font-weight: bold;">DIRECCIÓN</td><td>${input.address}</td></tr>
     <tr><td style="background-color: #f9e04c; font-weight: bold;">MOTIVO</td><td>${input.motivo}</td></tr>
     <tr><td style="background-color: #f9e04c; font-weight: bold;">CONTACTO</td><td>${contacto}</td></tr>
@@ -60,6 +65,49 @@ export function renderIncidentCardEmail(input: IncidentEmailInput): { subject: s
   </table>
   <p style="margin: 16px 0 0 0; color: #666; font-size: 13px;">
     Capturado por ${input.agentDisplayName}. En 3 días se hará llamada de verificación al cliente.
+  </p>
+</div>`.trim();
+  return { subject, html };
+}
+
+interface NewClientEmailInput {
+  businessName: string;
+  sucursal?:    string | null;
+  contactName?: string | null;
+  contactPhone: string;
+  address:      string;
+  notas?:       string | null;
+  capturedAt:   Date;
+  agentDisplayName: string;
+}
+
+export function renderNewClientCardEmail(input: NewClientEmailInput): { subject: string; html: string } {
+  const fecha = formatFecha(input.capturedAt);
+  const hora = formatHora(input.capturedAt);
+  const contacto = contactoLine(input.contactName, input.contactPhone);
+  const subject = `Cliente nuevo pide contacto: ${input.businessName} (${fecha})`;
+  const sucursalRow = input.sucursal
+    ? `<tr><td style="background-color: #a7f3d0; font-weight: bold;">SUCURSAL</td><td>${input.sucursal}</td></tr>`
+    : '';
+  const notasRow = input.notas
+    ? `<tr><td style="background-color: #a7f3d0; font-weight: bold;">NOTAS</td><td>${input.notas}</td></tr>`
+    : '';
+  const html = `
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <p style="margin: 0 0 16px 0; color: #333;">
+    Un cliente nuevo llamó para darse de alta. <strong>Contáctalo para tomarle el pedido.</strong>
+  </p>
+  <table border="1" cellspacing="0" cellpadding="10" style="border-collapse: collapse; width: 100%; border-color: #ccc;">
+    <tr><td style="background-color: #a7f3d0; font-weight: bold; width: 35%;">FECHA</td><td>${fecha}</td></tr>
+    <tr><td style="background-color: #a7f3d0; font-weight: bold;">HORA</td><td>${hora}</td></tr>
+    <tr><td style="background-color: #a7f3d0; font-weight: bold;">NOMBRE DEL NEGOCIO</td><td>${input.businessName}</td></tr>
+    ${sucursalRow}
+    <tr><td style="background-color: #a7f3d0; font-weight: bold;">DIRECCIÓN</td><td>${input.address}</td></tr>
+    <tr><td style="background-color: #a7f3d0; font-weight: bold;">CONTACTO</td><td>${contacto}</td></tr>
+    ${notasRow}
+  </table>
+  <p style="margin: 16px 0 0 0; color: #666; font-size: 13px;">
+    Capturado por ${input.agentDisplayName}. No se agendó llamada automática — el follow-up es humano.
   </p>
 </div>`.trim();
   return { subject, html };

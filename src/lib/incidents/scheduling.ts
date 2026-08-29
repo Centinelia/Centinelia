@@ -6,6 +6,7 @@ export interface IncidentFollowupInput {
   telefono:    string;
   motivo:      string;
   scheduledAt: string;
+  nombre?:     string | null;
 }
 
 /**
@@ -34,6 +35,8 @@ export async function upsertFollowupContactForIncident(
     .maybeSingle();
   if (lookupErr) throw new Error(`upsertFollowupContactForIncident lookup: ${lookupErr.message}`);
 
+  const nombreValue = input.nombre?.trim() || null;
+
   if (existing?.id) {
     const { error: updErr } = await supabase
       .from('outbound_contacts')
@@ -45,6 +48,7 @@ export async function upsertFollowupContactForIncident(
         external_id:     input.incidentId,
         status:          'pending',
         fail_count:      0,
+        nombre:          nombreValue,
       })
       .eq('id', existing.id);
     if (updErr) throw new Error(`upsertFollowupContactForIncident update: ${updErr.message}`);
@@ -62,6 +66,7 @@ export async function upsertFollowupContactForIncident(
       external_source: 'client_incident',
       external_id:     input.incidentId,
       status:          'pending',
+      nombre:          nombreValue,
     })
     .select('id')
     .single();

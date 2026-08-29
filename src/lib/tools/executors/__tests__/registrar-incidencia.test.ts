@@ -14,16 +14,24 @@ vi.mock('../../../incidents/scheduling', () => ({
 
 function makeCtx(overrides: any = {}) {
   const insertedRow = { id: 'inc-1' };
+  // priorCandidates: array de rows { business_name, sucursal } que simula el
+  // resultado del lookup para is_new_client. Default vacío = cliente nuevo.
+  const priorCandidates = overrides.priorCandidates ?? [];
   const supabase: any = {
     from: vi.fn(() => supabase),
     insert: vi.fn(() => supabase),
     update: vi.fn(() => supabase),
-    eq:     vi.fn(() => supabase),
     select: vi.fn(() => supabase),
     limit:  vi.fn(() => supabase),
     single: vi.fn(() => Promise.resolve({ data: insertedRow, error: null })),
-    // Default: no prior row → is_new_client=true. Override in tests that need recurring.
-    maybeSingle: vi.fn(() => Promise.resolve({ data: overrides.priorRow ?? null, error: null })),
+    // eq(): terminal para el lookup (await directo) devuelve array; encadenable
+    // para el flujo insert.select.eq.
+    eq:     vi.fn(function (this: any) { return supabase; }),
+    // Hacer supabase thenable para que `await supabase` en el lookup devuelva
+    // los candidates. Los otros awaits (insert→select→single, update→eq)
+    // consumen el thenable primero pero el flujo real resuelve por single()
+    // que se llama al final del insert.
+    then:   (resolve: any) => resolve({ data: priorCandidates, error: null }),
   };
   return {
     supabase,
@@ -93,8 +101,8 @@ describe('registrarIncidencia', () => {
     expect(capturedPayload.source_call_id).toBe('call-1');
   });
 
-  it('sets is_new_client=true when no prior client_incidents row for this phone', async () => {
-    const ctx = makeCtx({ priorRow: null });
+  it('sets is_new_client=true when no prior incident matches business_name+sucursal', async () => {
+    const ctx = makeCtx({ priorCandidates: [] });
     let capturedPayload: any = null;
     ctx.supabase.insert = vi.fn((payload: any) => {
       capturedPayload = payload;
@@ -107,8 +115,10 @@ describe('registrarIncidencia', () => {
     expect(capturedPayload.is_new_client).toBe(true);
   });
 
-  it('sets is_new_client=false when phone already appears in client_incidents', async () => {
-    const ctx = makeCtx({ priorRow: { id: 'prior-inc-999' } });
+  it('sets is_new_client=false when same business_name+null sucursal already appears', async () => {
+    const ctx = makeCtx({
+      priorCandidates: [{ business_name: 'Abarrotes Recurrente', sucursal: null }],
+    });
     let capturedPayload: any = null;
     ctx.supabase.insert = vi.fn((payload: any) => {
       capturedPayload = payload;
@@ -118,6 +128,40 @@ describe('registrarIncidencia', () => {
       business_name: 'Abarrotes Recurrente', contact_phone: '8112345678', address: 'Y', motivo: 'Z',
     });
     expect(capturedPayload).not.toBeNull();
+    expect(capturedPayload.is_new_client).toBe(false);
+  });
+
+  it('sets is_new_client=true when same business_name but different sucursal (multi-branch)', async () => {
+    const ctx = makeCtx({
+      priorCandidates: [{ business_name: 'Don Dante', sucursal: 'San Nicolás' }],
+    });
+    let capturedPayload: any = null;
+    ctx.supabase.insert = vi.fn((payload: any) => {
+      capturedPayload = payload;
+      return ctx.supabase;
+    });
+    await registrarIncidencia(ctx as any, {
+      business_name: 'Don Dante', sucursal: 'Apodaca',
+      contact_phone: '8112345678', address: 'Y', motivo: 'Z',
+    });
+    expect(capturedPayload).not.toBeNull();
+    expect(capturedPayload.is_new_client).toBe(true);
+    expect(capturedPayload.sucursal).toBe('Apodaca');
+  });
+
+  it('normalizes business_name (accents + case) for match', async () => {
+    const ctx = makeCtx({
+      priorCandidates: [{ business_name: 'Abarrotes Charró', sucursal: null }],
+    });
+    let capturedPayload: any = null;
+    ctx.supabase.insert = vi.fn((payload: any) => {
+      capturedPayload = payload;
+      return ctx.supabase;
+    });
+    await registrarIncidencia(ctx as any, {
+      business_name: 'ABARROTES CHARRO',
+      contact_phone: '8112345678', address: 'Y', motivo: 'Z',
+    });
     expect(capturedPayload.is_new_client).toBe(false);
   });
 

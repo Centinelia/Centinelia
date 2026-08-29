@@ -250,7 +250,7 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
   nico:  ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'enviar_correo', 'crear_documento', 'enviar_documento_oficina', 'solicitar_factura', 'consultar_factura', 'generar_correo_estructurado'],
   // Nelia — servicio al cliente + contenido postventa. Owner de extraer_voz
   // (insights de cliente) + generar_one_pager (contenido postventa).
-  nelia: ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'registrar_encuesta', 'enviar_correo', 'buscar_archivo', 'buscar_documento_oficina', 'buscar_correo_enviado', 'enviar_documento_oficina', 'extraer_voz_del_cliente', 'generar_one_pager', 'generar_correo_estructurado', 'generar_reporte_metricas_excel', 'registrar_incidencia', 'verificar_recepcion_incidencia'],
+  nelia: ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'registrar_encuesta', 'enviar_correo', 'buscar_archivo', 'buscar_documento_oficina', 'buscar_correo_enviado', 'enviar_documento_oficina', 'extraer_voz_del_cliente', 'generar_one_pager', 'generar_correo_estructurado', 'generar_reporte_metricas_excel', 'registrar_incidencia', 'registrar_cliente_nuevo', 'verificar_recepcion_incidencia'],
   // Neo — helpdesk IT. `llamar_a` para escalar responsable (Scope A A1 CRITICAL #1).
   neo:   ['crear_ticket', 'consultar_incidentes', 'buscar_directorio', 'buscar_archivo', 'leer_archivo', 'llamar_a'],
   // Nara — municipal (civic reports + trámites externos si feature activa).
@@ -487,11 +487,12 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
       type: 'function',
       function: {
         name: 'registrar_incidencia',
-        description: 'Registra una queja/incidencia de un cliente existente que reporta no haber recibido su pedido o servicio. Manda correo estructurado al encargado (receives_incident_reports del directorio) y agenda llamada de verificación en 3 días. Los 4 datos requeridos son: nombre del negocio, dirección exacta, teléfono, motivo (frase inicial del cliente). NO pidas amplificación del motivo — con la frase que dijo al inicio es suficiente.',
+        description: 'Registra una queja/incidencia de un cliente existente que reporta no haber recibido su pedido o servicio. Si el negocio tiene múltiples sucursales, pregunta cuál. Manda correo estructurado al encargado (receives_incident_reports del directorio) y agenda llamada de verificación en 3 días. Los 4 datos requeridos son: nombre del negocio, dirección exacta, teléfono, motivo (frase inicial del cliente). NO pidas amplificación del motivo — con la frase que dijo al inicio es suficiente.',
         parameters: {
           type: 'object',
           properties: {
             business_name: { type: 'string', description: 'Nombre del negocio del cliente (ej: "Abarrotes Charro").' },
+            sucursal:      { type: 'string', description: 'Sucursal cuando el negocio tiene varias (ej: "Apodaca", "San Nicolás"). Omitir si no aplica o el cliente no la da.' },
             contact_name:  { type: 'string', description: 'Nombre de la persona que llama (opcional si no lo da).' },
             contact_phone: { type: 'string', description: 'Teléfono en E.164 (+52...) o 10 dígitos MX. Es el teléfono que dictó el cliente, no necesariamente el caller_number.' },
             address:       { type: 'string', description: 'Dirección completa: calle, número, colonia, municipio.' },
@@ -502,6 +503,28 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
       },
       server: server('registrar-incidencia'),
       messages: [{ type: 'request-start', content: 'Ya notifico al encargado.' }],
+    };
+
+    case 'registrar_cliente_nuevo': return {
+      type: 'function',
+      function: {
+        name: 'registrar_cliente_nuevo',
+        description: 'Registra un cliente nuevo que llama SOLO para darse de alta, sin queja. Usa esta tool cuando el cliente dice cosas como "quiero pedir por primera vez" o "quiero que me tomen mi pedido". NO usar si reporta un problema (usa registrar_incidencia). Manda correo al encargado (receives_incident_reports) pidiéndole que contacte al cliente. NO agenda callback automático — el humano toma el pedido.',
+        parameters: {
+          type: 'object',
+          properties: {
+            business_name: { type: 'string', description: 'Nombre del negocio del cliente (ej: "Abarrotes Charro").' },
+            sucursal:      { type: 'string', description: 'Sucursal cuando el negocio tiene varias (ej: "Apodaca"). Omitir si no aplica.' },
+            contact_name:  { type: 'string', description: 'Nombre de la persona que llama.' },
+            contact_phone: { type: 'string', description: 'Teléfono en E.164 (+52...) o 10 dígitos MX.' },
+            address:       { type: 'string', description: 'Dirección completa: calle, número, colonia, municipio.' },
+            notas:         { type: 'string', description: 'Notas opcionales (ej. "pedidos semanales de 30kg", "solo tortilla azul"). Máximo 2 frases.' },
+          },
+          required: ['business_name', 'contact_phone', 'address'],
+        },
+      },
+      server: server('registrar-cliente-nuevo'),
+      messages: [{ type: 'request-start', content: 'Perfecto, doy de alta sus datos y aviso al encargado.' }],
     };
 
     case 'verificar_recepcion_incidencia': return {
@@ -603,11 +626,20 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
 
       const def = buildToolDef(toolName, agent, server);
       if (!def) {
-        // Puede ser: (a) case falta en buildToolDef → meerkat va a alucinar,
-        // (b) case existe pero retorna null por condición runtime válida (ej.
-        // transferir_llamada sin transfer_number). Warn para visibilidad sin
-        // pánico — filtro manual si sale ruido persistente.
-        console.warn(`[createVapiTools] tool "${toolName}" declarada en preset ${meerkatId} pero buildToolDef retornó null (case falta o condición runtime no cumplida). Si es lo primero el meerkat va a alucinar la invocación — agregar case en buildToolDef.`);
+        // Runtime-gated tools que legítimamente retornan null cuando el agente
+        // no tiene la config necesaria (by design). Skip silencioso para no
+        // contaminar logs — ej. Tortillería (flow incidencias B2B) no configura
+        // transfer_number porque Nelia escala vía correo, no por transferencia.
+        const RUNTIME_GATED: Record<string, (a: VoiceAgent) => boolean> = {
+          transferir_llamada: (a) => !a.transfer_number,
+        };
+        const gate = RUNTIME_GATED[toolName];
+        if (gate && gate(agent)) {
+          continue;
+        }
+        // Warn real: case falta en buildToolDef → meerkat va a alucinar la
+        // invocación. Agregar case en buildToolDef.
+        console.warn(`[createVapiTools] tool "${toolName}" declarada en preset ${meerkatId} pero buildToolDef retornó null (case falta). Meerkat va a alucinar la invocación — agregar case en buildToolDef.`);
         continue;
       }
       tools.push(def);

@@ -375,17 +375,39 @@ export const TOOL_SCHEMAS: Record<string, ToolSchema> = {
   // registrar_incidencia — pack incidencia_flow. Tortillería Estrella piloto.
   registrar_incidencia: {
     name: 'registrar_incidencia',
-    description: 'Registra una queja/incidencia de un cliente existente que reporta no haber recibido su pedido o servicio. Manda correo al encargado y agenda llamada de verificación en 3 días.',
+    description: 'Registra una queja/incidencia de un cliente existente que reporta no haber recibido su pedido o servicio. Si el negocio tiene múltiples sucursales, pregunta cuál. Manda correo al encargado y agenda llamada de verificación en 3 días.',
     input_schema: {
       type: 'object' as const,
       properties: {
         business_name: { type: 'string', description: 'Nombre del negocio del cliente (ej: "Abarrotes Charro").' },
+        sucursal:      { type: 'string', description: 'Sucursal del negocio cuando aplica (ej: "Apodaca", "San Nicolás"). Omitir si el negocio tiene una sola sucursal o si el cliente no la especifica.' },
         contact_name:  { type: 'string', description: 'Nombre de la persona que habla (opcional si no lo da).' },
         contact_phone: { type: 'string', description: 'Teléfono de contacto en formato E.164 (ej: +528112345678) o 10 dígitos MX.' },
         address:       { type: 'string', description: 'Dirección exacta del negocio: calle, número, colonia, ciudad.' },
         motivo:        { type: 'string', description: 'Qué reporta el cliente en sus propias palabras (2-3 frases máx).' },
       },
       required: ['business_name', 'contact_phone', 'address', 'motivo'] as const,
+    },
+    channels: ['voice', 'chat', 'email'] as const,
+  },
+
+  // registrar_cliente_nuevo — alta de cliente sin queja. Correo al encargado
+  // pidiendo que contacte al cliente para tomarle el primer pedido. No agenda
+  // callback (el humano hace el follow-up manualmente).
+  registrar_cliente_nuevo: {
+    name: 'registrar_cliente_nuevo',
+    description: 'Registra un cliente nuevo que llama solo para darse de alta (sin queja). Usa esta tool cuando el cliente no reporta un problema; solo quiere que le tomen su pedido por primera vez. Si el negocio tiene múltiples sucursales, pregunta cuál. Manda correo al encargado pidiendo que lo contacte. NO agendes llamada de verificación — el humano hará el follow-up.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        business_name: { type: 'string', description: 'Nombre del negocio del cliente (ej: "Abarrotes Charro").' },
+        sucursal:      { type: 'string', description: 'Sucursal del negocio cuando aplica (ej: "Apodaca", "San Nicolás"). Omitir si tiene una sola sucursal o si el cliente no la especifica.' },
+        contact_name:  { type: 'string', description: 'Nombre de la persona que habla.' },
+        contact_phone: { type: 'string', description: 'Teléfono de contacto en formato E.164 (ej: +528112345678) o 10 dígitos MX.' },
+        address:       { type: 'string', description: 'Dirección exacta del negocio: calle, número, colonia, ciudad.' },
+        notas:         { type: 'string', description: 'Notas opcionales del cliente en máximo 2 frases (ej. "quiere pedidos de 30kg semanales", "solo de tortilla azul").' },
+      },
+      required: ['business_name', 'contact_phone', 'address'] as const,
     },
     channels: ['voice', 'chat', 'email'] as const,
   },

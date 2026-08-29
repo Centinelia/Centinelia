@@ -7,6 +7,7 @@ import { sendMeerkatHtmlEmail } from '../../email/send-as-agent';
 
 export interface RegistrarIncidenciaArgs {
   business_name: string;
+  sucursal?:     string;
   contact_name?: string;
   contact_phone: string;
   address:       string;
@@ -15,6 +16,17 @@ export interface RegistrarIncidenciaArgs {
 
 const VERIFICATION_DELAY_DAYS = 3;
 
+// Normaliza para match cliente: lowercase + trim + strip acentos + colapsa espacios.
+// "Suc. Apodaca " y "suc apodaca" matchean; "Apodaca" y "San Nicolás" no.
+function normalize(s: string | null | undefined): string {
+  return (s ?? '')
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export async function registrarIncidencia(ctx: any, args: RegistrarIncidenciaArgs) {
   const phone = validatePhoneOrThrow(args.contact_phone);
   const now = new Date();
@@ -22,17 +34,19 @@ export async function registrarIncidencia(ctx: any, args: RegistrarIncidenciaArg
 
   const recipient = resolveIncidentRecipient(ctx.org?.directory ?? []);
 
-  // Detecta si este teléfono ya apareció antes en la bitácora de esta org
-  // (misma org = mismos agent_ids). Primera aparición → azul en /oficina/bitacora
-  // (marca "cliente nuevo"). Reaparición → fila normal.
-  const { data: priorRow } = await ctx.supabase
+  // Match cliente por (business_name, sucursal) normalizados. contact_phone es
+  // memoria de quién habló, no identidad — un negocio puede tener múltiples
+  // personas llamando distintas veces. Fetch todos los incidents de la org y
+  // filtramos JS-side (volumen bajo per org, no hay pg extension unaccent).
+  const normBiz = normalize(args.business_name);
+  const normSuc = normalize(args.sucursal ?? '');
+  const { data: candidates } = await ctx.supabase
     .from('client_incidents')
-    .select('id')
-    .eq('portal_email', ctx.agent.portal_email)
-    .eq('contact_phone', phone)
-    .limit(1)
-    .maybeSingle();
-  const isNewClient = !priorRow;
+    .select('business_name, sucursal')
+    .eq('portal_email', ctx.agent.portal_email);
+  const isNewClient = !(candidates ?? []).some((r: { business_name: string; sucursal: string | null }) =>
+    normalize(r.business_name) === normBiz && normalize(r.sucursal) === normSuc,
+  );
 
   const { data: incidentRow, error: insErr } = await ctx.supabase
     .from('client_incidents')
@@ -40,6 +54,7 @@ export async function registrarIncidencia(ctx: any, args: RegistrarIncidenciaArg
       agent_id:                  ctx.agent.id,
       portal_email:              ctx.agent.portal_email,
       business_name:             args.business_name,
+      sucursal:                  args.sucursal?.trim() || null,
       contact_name:              args.contact_name ?? null,
       contact_phone:             phone,
       address:                   args.address,
@@ -60,6 +75,7 @@ export async function registrarIncidencia(ctx: any, args: RegistrarIncidenciaArg
   if (recipient) {
     const { subject, html } = renderIncidentCardEmail({
       businessName:     args.business_name,
+      sucursal:         args.sucursal ?? null,
       contactName:      args.contact_name ?? null,
       contactPhone:     phone,
       address:          args.address,
@@ -97,6 +113,7 @@ export async function registrarIncidencia(ctx: any, args: RegistrarIncidenciaArg
     incidentId,
     agentId:     ctx.agent.id,
     telefono:    phone,
+    nombre:      args.contact_name ?? null,
     // Motivo NATURAL — se inyecta después de "Le llamo porque..." en el
     // firstMessage de outbound. Evitar fechas formato numérico (28/8/2026
     // se pronuncia "h h o two thousand twenty six" en TTS) y verbos infinitivos

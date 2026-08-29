@@ -27,16 +27,17 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
   const ws = wb.addWorksheet(`Semana ${data.weekStart.slice(0, 10)}`);
 
   // Section headers
-  ws.mergeCells(1, 1, 1, 9);
+  const DATOS_COLS = 11; // Fecha, Tipo, Verificación, Negocio, Sucursal, Cliente, Dirección, Teléfono, Motivo, Resultado, Vendedor
+  ws.mergeCells(1, 1, 1, DATOS_COLS);
   ws.getCell(1, 1).value = 'DATOS DEL CLIENTE';
   ws.getCell(1, 1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFE066' } };
 
-  ws.mergeCells(1, 10, 1, 9 + DAYS.length);
-  ws.getCell(1, 10).value = 'SEGUIMIENTO DEL CLIENTE';
-  ws.getCell(1, 10).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFE066' } };
+  ws.mergeCells(1, DATOS_COLS + 1, 1, DATOS_COLS + DAYS.length);
+  ws.getCell(1, DATOS_COLS + 1).value = 'SEGUIMIENTO DEL CLIENTE';
+  ws.getCell(1, DATOS_COLS + 1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFE066' } };
 
   // Column headers
-  const headers = ['Fecha', 'Verificación', 'Negocio', 'Cliente', 'Dirección', 'Teléfono', 'Motivo', 'Resultado', 'Vendedor', ...DAYS];
+  const headers = ['Fecha', 'Tipo', 'Verificación', 'Negocio', 'Sucursal', 'Cliente', 'Dirección', 'Teléfono', 'Motivo', 'Resultado', 'Vendedor', ...DAYS];
   headers.forEach((h, i) => {
     const cell = ws.getCell(2, i + 1);
     cell.value = h;
@@ -60,13 +61,17 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
 
     const values = [
       new Date(inc.created_at).toLocaleDateString('es-MX'),
-      new Date(inc.verification_scheduled_at).toLocaleDateString('es-MX'),
+      inc.type === 'alta' ? 'Alta' : 'Queja',
+      inc.verification_scheduled_at
+        ? new Date(inc.verification_scheduled_at).toLocaleDateString('es-MX')
+        : '',
       inc.business_name,
+      inc.sucursal ?? '',
       inc.contact_name ?? '',
       inc.address,
       inc.contact_phone,
-      inc.motivo,
-      inc.verification_result ?? 'pendiente',
+      inc.motivo ?? '',
+      inc.type === 'alta' ? '' : (inc.verification_result ?? 'pendiente'),
       inc.vendedor ?? '',
     ];
 
@@ -83,7 +88,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
       const day = new Date(inc.verification_called_at).getDay();
       const idx = day === 0 ? 6 : day - 1;
       if (idx < DAYS.length) {
-        ws.getCell(r, 10 + idx).value = 'OK';
+        ws.getCell(r, DATOS_COLS + 1 + idx).value = 'OK';
       }
     }
   });

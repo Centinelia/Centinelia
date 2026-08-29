@@ -3,15 +3,17 @@ import { resolveOrgFromToken } from '@/lib/portal/org-token';
 
 export interface IncidentRow {
   id:                        string;
+  type:                      'queja' | 'alta';
   created_at:                string;
   business_name:             string;
+  sucursal:                  string | null;
   contact_name:              string | null;
   contact_phone:             string;
   address:                   string;
-  motivo:                    string;
+  motivo:                    string | null;
   vendedor:                  string | null;
   is_new_client:             boolean;
-  verification_scheduled_at: string;
+  verification_scheduled_at: string | null;
   verification_called_at:    string | null;
   verification_result:       'ok' | 'no_visitado' | 'sin_respuesta' | null;
   verification_result_notes: string | null;

@@ -3830,6 +3830,14 @@ async function executeAgentToolInner(
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // registrar_cliente_nuevo
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'registrar_cliente_nuevo') {
+    const { registrarClienteNuevo } = await import('./executors/registrar-cliente-nuevo');
+    return registrarClienteNuevo(ctx, toolInput as any);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   // verificar_recepcion_incidencia
   // ─────────────────────────────────────────────────────────────────────────
   if (toolName === 'verificar_recepcion_incidencia') {

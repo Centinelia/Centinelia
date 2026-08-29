@@ -207,7 +207,34 @@ export async function triggerOutboundCall({
   const externalContextBlock = externalId && externalSource
     ? `\nCONTEXTO DE ORIGEN DE ESTA LLAMADA:\n- external_source: ${externalSource}\n- external_id: ${externalId}\n\nCuando invoques cualquier tool de verificación / seguimiento que requiera un identificador (ej. incident_id, pedido_id, lead_id), USA el external_id de arriba tal cual: "${externalId}".`
     : '';
-  const enrichedContext = (customerContext ?? '') + externalContextBlock;
+
+  // Enriquecer con datos del cliente cuando la llamada viene de un incident.
+  // Sin esto Nelia solo sabe el motivo genérico ("recibió el pedido que reportó")
+  // y no puede referenciar el negocio o sucursal si el cliente pregunta o si el
+  // mismo teléfono cubre varias sucursales. Best-effort: si el lookup falla, la
+  // llamada sigue con el motivo genérico.
+  let incidentContextBlock = '';
+  if (externalSource === 'client_incident' && externalId) {
+    try {
+      const supabaseIncident = createAdminClient();
+      const { data: inc } = await supabaseIncident
+        .from('client_incidents')
+        .select('business_name, sucursal, contact_name, motivo')
+        .eq('id', externalId)
+        .maybeSingle();
+      if (inc) {
+        const lines = [`- Negocio: ${inc.business_name}`];
+        if (inc.sucursal) lines.push(`- Sucursal: ${inc.sucursal}`);
+        if (inc.contact_name) lines.push(`- Persona que reportó: ${inc.contact_name}`);
+        if (inc.motivo) lines.push(`- Queja original: ${inc.motivo}`);
+        incidentContextBlock = `\nCONTEXTO DEL CLIENTE ORIGEN:\n${lines.join('\n')}\n\nUsa esta información si el cliente pregunta de qué negocio o sucursal le hablas. No lo enumeres al inicio — solo referéncialo si sale a tema o si necesitas desambiguar.`;
+      }
+    } catch (err) {
+      console.warn('[outbound] incident context lookup failed:', err);
+    }
+  }
+
+  const enrichedContext = (customerContext ?? '') + externalContextBlock + incidentContextBlock;
 
   const systemPrompt   = buildOutboundSystemPrompt(agent, resolvedName, expandedMotivo, enrichedContext, finalCampaignInstructions);
 

@@ -150,8 +150,8 @@ export const SKILL_PACKS: SkillPack[] = [
   },
   {
     id: 'incidencia_flow', label: 'Flujo de incidencias',
-    description: 'Registrar quejas/incidencias de clientes B2B con notificación al encargado y llamada de verificación a 3 días',
-    tools: ['registrar_incidencia', 'verificar_recepcion_incidencia'],
+    description: 'Registrar quejas/incidencias de clientes B2B con notificación al encargado y llamada de verificación a 3 días. También incluye alta de clientes nuevos.',
+    tools: ['registrar_incidencia', 'registrar_cliente_nuevo', 'verificar_recepcion_incidencia'],
     source: 'organizations.incidencia_flow_enabled',
     activeCheck: ctx => !!ctx.has_incidencia_flow,
   },

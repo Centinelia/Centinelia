@@ -166,7 +166,7 @@ export function BitacoraClient({ token, initial }: Props) {
               <thead>
                 <tr>
                   <th
-                    colSpan={9}
+                    colSpan={10}
                     className="px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wider"
                     style={{ background: '#FEF9C3', color: '#854D0E', borderBottom: '1px solid #E8E3F5' }}
                   >
@@ -182,7 +182,7 @@ export function BitacoraClient({ token, initial }: Props) {
                 </tr>
                 <tr style={{ background: '#FAFAFB' }}>
                   {[
-                    'Fecha', 'Verificacion', 'Negocio', 'Cliente',
+                    'Fecha', 'Tipo', 'Verificacion', 'Negocio', 'Cliente',
                     'Direccion', 'Telefono', 'Motivo', 'Resultado', 'Vendedor',
                   ].map(h => (
                     <th
@@ -221,10 +221,26 @@ export function BitacoraClient({ token, initial }: Props) {
                         {formatDate(inc.created_at)}
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap">
-                        {formatDate(inc.verification_scheduled_at)}
+                        {inc.type === 'alta' ? (
+                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ background: '#DCFCE7', color: '#166534' }}>
+                            Alta
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ background: '#FEE2E2', color: '#991B1B' }}>
+                            Queja
+                          </span>
+                        )}
                       </td>
-                      <td className="px-3 py-2 font-medium max-w-[140px] truncate">
-                        {inc.business_name}
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        {inc.verification_scheduled_at ? formatDate(inc.verification_scheduled_at) : <span style={{ color: '#9B8FB5' }}>—</span>}
+                      </td>
+                      <td className="px-3 py-2 font-medium max-w-[160px]">
+                        <div className="truncate">{inc.business_name}</div>
+                        {inc.sucursal && (
+                          <div className="text-[10px] font-normal truncate" style={{ color: '#6B6480' }}>
+                            Suc. {inc.sucursal}
+                          </div>
+                        )}
                       </td>
                       <td className="px-3 py-2 max-w-[120px] truncate">
                         {inc.contact_name ?? <span style={{ color: '#9B8FB5' }}>Sin nombre</span>}
@@ -236,10 +252,12 @@ export function BitacoraClient({ token, initial }: Props) {
                         {inc.contact_phone}
                       </td>
                       <td className="px-3 py-2 max-w-[160px] truncate">
-                        {inc.motivo}
+                        {inc.motivo ?? <span style={{ color: '#9B8FB5' }}>—</span>}
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap">
-                        {inc.verification_result ? (
+                        {inc.type === 'alta' ? (
+                          <span className="flex items-center gap-1" style={{ color: '#9B8FB5' }}>—</span>
+                        ) : inc.verification_result ? (
                           <span className="flex items-center gap-1">
                             {inc.verification_result === 'ok' && (
                               <CheckCircle size={11} style={{ color: '#16a34a' }} />
