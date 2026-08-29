@@ -1,6 +1,9 @@
-import { Workbook } from 'exceljs';
+import { Workbook, Worksheet } from 'exceljs';
 import type { IncidentRow } from '@/app/portal/[token]/oficina/bitacora/loadBitacoraData';
 import type { TemplateMapping, CanonicalField } from './template-analyzer';
+
+/** Header interno de la col oculta que rastrea incident_id para merge. */
+export const HIDDEN_ID_HEADER = '_incident_id';
 
 /**
  * Extrae el valor de un incident correspondiente a un campo canónico.
@@ -37,13 +40,24 @@ function fieldValue(inc: IncidentRow, field: CanonicalField): string {
   }
 }
 
-function colLetterToNumber(letter: string): number {
+export function colLetterToNumber(letter: string): number {
   const upper = letter.toUpperCase();
   let n = 0;
   for (let i = 0; i < upper.length; i++) {
     n = n * 26 + (upper.charCodeAt(i) - 64);
   }
   return n;
+}
+
+export interface RenderOptions {
+  /** Map de incident_id → { colLetter → valor previamente escrito por humano }.
+   *  Sirve para preservar ediciones manuales en cols marcadas como human_only
+   *  cuando se re-genera el archivo persistente. Aplica a CUALQUIER col human_only
+   *  (vendedor, notas, etc), no solo vendedor. */
+  preservedValues?: Map<string, Map<string, string>>;
+  /** Si true, agrega una col oculta al final con el incident_id de cada fila.
+   *  Sirve para matchear rows al re-generar en modo persistente. */
+  includeHiddenIncidentId?: boolean;
 }
 
 /**
@@ -63,6 +77,7 @@ export async function renderWithCustomTemplate(
   templateBuffer: Buffer,
   mapping:        TemplateMapping,
   incidents:      IncidentRow[],
+  options:        RenderOptions = {},
 ): Promise<Buffer> {
   const wb = new Workbook();
   await wb.xlsx.load(templateBuffer as unknown as ArrayBuffer);
@@ -70,6 +85,22 @@ export async function renderWithCustomTemplate(
   const ws = wb.getWorksheet(mapping.sheet_name) ?? wb.worksheets[0];
   if (!ws) throw new Error(`Sheet '${mapping.sheet_name}' no encontrado en el template`);
 
+  populateSheetWithIncidents(ws, mapping, incidents, options);
+
+  return Buffer.from(await wb.xlsx.writeBuffer());
+}
+
+/**
+ * Puebla una sheet ya existente en el workbook con las incidencias dadas.
+ * Reusable entre el flow ephemeral (renderWithCustomTemplate) y el persistente
+ * (live-workbook). La sheet debe tener ya la estructura del template.
+ */
+export function populateSheetWithIncidents(
+  ws:        Worksheet,
+  mapping:   TemplateMapping,
+  incidents: IncidentRow[],
+  options:   RenderOptions = {},
+): void {
   // Cachear estilos de la fila template
   const sampleRow = ws.getRow(mapping.insertion_row);
   const sampleStyles: (unknown | undefined)[] = [];
@@ -78,25 +109,51 @@ export async function renderWithCustomTemplate(
     sampleStyles[colNum] = cell.style;
     if (colNum > maxCol) maxCol = colNum;
   });
-  // Fallback: si la fila template está vacía, usamos como min el rango de cols mapeadas
   for (const colLetter of Object.keys(mapping.columns)) {
     const n = colLetterToNumber(colLetter);
     if (n > maxCol) maxCol = n;
   }
 
+  const hiddenIdCol = options.includeHiddenIncidentId ? maxCol + 1 : null;
+
   // Borrar la fila template
   ws.spliceRows(mapping.insertion_row, 1);
+
+  const humanOnly = new Set((mapping.human_only_columns ?? []).map(c => c.toUpperCase()));
 
   // Insertar filas de datos
   incidents.forEach((inc, i) => {
     const rowIdx = mapping.insertion_row + i;
-    const emptyRow = new Array(maxCol + 1).fill(null);
+    const emptyRow = new Array((hiddenIdCol ?? maxCol) + 1).fill(null);
     const newRow = ws.insertRow(rowIdx, emptyRow);
+
+    const preservedForRow = options.preservedValues?.get(inc.id);
 
     for (const [colLetter, field] of Object.entries(mapping.columns)) {
       if (!field) continue;
       const colNum = colLetterToNumber(colLetter);
-      newRow.getCell(colNum).value = fieldValue(inc, field);
+      const colUpper = colLetter.toUpperCase();
+
+      // Prioridad de valor:
+      // 1. Preservado (humano ya escribió aquí en un envío previo) → respetarlo
+      // 2. Si es human_only y no hay preserved: initial-write con valor de DB
+      //    (queda como "sugerencia" inicial; si el humano lo cambia, próxima
+      //    generación lo captura como preserved).
+      // 3. DB value default.
+      const preserved = preservedForRow?.get(colUpper);
+      if (preserved !== undefined) {
+        newRow.getCell(colNum).value = preserved;
+      } else {
+        newRow.getCell(colNum).value = fieldValue(inc, field);
+      }
+      // Marcamos la variable para futuros lints — humanOnly ya influye vía
+      // extractHumanEditedValues (solo esas cols se extraen en el próximo ciclo).
+      void humanOnly;
+    }
+
+    // Col oculta con incident_id
+    if (hiddenIdCol) {
+      newRow.getCell(hiddenIdCol).value = inc.id;
     }
 
     // Aplicar estilos cacheados a cada col (aunque no esté mapeada — respeta
@@ -106,5 +163,64 @@ export async function renderWithCustomTemplate(
     });
   });
 
-  return Buffer.from(await wb.xlsx.writeBuffer());
+  // Hidden col config: header + hidden=true
+  if (hiddenIdCol) {
+    // Solo poner header si la row 1 tiene contenido para no perder posición
+    const headerCell = ws.getRow(1).getCell(hiddenIdCol);
+    if (!headerCell.value) headerCell.value = HIDDEN_ID_HEADER;
+    ws.getColumn(hiddenIdCol).hidden = true;
+  }
+}
+
+/**
+ * Extrae el map { incident_id → { colLetter → valor } } para todas las cols
+ * marcadas como human_only en el mapping. Sirve para preservar cualquier
+ * edición humana (vendedor, notas, prioridad, etc) al regenerar el archivo
+ * persistente. Retorna map vacío si la sheet no tiene la col oculta o no hay
+ * cols human_only.
+ */
+export function extractHumanEditedValues(
+  ws:      Worksheet,
+  mapping: TemplateMapping,
+): Map<string, Map<string, string>> {
+  const result = new Map<string, Map<string, string>>();
+
+  const humanOnly = (mapping.human_only_columns ?? []).map(c => c.toUpperCase());
+  if (humanOnly.length === 0) return result;
+
+  // Encontrar la col oculta con incident_id: buscar en row 1 la celda con
+  // HIDDEN_ID_HEADER como valor.
+  let hiddenIdCol: number | null = null;
+  const headerRow = ws.getRow(1);
+  headerRow.eachCell({ includeEmpty: true }, (cell, colNum) => {
+    const v = cell.value;
+    if (typeof v === 'string' && v === HIDDEN_ID_HEADER) hiddenIdCol = colNum;
+  });
+  if (!hiddenIdCol) return result;
+
+  const humanOnlyColNums: Array<{ letter: string; num: number }> = humanOnly.map(letter => ({
+    letter,
+    num:    colLetterToNumber(letter),
+  }));
+
+  // Escanear filas de datos
+  ws.eachRow({ includeEmpty: false }, (row, rowNum) => {
+    if (rowNum < mapping.insertion_row) return;
+    const idCell = row.getCell(hiddenIdCol!);
+    const id = idCell.value;
+    if (typeof id !== 'string' || id.length === 0) return;
+
+    const values = new Map<string, string>();
+    for (const { letter, num } of humanOnlyColNums) {
+      const cellVal = row.getCell(num).value;
+      if (typeof cellVal === 'string' && cellVal.trim().length > 0) {
+        values.set(letter, cellVal.trim());
+      } else if (typeof cellVal === 'number') {
+        values.set(letter, String(cellVal));
+      }
+    }
+    if (values.size > 0) result.set(id, values);
+  });
+
+  return result;
 }

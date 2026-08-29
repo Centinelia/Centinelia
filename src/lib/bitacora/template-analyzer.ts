@@ -31,6 +31,12 @@ export interface TemplateMapping {
   insertion_row: number;
   /** Nombre del sheet que contiene la bitácora (si hay varios, Claude elige). */
   sheet_name: string;
+  /** Letras de columnas que el empleado digital NUNCA actualiza. Se llenan al
+   *  crear la fila (initial write) con el valor de DB, y de ahí en adelante
+   *  se preservan aunque el humano las edite. Auto-detectado por Claude
+   *  (vendedor asignado, notas del gerente, prioridad, seguimiento, etc);
+   *  el cliente puede overridear desde el UI. */
+  human_only_columns: string[];
   /** Comentarios que Claude puso sobre el mapping (ambigüedades detectadas). */
   notes?: string;
 }
@@ -80,6 +86,7 @@ Tu tarea:
 2. Identifica qué columna corresponde a cada uno de estos campos canónicos:
 ${CANONICAL_FIELDS.map(f => `   - ${f}`).join('\n')}
 3. Identifica en qué número de fila arrancan los DATOS (la primera fila donde iría un registro real, después de los headers/títulos).
+4. Identifica cuáles columnas son "solo humano" — cols donde el usuario final escribe manualmente sus notas y NO deben ser sobreescritas por el empleado digital. Patrones típicos: "vendedor asignado", "responsable", "notas del gerente", "prioridad", "seguimiento", "comentarios internos", "estatus interno". La col "vendedor" casi siempre entra aquí (el humano asigna quién atiende).
 
 Campos:
 - fecha: fecha de la incidencia
@@ -94,7 +101,8 @@ Campos:
 - verification_result: ok / no_visitado / sin_respuesta / pendiente
 - vendedor: quién atiende ese cliente
 
-Regla: solo mapea columnas cuya semántica sea CLARA. Si dudas, no la mapeas (mejor faltante que erróneo). Las columnas sin mapear se quedarán vacías (para llenar manual).
+Regla mapping: solo mapea columnas cuya semántica sea CLARA. Si dudas, no la mapeas (mejor faltante que erróneo).
+Regla human_only: incluye letras de columnas que el empleado digital debe respetar aunque estén mapeadas (initial-write con dato de DB si aplica, después nunca sobrescribir).
 
 Estructura del archivo (primeras 6 filas de cada sheet):
 ${JSON.stringify(sheetsData, null, 2)}
@@ -106,8 +114,10 @@ Responde SOLO con JSON válido en este shape (nada más, sin markdown):
   "columns": {
     "A": "fecha",
     "B": "business_name",
-    "C": "sucursal"
+    "C": "sucursal",
+    "D": "vendedor"
   },
+  "human_only_columns": ["D"],
   "notes": "opcional, si detectaste ambigüedad"
 }`;
 
@@ -123,10 +133,11 @@ Responde SOLO con JSON válido en este shape (nada más, sin markdown):
   const jsonMatch = raw.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error('Claude no devolvió JSON parseable');
   const parsed = JSON.parse(jsonMatch[0]) as {
-    sheet_name?:    string;
-    insertion_row?: number;
-    columns?:       Record<string, string>;
-    notes?:         string;
+    sheet_name?:         string;
+    insertion_row?:      number;
+    columns?:            Record<string, string>;
+    human_only_columns?: string[];
+    notes?:              string;
   };
 
   if (!parsed.sheet_name || !parsed.insertion_row || !parsed.columns) {
@@ -141,12 +152,20 @@ Responde SOLO con JSON válido en este shape (nada más, sin markdown):
     }
   }
 
+  // Normalizar human_only_columns: uppercase, dedupe, y solo cols que existen
+  // en el mapping (evita marcar cols vacías o inexistentes).
+  const humanOnly = Array.isArray(parsed.human_only_columns)
+    ? [...new Set(parsed.human_only_columns.map(c => String(c).toUpperCase()))]
+        .filter(c => c in validColumns)
+    : [];
+
   return {
     mapping: {
-      columns:       validColumns,
-      insertion_row: parsed.insertion_row,
-      sheet_name:    parsed.sheet_name,
-      notes:         parsed.notes,
+      columns:            validColumns,
+      insertion_row:      parsed.insertion_row,
+      sheet_name:         parsed.sheet_name,
+      human_only_columns: humanOnly,
+      notes:              parsed.notes,
     },
     usage: {
       input_tokens:  response.usage.input_tokens,

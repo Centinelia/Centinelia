@@ -1,15 +1,16 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { FileSpreadsheet, Upload, RotateCcw, Loader2, CheckCircle2 } from 'lucide-react';
+import { FileSpreadsheet, Upload, RotateCcw, Loader2, CheckCircle2, User, Bot } from 'lucide-react';
 
 interface CurrentTemplate {
   filename?:    string;
   uploaded_at?: string;
   mapping?: {
-    sheet_name?: string;
-    columns?:    Record<string, string>;
-    notes?:      string;
+    sheet_name?:         string;
+    columns?:            Record<string, string>;
+    human_only_columns?: string[];
+    notes?:              string;
   };
 }
 
@@ -38,6 +39,7 @@ export function TemplateUploader({ token, agentId, current, uploadCost }: Props)
   const inputRef = useRef<HTMLInputElement>(null);
   const [state,   setState]   = useState<CurrentTemplate | null>(current);
   const [loading, setLoading] = useState(false);
+  const [savingTogglesId, setSavingTogglesId] = useState(false);
   const [error,   setError]   = useState<string | null>(null);
 
   async function handleFile(file: File) {
@@ -85,7 +87,39 @@ export function TemplateUploader({ token, agentId, current, uploadCost }: Props)
     }
   }
 
+  async function toggleHumanOnly(col: string, currentIsHumanOnly: boolean) {
+    if (!state?.mapping) return;
+    const currentList = state.mapping.human_only_columns ?? [];
+    const nextList = currentIsHumanOnly
+      ? currentList.filter(c => c.toUpperCase() !== col.toUpperCase())
+      : [...currentList, col.toUpperCase()];
+
+    setSavingTogglesId(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/portal/${token}/oficina/bitacora/template-config?agent_id=${agentId}`, {
+        method:  'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body:    JSON.stringify({ human_only_columns: nextList }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error ?? 'Error al guardar');
+      setState({
+        ...state,
+        mapping: {
+          ...state.mapping,
+          human_only_columns: body.human_only_columns,
+        },
+      });
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSavingTogglesId(false);
+    }
+  }
+
   const hasCustom = !!state?.mapping;
+  const humanOnlySet = new Set((state?.mapping?.human_only_columns ?? []).map(c => c.toUpperCase()));
 
   return (
     <div
@@ -99,7 +133,7 @@ export function TemplateUploader({ token, agentId, current, uploadCost }: Props)
         </h2>
       </div>
       <p className="text-xs mb-4" style={{ color: '#6B6480' }}>
-        Si tienes tu propio formato de bitácora en Excel, súbelo aquí y Nelia lo llenará usando ese diseño (con tus colores, columnas y logo). Si no subes nada, se usa el formato por defecto de Centinelia.
+        Si tienes tu propio formato de bitácora en Excel, súbelo aquí y tu empleado lo llenará usando ese diseño (con tus colores, columnas y logo). Si no subes nada, se usa el formato por defecto de Centinelia.
       </p>
 
       {hasCustom && (
@@ -119,25 +153,52 @@ export function TemplateUploader({ token, agentId, current, uploadCost }: Props)
             </div>
           </div>
           {state?.mapping?.columns && Object.keys(state.mapping.columns).length > 0 && (
-            <div className="mt-2 pt-2" style={{ borderTop: '1px solid rgba(34,197,94,0.2)' }}>
-              <p className="text-[10px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#6B6480' }}>
-                Columnas detectadas
+            <div className="mt-3 pt-3" style={{ borderTop: '1px solid rgba(34,197,94,0.2)' }}>
+              <p className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: '#6B6480' }}>
+                Reglas de escritura por columna
               </p>
-              <div className="flex flex-wrap gap-1">
-                {Object.entries(state.mapping.columns).map(([col, field]) => (
-                  <span
-                    key={col}
-                    className="text-[10px] px-1.5 py-0.5 rounded"
-                    style={{ background: 'rgba(108,59,255,0.08)', color: '#6C3BFF' }}
-                  >
-                    <strong>{col}</strong> → {FIELD_LABELS[field] ?? field}
-                  </span>
-                ))}
+              <p className="text-[11px] mb-3" style={{ color: '#6B6480' }}>
+                Marca las columnas donde <strong>solo tú escribes manualmente</strong> (vendedor asignado, notas internas, etc). Tu empleado nunca las tocará, aunque las mostrará en el reporte.
+              </p>
+              <div className="flex flex-col gap-1.5">
+                {Object.entries(state.mapping.columns).map(([col, field]) => {
+                  const isHumanOnly = humanOnlySet.has(col.toUpperCase());
+                  return (
+                    <button
+                      key={col}
+                      type="button"
+                      onClick={() => toggleHumanOnly(col, isHumanOnly)}
+                      disabled={savingTogglesId}
+                      className="flex items-center justify-between px-2 py-1.5 rounded text-xs transition-colors disabled:opacity-50"
+                      style={{
+                        background: '#ffffff',
+                        border:     '1px solid #E8E3F5',
+                        cursor:     savingTogglesId ? 'wait' : 'pointer',
+                      }}
+                    >
+                      <span style={{ color: '#1A0A3B' }}>
+                        <strong>Col {col}</strong>
+                        <span className="mx-1.5" style={{ color: '#9B8FB5' }}>·</span>
+                        {FIELD_LABELS[field] ?? field}
+                      </span>
+                      <span
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold"
+                        style={
+                          isHumanOnly
+                            ? { background: 'rgba(217,119,6,0.1)', color: '#B45309' }
+                            : { background: 'rgba(108,59,255,0.1)', color: '#6C3BFF' }
+                        }
+                      >
+                        {isHumanOnly ? <><User size={9} /> Solo yo escribo</> : <><Bot size={9} /> Empleado escribe</>}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
           {state?.mapping?.notes && (
-            <p className="text-[11px] mt-2 italic" style={{ color: '#6B6480' }}>
+            <p className="text-[11px] mt-3 italic" style={{ color: '#6B6480' }}>
               Nota: {state.mapping.notes}
             </p>
           )}
