@@ -4,6 +4,41 @@ import type { IncidentRow } from '@/app/portal/[token]/oficina/bitacora/loadBita
 import type { TemplateMapping } from './template-analyzer';
 import { upsertSheetWithIncidents, clearHistoricalDataRows } from './template-render';
 
+/** Placeholder que el cliente puede poner en su template. Se reemplaza en
+ *  cada sheet clonada con el rango real de la semana ("24-30 AGO"). */
+const WEEK_RANGE_PLACEHOLDER = '{{RANGO_SEMANA}}';
+
+const MONTHS_ES_SHORT = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+
+function formatWeekRange(monday: Date): string {
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  const mDay = monday.getDate();
+  const sDay = sunday.getDate();
+  const mMon = MONTHS_ES_SHORT[monday.getMonth()];
+  const sMon = MONTHS_ES_SHORT[sunday.getMonth()];
+  if (monday.getMonth() === sunday.getMonth()) {
+    return `${mDay}-${sDay} ${mMon}`;
+  }
+  return `${mDay} ${mMon} - ${sDay} ${sMon}`;
+}
+
+/**
+ * Reemplaza todas las celdas de la sheet que contengan `{{RANGO_SEMANA}}`
+ * con el rango real de la semana en formato "24-30 AGO" o "28 AGO - 3 SEP"
+ * si cruza mes. Se llama al clonar/inicializar cada Semana N.
+ */
+function injectWeekRange(ws: Worksheet, weekStart: Date): void {
+  const label = formatWeekRange(weekStart);
+  ws.eachRow({ includeEmpty: false }, (row) => {
+    row.eachCell({ includeEmpty: false }, (cell) => {
+      if (typeof cell.value === 'string' && cell.value.includes(WEEK_RANGE_PLACEHOLDER)) {
+        cell.value = cell.value.replace(WEEK_RANGE_PLACEHOLDER, label);
+      }
+    });
+  });
+}
+
 type SupabaseClient = ReturnType<typeof createAdminClient>;
 
 export interface WeekSpec {
@@ -82,8 +117,9 @@ export async function updateLiveWorkbook(input: UpdateLiveInput): Promise<Buffer
     // Limpiar data histórica del cliente (rows debajo del insertion_row del
     // template que son data de meses/años previos que no aplica al nuevo mes).
     clearHistoricalDataRows(templateSheet, input.mapping.insertion_row);
-    // Renombrar template sheet a "Semana N" del primer week
+    // Renombrar template sheet a "Semana N" del primer week + inyectar rango
     templateSheet.name = `Semana ${input.weeks[0].weekNumber}`;
+    injectWeekRange(templateSheet, input.weeks[0].weekStart);
   }
 
   // 2. Para cada semana: upsert
@@ -100,6 +136,8 @@ export async function updateLiveWorkbook(input: UpdateLiveInput): Promise<Buffer
       );
       // Limpiar data histórica clonada del template (misma razón que arriba).
       clearHistoricalDataRows(ws, input.mapping.insertion_row);
+      // Inyectar rango de fechas de esta semana en el placeholder del header
+      injectWeekRange(ws, week.weekStart);
     }
     upsertSheetWithIncidents(ws, input.mapping, week.incidents);
   }
