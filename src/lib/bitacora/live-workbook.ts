@@ -2,7 +2,7 @@ import { Workbook, Worksheet } from 'exceljs';
 import type { createAdminClient } from '@/lib/supabase/admin';
 import type { IncidentRow } from '@/app/portal/[token]/oficina/bitacora/loadBitacoraData';
 import type { TemplateMapping } from './template-analyzer';
-import { upsertSheetWithIncidents, clearHistoricalDataRows } from './template-render';
+import { upsertSheetWithIncidents, clearHistoricalDataRows, cleanCellsBeyondMappedArea } from './template-render';
 
 /** Placeholder que el cliente puede poner en su template. Se reemplaza en
  *  cada sheet clonada con el rango real de la semana ("24-30 AGO"). */
@@ -114,6 +114,11 @@ export async function updateLiveWorkbook(input: UpdateLiveInput): Promise<Buffer
     for (const ws of [...outWb.worksheets]) {
       if (ws.name !== targetName) outWb.removeWorksheet(ws.id);
     }
+    // Limpiar "cola" del template — cols que quedan a la derecha del área
+    // mapeada (day letters de semanas ajenas, títulos merged que bleedean,
+    // grids duplicados). Cliente sube su xlsx tal cual y estas colas son
+    // artefactos comunes que no aplican al correo.
+    cleanCellsBeyondMappedArea(templateSheet, input.mapping);
     // Limpiar data histórica del cliente (rows debajo del insertion_row del
     // template que son data de meses/años previos que no aplica al nuevo mes).
     clearHistoricalDataRows(templateSheet, input.mapping.insertion_row);
@@ -134,7 +139,9 @@ export async function updateLiveWorkbook(input: UpdateLiveInput): Promise<Buffer
         outWb,
         sheetName,
       );
-      // Limpiar data histórica clonada del template (misma razón que arriba).
+      // Limpiar cola beyond del área mapeada + data histórica clonada del
+      // template (mismas razones que en el fresh path).
+      cleanCellsBeyondMappedArea(ws, input.mapping);
       clearHistoricalDataRows(ws, input.mapping.insertion_row);
       // Inyectar rango de fechas de esta semana en el placeholder del header
       injectWeekRange(ws, week.weekStart);

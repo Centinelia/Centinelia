@@ -98,6 +98,91 @@ function writeVerificationGrid(
 }
 
 /**
+ * Calcula el número máximo de col usada por el mapping (columns + grid). NO
+ * considera contenido residual del template (row 1, row 2 con day letters de
+ * semanas ajenas, etc). Sirve para saber dónde termina el "área útil" y desde
+ * dónde limpiar residuos.
+ */
+function computeMappedColBound(mapping: TemplateMapping): number {
+  let maxUsed = 1;
+  for (const colLetter of Object.keys(mapping.columns)) {
+    const n = colLetterToNumber(colLetter);
+    if (n > maxUsed) maxUsed = n;
+  }
+  if (mapping.verification_grid) {
+    for (const key of GRID_DAY_KEYS) {
+      const colLetter = mapping.verification_grid[key];
+      if (colLetter) {
+        const n = colLetterToNumber(colLetter);
+        if (n > maxUsed) maxUsed = n;
+      }
+    }
+  }
+  return maxUsed;
+}
+
+/**
+ * Limpia todo lo que quede a la derecha del área mapeada. Cliente sube
+ * templates con "cola" — cols con days-of-week de la siguiente semana, títulos
+ * merged que se rompen y bleedean texto, day letters de semanas ajenas, etc.
+ * Nada de eso aplica al correo del mes en curso (cada semana tiene su propio
+ * sheet con su propio rango), así que se elimina.
+ *
+ * Preserva:
+ * - Todas las cols dentro del área mapeada (A..maxUsed)
+ * - La col oculta _incident_id que upsertSheetWithIncidents crea después
+ *   (esta función corre ANTES del upsert, entonces la col oculta aún no existe)
+ *
+ * Elimina para cols > maxUsed en todas las rows:
+ * - Values (null)
+ * - Styles (fill, font, border, alignment)
+ * - Merges que crucen la frontera
+ * - Col widths custom (vuelven al default)
+ */
+export function cleanCellsBeyondMappedArea(ws: Worksheet, mapping: TemplateMapping): void {
+  const mappedBound = computeMappedColBound(mapping);
+  if (mappedBound < 1) return;
+
+  // Deshacer merges que cruzan la frontera
+  const model = (ws as unknown as { model?: { merges?: unknown } }).model;
+  const merges = model?.merges;
+  if (Array.isArray(merges)) {
+    for (const mergeSpec of [...merges]) {
+      if (typeof mergeSpec === 'string') {
+        // Parse "A1:H2" — extraer cols de inicio/fin
+        const match = mergeSpec.match(/^([A-Z]+)\d+:([A-Z]+)\d+$/);
+        if (match) {
+          const endColNum = colLetterToNumber(match[2]);
+          if (endColNum > mappedBound) {
+            try { ws.unMergeCells(mergeSpec); } catch { /* ya no existe */ }
+          }
+        }
+      }
+    }
+  }
+
+  // Limpiar cells + styles en cols > mappedBound. Rango arbitrario 60 cols
+  // (cubre incluso templates muy amplios).
+  const upperBound = Math.max(60, ws.columnCount + 5);
+  const maxRow = Math.max(ws.rowCount, 10);
+  for (let r = 1; r <= maxRow; r++) {
+    const row = ws.getRow(r);
+    for (let c = mappedBound + 1; c <= upperBound; c++) {
+      const cell = row.getCell(c);
+      if (cell.value != null) cell.value = null;
+      cell.style = {};
+    }
+  }
+
+  // Resetear col widths custom (vuelven al default Excel)
+  for (let c = mappedBound + 1; c <= upperBound; c++) {
+    const col = ws.getColumn(c);
+    col.width = undefined as unknown as number;
+    col.hidden = false;
+  }
+}
+
+/**
  * Limpia rows de "data histórica" del template (todo debajo de insertion_row).
  * Preserva header rows (1..insertion_row-1) + la template row (insertion_row)
  * con sus estilos, pero limpia valores de la template row. Se usa cuando

@@ -67,13 +67,8 @@ async function main() {
     for (let c = 17; c <= 26; c++) {
       row2.getCell(c).value = null;
     }
-    // Row 1 cols Q-Z (parte del "SEGUIMIENTO PRIMER MES" merged) — dejar solo
-    // el merge en K:Q, quitar valores de R en adelante que serían visibles si
-    // el merge se rompe.
-    const row1 = ws.getRow(1);
-    for (let c = 17; c <= 26; c++) {
-      row1.getCell(c).value = null;
-    }
+    // (Row 1 cleanup se hace más abajo, después del merge K2:P2, para no
+    //  colisionar con el título merged que vamos a poner ahí.)
     // Row 2 K:P → set placeholder centrado en K (que después se mergea)
     const kCell = row2.getCell(11);
     kCell.value = WEEK_RANGE_PLACEHOLDER;
@@ -81,8 +76,21 @@ async function main() {
     kCell.font = { bold: true, color: { argb: 'FF1A0A3B' } };
     kCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8E3F5' } };
 
-    // Merge K2:P2
+    // Merge K2:P2 con el placeholder centrado
     try { ws.mergeCells('K2:P2'); } catch { /* ya mergeado, ignorar */ }
+
+    // Row 1 K:P — el título "SEGUIMIENTO DEL CLIENTE EN SU SERVICIO PRIMER MES"
+    // era originalmente merged sobre K1:Q1. Después de unmerge quedó huérfano
+    // en K1 y bleedea visualmente. Ponemos un título corto centrado sobre el
+    // rango del grid + re-merge K1:P1 para que no se salga.
+    const row1 = ws.getRow(1);
+    for (let c = 11; c <= 26; c++) row1.getCell(c).value = null;
+    const k1 = row1.getCell(11);
+    k1.value = 'SEGUIMIENTO SEMANAL';
+    k1.alignment = { horizontal: 'center', vertical: 'middle' };
+    k1.font = { bold: true, color: { argb: 'FF1A0A3B' }, size: 11 };
+    k1.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD7CDF7' } };
+    try { ws.mergeCells('K1:P1'); } catch { /* ya mergeado */ }
 
     // Insertar nueva row 3: L/M/MI/J/V/S en K-P, resto vacío
     // Usamos insertRow para desplazar todo hacia abajo.
