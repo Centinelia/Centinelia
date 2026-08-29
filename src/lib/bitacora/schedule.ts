@@ -47,19 +47,27 @@ export function monthStart(date: Date): Date {
 }
 
 /**
- * Número de semana dentro del mes basado en el día del sábado (o cualquier
- * fecha). Cae en el mismo bucket todo el rango del mes:
- *   días  1-7  → Semana 1
- *   días  8-14 → Semana 2
- *   días 15-21 → Semana 3
- *   días 22-28 → Semana 4
- *   días 29-31 → Semana 5
+ * Número de semana dentro del mes basado en el lunes de la semana Lun-Dom
+ * que contiene la fecha. Semana 1 = semana que contiene el día 1 del mes.
  *
- * NOTA: no coincide con "semana ISO"; se usa la convención más natural para
- * clientes non-técnicos ("semana X del mes").
+ * Ejemplo agosto 2026 (Aug 1 es sábado):
+ *   Sáb Aug 1  (weekMonday Jul 27) → Semana 1
+ *   Sáb Aug 8  (weekMonday Aug 3)  → Semana 2
+ *   Sáb Aug 22 (weekMonday Aug 17) → Semana 4
+ *   Vie Aug 28 (weekMonday Aug 24) → Semana 5
+ *   Sáb Aug 29 (weekMonday Aug 24) → Semana 5
+ *
+ * Fórmula naïve `Math.floor((day-1)/7)+1` fallaba porque colocaba Aug 22 y
+ * Aug 28 en el mismo bucket a pesar de ser semanas Lun-Dom distintas.
  */
 export function weekNumberInMonth(date: Date): number {
-  return Math.floor((date.getDate() - 1) / 7) + 1;
+  const firstOfMonth = new Date(date);
+  firstOfMonth.setDate(1);
+  firstOfMonth.setHours(0, 0, 0, 0);
+  const firstWeekMonday = weekStartMonday(firstOfMonth);
+  const thisWeekMonday  = weekStartMonday(date);
+  const diffDays = Math.round((thisWeekMonday.getTime() - firstWeekMonday.getTime()) / 86400000);
+  return Math.floor(diffDays / 7) + 1;
 }
 
 /**
