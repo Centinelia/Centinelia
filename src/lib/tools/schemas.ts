@@ -412,16 +412,20 @@ export const TOOL_SCHEMAS: Record<string, ToolSchema> = {
     channels: ['voice', 'chat', 'email'] as const,
   },
 
-  // verificar_recepcion_incidencia — llamadas salientes de verificación 3 días.
+  // verificar_recepcion_incidencia — llamadas salientes de verificación.
+  // Multi-intento: puede llamarse varias veces para el mismo incident_id (por
+  // ejemplo cuando la primera llamada no contesta y hay que reintentar). Cada
+  // invocación se apendea a verification_attempts. Los campos "actuales"
+  // (verification_called_at, verification_result) reflejan siempre el último.
   verificar_recepcion_incidencia: {
     name: 'verificar_recepcion_incidencia',
-    description: 'Marca el resultado de la llamada de verificación de 3 días. Solo se usa en llamadas salientes disparadas por auto_incident_verification.',
+    description: 'Registra el resultado de esta llamada de verificación con el cliente. Cada llamada queda apendeada al historial del incident — puedes llamar varias veces si en un primer intento no contestaron o quedó pendiente. Solo se usa en llamadas salientes.',
     input_schema: {
       type: 'object' as const,
       properties: {
         incident_id: { type: 'string', description: 'ID del incidente (viene en el contexto de la llamada saliente).' },
-        resultado:   { type: 'string', enum: ['ok','no_visitado','sin_respuesta'] as const, description: 'ok si ya recibió, no_visitado si sigue sin recibir, sin_respuesta si no dio respuesta clara.' },
-        notas:       { type: 'string', description: 'Detalle adicional en máximo una frase (opcional).' },
+        resultado:   { type: 'string', enum: ['ok','no_visitado','sin_respuesta'] as const, description: 'ok si ya recibió, no_visitado si sigue sin recibir, sin_respuesta si no dio respuesta clara (no contestó / colgó / cliente ocupado).' },
+        notas:       { type: 'string', description: 'Detalle adicional en máximo una frase (opcional). Ej: "pedirle volver a llamar mañana en la tarde".' },
       },
       required: ['incident_id', 'resultado'] as const,
     },

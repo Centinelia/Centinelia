@@ -263,6 +263,15 @@ export function BitacoraClient({ token, initial }: Props) {
                               <CheckCircle size={11} style={{ color: '#16a34a' }} />
                             )}
                             {RESULT_LABEL[inc.verification_result] ?? inc.verification_result}
+                            {(inc.verification_attempts?.length ?? 0) > 1 && (
+                              <span
+                                title={`${inc.verification_attempts.length} intentos de contacto`}
+                                className="ml-1 px-1 py-0.5 rounded text-[9px] font-semibold"
+                                style={{ background: 'rgba(108,59,255,0.1)', color: '#6C3BFF' }}
+                              >
+                                {inc.verification_attempts.length}×
+                              </span>
+                            )}
                           </span>
                         ) : (
                           <span className="flex items-center gap-1" style={{ color: '#9B8FB5' }}>

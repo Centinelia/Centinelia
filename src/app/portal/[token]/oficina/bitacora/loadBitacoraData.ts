@@ -1,6 +1,12 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { resolveOrgFromToken } from '@/lib/portal/org-token';
 
+export interface VerificationAttempt {
+  called_at: string;
+  result:    'ok' | 'no_visitado' | 'sin_respuesta';
+  notes:     string | null;
+}
+
 export interface IncidentRow {
   id:                        string;
   type:                      'queja' | 'alta';
@@ -17,6 +23,9 @@ export interface IncidentRow {
   verification_called_at:    string | null;
   verification_result:       'ok' | 'no_visitado' | 'sin_respuesta' | null;
   verification_result_notes: string | null;
+  /** Historial completo de intentos. La última entrada corresponde a
+   *  verification_called_at/verification_result (backwards compat). */
+  verification_attempts:     VerificationAttempt[];
 }
 
 export type BitacoraRangeMode = 'weekly' | 'monthly';
