@@ -177,12 +177,38 @@ export async function POST(req: NextRequest) {
 
     if (outboundCall.contact_id) {
       const { transitionOutboundContact } = await import('@/lib/state-machines/outbound-contact');
+
+      // Multi-intento: si el contacto es un follow-up de client_incident y
+      // el último resultado no fue 'ok', reagendar automáticamente en vez
+      // de completar. Cap en MAX_VERIFICATION_ATTEMPTS para escalar a humano.
+      let toStatus: 'completed' | 'pending' | 'failed' = 'completed';
+      let reason  = 'answered_and_completed';
+      let extraFields: Record<string, unknown> = {};
+
+      const { data: contactMeta } = await supabase
+        .from('outbound_contacts')
+        .select('external_source, external_id')
+        .eq('id', outboundCall.contact_id)
+        .maybeSingle();
+      if (contactMeta) {
+        const { decideIncidentAutoRetry } = await import('@/lib/incidents/auto-retry');
+        const decision = await decideIncidentAutoRetry(supabase as never, contactMeta as never);
+        if (decision) {
+          toStatus = decision.toStatus;
+          reason   = decision.reason;
+          if (decision.scheduledAt) {
+            extraFields = { scheduled_at: decision.scheduledAt };
+          }
+        }
+      }
+
       await transitionOutboundContact({
         supabase, contactId: outboundCall.contact_id,
-        toStatus: 'completed',
+        toStatus,
         actor:    'vapi_webhook',
-        reason:   'answered_and_completed',
+        reason,
         metadata: { ended_reason: endedReason, duration_sec: durationSec, minutes_charged: minutes },
+        extraFields,
       });
     }
 
