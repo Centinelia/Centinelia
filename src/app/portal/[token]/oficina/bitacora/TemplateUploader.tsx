@@ -1,7 +1,8 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { FileSpreadsheet, Upload, RotateCcw, Loader2, CheckCircle2, User, Bot, Lightbulb, AlertTriangle, Info } from 'lucide-react';
+import { FileSpreadsheet, Upload, RotateCcw, Loader2, CheckCircle2, User, Lightbulb, AlertTriangle, Info } from 'lucide-react';
+import Meerkat from '@/components/icons/Meerkat';
 
 interface TemplateSuggestion {
   type:      'rename_header' | 'add_header' | 'remove_col' | 'widen_col' | 'simplify_grid' | 'other';
@@ -244,7 +245,7 @@ export function TemplateUploader({ token, agentId, current, uploadCost }: Props)
                           cursor:     savingTogglesId ? 'wait' : 'pointer',
                         }}
                       >
-                        {isHumanOnly ? <><User size={9} /> Solo yo</> : <><Bot size={9} /> Empleado</>}
+                        {isHumanOnly ? <><User size={9} /> Solo yo</> : <><Meerkat size={11} /> Empleado</>}
                       </button>
                     </div>
                   );

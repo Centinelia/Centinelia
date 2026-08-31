@@ -141,7 +141,7 @@ export function DeliveryConfig({ token, agentId, initial }: Props) {
           {/* Include monthly */}
           <div className="flex items-center justify-between py-2 mb-3">
             <label className="text-xs" style={{ color: '#1A0A3B' }}>
-              Incluir reporte mensual el último sábado del mes
+              Incluir reporte mensual el último {(DAYS.find(d => d.value === cfg.day_of_week)?.label ?? 'sábado').toLowerCase()} del mes
             </label>
             <button
               type="button"

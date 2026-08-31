@@ -8,7 +8,9 @@ import { buildBitacoraExcelForAgent, sanitizeBusinessName } from '@/lib/bitacora
 import { updateLiveWorkbook, type WeekSpec } from '@/lib/bitacora/live-workbook';
 import type { IncidentRow } from '@/app/portal/[token]/oficina/bitacora/loadBitacoraData';
 import type { TemplateMapping } from '@/lib/bitacora/template-analyzer';
-import { nowInMX, isLastSaturdayOfMonth, weekStartMonday, monthStart, weekNumberInMonth, saturdaysInMonthUpTo } from '@/lib/bitacora/schedule';
+import { nowInMX, isLastWeekdayOfMonth, weekStartMonday, monthStart, weekNumberInMonth, weekdaysInMonthUpTo } from '@/lib/bitacora/schedule';
+
+const DAY_LABELS_ES = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
 
 interface BitacoraConfig {
   enabled:                       boolean;
@@ -38,11 +40,11 @@ function formatWeekLabel(monday: Date): string {
   return sameMonth ? `${mDay}-${sDay} de ${mMon} ${year}` : `${mDay} ${mMon} – ${sDay} ${sMon} ${year}`;
 }
 
-function renderEmailHtml(businessName: string, agentName: string, periodLabel: string, isMonthlyFinal: boolean): string {
+function renderEmailHtml(businessName: string, agentName: string, periodLabel: string, isMonthlyFinal: boolean, deliveryDayLabel: string): string {
   const heading = isMonthlyFinal ? 'Reporte final del mes' : 'Bitácora semanal';
   const bodyExtra = isMonthlyFinal
     ? 'El archivo adjunto contiene todas las hojas semanales del mes completo.'
-    : 'El archivo adjunto se va actualizando cada sábado con la nueva hoja semanal.';
+    : `El archivo adjunto se va actualizando cada ${deliveryDayLabel} con la nueva hoja semanal.`;
   return `
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
   <p style="margin: 0 0 16px 0; color: #333;">
@@ -187,7 +189,7 @@ async function runEphemeralFlow(
       agentId,
       to,
       subject: `Bitácora semanal ${agent.agent_name} — ${agent.business_name} (${weekLabel})`,
-      html:    renderEmailHtml(agent.business_name as string, agent.agent_name as string, weekLabel, false),
+      html:    renderEmailHtml(agent.business_name as string, agent.agent_name as string, weekLabel, false, DAY_LABELS_ES[cfg.day_of_week] ?? 'semana'),
       attachment: { filename: weeklyFilename, content: weeklyBuf, mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
       agent: {
         agent_name:            agent.agent_name as string | null,
@@ -200,7 +202,7 @@ async function runEphemeralFlow(
   }
 
   let isMonthlyFinal = false;
-  const shouldSendMonthly = cfg.include_monthly_last_saturday && isLastSaturdayOfMonth(currentDate);
+  const shouldSendMonthly = cfg.include_monthly_last_saturday && isLastWeekdayOfMonth(currentDate, cfg.day_of_week);
   if (shouldSendMonthly) {
     const mStart = monthStart(currentDate);
     const mEnd = new Date(mStart);
@@ -228,7 +230,7 @@ async function runEphemeralFlow(
         agentId,
         to,
         subject: `Bitácora mensual ${agent.agent_name} — ${agent.business_name} (${monthLabel})`,
-        html:    renderEmailHtml(agent.business_name as string, agent.agent_name as string, monthLabel, true),
+        html:    renderEmailHtml(agent.business_name as string, agent.agent_name as string, monthLabel, true, DAY_LABELS_ES[cfg.day_of_week] ?? 'semana'),
         attachment: { filename: monthlyFilename, content: monthlyBuf, mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
         agent: {
           agent_name:            agent.agent_name as string | null,
@@ -275,10 +277,10 @@ async function runPersistentFlow(
   if (tplErr || !tplData) throw new Error(`template download failed: ${tplErr?.message ?? 'no data'}`);
   const templateBuffer = Buffer.from(await tplData.arrayBuffer());
 
-  // Build weeks: cada sábado del mes hasta hoy → una semana
-  const saturdays = saturdaysInMonthUpTo(currentDate);
+  // Build weeks: cada día-de-envío del mes hasta hoy → una semana
+  const deliveryDates = weekdaysInMonthUpTo(currentDate, cfg.day_of_week);
   const weeks: WeekSpec[] = [];
-  for (const sat of saturdays) {
+  for (const sat of deliveryDates) {
     const weekMonday = weekStartMonday(sat);
     const weekEnd = new Date(weekMonday);
     weekEnd.setDate(weekMonday.getDate() + 7);
@@ -316,7 +318,7 @@ async function runPersistentFlow(
   if (uploadErr) throw new Error(`live upload failed: ${uploadErr.message}`);
 
   // Enviar por correo
-  const isMonthlyFinal = cfg.include_monthly_last_saturday && isLastSaturdayOfMonth(currentDate);
+  const isMonthlyFinal = cfg.include_monthly_last_saturday && isLastWeekdayOfMonth(currentDate, cfg.day_of_week);
   const monthLabel = `${MONTHS_ES[mStart.getMonth()]} ${mStart.getFullYear()}`;
   const weekLabel = formatWeekLabel(weekStartMonday(currentDate));
   const periodLabel = isMonthlyFinal
@@ -333,7 +335,7 @@ async function runPersistentFlow(
       agentId,
       to,
       subject,
-      html: renderEmailHtml(agent.business_name as string, agent.agent_name as string, periodLabel, isMonthlyFinal),
+      html: renderEmailHtml(agent.business_name as string, agent.agent_name as string, periodLabel, isMonthlyFinal, DAY_LABELS_ES[cfg.day_of_week] ?? 'semana'),
       attachment: { filename, content: liveBuf, mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
       agent: {
         agent_name:            agent.agent_name as string | null,

@@ -17,15 +17,15 @@ export function nowInMX(): { dayOfWeek: number; hour: number; date: Date } {
 }
 
 /**
- * True si el sábado dado es el último sábado del mes.
- * Un sábado es "el último del mes" si no hay otro sábado ≤ 7 días después
- * dentro del mismo mes (i.e. el próximo sábado cae ya en el mes siguiente).
+ * True si la fecha es el último día-de-semana dado del mes.
+ * targetDayOfWeek: 0=domingo..6=sábado. Retorna true si `d` cae en ese día
+ * y el mismo día 7 fechas después ya cae en el mes siguiente.
  */
-export function isLastSaturdayOfMonth(d: Date): boolean {
-  if (d.getDay() !== 6) return false;
-  const nextSat = new Date(d);
-  nextSat.setDate(d.getDate() + 7);
-  return nextSat.getMonth() !== d.getMonth();
+export function isLastWeekdayOfMonth(d: Date, targetDayOfWeek: number): boolean {
+  if (d.getDay() !== targetDayOfWeek) return false;
+  const next = new Date(d);
+  next.setDate(d.getDate() + 7);
+  return next.getMonth() !== d.getMonth();
 }
 
 /** Lunes 00:00 MX de la semana que contiene `date` (en la fecha MX). */
@@ -71,18 +71,18 @@ export function weekNumberInMonth(date: Date): number {
 }
 
 /**
- * Lista los sábados del mes de `date` hasta y incluyendo `date` (si es sábado).
- * Se usa para saber cuántas semanas del mes tenemos que llenar en el archivo
- * persistente en el cron actual.
+ * Lista las fechas del día-de-semana dado en el mes de `date`, hasta y
+ * incluyendo `date` (si `date` cae en ese día). Se usa para saber cuántas
+ * semanas del mes tenemos que llenar en el archivo persistente.
+ * targetDayOfWeek: 0=domingo..6=sábado.
  */
-export function saturdaysInMonthUpTo(date: Date): Date[] {
+export function weekdaysInMonthUpTo(date: Date, targetDayOfWeek: number): Date[] {
   const result: Date[] = [];
   const first = monthStart(date);
-  // Primer sábado del mes
   const firstDay = first.getDay(); // 0=dom..6=sab
-  const daysToFirstSat = (6 - firstDay + 7) % 7;
+  const daysToFirst = (targetDayOfWeek - firstDay + 7) % 7;
   const cursor = new Date(first);
-  cursor.setDate(1 + daysToFirstSat);
+  cursor.setDate(1 + daysToFirst);
   while (cursor <= date && cursor.getMonth() === first.getMonth()) {
     result.push(new Date(cursor));
     cursor.setDate(cursor.getDate() + 7);
