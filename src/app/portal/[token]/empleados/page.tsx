@@ -16,6 +16,7 @@ import AgentRankingSection             from '../AgentRankingSection';
 import { COORDINATOR_ROLE_IDS, MEERKAT_MAP } from '@/lib/portal/meerkat-roles';
 import type { MeerkatRoleId }          from '@/lib/portal/meerkat-roles';
 import { MEERKAT_VOICE_DISTRIBUTION }  from '@/lib/vapi/sync';
+import { resolveOrgPackContext, resolveActivePacks, filterByActivePacks } from '@/lib/tools/packs';
 import { PageContainer, PageSection, SectionHeader, Card, EmptyState } from '@/components/portal-ui';
 
 interface ToolChip { label: string; color: string }
@@ -337,6 +338,14 @@ export default async function AgentesPage({ params }: Props) {
     : { data: null };
   const hasPassphrase = !!orgRow?.owner_passphrase?.trim();
 
+  // Resuelve packs activos del org — para filtrar los chips del card y solo
+  // mostrar capacidades REALES (ej: Nelia solo tiene incidencia_flow si el
+  // org lo tiene activado; sin catalog no muestra buscar_cliente; etc).
+  // Sin este filtro se veía la distribución "ideal" del meerkat, no la real.
+  const activePacks = lookupEmail
+    ? resolveActivePacks(await resolveOrgPackContext(lookupEmail, supabase))
+    : new Set<string>();
+
   // Anual: si la org está en contrato prepagado, no se puede autocontratar por Stripe.
   const billingModel = (orgRow?.billing_model as string | null) ?? 'stripe';
   const isAnnualOrExpired = billingModel === 'annual_prepaid' || billingModel === 'expired';
@@ -530,8 +539,14 @@ export default async function AgentesPage({ params }: Props) {
 
         const meerkatDef    = meerkatId ? MEERKAT_MAP[meerkatId as MeerkatRoleId] ?? null : null;
         const agentFeatures = (a.features as Record<string, unknown>) ?? {};
-        const tools         = getAgentTools(agentFeatures);
-        const capabilities  = getAgentCapabilities(tools);
+        const rawTools      = getAgentTools(agentFeatures);
+        // Filtra por packs realmente activos en el org (ej: incidencia_flow,
+        // catalog, sheets). Antes se mostraba la distribución "ideal" del
+        // meerkat aunque el org no tuviera ese pack activado — capacidades
+        // fantasma en la card. Tools sin pack (default) pasan siempre.
+        const activeToolNames = new Set(filterByActivePacks(rawTools.map(t => t.label), activePacks));
+        const tools           = rawTools.filter(t => activeToolNames.has(t.label));
+        const capabilities    = getAgentCapabilities(tools);
 
         const accentColor = hasRole ? roleColor : color;
         const MAX_CAP_CHIPS = 5;
