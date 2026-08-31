@@ -129,6 +129,56 @@ export function TemplateUploader({ token, agentId, current, uploadCost }: Props)
     }
   }
 
+  async function applySuggestion(suggestionIndex: number) {
+    setSavingTogglesId(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/portal/${token}/oficina/bitacora/apply-suggestion?agent_id=${agentId}`, {
+        method:  'POST',
+        headers: { 'content-type': 'application/json' },
+        body:    JSON.stringify({ suggestion_index: suggestionIndex }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error ?? 'Error al aplicar sugerencia');
+      setState({
+        ...state!,
+        mapping:     body.mapping,
+        suggestions: body.suggestions ?? [],
+      });
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSavingTogglesId(false);
+    }
+  }
+
+  async function changeMapping(col: string, newField: string | null) {
+    if (!state?.mapping) return;
+    setSavingTogglesId(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/portal/${token}/oficina/bitacora/template-config?agent_id=${agentId}`, {
+        method:  'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body:    JSON.stringify({ columns: { [col.toUpperCase()]: newField } }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error ?? 'Error al cambiar mapping');
+      setState({
+        ...state,
+        mapping: {
+          ...state.mapping,
+          columns:            body.columns,
+          human_only_columns: body.human_only_columns,
+        },
+      });
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSavingTogglesId(false);
+    }
+  }
+
   const hasCustom = !!state?.mapping;
   const humanOnlySet = new Set((state?.mapping?.human_only_columns ?? []).map(c => c.toUpperCase()));
 
@@ -175,34 +225,51 @@ export function TemplateUploader({ token, agentId, current, uploadCost }: Props)
                 {Object.entries(state.mapping.columns).map(([col, field]) => {
                   const isHumanOnly = humanOnlySet.has(col.toUpperCase());
                   return (
-                    <button
+                    <div
                       key={col}
-                      type="button"
-                      onClick={() => toggleHumanOnly(col, isHumanOnly)}
-                      disabled={savingTogglesId}
-                      className="flex items-center justify-between px-2 py-1.5 rounded text-xs transition-colors disabled:opacity-50"
+                      className="flex items-center gap-2 px-2 py-1.5 rounded text-xs"
                       style={{
                         background: '#ffffff',
                         border:     '1px solid #E8E3F5',
-                        cursor:     savingTogglesId ? 'wait' : 'pointer',
                       }}
                     >
-                      <span style={{ color: '#1A0A3B' }}>
-                        <strong>Col {col}</strong>
-                        <span className="mx-1.5" style={{ color: '#9B8FB5' }}>·</span>
-                        {FIELD_LABELS[field] ?? field}
-                      </span>
-                      <span
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold"
-                        style={
-                          isHumanOnly
-                            ? { background: 'rgba(217,119,6,0.1)', color: '#B45309' }
-                            : { background: 'rgba(108,59,255,0.1)', color: '#6C3BFF' }
-                        }
+                      <strong className="whitespace-nowrap" style={{ color: '#1A0A3B' }}>Col {col}</strong>
+                      <select
+                        value={field}
+                        disabled={savingTogglesId}
+                        onChange={e => {
+                          const val = e.target.value;
+                          void changeMapping(col, val === '' ? null : val);
+                        }}
+                        className="flex-1 text-xs rounded outline-none disabled:opacity-50"
+                        style={{
+                          background:   '#ffffff',
+                          border:       '1px solid #E8E3F5',
+                          color:        '#1A0A3B',
+                          padding:      '2px 4px',
+                          cursor:       savingTogglesId ? 'wait' : 'pointer',
+                        }}
                       >
-                        {isHumanOnly ? <><User size={9} /> Solo yo escribo</> : <><Bot size={9} /> Empleado escribe</>}
-                      </span>
-                    </button>
+                        <option value="">— quitar mapeo —</option>
+                        {Object.entries(FIELD_LABELS).map(([f, label]) => (
+                          <option key={f} value={f}>{label}</option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => toggleHumanOnly(col, isHumanOnly)}
+                        disabled={savingTogglesId}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold whitespace-nowrap disabled:opacity-50"
+                        style={{
+                          background: isHumanOnly ? 'rgba(217,119,6,0.1)' : 'rgba(108,59,255,0.1)',
+                          color:      isHumanOnly ? '#B45309'             : '#6C3BFF',
+                          border:     'none',
+                          cursor:     savingTogglesId ? 'wait' : 'pointer',
+                        }}
+                      >
+                        {isHumanOnly ? <><User size={9} /> Solo yo</> : <><Bot size={9} /> Empleado</>}
+                      </button>
+                    </div>
                   );
                 })}
               </div>
@@ -240,6 +307,7 @@ export function TemplateUploader({ token, agentId, current, uploadCost }: Props)
               const SevIcon = s.severity === 'important' ? AlertTriangle
                            : s.severity === 'warning'   ? AlertTriangle
                            : Info;
+              const isAutoApplicable = ['rename_header', 'add_header', 'remove_col'].includes(s.type);
               return (
                 <div
                   key={idx}
@@ -270,6 +338,17 @@ export function TemplateUploader({ token, agentId, current, uploadCost }: Props)
                             <>Propuesto: <span style={{ color: '#16a34a' }}>&ldquo;{s.proposed}&rdquo;</span></>
                           )}
                         </p>
+                      )}
+                      {isAutoApplicable && (
+                        <button
+                          type="button"
+                          onClick={() => applySuggestion(idx)}
+                          disabled={savingTogglesId}
+                          className="mt-1.5 text-[10px] font-semibold px-2 py-0.5 rounded hover:opacity-80 disabled:opacity-50"
+                          style={{ background: 'rgba(22,163,74,0.1)', color: '#16a34a', border: 'none', cursor: savingTogglesId ? 'wait' : 'pointer' }}
+                        >
+                          Aplicar automáticamente
+                        </button>
                       )}
                     </div>
                   </div>

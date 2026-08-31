@@ -26,6 +26,11 @@ export interface IncidentRow {
   /** Historial completo de intentos. La última entrada corresponde a
    *  verification_called_at/verification_result (backwards compat). */
   verification_attempts:     VerificationAttempt[];
+  /** Próxima llamada de verificación programada. Se popula desde
+   *  outbound_contacts.scheduled_at cuando status='pending'. Null si no hay
+   *  próximo callback (verificado ok, escalado a humano, o alta sin callback). */
+  next_callback_at?:         string | null;
+  next_callback_status?:     string | null;
 }
 
 export type BitacoraRangeMode = 'weekly' | 'monthly';
@@ -48,6 +53,24 @@ export interface BitacoraAgentSummary {
   agent_name:    string;
   business_name: string;
   incident_count: number;
+}
+
+export interface BitacoraKpis {
+  total:     number;
+  altas:     number;
+  ok:        number;
+  pendiente: number;
+  rojo:      number;   // no_visitado + sin_respuesta (necesita atención)
+  escalados: number;   // outbound_contact status='failed' (max intentos)
+}
+
+export interface UpcomingCallback {
+  incident_id:  string;
+  business:     string;
+  contact_name: string | null;
+  telefono:     string;
+  scheduled_at: string;
+  attempt_num:  number;
 }
 
 export async function loadBitacoraData(
@@ -148,6 +171,90 @@ export async function loadBitacoraData(
         .order('created_at', { ascending: true })
     : { data: [] };
 
+  const incidentRows = (incidents ?? []) as IncidentRow[];
+
+  // Enrich con próximo callback programado (outbound_contact ligado por
+  // external_id). Cada incident puede tener 0 o 1 contact pending activo.
+  if (incidentRows.length > 0) {
+    const incidentIds = incidentRows.map(i => i.id);
+    const { data: contacts } = await supabase
+      .from('outbound_contacts')
+      .select('external_id, scheduled_at, status')
+      .eq('agent_id', activeAgent.id)
+      .eq('external_source', 'client_incident')
+      .in('external_id', incidentIds) as {
+        data: Array<{ external_id: string; scheduled_at: string | null; status: string | null }> | null;
+      };
+    const byIncidentId = new Map<string, { scheduled_at: string | null; status: string | null }>();
+    for (const c of (contacts ?? [])) {
+      if (c.external_id) byIncidentId.set(c.external_id, { scheduled_at: c.scheduled_at, status: c.status });
+    }
+    for (const inc of incidentRows) {
+      const c = byIncidentId.get(inc.id);
+      if (c) {
+        inc.next_callback_at     = c.scheduled_at;
+        inc.next_callback_status = c.status;
+      }
+    }
+  }
+
+  // KPIs agregados de la ventana actual
+  const kpis: BitacoraKpis = {
+    total:     incidentRows.length,
+    altas:     0,
+    ok:        0,
+    pendiente: 0,
+    rojo:      0,
+    escalados: 0,
+  };
+  for (const inc of incidentRows) {
+    if (inc.type === 'alta') kpis.altas++;
+    else if (inc.verification_result === 'ok') kpis.ok++;
+    else if (inc.verification_result === 'no_visitado' || inc.verification_result === 'sin_respuesta') kpis.rojo++;
+    else kpis.pendiente++;
+    if (inc.next_callback_status === 'failed') kpis.escalados++;
+  }
+
+  // Próximas llamadas del agente (max 5, ordenadas por fecha ascendente)
+  const nowIso = new Date().toISOString();
+  const upcoming: UpcomingCallback[] = [];
+  if (enabled) {
+    const { data: pending } = await supabase
+      .from('outbound_contacts')
+      .select('external_id, scheduled_at, telefono, nombre')
+      .eq('agent_id', activeAgent.id)
+      .eq('external_source', 'client_incident')
+      .eq('status', 'pending')
+      .gte('scheduled_at', nowIso)
+      .order('scheduled_at', { ascending: true })
+      .limit(5) as {
+        data: Array<{ external_id: string; scheduled_at: string; telefono: string; nombre: string | null }> | null;
+      };
+    if (pending?.length) {
+      const ids = pending.map(p => p.external_id).filter(Boolean);
+      const { data: incs } = await supabase
+        .from('client_incidents')
+        .select('id, business_name, contact_name, verification_attempts')
+        .in('id', ids) as {
+          data: Array<{ id: string; business_name: string; contact_name: string | null; verification_attempts: unknown[] | null }> | null;
+        };
+      const byId = new Map((incs ?? []).map(i => [i.id, i]));
+      for (const p of pending) {
+        const inc = byId.get(p.external_id);
+        if (!inc) continue;
+        const priorAttempts = Array.isArray(inc.verification_attempts) ? inc.verification_attempts.length : 0;
+        upcoming.push({
+          incident_id:  inc.id,
+          business:     inc.business_name,
+          contact_name: p.nombre ?? inc.contact_name,
+          telefono:     p.telefono,
+          scheduled_at: p.scheduled_at,
+          attempt_num:  priorAttempts + 1,
+        });
+      }
+    }
+  }
+
   return {
     enabled,
     agent: activeAgent,
@@ -155,6 +262,8 @@ export async function loadBitacoraData(
     weekStart: rangeStart.toISOString(),
     rangeEnd:  rangeEnd.toISOString(),
     mode,
-    incidents: (incidents ?? []) as IncidentRow[],
+    incidents: incidentRows,
+    kpis,
+    upcoming,
   };
 }
