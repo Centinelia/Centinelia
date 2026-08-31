@@ -129,29 +129,6 @@ export function TemplateUploader({ token, agentId, current, uploadCost }: Props)
     }
   }
 
-  async function applySuggestion(suggestionIndex: number) {
-    setSavingTogglesId(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/portal/${token}/oficina/bitacora/apply-suggestion?agent_id=${agentId}`, {
-        method:  'POST',
-        headers: { 'content-type': 'application/json' },
-        body:    JSON.stringify({ suggestion_index: suggestionIndex }),
-      });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body.error ?? 'Error al aplicar sugerencia');
-      setState({
-        ...state!,
-        mapping:     body.mapping,
-        suggestions: body.suggestions ?? [],
-      });
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setSavingTogglesId(false);
-    }
-  }
-
   async function changeMapping(col: string, newField: string | null) {
     if (!state?.mapping) return;
     setSavingTogglesId(true);
@@ -284,22 +261,25 @@ export function TemplateUploader({ token, agentId, current, uploadCost }: Props)
       )}
 
       {hasCustom && (state?.suggestions?.length ?? 0) > 0 && (
-        <div
-          className="rounded-lg p-3 mb-3"
+        <details
+          className="rounded-lg mb-3 group"
           style={{ background: 'rgba(234,179,8,0.06)', border: '1px solid rgba(234,179,8,0.25)' }}
         >
-          <div className="flex items-start gap-2 mb-2">
-            <Lightbulb size={14} style={{ color: '#B45309', marginTop: 2 }} />
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold" style={{ color: '#78350F' }}>
-                Sugerencias para tu plantilla
-              </p>
-              <p className="text-[11px]" style={{ color: '#6B6480' }}>
-                Recomendaciones para mejorar cómo se ve el reporte. Son opcionales — edita tu archivo en Excel y súbelo de nuevo si quieres aplicarlas.
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-col gap-2 mt-2">
+          <summary
+            className="flex items-center gap-2 p-3 cursor-pointer list-none"
+            style={{ userSelect: 'none' }}
+          >
+            <Lightbulb size={14} style={{ color: '#B45309', flexShrink: 0 }} />
+            <span className="text-xs font-semibold flex-1" style={{ color: '#78350F' }}>
+              {state!.suggestions!.length} {state!.suggestions!.length === 1 ? 'sugerencia' : 'sugerencias'} para tu plantilla
+            </span>
+            <span className="text-[10px] transition-transform group-open:rotate-180" style={{ color: '#B45309' }}>▾</span>
+          </summary>
+          <div className="px-3 pb-3">
+            <p className="text-[11px] mb-2" style={{ color: '#6B6480' }}>
+              Recomendaciones para mejorar cómo se ve el reporte. Son opcionales — edita tu archivo en Excel y súbelo de nuevo si quieres aplicarlas.
+            </p>
+            <div className="flex flex-col gap-2">
             {state!.suggestions!.map((s, idx) => {
               const sevColor = s.severity === 'important' ? '#DC2626'
                             : s.severity === 'warning'   ? '#B45309'
@@ -307,7 +287,6 @@ export function TemplateUploader({ token, agentId, current, uploadCost }: Props)
               const SevIcon = s.severity === 'important' ? AlertTriangle
                            : s.severity === 'warning'   ? AlertTriangle
                            : Info;
-              const isAutoApplicable = ['rename_header', 'add_header', 'remove_col'].includes(s.type);
               return (
                 <div
                   key={idx}
@@ -339,24 +318,14 @@ export function TemplateUploader({ token, agentId, current, uploadCost }: Props)
                           )}
                         </p>
                       )}
-                      {isAutoApplicable && (
-                        <button
-                          type="button"
-                          onClick={() => applySuggestion(idx)}
-                          disabled={savingTogglesId}
-                          className="mt-1.5 text-[10px] font-semibold px-2 py-0.5 rounded hover:opacity-80 disabled:opacity-50"
-                          style={{ background: 'rgba(22,163,74,0.1)', color: '#16a34a', border: 'none', cursor: savingTogglesId ? 'wait' : 'pointer' }}
-                        >
-                          Aplicar automáticamente
-                        </button>
-                      )}
                     </div>
                   </div>
                 </div>
               );
             })}
+            </div>
           </div>
-        </div>
+        </details>
       )}
 
       {error && (
