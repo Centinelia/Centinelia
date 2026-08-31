@@ -102,13 +102,19 @@ export function buildPortalNav(input: BuildNavInput): NavGroup[] {
   });
 
   // ── 3b. Módulos (catálogo de add-ons activables por org) ──────────────────
-  all.push({
-    id: 'modulos',
-    label: 'Módulos',
-    iconName: 'Package',
-    moduleId: 'negocio',  // mismo permiso que Organización (owner-only en la práctica)
-    directHref: `/portal/${t}/modulos`,
-  });
+  // OCULTO temporalmente 2026-08-31: catálogo existe (/portal/[token]/modulos
+  // sigue accesible por URL directa para admin/QA), pero como al día de hoy
+  // solo 2-3 módulos están al 100% pulidos (Bitácora, Cloud Catalog, Outbound
+  // Calls), preferimos seguir con approach "consultoría privada" hasta tener
+  // 5-6 módulos maduros. Descomenta cuando esté listo el resto.
+  //
+  // all.push({
+  //   id: 'modulos',
+  //   label: 'Módulos',
+  //   iconName: 'Package',
+  //   moduleId: 'negocio',
+  //   directHref: `/portal/${t}/modulos`,
+  // });
 
   // ── 4. Oficina ───────────────────────────────────────────────────────────
   // Oficina YA NO se agrega como grupo del nav — es EL PRODUCTO y merece
