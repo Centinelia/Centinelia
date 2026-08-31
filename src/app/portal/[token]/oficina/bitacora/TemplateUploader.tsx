@@ -232,8 +232,18 @@ export function TemplateUploader({ token, agentId, current, uploadCost }: Props)
               c => !mappedSet.has(c.col.toUpperCase()) && !gridColSet.has(c.col.toUpperCase())
             );
 
+            // Índice inverso: campo canónico → col donde ya está asignado (si aplica).
+            // Sirve para mostrar en el dropdown "Motivo (ya en col G)" y evitar
+            // que el usuario reasigne sin darse cuenta.
+            const fieldToCol: Record<string, string> = {};
+            for (const [c, f] of Object.entries(mappedCols)) {
+              if (typeof f === 'string') fieldToCol[f] = c.toUpperCase();
+            }
+
             function renderMappingRow(col: string, field: string, header: string | null) {
               const isHumanOnly = humanOnlySet.has(col.toUpperCase());
+              const availableFields = Object.entries(FIELD_LABELS).filter(([f]) => !fieldToCol[f] || fieldToCol[f] === col.toUpperCase());
+              const usedFields      = Object.entries(FIELD_LABELS).filter(([f]) => fieldToCol[f] && fieldToCol[f] !== col.toUpperCase());
               return (
                 <div
                   key={col}
@@ -254,9 +264,20 @@ export function TemplateUploader({ token, agentId, current, uploadCost }: Props)
                     style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B', padding: '2px 4px', cursor: savingTogglesId ? 'wait' : 'pointer' }}
                   >
                     <option value="">— sin mapear —</option>
-                    {Object.entries(FIELD_LABELS).map(([f, label]) => (
-                      <option key={f} value={f}>{label}</option>
-                    ))}
+                    {availableFields.length > 0 && (
+                      <optgroup label="Disponibles">
+                        {availableFields.map(([f, label]) => (
+                          <option key={f} value={f}>{label}</option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {usedFields.length > 0 && (
+                      <optgroup label="Ya en otras columnas (reasignar)">
+                        {usedFields.map(([f, label]) => (
+                          <option key={f} value={f}>{label} (en col {fieldToCol[f]})</option>
+                        ))}
+                      </optgroup>
+                    )}
                   </select>
                   <button
                     type="button"
@@ -460,7 +481,7 @@ export function TemplateUploader({ token, agentId, current, uploadCost }: Props)
         )}
 
         <span
-          className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded"
+          className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded ml-auto"
           style={{
             background: 'rgba(234,179,8,0.12)',
             border:     '1px solid rgba(234,179,8,0.35)',

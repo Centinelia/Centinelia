@@ -83,19 +83,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ to
       }
       nextColumns[col] = rawField as CanonicalField;
     }
-    // Filtrar human_only para dejar solo cols que sigan en mapping
-    const validAfter = new Set(Object.keys(nextColumns));
-    nextHumanOnly = nextHumanOnly.filter(c => validAfter.has(c));
+    // Nota: cols marcadas human_only pero desmapeadas se preservan aquí. Se
+    // limpian abajo si el caller no envió human_only_columns explícito.
   }
 
   // 2. Actualizar human_only_columns (opcional)
+  // Aceptamos cualquier letra válida — cols sin mapping también pueden ser
+  // "solo yo" (ej: "notas del gerente"). Solo bloqueamos cols del grid
+  // semanal: esas tienen su propio manejo y no aplica el flag human_only.
   if (body.human_only_columns !== undefined) {
     if (!Array.isArray(body.human_only_columns)) {
       return NextResponse.json({ error: 'human_only_columns debe ser array de letras' }, { status: 400 });
     }
-    const validCols = new Set(Object.keys(nextColumns).map(c => c.toUpperCase()));
+    const gridCols = new Set(Object.values(template.mapping.verification_grid ?? {}).map(c => String(c).toUpperCase()));
     nextHumanOnly = [...new Set(body.human_only_columns.map(c => String(c).toUpperCase()))]
-      .filter(c => validCols.has(c));
+      .filter(c => /^[A-Z]{1,3}$/.test(c) && !gridCols.has(c));
   }
 
   const updatedTemplate = {
