@@ -10,10 +10,10 @@
 import { after } from 'next/server';
 import { isInstantProcessingEnabled } from '@/lib/ops/instant-processing';
 
-async function runQuiet(reason: string, portalEmail: string | null | undefined): Promise<void> {
+async function runQuiet(reason: string, agentId: string | null | undefined): Promise<void> {
   try {
-    if (!(await isInstantProcessingEnabled(portalEmail))) {
-      console.log(`[campaigns-trigger] skipped (${reason}) — org opted out`);
+    if (!(await isInstantProcessingEnabled(agentId))) {
+      console.log(`[campaigns-trigger] skipped (${reason}) — agent opted out`);
       return;
     }
     const cronSecret = process.env.CRON_SECRET;
@@ -29,10 +29,10 @@ async function runQuiet(reason: string, portalEmail: string | null | undefined):
   }
 }
 
-export function triggerOutboundCampaigns(reason: string, portalEmail: string | null | undefined): void {
+export function triggerOutboundCampaigns(reason: string, agentId: string | null | undefined): void {
   try {
-    after(() => runQuiet(reason, portalEmail));
+    after(() => runQuiet(reason, agentId));
   } catch {
-    void runQuiet(reason, portalEmail);
+    void runQuiet(reason, agentId);
   }
 }

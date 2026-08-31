@@ -159,18 +159,23 @@ export async function orgAutoApprovesPlans(
 }
 
 /**
- * True cuando la org quiere que TODA delegación pase por aprobación humana
- * sin importar tamaño/keywords. Overrides thresholds de requiresPlanApproval.
- * Precedence: auto_approve_task_plans (skip approval) > always_approve_delegations (force approval).
+ * True cuando el empleado que DELEGA quiere que TODA delegación pase por
+ * aprobación humana sin importar tamaño/keywords. Overrides thresholds de
+ * requiresPlanApproval. Precedence: auto_approve_task_plans (skip approval)
+ * > always_approve_delegations (force approval).
+ *
+ * El campo vive en `voice_agents.always_approve_delegations` (per-empleado,
+ * default false). Si el agentId no existe o el campo es null, cae a false.
+ * Se pasa el agentId del CALLER (delegador), no del delegatee.
  */
 export async function orgAlwaysRequiresApproval(
-  portalEmail: string,
+  callerAgentId: string,
   supabase: SupabaseClient,
 ): Promise<boolean> {
   const { data } = await supabase
-    .from('organizations')
+    .from('voice_agents')
     .select('always_approve_delegations')
-    .eq('portal_email', portalEmail)
+    .eq('id', callerAgentId)
     .maybeSingle();
   return !!(data?.always_approve_delegations);
 }

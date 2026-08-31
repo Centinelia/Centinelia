@@ -21,17 +21,19 @@ const OPTIONS: { key: Mode; label: string; desc: string; icon: typeof Zap }[] = 
   },
 ];
 
-export default function InstantProcessingSection({ token, roleColor, hideHeader }: { token: string; roleColor: string; hideHeader?: boolean }) {
+export default function InstantProcessingSection({ token, agentId, roleColor, hideHeader }: { token: string; agentId?: string; roleColor: string; hideHeader?: boolean }) {
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [saving,  setSaving]  = useState(false);
   const [msg,     setMsg]     = useState<string | null>(null);
 
+  const qs = agentId ? `?agent_id=${agentId}` : '';
+
   useEffect(() => {
-    fetch(`/api/portal/${token}/org-approval-settings`)
+    fetch(`/api/portal/${token}/org-approval-settings${qs}`)
       .then(r => r.json())
       .then(d => setEnabled(typeof d.instant_processing_enabled === 'boolean' ? d.instant_processing_enabled : true))
       .catch(() => setEnabled(true));
-  }, [token]);
+  }, [token, qs]);
 
   const setMode = async (mode: Mode) => {
     const next = mode === 'instant';
@@ -39,7 +41,7 @@ export default function InstantProcessingSection({ token, roleColor, hideHeader 
     setSaving(true);
     setMsg(null);
     try {
-      const res = await fetch(`/api/portal/${token}/org-approval-settings`, {
+      const res = await fetch(`/api/portal/${token}/org-approval-settings${qs}`, {
         method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ instant_processing_enabled: next }),

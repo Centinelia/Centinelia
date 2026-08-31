@@ -139,7 +139,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   // Campañas futuras las agarra el cron horario.
   if (next && next <= new Date()) {
     const { triggerOutboundCampaigns } = await import('@/lib/outbound/campaigns-trigger');
-    triggerOutboundCampaigns(`portal campaign create ${data?.id}`, session.portalEmail);
+    triggerOutboundCampaigns(`portal campaign create ${data?.id}`, agent.id);
   }
 
   return NextResponse.json(data);

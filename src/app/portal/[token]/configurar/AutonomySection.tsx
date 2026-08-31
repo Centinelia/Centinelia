@@ -187,21 +187,17 @@ export default function AutonomySection({ token, agentId, initStage, roleColor, 
             )}
           </button>
 
-          {/* Sub-secciones org-level — solo owners */}
+          {/* Sub-secciones per-empleado — solo owners */}
           {isOwner && (
             <div className="flex flex-col gap-3 pt-2" style={{ borderTop: '1px dashed #E8E3F5' }}>
-              <p className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: '#9B8FB5' }}>
-                Aplica a toda tu cuenta
-              </p>
-
               <div>
                 <p className="text-xs font-semibold mb-1" style={{ color: '#1A0A3B' }}>
-                  Aprobación entre empleados
+                  Aprobación cuando este empleado delega
                 </p>
                 <p className="text-[11px] mb-2" style={{ color: '#6B6480' }}>
-                  Cuando un empleado le pide a otro hacer algo.
+                  Cuando este empleado le pide a otro hacer algo.
                 </p>
-                <ApprovalSettingsSection token={token} roleColor={roleColor} hideHeader />
+                <ApprovalSettingsSection token={token} agentId={agentId} roleColor={roleColor} hideHeader />
               </div>
 
               <div className="pt-3" style={{ borderTop: '1px dashed #E8E3F5' }}>
@@ -209,9 +205,9 @@ export default function AutonomySection({ token, agentId, initStage, roleColor, 
                   Ritmo de trabajo
                 </p>
                 <p className="text-[11px] mb-2" style={{ color: '#6B6480' }}>
-                  Velocidad con la que se procesan llamadas salientes programadas y trabajos automáticos.
+                  Velocidad con la que este empleado procesa sus llamadas salientes programadas y trabajos automáticos.
                 </p>
-                <InstantProcessingSection token={token} roleColor={roleColor} hideHeader />
+                <InstantProcessingSection token={token} agentId={agentId} roleColor={roleColor} hideHeader />
               </div>
             </div>
           )}

@@ -70,7 +70,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   // Si está en el futuro, cron horario lo agarra.
   if (new Date(scheduled_at) <= new Date()) {
     const { triggerOutboundContacts } = await import('@/lib/outbound/outbound-trigger');
-    triggerOutboundContacts(`portal outbound contact ${data!.id}`, session.portalEmail);
+    triggerOutboundContacts(`portal outbound contact ${data!.id}`, agent.id);
   }
 
   return NextResponse.json({ ok: true, contact: data });

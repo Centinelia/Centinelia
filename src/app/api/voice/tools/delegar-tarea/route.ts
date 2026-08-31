@@ -479,7 +479,7 @@ export async function POST(req: NextRequest) {
   //   always_approve_delegations = true → SIEMPRE requiere approval (verdadero modo supervisado)
   //   default → aplica thresholds de requiresPlanApproval (tamaño/keywords)
   const orgAutoApproves = await orgAutoApprovesPlans(caller.portal_email, supabase);
-  const orgAlwaysNeeds  = await orgAlwaysRequiresApproval(caller.portal_email, supabase);
+  const orgAlwaysNeeds  = await orgAlwaysRequiresApproval(agentId, supabase);
   const needsApproval = !orgAutoApproves && (orgAlwaysNeeds || requiresPlanApproval({ tarea, success_criteria, max_iterations }));
 
   if (needsApproval) {

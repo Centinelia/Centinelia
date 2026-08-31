@@ -16,17 +16,19 @@ interface Settings {
  * Colapsamos a un default (inteligente) + un toggle único de máximo control.
  * Ver [[feedback-empleados-inteligentes]].
  */
-export default function ApprovalSettingsSection({ token, roleColor, hideHeader }: { token: string; roleColor: string; hideHeader?: boolean }) {
+export default function ApprovalSettingsSection({ token, agentId, roleColor, hideHeader }: { token: string; agentId?: string; roleColor: string; hideHeader?: boolean }) {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [saving,   setSaving]   = useState(false);
   const [msg,      setMsg]      = useState<string | null>(null);
 
+  const qs = agentId ? `?agent_id=${agentId}` : '';
+
   useEffect(() => {
-    fetch(`/api/portal/${token}/org-approval-settings`)
+    fetch(`/api/portal/${token}/org-approval-settings${qs}`)
       .then(r => r.json())
       .then(setSettings)
       .catch(() => setSettings({ always_approve_delegations: false, auto_approve_task_plans: false }));
-  }, [token]);
+  }, [token, qs]);
 
   const alwaysOn = !!settings?.always_approve_delegations;
 
@@ -41,7 +43,7 @@ export default function ApprovalSettingsSection({ token, roleColor, hideHeader }
       auto_approve_task_plans:    false,
     };
     try {
-      const res = await fetch(`/api/portal/${token}/org-approval-settings`, {
+      const res = await fetch(`/api/portal/${token}/org-approval-settings${qs}`, {
         method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify(payload),
