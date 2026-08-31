@@ -20,7 +20,7 @@ import {
   ArrowLeft, Search, CreditCard, FolderOpen,
   ClipboardList, Gavel, Headphones, PieChart, Brain,
   ChevronDown, ChevronRight, Phone, PhoneOutgoing, LayoutTemplate, CalendarClock,
-  Inbox, FileSignature, Receipt, Megaphone, Users,
+  Inbox, FileSignature, Receipt, Megaphone, Users, BookOpen,
 } from 'lucide-react';
 
 interface NavItem {
@@ -61,6 +61,7 @@ const NAV_SECTIONS: NavSection[] = [
     group: 'OPERACIÓN',
     items: [
       { href: '/documentos',           moduleId: 'of_documentos',           label: 'Documentos',          icon: FolderOpen,     badgeKey: '' },
+      { href: '/bitacora',             moduleId: 'of_documentos',           label: 'Bitácora',            icon: BookOpen,       badgeKey: '' },
       { href: '/facturas',             moduleId: 'of_facturas',             label: 'Facturas',            icon: Receipt,        badgeKey: 'facturas' },
       { href: '/expedientes',          moduleId: 'of_expedientes',          label: 'Expedientes OC',      icon: FileSignature,  badgeKey: '', requiresInvoicing: true },
       { href: '/contratos',            moduleId: 'of_contratos',            label: 'Contratos',           icon: FileSignature,  badgeKey: '' },
