@@ -1,7 +1,7 @@
 'use client';
 
-import { useRef, useState } from 'react';
-import { FileSpreadsheet, Upload, RotateCcw, Loader2, CheckCircle2, User, Lightbulb, AlertTriangle, Info } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { FileSpreadsheet, Upload, RotateCcw, Loader2, CheckCircle2, User, Lightbulb, AlertTriangle, Info, CalendarDays } from 'lucide-react';
 import Meerkat from '@/components/icons/Meerkat';
 
 interface TemplateSuggestion {
@@ -18,12 +18,20 @@ interface CurrentTemplate {
   uploaded_at?: string;
   mapping?: {
     sheet_name?:         string;
+    insertion_row?:      number;
     columns?:            Record<string, string>;
     human_only_columns?: string[];
+    verification_grid?:  Record<string, string>;
     notes?:              string;
   };
   suggestions?: TemplateSuggestion[];
 }
+
+interface AllColumn { col: string; header: string | null; }
+
+const GRID_DAY_LABELS: Record<string, string> = {
+  L: 'Lunes', M: 'Martes', MI: 'Miércoles', J: 'Jueves', V: 'Viernes', S: 'Sábado', D: 'Domingo',
+};
 
 interface Props {
   token:         string;
@@ -52,6 +60,24 @@ export function TemplateUploader({ token, agentId, current, uploadCost }: Props)
   const [loading, setLoading] = useState(false);
   const [savingTogglesId, setSavingTogglesId] = useState(false);
   const [error,   setError]   = useState<string | null>(null);
+  const [allColumns, setAllColumns] = useState<AllColumn[]>([]);
+
+  // Carga la lista completa de columnas del template (letra + header real)
+  // desde el bucket. Se usa para mostrar cols sin mapear y grid semanal,
+  // no solo las que Claude asignó a un campo canónico.
+  useEffect(() => {
+    if (!state?.mapping) { setAllColumns([]); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/portal/${token}/oficina/bitacora/template-columns?agent_id=${agentId}`);
+        if (!res.ok) return;
+        const body = await res.json() as { columns?: AllColumn[] };
+        if (!cancelled) setAllColumns(body.columns ?? []);
+      } catch { /* silent — fallback muestra solo mapeadas */ }
+    })();
+    return () => { cancelled = true; };
+  }, [token, agentId, state?.filename, state?.uploaded_at, state?.mapping]);
 
   async function handleFile(file: File) {
     setLoading(true);
@@ -191,73 +217,132 @@ export function TemplateUploader({ token, agentId, current, uploadCost }: Props)
               </p>
             </div>
           </div>
-          {state?.mapping?.columns && Object.keys(state.mapping.columns).length > 0 && (
-            <div className="mt-3 pt-3" style={{ borderTop: '1px solid rgba(34,197,94,0.2)' }}>
-              <p className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: '#6B6480' }}>
-                Reglas de escritura por columna
-              </p>
-              <p className="text-[11px] mb-3" style={{ color: '#6B6480' }}>
-                Marca las columnas donde <strong>solo tú escribes manualmente</strong> (vendedor asignado, notas internas, etc). Tu empleado nunca las tocará, aunque las mostrará en el reporte.
-              </p>
-              <div className="flex flex-col gap-1.5">
-                {Object.entries(state.mapping.columns).map(([col, field]) => {
-                  const isHumanOnly = humanOnlySet.has(col.toUpperCase());
-                  return (
-                    <div
-                      key={col}
-                      className="flex items-center gap-2 px-2 py-1.5 rounded text-xs"
-                      style={{
-                        background: '#ffffff',
-                        border:     '1px solid #E8E3F5',
-                      }}
-                    >
-                      <strong className="whitespace-nowrap" style={{ color: '#1A0A3B' }}>Col {col}</strong>
-                      <select
-                        value={field}
-                        disabled={savingTogglesId}
-                        onChange={e => {
-                          const val = e.target.value;
-                          void changeMapping(col, val === '' ? null : val);
-                        }}
-                        className="flex-1 text-xs rounded outline-none disabled:opacity-50"
-                        style={{
-                          background:   '#ffffff',
-                          border:       '1px solid #E8E3F5',
-                          color:        '#1A0A3B',
-                          padding:      '2px 4px',
-                          cursor:       savingTogglesId ? 'wait' : 'pointer',
-                        }}
-                      >
-                        <option value="">— quitar mapeo —</option>
-                        {Object.entries(FIELD_LABELS).map(([f, label]) => (
-                          <option key={f} value={f}>{label}</option>
-                        ))}
-                      </select>
-                      <button
-                        type="button"
-                        onClick={() => toggleHumanOnly(col, isHumanOnly)}
-                        disabled={savingTogglesId}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold whitespace-nowrap disabled:opacity-50"
-                        style={{
-                          background: isHumanOnly ? 'rgba(217,119,6,0.1)' : 'rgba(108,59,255,0.1)',
-                          color:      isHumanOnly ? '#B45309'             : '#6C3BFF',
-                          border:     'none',
-                          cursor:     savingTogglesId ? 'wait' : 'pointer',
-                        }}
-                      >
-                        {isHumanOnly ? <><User size={9} /> Solo yo</> : <><Meerkat size={11} /> Empleado</>}
-                      </button>
+          {state?.mapping && (() => {
+            const mappedCols   = state.mapping.columns ?? {};
+            const gridEntries  = Object.entries(state.mapping.verification_grid ?? {});
+            const gridColSet   = new Set(gridEntries.map(([, letter]) => letter.toUpperCase()));
+            const mappedSet    = new Set(Object.keys(mappedCols).map(c => c.toUpperCase()));
+            // Fallback: si no cargó all_columns, sintetiza rango desde mapeadas+grid
+            // para al menos mostrar Mapeadas y Grid. Sin mapear queda vacío hasta
+            // que el fetch responda.
+            const effectiveAll = allColumns.length > 0
+              ? allColumns
+              : Object.keys(mappedCols).map(c => ({ col: c.toUpperCase(), header: null as string | null }));
+            const unmapped = effectiveAll.filter(
+              c => !mappedSet.has(c.col.toUpperCase()) && !gridColSet.has(c.col.toUpperCase())
+            );
+
+            function renderMappingRow(col: string, field: string, header: string | null) {
+              const isHumanOnly = humanOnlySet.has(col.toUpperCase());
+              return (
+                <div
+                  key={col}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded text-xs"
+                  style={{ background: '#ffffff', border: '1px solid #E8E3F5' }}
+                >
+                  <strong className="whitespace-nowrap" style={{ color: '#1A0A3B' }}>Col {col}</strong>
+                  {header && (
+                    <span className="text-[10px] truncate max-w-[110px]" style={{ color: '#9B8FB5' }} title={header}>
+                      {header}
+                    </span>
+                  )}
+                  <select
+                    value={field}
+                    disabled={savingTogglesId}
+                    onChange={e => { const val = e.target.value; void changeMapping(col, val === '' ? null : val); }}
+                    className="flex-1 text-xs rounded outline-none disabled:opacity-50"
+                    style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B', padding: '2px 4px', cursor: savingTogglesId ? 'wait' : 'pointer' }}
+                  >
+                    <option value="">— sin mapear —</option>
+                    {Object.entries(FIELD_LABELS).map(([f, label]) => (
+                      <option key={f} value={f}>{label}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => toggleHumanOnly(col, isHumanOnly)}
+                    disabled={savingTogglesId}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold whitespace-nowrap disabled:opacity-50"
+                    style={{
+                      background: isHumanOnly ? 'rgba(217,119,6,0.1)' : 'rgba(108,59,255,0.1)',
+                      color:      isHumanOnly ? '#B45309'             : '#6C3BFF',
+                      border:     'none',
+                      cursor:     savingTogglesId ? 'wait' : 'pointer',
+                    }}
+                  >
+                    {isHumanOnly ? <><User size={9} /> Solo yo</> : <><Meerkat size={11} /> Empleado</>}
+                  </button>
+                </div>
+              );
+            }
+
+            return (
+              <div className="mt-3 pt-3 flex flex-col gap-2" style={{ borderTop: '1px solid rgba(34,197,94,0.2)' }}>
+                <p className="text-[11px]" style={{ color: '#6B6480' }}>
+                  Marca las columnas donde <strong>solo tú escribes manualmente</strong>. Tu empleado nunca las tocará, aunque las mostrará en el reporte.
+                </p>
+
+                {/* Mapeadas — abierta por default */}
+                <details open className="rounded-lg group" style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
+                  <summary className="flex items-center gap-2 px-3 py-2 cursor-pointer list-none" style={{ userSelect: 'none' }}>
+                    <span className="text-[11px] font-semibold flex-1" style={{ color: '#1A0A3B' }}>
+                      Mapeadas ({Object.keys(mappedCols).length})
+                    </span>
+                    <span className="text-[10px] transition-transform group-open:rotate-180" style={{ color: '#6B6480' }}>▾</span>
+                  </summary>
+                  <div className="px-2 pb-2 flex flex-col gap-1.5">
+                    {Object.entries(mappedCols).map(([col, field]) => {
+                      const header = effectiveAll.find(c => c.col.toUpperCase() === col.toUpperCase())?.header ?? null;
+                      return renderMappingRow(col, field, header);
+                    })}
+                  </div>
+                </details>
+
+                {/* Sin mapear — colapsada */}
+                {unmapped.length > 0 && (
+                  <details className="rounded-lg group" style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
+                    <summary className="flex items-center gap-2 px-3 py-2 cursor-pointer list-none" style={{ userSelect: 'none' }}>
+                      <span className="text-[11px] font-semibold flex-1" style={{ color: '#1A0A3B' }}>
+                        Sin mapear ({unmapped.length})
+                      </span>
+                      <span className="text-[10px] transition-transform group-open:rotate-180" style={{ color: '#6B6480' }}>▾</span>
+                    </summary>
+                    <div className="px-2 pb-2 flex flex-col gap-1.5">
+                      <p className="text-[10px] px-1 pt-1" style={{ color: '#6B6480' }}>
+                        Columnas que tu empleado no llena por default. Asígnale un campo o déjalas para llenado manual.
+                      </p>
+                      {unmapped.map(c => renderMappingRow(c.col, '', c.header))}
                     </div>
-                  );
-                })}
+                  </details>
+                )}
+
+                {/* Grid semanal — colapsada, read-only */}
+                {gridEntries.length > 0 && (
+                  <details className="rounded-lg group" style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
+                    <summary className="flex items-center gap-2 px-3 py-2 cursor-pointer list-none" style={{ userSelect: 'none' }}>
+                      <CalendarDays size={12} style={{ color: '#6B6480' }} />
+                      <span className="text-[11px] font-semibold flex-1" style={{ color: '#1A0A3B' }}>
+                        Grid semanal L–D ({gridEntries.length})
+                      </span>
+                      <span className="text-[10px] transition-transform group-open:rotate-180" style={{ color: '#6B6480' }}>▾</span>
+                    </summary>
+                    <div className="px-3 pb-3 pt-1">
+                      <p className="text-[10px] mb-2" style={{ color: '#6B6480' }}>
+                        Días donde el empleado marca &ldquo;OK&rdquo; cuando confirma el seguimiento. Se detecta automático de tu plantilla.
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {gridEntries.map(([day, letter]) => (
+                          <span key={day} className="text-[10px] px-2 py-1 rounded" style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}>
+                            <strong>{GRID_DAY_LABELS[day] ?? day}</strong>: col {letter.toUpperCase()}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </details>
+                )}
               </div>
-            </div>
-          )}
-          {state?.mapping?.notes && (
-            <p className="text-[11px] mt-3 italic" style={{ color: '#6B6480' }}>
-              Nota: {state.mapping.notes}
-            </p>
-          )}
+            );
+          })()}
         </div>
       )}
 
@@ -374,7 +459,15 @@ export function TemplateUploader({ token, agentId, current, uploadCost }: Props)
           </button>
         )}
 
-        <span className="text-[11px]" style={{ color: '#6B6480' }}>
+        <span
+          className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded"
+          style={{
+            background: 'rgba(234,179,8,0.12)',
+            border:     '1px solid rgba(234,179,8,0.35)',
+            color:      '#78350F',
+          }}
+        >
+          <AlertTriangle size={12} />
           Analizar la plantilla cuesta {uploadCost} tarea{uploadCost === 1 ? '' : 's'} del pool.
         </span>
       </div>
