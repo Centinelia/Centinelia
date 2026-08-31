@@ -560,7 +560,13 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
    .slice(0, 5);
 
   // Outbound snapshot
-  const pendingOutboundCount    = showOutbound ? (contactOutbound as any[]).filter((c: any) => c.status === 'pending').length : 0;
+  // Excluye callbacks internos del incidencia flow (source='auto_incident_verification'):
+  // esos son agendados por Nelia al registrar una queja, viven en outbound_contacts
+  // pero pertenecen a /oficina/bitacora, no a /oficina/campanas. Contarlos aquí producía
+  // "N contactos en cola" en /inicio con link a Campañas que abría una página vacía.
+  const pendingOutboundCount    = showOutbound
+    ? (contactOutbound as any[]).filter((c: any) => c.status === 'pending' && c.source !== 'auto_incident_verification').length
+    : 0;
   const activeOutboundCampaigns = showOutbound ? (outboundCampaigns as any[]).filter((c: any) => c.status === 'active').length  : 0;
   const lastCampaignRunAt       = showOutbound ? ((outboundCampaigns as any[]).find((c: any) => c.last_run_at)?.last_run_at ?? null) : null;
 

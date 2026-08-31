@@ -15,7 +15,12 @@ async function main() {
   if (error || !agent) { console.error('Agent not found', error); process.exit(1); }
 
   const nelia = MEERKAT_MAP['nelia'];
-  const newFeatures = { ...(agent.features ?? {}), meerkat_role_id: 'nelia' };
+  const newFeatures = {
+    ...(agent.features ?? {}),
+    meerkat_role_id: 'nelia',
+    avatar:          nelia.imagen,
+    role_color:      nelia.color,
+  };
 
   const { data: updated } = await supabase.from('voice_agents')
     .update({
