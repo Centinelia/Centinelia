@@ -5,12 +5,17 @@ import Link from 'next/link';
 import {
   BookOpen, Receipt, FileSignature, BarChart2, FolderOpen, PhoneOutgoing,
   LayoutTemplate, ClipboardList, CheckCircle2, AlertTriangle, ExternalLink, Loader2, Users,
+  Package, Mail, Zap, Truck, Calendar, MessageCircle, Globe, DollarSign, ShoppingCart, Bot,
 } from 'lucide-react';
 import type { ModuleDefinition } from '@/lib/modules/catalog';
 
+// Ampliar cuando un módulo nuevo use un icono no listado. iconName es un string
+// libre en catalog.ts por decisión (evita import ciclo lib→ui), así que este
+// map es el gate — si un módulo usa un icono no listado, cae a Package.
 const ICON_MAP: Record<string, React.ElementType> = {
   BookOpen, Receipt, FileSignature, BarChart2, FolderOpen, PhoneOutgoing,
-  LayoutTemplate, ClipboardList,
+  LayoutTemplate, ClipboardList, Package, Mail, Zap, Truck, Calendar,
+  MessageCircle, Globe, DollarSign, ShoppingCart, Bot,
 };
 
 interface CatalogEntry extends ModuleDefinition {
@@ -36,6 +41,17 @@ export function ModulosClient({ token, initial }: Props) {
 
   async function toggle(module: CatalogEntry) {
     if (saving) return;
+
+    // Confirm explícito al DESACTIVAR: los módulos tienen side effects
+    // (correo semanal, callbacks agendados, tools disponibles). Evitar clic
+    // accidental que rompa el flujo del cliente.
+    if (module.isActive) {
+      const msg = module.deactivateWarning
+        ? `Desactivar "${module.name}":\n\n${module.deactivateWarning}\n\n¿Continuar?`
+        : `¿Desactivar "${module.name}"?`;
+      if (!window.confirm(msg)) return;
+    }
+
     setSaving(module.id);
     setError(null);
     try {
@@ -73,8 +89,10 @@ export function ModulosClient({ token, initial }: Props) {
 function ModuleCard({ module, token, saving, onToggle }: {
   module: CatalogEntry; token: string; saving: boolean; onToggle: () => void;
 }) {
-  const Icon = ICON_MAP[module.iconName] ?? BookOpen;
-  const canActivate = !module.requiresSetup || module.setupComplete;
+  const Icon = ICON_MAP[module.iconName] ?? Package;
+  const isComingSoon = module.stage === 'coming_soon';
+  const isBeta = module.stage === 'beta';
+  const canActivate = !isComingSoon && (!module.requiresSetup || module.setupComplete);
 
   return (
     <div
@@ -97,18 +115,40 @@ function ModuleCard({ module, token, saving, onToggle }: {
             <div className="min-w-0">
               <h3 className="text-[14px] font-bold tracking-tight truncate" style={{ color: '#1A0A3B' }}>{module.name}</h3>
               <p className="text-[11px]" style={{ color: '#9B8FB5' }}>
-                {module.priceMonthly ? `$${module.priceMonthly}/mes` : 'Incluido en tu plan'}
+                {module.priceNote
+                  ? module.priceNote
+                  : module.priceMonthly
+                    ? `$${module.priceMonthly.toLocaleString('es-MX')}/mes`
+                    : 'Incluido en tu plan'}
               </p>
             </div>
           </div>
-          {module.isActive && (
-            <span
-              className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold whitespace-nowrap"
-              style={{ background: 'rgba(22,163,74,0.1)', color: '#16a34a' }}
-            >
-              <CheckCircle2 size={10} /> Activo
-            </span>
-          )}
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            {isBeta && !isComingSoon && (
+              <span
+                className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider whitespace-nowrap"
+                style={{ background: 'rgba(180,83,9,0.12)', color: '#B45309' }}
+              >
+                Beta
+              </span>
+            )}
+            {isComingSoon && (
+              <span
+                className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider whitespace-nowrap"
+                style={{ background: 'rgba(107,100,128,0.15)', color: '#6B6480' }}
+              >
+                Próximamente
+              </span>
+            )}
+            {module.isActive && (
+              <span
+                className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold whitespace-nowrap"
+                style={{ background: 'rgba(22,163,74,0.1)', color: '#16a34a' }}
+              >
+                <CheckCircle2 size={10} /> Activo
+              </span>
+            )}
+          </div>
         </div>
 
         <p className="text-[12px] mt-1" style={{ color: '#4B5563' }}>{module.tagline}</p>
@@ -190,7 +230,12 @@ function ModuleCard({ module, token, saving, onToggle }: {
               Configurar <ExternalLink size={10} />
             </Link>
           )}
-          {!canActivate && (
+          {isComingSoon && (
+            <span className="inline-flex items-center gap-1 text-[10px]" style={{ color: '#6B6480' }}>
+              Aún no disponible para activar
+            </span>
+          )}
+          {!isComingSoon && !canActivate && (
             <span className="inline-flex items-center gap-1 text-[10px]" style={{ color: '#B45309' }}>
               <AlertTriangle size={10} /> Requiere setup previo
             </span>

@@ -42,6 +42,10 @@ export interface ModuleDefinition {
   featureFlag:       string;
   /** Precio mensual informativo. null = incluido en base. */
   priceMonthly:      number | null;
+  /** Override del label de pricing. Cuando está set, la UI lo muestra tal cual
+   *  en vez de "$X/mes" o "Incluido en tu plan". Útil para verticales que
+   *  requieren cotización individual. */
+  priceNote?:        string;
   /** Requerimientos externos que el cliente debe tener antes de activar.
    *  Se muestran como checklist en el catálogo. */
   requirements:      string[];
@@ -56,6 +60,14 @@ export interface ModuleDefinition {
   /** Si true, el módulo requiere una integración externa conectada (ej: QB, PAC).
    *  UI muestra "requiere setup" en vez de botón directo de activar. */
   requiresSetup:     boolean;
+  /** Madurez del módulo para el catálogo público:
+   *   - `ga`: production-ready, cliente puede activar sin fricción
+   *   - `beta`: funcional pero le falta pulido (KB, tests, UI menor); activable con warning
+   *   - `coming_soon`: aparece en catálogo pero NO se puede activar todavía */
+  stage:             'ga' | 'beta' | 'coming_soon';
+  /** Copy que aparece en el confirm de desactivación para explicar el side effect.
+   *  Si null, solo se pregunta "¿Estás seguro?". */
+  deactivateWarning?: string;
 }
 
 export const MODULE_CATALOG: ModuleDefinition[] = [
@@ -85,6 +97,8 @@ export const MODULE_CATALOG: ModuleDefinition[] = [
     ],
     configPath:    '/oficina/bitacora',
     requiresSetup: false,
+    stage:         'ga',
+    deactivateWarning: 'El correo semanal de bitácora dejará de enviarse y no se agendarán nuevas llamadas de verificación. Los eventos ya registrados quedan intactos.',
   },
   {
     id:            'facturacion_cfdi',
@@ -94,7 +108,7 @@ export const MODULE_CATALOG: ModuleDefinition[] = [
     iconName:      'Receipt',
     meerkats:      ['nala', 'nox'],
     featureFlag:   'invoicing_provider',
-    priceMonthly:  null,
+    priceMonthly:  399,
     requirements:  [
       'Tener CSD (certificado de sello digital) vigente',
       'Contrato con un PAC (Solución Factible o CONTPAQi)',
@@ -111,8 +125,10 @@ export const MODULE_CATALOG: ModuleDefinition[] = [
       'No cobra pagos (usa Stripe si es online, o registra manualmente)',
       'No valida facturas de proveedores — eso es Facturación de proveedores',
     ],
-    configPath:    '/portal?tab=organizacion&nav=facturacion',
+    configPath:    '/portal?tab=organizacion#integraciones',
     requiresSetup: true,
+    stage:         'beta',
+    deactivateWarning: 'Los empleados dejarán de poder emitir facturas CFDI. Los CFDIs ya emitidos siguen disponibles en tu PAC.',
   },
   {
     id:            'ciclo_oc_cfdi',
@@ -122,7 +138,7 @@ export const MODULE_CATALOG: ModuleDefinition[] = [
     iconName:      'FileSignature',
     meerkats:      ['nala', 'nox'],
     featureFlag:   'ciclo_oc_cfdi',
-    priceMonthly:  null,
+    priceMonthly:  399,
     requirements:  [
       'QuickBooks Online o ERP con integración disponible',
     ],
@@ -139,6 +155,8 @@ export const MODULE_CATALOG: ModuleDefinition[] = [
     ],
     configPath:    null,
     requiresSetup: true,
+    stage:         'beta',
+    deactivateWarning: 'Nala dejará de crear OCs automáticamente y de matchear facturas de proveedores. Las OCs y matches ya generados quedan en tu ERP.',
   },
   {
     id:            'quickbooks',
@@ -148,7 +166,7 @@ export const MODULE_CATALOG: ModuleDefinition[] = [
     iconName:      'BarChart2',
     meerkats:      ['nox', 'nico', 'niva', 'nala'],
     featureFlag:   'quickbooks',
-    priceMonthly:  null,
+    priceMonthly:  399,
     requirements:  [
       'Cuenta QuickBooks Online activa',
       'OAuth de QB completado en Configuración',
@@ -164,8 +182,10 @@ export const MODULE_CATALOG: ModuleDefinition[] = [
       'No es sustituto de tu contador (auditoría manual sigue igual)',
       'Solo QuickBooks Online — no soporta Desktop',
     ],
-    configPath:    '/portal?tab=organizacion&nav=integraciones',
+    configPath:    '/portal?tab=organizacion#integraciones',
     requiresSetup: true,
+    stage:         'beta',
+    deactivateWarning: 'Los empleados dejarán de leer y escribir en tu QuickBooks. Tu cuenta QB no se ve afectada.',
   },
   {
     id:            'cloud_catalog',
@@ -175,7 +195,7 @@ export const MODULE_CATALOG: ModuleDefinition[] = [
     iconName:      'FolderOpen',
     meerkats:      ['nox', 'noah'],
     featureFlag:   'cloud_catalog',
-    priceMonthly:  null,
+    priceMonthly:  149,
     requirements:  [
       'Cuenta Dropbox, Google Drive u OneDrive conectada',
       'Archivo Excel o CSV con el catálogo (columnas: SKU, descripción, precio)',
@@ -190,8 +210,10 @@ export const MODULE_CATALOG: ModuleDefinition[] = [
       'No modifica tu catálogo (solo lectura)',
       'No aplica descuentos automáticos',
     ],
-    configPath:    '/portal?tab=organizacion&nav=integraciones',
+    configPath:    '/portal?tab=organizacion#integraciones',
     requiresSetup: true,
+    stage:         'ga',
+    deactivateWarning: 'Los empleados dejarán de consultar tu catálogo cuando cotizan o generan OCs. Tu archivo en la nube no se toca.',
   },
   {
     id:            'outbound_calls',
@@ -216,6 +238,8 @@ export const MODULE_CATALOG: ModuleDefinition[] = [
     ],
     configPath:    '/oficina/campanas',
     requiresSetup: false,
+    stage:         'ga',
+    deactivateWarning: 'Las campañas salientes activas se pausan y no se disparan más llamadas por triggers. Las llamadas ya realizadas siguen en el historial.',
   },
   {
     id:            'google_sheets',
@@ -225,7 +249,7 @@ export const MODULE_CATALOG: ModuleDefinition[] = [
     iconName:      'LayoutTemplate',
     meerkats:      ['nox'],
     featureFlag:   'google_sheets',
-    priceMonthly:  null,
+    priceMonthly:  149,
     requirements:  [
       'Cuenta Google conectada',
       'Sheet compartida con permisos de escritura',
@@ -239,8 +263,10 @@ export const MODULE_CATALOG: ModuleDefinition[] = [
       'No genera fórmulas automáticamente',
       'No corre pivots ni scripts de Apps Script',
     ],
-    configPath:    '/portal?tab=organizacion&nav=integraciones',
+    configPath:    '/portal?tab=organizacion#integraciones',
     requiresSetup: true,
+    stage:         'beta',
+    deactivateWarning: 'Los empleados dejarán de leer y escribir en tus sheets. Tu Google Sheet no se toca.',
   },
   {
     id:            'contract_drafts',
@@ -265,6 +291,8 @@ export const MODULE_CATALOG: ModuleDefinition[] = [
     ],
     configPath:    '/oficina/contratos',
     requiresSetup: false,
+    stage:         'coming_soon',
+    deactivateWarning: 'Nox dejará de generar borradores de contrato. Los borradores ya generados quedan en tu carpeta.',
   },
   {
     id:            'civic_reports',
@@ -275,6 +303,7 @@ export const MODULE_CATALOG: ModuleDefinition[] = [
     meerkats:      ['nara'],
     featureFlag:   'civic_reports',
     priceMonthly:  null,
+    priceNote:     'Cotización a medida',
     requirements:  [],
     capabilities: [
       'Recepción de reportes por voz/chat/correo',
@@ -290,6 +319,7 @@ export const MODULE_CATALOG: ModuleDefinition[] = [
     configPath:    '/oficina/reportes-ciudadanos',
     vertical:      'gobierno',
     requiresSetup: false,
+    stage:         'coming_soon',
   },
   {
     id:            'external_tramites',
@@ -300,6 +330,7 @@ export const MODULE_CATALOG: ModuleDefinition[] = [
     meerkats:      ['nara'],
     featureFlag:   'external_tramites',
     priceMonthly:  null,
+    priceNote:     'Cotización a medida',
     requirements:  [
       'Integración con el backend municipal (padrón + trámites)',
     ],
@@ -316,6 +347,7 @@ export const MODULE_CATALOG: ModuleDefinition[] = [
     configPath:    null,
     vertical:      'gobierno',
     requiresSetup: true,
+    stage:         'coming_soon',
   },
 ];
 

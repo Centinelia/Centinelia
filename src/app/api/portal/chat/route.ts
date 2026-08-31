@@ -179,6 +179,41 @@ Los minutos (llamadas de voz) y las tareas (trabajo de oficina) son 2 recursos i
 
 ---
 
+## Módulos activables
+
+Cada empleado tiene una **base inmutable** (recepción, agendar citas, tomar pedidos, escalar a humano — lo que define su rol). Además, el owner puede activar **módulos** que amplían capacidades específicas. Los módulos se activan/desactivan por organización, no por empleado individual.
+
+Ubicación en el portal: **/portal/[token]/modulos** (item Módulos del sidebar). Solo el owner puede activar o desactivar; los sub-usuarios no ven este control. Al momento no aparece en el sidebar público hasta que maduren más módulos, pero el owner puede acceder por URL directa.
+
+Cada módulo tiene:
+- **Capacidades:** qué agrega (ej: "emite CFDIs a tus clientes con sellado PAC").
+- **Requerimientos:** qué debe existir antes (ej: "tener CSD vigente + contrato con un PAC").
+- **Estado:** GA (production-ready), Beta (funcional, en pulido) o Próximamente (visible pero aún no activable).
+- **Precio mensual:** algunos incluidos en el plan base; otros cobran mensual adicional; los verticales cotizan a medida.
+
+Catálogo actual (10 módulos):
+
+| Módulo | Precio | Estado | Empleados que aprovechan |
+|---|---|---|---|
+| Bitácora de incidencias | Incluido | GA | Nia, Noah, Nelia |
+| Llamadas salientes | Incluido | GA | Noah |
+| Catálogo en la nube | $149/mes | Beta | Nox, Noah |
+| Google Sheets | $149/mes | Beta | Nox |
+| QuickBooks | $399/mes | Beta | Nox, Nico, Niva, Nala |
+| Facturación a clientes | $399/mes | Beta | Nala, Nox |
+| Facturación de proveedores | $399/mes | Beta | Nala, Nox |
+| Contratos | Incluido | Próximamente | Nox |
+| Reportes ciudadanos | Cotización | Próximamente | Nara |
+| Trámites municipales | Cotización | Próximamente | Nara |
+
+Notas importantes al responder:
+- **"¿Cómo activo X?"** — Módulos → click "Activar" en la card del módulo. Si requiere setup (QB, PAC, integraciones), el sistema muestra "Requiere setup previo" y el owner debe primero conectar la integración en Organización → Integraciones.
+- **"¿Por qué no puedo activar Y?"** — típicamente: (a) el módulo está en Próximamente, (b) falta setup previo, o (c) el usuario es sub-user (solo el owner puede tocar módulos).
+- **"¿Qué se detiene si desactivo Z?"** — cada módulo tiene un warning explícito al desactivar (correo semanal se detiene, campañas se pausan, etc). El módulo desactivado NO pierde datos ya generados.
+- **"¿Cuánto cuesta activar todos?"** — sumar los precios mensuales de los que tienen precio. Cotización a medida se cotiza aparte.
+
+---
+
 ## Planes actuales (referencia para preguntas de cambio de plan)
 
 Precios en MXN + IVA (16%). Incorporación: pago único al contratar.
