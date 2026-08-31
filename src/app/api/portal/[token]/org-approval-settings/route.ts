@@ -8,76 +8,68 @@ export const dynamic = 'force-dynamic';
 
 interface Params { params: Promise<{ token: string }> }
 
-async function resolvePortalEmail(token: string, cookieValue: string): Promise<string | null> {
+async function resolveSession(token: string, cookieValue: string): Promise<{ portalEmail: string; isSubUser: boolean } | null> {
   const auth = await verifySession(cookieValue);
   if (!auth) return null;
   const supabase = createAdminClient();
   const data = await getPrimaryAgentFromToken<{ portal_email: string | null }>(token, 'portal_email', supabase);
   if (!data?.portal_email) return null;
   if (auth.portalEmail && auth.portalEmail !== data.portal_email) return null;
-  return data.portal_email as string;
+  return { portalEmail: data.portal_email as string, isSubUser: auth.isSubUser };
 }
 
 /**
- * GET/PATCH aceptan `agent_id` opcional en query.
- * - Si viene agent_id → lee/escribe `always_approve_delegations` e
- *   `instant_processing_enabled` de `voice_agents` (per-empleado).
- * - Sin agent_id (legacy) → cae a `organizations`.
- * - `auto_approve_task_plans` SIEMPRE se maneja a nivel org (flag interno de
- *   soporte, no expuesto per-empleado).
+ * GET/PATCH per-empleado. Requiere `agent_id` en query.
+ * - `always_approve_delegations` e `instant_processing_enabled` viven en
+ *   voice_agents (per-empleado).
+ * - `auto_approve_task_plans` sigue en organizations (flag interno de soporte,
+ *   no expuesto per-empleado).
+ *
+ * Solo owners pueden leer/escribir. Sub-users reciben 403.
  */
 export async function GET(req: NextRequest, { params }: Params) {
   const { token } = await params;
   const cookieStore = await cookies();
-  const portalEmail = await resolvePortalEmail(token, cookieStore.get(PORTAL_COOKIE)?.value ?? '');
-  if (!portalEmail) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const session = await resolveSession(token, cookieStore.get(PORTAL_COOKIE)?.value ?? '');
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (session.isSubUser) return NextResponse.json({ error: 'only_owner' }, { status: 403 });
 
   const agentId = req.nextUrl.searchParams.get('agent_id');
+  if (!agentId) return NextResponse.json({ error: 'agent_id required' }, { status: 400 });
+
   const supabase = createAdminClient();
 
   const { data: orgRow } = await supabase
     .from('organizations')
     .select('auto_approve_task_plans')
-    .eq('portal_email', portalEmail)
+    .eq('portal_email', session.portalEmail)
     .maybeSingle();
 
-  let alwaysApprove = false;
-  let instantEnabled = true;
-  if (agentId) {
-    const { data: agentRow } = await supabase
-      .from('voice_agents')
-      .select('always_approve_delegations, instant_processing_enabled, portal_email')
-      .eq('id', agentId)
-      .maybeSingle();
-    if (!agentRow || agentRow.portal_email !== portalEmail) {
-      return NextResponse.json({ error: 'agent not found in this org' }, { status: 404 });
-    }
-    alwaysApprove  = !!agentRow.always_approve_delegations;
-    instantEnabled = agentRow.instant_processing_enabled !== false;
-  } else {
-    const { data: orgFallback } = await supabase
-      .from('organizations')
-      .select('always_approve_delegations, instant_processing_enabled')
-      .eq('portal_email', portalEmail)
-      .maybeSingle();
-    alwaysApprove  = !!orgFallback?.always_approve_delegations;
-    instantEnabled = orgFallback?.instant_processing_enabled !== false;
+  const { data: agentRow } = await supabase
+    .from('voice_agents')
+    .select('always_approve_delegations, instant_processing_enabled, portal_email')
+    .eq('id', agentId)
+    .maybeSingle();
+  if (!agentRow || agentRow.portal_email !== session.portalEmail) {
+    return NextResponse.json({ error: 'agent not found in this org' }, { status: 404 });
   }
 
   return NextResponse.json({
-    always_approve_delegations: alwaysApprove,
+    always_approve_delegations: !!agentRow.always_approve_delegations,
     auto_approve_task_plans:    !!(orgRow?.auto_approve_task_plans),
-    instant_processing_enabled: instantEnabled,
+    instant_processing_enabled: agentRow.instant_processing_enabled !== false,
   });
 }
 
 export async function PATCH(req: NextRequest, { params }: Params) {
   const { token } = await params;
   const cookieStore = await cookies();
-  const portalEmail = await resolvePortalEmail(token, cookieStore.get(PORTAL_COOKIE)?.value ?? '');
-  if (!portalEmail) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const session = await resolveSession(token, cookieStore.get(PORTAL_COOKIE)?.value ?? '');
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (session.isSubUser) return NextResponse.json({ error: 'only_owner' }, { status: 403 });
 
   const agentId = req.nextUrl.searchParams.get('agent_id');
+  if (!agentId) return NextResponse.json({ error: 'agent_id required' }, { status: 400 });
 
   const body = await req.json() as {
     always_approve_delegations?: boolean;
@@ -87,6 +79,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const supabase = createAdminClient();
 
+  // Verifica IDOR: el agent debe pertenecer a la org del session
+  const { data: agentCheck } = await supabase
+    .from('voice_agents').select('portal_email').eq('id', agentId).maybeSingle();
+  if (!agentCheck || agentCheck.portal_email !== session.portalEmail) {
+    return NextResponse.json({ error: 'agent not found in this org' }, { status: 404 });
+  }
+
   // Precedence guard: si el caller envía ambos true, always gana.
   let alwaysApproveNext = body.always_approve_delegations;
   let autoApproveNext   = body.auto_approve_task_plans;
@@ -94,39 +93,26 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     autoApproveNext = false;
   }
 
-  // 1. auto_approve_task_plans siempre a org (flag interno).
   if (typeof autoApproveNext === 'boolean') {
     const { error } = await supabase
       .from('organizations')
       .update({ auto_approve_task_plans: autoApproveNext })
-      .eq('portal_email', portalEmail);
+      .eq('portal_email', session.portalEmail);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // 2. always_approve + instant_processing per-empleado si viene agent_id, si no org.
   const perAgentUpdate: Record<string, unknown> = {};
-  if (typeof alwaysApproveNext === 'boolean') perAgentUpdate.always_approve_delegations = alwaysApproveNext;
-  if (typeof body.instant_processing_enabled === 'boolean') perAgentUpdate.instant_processing_enabled = body.instant_processing_enabled;
+  if (typeof alwaysApproveNext === 'boolean')                perAgentUpdate.always_approve_delegations = alwaysApproveNext;
+  if (typeof body.instant_processing_enabled === 'boolean')  perAgentUpdate.instant_processing_enabled = body.instant_processing_enabled;
 
   if (Object.keys(perAgentUpdate).length > 0) {
-    if (agentId) {
-      const { data: agentCheck } = await supabase
-        .from('voice_agents').select('portal_email').eq('id', agentId).maybeSingle();
-      if (!agentCheck || agentCheck.portal_email !== portalEmail) {
-        return NextResponse.json({ error: 'agent not found in this org' }, { status: 404 });
-      }
-      const { error } = await supabase.from('voice_agents').update(perAgentUpdate).eq('id', agentId);
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    } else {
-      const { error } = await supabase.from('organizations').update(perAgentUpdate).eq('portal_email', portalEmail);
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+    const { error } = await supabase.from('voice_agents').update(perAgentUpdate).eq('id', agentId);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
   if (typeof body.instant_processing_enabled === 'boolean') {
     const { clearInstantProcessingCache } = await import('@/lib/ops/instant-processing');
-    if (agentId) clearInstantProcessingCache(agentId);
-    else clearInstantProcessingCache();
+    clearInstantProcessingCache(agentId);
   }
 
   return NextResponse.json({ ok: true });

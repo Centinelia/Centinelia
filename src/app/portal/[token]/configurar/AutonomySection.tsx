@@ -18,6 +18,7 @@ import InstantProcessingSection from './InstantProcessingSection';
 interface Props {
   token:     string;
   agentId:   string;
+  agentName: string;
   initStage: number;
   roleColor: string;
   isOwner:   boolean;
@@ -25,7 +26,7 @@ interface Props {
 
 const ACCENT = '108, 59, 255';
 
-export default function AutonomySection({ token, agentId, initStage, roleColor, isOwner }: Props) {
+export default function AutonomySection({ token, agentId, agentName, initStage, roleColor, isOwner }: Props) {
   const [stage,  setStage]  = useState(initStage);
   const [saving, setSaving] = useState(false);
   const [saved,  setSaved]  = useState(false);
@@ -192,20 +193,20 @@ export default function AutonomySection({ token, agentId, initStage, roleColor, 
             <div className="flex flex-col gap-3 pt-2" style={{ borderTop: '1px dashed #E8E3F5' }}>
               <div>
                 <p className="text-xs font-semibold mb-1" style={{ color: '#1A0A3B' }}>
-                  Aprobación cuando este empleado delega
+                  Aprobación cuando {agentName || 'este empleado'} delega
                 </p>
                 <p className="text-[11px] mb-2" style={{ color: '#6B6480' }}>
-                  Cuando este empleado le pide a otro hacer algo.
+                  Cuando {agentName || 'este empleado'} le pide a otro empleado hacer algo.
                 </p>
                 <ApprovalSettingsSection token={token} agentId={agentId} roleColor={roleColor} hideHeader />
               </div>
 
               <div className="pt-3" style={{ borderTop: '1px dashed #E8E3F5' }}>
                 <p className="text-xs font-semibold mb-1" style={{ color: '#1A0A3B' }}>
-                  Ritmo de trabajo
+                  Ritmo de trabajo de {agentName || 'este empleado'}
                 </p>
                 <p className="text-[11px] mb-2" style={{ color: '#6B6480' }}>
-                  Velocidad con la que este empleado procesa sus llamadas salientes programadas y trabajos automáticos.
+                  Velocidad con la que {agentName || 'este empleado'} procesa sus llamadas salientes programadas y trabajos automáticos.
                 </p>
                 <InstantProcessingSection token={token} agentId={agentId} roleColor={roleColor} hideHeader />
               </div>

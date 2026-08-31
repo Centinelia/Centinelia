@@ -701,6 +701,7 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
                   <AutonomySection
                     token={token}
                     agentId={agent.id as string}
+                    agentName={(agent as any).agent_name ?? ''}
                     initStage={(agent as any).trust_stage ?? 3}
                     roleColor={roleColor}
                     isOwner={isOwner}

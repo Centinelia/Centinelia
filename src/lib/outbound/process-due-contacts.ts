@@ -11,17 +11,25 @@ export interface OutboundContactsResult {
   failed:    number;
 }
 
-export async function processDueOutboundContacts(limit: number = 20): Promise<OutboundContactsResult> {
+/**
+ * Cuando se llama desde el cron, procesa TODOS los contactos due.
+ * Cuando se llama desde un trigger event-driven, pasa `onlyAgentId` para
+ * limitar a ese agente — así el trigger de un agente con instant=true no
+ * contamina a otros agentes que optaron por el batch horario.
+ */
+export async function processDueOutboundContacts(limit: number = 20, onlyAgentId?: string): Promise<OutboundContactsResult> {
   const supabase = createAdminClient();
   const now = new Date().toISOString();
 
-  const { data: contacts } = await supabase
+  let query = supabase
     .from('outbound_contacts')
     .select('*, voice_agents!inner(id, vapi_agent_id, phone_number, business_name, features, active)')
     .eq('status', 'pending')
     .not('scheduled_at', 'is', null)
     .lte('scheduled_at', now)
     .limit(limit);
+  if (onlyAgentId) query = query.eq('agent_id', onlyAgentId);
+  const { data: contacts } = await query;
 
   if (!contacts?.length) return { triggered: 0, failed: 0 };
 

@@ -58,6 +58,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const cookie  = req.cookies.get(PORTAL_COOKIE)?.value ?? '';
   const session = await verifySession(cookie);
   if (!session) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  // Solo owners pueden activar/pausar el brief (consume tareas del pool).
+  if (session.isSubUser) return NextResponse.json({ error: 'only_owner' }, { status: 403 });
 
   const agentId = new URL(req.url).searchParams.get('agent_id');
   if (!agentId) return NextResponse.json({ error: 'missing_agent_id' }, { status: 400 });

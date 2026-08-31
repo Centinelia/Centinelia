@@ -18,7 +18,9 @@ async function runQuiet(reason: string, agentId: string | null | undefined): Pro
       console.log(`[outbound-trigger] skipped (${reason}) — agent opted out of instant processing`);
       return;
     }
-    const result = await processDueOutboundContacts();
+    // Solo procesa contactos del agente que dispara; contactos de otros
+    // agentes esperan a su propio trigger o al cron horario.
+    const result = await processDueOutboundContacts(20, agentId ?? undefined);
     if (result.triggered > 0 || result.failed > 0) {
       console.log(`[outbound-trigger] ${reason}:`, result);
     }
