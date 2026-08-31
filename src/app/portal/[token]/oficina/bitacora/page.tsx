@@ -21,14 +21,17 @@ export default async function BitacoraPage({ params, searchParams }: Props) {
   if (!data) notFound();
 
   // Check si el agent activo tiene template custom (para decidir si mostrar
-  // botón de subir versión editada).
+  // botón de subir versión editada + badge visible con filename/fecha).
   const supabaseCheck = createAdminClient();
   const { data: agentTemplateCheck } = await supabaseCheck
     .from('voice_agents')
     .select('bitacora_template')
     .eq('id', data.agent.id)
     .maybeSingle();
-  const hasCustomTemplate = !!(agentTemplateCheck?.bitacora_template as { url?: string } | null)?.url;
+  const template = agentTemplateCheck?.bitacora_template as { url?: string; filename?: string; uploaded_at?: string } | null;
+  const hasCustomTemplate = !!template?.url;
+  const templateFilename  = template?.filename ?? null;
+  const templateUploadedAt = template?.uploaded_at ?? null;
 
   if (!data.enabled) {
     return (
@@ -101,6 +104,8 @@ export default async function BitacoraPage({ params, searchParams }: Props) {
         agentId={data.agent.id}
         agentName={data.agent.agent_name ?? 'empleado'}
         hasCustomTemplate={hasCustomTemplate}
+        templateFilename={templateFilename}
+        templateUploadedAt={templateUploadedAt}
       />
     </div>
   );

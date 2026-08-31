@@ -4,10 +4,12 @@ import { useRef, useState } from 'react';
 import { Download, Upload, Loader2, FileSpreadsheet, CheckCircle2 } from 'lucide-react';
 
 interface Props {
-  token:              string;
-  agentId:            string;
-  agentName:          string;
-  hasCustomTemplate:  boolean;
+  token:                string;
+  agentId:              string;
+  agentName:            string;
+  hasCustomTemplate:    boolean;
+  templateFilename?:    string | null;
+  templateUploadedAt?:  string | null;
 }
 
 /**
@@ -17,7 +19,10 @@ interface Props {
  *   parte de esta versión editada en el próximo envío, preservando cualquier
  *   cambio manual del cliente en cualquier columna.
  */
-export function LiveFileControls({ token, agentId, agentName, hasCustomTemplate }: Props) {
+export function LiveFileControls({ token, agentId, agentName, hasCustomTemplate, templateFilename, templateUploadedAt }: Props) {
+  const uploadedDateLabel = templateUploadedAt
+    ? new Date(templateUploadedAt).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'America/Monterrey' })
+    : null;
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [downloadingFlag, setDownloadingFlag] = useState(false);
@@ -88,6 +93,25 @@ export function LiveFileControls({ token, agentId, agentName, hasCustomTemplate 
           Archivo Excel del mes en curso
         </h2>
       </div>
+
+      {hasCustomTemplate && (
+        <div
+          className="flex items-start gap-2 rounded-lg p-3 mb-3"
+          style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.25)' }}
+        >
+          <CheckCircle2 size={14} style={{ color: '#16a34a', marginTop: 2, flexShrink: 0 }} />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold" style={{ color: '#166534' }}>
+              Plantilla personalizada activa
+            </p>
+            <p className="text-[11px] truncate" style={{ color: '#4B5563' }}>
+              {templateFilename ?? 'archivo.xlsx'}
+              {uploadedDateLabel && <span style={{ color: '#9B8FB5' }}> · subida el {uploadedDateLabel}</span>}
+            </p>
+          </div>
+        </div>
+      )}
+
       <p className="text-xs mb-4" style={{ color: '#6B6480' }}>
         Baja el archivo del mes en curso para revisarlo o editarlo en Excel.
         {hasCustomTemplate
