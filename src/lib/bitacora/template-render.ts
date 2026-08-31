@@ -5,6 +5,10 @@ import type { TemplateMapping, CanonicalField } from './template-analyzer';
 /** Header interno de la col oculta que rastrea incident_id para merge. */
 export const HIDDEN_ID_HEADER = '_incident_id';
 
+/** Marker interno para identificar la row de leyenda del grid (para poder
+ *  removerla y re-escribirla en cada render sin duplicar). */
+const LEGEND_MARKER = '__LEGEND_GRID__';
+
 /**
  * Días L-D en el orden que aparecen en el grid de seguimiento semanal.
  * Incluye domingo — aunque el cliente no trabaje en domingo, si se llama en
@@ -56,6 +60,50 @@ function rowStyle(inc: IncidentRow): RowVisualStyle {
     return { fillColor: 'FFFECACA' };  // rojo claro
   }
   return {};
+}
+
+/**
+ * Remueve la row de leyenda del grid si existe (identificada por LEGEND_MARKER
+ * en la col oculta). Se llama al inicio de upsertSheetWithIncidents para no
+ * confundir el scan de incident rows ni el cálculo de lastRow.
+ */
+function stripLegendRow(ws: Worksheet, hiddenCol: number): void {
+  const rowsToRemove: number[] = [];
+  ws.eachRow({ includeEmpty: false }, (row, rowNum) => {
+    if (row.getCell(hiddenCol).value === LEGEND_MARKER) rowsToRemove.push(rowNum);
+  });
+  for (let i = rowsToRemove.length - 1; i >= 0; i--) {
+    ws.spliceRows(rowsToRemove[i], 1);
+  }
+}
+
+/**
+ * Escribe la leyenda del grid al final de la sheet (después de la última data
+ * row). Solo se agrega si la sheet tiene verification_grid configurado. Asume
+ * que stripLegendRow ya se ejecutó (no dedupe interno).
+ */
+function writeGridLegend(ws: Worksheet, mapping: TemplateMapping, hiddenCol: number): void {
+  if (!mapping.verification_grid) return;
+
+  let lastDataRow = mapping.insertion_row - 1;
+  ws.eachRow({ includeEmpty: false }, (_row, rowNum) => {
+    if (rowNum > lastDataRow) lastDataRow = rowNum;
+  });
+
+  // No escribir leyenda en sheets vacías (sin incidents)
+  if (lastDataRow < mapping.insertion_row) return;
+
+  // 1 row de espacio + leyenda
+  const legendRow = lastDataRow + 2;
+  const cell = ws.getRow(legendRow).getCell(1);
+  cell.value = 'OK = confirmado recibido    ·    NV = no visitado (vendedor aún no ha ido)    ·    NC = no contestó';
+  cell.font = { name: 'Calibri', italic: true, size: 9, color: { argb: 'FF6B6480' } };
+  cell.alignment = { horizontal: 'left', vertical: 'middle' };
+  const maxCol = computeMappedColBound(mapping);
+  if (maxCol > 1) {
+    try { ws.mergeCells(legendRow, 1, legendRow, maxCol); } catch { /* ya */ }
+  }
+  ws.getRow(legendRow).getCell(hiddenCol).value = LEGEND_MARKER;
 }
 
 /** Aplica color de texto y/o fondo a las cells mapeadas + grid de una row. */
@@ -410,6 +458,10 @@ export function upsertSheetWithIncidents(
     ws.getColumn(hiddenCol).hidden = true;
   }
 
+  // Remover row de leyenda (si existía de un run previo) — la re-escribimos
+  // al final una vez populados los incidents actualizados.
+  stripLegendRow(ws, hiddenCol);
+
   // Escanear rows existentes con incident_id
   const existingRows = scanExistingIncidentRows(ws, mapping);
 
@@ -460,6 +512,9 @@ export function upsertSheetWithIncidents(
       applyRowStyle(newRow, mapping, rowStyle(inc));
     }
   }
+
+  // Leyenda del grid al final (solo si mapping tiene verification_grid)
+  writeGridLegend(ws, mapping, hiddenCol);
 }
 
 export interface RenderOptions {

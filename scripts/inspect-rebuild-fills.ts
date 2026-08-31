@@ -16,7 +16,7 @@ async function main() {
     for (let r = 1; r <= 4; r++) {
       const row = ws.getRow(r);
       const cells: string[] = [];
-      for (let c = 1; c <= 15; c++) {
+      for (let c = 1; c <= 17; c++) {
         const cell = row.getCell(c);
         const v = cell.value;
         const fill = (cell.fill as any)?.fgColor?.argb ?? 'none';
