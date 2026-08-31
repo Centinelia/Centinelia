@@ -14,7 +14,7 @@
  */
 
 import { useState } from 'react';
-import { Plus, X, Crown, Pencil, Save, Lock, Eye, EyeOff, BookUser, Users, PenLine, DollarSign, Mail, Truck } from 'lucide-react';
+import { Plus, X, Crown, Pencil, Save, Lock, Eye, EyeOff, BookUser, Users, PenLine, DollarSign, Mail } from 'lucide-react';
 import { v4 as uuid } from 'uuid';
 import type { DirectoryPerson } from '@/lib/helpdesk/folio';
 
@@ -330,13 +330,8 @@ function PersonRow({
                 <DollarSign size={9} /> Pagos OC
               </span>
             )}
-            {person.is_operations_contact && (
-              <span className="text-[10px] px-2 py-0.5 rounded font-semibold flex items-center gap-1"
-                style={{ background: 'rgba(34,197,94,0.12)', color: '#15803d' }}
-                title="Encargado de operaciones/envíos que Noah contacta cuando hay un problema con la entrega">
-                <Truck size={9} /> Operaciones
-              </span>
-            )}
+            {/* Badge "Operaciones" (flag is_operations_contact) escondido
+                2026-08-31 junto con su checkbox. Ver comentario más abajo. */}
           </div>
           <div className="flex items-center gap-2 flex-wrap mt-0.5">
             {person.phone && (
@@ -424,36 +419,28 @@ function PersonRow({
         </div>
       )}
 
-      {/* Rol operativo — Noah lo contacta por teléfono cuando el cliente
-          reporta un problema con la entrega o el servicio. Requiere teléfono
-          (no correo) porque el flow es una llamada saliente. */}
-      {(person.phone ?? '').trim() && (
+      {/* Rol operativo — el checkbox "Contacto de operaciones" (flag
+          `is_operations_contact`) se esconde 2026-08-31 porque generaba
+          confusión: Nelia solo manda correo (no llama al encargado) y el flag
+          es de Noah/otros meerkats con buscar_directorio o trigger_outbound_call.
+          El valor en DB se preserva por si un flow futuro lo necesita.
+
+          Solo requiere email (no phone): el flow es notificación por correo. */}
+      {(person.email ?? '').trim() && (
         <div className="flex flex-col gap-1.5 pt-1 pb-1 px-1">
           <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#9B8FB5' }}>
-            Rol operativo
+            Notificaciones
           </p>
           <label className="flex items-start gap-2 text-[12px] cursor-pointer" style={{ color: '#6B6480' }}>
-            <input type="checkbox" className="mt-0.5" checked={!!person.is_operations_contact}
-              onChange={e => onUpdate({ is_operations_contact: e.target.checked })} />
+            <input type="checkbox" className="mt-0.5" checked={!!person.receives_incident_reports}
+              onChange={e => onUpdate({ receives_incident_reports: e.target.checked })} />
             <div>
-              <span style={{ color: '#1A0A3B', fontWeight: 500 }}>Contacto de operaciones</span>
+              <span style={{ color: '#1A0A3B', fontWeight: 500 }}>Recibe reportes de incidencias por correo</span>
               <div className="text-[11px]" style={{ color: '#9B8FB5' }}>
-                Encargado de envíos, dispatcher o coordinador de servicio. Tu empleado le llama cuando un cliente reporta que no recibió su pedido o hubo un problema con la entrega.
+                Se envían notificaciones automáticas de problemas en operaciones y entregas a este correo.
               </div>
             </div>
           </label>
-          {(person.email ?? '').trim() && (
-            <label className="flex items-start gap-2 text-[12px] cursor-pointer" style={{ color: '#6B6480' }}>
-              <input type="checkbox" className="mt-0.5" checked={!!person.receives_incident_reports}
-                onChange={e => onUpdate({ receives_incident_reports: e.target.checked })} />
-              <div>
-                <span style={{ color: '#1A0A3B', fontWeight: 500 }}>Recibe reportes de incidencias por correo</span>
-                <div className="text-[11px]" style={{ color: '#9B8FB5' }}>
-                  Se envían notificaciones automáticas de problemas en operaciones y entregas a este correo.
-                </div>
-              </div>
-            </label>
-          )}
         </div>
       )}
 
