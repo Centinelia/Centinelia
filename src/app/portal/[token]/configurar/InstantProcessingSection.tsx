@@ -21,7 +21,7 @@ const OPTIONS: { key: Mode; label: string; desc: string; icon: typeof Zap }[] = 
   },
 ];
 
-export default function InstantProcessingSection({ token, roleColor }: { token: string; roleColor: string }) {
+export default function InstantProcessingSection({ token, roleColor, hideHeader }: { token: string; roleColor: string; hideHeader?: boolean }) {
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [saving,  setSaving]  = useState(false);
   const [msg,     setMsg]     = useState<string | null>(null);
@@ -59,15 +59,19 @@ export default function InstantProcessingSection({ token, roleColor }: { token: 
 
   return (
     <section id="ritmo-de-trabajo" className="scroll-mt-6">
-      <SectionHeader
-        as="h2"
-        title="Ritmo de trabajo"
-        tooltip="Controla la velocidad a la que el sistema procesa llamadas salientes programadas y otros trabajos automáticos."
-        className="mb-2"
-      />
-      <p className="text-xs leading-relaxed mb-4" style={{ color: 'var(--c-text-3)' }}>
-        ¿Prefieres que las cosas pasen al instante o consolidadas por hora?
-      </p>
+      {!hideHeader && (
+        <>
+          <SectionHeader
+            as="h2"
+            title="Ritmo de trabajo"
+            tooltip="Controla la velocidad a la que el sistema procesa llamadas salientes programadas y otros trabajos automáticos."
+            className="mb-2"
+          />
+          <p className="text-xs leading-relaxed mb-4" style={{ color: 'var(--c-text-3)' }}>
+            ¿Prefieres que las cosas pasen al instante o consolidadas por hora?
+          </p>
+        </>
+      )}
 
       {enabled === null && <p className="text-sm" style={{ color: 'var(--c-text-2)' }}>Cargando…</p>}
 

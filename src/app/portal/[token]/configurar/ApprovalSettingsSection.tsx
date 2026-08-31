@@ -16,7 +16,7 @@ interface Settings {
  * Colapsamos a un default (inteligente) + un toggle único de máximo control.
  * Ver [[feedback-empleados-inteligentes]].
  */
-export default function ApprovalSettingsSection({ token, roleColor }: { token: string; roleColor: string }) {
+export default function ApprovalSettingsSection({ token, roleColor, hideHeader }: { token: string; roleColor: string; hideHeader?: boolean }) {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [saving,   setSaving]   = useState(false);
   const [msg,      setMsg]      = useState<string | null>(null);
@@ -59,12 +59,14 @@ export default function ApprovalSettingsSection({ token, roleColor }: { token: s
 
   return (
     <section id="aprobaciones" className="scroll-mt-6">
-      <SectionHeader
-        as="h2"
-        title="Aprobación entre empleados"
-        tooltip="Aplica solo cuando un empleado le pide a otro hacer algo (por ejemplo Sofía le pide a Noah que envíe un correo). El nivel de autonomía de arriba controla las acciones que cada empleado hace por su cuenta."
-        className="mb-4"
-      />
+      {!hideHeader && (
+        <SectionHeader
+          as="h2"
+          title="Aprobación entre empleados"
+          tooltip="Aplica solo cuando un empleado le pide a otro hacer algo (por ejemplo Sofía le pide a Noah que envíe un correo). El nivel de autonomía de arriba controla las acciones que cada empleado hace por su cuenta."
+          className="mb-4"
+        />
+      )}
 
       {!settings && (
         <p className="text-sm" style={{ color: 'var(--c-text-2)' }}>Cargando…</p>

@@ -24,7 +24,7 @@ import DefinitionOfDoneEditor        from '../DefinitionOfDoneEditor';
 import GoalsSection                  from '../GoalsSection';
 import GuardrailsEditor              from '../GuardrailsEditor';
 import HeartbeatEditor               from '../HeartbeatEditor';
-import TrustStageSelector           from '../TrustStageSelector';
+import AutonomySection              from './AutonomySection';
 import RoleEmailLearningSection     from '../RoleEmailLearningSection';
 import JornadaSection               from '../JornadaSection';
 import ApprovalEmailEditor          from '../ApprovalEmailEditor';
@@ -35,8 +35,6 @@ import SpamFolderToggle      from '../SpamFolderToggle';
 import AutomationsSection    from './AutomationsSection';
 import { BriefDelDiaSection } from './BriefDelDiaSection';
 import { BrandTemplateSection } from './BrandTemplateSection';
-import ApprovalSettingsSection from './ApprovalSettingsSection';
-import InstantProcessingSection from './InstantProcessingSection';
 import ToolOverridesSection from './ToolOverridesSection';
 import ConfigurarTabs from './ConfigurarTabs';
 import { TemplateUploader } from '../oficina/bitacora/TemplateUploader';
@@ -696,29 +694,19 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
                 <Card border elevated={false} padding="sm">
                   <SectionHeader
                     as="h2"
-                    title="Nivel de autonomía propia"
-                    tooltip="Controla cuánta independencia tiene el empleado en las tareas que hace por su cuenta (atender llamadas, responder correos, capturar leads). No aplica cuando delega a otro empleado, para eso está el bloque de abajo."
+                    title="Cómo trabaja tu empleado"
+                    tooltip="Controla cuánta independencia tiene el empleado. Por default actúa como uno real; sube el control solo si prefieres validar cada paso."
                     className="mb-4"
                   />
-                  <TrustStageSelector token={token} agentId={agent.id as string} initStage={(agent as any).trust_stage ?? 3} />
+                  <AutonomySection
+                    token={token}
+                    agentId={agent.id as string}
+                    initStage={(agent as any).trust_stage ?? 3}
+                    roleColor={roleColor}
+                    isOwner={isOwner}
+                  />
                 </Card>
               </div>
-
-              {isOwner && (
-                <div id="aprobaciones" style={SCROLL_STYLE}>
-                  <Card border elevated={false} padding="sm">
-                    <ApprovalSettingsSection token={token} roleColor={roleColor} />
-                  </Card>
-                </div>
-              )}
-
-              {isOwner && (
-                <div id="ritmo-de-trabajo" style={SCROLL_STYLE}>
-                  <Card border elevated={false} padding="sm">
-                    <InstantProcessingSection token={token} roleColor={roleColor} />
-                  </Card>
-                </div>
-              )}
 
               {/* 'Metas' y 'Límites de autoridad' movidos a tab Conocimiento
                   (2026-08-06). Son cosas que el empleado debe SABER (qué
