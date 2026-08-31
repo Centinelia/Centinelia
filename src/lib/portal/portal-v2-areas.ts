@@ -4,6 +4,7 @@ export type GroupId =
   | 'inicio'
   | 'negocio'
   | 'agentes'
+  | 'modulos'
   | 'oficina'
   | 'llamadas'
   | 'cuenta'
@@ -98,6 +99,15 @@ export function buildPortalNav(input: BuildNavInput): NavGroup[] {
     iconName: 'Meerkat',
     moduleId: 'agentes',
     directHref: `/portal/${t}/empleados`,
+  });
+
+  // ── 3b. Módulos (catálogo de add-ons activables por org) ──────────────────
+  all.push({
+    id: 'modulos',
+    label: 'Módulos',
+    iconName: 'Package',
+    moduleId: 'negocio',  // mismo permiso que Organización (owner-only en la práctica)
+    directHref: `/portal/${t}/modulos`,
   });
 
   // ── 4. Oficina ───────────────────────────────────────────────────────────

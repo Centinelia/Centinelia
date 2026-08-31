@@ -11,6 +11,7 @@ import {
   Phone,
   CircleUser,
   Users,
+  Package,
   ChevronDown,
   CreditCard,
   type LucideIcon,
@@ -36,6 +37,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Phone,
   CircleUser,
   Users,
+  Package,
   Meerkat: Meerkat as unknown as LucideIcon,
 };
 

@@ -1,0 +1,330 @@
+/**
+ * Catálogo de módulos activables por org. Cada módulo empaqueta:
+ * - Tools que se activan cuando el flag correspondiente está true
+ * - Config UI en portal (páginas dedicadas)
+ * - Un contract claro de qué hace y qué NO hace
+ *
+ * Modelo mental: la base de cada meerkat es INMUTABLE (Nelia siempre es
+ * recepción + registro de eventos). Los módulos son add-ons que amplían
+ * su comportamiento sin duplicar código o crear "versiones custom".
+ *
+ * Estado se guarda en `organizations.features` (JSONB). Activar un módulo
+ * = setear el flag correspondiente a true. Desactivar = false.
+ *
+ * Pricing: informativo por ahora. Fase 2 = billing automático via Stripe.
+ */
+
+export type ModuleId =
+  | 'bitacora'
+  | 'facturacion_cfdi'
+  | 'ciclo_oc_cfdi'
+  | 'quickbooks'
+  | 'cloud_catalog'
+  | 'outbound_calls'
+  | 'google_sheets'
+  | 'contract_drafts'
+  | 'civic_reports'
+  | 'external_tramites';
+
+export type MeerkatRole =
+  | 'nia' | 'noah' | 'nelia' | 'nala' | 'nox' | 'nico' | 'niva' | 'nara' | 'nova' | 'naia';
+
+export interface ModuleDefinition {
+  id:                ModuleId;
+  name:              string;
+  tagline:           string;
+  description:       string;
+  /** Emoji o Lucide icon name para display */
+  iconName:          string;
+  /** Empleados que aprovechan este módulo. */
+  meerkats:          MeerkatRole[];
+  /** Flag en organizations.features que activa/desactiva el módulo. */
+  featureFlag:       string;
+  /** Precio mensual informativo. null = incluido en base. */
+  priceMonthly:      number | null;
+  /** Requerimientos externos que el cliente debe tener antes de activar.
+   *  Se muestran como checklist en el catálogo. */
+  requirements:      string[];
+  /** Lista de capabilities que el módulo agrega — para mostrar al cliente. */
+  capabilities:      string[];
+  /** Cosas que el módulo NO hace, para setear expectativas. */
+  outOfScope:        string[];
+  /** Ruta del portal donde se configura este módulo. Null = no requiere config. */
+  configPath:        string | null;
+  /** Vertical al que aplica. Undefined = universal. */
+  vertical?:         'gobierno' | 'retail' | 'servicios';
+  /** Si true, el módulo requiere una integración externa conectada (ej: QB, PAC).
+   *  UI muestra "requiere setup" en vez de botón directo de activar. */
+  requiresSetup:     boolean;
+}
+
+export const MODULE_CATALOG: ModuleDefinition[] = [
+  {
+    id:            'bitacora',
+    name:          'Bitácora de incidencias',
+    tagline:       'Registro semanal de quejas y altas con verificación automática.',
+    description:   'Cuando un cliente reporta que no le llegó su pedido o se da de alta, el empleado registra el evento, avisa al encargado por correo y agenda una llamada de verificación 3 días después. Cada sábado te llega un correo con el resumen de la semana en tu propio formato Excel.',
+    iconName:      'BookOpen',
+    meerkats:      ['nia', 'noah', 'nelia'],
+    featureFlag:   'incidencia_flow',
+    priceMonthly:  null, // incluido
+    requirements:  [],
+    capabilities: [
+      'Registro automático de quejas (bitácora)',
+      'Registro automático de altas de clientes nuevos',
+      'Correo al encargado con la tarjeta de cada evento',
+      'Llamada de verificación auto-agendada +3 días',
+      'Reintentos automáticos +2 días si no contestan (máx 4)',
+      'Bitácora semanal por correo en Excel personalizable',
+      'Grid semanal L-D con OK/NV/NC',
+    ],
+    outOfScope: [
+      'No factura (usa el módulo Facturación CFDI para eso)',
+      'No genera pedidos (usa el módulo Ciclo OC-CFDI o toma pedidos por voz)',
+      'No hace cobranza (usa el módulo Llamadas salientes)',
+    ],
+    configPath:    '/oficina/bitacora',
+    requiresSetup: false,
+  },
+  {
+    id:            'facturacion_cfdi',
+    name:          'Facturación CFDI',
+    tagline:       'Emite facturas electrónicas desde notas de venta o pedidos.',
+    description:   'Nala o Nico convierten notas de venta, PDFs o mensajes en facturas CFDI 4.0 selladas por tu PAC. Adjuntan el XML+PDF al correo del cliente y llevan control de facturas emitidas.',
+    iconName:      'Receipt',
+    meerkats:      ['nala', 'nico'],
+    featureFlag:   'invoicing_provider',
+    priceMonthly:  null,
+    requirements:  [
+      'Tener CSD (certificado de sello digital) vigente',
+      'Contrato con un PAC (Solución Factible o CONTPAQi)',
+    ],
+    capabilities: [
+      'Emisión de facturas CFDI 4.0',
+      'Sellado con PAC (Solución Factible / CONTPAQi)',
+      'Adjunto XML+PDF automático al correo del cliente',
+      'Cancelación con motivo SAT',
+      'Reportes de facturas emitidas por período',
+    ],
+    outOfScope: [
+      'No hace la contabilidad (usa QuickBooks)',
+      'No cobra pagos (usa Stripe si es online, o registra manualmente)',
+    ],
+    configPath:    '/portal?tab=organizacion&nav=facturacion',
+    requiresSetup: true,
+  },
+  {
+    id:            'ciclo_oc_cfdi',
+    name:          'Ciclo OC → CFDI',
+    tagline:       'Gestiona el ciclo completo de compras: cotización, OC, factura del proveedor.',
+    description:   'Nala recibe cotizaciones de proveedores por correo, crea órdenes de compra en tu sistema, y matchea la factura que llega contra la OC para autorizar el pago. Detecta discrepancias automáticamente.',
+    iconName:      'FileSignature',
+    meerkats:      ['nala', 'nox'],
+    featureFlag:   'ciclo_oc_cfdi',
+    priceMonthly:  null,
+    requirements:  [
+      'QuickBooks Online conectado',
+    ],
+    capabilities: [
+      'Parseo de cotizaciones (PDF/imagen) con Vision AI',
+      'Creación automática de OCs en QuickBooks',
+      'Match automático OC ↔ factura del proveedor',
+      'Detección de discrepancias (precio, cantidad, SKU)',
+      'Expedientes por OC con historial completo',
+    ],
+    outOfScope: [
+      'No paga automáticamente (Nala solo autoriza)',
+      'No emite facturas (eso es Facturación CFDI, otro módulo)',
+    ],
+    configPath:    null,
+    requiresSetup: true,
+  },
+  {
+    id:            'quickbooks',
+    name:          'QuickBooks',
+    tagline:       'Contabilidad y facturación desde QuickBooks Online.',
+    description:   'Nox, Nico y Niva leen y escriben directamente en tu QuickBooks: consultan facturas, cobran, generan cotizaciones, registran gastos y de caja chica.',
+    iconName:      'BarChart2',
+    meerkats:      ['nox', 'nico', 'niva', 'nala'],
+    featureFlag:   'quickbooks',
+    priceMonthly:  null,
+    requirements:  [
+      'Cuenta QuickBooks Online activa',
+      'OAuth de QB completado en Configuración',
+    ],
+    capabilities: [
+      'Consulta y creación de facturas',
+      'Búsqueda de clientes',
+      'Registro de pagos, gastos y caja chica',
+      'Cotizaciones',
+      'Reportes de ingresos/AR/gastos por período',
+    ],
+    outOfScope: [
+      'No es sustituto de tu contador (auditoría manual sigue igual)',
+      'Solo QuickBooks Online — no soporta Desktop',
+    ],
+    configPath:    '/portal?tab=organizacion&nav=integraciones',
+    requiresSetup: true,
+  },
+  {
+    id:            'cloud_catalog',
+    name:          'Catálogo en la nube',
+    tagline:       'Busca SKUs y precios en tu Excel/CSV cuando cotizas o generas OCs.',
+    description:   'Cuando Nox o Noah necesita un código de pieza, precio o descripción, consulta tu catálogo en Dropbox, Google Drive o OneDrive sin que tengas que subir nada. Búsqueda fuzzy por SKU o descripción.',
+    iconName:      'FolderOpen',
+    meerkats:      ['nox', 'noah'],
+    featureFlag:   'cloud_catalog',
+    priceMonthly:  null,
+    requirements:  [
+      'Cuenta Dropbox, Google Drive u OneDrive conectada',
+      'Archivo Excel o CSV con el catálogo (columnas: SKU, descripción, precio)',
+    ],
+    capabilities: [
+      'Consulta de catálogo por SKU exacto',
+      'Búsqueda fuzzy por descripción',
+      'Devuelve hasta 20 coincidencias con precio',
+      'Actualización en tiempo real (lee tu archivo tal cual está)',
+    ],
+    outOfScope: [
+      'No modifica tu catálogo (solo lectura)',
+      'No aplica descuentos automáticos',
+    ],
+    configPath:    '/portal?tab=organizacion&nav=integraciones',
+    requiresSetup: true,
+  },
+  {
+    id:            'outbound_calls',
+    name:          'Llamadas salientes',
+    tagline:       'El empleado llama por ti para cobranza, reactivación o encuestas.',
+    description:   'Noah dispara llamadas salientes desde tu portal o disparadas por triggers (cobranza a X días de vencimiento, reactivación de cliente sin actividad, encuestas post-venta). Consume minutos igual que llamadas entrantes.',
+    iconName:      'PhoneOutgoing',
+    meerkats:      ['noah'],
+    featureFlag:   'outbound_calls',
+    priceMonthly:  null,
+    requirements:  [],
+    capabilities: [
+      'Llamadas salientes disparadas por trigger o manual',
+      'Cobranza automática a X días de vencimiento',
+      'Reactivación de clientes inactivos',
+      'Encuestas post-venta',
+      'Reintentos automáticos con backoff',
+    ],
+    outOfScope: [
+      'No llama fuera de horario configurado',
+      'No manda SMS/WhatsApp automáticos (otro módulo)',
+    ],
+    configPath:    '/oficina/campanas',
+    requiresSetup: false,
+  },
+  {
+    id:            'google_sheets',
+    name:          'Google Sheets',
+    tagline:       'Lee y escribe en Google Sheets configurados como base de datos.',
+    description:   'Cuando quieres que un empleado registre eventos en tu propia hoja de cálculo (lista de prospectos, inventario, control interno), conectas la sheet y le dices para qué usarla.',
+    iconName:      'LayoutTemplate',
+    meerkats:      ['nox'],
+    featureFlag:   'google_sheets',
+    priceMonthly:  null,
+    requirements:  [
+      'Cuenta Google conectada',
+      'Sheet compartida con permisos de escritura',
+    ],
+    capabilities: [
+      'Lectura, búsqueda y actualización de filas',
+      'Agregado de filas nuevas',
+      'Múltiples sheets para propósitos distintos',
+    ],
+    outOfScope: [
+      'No genera fórmulas automáticamente',
+      'No corre pivots ni scripts de Apps Script',
+    ],
+    configPath:    '/portal?tab=organizacion&nav=integraciones',
+    requiresSetup: true,
+  },
+  {
+    id:            'contract_drafts',
+    name:          'Contratos',
+    tagline:       'Nox genera borradores de contrato en tu plantilla.',
+    description:   'Cuando cierras una venta o servicio, Nox arma el borrador de contrato en tu plantilla (comercial, servicios, arrendamiento) y te lo manda para firma. Extrae los datos de la conversación previa.',
+    iconName:      'FileSignature',
+    meerkats:      ['nox'],
+    featureFlag:   'contract_drafts',
+    priceMonthly:  null,
+    requirements:  [
+      'Plantilla de contrato subida en formato Word/PDF',
+    ],
+    capabilities: [
+      'Generación de borradores desde conversación',
+      'Reemplazo de placeholders en tu plantilla',
+      'Multiple plantillas por tipo de contrato',
+    ],
+    outOfScope: [
+      'No es asesoría legal — revisa cada borrador antes de firmar',
+      'No manda a firma electrónica (usa DocuSign/Sign.com aparte)',
+    ],
+    configPath:    '/oficina/contratos',
+    requiresSetup: false,
+  },
+  {
+    id:            'civic_reports',
+    name:          'Reportes ciudadanos',
+    tagline:       'Nara recibe reportes cívicos por teléfono, chat o correo.',
+    description:   'Ciudadanos reportan baches, luminarias, basura y otros temas municipales. Nara clasifica, prioriza, asigna al área correspondiente y da seguimiento hasta cierre.',
+    iconName:      'ClipboardList',
+    meerkats:      ['nara'],
+    featureFlag:   'civic_reports',
+    priceMonthly:  null,
+    requirements:  [],
+    capabilities: [
+      'Recepción de reportes por voz/chat/correo',
+      'Clasificación automática (área, prioridad)',
+      'Asignación al departamento correspondiente',
+      'Seguimiento y notificación de estado al ciudadano',
+      'Reportes agregados por área/período',
+    ],
+    outOfScope: [
+      'No sustituye a 911 (emergencias)',
+      'No dispatchear cuadrillas (solo notifica al departamento)',
+    ],
+    configPath:    '/oficina/reportes-ciudadanos',
+    vertical:      'gobierno',
+    requiresSetup: false,
+  },
+  {
+    id:            'external_tramites',
+    name:          'Trámites municipales',
+    tagline:       'Nara ayuda al ciudadano a hacer trámites por teléfono.',
+    description:   'Consulta el catálogo de trámites, busca al ciudadano en el padrón, y envía trámites al backend municipal. Ideal para dependencias con mucha carga telefónica.',
+    iconName:      'FileSignature',
+    meerkats:      ['nara'],
+    featureFlag:   'external_tramites',
+    priceMonthly:  null,
+    requirements:  [
+      'Integración con el backend municipal (padrón + trámites)',
+    ],
+    capabilities: [
+      'Consulta de catálogo de trámites',
+      'Búsqueda en padrón ciudadano',
+      'Envío de trámite al backend municipal',
+      'Seguimiento por folio',
+    ],
+    outOfScope: [
+      'No cobra derechos (redirige a caja o portal municipal)',
+      'No sustituye ventanilla presencial para actos con firma manual',
+    ],
+    configPath:    null,
+    vertical:      'gobierno',
+    requiresSetup: true,
+  },
+];
+
+/** Retorna el módulo por id, o null si no existe. */
+export function getModule(id: string): ModuleDefinition | null {
+  return MODULE_CATALOG.find(m => m.id === id) ?? null;
+}
+
+/** Retorna solo los módulos aplicables al vertical del cliente. */
+export function modulesForVertical(vertical?: string): ModuleDefinition[] {
+  if (!vertical) return MODULE_CATALOG.filter(m => !m.vertical);
+  return MODULE_CATALOG.filter(m => !m.vertical || m.vertical === vertical);
+}
