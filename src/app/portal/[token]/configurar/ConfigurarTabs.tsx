@@ -39,12 +39,13 @@ function resolveTab(raw: string): string {
 /**
  * ConfigurarTabs
  *
- * 4-tab layout sincronizado con URL. Lee `?tab=rol` para saber cuál abrir.
- * Al cambiar tab actualiza la URL sin recargar (router.replace). También detecta
- * anchors `#voz`, `#correo`, etc. y hace scroll cuando el tab correspondiente
- * está activo.
+ * Layout de tabs sincronizado con URL (ver TAB_DEFS para la lista real).
+ * Lee `?tab=X` para saber cuál abrir; si viene un valor legacy o desconocido
+ * cae a 'personalidad' vía LEGACY_MAP + resolveTab. Al cambiar tab actualiza
+ * la URL sin recargar (router.replace). También detecta anchors (`#voz`,
+ * `#correo`, etc) y hace scroll cuando el tab correspondiente está activo.
  *
- * children[0..3] map to the 4 tab panels in order.
+ * children map 1:1 con TAB_DEFS en el mismo orden.
  */
 export default function ConfigurarTabs({ children }: Props) {
   const searchParams = useSearchParams();
