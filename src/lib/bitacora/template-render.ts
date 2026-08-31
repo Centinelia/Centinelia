@@ -6,19 +6,20 @@ import type { TemplateMapping, CanonicalField } from './template-analyzer';
 export const HIDDEN_ID_HEADER = '_incident_id';
 
 /**
- * Días L-S en el orden que aparecen en el grid de seguimiento semanal.
- * Domingo se ignora (poco común en tortillerías).
+ * Días L-D en el orden que aparecen en el grid de seguimiento semanal.
+ * Incluye domingo — aunque el cliente no trabaje en domingo, si se llama en
+ * domingo (poco común pero pasa) debe registrarse.
  */
-const GRID_DAY_KEYS = ['L', 'M', 'MI', 'J', 'V', 'S'] as const;
+const GRID_DAY_KEYS = ['L', 'M', 'MI', 'J', 'V', 'S', 'D'] as const;
 type GridDayKey = typeof GRID_DAY_KEYS[number];
 
 /**
- * Convierte un Date → key del grid (L..S). Domingo devuelve null.
- * getDay(): 0=Dom, 1=Lun, ..., 6=Sáb.
+ * Convierte un Date → key del grid (L..D). getDay(): 0=Dom, 1=Lun, ..., 6=Sáb.
+ * Domingo → 'D' (última col del grid).
  */
-function dateToGridKey(d: Date): GridDayKey | null {
+function dateToGridKey(d: Date): GridDayKey {
   const day = d.getDay();
-  if (day === 0) return null;
+  if (day === 0) return 'D';
   return GRID_DAY_KEYS[day - 1];
 }
 
@@ -126,7 +127,6 @@ function writeVerificationGrid(
     // solo en el portal (no se dibuja falso OK en día equivocado).
     for (const a of relevantAttempts) {
       const key = dateToGridKey(new Date(a.called_at));
-      if (!key) continue;
       const colLetter = grid[key];
       if (!colLetter) continue;
       const mark = RESULT_MARK[a.result];
@@ -140,7 +140,6 @@ function writeVerificationGrid(
   if (inc.verification_result !== 'ok') return;
   if (!inc.verification_called_at) return;
   const key = dateToGridKey(new Date(inc.verification_called_at));
-  if (!key) return;
   const colLetter = grid[key];
   if (!colLetter) return;
   row.getCell(colLetterToNumber(colLetter)).value = 'OK';

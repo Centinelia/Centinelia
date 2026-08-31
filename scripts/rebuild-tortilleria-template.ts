@@ -91,27 +91,26 @@ function editSheet(ws: any) {
   }
   ws.mergeCells('A1:I1');
 
-  // 6. Row 1 J:O merged = TÍTULO "SEGUIMIENTO DE LA SEMANA" verde limón
-  //    (una sola fila, no dividido). Font 10 + wrap para que quepa en el
-  //    espacio angosto de las cols del grid.
+  // 6. Row 1 J:P merged = TÍTULO "SEGUIMIENTO DE LA SEMANA" verde limón
+  //    (7 días L-D). Font 10 + wrap para que quepa en el espacio angosto.
   const tituloCell = row1.getCell(10);  // J
   tituloCell.value = 'SEGUIMIENTO DE LA SEMANA';
   tituloCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: FILL_SEGUIMIENTO } };
   tituloCell.font = { name: 'Calibri', bold: true, size: 10 };
   tituloCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-  for (let c = 11; c <= 15; c++) {
+  for (let c = 11; c <= 16; c++) {
     row1.getCell(c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: FILL_SEGUIMIENTO } };
   }
-  ws.mergeCells('J1:O1');
+  ws.mergeCells('J1:P1');
   row1.height = 24;
 
   // 7. Insertar NEW row 3 antes de la data. Rows 2 y 3 forman el "bloque
   //    de headers": col headers A-I spans row 2-3 verticalmente (merged),
-  //    mientras que J:O tiene rango merged en row 2 + letras individuales
-  //    en row 3.
+  //    mientras que J:P tiene rango merged en row 2 + letras individuales
+  //    en row 3 (7 días L-D).
   ws.spliceRows(3, 0, [
-    '', '', '', '', '', '', '', '', '',  // A-I row 3 vacías (mergeadas con row 2)
-    'L', 'M', 'MI', 'J', 'V', 'S',       // J-O row 3 letras individuales
+    '', '', '', '', '', '', '', '', '',   // A-I row 3 vacías (mergeadas con row 2)
+    'L', 'M', 'MI', 'J', 'V', 'S', 'D',   // J-P row 3 letras individuales
   ]);
 
   // 8. Row 2 A-I col headers individual, mergeados verticalmente con row 3
@@ -135,21 +134,21 @@ function editSheet(ws: any) {
   }
   row2.height = 22;
 
-  // 9. Row 2 J:O merged = RANGO de la semana (mitad ARRIBA del bloque)
+  // 9. Row 2 J:P merged = RANGO de la semana (mitad ARRIBA del bloque, 7 días)
   const rangoCell = row2.getCell(10);  // J
   rangoCell.value = WEEK_RANGE_PLACEHOLDER;
   rangoCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFAF4C4' } };
   rangoCell.font = { name: 'Calibri', bold: true, size: 11 };
   rangoCell.alignment = { horizontal: 'center', vertical: 'middle' };
-  for (let c = 11; c <= 15; c++) {
+  for (let c = 11; c <= 16; c++) {
     row2.getCell(c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFAF4C4' } };
   }
-  ws.mergeCells('J2:O2');
+  ws.mergeCells('J2:P2');
 
-  // 10. Row 3 J-O individuales = letras L, M, MI, J, V, S (mitad ABAJO del bloque)
+  // 10. Row 3 J-P individuales = letras L, M, MI, J, V, S, D (mitad ABAJO del bloque)
   const row3 = ws.getRow(3);
   row3.height = 22;
-  for (let c = 10; c <= 15; c++) {
+  for (let c = 10; c <= 16; c++) {
     const cell = row3.getCell(c);
     cell.font = { name: 'Calibri', bold: true, size: 11 };
     cell.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -169,13 +168,13 @@ function editSheet(ws: any) {
   ws.getColumn(7).width  = 40;   // G MOTIVO
   ws.getColumn(8).width  = 26;   // H COMENTARIO
   ws.getColumn(9).width  = 16;   // I VENDEDOR
-  for (let c = 10; c <= 15; c++) {
-    ws.getColumn(c).width = 5.5;  // J-O grid días, angostos pero suficientes
-                                  //  para que "SEGUIMIENTO DE LA SEMANA" quepa
-                                  //  en el título (~33 units total)
+  for (let c = 10; c <= 16; c++) {
+    ws.getColumn(c).width = 5.5;  // J-P grid días (7 cols), angostos pero
+                                  //  suficientes para que "SEGUIMIENTO DE LA
+                                  //  SEMANA" quepa en el título (~38 units total)
   }
-  // Reset widths beyond O — no queremos cols anchas visibles con nada
-  for (let c = 16; c <= 40; c++) {
+  // Reset widths beyond P — no queremos cols anchas visibles con nada
+  for (let c = 17; c <= 40; c++) {
     ws.getColumn(c).width = undefined as any;
   }
 
@@ -194,10 +193,10 @@ function editSheet(ws: any) {
     ws.getRow(3).getCell(c).fill = { type: 'pattern', pattern: 'none' } as any;
   }
 
-  // 1. Bordes en la sección del grid J1:O3 (título + rango + letras) para
-  //    que se vea como tabla.
+  // 1. Bordes en la sección del grid J1:P3 (título + rango + letras, 7 días)
+  //    para que se vea como tabla.
   for (let r = 1; r <= 3; r++) {
-    for (let c = 10; c <= 15; c++) {
+    for (let c = 10; c <= 16; c++) {
       const cell = ws.getRow(r).getCell(c);
       cell.border = {
         top:    { style: 'thin' },
@@ -229,9 +228,10 @@ function editSheet(ws: any) {
     };
   }
 
-  // 2. Splice cols P en adelante (col 16+). Elimina la "cola" del template
-  //    original que tenía días de otras semanas con fills raros.
-  ws.spliceColumns(16, 30);
+  // 2. Splice cols Q en adelante (col 17+). Elimina la "cola" del template
+  //    original que tenía días de otras semanas con fills raros. Ahora el
+  //    grid ocupa J-P (7 días), entonces cols Q+ son residuo.
+  ws.spliceColumns(17, 30);
 
   // 2. Splice rows 4+ hasta el final (era data histórica 2023 con estilos
   //    heredados de las cells originales). El runtime clearHistoricalDataRows
@@ -246,9 +246,9 @@ function editSheet(ws: any) {
   }
 
   // 3. Row 4 = template row para data. Sin fill, sin estilos coloreados,
-  //    solo bordes finos para separar visualmente.
+  //    solo bordes finos para separar visualmente. 16 cols (A-P = 9 mapeadas + 7 grid).
   const row4 = ws.getRow(4);
-  for (let c = 1; c <= 15; c++) {
+  for (let c = 1; c <= 16; c++) {
     const cell = row4.getCell(c);
     cell.fill = { type: 'pattern', pattern: 'none' } as any;
     cell.font = { name: 'Calibri', size: 10 };
@@ -273,8 +273,8 @@ function editSheet(ws: any) {
     }
   };
   applyFill(1, 1, 9, FILL_DATOS_CLIENTE);     // Row 1 A-I verde fosfo
-  applyFill(1, 10, 15, FILL_SEGUIMIENTO);     // Row 1 J-O verde limón
-  applyFill(2, 10, 15, 'FFFAF4C4');           // Row 2 J-O amarillo (rango)
+  applyFill(1, 10, 16, FILL_SEGUIMIENTO);     // Row 1 J-P verde limón (7 días)
+  applyFill(2, 10, 16, 'FFFAF4C4');           // Row 2 J-P amarillo (rango, 7 días)
 }
 
 main().catch(e => { console.error(e); process.exit(1); });
