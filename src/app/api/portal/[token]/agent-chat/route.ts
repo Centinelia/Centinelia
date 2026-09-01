@@ -1364,14 +1364,14 @@ const INV_ASIGNAR_CLIENTE_TOOL: Anthropic.Tool = {
 };
 const INV_REGISTRAR_VENTA_TOOL: Anthropic.Tool = {
   name: 'inv_registrar_venta',
-  description: 'Nami: registra los datos de venta de un equipo (folio SF, fecha, precio unitario) tras buscar en Solución Factible. BLOQUEADA por definir criterios de búsqueda SF con AC.',
+  description: 'Nami: registra los datos de venta de un equipo tras que ventas te dicte el folio de la factura. Ventas es quien busca en el sistema (SF o el que use el negocio) y te pasa los 4 datos. Además de llenar los campos, cambia el estatus del equipo a ENTREGADO.',
   input_schema: {
     type: 'object' as const,
     properties: {
       serie:          { type: 'string', description: 'Número de serie del equipo vendido' },
-      folio_factura:  { type: 'string', description: 'Folio de la factura de venta en SF' },
-      fecha_factura:  { type: 'string', description: 'YYYY-MM-DD' },
-      precio_unit_mx: { type: 'number', description: 'Precio unitario en MXN' },
+      folio_factura:  { type: 'string', description: 'Folio de la factura de venta (el que ventas te dictó del sistema)' },
+      fecha_factura:  { type: 'string', description: 'Fecha de la factura en YYYY-MM-DD (opcional)' },
+      precio_unit_mx: { type: 'number', description: 'Precio unitario en MXN (opcional)' },
     },
     required: ['serie', 'folio_factura'],
   },

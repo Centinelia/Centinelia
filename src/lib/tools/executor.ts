@@ -4989,9 +4989,44 @@ async function executeAgentToolInner(
       return { ok: true, total_modelos: reporte.length, reporte: reporte.slice(0, 100) };
     }
 
-    // Stubs bloqueados por respuestas pendientes de AC (ver [[handoff-ac-proyectos-inventarios]])
+    // Captura manual — Tania busca en SF (o el sistema que use el cliente) y le
+    // pasa los 4 datos a Nami. Nami solo hace patch al Excel. Approach elegido
+    // 2026-09-01: AC migrará de SF a otro sistema pronto, integración externa
+    // sería wasted work. Captura manual sirve tanto ahora como con el nuevo
+    // sistema sin cambios de código.
     if (toolName === 'inv_registrar_venta') {
-      return { ok: false, error: 'not_implemented', pending_flow_doc: true, blocked_by: 'Definir búsqueda SF (solo folio vs multi-criterio) — pregunta 3 a AC' };
+      const serie          = String(toolInput.serie ?? '').trim();
+      const folio_factura  = String(toolInput.folio_factura ?? '').trim();
+      const fecha_factura  = toolInput.fecha_factura ? String(toolInput.fecha_factura).trim() : null;
+      const precio_unit_mx = toolInput.precio_unit_mx !== undefined ? Number(toolInput.precio_unit_mx) : null;
+      if (!serie)         return { ok: false, error: 'serie es requerido' };
+      if (!folio_factura) return { ok: false, error: 'folio_factura es requerido' };
+      if (fecha_factura && !/^\d{4}-\d{2}-\d{2}$/.test(fecha_factura)) {
+        return { ok: false, error: 'fecha_factura debe ser YYYY-MM-DD' };
+      }
+      const found = await findRowIndexBySerie(serie);
+      if (!found) return { ok: false, error: `No encontré equipo con serie ${serie}` };
+      const headers = await GraphExcel.getTableHeader(inv.token, inv.config.location, inv.config.sheets.historico.table);
+      const excelRow = found.tableRowIndex + 2;
+      const patched: string[] = [];
+      await GraphExcel.withSession(inv.token, inv.config.location, async (session) => {
+        const patchOne = async (logic: string, value: unknown) => {
+          if (value === null || value === undefined || value === '') return;
+          const header = inv.config.columns_historico[logic];
+          if (!header) return;
+          const colIdx = headers.indexOf(header);
+          if (colIdx < 0) return;
+          const colLetter = String.fromCharCode(65 + colIdx);
+          await GraphExcel.patchCell(inv.token, session, inv.config.sheets.historico.name, `${colLetter}${excelRow}`, value);
+          patched.push(logic);
+        };
+        await patchOne('factura_venta', folio_factura);
+        await patchOne('folio_venta',   folio_factura);
+        if (fecha_factura)  await patchOne('fecha_venta',    fecha_factura);
+        if (precio_unit_mx) await patchOne('costo_venta_mx', precio_unit_mx);
+        await patchOne('estatus', 'ENTREGADO');
+      });
+      return { ok: true, message: `Venta registrada para serie ${serie} (factura ${folio_factura}). Estatus → ENTREGADO. Campos actualizados: ${patched.join(', ')}.` };
     }
     if (toolName === 'inv_importar_backlog') {
       return { ok: false, error: 'not_implemented', pending_flow_doc: true, blocked_by: 'Formato del correo BACKLOG de TRANE — pregunta pendiente a AC' };
