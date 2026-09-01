@@ -95,6 +95,8 @@ export const VOICE_TO_CHAT: Record<string, string | null> = {
   // Nami — pack inventory_excel. Mismo nombre en los 3 canales.
   inv_buscar_por_serie:      'inv_buscar_por_serie',
   inv_buscar_por_modelo:     'inv_buscar_por_modelo',
+  inv_buscar_por_cliente:    'inv_buscar_por_cliente',
+  inv_procesar_factura_trane: 'inv_procesar_factura_trane',
   inv_stock_snapshot:        'inv_stock_snapshot',
   inv_pedir_reposicion:      'inv_pedir_reposicion',
   inv_agregar_equipo:        'inv_agregar_equipo',

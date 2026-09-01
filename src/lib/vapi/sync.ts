@@ -276,7 +276,7 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
   // para llamar a Nino en bodega y confirmar seriales. NO voz para clientes.
   // Read-only por default en voz + notificar_transferencia para redirigir si
   // ventas la marca por error en un flow no de inventario.
-  nami:  ['inv_buscar_por_serie', 'inv_buscar_por_modelo', 'inv_stock_snapshot', 'inv_pedir_reposicion', 'llamar_a', 'buscar_directorio', 'enviar_correo'],
+  nami:  ['inv_buscar_por_serie', 'inv_buscar_por_modelo', 'inv_buscar_por_cliente', 'inv_stock_snapshot', 'inv_pedir_reposicion', 'llamar_a', 'buscar_directorio', 'enviar_correo'],
 };
 
 // Universal tools que TODOS los meerkats reciben en voice y chat/email,
@@ -615,6 +615,22 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
         },
       },
       server: server('exec/inv_buscar_por_modelo'),
+    };
+    case 'inv_buscar_por_cliente': return {
+      type: 'function',
+      function: {
+        name: 'inv_buscar_por_cliente',
+        description: 'Nami: busca equipos asignados a un cliente. Úsala cuando ventas te mande datos sueltos sin el serie ("los datos del pedido de Juan Pérez") para reconciliar antes de patchear.',
+        parameters: {
+          type: 'object',
+          properties: {
+            cliente: { type: 'string', description: 'Nombre del cliente (búsqueda case-insensitive, fuzzy parcial)' },
+            estatus: { type: 'string', description: 'ALMACEN, SEPARADO, ENTREGADO (opcional — default: sin filtro)' },
+          },
+          required: ['cliente'],
+        },
+      },
+      server: server('exec/inv_buscar_por_cliente'),
     };
     case 'inv_stock_snapshot': return {
       type: 'function',

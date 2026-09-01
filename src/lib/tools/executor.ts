@@ -4788,6 +4788,32 @@ async function executeAgentToolInner(
       return { ok: true, modelo, total: filtered.length, equipos: filtered.map(r => r.values) };
     }
 
+    if (toolName === 'inv_buscar_por_cliente') {
+      const cliente = String(toolInput.cliente ?? '').trim();
+      if (!cliente) return { ok: false, error: 'cliente es requerido' };
+      const target = cliente.toUpperCase();
+      const estatusFiltro = toolInput.estatus ? String(toolInput.estatus).toUpperCase() : null;
+      const rows = await listHistorico(inv);
+      const matches = rows.filter(r => {
+        const clienteRow = String(r.values.cliente ?? '').trim().toUpperCase();
+        if (!clienteRow.includes(target)) return false;
+        if (estatusFiltro && String(r.values.estatus ?? '').toUpperCase() !== estatusFiltro) return false;
+        return true;
+      });
+      return {
+        ok:     true,
+        cliente,
+        total:  matches.length,
+        equipos: matches.map(r => ({
+          serie:    r.values.serie,
+          modelo:   r.values.modelo,
+          estatus:  r.values.estatus,
+          bodega:   r.values.bodega,
+          vendedor: r.values.vendedor,
+        })),
+      };
+    }
+
     if (toolName === 'inv_stock_snapshot') {
       const stock = await readStock(inv);
       const reposiciones = computeReposiciones(stock);
@@ -4987,6 +5013,130 @@ async function executeAgentToolInner(
         };
       }).sort((a, b) => b.factor_promedio - a.factor_promedio);
       return { ok: true, total_modelos: reporte.length, reporte: reporte.slice(0, 100) };
+    }
+
+    // Parser XML CFDI 4.0 de factura TRANE. Extrae folio, fecha, OC AC, TC y
+    // agrega 1 fila al Excel por cada serie individual dentro de cada concepto.
+    // Recibe el XML crudo como string (Nami lo obtiene del attachment del correo
+    // via el bandeja processor). Skip conceptos que no son equipos físicos
+    // (INSURANCE, envíos, etc — heurística: sin patrón de serie en descripción).
+    if (toolName === 'inv_procesar_factura_trane') {
+      const xml = String(toolInput.xml ?? '').trim();
+      if (!xml)      return { ok: false, error: 'xml es requerido (contenido del cfdi.xml adjunto al correo TRANE)' };
+      const dryRun = toolInput.dry_run !== false;
+      const bodegaDestinoRaw = toolInput.bodega ? String(toolInput.bodega) : null;
+
+      const { XMLParser } = await import('fast-xml-parser');
+      const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '' });
+      let doc: Record<string, unknown>;
+      try { doc = parser.parse(xml); }
+      catch (e) { return { ok: false, error: `XML inválido: ${e instanceof Error ? e.message : 'parse failed'}` }; }
+
+      const comprobante = (doc['cfdi:Comprobante'] ?? doc.Comprobante) as Record<string, unknown> | undefined;
+      if (!comprobante) return { ok: false, error: 'No es un CFDI válido (falta cfdi:Comprobante)' };
+
+      const emisor = (comprobante['cfdi:Emisor'] ?? comprobante.Emisor) as Record<string, unknown> | undefined;
+      const emisorRfc = String(emisor?.Rfc ?? '');
+      if (emisorRfc !== 'TRA670207Q71') {
+        return { ok: false, error: `Emisor esperado TRANE (TRA670207Q71). Recibido: ${emisorRfc}. Este parser solo procesa facturas TRANE.` };
+      }
+
+      const folio  = String(comprobante.Folio ?? comprobante.Serie ?? 'sin folio');
+      const fecha  = String(comprobante.Fecha ?? '').slice(0, 10);
+      const tcRaw  = comprobante.TipoCambio ?? '1';
+      const tc     = Number(tcRaw);
+
+      // OC AC — vive en Documentos Relacionados (custom addendas) o en Concepto/NoIdentificacion.
+      // Heurística: buscar en la Descripción del primer concepto o en un campo custom.
+      // Por ahora dejamos que el usuario la pase o la extraiga del subject del correo.
+      const ocAc = toolInput.oc_ac ? String(toolInput.oc_ac).trim() : null;
+
+      const conceptosRaw = (comprobante['cfdi:Conceptos'] ?? comprobante.Conceptos) as Record<string, unknown> | undefined;
+      const conceptoArr = conceptosRaw?.['cfdi:Concepto'] ?? conceptosRaw?.Concepto;
+      const conceptos = Array.isArray(conceptoArr) ? conceptoArr : conceptoArr ? [conceptoArr] : [];
+      if (conceptos.length === 0) return { ok: false, error: 'Factura sin conceptos' };
+
+      // Regex de serie TRANE: patrones alfanuméricos ~10-15 chars con letras+dígitos.
+      // Ej: 25502332JA, 2613HA01706A, 2618HA00044A
+      const SERIE_RE = /\b([0-9A-Z]{8,16}[A-Z])\b/g;
+
+      const equipos: Array<{ modelo: string; serie: string; usd_unit: number; costo_mx_unit: number; descripcion: string }> = [];
+      const skipped: Array<{ modelo: string; reason: string }> = [];
+
+      for (const c of conceptos as Array<Record<string, unknown>>) {
+        const modelo   = String(c.NoIdentificacion ?? c.ClaveProdServ ?? '').trim();
+        const descRaw  = String(c.Descripcion ?? '');
+        const cantidad = Number(c.Cantidad ?? 0);
+        const usdUnit  = Number(c.ValorUnitario ?? 0);
+        if (!(cantidad > 0) || !modelo) { skipped.push({ modelo: modelo || '(sin modelo)', reason: 'cantidad o modelo inválidos' }); continue; }
+        // Skip INSURANCE y similares (no equipos físicos)
+        if (/insurance|seguro|flete|envio/i.test(modelo) || /insurance/i.test(descRaw)) {
+          skipped.push({ modelo, reason: 'concepto no físico (insurance/flete)' });
+          continue;
+        }
+        const matches = [...descRaw.matchAll(SERIE_RE)].map(m => m[1]);
+        // Deduplicar y remover modelos duplicados en la descripción (ej. modelo aparece como palabra)
+        const series = [...new Set(matches)].filter(s => s !== modelo);
+        if (series.length === 0) {
+          skipped.push({ modelo, reason: 'no encontré series en la descripción' });
+          continue;
+        }
+        if (series.length !== cantidad) {
+          // Warning suave: el conteo no cuadra pero seguimos con las series encontradas
+          skipped.push({ modelo, reason: `warning: cantidad=${cantidad} pero encontré ${series.length} series` });
+        }
+        for (const serie of series) {
+          equipos.push({
+            modelo,
+            serie,
+            usd_unit:      usdUnit,
+            costo_mx_unit: usdUnit * tc,
+            descripcion:   descRaw.slice(0, 200),
+          });
+        }
+      }
+
+      if (dryRun) {
+        return {
+          ok: true, dry_run: true,
+          resumen: { folio, fecha, tc, oc_ac: ocAc, emisor: 'TRANE', equipos_detectados: equipos.length, conceptos_skipped: skipped.length },
+          equipos, skipped,
+        };
+      }
+
+      // Escritura real: 1 addTableRow por serie, todo en una session Graph.
+      const headers = await GraphExcel.getTableHeader(inv.token, inv.config.location, inv.config.sheets.historico.table);
+      const cols = inv.config.columns_historico;
+      const bodegaNorm = bodegaDestinoRaw ? normalizeBodega(inv, bodegaDestinoRaw) : null;
+      let inserted = 0;
+      await GraphExcel.withSession(inv.token, inv.config.location, async (session) => {
+        for (const eq of equipos) {
+          const rowValues: unknown[] = new Array(headers.length).fill('');
+          const setByLogic = (logic: string, value: unknown) => {
+            const header = cols[logic];
+            if (!header) return;
+            const idx = headers.indexOf(header);
+            if (idx >= 0) rowValues[idx] = value;
+          };
+          if (ocAc)          setByLogic('oc', ocAc);
+          setByLogic('modelo',        eq.modelo);
+          setByLogic('serie',         eq.serie);
+          setByLogic('folio_compra',   folio);
+          setByLogic('fecha_compra',   fecha);
+          setByLogic('usd',           eq.usd_unit);
+          setByLogic('tc',            tc);
+          setByLogic('costo_mx',      eq.costo_mx_unit);
+          setByLogic('estatus',       'PENDIENTE');
+          if (bodegaNorm) setByLogic('bodega', bodegaNorm.canonical);
+          await GraphExcel.addTableRow(inv.token, session, inv.config.sheets.historico.table, rowValues);
+          inserted++;
+        }
+      });
+      return {
+        ok: true, dry_run: false,
+        resumen: { folio, fecha, tc, oc_ac: ocAc, emisor: 'TRANE' },
+        inserted, skipped_count: skipped.length, skipped_muestra: skipped.slice(0, 5),
+      };
     }
 
     // Captura manual — Tania busca en SF (o el sistema que use el cliente) y le

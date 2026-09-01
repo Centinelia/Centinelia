@@ -18,6 +18,8 @@
  *     columns_historico: {
  *       oc: 'OC', modelo: 'MODELO', serie: 'SERIE', estatus: 'ESTATUS',
  *       bodega: 'BODEGA', vendedor: 'VEND', cliente: 'CLIENTE',
+ *       folio_compra: 'FOLIO FACTURA', fecha_compra: 'FECHA FACTURA',
+ *       usd: 'USD', tc: 'TC', costo_mx: 'COSTO MX',
  *       folio_venta: 'FOLIO', fecha_venta: 'FECHA DE VENTA',
  *       factura_venta: 'FACTURA', costo_venta_mx: 'COSTO VTA (MX)'
  *     },

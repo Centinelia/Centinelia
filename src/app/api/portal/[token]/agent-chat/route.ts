@@ -1408,6 +1408,32 @@ const INV_REPORTE_UTILIDAD_TOOL: Anthropic.Tool = {
   description: 'Nami: calcula el FACTOR de venta (precio_venta / costo_mx) por modelo. Solo considera equipos con costo y venta capturados.',
   input_schema: { type: 'object' as const, properties: {} },
 };
+const INV_BUSCAR_POR_CLIENTE_TOOL: Anthropic.Tool = {
+  name: 'inv_buscar_por_cliente',
+  description: 'Nami: busca equipos asignados a un cliente (búsqueda parcial case-insensitive). Úsala cuando ventas te mande datos sueltos sin serie ("los datos del pedido de Juan Pérez") para reconciliar antes de patchear. Si sale un solo equipo, procede. Si salen varios, pregunta cuál.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      cliente: { type: 'string', description: 'Nombre o parte del nombre del cliente' },
+      estatus: { type: 'string', description: 'ALMACEN, SEPARADO, ENTREGADO (opcional — sin filtro por default)' },
+    },
+    required: ['cliente'],
+  },
+};
+const INV_PROCESAR_FACTURA_TRANE_TOOL: Anthropic.Tool = {
+  name: 'inv_procesar_factura_trane',
+  description: 'Nami: parsea el XML CFDI de una factura de TRANE y agrega los equipos al INVENTARIO (una fila por serie individual). Extrae folio, fecha, TC y por concepto: modelo + series inline + cantidad + USD unit. Skip INSURANCE/fletes. Por default corre en dry_run (devuelve preview sin escribir). Pasa dry_run:false para aplicar. Si conoces la OC de AC (viene en el correo o en el asunto), pásala en oc_ac para vincular los equipos con esa OC.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      xml:     { type: 'string', description: 'Contenido del cfdi.xml adjunto al correo de TRANE (texto completo)' },
+      dry_run: { type: 'boolean', description: 'True (default) para simular. False para aplicar cambios al Excel.' },
+      oc_ac:   { type: 'string', description: 'Número de OC de AC en QuickBooks (opcional, para vincular)' },
+      bodega:  { type: 'string', description: 'Bodega destino inicial (FLETEROS, CENIZO, TRANE). Si se omite, no se setea y queda pendiente.' },
+    },
+    required: ['xml'],
+  },
+};
 
 const ALL_TOOLS = [
   DELEGAR_TAREA_TOOL,
@@ -1462,6 +1488,8 @@ const ALL_TOOLS = [
   INV_IMPORTAR_BACKLOG_TOOL,
   INV_NORMALIZAR_BODEGAS_TOOL,
   INV_REPORTE_UTILIDAD_TOOL,
+  INV_BUSCAR_POR_CLIENTE_TOOL,
+  INV_PROCESAR_FACTURA_TRANE_TOOL,
 ];
 
 // VOICE_TO_CHAT y UNIVERSAL_TOOLS viven en src/lib/tools/channel-mapping.ts
@@ -1543,6 +1571,8 @@ const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
   inv_importar_backlog:      INV_IMPORTAR_BACKLOG_TOOL,
   inv_normalizar_bodegas:    INV_NORMALIZAR_BODEGAS_TOOL,
   inv_reporte_utilidad:      INV_REPORTE_UTILIDAD_TOOL,
+  inv_buscar_por_cliente:    INV_BUSCAR_POR_CLIENTE_TOOL,
+  inv_procesar_factura_trane: INV_PROCESAR_FACTURA_TRANE_TOOL,
 };
 
 // Nash-only tools — nunca en ALL_TOOLS, se agregan condicionalmente cuando
