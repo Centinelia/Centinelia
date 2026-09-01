@@ -169,26 +169,26 @@ export default function InvestigacionSection({ token, researchers = [], defaultR
           boxShadow: '0 4px 20px rgba(59,130,246,0.08)',
         }}>
         {/* Stack de imágenes de los empleados que pueden investigar */}
-        <div className="relative shrink-0 self-end flex items-end" style={{ width: primary ? 156 : 0, height: 144 }}>
+        <div className="relative shrink-0 self-end flex items-end" style={{ width: primary ? 220 : 0, height: 210 }}>
           {primary?.imagen && (
             <img
               src={primary.imagen}
               alt={primary.nombre}
-              style={{ width: 128, height: 128, objectFit: 'contain', objectPosition: 'bottom center', position: 'absolute', bottom: 0, left: 20, zIndex: 2 }}
+              style={{ width: 200, height: 200, objectFit: 'contain', objectPosition: 'bottom center', position: 'absolute', bottom: 0, left: 20, zIndex: 2 }}
             />
           )}
           {others[0]?.imagen && (
             <img
               src={others[0].imagen}
               alt={others[0].nombre}
-              style={{ width: 96, height: 96, objectFit: 'contain', objectPosition: 'bottom center', position: 'absolute', bottom: 0, left: 0, opacity: 0.75, zIndex: 1 }}
+              style={{ width: 140, height: 140, objectFit: 'contain', objectPosition: 'bottom center', position: 'absolute', bottom: 0, left: -10, opacity: 0.75, zIndex: 1 }}
             />
           )}
           {others[1]?.imagen && (
             <img
               src={others[1].imagen}
               alt={others[1].nombre}
-              style={{ width: 96, height: 96, objectFit: 'contain', objectPosition: 'bottom center', position: 'absolute', bottom: 0, right: -12, opacity: 0.6, zIndex: 0 }}
+              style={{ width: 140, height: 140, objectFit: 'contain', objectPosition: 'bottom center', position: 'absolute', bottom: 0, right: -20, opacity: 0.6, zIndex: 0 }}
             />
           )}
         </div>
