@@ -3,6 +3,7 @@ import { validatePhoneOrThrow } from '../../leads/dedup';
 import { resolveIncidentRecipients } from '../../incidents/directory';
 import { renderNewClientCardEmail } from '../../incidents/email-template';
 import { sendMeerkatHtmlEmail } from '../../email/send-as-agent';
+import { consumeAiOp } from '../../ai/ops-guard';
 
 export interface RegistrarClienteNuevoArgs {
   business_name: string;
@@ -91,7 +92,16 @@ export async function registrarClienteNuevo(ctx: any, args: RegistrarClienteNuev
             email_domain_verified: ctx.agent.email_domain_verified,
           },
         }, ctx.supabase);
-        if (sendRes.ok) anySent = true;
+        if (sendRes.ok) {
+          anySent = true;
+          // Cobrar 1 tarea por cada correo real enviado (Resend/OAuth tienen
+          // costo). Multi-recipient → N tareas. Solo tras éxito, sin refund.
+          await consumeAiOp(ctx.agent.id, 1, {
+            source: 'alta_cliente_notif',
+            label:  'Aviso de alta de cliente al encargado por correo',
+            reference_id: incidentId,
+          });
+        }
         else console.warn(`registrar_cliente_nuevo email a ${recipient.email} failed silently:`, sendRes.error);
       } catch (err) {
         console.error(`registrar_cliente_nuevo sendMeerkatHtmlEmail a ${recipient.email} threw:`, err);
