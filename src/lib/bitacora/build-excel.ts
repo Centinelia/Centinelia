@@ -3,6 +3,7 @@ import type { IncidentRow } from '@/app/portal/[token]/oficina/bitacora/loadBita
 import type { createAdminClient } from '@/lib/supabase/admin';
 import { renderWithCustomTemplate } from './template-render';
 import type { TemplateMapping } from './template-analyzer';
+import { injectWeekRange } from './live-workbook';
 
 const DAYS = ['L', 'M', 'MI', 'J', 'V', 'S'];
 
@@ -50,7 +51,9 @@ export async function buildBitacoraExcelForAgent(
       return buildBitacoraExcel(input);
     }
     const buffer = Buffer.from(await fileData.arrayBuffer());
-    return await renderWithCustomTemplate(buffer, template.mapping, input.incidents);
+    return await renderWithCustomTemplate(buffer, template.mapping, input.incidents, {
+      weekStart: new Date(input.rangeStartISO),
+    });
   } catch (err) {
     console.error('[bitacora] custom template render failed, falling back to default:', err);
     return buildBitacoraExcel(input);
