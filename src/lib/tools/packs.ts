@@ -27,6 +27,7 @@ export interface OrgPackContext {
   has_field_dispatch?:  boolean;
   has_tramites?:        boolean;
   has_incidencia_flow?: boolean;
+  has_inventory_excel?: boolean;
 }
 
 export interface SkillPack {
@@ -149,6 +150,18 @@ export const SKILL_PACKS: SkillPack[] = [
     activeCheck: ctx => !!ctx.has_tramites,
   },
   {
+    id: 'inventory_excel', label: 'Inventarios en Excel',
+    description: 'Lleva inventario histórico + stock por bodega + reposición desde un Excel del cliente en SharePoint/OneDrive',
+    tools: [
+      'inv_buscar_por_serie', 'inv_buscar_por_modelo', 'inv_stock_snapshot',
+      'inv_pedir_reposicion', 'inv_agregar_equipo', 'inv_actualizar_estatus',
+      'inv_asignar_cliente', 'inv_registrar_venta', 'inv_transferir_bodega',
+      'inv_importar_backlog', 'inv_normalizar_bodegas', 'inv_reporte_utilidad',
+    ],
+    source: 'organizations.inventory_excel_config',
+    activeCheck: ctx => !!ctx.has_inventory_excel,
+  },
+  {
     id: 'incidencia_flow', label: 'Flujo de incidencias',
     description: 'Registrar quejas/incidencias de clientes B2B con notificación al encargado y llamada de verificación a 3 días. También incluye alta de clientes nuevos.',
     tools: ['registrar_incidencia', 'registrar_cliente_nuevo', 'verificar_recepcion_incidencia'],
@@ -212,7 +225,7 @@ export async function resolveOrgPackContext(
 ): Promise<OrgPackContext> {
   const [qb, org, sheets, ml, agents] = await Promise.all([
     supabase.from('qb_integrations').select('realm_id').eq('portal_email', portalEmail).maybeSingle(),
-    supabase.from('organizations').select('invoicing_provider, catalog_config, outbound_daily_limit, incidencia_flow_enabled').eq('portal_email', portalEmail).maybeSingle(),
+    supabase.from('organizations').select('invoicing_provider, catalog_config, outbound_daily_limit, incidencia_flow_enabled, inventory_excel_config').eq('portal_email', portalEmail).maybeSingle(),
     supabase.from('sheets_mappings').select('id').eq('portal_email', portalEmail).limit(1),
     supabase.from('integration_accounts').select('id').eq('portal_email', portalEmail).eq('provider', 'mercadolibre').limit(1),
     supabase.from('voice_agents').select('features').eq('portal_email', portalEmail),
@@ -240,5 +253,6 @@ export async function resolveOrgPackContext(
     has_field_dispatch:  anyFeature('field_dispatch'),
     has_tramites:        anyFeature('tramites_externos'),
     has_incidencia_flow: org.data?.incidencia_flow_enabled === true,
+    has_inventory_excel: !!org.data?.inventory_excel_config,
   };
 }

@@ -91,6 +91,20 @@ export const VOICE_TO_CHAT: Record<string, string | null> = {
   agregar_tag_contacto:      'agregar_tag_contacto',
   pedir_a_humano:            'pedir_a_humano',
   catalogo_buscar_codigo:    'catalogo_buscar_codigo',
+
+  // Nami — pack inventory_excel. Mismo nombre en los 3 canales.
+  inv_buscar_por_serie:      'inv_buscar_por_serie',
+  inv_buscar_por_modelo:     'inv_buscar_por_modelo',
+  inv_stock_snapshot:        'inv_stock_snapshot',
+  inv_pedir_reposicion:      'inv_pedir_reposicion',
+  inv_agregar_equipo:        'inv_agregar_equipo',
+  inv_actualizar_estatus:    'inv_actualizar_estatus',
+  inv_asignar_cliente:       'inv_asignar_cliente',
+  inv_registrar_venta:       'inv_registrar_venta',
+  inv_transferir_bodega:     'inv_transferir_bodega',
+  inv_importar_backlog:      'inv_importar_backlog',
+  inv_normalizar_bodegas:    'inv_normalizar_bodegas',
+  inv_reporte_utilidad:      'inv_reporte_utilidad',
 };
 
 /**

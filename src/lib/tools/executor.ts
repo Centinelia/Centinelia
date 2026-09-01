@@ -892,8 +892,36 @@ async function executeAgentToolInner(
     const tipo        = (toolInput.tipo        as string | null) ?? 'Detectado por agente';
     const descripcion = (toolInput.descripcion as string | null) ?? '';
     const contexto    = (toolInput.contexto    as string | null) ?? null;
+
+    // Upload attachments (si vienen) al bucket privado ANTES del email.
+    // Mutamos toolInput.imagenes con la metadata sin base64 para que
+    // tool_call_log.input_json guarde storage_paths (no blobs enormes que
+    // safeJson trunca a 32KB). Nash lee esa metadata en revisar_incidentes.
+    let uploadedAttachments: Array<{ storage_path: string; file_name: string; mime_type: string; size_bytes: number; uploaded_at: string }> = [];
+    if (Array.isArray(toolInput.imagenes) && toolInput.imagenes.length > 0) {
+      const { uploadIncidentAttachments } = await import('@/lib/nash/incident-attachments');
+      const rawInputs = toolInput.imagenes
+        .filter((x): x is Record<string, unknown> => !!x && typeof x === 'object')
+        .map(x => ({
+          file_name: typeof x.file_name === 'string' ? x.file_name : 'captura.png',
+          mime_type: typeof x.mime_type === 'string' ? x.mime_type : '',
+          base64:    typeof x.base64    === 'string' ? x.base64    : '',
+        }))
+        .filter(x => x.mime_type && x.base64);
+      if (rawInputs.length > 0) {
+        const scope = `tool-call/reportar_falla/${agentId ?? 'unknown'}/${Date.now()}-${randomUUID().slice(0, 8)}`;
+        const up = await uploadIncidentAttachments({ scope, inputs: rawInputs, supabase });
+        if (up.ok) uploadedAttachments = up.attachments;
+      }
+      // Reemplaza in-place para que safeJson NO capture base64.
+      (toolInput as Record<string, unknown>).imagenes = uploadedAttachments;
+    }
+
     if (descripcion.trim()) {
-      const full = contexto ? `${descripcion.trim()}\n\nContexto:\n${contexto.trim()}` : descripcion.trim();
+      const attSuffix = uploadedAttachments.length > 0
+        ? `\n\nCapturas adjuntas: ${uploadedAttachments.length} archivo(s) subido(s) al bucket incident-attachments. Nash las incluirá en el issue de GitHub cuando escale.`
+        : '';
+      const full = (contexto ? `${descripcion.trim()}\n\nContexto:\n${contexto.trim()}` : descripcion.trim()) + attSuffix;
       const to   = process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? 'hola@centinelia.mx';
       await sendEmail({ to, subject: `Reporte de falla (ops): ${agentName} — ${businessName}`, html: bugReportHtml({ businessName, reporterName: agentName, reporterEmail: (agent.client_email as string | null) ?? '', category: tipo, description: full }) });
       const { triggerNashMonitor } = await import('@/lib/ops/nash-trigger');
@@ -901,6 +929,7 @@ async function executeAgentToolInner(
     }
     return {
       ok: true,
+      attachments_uploaded: uploadedAttachments.length,
       message: 'Reporte enviado al equipo de Centinelia. IMPORTANTE: tu turno NO termina aquí. Ahora continúa atendiendo la solicitud original del dueño (invoca las herramientas que necesites para completarla, no solo texto).',
     };
   }
@@ -973,20 +1002,27 @@ async function executeAgentToolInner(
       }
     }
 
-    const bug_reports = (bugRaw ?? [])
-      .filter(r => !trackedSet.has(`bug_report:${r.id}`) && !handledReopenRowIds.has(r.id as string))
-      .map(r => {
-        const input = (r.input_json ?? {}) as Record<string, unknown>;
-        return {
-          id:            r.id,
-          agent_id:      r.agent_id,
-          portal_email:  r.portal_email,
-          tipo:          input.tipo ?? null,
-          descripcion:   input.descripcion ?? null,
-          contexto:      input.contexto ?? null,
-          created_at:    r.created_at,
-        };
-      });
+    const { parseStoredAttachments: parseAtts, signAttachments: signAtts } =
+      await import('@/lib/nash/incident-attachments');
+
+    const bug_reports_raw = (bugRaw ?? [])
+      .filter(r => !trackedSet.has(`bug_report:${r.id}`) && !handledReopenRowIds.has(r.id as string));
+
+    const bug_reports = await Promise.all(bug_reports_raw.map(async r => {
+      const input = (r.input_json ?? {}) as Record<string, unknown>;
+      const stored = parseAtts(input.imagenes);
+      const signed = stored.length > 0 ? await signAtts(stored, supabase) : [];
+      return {
+        id:            r.id,
+        agent_id:      r.agent_id,
+        portal_email:  r.portal_email,
+        tipo:          input.tipo ?? null,
+        descripcion:   input.descripcion ?? null,
+        contexto:      input.contexto ?? null,
+        created_at:    r.created_at,
+        attachments:   signed.map(a => ({ file_name: a.file_name, mime_type: a.mime_type, size_bytes: a.size_bytes, signed_url: a.signedUrl })),
+      };
+    }));
 
     // 2) Errores de LLM (llm_call_log.error is not null).
     const { data: llmRaw } = await supabase
@@ -1034,11 +1070,21 @@ async function executeAgentToolInner(
     // Nash pueda notificar al cliente afectado tras resolver.
     const { data: pendingRaw } = await supabase
       .from('platform_incidents')
-      .select('id, title, source, source_id, status, created_at, github_issue_url, affected_agent_id, affected_portal_email')
+      .select('id, title, source, source_id, status, created_at, github_issue_url, affected_agent_id, affected_portal_email, meta')
       .in('status', ['sent_to_claude_code', 'awaiting_verification'])
       .order('updated_at', { ascending: true })
       .limit(perSource);
-    const pending_verification = pendingRaw ?? [];
+    const pending_verification = await Promise.all((pendingRaw ?? []).map(async r => {
+      const meta = (r.meta ?? {}) as Record<string, unknown>;
+      const stored = parseAtts(meta.attachments);
+      const signed = stored.length > 0 ? await signAtts(stored, supabase) : [];
+      const { meta: _drop, ...rest } = r;
+      void _drop;
+      return {
+        ...rest,
+        attachments: signed.map(a => ({ file_name: a.file_name, mime_type: a.mime_type, size_bytes: a.size_bytes, signed_url: a.signedUrl })),
+      };
+    }));
 
     const totalNew = bug_reports.length + error_logs.length + escalated_stale.length + failed_handoffs.length + failed_tasks.length;
 
@@ -1202,17 +1248,35 @@ async function executeAgentToolInner(
           return { ok: true, incident_id: existing.id as string, deduped: true, existing_status: existing.status as string };
         }
       }
+
+      // Propaga attachments desde el bug_report origen (tool_call_log.input_json.imagenes)
+      // sin depender de que Nash los pase explícito. Fuente confiable: la data
+      // fue subida a storage antes de que el LLM la viera.
+      let attachmentsMeta: Record<string, unknown> | null = null;
+      if (source === 'bug_report' && sourceId) {
+        const { data: sourceRow } = await supabase
+          .from('tool_call_log')
+          .select('input_json')
+          .eq('id', sourceId)
+          .maybeSingle();
+        const rawImgs = ((sourceRow?.input_json ?? {}) as Record<string, unknown>).imagenes;
+        const { parseStoredAttachments } = await import('@/lib/nash/incident-attachments');
+        const parsed = parseStoredAttachments(rawImgs);
+        if (parsed.length > 0) attachmentsMeta = { attachments: parsed };
+      }
+
       const { data, error } = await supabase
         .from('platform_incidents')
         .insert({
           title, description, priority, source,
           source_id: sourceId, affected_agent_id: affectedId, affected_portal_email: affectedEm,
           status: 'open', assigned_to: 'nash',
+          meta: attachmentsMeta,
         })
         .select('id')
         .single();
       if (error) return { ok: false, error: error.message };
-      return { ok: true, incident_id: data.id as string, deduped: false };
+      return { ok: true, incident_id: data.id as string, deduped: false, attachments_propagated: attachmentsMeta ? (attachmentsMeta.attachments as unknown[]).length : 0 };
     }
 
     if (toolName === 'responder_cliente_afectado') {
@@ -1326,6 +1390,25 @@ async function executeAgentToolInner(
         const issueNumMatch = (incident.github_issue_url as string).match(/\/issues\/(\d+)/);
         const issueNum = issueNumMatch?.[1];
         if (token && issueNum) {
+          // Attachments block (URL firmada 1yr) para que Claude Code vea las
+          // capturas también cuando Nash agrega comentario tras un reopen.
+          let reopenAttBlock = '';
+          {
+            const {
+              parseStoredAttachments: parseAttsRe,
+              signAttachments:        signAttsRe,
+              SIGNED_URL_TTL_GH_ISSUE_SEC: TTL_RE,
+            } = await import('@/lib/nash/incident-attachments');
+            const prevMetaRe = (incident.meta as Record<string, unknown> | null) ?? {};
+            const storedRe = parseAttsRe(prevMetaRe.attachments);
+            if (storedRe.length > 0) {
+              const signedRe = await signAttsRe(storedRe, supabase, TTL_RE);
+              const lines = signedRe.map(a => a.mime_type.startsWith('image/')
+                ? `- ![${a.file_name}](${a.signedUrl})`
+                : `- [${a.file_name}](${a.signedUrl})`);
+              reopenAttBlock = `\n\n**Capturas del incidente:**\n${lines.join('\n')}`;
+            }
+          }
           try {
             const res = await fetch(`https://api.github.com/repos/${repo}/issues/${issueNum}/comments`, {
               method: 'POST',
@@ -1336,7 +1419,7 @@ async function executeAgentToolInner(
                 'User-Agent':    'nash-centinelia',
               },
               body: JSON.stringify({
-                body: `**Actualización de Nash** (${new Date().toISOString().slice(0, 16).replace('T', ' ')})\n\n${prompt}\n\n---\n\n_Este comentario fue agregado porque el cliente respondió confirmando que el problema persiste. Ver metadata del incidente ${incident.id} en /admin/soporte._`,
+                body: `**Actualización de Nash** (${new Date().toISOString().slice(0, 16).replace('T', ' ')})\n\n${prompt}${reopenAttBlock}\n\n---\n\n_Este comentario fue agregado porque el cliente respondió confirmando que el problema persiste. Ver metadata del incidente ${incident.id} en /admin/soporte._`,
               }),
             });
             if (res.ok) {
@@ -1366,6 +1449,27 @@ async function executeAgentToolInner(
         status: 'sent_to_claude_code',
         meta:   { ...prevMeta, claude_code_prompt: prompt, sent_to_cc_at: new Date().toISOString() },
       };
+
+      // Attachments block (Markdown con imágenes inline) — URL firmada por 1 año
+      // porque los GH issues persisten. Sin las URLs Claude Code no puede ver
+      // las capturas que subió el cliente/admin.
+      let attachmentsBlock = '';
+      {
+        const {
+          parseStoredAttachments: parseAtts2,
+          signAttachments:        signAtts2,
+          SIGNED_URL_TTL_GH_ISSUE_SEC,
+        } = await import('@/lib/nash/incident-attachments');
+        const stored = parseAtts2(prevMeta.attachments);
+        if (stored.length > 0) {
+          const signed = await signAtts2(stored, supabase, SIGNED_URL_TTL_GH_ISSUE_SEC);
+          const lines = signed.map(a => a.mime_type.startsWith('image/')
+            ? `- ![${a.file_name}](${a.signedUrl})`
+            : `- [${a.file_name}](${a.signedUrl})`);
+          attachmentsBlock = `\n\n**Capturas adjuntas:**\n${lines.join('\n')}`;
+        }
+      }
+
       let deliveredVia: 'github' | 'email_fallback' = 'email_fallback';
       let issueUrl:     string | null               = null;
       if (token) {
@@ -1380,7 +1484,7 @@ async function executeAgentToolInner(
             },
             body: JSON.stringify({
               title: `[Nash] ${incident.title}`,
-              body:  `${prompt}\n\n---\n\n_Incidente:_ \`${incident.id}\`\n_Prioridad:_ ${incident.priority}\n_Fuente:_ ${incident.source}\n\n_Creado automáticamente por Nash desde /admin/soporte._`,
+              body:  `${prompt}${attachmentsBlock}\n\n---\n\n_Incidente:_ \`${incident.id}\`\n_Prioridad:_ ${incident.priority}\n_Fuente:_ ${incident.source}\n\n_Creado automáticamente por Nash desde /admin/soporte._`,
               labels,
             }),
           });
@@ -1401,10 +1505,13 @@ async function executeAgentToolInner(
       }
       if (!issueUrl) {
         const to = process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? 'hola@centinelia.mx';
+        const attHtml = attachmentsBlock
+          ? `<h3 style="font-family:system-ui,-apple-system,sans-serif;font-size:14px">Capturas:</h3><pre style="background:#f3f4f6;padding:12px;border-radius:8px;font-size:12px;white-space:pre-wrap">${attachmentsBlock.replace(/</g, '&lt;')}</pre>`
+          : '';
         await sendEmail({
           to,
           subject: `[Nash a Claude Code fallback] ${incident.title}`,
-          html:    `<p style="font-family:system-ui,-apple-system,sans-serif;font-size:14px"><strong>Incidente:</strong> ${incident.id}<br><strong>Prioridad:</strong> ${incident.priority}<br><strong>Fuente:</strong> ${incident.source}</p><h3 style="font-family:system-ui,-apple-system,sans-serif;font-size:14px">Prompt para Claude Code:</h3><pre style="background:#f3f4f6;padding:12px;border-radius:8px;font-size:12px;white-space:pre-wrap">${prompt.replace(/</g, '&lt;')}</pre>`,
+          html:    `<p style="font-family:system-ui,-apple-system,sans-serif;font-size:14px"><strong>Incidente:</strong> ${incident.id}<br><strong>Prioridad:</strong> ${incident.priority}<br><strong>Fuente:</strong> ${incident.source}</p><h3 style="font-family:system-ui,-apple-system,sans-serif;font-size:14px">Prompt para Claude Code:</h3><pre style="background:#f3f4f6;padding:12px;border-radius:8px;font-size:12px;white-space:pre-wrap">${prompt.replace(/</g, '&lt;')}</pre>${attHtml}`,
           from:    process.env.NASH_EMAIL_FROM,
         });
       }
@@ -4634,6 +4741,263 @@ async function executeAgentToolInner(
     if (!res.ok) return { ok: false, error: 'No se pudo actualizar la disponibilidad.' };
     const data = await res.json() as { result?: string; ok?: boolean; error?: string };
     return { ok: true, message: data.result ?? 'Disponibilidad actualizada.' };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Nami — pack inventory_excel (Piloto AC Proyectos)
+  // Opera Excel de SharePoint/OneDrive vía Microsoft Graph.
+  // Ver src/lib/inventory/adapter.ts para helpers de alto nivel.
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName.startsWith('inv_')) {
+    const { resolveInventoryContext, listHistorico, findBySerie, findByModelo, readStock, computeReposiciones, normalizeBodega, GraphExcel } = await import('@/lib/inventory/adapter');
+    const inv = await resolveInventoryContext(portalEmail, supabase);
+    if ('error' in inv) return { ok: false, error: inv.message, code: inv.error };
+
+    const findRowIndexBySerie = async (serie: string): Promise<{ tableRowIndex: number; row: unknown[] } | null> => {
+      const s = String(serie).trim().toUpperCase();
+      const [headers, rows] = await Promise.all([
+        GraphExcel.getTableHeader(inv.token, inv.config.location, inv.config.sheets.historico.table),
+        GraphExcel.listTableRows(inv.token, inv.config.location, inv.config.sheets.historico.table),
+      ]);
+      const serieHeader = inv.config.columns_historico.serie;
+      const serieIdx = headers.indexOf(serieHeader);
+      if (serieIdx < 0) return null;
+      const match = rows.find(r => String(r.values[serieIdx] ?? '').trim().toUpperCase() === s);
+      if (!match) return null;
+      return { tableRowIndex: match.index, row: match.values };
+    };
+
+    if (toolName === 'inv_buscar_por_serie') {
+      const serie = String(toolInput.serie ?? '').trim();
+      if (!serie) return { ok: false, error: 'serie es requerido' };
+      const row = await findBySerie(inv, serie);
+      if (!row) return { ok: true, encontrado: false, serie };
+      return { ok: true, encontrado: true, serie, campos: row.values };
+    }
+
+    if (toolName === 'inv_buscar_por_modelo') {
+      const modelo = String(toolInput.modelo ?? '').trim();
+      if (!modelo) return { ok: false, error: 'modelo es requerido' };
+      const estatusFiltro = toolInput.estatus ? String(toolInput.estatus).toUpperCase() : null;
+      const bodegaFiltro  = toolInput.bodega  ? String(toolInput.bodega).toUpperCase()  : null;
+      const all = await findByModelo(inv, modelo);
+      const filtered = all.filter(r =>
+        (!estatusFiltro || String(r.values.estatus ?? '').toUpperCase() === estatusFiltro) &&
+        (!bodegaFiltro  || String(r.values.bodega  ?? '').toUpperCase() === bodegaFiltro)
+      );
+      return { ok: true, modelo, total: filtered.length, equipos: filtered.map(r => r.values) };
+    }
+
+    if (toolName === 'inv_stock_snapshot') {
+      const stock = await readStock(inv);
+      const reposiciones = computeReposiciones(stock);
+      return {
+        ok: true,
+        total_modelos:  stock.length,
+        con_stock:      stock.filter(s => s.stock_actual > 0).length,
+        bajo_ideal:     reposiciones.length,
+        reposiciones_sugeridas: reposiciones.slice(0, 50),
+      };
+    }
+
+    if (toolName === 'inv_pedir_reposicion') {
+      const modelo   = String(toolInput.modelo ?? '').trim();
+      const cantidad = Number(toolInput.cantidad ?? 0);
+      const encargados = inv.config.encargados_reposicion ?? [];
+      if (!modelo)        return { ok: false, error: 'modelo es requerido' };
+      if (!(cantidad > 0)) return { ok: false, error: 'cantidad debe ser > 0' };
+      if (encargados.length === 0) return { ok: false, error: 'No hay encargados_reposicion configurados en inventory_excel_config' };
+      const notaExtra = toolInput.nota ? `<p><strong>Nota adicional:</strong> ${String(toolInput.nota)}</p>` : '';
+      const subject = `Reposición sugerida: ${cantidad} pieza(s) de ${modelo}`;
+      const html =
+        `<p>Buen día,</p>` +
+        `<p>Nami detectó que el modelo <strong>${modelo}</strong> está por debajo del ideal en el inventario. ` +
+        `Sugerencia de reposición: <strong>${cantidad} pieza(s)</strong>.</p>` +
+        `<p>Por favor confirmen si procede levantar la orden de compra a TRANE.</p>` +
+        notaExtra +
+        `<p>— ${agentName ?? 'Nami'} · ${businessName ?? 'Inventarios'}</p>`;
+      const { sendMeerkatHtmlEmail } = await import('@/lib/email/send-as-agent');
+      const result = await sendMeerkatHtmlEmail({
+        agentId,
+        to:      encargados.join(', '),
+        subject, html,
+        agent: {
+          agent_name:    agentName,
+          business_name: businessName,
+          email_from:    (agent.email_from as string | null) ?? null,
+          email_domain_verified: (agent.email_domain_verified as boolean | null) ?? null,
+        },
+      }, supabase);
+      if (!result.ok) return { ok: false, error: result.error ?? 'Envío falló' };
+      return { ok: true, message: `Correo enviado a ${encargados.join(', ')} solicitando ${cantidad} pieza(s) de ${modelo}.`, provider: result.provider };
+    }
+
+    if (toolName === 'inv_agregar_equipo') {
+      const requeridos = ['oc', 'modelo', 'serie', 'bodega'] as const;
+      for (const k of requeridos) {
+        if (!String(toolInput[k] ?? '').trim()) return { ok: false, error: `${k} es requerido` };
+      }
+      const bodegaNorm = normalizeBodega(inv, String(toolInput.bodega));
+      if (!bodegaNorm) return { ok: false, error: `Bodega "${toolInput.bodega}" no es válida. Canónicas: ${inv.config.bodegas_canonicas.join(', ')}` };
+      const headers = await GraphExcel.getTableHeader(inv.token, inv.config.location, inv.config.sheets.historico.table);
+      const cols = inv.config.columns_historico;
+      const rowValues: unknown[] = new Array(headers.length).fill('');
+      const setByLogic = (logic: string, value: unknown) => {
+        const header = cols[logic];
+        if (!header) return;
+        const idx = headers.indexOf(header);
+        if (idx >= 0) rowValues[idx] = value;
+      };
+      setByLogic('oc', toolInput.oc);
+      setByLogic('modelo', String(toolInput.modelo).toUpperCase());
+      setByLogic('serie', String(toolInput.serie).trim().toUpperCase());
+      setByLogic('bodega', bodegaNorm.canonical);
+      setByLogic('estatus', 'ALMACEN');
+      if (toolInput.usd !== undefined) setByLogic('usd', Number(toolInput.usd));
+      if (toolInput.tc  !== undefined) setByLogic('tc',  Number(toolInput.tc));
+      if (toolInput.usd !== undefined && toolInput.tc !== undefined) {
+        setByLogic('costo_mx', Number(toolInput.usd) * Number(toolInput.tc));
+      }
+      await GraphExcel.withSession(inv.token, inv.config.location, async (session) => {
+        await GraphExcel.addTableRow(inv.token, session, inv.config.sheets.historico.table, rowValues);
+      });
+      return { ok: true, message: `Equipo ${toolInput.modelo} (serie ${toolInput.serie}) agregado en bodega ${bodegaNorm.canonical}.`, was_alias: bodegaNorm.was_alias };
+    }
+
+    if (toolName === 'inv_actualizar_estatus') {
+      const serie   = String(toolInput.serie ?? '').trim();
+      const estatus = String(toolInput.estatus ?? '').trim().toUpperCase();
+      if (!serie)   return { ok: false, error: 'serie es requerido' };
+      if (!estatus) return { ok: false, error: 'estatus es requerido' };
+      if (!inv.config.estatus_validos.includes(estatus)) {
+        return { ok: false, error: `Estatus "${estatus}" no válido. Válidos: ${inv.config.estatus_validos.join(', ')}` };
+      }
+      const found = await findRowIndexBySerie(serie);
+      if (!found) return { ok: false, error: `No encontré equipo con serie ${serie}` };
+      const headers = await GraphExcel.getTableHeader(inv.token, inv.config.location, inv.config.sheets.historico.table);
+      const colHeader = inv.config.columns_historico.estatus;
+      const colIdx = headers.indexOf(colHeader);
+      if (colIdx < 0) return { ok: false, error: `Columna ${colHeader} no encontrada en la tabla` };
+      const colLetter = String.fromCharCode(65 + colIdx);
+      const excelRow = found.tableRowIndex + 2;
+      await GraphExcel.withSession(inv.token, inv.config.location, async (session) => {
+        await GraphExcel.patchCell(inv.token, session, inv.config.sheets.historico.name, `${colLetter}${excelRow}`, estatus);
+      });
+      return { ok: true, message: `Estatus del equipo ${serie} → ${estatus}.` };
+    }
+
+    if (toolName === 'inv_asignar_cliente') {
+      const serie    = String(toolInput.serie ?? '').trim();
+      const cliente  = String(toolInput.cliente ?? '').trim();
+      const vendedor = String(toolInput.vendedor ?? '').trim();
+      if (!serie)   return { ok: false, error: 'serie es requerido' };
+      if (!cliente) return { ok: false, error: 'cliente es requerido' };
+      const found = await findRowIndexBySerie(serie);
+      if (!found) return { ok: false, error: `No encontré equipo con serie ${serie}` };
+      const headers = await GraphExcel.getTableHeader(inv.token, inv.config.location, inv.config.sheets.historico.table);
+      const excelRow = found.tableRowIndex + 2;
+      await GraphExcel.withSession(inv.token, inv.config.location, async (session) => {
+        const patchOne = async (logic: string, value: string) => {
+          const header = inv.config.columns_historico[logic];
+          if (!header) return;
+          const colIdx = headers.indexOf(header);
+          if (colIdx < 0) return;
+          const colLetter = String.fromCharCode(65 + colIdx);
+          await GraphExcel.patchCell(inv.token, session, inv.config.sheets.historico.name, `${colLetter}${excelRow}`, value);
+        };
+        await patchOne('cliente', cliente);
+        if (vendedor) await patchOne('vendedor', vendedor);
+      });
+      return { ok: true, message: `Cliente ${cliente} asignado al equipo ${serie}${vendedor ? ` (vendedor ${vendedor})` : ''}.` };
+    }
+
+    if (toolName === 'inv_transferir_bodega') {
+      const serie  = String(toolInput.serie ?? '').trim();
+      const bodega = String(toolInput.bodega ?? '').trim();
+      if (!serie)  return { ok: false, error: 'serie es requerido' };
+      if (!bodega) return { ok: false, error: 'bodega es requerida' };
+      const bodegaNorm = normalizeBodega(inv, bodega);
+      if (!bodegaNorm) return { ok: false, error: `Bodega "${bodega}" no válida. Canónicas: ${inv.config.bodegas_canonicas.join(', ')}` };
+      const found = await findRowIndexBySerie(serie);
+      if (!found) return { ok: false, error: `No encontré equipo con serie ${serie}` };
+      const headers = await GraphExcel.getTableHeader(inv.token, inv.config.location, inv.config.sheets.historico.table);
+      const colHeader = inv.config.columns_historico.bodega;
+      const colIdx = headers.indexOf(colHeader);
+      if (colIdx < 0) return { ok: false, error: `Columna ${colHeader} no encontrada` };
+      const colLetter = String.fromCharCode(65 + colIdx);
+      const excelRow = found.tableRowIndex + 2;
+      await GraphExcel.withSession(inv.token, inv.config.location, async (session) => {
+        await GraphExcel.patchCell(inv.token, session, inv.config.sheets.historico.name, `${colLetter}${excelRow}`, bodegaNorm.canonical);
+      });
+      return { ok: true, message: `Equipo ${serie} transferido a bodega ${bodegaNorm.canonical}.` };
+    }
+
+    if (toolName === 'inv_normalizar_bodegas') {
+      const dryRun = toolInput.dry_run !== false;
+      const rows = await listHistorico(inv);
+      const changes: Array<{ serie: string; from: string; to: string }> = [];
+      for (const r of rows) {
+        const bodegaRaw = String(r.values.bodega ?? '').trim();
+        const serie     = String(r.values.serie  ?? '').trim();
+        if (!bodegaRaw || !serie) continue;
+        const norm = normalizeBodega(inv, bodegaRaw);
+        if (!norm || norm.canonical === bodegaRaw.toUpperCase()) continue;
+        changes.push({ serie, from: bodegaRaw, to: norm.canonical });
+      }
+      if (dryRun) {
+        return { ok: true, dry_run: true, total_a_cambiar: changes.length, cambios_muestra: changes.slice(0, 20) };
+      }
+      const headers = await GraphExcel.getTableHeader(inv.token, inv.config.location, inv.config.sheets.historico.table);
+      const colIdx = headers.indexOf(inv.config.columns_historico.bodega);
+      const colLetter = String.fromCharCode(65 + colIdx);
+      let applied = 0;
+      await GraphExcel.withSession(inv.token, inv.config.location, async (session) => {
+        for (const c of changes) {
+          const found = await findRowIndexBySerie(c.serie);
+          if (!found) continue;
+          const excelRow = found.tableRowIndex + 2;
+          await GraphExcel.patchCell(inv.token, session, inv.config.sheets.historico.name, `${colLetter}${excelRow}`, c.to);
+          applied++;
+        }
+      });
+      return { ok: true, dry_run: false, aplicados: applied, total: changes.length };
+    }
+
+    if (toolName === 'inv_reporte_utilidad') {
+      const rows = await listHistorico(inv);
+      const grupos: Record<string, { costos: number[]; ventas: number[] }> = {};
+      for (const r of rows) {
+        const modelo = String(r.values.modelo ?? '').trim().toUpperCase();
+        const costo  = Number(r.values.costo_mx ?? 0);
+        const venta  = Number(r.values.costo_venta_mx ?? r.values.precio_venta ?? 0);
+        if (!modelo || !(costo > 0) || !(venta > 0)) continue;
+        (grupos[modelo] ??= { costos: [], ventas: [] });
+        grupos[modelo].costos.push(costo);
+        grupos[modelo].ventas.push(venta);
+      }
+      const reporte = Object.entries(grupos).map(([modelo, g]) => {
+        const totalCosto = g.costos.reduce((a, b) => a + b, 0);
+        const totalVenta = g.ventas.reduce((a, b) => a + b, 0);
+        return {
+          modelo,
+          equipos_vendidos: g.ventas.length,
+          costo_promedio:   Math.round(totalCosto / g.costos.length),
+          venta_promedio:   Math.round(totalVenta / g.ventas.length),
+          factor_promedio:  +(totalVenta / totalCosto).toFixed(3),
+        };
+      }).sort((a, b) => b.factor_promedio - a.factor_promedio);
+      return { ok: true, total_modelos: reporte.length, reporte: reporte.slice(0, 100) };
+    }
+
+    // Stubs bloqueados por respuestas pendientes de AC (ver [[handoff-ac-proyectos-inventarios]])
+    if (toolName === 'inv_registrar_venta') {
+      return { ok: false, error: 'not_implemented', pending_flow_doc: true, blocked_by: 'Definir búsqueda SF (solo folio vs multi-criterio) — pregunta 3 a AC' };
+    }
+    if (toolName === 'inv_importar_backlog') {
+      return { ok: false, error: 'not_implemented', pending_flow_doc: true, blocked_by: 'Formato del correo BACKLOG de TRANE — pregunta pendiente a AC' };
+    }
+
+    return { ok: false, error: `Tool inv_ desconocida: ${toolName}` };
   }
 
   // ─────────────────────────────────────────────────────────────────────────
