@@ -10,7 +10,7 @@ const WEEK_RANGE_PLACEHOLDER = '{{RANGO_SEMANA}}';
 
 const MONTHS_ES_SHORT = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
 
-function formatWeekRange(monday: Date): string {
+export function formatWeekRange(monday: Date): string {
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
   const mDay = monday.getDate();
@@ -26,14 +26,34 @@ function formatWeekRange(monday: Date): string {
 /**
  * Reemplaza todas las celdas de la sheet que contengan `{{RANGO_SEMANA}}`
  * con el rango real de la semana en formato "24-30 AGO" o "28 AGO - 3 SEP"
- * si cruza mes. Se llama al clonar/inicializar cada Semana N.
+ * si cruza mes. Se llama al clonar/inicializar cada Semana N y también en
+ * el path de export (/api/portal/[token]/oficina/bitacora/export).
+ *
+ * Handles both plain-string cells y rich-text cells (`{ richText: [...] }`).
+ * Los headers estilizados en templates de cliente casi siempre son rich text,
+ * y la implementación previa (`typeof cell.value === 'string'`) los saltaba
+ * silenciosamente → placeholder quedaba literal en el download.
  */
-function injectWeekRange(ws: Worksheet, weekStart: Date): void {
+export function injectWeekRange(ws: Worksheet, weekStart: Date): void {
   const label = formatWeekRange(weekStart);
   ws.eachRow({ includeEmpty: false }, (row) => {
     row.eachCell({ includeEmpty: false }, (cell) => {
-      if (typeof cell.value === 'string' && cell.value.includes(WEEK_RANGE_PLACEHOLDER)) {
-        cell.value = cell.value.replace(WEEK_RANGE_PLACEHOLDER, label);
+      const v = cell.value as unknown;
+      if (typeof v === 'string' && v.includes(WEEK_RANGE_PLACEHOLDER)) {
+        cell.value = v.replace(WEEK_RANGE_PLACEHOLDER, label);
+        return;
+      }
+      if (v && typeof v === 'object' && Array.isArray((v as { richText?: unknown[] }).richText)) {
+        const rt = (v as { richText: { text?: string; font?: unknown }[] }).richText;
+        let changed = false;
+        const nextRt = rt.map(run => {
+          if (typeof run.text === 'string' && run.text.includes(WEEK_RANGE_PLACEHOLDER)) {
+            changed = true;
+            return { ...run, text: run.text.replace(WEEK_RANGE_PLACEHOLDER, label) };
+          }
+          return run;
+        });
+        if (changed) cell.value = { richText: nextRt } as unknown as typeof cell.value;
       }
     });
   });

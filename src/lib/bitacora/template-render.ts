@@ -1,6 +1,7 @@
 import { Workbook, Worksheet } from 'exceljs';
 import type { IncidentRow } from '@/app/portal/[token]/oficina/bitacora/loadBitacoraData';
 import type { TemplateMapping, CanonicalField } from './template-analyzer';
+import { injectWeekRange } from './live-workbook';
 
 /** Header interno de la col oculta que rastrea incident_id para merge. */
 export const HIDDEN_ID_HEADER = '_incident_id';
@@ -526,6 +527,11 @@ export interface RenderOptions {
   /** Si true, agrega una col oculta al final con el incident_id de cada fila.
    *  Sirve para matchear rows al re-generar en modo persistente. */
   includeHiddenIncidentId?: boolean;
+  /** Lunes de la semana que se está renderizando. Si viene, se sustituye
+   *  `{{RANGO_SEMANA}}` en las celdas del sheet por el rango real
+   *  ("24-30 AGO"). El path de export (/api/portal/[token]/oficina/bitacora/export)
+   *  lo pasa; el live-workbook cron ya inyecta por su cuenta antes de llamar. */
+  weekStart?: Date;
 }
 
 /**
@@ -553,6 +559,7 @@ export async function renderWithCustomTemplate(
   const ws = wb.getWorksheet(mapping.sheet_name) ?? wb.worksheets[0];
   if (!ws) throw new Error(`Sheet '${mapping.sheet_name}' no encontrado en el template`);
 
+  if (options.weekStart) injectWeekRange(ws, options.weekStart);
   populateSheetWithIncidents(ws, mapping, incidents, options);
 
   return Buffer.from(await wb.xlsx.writeBuffer());
