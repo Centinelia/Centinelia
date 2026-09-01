@@ -48,11 +48,46 @@ export async function getFileConnector(agentId: string, supabase: SupabaseClient
 
   const { data: orgAcct } = await supabase
     .from('integration_accounts')
-    .select('provider, account_label, access_token, refresh_token, expires_at, status')
+    .select('provider, account_label, access_token, refresh_token, expires_at, status, metadata')
     .eq('portal_email', portalEmail)
     .eq('capability', 'email')
     .neq('status', 'disconnected')
     .maybeSingle();
+
+  // Fase 1 outbound: SMTP directo al servidor del cliente (Telmex/Prodigy,
+  // Titan, cPanel). Si el org guardó config imap_smtp, la usamos antes de
+  // caer al OAuth path o al Dropbox fallback. Nelia envía FROM el dominio
+  // del cliente sin OAuth ni cambios DNS.
+  if (orgAcct && orgAcct.provider === 'imap_smtp') {
+    const { decrypt } = await import('@/lib/crypto');
+    const { createImapSmtpConnector } = await import('@/lib/connectors/imap-smtp');
+    const meta = (orgAcct.metadata as Record<string, unknown> | null) ?? {};
+    const password = decrypt((orgAcct.access_token as string | null) ?? '');
+    const conn = createImapSmtpConnector({
+      host:     String(meta.host ?? ''),
+      port:     Number(meta.port ?? 465),
+      secure:   Boolean(meta.secure ?? true),
+      username: String(meta.username ?? orgAcct.account_label ?? ''),
+      password,
+      fromDisplay: (meta.from_display as string | undefined) ?? undefined,
+    });
+    const synthetic: IntegrationRow = {
+      id:                 `org:${portalEmail}:imap_smtp` as string,
+      agent_id:           agentId,
+      // Cast a 'outlook' para reusar el shape actual sin ampliar el union.
+      // Nadie en el hot path discrimina — solo se lee `.conn.email.send`.
+      provider:           'outlook' as const,
+      email:              (orgAcct.account_label as string | null) ?? '',
+      access_token:       '',
+      refresh_token:      null,
+      token_expires_at:   null,
+      last_sync_at:       null,
+      needs_reauth:       false,
+      reauth_notified_at: null,
+    };
+    return { integration: synthetic, conn };
+  }
+
   if (!orgAcct) {
     // Fallback secundario: Dropbox como file provider standalone.
     const { data: dbxAcct } = await supabase
