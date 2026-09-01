@@ -28,8 +28,15 @@ const SOURCE_META: Record<string, { label: string; trigger: string }> = {
   historical_synthesis:   { label: 'Síntesis del historial de llamadas', trigger: 'manual' },
   // Herramientas de voz (durante llamada)
   tool_crear_documento:          { label: 'Documento creado en llamada', trigger: 'voice_call' },
-  tool_enviar_correo:            { label: 'Correo enviado desde llamada', trigger: 'voice_call' },
+  tool_enviar_correo:            { label: 'Correo enviado por el empleado', trigger: 'voice_call' },
   tool_enviar_documento_oficina: { label: 'Documento enviado (oficina)',  trigger: 'voice_call' },
+  // Notificaciones automáticas post-llamada (Nelia y otros meerkats que
+  // registran quejas o altas y avisan al encargado por correo).
+  incidencia_notif:              { label: 'Aviso de queja al encargado',  trigger: 'voice_call' },
+  alta_cliente_notif:            { label: 'Aviso de alta de cliente',     trigger: 'voice_call' },
+  // Bitácora: envío del xlsx adjunto al correo del responsable.
+  bitacora_semanal_send:         { label: 'Bitácora semanal por correo',  trigger: 'schedule' },
+  bitacora_mensual_send:         { label: 'Bitácora mensual por correo',  trigger: 'schedule' },
   tool_llamar_a:                 { label: 'Llamada saliente iniciada',    trigger: 'voice_call' },
   tool_qb_crear_factura:         { label: 'Factura creada en QuickBooks', trigger: 'voice_call' },
   tool_qb_registrar_pago:        { label: 'Pago registrado en QuickBooks', trigger: 'voice_call' },

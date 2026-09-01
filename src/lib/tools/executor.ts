@@ -298,7 +298,16 @@ async function executeAgentToolInner(
     }, supabase);
 
     const sent = result && typeof result === 'object' && (result as { ok?: unknown }).ok !== false;
-    if (sent) await commitReportIntent(claim.lockId);
+    if (sent) {
+      await commitReportIntent(claim.lockId);
+      // Cobrar 1 tarea por correo real enviado (Resend/OAuth tienen costo).
+      // Solo tras éxito, sin refund. El verifier + report-intent-lock ya
+      // ocurrieron sin cargo (son gates locales, no external calls facturables).
+      await consumeAiOp(agentId, 1, {
+        source: 'tool_enviar_correo',
+        label:  'Correo enviado por el empleado',
+      });
+    }
     else      await releaseReportIntent(claim.lockId);
     return result;
   }

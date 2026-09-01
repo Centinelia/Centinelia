@@ -4,6 +4,7 @@ import { resolveIncidentRecipients } from '../../incidents/directory';
 import { renderIncidentCardEmail } from '../../incidents/email-template';
 import { upsertFollowupContactForIncident } from '../../incidents/scheduling';
 import { sendMeerkatHtmlEmail } from '../../email/send-as-agent';
+import { consumeAiOp } from '../../ai/ops-guard';
 
 export interface RegistrarIncidenciaArgs {
   business_name: string;
@@ -97,7 +98,16 @@ export async function registrarIncidencia(ctx: any, args: RegistrarIncidenciaArg
             email_domain_verified: ctx.agent.email_domain_verified,
           },
         }, ctx.supabase);
-        if (sendRes.ok) anySent = true;
+        if (sendRes.ok) {
+          anySent = true;
+          // Cobrar 1 tarea por cada correo real enviado (Resend/OAuth tienen
+          // costo). Multi-recipient → N tareas. Solo tras éxito, sin refund.
+          await consumeAiOp(ctx.agent.id, 1, {
+            source: 'incidencia_notif',
+            label:  'Aviso de queja al encargado por correo',
+            reference_id: incidentId,
+          });
+        }
         else console.warn(`registrar_incidencia email a ${recipient.email} failed silently:`, sendRes.error);
       } catch (err) {
         console.error(`registrar_incidencia sendMeerkatHtmlEmail a ${recipient.email} threw:`, err);

@@ -9,6 +9,7 @@ import { updateLiveWorkbook, type WeekSpec } from '@/lib/bitacora/live-workbook'
 import type { IncidentRow } from '@/app/portal/[token]/oficina/bitacora/loadBitacoraData';
 import type { TemplateMapping } from '@/lib/bitacora/template-analyzer';
 import { nowInMX, isLastWeekdayOfMonth, weekStartMonday, monthStart, weekNumberInMonth, weekdaysInMonthUpTo } from '@/lib/bitacora/schedule';
+import { consumeAiOp } from '@/lib/ai/ops-guard';
 
 const DAY_LABELS_ES = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
 
@@ -198,7 +199,10 @@ async function runEphemeralFlow(
         email_domain_verified: agent.email_domain_verified as boolean | null,
       },
     }, supabase);
-    if (res.ok) ok = true;
+    if (res.ok) {
+      ok = true;
+      await consumeAiOp(agentId, 1, { source: 'bitacora_semanal_send', label: 'Bitácora semanal enviada por correo' });
+    }
   }
 
   let isMonthlyFinal = false;
@@ -239,7 +243,10 @@ async function runEphemeralFlow(
           email_domain_verified: agent.email_domain_verified as boolean | null,
         },
       }, supabase);
-      if (res.ok) isMonthlyFinal = true;
+      if (res.ok) {
+        isMonthlyFinal = true;
+        await consumeAiOp(agentId, 1, { source: 'bitacora_mensual_send', label: 'Bitácora mensual enviada por correo' });
+      }
     }
   }
 
@@ -344,7 +351,14 @@ async function runPersistentFlow(
         email_domain_verified: agent.email_domain_verified as boolean | null,
       },
     }, supabase);
-    if (res.ok) ok = true;
+    if (res.ok) {
+      ok = true;
+      // Path persistente: distinguir semanal vs mensual final por el flag.
+      await consumeAiOp(agentId, 1, {
+        source: isMonthlyFinal ? 'bitacora_mensual_send' : 'bitacora_semanal_send',
+        label:  isMonthlyFinal ? 'Bitácora mensual enviada por correo' : 'Bitácora semanal enviada por correo',
+      });
+    }
   }
 
   return { ok, isMonthlyFinal };
