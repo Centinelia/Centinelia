@@ -64,7 +64,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       // Contacto de operaciones (encargado de envíos / dispatcher / coordinador
       // de servicio). Noah lo usa en el flow de seguimientos cuando el cliente
       // reporta problemas con la entrega.
-      ...(p.is_operations_contact ? { is_operations_contact: true }                  : {}),
+      ...(p.is_operations_contact    ? { is_operations_contact:    true }            : {}),
+      ...(p.receives_incident_reports ? { receives_incident_reports: true }          : {}),
     }));
 
   // Sub-users no pueden modificar/eliminar al dueño (defense in depth — el gate

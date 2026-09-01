@@ -8,10 +8,13 @@ import OficinaPageHero       from '../OficinaPageHero';
 import { MEERKAT_VOICE_DISTRIBUTION } from '@/lib/vapi/sync';
 import { MEERKAT_ROLES } from '@/lib/portal/meerkat-roles';
 
-const WEB_TOOL = 'buscar_en_web';
+// El endpoint /research usa searchMultiple (deep research multi-query con
+// strategy por type). Ese es el shape de search_leads, no de buscar_en_web
+// (query única). buscar_en_web se movió a UNIVERSAL_VOICE_TOOLS el 2026-08-19
+// (commit 0804f1c9), así que filtrar contra MEERKAT_VOICE_DISTRIBUTION por
+// ese tool dejaba researchers y RESEARCH_MEERKATS vacíos siempre.
+const WEB_TOOL = 'search_leads';
 
-// Meerkats que traen la tool buscar_en_web por default (según distribución).
-// Se calcula una sola vez al cargar el módulo.
 const RESEARCH_MEERKATS = MEERKAT_ROLES
   .filter(m => (MEERKAT_VOICE_DISTRIBUTION[m.id] ?? []).includes(WEB_TOOL))
   .map(m => ({
