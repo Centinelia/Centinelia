@@ -1,6 +1,6 @@
 // src/lib/tools/executors/registrar-incidencia.ts
 import { validatePhoneOrThrow } from '../../leads/dedup';
-import { resolveIncidentRecipient } from '../../incidents/directory';
+import { resolveIncidentRecipients } from '../../incidents/directory';
 import { renderIncidentCardEmail } from '../../incidents/email-template';
 import { upsertFollowupContactForIncident } from '../../incidents/scheduling';
 import { sendMeerkatHtmlEmail } from '../../email/send-as-agent';
@@ -32,7 +32,7 @@ export async function registrarIncidencia(ctx: any, args: RegistrarIncidenciaArg
   const now = new Date();
   const verifyAt = new Date(now.getTime() + VERIFICATION_DELAY_DAYS * 86400 * 1000).toISOString();
 
-  const recipient = resolveIncidentRecipient(ctx.org?.directory ?? []);
+  const recipients = resolveIncidentRecipients(ctx.org?.directory ?? []);
 
   // Match cliente por (business_name, sucursal) normalizados. contact_phone es
   // memoria de quién habló, no identidad — un negocio puede tener múltiples
@@ -62,8 +62,8 @@ export async function registrarIncidencia(ctx: any, args: RegistrarIncidenciaArg
       source_channel:            ctx.channel,
       source_call_id:            ctx.sourceCallId ?? null,
       is_new_client:             isNewClient,
-      encargado_email:           recipient?.email ?? null,
-      encargado_name:            recipient?.name ?? null,
+      encargado_email:           recipients.map(r => r.email).join(', ') || null,
+      encargado_name:            recipients.map(r => r.name).join(', ') || null,
       verification_scheduled_at: verifyAt,
     })
     .select('id')
@@ -71,8 +71,8 @@ export async function registrarIncidencia(ctx: any, args: RegistrarIncidenciaArg
   if (insErr) throw new Error(`registrar_incidencia insert: ${insErr.message}`);
   const incidentId = incidentRow.id;
 
-  let emailSent = false;
-  if (recipient) {
+  let anySent = false;
+  if (recipients.length > 0) {
     const { subject, html } = renderIncidentCardEmail({
       businessName:     args.business_name,
       sucursal:         args.sucursal ?? null,
@@ -83,31 +83,33 @@ export async function registrarIncidencia(ctx: any, args: RegistrarIncidenciaArg
       capturedAt:       now,
       agentDisplayName: `${ctx.agent.agent_name} · ${ctx.agent.business_name ?? ''}`.trim(),
     });
-    try {
-      const sendRes = await sendMeerkatHtmlEmail({
-        agentId: ctx.agent.id,
-        to:      recipient.email,
-        subject,
-        html,
-        agent: {
-          agent_name:            ctx.agent.agent_name,
-          business_name:         ctx.agent.business_name,
-          email_from:            ctx.agent.email_from,
-          email_domain_verified: ctx.agent.email_domain_verified,
-        },
-      }, ctx.supabase);
-      if (sendRes.ok) {
-        await ctx.supabase.from('client_incidents')
-          .update({ email_sent_at: new Date().toISOString() })
-          .eq('id', incidentId);
-        emailSent = true;
-      } else {
-        console.warn('registrar_incidencia email failed silently:', sendRes.error);
+    for (const recipient of recipients) {
+      try {
+        const sendRes = await sendMeerkatHtmlEmail({
+          agentId: ctx.agent.id,
+          to:      recipient.email,
+          subject,
+          html,
+          agent: {
+            agent_name:            ctx.agent.agent_name,
+            business_name:         ctx.agent.business_name,
+            email_from:            ctx.agent.email_from,
+            email_domain_verified: ctx.agent.email_domain_verified,
+          },
+        }, ctx.supabase);
+        if (sendRes.ok) anySent = true;
+        else console.warn(`registrar_incidencia email a ${recipient.email} failed silently:`, sendRes.error);
+      } catch (err) {
+        console.error(`registrar_incidencia sendMeerkatHtmlEmail a ${recipient.email} threw:`, err);
       }
-    } catch (err) {
-      console.error('registrar_incidencia sendMeerkatHtmlEmail threw:', err);
+    }
+    if (anySent) {
+      await ctx.supabase.from('client_incidents')
+        .update({ email_sent_at: new Date().toISOString() })
+        .eq('id', incidentId);
     }
   }
+  const emailSent = anySent;
 
   const { outbound_contact_id } = await upsertFollowupContactForIncident(ctx.supabase, {
     incidentId,

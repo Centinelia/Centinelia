@@ -1,6 +1,6 @@
 // src/lib/tools/executors/registrar-cliente-nuevo.ts
 import { validatePhoneOrThrow } from '../../leads/dedup';
-import { resolveIncidentRecipient } from '../../incidents/directory';
+import { resolveIncidentRecipients } from '../../incidents/directory';
 import { renderNewClientCardEmail } from '../../incidents/email-template';
 import { sendMeerkatHtmlEmail } from '../../email/send-as-agent';
 
@@ -27,7 +27,7 @@ export async function registrarClienteNuevo(ctx: any, args: RegistrarClienteNuev
   const phone = validatePhoneOrThrow(args.contact_phone);
   const now = new Date();
 
-  const recipient = resolveIncidentRecipient(ctx.org?.directory ?? []);
+  const recipients = resolveIncidentRecipients(ctx.org?.directory ?? []);
 
   // Match cliente por (business_name, sucursal) — mismo criterio que quejas.
   // Un cliente que ya se dio de alta antes NO debe salir azul otra vez.
@@ -56,8 +56,8 @@ export async function registrarClienteNuevo(ctx: any, args: RegistrarClienteNuev
       source_channel:    ctx.channel,
       source_call_id:    ctx.sourceCallId ?? null,
       is_new_client:     isNewClient,
-      encargado_email:   recipient?.email ?? null,
-      encargado_name:    recipient?.name ?? null,
+      encargado_email:   recipients.map(r => r.email).join(', ') || null,
+      encargado_name:    recipients.map(r => r.name).join(', ') || null,
       // verification_scheduled_at queda NULL — altas no tienen callback +3d.
     })
     .select('id')
@@ -65,8 +65,8 @@ export async function registrarClienteNuevo(ctx: any, args: RegistrarClienteNuev
   if (insErr) throw new Error(`registrar_cliente_nuevo insert: ${insErr.message}`);
   const incidentId = incidentRow.id;
 
-  let emailSent = false;
-  if (recipient) {
+  let anySent = false;
+  if (recipients.length > 0) {
     const { subject, html } = renderNewClientCardEmail({
       businessName:     args.business_name,
       sucursal:         args.sucursal ?? null,
@@ -77,31 +77,32 @@ export async function registrarClienteNuevo(ctx: any, args: RegistrarClienteNuev
       capturedAt:       now,
       agentDisplayName: `${ctx.agent.agent_name} · ${ctx.agent.business_name ?? ''}`.trim(),
     });
-    try {
-      const sendRes = await sendMeerkatHtmlEmail({
-        agentId: ctx.agent.id,
-        to:      recipient.email,
-        subject,
-        html,
-        agent: {
-          agent_name:            ctx.agent.agent_name,
-          business_name:         ctx.agent.business_name,
-          email_from:            ctx.agent.email_from,
-          email_domain_verified: ctx.agent.email_domain_verified,
-        },
-      }, ctx.supabase);
-      if (sendRes.ok) {
-        await ctx.supabase.from('client_incidents')
-          .update({ email_sent_at: new Date().toISOString() })
-          .eq('id', incidentId);
-        emailSent = true;
-      } else {
-        console.warn('registrar_cliente_nuevo email failed silently:', sendRes.error);
+    for (const recipient of recipients) {
+      try {
+        const sendRes = await sendMeerkatHtmlEmail({
+          agentId: ctx.agent.id,
+          to:      recipient.email,
+          subject,
+          html,
+          agent: {
+            agent_name:            ctx.agent.agent_name,
+            business_name:         ctx.agent.business_name,
+            email_from:            ctx.agent.email_from,
+            email_domain_verified: ctx.agent.email_domain_verified,
+          },
+        }, ctx.supabase);
+        if (sendRes.ok) anySent = true;
+        else console.warn(`registrar_cliente_nuevo email a ${recipient.email} failed silently:`, sendRes.error);
+      } catch (err) {
+        console.error(`registrar_cliente_nuevo sendMeerkatHtmlEmail a ${recipient.email} threw:`, err);
       }
-    } catch (err) {
-      console.error('registrar_cliente_nuevo sendMeerkatHtmlEmail threw:', err);
+    }
+    if (anySent) {
+      await ctx.supabase.from('client_incidents')
+        .update({ email_sent_at: new Date().toISOString() })
+        .eq('id', incidentId);
     }
   }
 
-  return { ok: true as const, incident_id: incidentId, email_sent: emailSent };
+  return { ok: true as const, incident_id: incidentId, email_sent: anySent };
 }
