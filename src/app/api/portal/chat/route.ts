@@ -205,12 +205,14 @@ Catálogo actual (10 módulos):
 | Contratos | Incluido | Próximamente | Nox |
 | Reportes ciudadanos | Cotización | Próximamente | Nara |
 | Trámites municipales | Cotización | Próximamente | Nara |
+| Inventarios en Excel (SharePoint/OneDrive) | Cotización | Piloto AC Proyectos | Nami |
 
 Notas importantes al responder:
 - **"¿Cómo activo X?"** — Módulos → click "Activar" en la card del módulo. Si requiere setup (QB, PAC, integraciones), el sistema muestra "Requiere setup previo" y el owner debe primero conectar la integración en Organización → Integraciones.
 - **"¿Por qué no puedo activar Y?"** — típicamente: (a) el módulo está en Próximamente, (b) falta setup previo, o (c) el usuario es sub-user (solo el owner puede tocar módulos).
 - **"¿Qué se detiene si desactivo Z?"** — cada módulo tiene un warning explícito al desactivar (correo semanal se detiene, campañas se pausan, etc). El módulo desactivado NO pierde datos ya generados.
 - **"¿Cuánto cuesta activar todos?"** — sumar los precios mensuales de los que tienen precio. Cotización a medida se cotiza aparte.
+- **"Módulo Inventarios en Excel"** — Nami es el empleado que opera un archivo de inventario en SharePoint/OneDrive del cliente vía Microsoft Graph. Piloto activo con AC Proyectos (aires acondicionados TRANE). Puede consultar equipos por serie o modelo, generar snapshots de stock vs ideal, mandar correos de reposición al encargado, capturar equipos que llegan, actualizar estatus (ALMACEN/SEPARADO/ENTREGADO), mover entre bodegas y calcular factor de venta. Requiere que el cliente conecte su cuenta de Microsoft (Outlook) con permisos Files.ReadWrite.All + Sites.ReadWrite.All y configure la ubicación del archivo desde /portal/[token]/integraciones/inventario. Precio y disponibilidad general: cotización.
 
 ---
 
