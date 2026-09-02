@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Mail, CheckCircle, Loader2, Trash2, AlertTriangle, RefreshCw, Globe, ChevronDown } from 'lucide-react';
 import EmailSettings from './EmailSettings';
+import SmtpConnectSection from './SmtpConnectSection';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -59,7 +60,7 @@ function timeAgo(iso: string | null): string {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function AgentEmailSection({ token }: { token: string }) {
+export default function AgentEmailSection({ token, agentId }: { token: string; agentId: string }) {
   const [connections,   setConnections]   = useState<AgentEmail[]>([]);
   const [loading,       setLoading]       = useState(true);
   const [disconnecting, setDisconnecting] = useState<string | null>(null);
@@ -279,7 +280,7 @@ export default function AgentEmailSection({ token }: { token: string }) {
                 </span>
               </div>
               <p className="text-xs mt-0.5" style={{ color: '#6B6480' }}>
-                Tu dominio con Zoho, Titan, hosting propio, iCloud. Requiere agregar registros DNS.
+                Tu dominio con Telmex, Zoho, Titan, hosting propio, iCloud. Solo necesitas host, puerto y contraseña — sin DNS.
               </p>
             </div>
             <ChevronDown
@@ -302,10 +303,18 @@ export default function AgentEmailSection({ token }: { token: string }) {
               >
                 <Mail size={12} style={{ color: '#9B6DFF', flexShrink: 0, marginTop: 2 }} />
                 <p className="text-[12px] leading-relaxed" style={{ color: '#6B6480' }}>
-                  Si tienes Gmail Workspace o Outlook/Microsoft 365, usa esas opciones — es mucho más simple (un click de OAuth). Esta ruta es sólo para dominios que no viven en Google ni Microsoft. Requiere agregar 2-3 registros DNS en tu proveedor.
+                  Si tienes Gmail Workspace o Outlook/Microsoft 365, usa esas opciones — es mucho más simple (un click de OAuth). Esta ruta es para dominios hospedados en otros proveedores (Telmex, Zoho, Titan, cPanel, iCloud). Fase 1: solo envío. Fase 2 traerá lectura de inbox.
                 </p>
               </div>
-              <EmailSettings token={token} />
+              <SmtpConnectSection token={token} agentId={agentId} />
+              <details className="mt-4">
+                <summary className="text-[11px] cursor-pointer" style={{ color: '#9B8FB5' }}>
+                  Opción avanzada: usar Resend con verificación de dominio (DNS)
+                </summary>
+                <div className="mt-3">
+                  <EmailSettings token={token} />
+                </div>
+              </details>
             </div>
           )}
         </div>

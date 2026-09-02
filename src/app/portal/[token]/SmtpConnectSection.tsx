@@ -19,7 +19,7 @@ interface Config {
  * estándar). Los empleados envían FROM el dominio del cliente sin OAuth ni
  * cambios de DNS. Fase 2 amplía a leer inbox por IMAP.
  */
-export default function SmtpConnectSection({ token }: { token: string }) {
+export default function SmtpConnectSection({ token, agentId }: { token: string; agentId: string }) {
   const [cfg,        setCfg]        = useState<Config | null>(null);
   const [loading,    setLoading]    = useState(true);
   const [saving,     setSaving]     = useState(false);
@@ -37,7 +37,7 @@ export default function SmtpConnectSection({ token }: { token: string }) {
   async function load() {
     setLoading(true);
     try {
-      const res = await fetch(`/api/portal/${token}/integrations/imap-smtp`);
+      const res = await fetch(`/api/portal/${token}/integrations/imap-smtp?agent_id=${encodeURIComponent(agentId)}`);
       const data = await res.json();
       setCfg(data as Config);
       if (data.configured) {
@@ -53,12 +53,12 @@ export default function SmtpConnectSection({ token }: { token: string }) {
       setLoading(false);
     }
   }
-  useEffect(() => { void load(); }, [token]);
+  useEffect(() => { void load(); }, [token, agentId]);
 
   async function save() {
     setSaving(true); setError(null); setSuccess(null);
     try {
-      const res = await fetch(`/api/portal/${token}/integrations/imap-smtp`, {
+      const res = await fetch(`/api/portal/${token}/integrations/imap-smtp?agent_id=${encodeURIComponent(agentId)}`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
@@ -84,7 +84,7 @@ export default function SmtpConnectSection({ token }: { token: string }) {
     if (!confirm('¿Desconectar el servidor SMTP? Los empleados volverán a enviar desde notificaciones@centinelia.mx.')) return;
     setSaving(true); setError(null); setSuccess(null);
     try {
-      const res = await fetch(`/api/portal/${token}/integrations/imap-smtp`, { method: 'DELETE' });
+      const res = await fetch(`/api/portal/${token}/integrations/imap-smtp?agent_id=${encodeURIComponent(agentId)}`, { method: 'DELETE' });
       if (!res.ok) { const data = await res.json(); setError(data.error ?? 'Falló la desconexión.'); return; }
       setPassword(''); setHost(''); setUsername(''); setFromDisplay('');
       setPort('465'); setSecure(true);

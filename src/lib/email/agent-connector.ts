@@ -26,7 +26,45 @@ export async function getFileConnector(agentId: string, supabase: SupabaseClient
   integration: IntegrationRow;
   conn:        Connector;
 } | null> {
-  // 1. Legacy path — email_integrations per-agent
+  // 0. SMTP per-agent (Fase 1 outbound) — vive en voice_agents.features.smtp_config.
+  //    Se prefiere sobre OAuth per-agent porque, si el cliente configuró SMTP
+  //    para este empleado específicamente, es señal de que quiere que salga
+  //    desde su servidor real (no desde otra cuenta Google/Microsoft).
+  const { data: agentSmtpRow } = await supabase
+    .from('voice_agents')
+    .select('features, portal_email')
+    .eq('id', agentId)
+    .maybeSingle();
+  const smtpCfg = (agentSmtpRow as { features?: Record<string, unknown> | null } | null)?.features?.['smtp_config'] as
+    | { host?: string; port?: number; secure?: boolean; username?: string; password_enc?: string; from_display?: string | null }
+    | undefined;
+  if (smtpCfg?.host && smtpCfg.username && smtpCfg.password_enc) {
+    const { decrypt } = await import('@/lib/crypto');
+    const { createImapSmtpConnector } = await import('@/lib/connectors/imap-smtp');
+    const conn = createImapSmtpConnector({
+      host:        String(smtpCfg.host),
+      port:        Number(smtpCfg.port ?? 465),
+      secure:      Boolean(smtpCfg.secure ?? true),
+      username:    String(smtpCfg.username),
+      password:    decrypt(smtpCfg.password_enc),
+      fromDisplay: smtpCfg.from_display ?? undefined,
+    });
+    const synthetic: IntegrationRow = {
+      id:                 `agent:${agentId}:imap_smtp`,
+      agent_id:           agentId,
+      provider:           'outlook' as const, // shape compat — solo se lee .email.send
+      email:              String(smtpCfg.username),
+      access_token:       '',
+      refresh_token:      null,
+      token_expires_at:   null,
+      last_sync_at:       null,
+      needs_reauth:       false,
+      reauth_notified_at: null,
+    };
+    return { integration: synthetic, conn };
+  }
+
+  // 1. Legacy path — email_integrations per-agent (OAuth Gmail/Outlook)
   const { data } = await supabase
     .from('email_integrations')
     .select('*')
@@ -38,12 +76,7 @@ export async function getFileConnector(agentId: string, supabase: SupabaseClient
   }
 
   // 2. Fallback org-level — cualquier agente hereda el email conectado por su portal
-  const { data: agentRow } = await supabase
-    .from('voice_agents')
-    .select('portal_email')
-    .eq('id', agentId)
-    .single();
-  const portalEmail = agentRow?.portal_email as string | null | undefined;
+  const portalEmail = (agentSmtpRow as { portal_email?: string | null } | null)?.portal_email;
   if (!portalEmail) return null;
 
   const { data: orgAcct } = await supabase
@@ -54,11 +87,9 @@ export async function getFileConnector(agentId: string, supabase: SupabaseClient
     .neq('status', 'disconnected')
     .maybeSingle();
 
-  // Fase 1 outbound: SMTP directo al servidor del cliente (Telmex/Prodigy,
-  // Titan, cPanel). Si el org guardó config imap_smtp, la usamos antes de
-  // caer al OAuth path o al Dropbox fallback. Nelia envía FROM el dominio
-  // del cliente sin OAuth ni cambios DNS.
   if (orgAcct && orgAcct.provider === 'imap_smtp') {
+    // Retrocompat: rows viejas de imap_smtp org-level (creadas por MVP inicial
+    // antes del refactor per-agent). Nueva config va en voice_agents.features.
     const { decrypt } = await import('@/lib/crypto');
     const { createImapSmtpConnector } = await import('@/lib/connectors/imap-smtp');
     const meta = (orgAcct.metadata as Record<string, unknown> | null) ?? {};
@@ -74,8 +105,6 @@ export async function getFileConnector(agentId: string, supabase: SupabaseClient
     const synthetic: IntegrationRow = {
       id:                 `org:${portalEmail}:imap_smtp` as string,
       agent_id:           agentId,
-      // Cast a 'outlook' para reusar el shape actual sin ampliar el union.
-      // Nadie en el hot path discrimina — solo se lee `.conn.email.send`.
       provider:           'outlook' as const,
       email:              (orgAcct.account_label as string | null) ?? '',
       access_token:       '',
