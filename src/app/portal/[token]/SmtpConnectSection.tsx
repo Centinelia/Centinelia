@@ -11,6 +11,7 @@ interface Config {
   username:     string | null;
   from_display: string | null;
   status:       'active' | 'error' | null;
+  tls_insecure: boolean;
 }
 
 /**
@@ -27,12 +28,13 @@ export default function SmtpConnectSection({ token, agentId }: { token: string; 
   const [success,    setSuccess]    = useState<string | null>(null);
   const [editing,    setEditing]    = useState(false);
 
-  const [host,        setHost]        = useState('');
-  const [port,        setPort]        = useState('465');
-  const [secure,      setSecure]      = useState(true);
-  const [username,    setUsername]    = useState('');
-  const [password,    setPassword]    = useState('');
-  const [fromDisplay, setFromDisplay] = useState('');
+  const [host,         setHost]         = useState('');
+  const [port,         setPort]         = useState('465');
+  const [secure,       setSecure]       = useState(true);
+  const [username,     setUsername]     = useState('');
+  const [password,     setPassword]     = useState('');
+  const [fromDisplay,  setFromDisplay]  = useState('');
+  const [tlsInsecure,  setTlsInsecure]  = useState(false);
 
   async function load() {
     setLoading(true);
@@ -46,6 +48,7 @@ export default function SmtpConnectSection({ token, agentId }: { token: string; 
         setSecure(data.secure !== false);
         setUsername((data.username as string) ?? '');
         setFromDisplay((data.from_display as string) ?? '');
+        setTlsInsecure(data.tls_insecure === true);
       }
     } catch {
       setError('No pude cargar la configuración actual.');
@@ -65,6 +68,7 @@ export default function SmtpConnectSection({ token, agentId }: { token: string; 
           host, port: Number(port), secure, username, password,
           from_display: fromDisplay || undefined,
           send_test: true,
+          tls_insecure: tlsInsecure,
         }),
       });
       const data = await res.json();
@@ -171,6 +175,15 @@ export default function SmtpConnectSection({ token, agentId }: { token: string; 
       <label className="flex items-center gap-2 text-[12px]" style={{ color: 'var(--c-text-2)' }}>
         <input type="checkbox" checked={secure} onChange={e => setSecure(e.target.checked)} />
         SSL/TLS (recomendado; casi todos los servidores modernos)
+      </label>
+      <label className="flex items-start gap-2 text-[12px]" style={{ color: 'var(--c-text-2)' }}>
+        <input type="checkbox" checked={tlsInsecure} onChange={e => setTlsInsecure(e.target.checked)} className="mt-0.5" />
+        <span>
+          Ignorar validación del certificado TLS
+          <span className="block text-[10px] mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+            Necesario para Telmex/Prodigy (el hosting real es CarrierZone y el certificado no coincide con el dominio). Si el error incluye "altnames" o "certificate", actívalo.
+          </span>
+        </span>
       </label>
 
       <div className="flex gap-2">

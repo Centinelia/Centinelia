@@ -10,6 +10,30 @@ export interface SmtpConfig {
   /** Display name que aparece en el From (ej "Nelia · Tortillería Estrella").
    *  El address siempre es `username` — SMTP no permite spoof. */
   fromDisplay?: string;
+  /** Si true, ignora mismatch del certificado TLS (host CNAME vs cert altnames).
+   *  Necesario para Telmex/Prodigy donde el hosting real es CarrierZone
+   *  y el cert es para *.carrierzone.com. Outlook/Thunderbird permiten esto
+   *  vía diálogo "confiar siempre"; nosotros lo exponemos como toggle.
+   *  Default false = validación estricta. */
+  tlsInsecure?: boolean;
+}
+
+function buildTransportOptions(cfg: SmtpConfig) {
+  return {
+    host:   cfg.host,
+    port:   cfg.port,
+    secure: cfg.secure,
+    auth: {
+      user: cfg.username,
+      pass: cfg.password,
+    },
+    tls: cfg.tlsInsecure
+      ? { rejectUnauthorized: false }
+      : undefined,
+    connectionTimeout: 10_000,
+    greetingTimeout:   10_000,
+    socketTimeout:     20_000,
+  };
 }
 
 /**
@@ -30,21 +54,7 @@ export async function sendViaSmtp(
   attachment?: Attachment,
   htmlBody?:   string,
 ): Promise<void> {
-  const transporter = nodemailer.createTransport({
-    host:   cfg.host,
-    port:   cfg.port,
-    secure: cfg.secure,
-    auth: {
-      user: cfg.username,
-      pass: cfg.password,
-    },
-    // Timeouts agresivos — un SMTP server que no responde no debe colgar el
-    // request por 30s. El caller ve el fail y cae al fallback (Resend) en
-    // sendMeerkatHtmlEmail.
-    connectionTimeout: 10_000,
-    greetingTimeout:   10_000,
-    socketTimeout:     20_000,
-  });
+  const transporter = nodemailer.createTransport(buildTransportOptions(cfg));
 
   const from = cfg.fromDisplay
     ? `${cfg.fromDisplay} <${cfg.username}>`
@@ -70,18 +80,7 @@ export async function sendViaSmtp(
  * mensaje humano si algo falla (host inválido, cred incorrecta, TLS fail).
  */
 export async function verifySmtpCreds(cfg: SmtpConfig): Promise<void> {
-  const transporter = nodemailer.createTransport({
-    host:   cfg.host,
-    port:   cfg.port,
-    secure: cfg.secure,
-    auth: {
-      user: cfg.username,
-      pass: cfg.password,
-    },
-    connectionTimeout: 10_000,
-    greetingTimeout:   10_000,
-    socketTimeout:     10_000,
-  });
+  const transporter = nodemailer.createTransport({ ...buildTransportOptions(cfg), socketTimeout: 10_000 });
   try {
     await transporter.verify();
   } finally {

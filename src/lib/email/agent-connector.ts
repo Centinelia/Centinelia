@@ -36,7 +36,7 @@ export async function getFileConnector(agentId: string, supabase: SupabaseClient
     .eq('id', agentId)
     .maybeSingle();
   const smtpCfg = (agentSmtpRow as { features?: Record<string, unknown> | null } | null)?.features?.['smtp_config'] as
-    | { host?: string; port?: number; secure?: boolean; username?: string; password_enc?: string; from_display?: string | null }
+    | { host?: string; port?: number; secure?: boolean; username?: string; password_enc?: string; from_display?: string | null; tls_insecure?: boolean }
     | undefined;
   if (smtpCfg?.host && smtpCfg.username && smtpCfg.password_enc) {
     const { decrypt } = await import('@/lib/crypto');
@@ -48,6 +48,7 @@ export async function getFileConnector(agentId: string, supabase: SupabaseClient
       username:    String(smtpCfg.username),
       password:    decrypt(smtpCfg.password_enc),
       fromDisplay: smtpCfg.from_display ?? undefined,
+      tlsInsecure: smtpCfg.tls_insecure === true,
     });
     const synthetic: IntegrationRow = {
       id:                 `agent:${agentId}:imap_smtp`,
