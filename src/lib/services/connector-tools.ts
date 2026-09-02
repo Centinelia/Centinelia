@@ -148,33 +148,11 @@ export async function executeSendEmail(
 
   const attNote = attachment ? ` con adjunto "${attachment.filename}"` : '';
 
-  // Log a outbound_emails para que otros meerkats puedan buscar en histórico
-  // vía buscar_correo_enviado y para el UI Bandeja tab Enviados. Fire-and-forget:
-  // no bloquea el response ni propaga error si la escritura falla.
-  void (async () => {
-    try {
-      const { data: agentRow } = await supabase
-        .from('voice_agents')
-        .select('portal_email')
-        .eq('id', agentId)
-        .maybeSingle();
-      const portalEmail = (agentRow?.portal_email as string | null) ?? null;
-      if (!portalEmail) return;
-      await supabase.from('outbound_emails').insert({
-        agent_id:        agentId,
-        portal_email:    portalEmail,
-        to_email:        to,
-        cc_email:        cc ?? null,
-        reply_to:        replyTo ?? null,
-        subject,
-        body,
-        attachment_name: attachment?.filename ?? null,
-        provider:        ic ? (ic.integration.provider === 'outlook' ? 'outlook' : 'gmail') : 'resend',
-        ok:              sent,
-        error:           sent ? null : 'Error al enviar el correo (fallback también falló).',
-      });
-    } catch { /* best-effort */ }
-  })();
+  // El log a outbound_emails ahora vive dentro de sendMeerkatHtmlEmail para
+  // que TODO envío (incluidos los que salen de tools operativas directas como
+  // registrar_incidencia / bitacora-weekly) quede registrado. En el path CC
+  // sendMeerkatHtmlEmail ya se llamó 2 veces arriba, generando 2 filas —
+  // cc_email queda null en ambas porque cada envío es lógicamente independiente.
 
   return sent
     ? { ok: true,  count: sendCount, message: `Correo enviado a ${to}${cc ? ` (CC: ${cc})` : ''}${attNote} con asunto "${subject}".` }

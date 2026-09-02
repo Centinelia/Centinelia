@@ -65,17 +65,35 @@ export async function sendMeerkatHtmlEmail(
     ? precomputedConnector
     : await getFileConnector(input.agentId, supabase);
 
+  let result: SendAsAgentResult;
   if (ic) {
     const sendFrom = ((ic.integration as unknown as Record<string, unknown>).send_as_email as string | null | undefined) ?? undefined;
     try {
       const plainFallback = htmlToPlainText(input.html);
       await ic.conn.email.send(input.to, input.subject, plainFallback, input.attachment, sendFrom, input.html);
-      return { ok: true, provider: ic.integration.provider as 'gmail' | 'outlook' };
+      result = { ok: true, provider: ic.integration.provider as 'gmail' | 'outlook' };
     } catch (err) {
       console.warn('[sendMeerkatHtmlEmail] OAuth send failed, cayendo a Resend:', err);
+      result = await sendViaResend(input);
     }
+  } else {
+    result = await sendViaResend(input);
   }
 
+  // Bitácora canónica de envíos. ANTES vivía dentro de executeSendEmail (una
+  // capa arriba), lo cual dejaba invisibles los envíos que salían directo
+  // desde tools operativas (registrar_incidencia, registrar_cliente_nuevo,
+  // bitacora-weekly, etc.). Consecuencia: el drift detector veía 0 filas y
+  // decía "sin bugs" mientras había cobros no correlacionados en ai_ops_log.
+  // Al vivir aquí, TODO envío real queda registrado — incluidos ok=false para
+  // saber que se intentó. Fire-and-forget: no bloquea la respuesta del caller
+  // ni propaga error si la escritura falla.
+  void logOutboundEmail(input, result, supabase);
+
+  return result;
+}
+
+async function sendViaResend(input: SendAsAgentInput): Promise<SendAsAgentResult> {
   const from = input.from ?? agentBrandedFrom(input.agent ?? null);
   const resendAtts = input.attachment
     ? [{ filename: input.attachment.filename, content: input.attachment.content.toString('base64') }]
@@ -89,6 +107,35 @@ export async function sendMeerkatHtmlEmail(
     attachments: resendAtts,
   });
   return { ok, provider: ok ? 'resend' : 'none' };
+}
+
+async function logOutboundEmail(
+  input:    SendAsAgentInput,
+  result:   SendAsAgentResult,
+  supabase: SupabaseClient,
+): Promise<void> {
+  try {
+    const { data: agentRow } = await supabase
+      .from('voice_agents')
+      .select('portal_email')
+      .eq('id', input.agentId)
+      .maybeSingle();
+    const portalEmail = (agentRow?.portal_email as string | null) ?? null;
+    if (!portalEmail) return;   // sin portal_email no hay a quién asignar el envío en el UI
+    await supabase.from('outbound_emails').insert({
+      agent_id:        input.agentId,
+      portal_email:    portalEmail,
+      to_email:        input.to,
+      cc_email:        null,   // CC en executeSendEmail se hace en 2 sends separados; cada uno logea su propia fila
+      reply_to:        input.replyTo ?? null,
+      subject:         input.subject,
+      body:            htmlToPlainText(input.html),
+      attachment_name: input.attachment?.filename ?? null,
+      provider:        result.provider,
+      ok:              result.ok,
+      error:           result.ok ? null : (result.error ?? 'send failed'),
+    });
+  } catch { /* best-effort — mismo patrón que el insert original en executeSendEmail */ }
 }
 
 /**
