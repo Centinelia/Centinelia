@@ -17,6 +17,7 @@ interface PublicConfig {
   username:     string | null;
   from_display: string | null;
   status:       'active' | 'error' | null;
+  tls_insecure: boolean;
 }
 
 interface SmtpConfigJson {
@@ -28,6 +29,7 @@ interface SmtpConfigJson {
   from_display: string | null;
   status:       'active' | 'error';
   updated_at:   string;
+  tls_insecure: boolean;
 }
 
 async function requireAgent(req: NextRequest, token: string) {
@@ -72,6 +74,7 @@ function readSmtp(agent: { features: Record<string, unknown> | null }): SmtpConf
     from_display: smtp.from_display ?? null,
     status:       (smtp.status as 'active' | 'error' | undefined) ?? 'active',
     updated_at:   smtp.updated_at ?? new Date().toISOString(),
+    tls_insecure: smtp.tls_insecure === true,
   };
 }
 
@@ -90,6 +93,7 @@ export async function GET(req: NextRequest, { params }: Params) {
         username:     cfg.username,
         from_display: cfg.from_display,
         status:       cfg.status,
+        tls_insecure: cfg.tls_insecure,
       }
     : {
         configured:   false,
@@ -99,6 +103,7 @@ export async function GET(req: NextRequest, { params }: Params) {
         username:     null,
         from_display: null,
         status:       null,
+        tls_insecure: false,
       };
   return NextResponse.json(publicCfg);
 }
@@ -111,6 +116,7 @@ interface SaveBody {
   password:     string;
   from_display?: string;
   send_test?:   boolean;
+  tls_insecure?: boolean;
 }
 
 export async function POST(req: NextRequest, { params }: Params) {
@@ -126,22 +132,27 @@ export async function POST(req: NextRequest, { params }: Params) {
   const password    = (body.password    ?? '').trim();
   const fromDisplay = (body.from_display ?? '').trim() || undefined;
   const sendTest    = body.send_test !== false;
+  const tlsInsecure = body.tls_insecure === true;
 
   if (!host || !username || !password || !port) {
     return NextResponse.json({ error: 'Faltan campos: host, port, username, password son obligatorios.' }, { status: 400 });
   }
 
   try {
-    await verifySmtpCreds({ host, port, secure, username, password });
+    await verifySmtpCreds({ host, port, secure, username, password, tlsInsecure });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ error: `No pude autenticar contra ${host}:${port}. ${msg}` }, { status: 400 });
+    // Detectar cert mismatch específicamente y sugerir el toggle en el error
+    const hint = /altnames|certificate|cert|self.?signed/i.test(msg) && !tlsInsecure
+      ? ' — parece un problema del certificado TLS. Marca "Ignorar validación de certificado" e intenta de nuevo (común en Telmex/Prodigy hospedado por CarrierZone).'
+      : '';
+    return NextResponse.json({ error: `No pude autenticar contra ${host}:${port}. ${msg}${hint}` }, { status: 400 });
   }
 
   if (sendTest) {
     try {
       await sendViaSmtp(
-        { host, port, secure, username, password, fromDisplay },
+        { host, port, secure, username, password, fromDisplay, tlsInsecure },
         username,
         'Centinelia — Correo de prueba del portal',
         'Este es un correo de prueba enviado desde el portal de Centinelia para confirmar que tu servidor SMTP está configurado correctamente. Si lo recibes, tu empleado ya puede enviar correos desde este buzón.',
@@ -158,6 +169,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     from_display: fromDisplay ?? null,
     status:       'active',
     updated_at:   new Date().toISOString(),
+    tls_insecure: tlsInsecure,
   };
   const nextFeatures = { ...(gate.agent!.features ?? {}), smtp_config: nextSmtp };
   const { error } = await gate.supabase!
