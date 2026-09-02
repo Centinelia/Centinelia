@@ -16,7 +16,14 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { executeAgentTool, type AgentToolContext } from '@/lib/tools/executor';
 import { logLlmCall } from '@/lib/observability/llm-log';
 import { MEERKAT_MAP } from '@/lib/portal/meerkat-roles';
-import { detectPlatformAnomalies, notifyConsumptionAnomaly, type PortalAnomaly } from '@/lib/ops/consumption-audit';
+import {
+  detectPlatformAnomalies,
+  notifyConsumptionAnomaly,
+  detectPlatformOutboundDrift,
+  notifyOutboundDrift,
+  type PortalAnomaly,
+  type OutboundDrift,
+} from '@/lib/ops/consumption-audit';
 
 const MODEL           = 'claude-sonnet-4-6';
 const MAX_ITERATIONS  = 8;
@@ -24,6 +31,7 @@ const MAX_TOKENS      = 4096;
 const NASH_PORTAL     = 'hola@centinelia.mx';
 const NASH_LAST_RUN_KEY = 'nash_last_run_at';
 const NASH_LAST_ANOMALY_CHECK_KEY = 'nash_last_anomaly_check_at';
+const NASH_LAST_DRIFT_CHECK_KEY = 'nash_last_drift_check_at';
 // Anomaly detection corre cada 60 min, no cada 10 (cron cadence). El
 // detection floor real es de horas (ratio necesita >20 events con reference_id
 // para flagear, spike vs baseline necesita 1-2 días de acumulación para
@@ -278,19 +286,44 @@ async function detectPlatformAnomaliesSafe(supabase: SupabaseAdmin): Promise<Por
     return [];
   }
 
-  // Wrapper defensivo: si la detección falla (query lenta, table lock, etc)
-  // NO tumbamos el cron entero. Nash sigue con su ciclo normal y en la
+  // Log-only: nunca dejamos que un error en la detección de anomalías
+  // tumbe el cron entero. Nash sigue con su ciclo normal y en la
   // siguiente corrida se reintenta.
   try {
     const result = await detectPlatformAnomalies();
-    // Marcamos check hecho aunque no encontráramos nada — la próxima corrida
-    // no debe re-verificar hasta que pase el intervalo.
     await supabase
       .from('platform_settings')
       .upsert({ key: NASH_LAST_ANOMALY_CHECK_KEY, value: new Date(now).toISOString() }, { onConflict: 'key' });
     return result;
   } catch (err) {
     console.error('[nash-monitor] detectPlatformAnomalies falló', err);
+    return [];
+  }
+}
+
+async function detectOutboundDriftSafe(supabase: SupabaseAdmin): Promise<Array<{ portal_email: string; drifts: OutboundDrift[] }>> {
+  // Mismo throttle que anomalías (60 min). Nash corre cada 10 min pero el
+  // drift solo tiene sentido revisar cada hora — cada iteración pediría
+  // 1 query grande a outbound_emails + N a ai_ops_log por portal.
+  const { data: lastCheck } = await supabase
+    .from('platform_settings')
+    .select('value')
+    .eq('key', NASH_LAST_DRIFT_CHECK_KEY)
+    .maybeSingle();
+  const lastAt = lastCheck?.value ? new Date(lastCheck.value) : null;
+  const now = Date.now();
+  if (lastAt && Number.isFinite(lastAt.getTime()) && (now - lastAt.getTime()) < NASH_ANOMALY_CHECK_INTERVAL_MS) {
+    return [];
+  }
+
+  try {
+    const result = await detectPlatformOutboundDrift();
+    await supabase
+      .from('platform_settings')
+      .upsert({ key: NASH_LAST_DRIFT_CHECK_KEY, value: new Date(now).toISOString() }, { onConflict: 'key' });
+    return result;
+  } catch (err) {
+    console.error('[nash-monitor] detectPlatformOutboundDrift falló', err);
     return [];
   }
 }
@@ -345,12 +378,30 @@ export async function runNashMonitor(): Promise<NashRunResult> {
     } catch { /* log-only */ }
   }
 
+  // 2b) Drift detector: envíos reales en outbound_emails sin fila correlacionable
+  // en ai_ops_log. Un drift = un envío que no descontó al pool = Centinelia
+  // comiendo el costo del proveedor. Notif deduped por día en notifyOutboundDrift.
+  // Los drifts nuevos cuentan como señal para NO skipear el LLM loop de Nash
+  // (mismo criterio que las anomalías) — hay algo que exige acción.
+  let newDriftCount = 0;
+  try {
+    const drifts = await detectOutboundDriftSafe(supabase);
+    for (const d of drifts) {
+      try {
+        const res = await notifyOutboundDrift(d.portal_email, d.drifts);
+        if (res.inserted) newDriftCount += 1;
+      } catch { /* log-only */ }
+    }
+  } catch (err) {
+    console.error('[nash-monitor] drift detection outer failed', err);
+  }
+
   // 3) Anti-waste probe: skip LLM loop si no hay señales nuevas desde la
   // última corrida real de Nash. Kill switch: features.nash_probe_bypass=true
   // fuerza el loop aunque el probe diga que no hay trabajo. Nota: solo si
   // hubo anomalías NUEVAS (no notificadas esta semana) forzamos el loop.
   // Anomalías ya notificadas no vuelven a disparar Nash.
-  if (features.nash_probe_bypass !== true && newAnomalies.length === 0) {
+  if (features.nash_probe_bypass !== true && newAnomalies.length === 0 && newDriftCount === 0) {
     const lastRunAt = await getNashLastRunAt(supabase);
     const since = lastRunAt
       ? new Date(Math.max(lastRunAt.getTime(), Date.now() - NASH_MAX_LOOKBACK_MS))

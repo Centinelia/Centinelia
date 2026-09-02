@@ -227,3 +227,155 @@ function startOfWeekUtc(d: Date): Date {
   c.setUTCDate(c.getUTCDate() - daysFromMonday);
   return c;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Drift detector: UNDER-charge (opuesto a los checks previos que buscan over-charge).
+//
+// Cada envío real en `outbound_emails.ok=true` debería tener una fila
+// correlacionable en `ai_ops_log` (mismo agent_id, created_at ±30s).
+// Si no la tiene → cobramos un email pero no descontamos al pool = Centinelia
+// comiendo el costo de Resend/OAuth sin cobrarle al cliente.
+//
+// Reporte-only. No bloquea envíos. Se corre desde cron/consumption-audit y
+// notifica anomalías vía notifyOutboundDriftAnomaly (misma tabla
+// notification_events, kind='outbound_drift').
+// ─────────────────────────────────────────────────────────────────────────────
+
+const OUTBOUND_LEDGER_WINDOW_MS = 30_000;   // ±30s alrededor del envío
+
+export interface OutboundDrift {
+  outbound_id: string;
+  agent_id:    string;
+  to_email:    string;
+  subject:     string | null;
+  created_at:  string;
+  provider:    string;
+}
+
+/**
+ * Devuelve envíos de outbound_emails de las últimas `hoursBack` horas para los
+ * que NO se encontró una fila correlacionable en ai_ops_log. Cada uno es
+ * evidencia de un fix pendiente (probablemente falta un consumeAiOp en el
+ * path que hizo el envío).
+ */
+export async function detectOutboundWithoutLedger(
+  portalEmail?: string,
+  hoursBack     = 24,
+): Promise<OutboundDrift[]> {
+  const supabase = createAdminClient();
+  const since    = new Date(Date.now() - hoursBack * 3_600_000).toISOString();
+
+  let outboundQ = supabase
+    .from('outbound_emails')
+    .select('id, agent_id, to_email, subject, created_at, provider')
+    .eq('ok', true)
+    .gte('created_at', since);
+  if (portalEmail) outboundQ = outboundQ.eq('portal_email', portalEmail);
+  const { data: outbounds } = await outboundQ;
+
+  if (!outbounds || outbounds.length === 0) return [];
+
+  // Traemos TODOS los ops_log del rango relevante (una sola query) y hacemos
+  // la correlación en memoria — evita N queries paralelas por outbound.
+  const buffer   = 60_000;   // ampliamos ±60s al pedir a la DB para cubrir el ±30s de la ventana con margen
+  const opsSince = new Date(Date.now() - hoursBack * 3_600_000 - buffer).toISOString();
+  let opsQ = supabase
+    .from('ai_ops_log')
+    .select('agent_id, created_at')
+    .gte('created_at', opsSince);
+  if (portalEmail) opsQ = opsQ.eq('portal_email', portalEmail);
+  const { data: opsRows } = await opsQ;
+
+  const opsByAgent = new Map<string, number[]>();   // agent_id → sorted timestamps (ms)
+  for (const r of opsRows ?? []) {
+    const aid = r.agent_id as string | null;
+    if (!aid) continue;
+    const t = new Date(r.created_at as string).getTime();
+    if (!opsByAgent.has(aid)) opsByAgent.set(aid, []);
+    opsByAgent.get(aid)!.push(t);
+  }
+  for (const arr of opsByAgent.values()) arr.sort((a, b) => a - b);
+
+  const drift: OutboundDrift[] = [];
+  for (const row of outbounds) {
+    const aid = row.agent_id as string | null;
+    if (!aid) continue;   // sin agent_id no se puede correlacionar; se ignora
+    const outT = new Date(row.created_at as string).getTime();
+    const arr  = opsByAgent.get(aid) ?? [];
+    const hit  = arr.some(t => Math.abs(t - outT) <= OUTBOUND_LEDGER_WINDOW_MS);
+    if (!hit) {
+      drift.push({
+        outbound_id: row.id as string,
+        agent_id:    aid,
+        to_email:    row.to_email as string,
+        subject:     (row.subject as string | null) ?? null,
+        created_at:  row.created_at as string,
+        provider:    (row.provider as string) ?? 'unknown',
+      });
+    }
+  }
+
+  return drift;
+}
+
+/**
+ * Iterar TODOS los portales con envíos recientes y devolver aquellos con
+ * drift. Uso desde nash-runner (paralelo a detectPlatformAnomalies).
+ */
+export async function detectPlatformOutboundDrift(): Promise<Array<{ portal_email: string; drifts: OutboundDrift[] }>> {
+  const supabase = createAdminClient();
+  const since    = new Date(Date.now() - 24 * 3_600_000).toISOString();
+
+  const { data: activePortals } = await supabase
+    .from('outbound_emails')
+    .select('portal_email')
+    .eq('ok', true)
+    .gte('created_at', since)
+    .not('portal_email', 'is', null);
+
+  const emails = [...new Set((activePortals ?? []).map(r => r.portal_email as string))];
+  if (emails.length === 0) return [];
+
+  const out: Array<{ portal_email: string; drifts: OutboundDrift[] }> = [];
+  for (const email of emails) {
+    const drifts = await detectOutboundWithoutLedger(email, 24);
+    if (drifts.length > 0) out.push({ portal_email: email, drifts });
+  }
+  return out;
+}
+
+/**
+ * Registra drift outbound_without_ledger como notification_event (kind='outbound_drift').
+ * Dedup: máximo 1 evento por portal por día. Payload trae los N primeros drifts
+ * (cap 20 para no explotar el JSON) y el total.
+ */
+export async function notifyOutboundDrift(
+  portalEmail: string,
+  drifts:      OutboundDrift[],
+): Promise<{ inserted: boolean; reason?: string }> {
+  if (drifts.length === 0) return { inserted: false, reason: 'no_drift' };
+  const supabase = createAdminClient();
+  const todayStart = new Date(); todayStart.setUTCHours(0, 0, 0, 0);
+  const { count } = await supabase
+    .from('notification_events')
+    .select('id', { count: 'exact', head: true })
+    .eq('portal_email', portalEmail)
+    .eq('kind', 'outbound_drift')
+    .gte('created_at', todayStart.toISOString());
+  if ((count ?? 0) > 0) return { inserted: false, reason: 'already_notified_today' };
+
+  await supabase.from('notification_events').insert({
+    portal_email: portalEmail,
+    kind:         'outbound_drift',
+    urgent:       drifts.length >= 10,   // 10+ envíos sin ledger en 24h = bug grande
+    payload: {
+      total:  drifts.length,
+      sample: drifts.slice(0, 20).map(d => ({
+        outbound_id: d.outbound_id, agent_id: d.agent_id,
+        to_email:    d.to_email,    subject:  d.subject,
+        created_at:  d.created_at,  provider: d.provider,
+      })),
+    },
+  });
+  return { inserted: true };
+}

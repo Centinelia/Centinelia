@@ -4,6 +4,7 @@ import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { requireVapiAuth } from '@/lib/vapi/auth';
 import { executeListCalendarEvents, executeCreateCalendarEvent } from '@/lib/services/connector-tools';
 import { traceVoiceCall } from '@/lib/observability/voice-trace';
+import { consumeAiOp } from '@/lib/ai/ops-guard';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -146,6 +147,12 @@ export async function POST(req: NextRequest) {
     }, supabase);
     if (!created.ok) {
       console.warn('[agendar-cita voice] calendar sync skipped', { agent_id, error: created.error });
+    } else {
+      // Cost-based charge: Google/Outlook Calendar write real via OAuth.
+      await consumeAiOp(agent_id, 1, {
+        source: 'calendar_event_created',
+        label:  'Cita agendada en calendario',
+      });
     }
   } else if (accion === 'cancelar' && telefono) {
     await supabase
@@ -168,7 +175,14 @@ export async function POST(req: NextRequest) {
       agent.calendar_url ? `Link: ${agent.calendar_url}` : null,
     ].filter(Boolean).join('\n');
 
-    await sendWhatsApp(agent.transfer_whatsapp, msg);
+    const waOk = await sendWhatsApp(agent.transfer_whatsapp, msg);
+    if (waOk) {
+      // Cost-based charge: Twilio WA send tiene costo por mensaje sin importar destinatario.
+      await consumeAiOp(agent_id, 1, {
+        source: 'whatsapp_notify_owner',
+        label:  'WhatsApp al encargado',
+      });
+    }
   }
 
   const responses: Record<string, string> = {

@@ -5,6 +5,7 @@ import { requireVapiAuth } from '@/lib/vapi/auth';
 import { traceVoiceCall } from '@/lib/observability/voice-trace';
 import { syncLeadToSheets } from '@/lib/services/sheets';
 import { upsertLeadWithDedup } from '@/lib/leads/dedup';
+import { consumeAiOp } from '@/lib/ai/ops-guard';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -50,7 +51,13 @@ export async function POST(req: NextRequest) {
       email       ? `📧 ${email}`              : null,
     ].filter(Boolean).join('\n');
 
-    await sendWhatsApp(agent.transfer_whatsapp, msg);
+    const waOk = await sendWhatsApp(agent.transfer_whatsapp, msg);
+    if (waOk) {
+      await consumeAiOp(agent_id, 1, {
+        source: 'whatsapp_notify_owner',
+        label:  'WhatsApp al encargado',
+      });
+    }
   }
 
   traceVoiceCall({

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireVapiAuth } from '@/lib/vapi/auth';
 import { searchWeb } from '@/lib/search/web';
 import { traceVoiceCall } from '@/lib/observability/voice-trace';
+import { consumeAiOp } from '@/lib/ai/ops-guard';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,6 +32,11 @@ export async function POST(req: NextRequest) {
   }
 
   const results = await searchWeb(query, 5);
+  // Cost-based charge: Brave cobra por query, sin importar si hay resultados.
+  await consumeAiOp(agent_id, 1, {
+    source: 'web_search',
+    label:  'Búsqueda web (Brave)',
+  });
   if (!results.length) {
     trace({ ok: true, results_count: 0 });
     return NextResponse.json({ result: `No encontré resultados para: "${query}". Intenta con otras palabras.` });

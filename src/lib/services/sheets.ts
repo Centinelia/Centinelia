@@ -1,5 +1,6 @@
 import { getSheetsClient } from '@/lib/connectors/sheets-client';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { consumeAiOp } from '@/lib/ai/ops-guard';
 
 export type SheetsMapping = {
   id: string;
@@ -286,6 +287,12 @@ export async function syncLeadToSheets(
         agent_id: agentId,
         source:   'sheets_sync_fail',
         content:  `crear_lead sync a Sheets fallo: ${result.reason}${result.detail ? ` — ${result.detail}` : ''}`,
+      });
+    } else {
+      // Cost-based charge: Google Sheets write real via OAuth API.
+      await consumeAiOp(agentId, 1, {
+        source: 'sheets_row_appended',
+        label:  'Fila agregada a Google Sheets',
       });
     }
   } catch (e: unknown) {

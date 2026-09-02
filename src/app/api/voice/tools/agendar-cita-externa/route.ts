@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { requireVapiAuth } from '@/lib/vapi/auth';
+import { consumeAiOp } from '@/lib/ai/ops-guard';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -74,6 +75,11 @@ export async function POST(req: NextRequest) {
 
         if (calRes.ok) {
           calBooked = true;
+          // Cost-based charge: Cal.com booking real via API paga.
+          await consumeAiOp(agent_id, 1, {
+            source: 'calcom_booking',
+            label:  'Cita agendada en Cal.com',
+          });
         } else {
           console.error('[agendar-cita-externa] Cal.com error:', await calRes.text());
         }
@@ -86,7 +92,16 @@ export async function POST(req: NextRequest) {
   // 3. Notify business owner
   if (agent.transfer_whatsapp) {
     const ownerMsg = `📅 *Nueva cita, ${agent.business_name}*\n\nCliente: ${nombre}\nServicio: ${servicio ?? ','}\nFecha: ${fecha} · ${hora}${whatsapp_cliente ? `\nWA: ${whatsapp_cliente}` : ''}${calBooked ? '\n✅ Confirmada en Cal.com' : org?.calendar_link ? '\n📎 Link enviado al cliente' : ''}`;
-    await sendWhatsApp(agent.transfer_whatsapp, ownerMsg).catch(console.error);
+    const waOk = await sendWhatsApp(agent.transfer_whatsapp, ownerMsg).catch(err => {
+      console.error(err);
+      return false;
+    });
+    if (waOk) {
+      await consumeAiOp(agent_id, 1, {
+        source: 'whatsapp_notify_owner',
+        label:  'WhatsApp al encargado',
+      });
+    }
   }
 
   const result = calBooked

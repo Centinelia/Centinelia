@@ -7,6 +7,7 @@ import { sendEmail } from '@/lib/email/send';
 import { ticketEmailHtml } from '@/lib/ops/approval-email';
 import { requireVapiAuth } from '@/lib/vapi/auth';
 import { traceVoiceCall } from '@/lib/observability/voice-trace';
+import { consumeAiOp } from '@/lib/ai/ops-guard';
 
 const WA_URL = 'https://api.twilio.com/2010-04-01/Accounts';
 
@@ -111,6 +112,14 @@ export async function POST(req: NextRequest) {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: new URLSearchParams({ From: `whatsapp:${waFrom}`, To: `whatsapp:${waTo}`, Body: lines }),
+    }).then(async r => {
+      if (r.ok) {
+        await consumeAiOp(agentId, 1, {
+          source:       'ticket_whatsapp_notify',
+          reference_id: folio,
+          label:        'WhatsApp de ticket al asignado',
+        });
+      }
     }).catch(console.error);
   }
 
@@ -123,6 +132,14 @@ export async function POST(req: NextRequest) {
       to:      ownerEmail,
       subject: `[Ticket ${folio}] ${titulo} — ${prioridad.toUpperCase()}`,
       html:    ticketEmailHtml({ folio, titulo, categoria, prioridad, descripcion: descripcion ?? null, asignadoA, source: 'voz', portalUrl }),
+    }).then(async ok => {
+      if (ok) {
+        await consumeAiOp(agentId, 1, {
+          source:       'ticket_email_notify',
+          reference_id: folio,
+          label:        'Correo de ticket al encargado',
+        });
+      }
     }).catch(console.error);
   }
 
