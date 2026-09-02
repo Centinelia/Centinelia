@@ -24,10 +24,11 @@ export type ModuleId =
   | 'google_sheets'
   | 'contract_drafts'
   | 'civic_reports'
-  | 'external_tramites';
+  | 'external_tramites'
+  | 'inventory_excel';
 
 export type MeerkatRole =
-  | 'nia' | 'noah' | 'nelia' | 'nala' | 'nox' | 'nico' | 'niva' | 'nara' | 'nova' | 'naia';
+  | 'nia' | 'noah' | 'nelia' | 'nala' | 'nox' | 'nico' | 'niva' | 'nara' | 'nova' | 'naia' | 'nami';
 
 export interface ModuleDefinition {
   id:                ModuleId;
@@ -348,6 +349,39 @@ export const MODULE_CATALOG: ModuleDefinition[] = [
     vertical:      'gobierno',
     requiresSetup: true,
     stage:         'coming_soon',
+  },
+  {
+    id:            'inventory_excel',
+    name:          'Inventarios en Excel',
+    tagline:       'Nami lleva tu inventario histórico y stock por bodega directo en tu Excel de SharePoint u OneDrive.',
+    description:   'Cuando manejas equipos por número de serie individual, con estatus por bodega y ciclo OC → almacén → separado → entregado, Nami opera tu Excel sin que tengas que copiar datos. Consulta existencias, captura equipos que llegan, actualiza estatus, mueve entre bodegas y manda correos de reposición cuando el stock cae bajo el ideal.',
+    iconName:      'Package',
+    meerkats:      ['nami'],
+    featureFlag:   'inventory_excel',
+    priceMonthly:  null,
+    priceNote:     'Cotización a medida',
+    requirements:  [
+      'Cuenta de Microsoft (Outlook) conectada con permisos Files.ReadWrite.All + Sites.ReadWrite.All',
+      'Archivo Excel en SharePoint u OneDrive con hojas INVENTARIO (tabla nombrada) + STOCK (con columna IDEAL)',
+      'Correos de encargados de reposición configurados',
+    ],
+    capabilities: [
+      'Consulta por serie o modelo con filtros de estatus y bodega',
+      'Snapshot de stock vs ideal con reposiciones sugeridas',
+      'Correo automático al encargado cuando el stock cae bajo el ideal',
+      'Captura de equipos nuevos con normalización de bodegas',
+      'Cambio de estatus ALMACEN → SEPARADO → ENTREGADO con auditoría',
+      'Reporte de factor de venta por modelo',
+    ],
+    outOfScope: [
+      'No timbra las facturas de venta (eso es del módulo Facturación a clientes)',
+      'No coloca la orden de compra automática al proveedor (eso lo hace Nala si activas ciclo OC-CFDI)',
+      'No sustituye a un WMS completo si necesitas ubicación pasillo/rack por SKU',
+    ],
+    configPath:    '/integraciones/inventario',
+    requiresSetup: true,
+    stage:         'coming_soon',
+    deactivateWarning: 'Nami dejará de consultar y actualizar tu Excel de inventario. Los datos ya capturados quedan en tu archivo tal cual — no se borran.',
   },
 ];
 

@@ -272,6 +272,11 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
   // QB/ML tools feature-gated.
   // ML tools hidden 2026-08-19: 0 orgs activos, código intacto. Reactivar via pack mercado_libre (Capa 2) cuando llegue cliente.
   niva:  ['enviar_correo', 'llamar_a', 'crear_documento', 'buscar_documento_oficina', 'buscar_correo_enviado', 'enviar_documento_oficina', 'create_file', 'save_to_drive', 'search_leads', 'list_calendar_events', 'create_calendar_event', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'revisar_desempeno_equipo', 'aprobar_gasto', 'evaluar_limite_gasto', 'verificar_gasto_recurrente', 'generar_pitch_deck', 'generar_reporte_metricas_excel'],
+  // Nami — inventarios (pack inventory_excel, piloto AC Proyectos). Voz interna
+  // para llamar a Nino en bodega y confirmar seriales. NO voz para clientes.
+  // Read-only por default en voz + notificar_transferencia para redirigir si
+  // ventas la marca por error en un flow no de inventario.
+  nami:  ['inv_buscar_por_serie', 'inv_buscar_por_modelo', 'inv_buscar_por_cliente', 'inv_stock_snapshot', 'inv_pedir_reposicion', 'llamar_a', 'buscar_directorio', 'enviar_correo'],
 };
 
 // Universal tools que TODOS los meerkats reciben en voice y chat/email,
@@ -578,6 +583,80 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
         },
       },
       server: server('actualizar-disponibilidad-diaria'),
+    };
+
+    // ─── Nami — inventarios (pack inventory_excel, piloto AC Proyectos) ──────
+    case 'inv_buscar_por_serie': return {
+      type: 'function',
+      function: {
+        name: 'inv_buscar_por_serie',
+        description: 'Nami: busca un equipo por número de serie en el INVENTARIO histórico. Úsala cuando ventas te pregunte por un equipo específico.',
+        parameters: {
+          type: 'object',
+          properties: { serie: { type: 'string', description: 'Número de serie del equipo tal cual viene en la etiqueta' } },
+          required: ['serie'],
+        },
+      },
+      server: server('exec/inv_buscar_por_serie'),
+    };
+    case 'inv_buscar_por_modelo': return {
+      type: 'function',
+      function: {
+        name: 'inv_buscar_por_modelo',
+        description: 'Nami: busca equipos por modelo (opcional filtrar por estatus y bodega). Úsala cuando ventas te pregunte cuántos equipos hay de un modelo.',
+        parameters: {
+          type: 'object',
+          properties: {
+            modelo:  { type: 'string', description: 'Modelo TRANE (ej. 4TTR6024J1000A)' },
+            estatus: { type: 'string', description: 'ALMACEN, SEPARADO, ENTREGADO, PEDIDO, PENDIENTE (opcional)' },
+            bodega:  { type: 'string', description: 'FLETEROS, CENIZO, TRANE (opcional)' },
+          },
+          required: ['modelo'],
+        },
+      },
+      server: server('exec/inv_buscar_por_modelo'),
+    };
+    case 'inv_buscar_por_cliente': return {
+      type: 'function',
+      function: {
+        name: 'inv_buscar_por_cliente',
+        description: 'Nami: busca equipos asignados a un cliente. Úsala cuando ventas te mande datos sueltos sin el serie ("los datos del pedido de Juan Pérez") para reconciliar antes de patchear.',
+        parameters: {
+          type: 'object',
+          properties: {
+            cliente: { type: 'string', description: 'Nombre del cliente (búsqueda case-insensitive, fuzzy parcial)' },
+            estatus: { type: 'string', description: 'ALMACEN, SEPARADO, ENTREGADO (opcional — default: sin filtro)' },
+          },
+          required: ['cliente'],
+        },
+      },
+      server: server('exec/inv_buscar_por_cliente'),
+    };
+    case 'inv_stock_snapshot': return {
+      type: 'function',
+      function: {
+        name: 'inv_stock_snapshot',
+        description: 'Nami: snapshot del STOCK con modelos por debajo del IDEAL. Úsala antes de decidir pedir reposición.',
+        parameters: { type: 'object', properties: {} },
+      },
+      server: server('exec/inv_stock_snapshot'),
+    };
+    case 'inv_pedir_reposicion': return {
+      type: 'function',
+      function: {
+        name: 'inv_pedir_reposicion',
+        description: 'Nami: manda correo al encargado pidiendo reposición de N piezas de un modelo. Úsala automáticamente cuando el stock esté por debajo del ideal.',
+        parameters: {
+          type: 'object',
+          properties: {
+            modelo:   { type: 'string', description: 'Modelo TRANE a reponer' },
+            cantidad: { type: 'number', description: 'Cantidad de piezas sugeridas' },
+            nota:     { type: 'string', description: 'Nota opcional para el encargado' },
+          },
+          required: ['modelo', 'cantidad'],
+        },
+      },
+      server: server('exec/inv_pedir_reposicion'),
     };
 
     default: return null;

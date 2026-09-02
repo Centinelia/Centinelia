@@ -1280,6 +1280,161 @@ const CATALOGO_BUSCAR_CODIGO_TOOL: Anthropic.Tool = {
   },
 };
 
+// ─── Nami — pack inventory_excel (piloto AC Proyectos) ─────────────────────
+const INV_BUSCAR_POR_SERIE_TOOL: Anthropic.Tool = {
+  name: 'inv_buscar_por_serie',
+  description: 'Nami: busca un equipo por número de serie en el INVENTARIO. Devuelve el equipo con estatus, bodega, modelo y campos capturados si existe.',
+  input_schema: {
+    type: 'object' as const,
+    properties: { serie: { type: 'string', description: 'Número de serie tal cual viene en la etiqueta del equipo' } },
+    required: ['serie'],
+  },
+};
+const INV_BUSCAR_POR_MODELO_TOOL: Anthropic.Tool = {
+  name: 'inv_buscar_por_modelo',
+  description: 'Nami: lista equipos de un modelo específico, opcionalmente filtrando por estatus (ALMACEN/SEPARADO/ENTREGADO) y bodega (FLETEROS/CENIZO/TRANE).',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      modelo:  { type: 'string', description: 'Modelo TRANE (ej. 4TTR6024J1000A). Case-insensitive.' },
+      estatus: { type: 'string', description: 'ALMACEN, SEPARADO, ENTREGADO, PEDIDO, PENDIENTE (opcional)' },
+      bodega:  { type: 'string', description: 'FLETEROS (1-5 TR), CENIZO (>5 TR), TRANE (opcional)' },
+    },
+    required: ['modelo'],
+  },
+};
+const INV_STOCK_SNAPSHOT_TOOL: Anthropic.Tool = {
+  name: 'inv_stock_snapshot',
+  description: 'Nami: snapshot de STOCK completo con modelos por debajo del IDEAL y faltante sugerido. Úsala antes de decidir reposiciones o cuando el dueño pida un reporte de existencias.',
+  input_schema: { type: 'object' as const, properties: {} },
+};
+const INV_PEDIR_REPOSICION_TOOL: Anthropic.Tool = {
+  name: 'inv_pedir_reposicion',
+  description: 'Nami: manda correo al encargado de compras solicitando reposición de N piezas de un modelo. Se usa cuando el stock está por debajo del ideal.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      modelo:   { type: 'string', description: 'Modelo TRANE a reponer' },
+      cantidad: { type: 'number', description: 'Cantidad de piezas sugeridas (>0)' },
+      nota:     { type: 'string', description: 'Nota opcional para el encargado (contexto adicional)' },
+    },
+    required: ['modelo', 'cantidad'],
+  },
+};
+const INV_AGREGAR_EQUIPO_TOOL: Anthropic.Tool = {
+  name: 'inv_agregar_equipo',
+  description: 'Nami: agrega equipo nuevo al INVENTARIO cuando llega físicamente. Requiere OC de origen, modelo, serie (de la etiqueta), y bodega destino. USD y TC opcionales — si los pasas ambos, se calcula el costo en MXN automáticamente.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      oc:     { type: 'string', description: 'Folio de la OC en QB' },
+      modelo: { type: 'string', description: 'Modelo TRANE' },
+      serie:  { type: 'string', description: 'Número de serie (etiqueta física del equipo)' },
+      bodega: { type: 'string', description: 'FLETEROS, CENIZO o TRANE' },
+      usd:    { type: 'number', description: 'Costo en USD (opcional)' },
+      tc:     { type: 'number', description: 'Tipo de cambio (opcional)' },
+    },
+    required: ['oc', 'modelo', 'serie', 'bodega'],
+  },
+};
+const INV_ACTUALIZAR_ESTATUS_TOOL: Anthropic.Tool = {
+  name: 'inv_actualizar_estatus',
+  description: 'Nami: cambia el estatus de un equipo (ALMACEN → SEPARADO cuando cliente paga; SEPARADO → ENTREGADO cuando sale del almacén).',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      serie:   { type: 'string', description: 'Número de serie del equipo' },
+      estatus: { type: 'string', description: 'ALMACEN, SEPARADO, ENTREGADO, PEDIDO, PENDIENTE, DEVUELTO, DESHABILITADO' },
+    },
+    required: ['serie', 'estatus'],
+  },
+};
+const INV_ASIGNAR_CLIENTE_TOOL: Anthropic.Tool = {
+  name: 'inv_asignar_cliente',
+  description: 'Nami: asigna cliente (y opcionalmente vendedor: ANA, ANG, MTP, RLP) a un equipo separado.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      serie:    { type: 'string', description: 'Número de serie del equipo' },
+      cliente:  { type: 'string', description: 'Nombre del cliente' },
+      vendedor: { type: 'string', description: 'Código del vendedor (ANA, ANG, MTP, RLP) — opcional' },
+    },
+    required: ['serie', 'cliente'],
+  },
+};
+const INV_REGISTRAR_VENTA_TOOL: Anthropic.Tool = {
+  name: 'inv_registrar_venta',
+  description: 'Nami: registra los datos de venta de un equipo tras que ventas te dicte el folio de la factura. Ventas es quien busca en el sistema (SF o el que use el negocio) y te pasa los 4 datos. Además de llenar los campos, cambia el estatus del equipo a ENTREGADO.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      serie:          { type: 'string', description: 'Número de serie del equipo vendido' },
+      folio_factura:  { type: 'string', description: 'Folio de la factura de venta (el que ventas te dictó del sistema)' },
+      fecha_factura:  { type: 'string', description: 'Fecha de la factura en YYYY-MM-DD (opcional)' },
+      precio_unit_mx: { type: 'number', description: 'Precio unitario en MXN (opcional)' },
+    },
+    required: ['serie', 'folio_factura'],
+  },
+};
+const INV_TRANSFERIR_BODEGA_TOOL: Anthropic.Tool = {
+  name: 'inv_transferir_bodega',
+  description: 'Nami: mueve un equipo entre bodegas (FLETEROS ↔ CENIZO ↔ TRANE). Normaliza aliases automáticamente.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      serie:  { type: 'string', description: 'Número de serie del equipo' },
+      bodega: { type: 'string', description: 'Bodega destino: FLETEROS, CENIZO o TRANE' },
+    },
+    required: ['serie', 'bodega'],
+  },
+};
+const INV_IMPORTAR_BACKLOG_TOOL: Anthropic.Tool = {
+  name: 'inv_importar_backlog',
+  description: 'Nami: sincroniza el BACKLOG de TRANE desde el correo periódico. BLOQUEADA hasta ver formato del correo real de Isabel.',
+  input_schema: { type: 'object' as const, properties: {} },
+};
+const INV_NORMALIZAR_BODEGAS_TOOL: Anthropic.Tool = {
+  name: 'inv_normalizar_bodegas',
+  description: 'Nami: normaliza aliases de bodega (FLETERO → FLETEROS, etc). Por default corre en dry_run (te dice qué cambiaría sin aplicar). Pasa dry_run:false para aplicar de verdad.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      dry_run: { type: 'boolean', description: 'True (default) para simular. False para aplicar cambios.' },
+    },
+  },
+};
+const INV_REPORTE_UTILIDAD_TOOL: Anthropic.Tool = {
+  name: 'inv_reporte_utilidad',
+  description: 'Nami: calcula el FACTOR de venta (precio_venta / costo_mx) por modelo. Solo considera equipos con costo y venta capturados.',
+  input_schema: { type: 'object' as const, properties: {} },
+};
+const INV_BUSCAR_POR_CLIENTE_TOOL: Anthropic.Tool = {
+  name: 'inv_buscar_por_cliente',
+  description: 'Nami: busca equipos asignados a un cliente (búsqueda parcial case-insensitive). Úsala cuando ventas te mande datos sueltos sin serie ("los datos del pedido de Juan Pérez") para reconciliar antes de patchear. Si sale un solo equipo, procede. Si salen varios, pregunta cuál.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      cliente: { type: 'string', description: 'Nombre o parte del nombre del cliente' },
+      estatus: { type: 'string', description: 'ALMACEN, SEPARADO, ENTREGADO (opcional — sin filtro por default)' },
+    },
+    required: ['cliente'],
+  },
+};
+const INV_PROCESAR_FACTURA_TRANE_TOOL: Anthropic.Tool = {
+  name: 'inv_procesar_factura_trane',
+  description: 'Nami: parsea el XML CFDI de una factura de TRANE y agrega los equipos al INVENTARIO (una fila por serie individual). Extrae folio, fecha, TC y por concepto: modelo + series inline + cantidad + USD unit. Skip INSURANCE/fletes. Por default corre en dry_run (devuelve preview sin escribir). Pasa dry_run:false para aplicar. Si conoces la OC de AC (viene en el correo o en el asunto), pásala en oc_ac para vincular los equipos con esa OC.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      xml:     { type: 'string', description: 'Contenido del cfdi.xml adjunto al correo de TRANE (texto completo)' },
+      dry_run: { type: 'boolean', description: 'True (default) para simular. False para aplicar cambios al Excel.' },
+      oc_ac:   { type: 'string', description: 'Número de OC de AC en QuickBooks (opcional, para vincular)' },
+      bodega:  { type: 'string', description: 'Bodega destino inicial (FLETEROS, CENIZO, TRANE). Si se omite, no se setea y queda pendiente.' },
+    },
+    required: ['xml'],
+  },
+};
+
 const ALL_TOOLS = [
   DELEGAR_TAREA_TOOL,
   CONSULTAR_AGENTE_TOOL,
@@ -1321,6 +1476,20 @@ const ALL_TOOLS = [
   BUSCAR_DIRECTORIO_TOOL,
   INICIAR_ONBOARDING_TOOL,
   PEDIR_A_HUMANO_TOOL,
+  INV_BUSCAR_POR_SERIE_TOOL,
+  INV_BUSCAR_POR_MODELO_TOOL,
+  INV_STOCK_SNAPSHOT_TOOL,
+  INV_PEDIR_REPOSICION_TOOL,
+  INV_AGREGAR_EQUIPO_TOOL,
+  INV_ACTUALIZAR_ESTATUS_TOOL,
+  INV_ASIGNAR_CLIENTE_TOOL,
+  INV_REGISTRAR_VENTA_TOOL,
+  INV_TRANSFERIR_BODEGA_TOOL,
+  INV_IMPORTAR_BACKLOG_TOOL,
+  INV_NORMALIZAR_BODEGAS_TOOL,
+  INV_REPORTE_UTILIDAD_TOOL,
+  INV_BUSCAR_POR_CLIENTE_TOOL,
+  INV_PROCESAR_FACTURA_TRANE_TOOL,
 ];
 
 // VOICE_TO_CHAT y UNIVERSAL_TOOLS viven en src/lib/tools/channel-mapping.ts
@@ -1390,6 +1559,20 @@ const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
   escalar_al_owner:              ESCALAR_AL_OWNER_TOOL,
   verificar_fix:                 VERIFICAR_FIX_TOOL,
   consultar_billing_org:         CONSULTAR_BILLING_ORG_TOOL,
+  inv_buscar_por_serie:      INV_BUSCAR_POR_SERIE_TOOL,
+  inv_buscar_por_modelo:     INV_BUSCAR_POR_MODELO_TOOL,
+  inv_stock_snapshot:        INV_STOCK_SNAPSHOT_TOOL,
+  inv_pedir_reposicion:      INV_PEDIR_REPOSICION_TOOL,
+  inv_agregar_equipo:        INV_AGREGAR_EQUIPO_TOOL,
+  inv_actualizar_estatus:    INV_ACTUALIZAR_ESTATUS_TOOL,
+  inv_asignar_cliente:       INV_ASIGNAR_CLIENTE_TOOL,
+  inv_registrar_venta:       INV_REGISTRAR_VENTA_TOOL,
+  inv_transferir_bodega:     INV_TRANSFERIR_BODEGA_TOOL,
+  inv_importar_backlog:      INV_IMPORTAR_BACKLOG_TOOL,
+  inv_normalizar_bodegas:    INV_NORMALIZAR_BODEGAS_TOOL,
+  inv_reporte_utilidad:      INV_REPORTE_UTILIDAD_TOOL,
+  inv_buscar_por_cliente:    INV_BUSCAR_POR_CLIENTE_TOOL,
+  inv_procesar_factura_trane: INV_PROCESAR_FACTURA_TRANE_TOOL,
 };
 
 // Nash-only tools — nunca en ALL_TOOLS, se agregan condicionalmente cuando
