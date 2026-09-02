@@ -6,6 +6,7 @@ import { searchWeb } from '@/lib/search/web';
 import { requireVapiAuth } from '@/lib/vapi/auth';
 import { traceVoiceCall } from '@/lib/observability/voice-trace';
 import { logLlmCall } from '@/lib/observability/llm-log';
+import { consumeAiOp } from '@/lib/ai/ops-guard';
 
 export const dynamic = 'force-dynamic';
 
@@ -271,6 +272,9 @@ export async function POST(req: NextRequest) {
 
         } else if (block.name === 'buscar_en_web') {
           const results = await searchWeb(input.query, 5);
+          // Cost-based charge: Brave cobra por query. Se cobra al agente que consulta (caller),
+          // no al target — el target trabaja "gratis" desde el punto de vista del pool del caller.
+          await consumeAiOp(agentId, 1, { source: 'web_search', label: 'Búsqueda web (Brave)' });
           result = results.length
             ? results.map(r => `${r.title}: ${r.description}`).join('\n')
             : 'No se encontraron resultados en internet.';

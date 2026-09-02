@@ -59,6 +59,17 @@ const SOURCE_META: Record<string, { label: string; trigger: string }> = {
   whatsapp_reply:      { label: 'Respuesta WhatsApp',                 trigger: 'chat' },
   teams_reply:         { label: 'Respuesta Microsoft Teams',          trigger: 'chat' },
   helpdesk_classify:   { label: 'Clasificación de ticket helpdesk',   trigger: 'manual' },
+  // Cost-based sources agregados en fix/pool-accounting-gaps (external I/O real)
+  invoice_stamped:         { label: 'Factura timbrada con PAC',        trigger: 'voice_call' },
+  invoice_email_sent:      { label: 'CFDI enviado al cliente',         trigger: 'voice_call' },
+  calendar_event_created:  { label: 'Cita agendada en calendario',     trigger: 'voice_call' },
+  calcom_booking:          { label: 'Cita agendada en Cal.com',        trigger: 'voice_call' },
+  whatsapp_notify_owner:   { label: 'WhatsApp al encargado',           trigger: 'voice_call' },
+  sheets_row_appended:     { label: 'Fila agregada a Google Sheets',   trigger: 'voice_call' },
+  ticket_whatsapp_notify:  { label: 'WhatsApp de ticket al asignado',  trigger: 'voice_call' },
+  ticket_email_notify:     { label: 'Correo de ticket al encargado',   trigger: 'voice_call' },
+  web_search:              { label: 'Búsqueda web (Brave)',            trigger: 'voice_call' },
+  web_search_leads:        { label: 'Búsqueda de leads (Brave)',       trigger: 'chat' },
   // Fallbacks
   unknown:             { label: 'Consumo sin identificar',     trigger: 'manual' },
 };

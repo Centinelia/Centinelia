@@ -10,6 +10,8 @@ export interface ToolResult {
   ok:       boolean;
   message?: string;
   error?:   string;
+  /** For executeSendEmail: número de envíos SMTP/Resend reales que ocurrieron (1 sin CC, 2 con CC). Otras tools lo dejan undefined. */
+  count?:   number;
   [key: string]: unknown;
 }
 
@@ -131,6 +133,9 @@ export async function executeSendEmail(
     replyTo, attachment,
   }, supabase, ic);
   let sent = mainRes.ok;
+  // Track cuántos envíos reales ocurrieron. sendMeerkatHtmlEmail hace 1 send SMTP/Resend.
+  // Con CC hacemos 2 sends totales — el caller cobra 2 tareas al pool.
+  let sendCount = sent ? 1 : 0;
 
   // CC en segundo envío separado (mismo comportamiento que antes).
   if (sent && cc) {
@@ -138,6 +143,7 @@ export async function executeSendEmail(
       agentId, to: cc, subject, html: htmlBody, from: fromHeader, replyTo,
     }, supabase, ic);
     sent = ccRes.ok;
+    if (ccRes.ok) sendCount += 1;
   }
 
   const attNote = attachment ? ` con adjunto "${attachment.filename}"` : '';
@@ -171,8 +177,8 @@ export async function executeSendEmail(
   })();
 
   return sent
-    ? { ok: true,  message: `Correo enviado a ${to}${cc ? ` (CC: ${cc})` : ''}${attNote} con asunto "${subject}".` }
-    : { ok: false, error:   'Error al enviar el correo. Verifica la dirección e intenta de nuevo.' };
+    ? { ok: true,  count: sendCount, message: `Correo enviado a ${to}${cc ? ` (CC: ${cc})` : ''}${attNote} con asunto "${subject}".` }
+    : { ok: false, count: sendCount, error:   'Error al enviar el correo. Verifica la dirección e intenta de nuevo.' };
 }
 
 export async function executeSaveToDrive(

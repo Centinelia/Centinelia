@@ -8,6 +8,7 @@ import { buildCfdiPdf } from './pdf-builder';
 import { mapSfError } from './error-mapping';
 import { isInvoicingDisabled } from './kill-switch';
 import { sendEmail } from '@/lib/email/send';
+import { consumeAiOp } from '@/lib/ai/ops-guard';
 import type { CfdiInput } from './provider';
 
 export type EmitirOutcome =
@@ -234,9 +235,16 @@ export async function emitirFacturaAuto(
         test_mode: org.invoicing_test_mode,
       },
     });
+
+    // Cost-based charge: PAC timbrado tiene costo externo real (Solución Factible, Facturama, etc.)
+    await consumeAiOp(req.agent_id, 1, {
+      source:       'invoice_stamped',
+      reference_id: result.uuid,
+      label:        'Factura timbrada con PAC',
+    });
   }
 
-  // Email al cliente (best effort)
+  // Email al cliente (best effort). Cobramos 1 tarea si el envío externo (Resend) tuvo éxito.
   // sendEmail accepts content as base64 string — convert Buffers accordingly
   if (req.cliente_email) {
     void sendEmail({
@@ -248,6 +256,14 @@ export async function emitirFacturaAuto(
         { filename: `${result.uuid}.xml`, content: result.xmlTimbrado.toString('base64') },
         { filename: `${result.uuid}.pdf`, content: pdfBuf.toString('base64') },
       ],
+    }).then(async ok => {
+      if (ok && req.agent_id) {
+        await consumeAiOp(req.agent_id, 1, {
+          source:       'invoice_email_sent',
+          reference_id: result.uuid,
+          label:        'CFDI enviado al cliente por correo',
+        });
+      }
     }).catch(err => console.error('[emitirFacturaAuto] email:', err));
   }
 

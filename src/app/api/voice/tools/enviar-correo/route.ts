@@ -80,6 +80,17 @@ export async function POST(req: NextRequest) {
     supabase,
   );
 
+  // Cobro diferencial si hubo más de 1 envío real (CC): la línea 71 ya prepagó 1 op como gate.
+  // Este route no acepta cc hoy — la guarda es defensiva por si un futuro cambio agrega cc sin actualizar el pre-charge.
+  const sendCount = result.count ?? 0;
+  if (result.ok && sendCount > 1) {
+    await consumeAiOp(agent_id, sendCount - 1, {
+      source:       'tool_enviar_correo',
+      reference_id: sessionId ?? undefined,
+      label:        `Correo enviado durante llamada (envío extra por CC — ${sendCount} envíos totales)`,
+    });
+  }
+
   const finalMsg = result.message ?? result.error ?? 'Error desconocido.';
   traceResp({
     ok:              result.ok,

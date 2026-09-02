@@ -300,12 +300,13 @@ async function executeAgentToolInner(
     const sent = result && typeof result === 'object' && (result as { ok?: unknown }).ok !== false;
     if (sent) {
       await commitReportIntent(claim.lockId);
-      // Cobrar 1 tarea por correo real enviado (Resend/OAuth tienen costo).
-      // Solo tras éxito, sin refund. El verifier + report-intent-lock ya
-      // ocurrieron sin cargo (son gates locales, no external calls facturables).
-      await consumeAiOp(agentId, 1, {
+      // Cobrar N tareas por cada envío real (Resend/OAuth cobran por mensaje).
+      // executeSendEmail devuelve count = 1 (solo to) o 2 (to + cc). Antes cobrábamos
+      // 1 fija — undercharge sistemático de correos con CC.
+      const sendCount = Math.max(1, (result as { count?: number }).count ?? 1);
+      await consumeAiOp(agentId, sendCount, {
         source: 'tool_enviar_correo',
-        label:  'Correo enviado por el empleado',
+        label:  sendCount > 1 ? `Correo enviado por el empleado (${sendCount} envíos: to + cc)` : 'Correo enviado por el empleado',
       });
     }
     else      await releaseReportIntent(claim.lockId);
@@ -810,6 +811,8 @@ async function executeAgentToolInner(
     if (!process.env.BRAVE_SEARCH_API_KEY) return { ok: false, error: 'Búsqueda web no configurada.' };
     const query   = toolInput.query as string;
     const results = await searchWeb(query, 10);
+    // Cost-based charge: Brave cobra por query, sin importar si hay resultados.
+    await consumeAiOp(agentId, 1, { source: 'web_search', label: 'Búsqueda web (Brave)' });
     if (!results.length) return { ok: true, results: [], message: `Sin resultados para: "${query}".` };
     const list = results.slice(0, 10).map((r, i) => `${i + 1}. **${r.title}**\n   ${r.url}\n   ${r.description}`).join('\n\n');
     return { ok: true, count: results.length, results: results.slice(0, 10), message: `${results.length} resultado(s) para "${query}":\n\n${list}` };
@@ -823,6 +826,10 @@ async function executeAgentToolInner(
     const rtype    = ((toolInput.research_type as string | undefined) ?? 'general') as ResearchType;
     const queries  = buildQueries(topic, location, rtype, keywords, { name: businessName, description: (agent.business_description as string | null) ?? undefined });
     const results  = await searchMultiple(queries, 8);
+    // Cost-based charge: Brave cobra por cada query enviada (searchMultiple hace N queries).
+    if (queries.length > 0) {
+      await consumeAiOp(agentId, queries.length, { source: 'web_search_leads', label: `Búsqueda de leads (${queries.length} queries Brave)` });
+    }
     if (!results.length) return { ok: true, leads: [], message: `Sin resultados para "${topic}".` };
     const txt = results.slice(0, 20).map((r, i) => `${i + 1}. **${r.title}**\n   ${r.url}\n   ${r.description}`).join('\n\n');
     return { ok: true, count: results.length, leads: results.slice(0, 20), message: `${results.length} resultado(s) para "${topic}"${location ? ` en ${location}` : ''}. Lee 2-3 con read_url para detalles.\n\n${txt}` };

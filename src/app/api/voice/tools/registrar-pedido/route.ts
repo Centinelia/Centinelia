@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { requireVapiAuth } from '@/lib/vapi/auth';
 import { traceVoiceCall } from '@/lib/observability/voice-trace';
+import { consumeAiOp } from '@/lib/ai/ops-guard';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -47,7 +48,13 @@ export async function POST(req: NextRequest) {
       notas    ? `📝 ${notas}`    : null,
     ].filter(Boolean).join('\n');
 
-    await sendWhatsApp(agent.transfer_whatsapp, msg);
+    const waOk = await sendWhatsApp(agent.transfer_whatsapp, msg);
+    if (waOk) {
+      await consumeAiOp(agent_id, 1, {
+        source: 'whatsapp_notify_owner',
+        label:  'WhatsApp al encargado',
+      });
+    }
   }
 
   const tipoLabel = tipo === 'entrega' ? 'entrega a domicilio' : 'recoger en sucursal';
