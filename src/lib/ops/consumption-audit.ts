@@ -319,6 +319,32 @@ export async function detectOutboundWithoutLedger(
 }
 
 /**
+ * Iterar TODOS los portales con envíos recientes y devolver aquellos con
+ * drift. Uso desde nash-runner (paralelo a detectPlatformAnomalies).
+ */
+export async function detectPlatformOutboundDrift(): Promise<Array<{ portal_email: string; drifts: OutboundDrift[] }>> {
+  const supabase = createAdminClient();
+  const since    = new Date(Date.now() - 24 * 3_600_000).toISOString();
+
+  const { data: activePortals } = await supabase
+    .from('outbound_emails')
+    .select('portal_email')
+    .eq('ok', true)
+    .gte('created_at', since)
+    .not('portal_email', 'is', null);
+
+  const emails = [...new Set((activePortals ?? []).map(r => r.portal_email as string))];
+  if (emails.length === 0) return [];
+
+  const out: Array<{ portal_email: string; drifts: OutboundDrift[] }> = [];
+  for (const email of emails) {
+    const drifts = await detectOutboundWithoutLedger(email, 24);
+    if (drifts.length > 0) out.push({ portal_email: email, drifts });
+  }
+  return out;
+}
+
+/**
  * Registra drift outbound_without_ledger como notification_event (kind='outbound_drift').
  * Dedup: máximo 1 evento por portal por día. Payload trae los N primeros drifts
  * (cap 20 para no explotar el JSON) y el total.
