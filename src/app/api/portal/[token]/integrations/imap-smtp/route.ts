@@ -19,7 +19,18 @@ interface PublicConfig {
   status:       'active' | 'error' | null;
 }
 
-async function requireOrg(token: string) {
+interface SmtpConfigJson {
+  host:         string;
+  port:         number;
+  secure:       boolean;
+  username:     string;
+  password_enc: string;   // encrypted
+  from_display: string | null;
+  status:       'active' | 'error';
+  updated_at:   string;
+}
+
+async function requireAgent(req: NextRequest, token: string) {
   const cookieStore = await cookies();
   const session = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
   if (!session) return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
@@ -27,34 +38,69 @@ async function requireOrg(token: string) {
   if (!resolved) return { error: NextResponse.json({ error: 'Invalid token' }, { status: 401 }) };
   if (session.portalEmail && session.portalEmail !== resolved.portalEmail)
     return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 403 }) };
-  return { portalEmail: resolved.portalEmail };
-}
 
-export async function GET(_req: NextRequest, { params }: Params) {
-  const { token } = await params;
-  const gate = await requireOrg(token);
-  if (gate.error) return gate.error;
+  const agentId = req.nextUrl.searchParams.get('agent_id');
+  if (!agentId) return { error: NextResponse.json({ error: 'Falta agent_id' }, { status: 400 }) };
 
   const supabase = createAdminClient();
-  const { data: row } = await supabase
-    .from('integration_accounts')
-    .select('account_label, metadata, status')
-    .eq('portal_email', gate.portalEmail!)
-    .eq('capability', 'email')
-    .eq('provider', 'imap_smtp')
+  const { data: agent } = await supabase
+    .from('voice_agents')
+    .select('id, portal_email, features')
+    .eq('id', agentId)
     .maybeSingle();
+  if (!agent) return { error: NextResponse.json({ error: 'Agent not found' }, { status: 404 }) };
+  if ((agent as { portal_email: string | null }).portal_email !== resolved.portalEmail)
+    return { error: NextResponse.json({ error: 'Agent no pertenece al org' }, { status: 403 }) };
 
-  const meta = (row?.metadata as Record<string, unknown> | null) ?? {};
-  const config: PublicConfig = {
-    configured:   !!row,
-    host:         (meta.host as string | undefined) ?? null,
-    port:         (meta.port as number | undefined) ?? null,
-    secure:       (meta.secure as boolean | undefined) ?? true,
-    username:     (row?.account_label as string | null) ?? null,
-    from_display: (meta.from_display as string | undefined) ?? null,
-    status:       (row?.status as 'active' | 'error' | null) ?? null,
+  return {
+    portalEmail: resolved.portalEmail,
+    agent:       agent as { id: string; portal_email: string; features: Record<string, unknown> | null },
+    supabase,
   };
-  return NextResponse.json(config);
+}
+
+function readSmtp(agent: { features: Record<string, unknown> | null }): SmtpConfigJson | null {
+  const features = agent.features ?? {};
+  const smtp = features['smtp_config'] as Partial<SmtpConfigJson> | undefined;
+  if (!smtp || !smtp.host || !smtp.username) return null;
+  return {
+    host:         smtp.host,
+    port:         smtp.port ?? 465,
+    secure:       smtp.secure !== false,
+    username:     smtp.username,
+    password_enc: smtp.password_enc ?? '',
+    from_display: smtp.from_display ?? null,
+    status:       (smtp.status as 'active' | 'error' | undefined) ?? 'active',
+    updated_at:   smtp.updated_at ?? new Date().toISOString(),
+  };
+}
+
+export async function GET(req: NextRequest, { params }: Params) {
+  const { token } = await params;
+  const gate = await requireAgent(req, token);
+  if (gate.error) return gate.error;
+
+  const cfg = readSmtp(gate.agent!);
+  const publicCfg: PublicConfig = cfg
+    ? {
+        configured:   true,
+        host:         cfg.host,
+        port:         cfg.port,
+        secure:       cfg.secure,
+        username:     cfg.username,
+        from_display: cfg.from_display,
+        status:       cfg.status,
+      }
+    : {
+        configured:   false,
+        host:         null,
+        port:         null,
+        secure:       true,
+        username:     null,
+        from_display: null,
+        status:       null,
+      };
+  return NextResponse.json(publicCfg);
 }
 
 interface SaveBody {
@@ -64,14 +110,12 @@ interface SaveBody {
   username:     string;
   password:     string;
   from_display?: string;
-  /** Si true, además de guardar manda un correo de prueba al mismo username
-   *  (self-test) para confirmar delivery end-to-end. */
   send_test?:   boolean;
 }
 
 export async function POST(req: NextRequest, { params }: Params) {
   const { token } = await params;
-  const gate = await requireOrg(token);
+  const gate = await requireAgent(req, token);
   if (gate.error) return gate.error;
 
   const body = (await req.json()) as Partial<SaveBody>;
@@ -87,7 +131,6 @@ export async function POST(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Faltan campos: host, port, username, password son obligatorios.' }, { status: 400 });
   }
 
-  // 1. Verificar creds — si falla, no guardamos nada.
   try {
     await verifySmtpCreds({ host, port, secure, username, password });
   } catch (err) {
@@ -95,16 +138,13 @@ export async function POST(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: `No pude autenticar contra ${host}:${port}. ${msg}` }, { status: 400 });
   }
 
-  // 2. (Opcional) mandar correo de prueba al mismo username para probar
-  //    delivery end-to-end. Muchos SMTP servers aceptan autenticación pero
-  //    rechazan silenciosamente el send (rate limit, spam filter interno).
   if (sendTest) {
     try {
       await sendViaSmtp(
         { host, port, secure, username, password, fromDisplay },
         username,
         'Centinelia — Correo de prueba del portal',
-        'Este es un correo de prueba enviado desde el portal de Centinelia para confirmar que tu servidor SMTP está configurado correctamente. Si lo recibes, tus empleados digitales ya pueden enviar correos desde este buzón.',
+        'Este es un correo de prueba enviado desde el portal de Centinelia para confirmar que tu servidor SMTP está configurado correctamente. Si lo recibes, tu empleado ya puede enviar correos desde este buzón.',
       );
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -112,61 +152,34 @@ export async function POST(req: NextRequest, { params }: Params) {
     }
   }
 
-  // 3. Persistir. Password encriptada en access_token, host/port/secure en metadata.
-  const supabase = createAdminClient();
-  const encryptedPass = encrypt(password);
-  const metadata = { host, port, secure, username, from_display: fromDisplay ?? null };
-
-  // Upsert manual: buscar existente por (portal_email, capability, provider) y
-  // reemplazar. onConflict directo no aplica porque no hay unique constraint
-  // en esa tupla.
-  const { data: existing } = await supabase
-    .from('integration_accounts')
-    .select('id')
-    .eq('portal_email', gate.portalEmail!)
-    .eq('capability', 'email')
-    .eq('provider', 'imap_smtp')
-    .maybeSingle();
-
-  if (existing) {
-    const { error } = await supabase
-      .from('integration_accounts')
-      .update({
-        account_label: username,
-        access_token:  encryptedPass,
-        metadata,
-        status:        'active',
-      })
-      .eq('id', existing.id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  } else {
-    const { error } = await supabase.from('integration_accounts').insert({
-      portal_email:  gate.portalEmail!,
-      provider:      'imap_smtp',
-      capability:    'email',
-      account_label: username,
-      access_token:  encryptedPass,
-      metadata,
-      status:        'active',
-    });
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  }
+  const nextSmtp: SmtpConfigJson = {
+    host, port, secure, username,
+    password_enc: encrypt(password),
+    from_display: fromDisplay ?? null,
+    status:       'active',
+    updated_at:   new Date().toISOString(),
+  };
+  const nextFeatures = { ...(gate.agent!.features ?? {}), smtp_config: nextSmtp };
+  const { error } = await gate.supabase!
+    .from('voice_agents')
+    .update({ features: nextFeatures })
+    .eq('id', gate.agent!.id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   return NextResponse.json({ ok: true, test_sent: sendTest });
 }
 
-export async function DELETE(_req: NextRequest, { params }: Params) {
+export async function DELETE(req: NextRequest, { params }: Params) {
   const { token } = await params;
-  const gate = await requireOrg(token);
+  const gate = await requireAgent(req, token);
   if (gate.error) return gate.error;
 
-  const supabase = createAdminClient();
-  const { error } = await supabase
-    .from('integration_accounts')
-    .delete()
-    .eq('portal_email', gate.portalEmail!)
-    .eq('capability', 'email')
-    .eq('provider', 'imap_smtp');
+  const nextFeatures = { ...(gate.agent!.features ?? {}) };
+  delete (nextFeatures as Record<string, unknown>)['smtp_config'];
+  const { error } = await gate.supabase!
+    .from('voice_agents')
+    .update({ features: nextFeatures })
+    .eq('id', gate.agent!.id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

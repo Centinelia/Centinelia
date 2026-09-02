@@ -31,7 +31,6 @@ import ApprovalEmailEditor          from '../ApprovalEmailEditor';
 import CallForwardingSection   from '../CallForwardingSection';
 import FallbackNumberSection  from '../FallbackNumberSection';
 import AgentEmailSection     from '../AgentEmailSection';
-import SmtpConnectSection    from '../SmtpConnectSection';
 import SpamFolderToggle      from '../SpamFolderToggle';
 import AutomationsSection    from './AutomationsSection';
 import { BriefDelDiaSection } from './BriefDelDiaSection';
@@ -549,17 +548,7 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
                     tooltip="Conecta la cuenta de correo que este empleado usará para enviar y leer mensajes."
                     className="mb-4"
                   />
-                  <AgentEmailSection token={token} />
-
-                    <div className="mt-5 pt-5" style={{ borderTop: '1px solid var(--c-border)' }}>
-                      <SectionHeader
-                        as="h3"
-                        title="O usa tu correo del hosting (SMTP)"
-                        tooltip="Si tu correo NO es Gmail ni Outlook (Telmex, Titan, cPanel, etc.), conéctalo directo por SMTP. Los empleados envían desde tu dominio sin OAuth."
-                        className="mb-3"
-                      />
-                      <SmtpConnectSection token={token} />
-                    </div>
+                  <AgentEmailSection token={token} agentId={agent.id as string} />
 
                     {connectedEmail && (
                       <div className="mt-5 pt-5" style={{ borderTop: '1px solid var(--c-border)' }}>
