@@ -182,16 +182,9 @@
       "schedule": "0 * * * *"
     },
     {
-      "path": "/api/cron/nala-mailbox",
-      "schedule": "*/10 * * * *"
-    },
-    {
-      "path": "/api/cron/nala-billing-cycle",
-      "schedule": "0 15 * * *"
-    },
-    {
-      "path": "/api/cron/nala-payment-reminders",
-      "schedule": "0 16 * * *"
+      "//": "Nala crons pausados 2026-09-03 hasta contratar Facturama API prod. Restaurar cuando esté listo.",
+      "//path": "/api/cron/nala-mailbox",
+      "//schedule": "*/10 * * * *"
     },
     {
       "path": "/api/cron/pilot-monitor",
