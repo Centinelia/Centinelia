@@ -10,6 +10,7 @@ namespace Centinelia.BillingContpaqi.Writer;
 ///   <c>--mode session</c>   Day 1: abre + cierra sesión + empresa. Reporta versión SDK.
 ///   <c>--mode find</c>      Day 2a: busca cliente y producto por código en el catálogo real.
 ///   <c>--mode create</c>    Day 2b: crea un documento nuevo con 1 línea (queda "Sin afectar").
+///   <c>--mode stamp</c>     Day 4: timbra un documento afectado por concepto + serie + folio.
 ///
 /// Ejemplos:
 ///   BillingContpaqiWriter --mode session
@@ -57,6 +58,15 @@ public static class Program
                     Console.WriteLine($"[writer] Cliente '{opts.Cliente}' encontrado en catálogo");
                     session.FindProducto(opts.Producto!);
                     Console.WriteLine($"[writer] Producto '{opts.Producto}' encontrado en catálogo");
+                    break;
+
+                case "stamp":
+                    Require(opts.Concepto, "--concepto");
+                    Require(opts.Serie,    "--serie");
+                    if (opts.Folio <= 0) throw new ArgumentException("Requiere --folio > 0");
+                    session.StampDocument(opts.Concepto!, opts.Serie!, opts.Folio, opts.CsdPassword ?? "");
+                    Console.WriteLine($"[writer] Documento {opts.Concepto}-{opts.Serie}-{opts.Folio} timbrado (o el PAC devolvió éxito).");
+                    Console.WriteLine("[writer] Verificar XML+PDF en la carpeta XML_SDK del directorio de la empresa.");
                     break;
 
                 case "create":
@@ -133,7 +143,9 @@ public static class Program
         string? Producto,
         double Cantidad,
         double Precio,
-        string Almacen);
+        string Almacen,
+        double Folio,
+        string? CsdPassword);
 
     private static CliOptions? ParseArgs(string[] args)
     {
@@ -146,6 +158,8 @@ public static class Program
         string? concepto = null, serie = null, cliente = null, producto = null;
         double cantidad = 1, precio = 0;
         string almacen = "1";   // "Almacen Uno" es el default estándar en CONTPAQi Comercial.
+        double folio = 0;
+        string? csdPassword = null;
 
         for (var i = 0; i < args.Length; i++)
         {
@@ -161,6 +175,8 @@ public static class Program
                 case "--cliente":   cliente  = args[++i]; break;
                 case "--producto":  producto = args[++i]; break;
                 case "--almacen":   almacen  = args[++i]; break;
+                case "--folio":     folio    = double.Parse(args[++i], System.Globalization.CultureInfo.InvariantCulture); break;
+                case "--csd-pwd":   csdPassword = args[++i]; break;
                 case "--cantidad":  cantidad = double.Parse(args[++i], System.Globalization.CultureInfo.InvariantCulture); break;
                 case "--precio":    precio   = double.Parse(args[++i], System.Globalization.CultureInfo.InvariantCulture); break;
                 case "--help":
@@ -174,7 +190,8 @@ public static class Program
             }
         }
         return new CliOptions(sdk, empresa, usuario, password, mode,
-                              concepto, serie, cliente, producto, cantidad, precio, almacen);
+                              concepto, serie, cliente, producto, cantidad, precio, almacen,
+                              folio, csdPassword);
     }
 
     private static void PrintUsage()
@@ -193,12 +210,19 @@ public static class Program
           --cliente <codigo> --producto <codigo>
 
         Modo 'create':
-          --concepto <cod>   ej. "4.0 CFDI FACTURA"
+          --concepto <cod>   ej. 440 (ID interno "4.0 CFDI FACTURA")
           --serie <serie>    ej. FTEN
           --cliente <codigo> ej. 008
           --producto <codigo>ej. 021
           --cantidad <n>     ej. 5
           --precio <n>       ej. 6.50
+          --almacen <cod>    default: 1
+
+        Modo 'stamp':
+          --concepto <cod>   ej. 440
+          --serie <serie>    ej. FTEN
+          --folio <n>        ej. 72852
+          --csd-pwd <pwd>    password del CSD cargado en CONTPAQi (default "")
         """);
     }
 }
