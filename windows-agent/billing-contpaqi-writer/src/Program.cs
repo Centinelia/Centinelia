@@ -19,7 +19,7 @@ namespace Centinelia.BillingContpaqi.Writer;
 ///
 /// Defaults asumen la empresa piloto local:
 ///   --sdk      "C:\Program Files (x86)\Compac\COMERCIAL\SDK"
-///   --empresa  "C:\Compac\Empresas\adTortillasEstrella_PILOTO_D"
+///   --empresa  "C:\Compac\Empresas\adTortillasEstrella_PILOTO_DEV"
 ///   --usuario  SUPERVISOR
 ///   --password ""
 /// </summary>
@@ -84,6 +84,7 @@ public static class Program
                         CodigoProducto = opts.Producto!,
                         Cantidad       = opts.Cantidad,
                         PrecioUnitario = opts.Precio,
+                        CodigoAlmacen  = opts.Almacen,
                     };
                     var idMov = session.AddLine(idDoc, line);
                     Console.WriteLine($"[writer] Movimiento agregado con ID interno: {idMov}");
@@ -131,18 +132,20 @@ public static class Program
         string? Cliente,
         string? Producto,
         double Cantidad,
-        double Precio);
+        double Precio,
+        string Almacen);
 
     private static CliOptions? ParseArgs(string[] args)
     {
         // MGWServicios.dll vive en el folder padre COMERCIAL, no en el subdirectorio SDK/.
         string sdk      = @"C:\Program Files (x86)\Compac\COMERCIAL";
-        string empresa  = @"C:\Compac\Empresas\adTortillasEstrella_PILOTO_D";
+        string empresa  = @"C:\Compac\Empresas\adTortillasEstrella_PILOTO_DEV";
         string usuario  = "SUPERVISOR";
         string password = "";
         string mode     = "session";
         string? concepto = null, serie = null, cliente = null, producto = null;
         double cantidad = 1, precio = 0;
+        string almacen = "1";   // "Almacen Uno" es el default estándar en CONTPAQi Comercial.
 
         for (var i = 0; i < args.Length; i++)
         {
@@ -157,6 +160,7 @@ public static class Program
                 case "--serie":     serie    = args[++i]; break;
                 case "--cliente":   cliente  = args[++i]; break;
                 case "--producto":  producto = args[++i]; break;
+                case "--almacen":   almacen  = args[++i]; break;
                 case "--cantidad":  cantidad = double.Parse(args[++i], System.Globalization.CultureInfo.InvariantCulture); break;
                 case "--precio":    precio   = double.Parse(args[++i], System.Globalization.CultureInfo.InvariantCulture); break;
                 case "--help":
@@ -170,7 +174,7 @@ public static class Program
             }
         }
         return new CliOptions(sdk, empresa, usuario, password, mode,
-                              concepto, serie, cliente, producto, cantidad, precio);
+                              concepto, serie, cliente, producto, cantidad, precio, almacen);
     }
 
     private static void PrintUsage()
@@ -181,7 +185,7 @@ public static class Program
 
         Flags comunes:
           --sdk <ruta>       default: C:\Program Files (x86)\Compac\COMERCIAL\SDK
-          --empresa <ruta>   default: C:\Compac\Empresas\adTortillasEstrella_PILOTO_D
+          --empresa <ruta>   default: C:\Compac\Empresas\adTortillasEstrella_PILOTO_DEV
           --usuario <nom>    default: SUPERVISOR
           --password <pwd>   default: (vacío)
 
