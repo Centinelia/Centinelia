@@ -36,7 +36,10 @@ public static class Program
 
         try
         {
-            Console.WriteLine($"[writer] SDK version: {ContpaqiSession.GetSdkVersion()}");
+            // Registrar el path del SDK ANTES del primer P/Invoke.
+            ContpaqiSession.RegisterSdkPath(opts.SdkPath);
+            // fVersionSDK no está exportada por MGWServicios.dll (validado 2026-09-03).
+            // Se removió del smoke; puede resurgir si encontramos el nombre correcto.
 
             using var session = ContpaqiSession.Open(opts.SdkPath, opts.Usuario, opts.Password, opts.EmpresaPath);
             Console.WriteLine("[writer] Sesión + empresa abiertas OK");
@@ -132,7 +135,8 @@ public static class Program
 
     private static CliOptions? ParseArgs(string[] args)
     {
-        string sdk      = @"C:\Program Files (x86)\Compac\COMERCIAL\SDK";
+        // MGWServicios.dll vive en el folder padre COMERCIAL, no en el subdirectorio SDK/.
+        string sdk      = @"C:\Program Files (x86)\Compac\COMERCIAL";
         string empresa  = @"C:\Compac\Empresas\adTortillasEstrella_PILOTO_D";
         string usuario  = "SUPERVISOR";
         string password = "";
