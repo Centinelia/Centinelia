@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { isAdmin } from '@/lib/admin/auth';
 import { MEERKAT_ROLES } from '@/lib/portal/meerkat-roles';
 import { getCentineliaFiscalConfig, isFacturamaSandbox } from '@/lib/invoicing/facturama/centinelia-preset';
-import { ArrowLeft, FileText, ShieldCheck, KeyRound, Zap, MessageCircle, MailCheck } from 'lucide-react';
+import { ArrowLeft, FileText, ShieldCheck, KeyRound, Zap, MessageCircle, MailCheck, Users, Clock } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -75,6 +75,22 @@ export default async function NalaConfigPage() {
           >
             <MessageCircle size={14} />
             Hablar con Nala
+          </Link>
+          <Link
+            href="/admin/staff/nala/clientes"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90"
+            style={{ background: 'rgba(161,98,7,0.1)', color: '#a16207', border: '1px solid rgba(161,98,7,0.3)' }}
+          >
+            <Users size={14} />
+            Clientes
+          </Link>
+          <Link
+            href="/admin/staff/nala/pagos-pendientes"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90"
+            style={{ background: 'rgba(245,158,11,0.1)', color: '#b45309', border: '1px solid rgba(245,158,11,0.3)' }}
+          >
+            <Clock size={14} />
+            Pagos pendientes
           </Link>
           <Link
             href="/admin/staff/nala/test-email"

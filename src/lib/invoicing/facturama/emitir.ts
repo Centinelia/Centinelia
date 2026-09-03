@@ -16,6 +16,19 @@ import { facturamaProvider } from './index';
 import { basicAuthHeader, facturamaFetchPdf } from './api-client';
 import { sendEmail } from '@/lib/email/send';
 
+/**
+ * Sender custom para el correo del CFDI. Cuando se pasa, se usa en vez de
+ * Resend (el default). Típicamente: Titan SMTP desde hola@centinelia.mx con
+ * firma Nala para que aparezca como si Nala hubiera mandado el correo.
+ * Debe retornar true si el envío fue exitoso.
+ */
+export type CfdiSender = (input: {
+  to: string;
+  subject: string;
+  html: string;
+  attachments: Array<{ filename: string; content: Buffer; contentType: string }>;
+}) => Promise<boolean>;
+
 export interface EmitirOpts {
   testMode: boolean;
   timeoutMs?: number;
@@ -26,6 +39,8 @@ export interface EmitirOpts {
   emailSubject?: string;
   emailBody?: string;
   emailFrom?: string;
+  /** Sender custom. Si se omite, cae a Resend con from=emailFrom o default. */
+  sender?: CfdiSender;
 }
 
 export interface EmitirResult {
@@ -88,22 +103,47 @@ async function uploadToStorage(
   return { xml: xmlPath, pdf: files.pdf ? pdfPath : '', qr: qrPath };
 }
 
+function fmtMoney(n: number): string {
+  return `$${n.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MXN`;
+}
+
 async function deliverByEmail(
   to: string, subject: string, html: string, from: string | undefined,
   uuid: string, xml: Buffer, pdf: Buffer | null,
+  sender?: CfdiSender,
 ): Promise<boolean> {
+  if (sender) {
+    // Sender custom (típicamente Titan SMTP desde hola@centinelia.mx con firma Nala)
+    const attachments: Array<{ filename: string; content: Buffer; contentType: string }> = [
+      { filename: `${uuid}.xml`, content: xml, contentType: 'application/xml' },
+    ];
+    if (pdf) attachments.push({ filename: `${uuid}.pdf`, content: pdf, contentType: 'application/pdf' });
+    return sender({ to, subject, html, attachments });
+  }
+  // Fallback Resend
   const attachments = [{ filename: `${uuid}.xml`, content: xml.toString('base64') }];
   if (pdf) attachments.push({ filename: `${uuid}.pdf`, content: pdf.toString('base64') });
   return sendEmail({ to, subject, html, from, attachments });
 }
 
-function defaultEmailBody(uuid: string, tipo: 'CFDI' | 'REP', total: number, emisorNombre: string): string {
-  const tipoLabel = tipo === 'REP' ? 'Complemento de Pago' : 'Factura';
-  return `<p>Hola,</p>
-<p>Adjuntamos el ${tipoLabel} correspondiente${total > 0 ? ` por $${total.toFixed(2)} MXN` : ''}.</p>
-<p><strong>UUID:</strong> ${uuid}</p>
-<p>Cualquier duda, respondemos por este mismo correo.</p>
-<p>Saludos,<br/>${emisorNombre}</p>`;
+function defaultEmailBody(uuid: string, tipo: 'CFDI' | 'REP', total: number, emisorNombre: string, hasCustomSender: boolean, relatedUuid?: string): string {
+  // Cuerpo cálido con personalidad Nala. Concreto, útil, sin frases genéricas
+  // tipo "cualquier duda respondemos por este mismo correo" (que suena a
+  // plantilla). El cliente ya sabe que puede responder — no hay que decirlo.
+  const cuerpo = tipo === 'CFDI'
+    ? `<p>Hola,</p>
+<p>Aquí va tu factura por <strong>${fmtMoney(total)}</strong>. Adjunto el XML y el PDF para que puedas cargarla en tu contabilidad.</p>
+<p>Cuando programes el pago, mándame el comprobante SPEI a este mismo correo y te emito el complemento al momento.</p>
+<p><span style="color:#8C7FB8;font-size:11px">UUID: <code>${uuid}</code></span></p>`
+    : `<p>Hola,</p>
+<p>Ya llegó tu pago, gracias. Aquí va el complemento por <strong>${fmtMoney(total)}</strong>${relatedUuid ? ` correspondiente a la factura <code>...${relatedUuid.slice(-8)}</code>` : ''}. Con esto ya queda cerrado el ciclo.</p>
+<p>Nos vemos en el próximo corte.</p>
+<p><span style="color:#8C7FB8;font-size:11px">UUID: <code>${uuid}</code></span></p>`;
+
+  // Solo agregamos firma emisor cuando NO hay sender custom (Resend fallback).
+  // Cuando hay sender custom (Titan+Nala), el sender agrega su propia firma.
+  if (hasCustomSender) return cuerpo;
+  return `${cuerpo}\n<p>Saludos,<br/>${emisorNombre}</p>`;
 }
 
 export async function emitirIngresoFacturama(
@@ -124,9 +164,9 @@ export async function emitirIngresoFacturama(
 
   let emailSent: boolean | undefined;
   if (opts.sendToEmail) {
-    const subject = opts.emailSubject ?? `Factura CFDI - ${stamp.uuid.slice(-8)} - $${cfdi.total.toFixed(2)}`;
-    const html = opts.emailBody ?? defaultEmailBody(stamp.uuid, 'CFDI', cfdi.total, cfdi.emisor.nombre);
-    emailSent = await deliverByEmail(opts.sendToEmail, subject, html, opts.emailFrom, stamp.uuid, stamp.xmlTimbrado, pdf);
+    const subject = opts.emailSubject ?? `Factura CFDI - ${stamp.uuid.slice(-8)} - ${fmtMoney(cfdi.total)}`;
+    const html = opts.emailBody ?? defaultEmailBody(stamp.uuid, 'CFDI', cfdi.total, cfdi.emisor.nombre, !!opts.sender);
+    emailSent = await deliverByEmail(opts.sendToEmail, subject, html, opts.emailFrom, stamp.uuid, stamp.xmlTimbrado, pdf, opts.sender);
   }
 
   return {
@@ -161,9 +201,9 @@ export async function emitirPagoFacturama(
 
   let emailSent: boolean | undefined;
   if (opts.sendToEmail) {
-    const subject = opts.emailSubject ?? `Complemento de Pago - ${stamp.uuid.slice(-8)} - $${pago.pago.monto.toFixed(2)}`;
-    const html = opts.emailBody ?? defaultEmailBody(stamp.uuid, 'REP', pago.pago.monto, pago.emisor.nombre);
-    emailSent = await deliverByEmail(opts.sendToEmail, subject, html, opts.emailFrom, stamp.uuid, stamp.xmlTimbrado, pdf);
+    const subject = opts.emailSubject ?? `Complemento de Pago - ${stamp.uuid.slice(-8)} - ${fmtMoney(pago.pago.monto)}`;
+    const html = opts.emailBody ?? defaultEmailBody(stamp.uuid, 'REP', pago.pago.monto, pago.emisor.nombre, !!opts.sender, pago.pago.documentosRelacionados[0]?.uuid);
+    emailSent = await deliverByEmail(opts.sendToEmail, subject, html, opts.emailFrom, stamp.uuid, stamp.xmlTimbrado, pdf, opts.sender);
   }
 
   return {

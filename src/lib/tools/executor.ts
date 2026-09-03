@@ -53,6 +53,7 @@ import {
   getCentineliaFiscalConfig, getFacturamaCredentials, isFacturamaSandbox,
 } from '@/lib/invoicing/facturama/centinelia-preset';
 import type { CfdiInput, PagoInput } from '@/lib/invoicing/provider';
+import { evaluarPagoParaAutoAprobacion } from '@/lib/billing/verify-payment-rules';
 import * as sheetsService from '@/lib/services/sheets';
 import { upsertLeadWithDedup, upsertOutboundContactWithDedup } from '@/lib/leads/dedup';
 
@@ -2238,6 +2239,45 @@ async function executeAgentToolInner(
 
       if (!result.ok) return { ok: false, error: `[${result.code}] ${result.message}` };
 
+      // Registra pago_recibido + rep_emitido en centinelia_billing para que el
+      // cron nala-payment-reminders sepa que ya se pagó este ciclo y deje de
+      // mandar recordatorios. Best effort — si falla el insert, el timbrado
+      // ya está hecho y ese fue lo importante.
+      try {
+        const { data: cfdiOriginal } = await supabase
+          .from('centinelia_billing')
+          .select('cliente_id, ciclo_key, monto')
+          .eq('cfdi_uuid', cfdiUuid)
+          .eq('tipo', 'cfdi_emitido')
+          .maybeSingle();
+
+        if (cfdiOriginal?.cliente_id) {
+          // pago_recibido: apaga los recordatorios
+          await supabase.from('centinelia_billing').insert({
+            cliente_id:    cfdiOriginal.cliente_id,
+            tipo:          'pago_recibido',
+            ciclo_key:     cfdiOriginal.ciclo_key,
+            related_uuid:  cfdiUuid,
+            monto:         montoPago,
+            moneda:        'MXN',
+            meta: { fecha_pago: fechaPago, num_operacion: numOp, forma_pago: String(toolInput.forma_pago ?? '03') },
+          });
+          // rep_emitido: audit del complemento
+          await supabase.from('centinelia_billing').insert({
+            cliente_id:    cfdiOriginal.cliente_id,
+            tipo:          'rep_emitido',
+            ciclo_key:     cfdiOriginal.ciclo_key,
+            cfdi_uuid:     result.uuid,
+            related_uuid:  cfdiUuid,
+            monto:         montoPago,
+            moneda:        'MXN',
+            sent_to_email: emailReceptor ?? null,
+            sent_at:       result.emailSent ? new Date().toISOString() : null,
+            meta: { fecha_timbrado: result.fechaTimbrado },
+          });
+        }
+      } catch { /* best effort */ }
+
       return {
         ok: true,
         uuid: result.uuid,
@@ -2250,6 +2290,267 @@ async function executeAgentToolInner(
     } catch (e) {
       return { ok: false, error: `solicitar_complemento_pago: ${(e as Error).message}` };
     }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // registrar_pago_pendiente_verificacion — human-in-the-loop con auto-approve
+  //
+  // Nala llama esto (en vez de solicitar_complemento_pago directo) cuando llega
+  // comprobante SPEI de un cliente. Se evalúan reglas:
+  //   - CFDI original existe en centinelia_billing
+  //   - Cliente asociado activo
+  //   - Monto exacto (tolerancia $0.01)
+  //   - No hay pago_recibido previo para ese CFDI (dedupe)
+  //
+  // Si TODAS cumplen → dispara solicitar_complemento_pago (timbra REP + email al cliente).
+  // Si CUALQUIERA falla → guarda pago_pendiente_verificacion + notif a Nazre.
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'registrar_pago_pendiente_verificacion') {
+    try {
+      const cfdiUuid   = String(toolInput.cfdi_uuid_original ?? '');
+      const montoPago  = Number(toolInput.monto_pagado ?? 0);
+      const fechaPago  = String(toolInput.fecha_pago ?? '');
+      const numOp      = toolInput.num_operacion as string | undefined;
+      const emailReceptor = toolInput.receptor_email as string | undefined;
+
+      if (!cfdiUuid || !montoPago || !fechaPago) {
+        return { ok: false, error: 'cfdi_uuid_original, monto_pagado y fecha_pago son requeridos' };
+      }
+
+      // Evalúa reglas de auto-approve
+      const verification = await evaluarPagoParaAutoAprobacion(
+        { cfdi_uuid_original: cfdiUuid, monto_pagado: montoPago, fecha_pago: fechaPago, num_operacion: numOp, receptor_email: emailReceptor },
+        supabase,
+      );
+
+      if (verification.autoAprobar && verification.cfdiOriginal && verification.cliente) {
+        // AUTO-APPROVE: dispara timbrado del REP inmediato
+        const centinelia = getCentineliaFiscalConfig();
+        const creds      = getFacturamaCredentials();
+        const testMode   = isFacturamaSandbox();
+
+        const cliente = verification.cliente;
+        const cfdiOrig = verification.cfdiOriginal;
+
+        // Reconstruye datos del receptor desde centinelia_clientes
+        const { data: clienteFull } = await supabase
+          .from('centinelia_clientes')
+          .select('*')
+          .eq('id', cliente.id)
+          .single();
+
+        // IVA base = subtotal (monto sin IVA) del CFDI
+        const totalCfdi = Number(cfdiOrig.monto);
+        const ivaBase = +(totalCfdi / 1.16).toFixed(2);
+        const ivaImporte = +(totalCfdi - ivaBase).toFixed(2);
+
+        const pago: PagoInput = {
+          emisor: { rfc: centinelia.rfc, regimenFiscal: centinelia.regimenFiscal, nombre: centinelia.razonSocial },
+          receptor: {
+            rfc:             cliente.rfc,
+            nombre:          cliente.razon_social,
+            regimenFiscal:   clienteFull?.regimen_fiscal ?? '601',
+            domicilioFiscal: clienteFull?.cp ?? '',
+            usoCfdi:         'CP01',
+          },
+          lugarExpedicion: centinelia.lugarExpedicion,
+          pago: {
+            fechaPago,
+            formaDePagoP: String(toolInput.forma_pago ?? '03'),
+            monedaP: 'MXN',
+            monto: montoPago,
+            numOperacion: numOp,
+            documentosRelacionados: [{
+              uuid: cfdiUuid,
+              monedaDR: 'MXN',
+              metodoDePagoDR: 'PPD',
+              numParcialidad: 1,
+              impSaldoAnt: totalCfdi,
+              impPagado: montoPago,
+              impSaldoInsoluto: 0,
+              objetoImpDR: '02',
+              taxes: [{
+                base: ivaBase, impuesto: '002', tipoFactor: 'Tasa',
+                tasaOCuota: 0.16, importe: ivaImporte, isRetencion: false,
+              }],
+            }],
+          },
+          csd: { cerPem: '', keyPem: '', noCertificado: '' },
+          pacCredentials: creds,
+        };
+
+        const emailDestino = emailReceptor ?? cliente.correo_facturacion;
+        const { nalaCfdiSender } = await import('@/lib/ops/nala-cfdi-sender');
+        const result = await emitirPagoFacturama(pago, {
+          testMode, timeoutMs: 60000,
+          sendToEmail: emailDestino,
+          sender: nalaCfdiSender,
+        });
+
+        if (!result.ok) {
+          return { ok: false, error: `Auto-approve pasó pero timbrado falló: [${result.code}] ${result.message}` };
+        }
+
+        // Registra pago_recibido + rep_emitido con auto_approved flag
+        await supabase.from('centinelia_billing').insert({
+          cliente_id: cliente.id,
+          tipo: 'pago_recibido',
+          ciclo_key: cfdiOrig.ciclo_key,
+          related_uuid: cfdiUuid,
+          monto: montoPago,
+          moneda: 'MXN',
+          meta: { fecha_pago: fechaPago, num_operacion: numOp, forma_pago: String(toolInput.forma_pago ?? '03'), auto_approved: true },
+        });
+        await supabase.from('centinelia_billing').insert({
+          cliente_id: cliente.id,
+          tipo: 'rep_emitido',
+          ciclo_key: cfdiOrig.ciclo_key,
+          cfdi_uuid: result.uuid,
+          related_uuid: cfdiUuid,
+          monto: montoPago, moneda: 'MXN',
+          sent_to_email: emailDestino,
+          sent_at: result.emailSent ? new Date().toISOString() : null,
+          meta: { fecha_timbrado: result.fechaTimbrado, auto_approved: true },
+        });
+
+        return {
+          ok: true,
+          auto_aprobado: true,
+          rep_uuid: result.uuid,
+          monto_pagado: montoPago,
+          cliente: cliente.razon_social,
+          message: `Auto-approve OK. REP timbrado (${result.uuid}) y enviado a ${emailDestino}. Total pagado $${montoPago.toFixed(2)} por CFDI ${cfdiUuid.slice(-8)}.`,
+        };
+      }
+
+      // NO auto-approve: guarda pending + notifica a Nazre
+      const { data: eventoPendiente } = await supabase
+        .from('centinelia_billing')
+        .insert({
+          cliente_id:    verification.cliente?.id ?? null,
+          tipo:          'pago_pendiente_verificacion',
+          related_uuid:  cfdiUuid,
+          monto:         montoPago,
+          moneda:        'MXN',
+          sent_to_email: emailReceptor ?? null,
+          meta: {
+            fecha_pago: fechaPago,
+            num_operacion: numOp,
+            forma_pago: String(toolInput.forma_pago ?? '03'),
+            motivos: verification.motivos,
+            cfdi_encontrado: !!verification.cfdiOriginal,
+            cliente_encontrado: !!verification.cliente,
+            cliente_razon_social: verification.cliente?.razon_social ?? null,
+          },
+        })
+        .select('id')
+        .single();
+
+      // Notif a Nazre
+      const nazreEmail = process.env.NAZRE_ADMIN_EMAIL ?? 'nazre20@gmail.com';
+      const { sendEmail } = await import('@/lib/email/send');
+      const clienteName = verification.cliente?.razon_social ?? '(cliente sin identificar)';
+      const motivosHtml = verification.motivos.map(m => `<li>${m}</li>`).join('');
+      await sendEmail({
+        to: nazreEmail,
+        subject: `[Nala] Pago requiere tu aprobación — ${clienteName} $${montoPago.toFixed(2)}`,
+        html: `<p><strong>Nala recibió un comprobante SPEI que requiere tu aprobación manual</strong></p>
+<p><strong>Cliente:</strong> ${clienteName}<br/>
+<strong>Monto reportado:</strong> $${montoPago.toLocaleString('es-MX', { minimumFractionDigits: 2 })}<br/>
+<strong>UUID CFDI referenciado:</strong> <code>${cfdiUuid}</code><br/>
+<strong>Fecha SPEI:</strong> ${fechaPago}<br/>
+${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
+</p>
+<p><strong>Motivos por los que NO se auto-aprobó:</strong></p>
+<ul>${motivosHtml}</ul>
+<p><strong>Acción:</strong> revisa en <a href="https://www.centinelia.mx/admin/staff/nala/pagos-pendientes">Pagos pendientes</a> y aprueba (o rechaza) desde el admin.</p>`,
+      }).catch(() => { /* best effort */ });
+
+      return {
+        ok: true,
+        auto_aprobado: false,
+        evento_id: eventoPendiente?.id,
+        motivos: verification.motivos,
+        message: `Pago registrado como pendiente de verificación (${verification.motivos.length} discrepancia${verification.motivos.length !== 1 ? 's' : ''}). Nazre notificado, aprobará manual.`,
+      };
+    } catch (e) {
+      return { ok: false, error: `registrar_pago_pendiente_verificacion: ${(e as Error).message}` };
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // pedir_datos_faltantes — Nala marca que necesita más datos del cliente
+  // (RFC, CP, UUID original, monto, etc). Es un no-op técnico: solo señala
+  // al runner que sí debe enviar la respuesta al cliente aunque no haya
+  // timbrado. El texto real de la petición lo redacta Nala en su reply final.
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'pedir_datos_faltantes') {
+    const campos = (toolInput.campos_faltantes as string[] | undefined) ?? [];
+    const razon  = String(toolInput.razon ?? '');
+    return {
+      ok:      true,
+      message: `Marcado: ${campos.length} campo(s) faltante(s)${razon ? ` — ${razon}` : ''}. Redacta la petición al cliente en tu reply final.`,
+      campos_faltantes: campos,
+    };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // reportar_bug_a_nash — Nala reporta un bug/limitación del sistema a Nash
+  // insertando fila en platform_incidents (source='manual'). Nash lo procesa
+  // en su siguiente corrida del cron nash-monitor. NO se envía respuesta al
+  // cliente cuando Nala solo llama esta tool (guardarraíl en nala-email-runner).
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'reportar_bug_a_nash') {
+    const title       = String(toolInput.title       ?? '').trim();
+    const description = String(toolInput.description ?? '').trim();
+    const priority    = String(toolInput.priority    ?? 'med');
+    const sourceIdIn  = toolInput.source_id != null ? String(toolInput.source_id) : null;
+
+    if (!title || !description) {
+      return { ok: false, error: 'title y description son obligatorios' };
+    }
+    if (!['low', 'med', 'high', 'critical'].includes(priority)) {
+      return { ok: false, error: `priority inválida: ${priority}` };
+    }
+
+    // Dedupe por source_id si se pasó
+    if (sourceIdIn) {
+      const { data: existing } = await supabase
+        .from('platform_incidents')
+        .select('id, status')
+        .eq('source', 'manual')
+        .eq('source_id', sourceIdIn)
+        .not('status', 'in', '(resolved,closed)')
+        .limit(1)
+        .maybeSingle();
+      if (existing?.id) {
+        return { ok: true, incident_id: existing.id, deduped: true, existing_status: existing.status };
+      }
+    }
+
+    const { data: incident, error: insErr } = await supabase
+      .from('platform_incidents')
+      .insert({
+        title,
+        description: `[Reportado por Nala desde correo entrante]\n\n${description}`,
+        priority,
+        source:    'manual',
+        source_id: sourceIdIn,
+        status:    'open',
+        reporter:  'nala',
+      })
+      .select('id')
+      .single();
+
+    if (insErr || !incident) {
+      return { ok: false, error: `insert platform_incidents: ${insErr?.message ?? 'unknown'}` };
+    }
+
+    return {
+      ok:          true,
+      incident_id: incident.id,
+      message:     `Bug reportado a Nash (incident_id=${incident.id}). Nash lo procesará en su próxima corrida.`,
+    };
   }
 
   // ─────────────────────────────────────────────────────────────────────────
