@@ -1,0 +1,88 @@
+{
+  "format": 1,
+  "restore": {
+    "C:\\Users\\Nazre\\centinelia\\.claude\\worktrees\\nala-pilot-windows-writer\\windows-agent\\billing-contpaqi-writer\\src\\BillingContpaqiWriter.csproj": {}
+  },
+  "projects": {
+    "C:\\Users\\Nazre\\centinelia\\.claude\\worktrees\\nala-pilot-windows-writer\\windows-agent\\billing-contpaqi-writer\\src\\BillingContpaqiWriter.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\Users\\Nazre\\centinelia\\.claude\\worktrees\\nala-pilot-windows-writer\\windows-agent\\billing-contpaqi-writer\\src\\BillingContpaqiWriter.csproj",
+        "projectName": "BillingContpaqiWriter",
+        "projectPath": "C:\\Users\\Nazre\\centinelia\\.claude\\worktrees\\nala-pilot-windows-writer\\windows-agent\\billing-contpaqi-writer\\src\\BillingContpaqiWriter.csproj",
+        "packagesPath": "C:\\Users\\Nazre\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\Nazre\\centinelia\\.claude\\worktrees\\nala-pilot-windows-writer\\windows-agent\\billing-contpaqi-writer\\src\\obj\\",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "C:\\Users\\Nazre\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0-windows"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0-windows7.0": {
+            "targetAlias": "net8.0-windows",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0-windows7.0": {
+          "targetAlias": "net8.0-windows",
+          "dependencies": {
+            "Dropbox.Api": {
+              "target": "Package",
+              "version": "[7.0.0, )"
+            },
+            "Microsoft.Extensions.Configuration": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            },
+            "Microsoft.Extensions.Configuration.Json": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            },
+            "Microsoft.Extensions.Logging": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            },
+            "Microsoft.Extensions.Logging.Console": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.424/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}

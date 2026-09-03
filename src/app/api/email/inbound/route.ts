@@ -227,7 +227,7 @@ export async function POST(req: NextRequest) {
   if (agentMatch) {
     const { data: targetAgent, error: targetAgentErr } = await supabase
       .from('voice_agents')
-      .select('id, portal_email, agent_name, role, knowledge_base, role_knowledge_base, business_name, client_email, portal_token, email_from, email_domain_verified, trust_stage, features, approval_email, auto_mode')
+      .select('id, portal_email, agent_name, role, role_knowledge_base, business_name, client_email, portal_token, email_from, email_domain_verified, trust_stage, features, approval_email, auto_mode')
       .eq('id', agentMatch.agentId)
       .single();
     console.log('[email-inbound] targetAgent fetch', { agentId: agentMatch.agentId, found: !!targetAgent, err: targetAgentErr?.message });
@@ -338,7 +338,7 @@ export async function POST(req: NextRequest) {
           attachments:   agentStoredAttachments,
           agentName:     (targetAgent.agent_name as string | null) ?? 'Centinelia',
           businessName:  targetAgent.business_name as string,
-          knowledgeBase: (orgDataAgt?.knowledge_base as string | null) ?? (targetAgent.knowledge_base as string | null),
+          knowledgeBase: (orgDataAgt?.knowledge_base as string | null) ?? null,
           roleKB:        targetAgent.role_knowledge_base as string | null,
           agentRole:     targetAgent.role as string | null,
           ownerEmail,
@@ -363,7 +363,7 @@ export async function POST(req: NextRequest) {
   // autoMode resolver — sin ellas Nova nunca enviaría reply automático.
   const { data: agents } = await supabase
     .from('voice_agents')
-    .select('id, role, knowledge_base, role_knowledge_base, business_name, client_email, portal_token, agent_name, email_from, email_domain_verified, trust_stage, features, approval_email, auto_mode')
+    .select('id, role, role_knowledge_base, business_name, client_email, portal_token, agent_name, email_from, email_domain_verified, trust_stage, features, approval_email, auto_mode')
     .eq('portal_email', portalEmail)
     .order('created_at', { ascending: true });
 
@@ -513,7 +513,7 @@ export async function POST(req: NextRequest) {
       attachments:   storedAttachments,
       agentName:     (opsAgent.agent_name as string | null) ?? 'Centinelia',
       businessName:  opsAgent.business_name as string,
-      knowledgeBase: (orgData?.knowledge_base as string | null) ?? (opsAgent.knowledge_base as string | null),
+      knowledgeBase: (orgData?.knowledge_base as string | null) ?? null,
       roleKB:        opsAgent.role_knowledge_base as string | null,
       agentRole:     opsAgent.role as string | null,
       ownerEmail,
