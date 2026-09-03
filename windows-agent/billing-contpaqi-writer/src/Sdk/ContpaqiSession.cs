@@ -28,15 +28,26 @@ public sealed class ContpaqiSession : IDisposable
 
     private ContpaqiSession() { }
 
-    /// <summary>Abre una sesión SDK + una empresa.</summary>
-    public static ContpaqiSession Open(string sdkPath, string usuario, string password, string rutaEmpresa)
+    /// <summary>
+    /// Añade el directorio del SDK a la lista de búsqueda de DLLs. Debe
+    /// invocarse ANTES de cualquier P/Invoke al SDK (incluyendo
+    /// <see cref="GetSdkVersion"/> y <see cref="DescribeError"/>), o el
+    /// runtime tira <c>DllNotFoundException</c> al buscar
+    /// <c>MGWServicios.dll</c> solo en el PATH del sistema.
+    /// </summary>
+    public static void RegisterSdkPath(string sdkPath)
     {
         if (!SetDllDirectory(sdkPath))
         {
             var err = Marshal.GetLastPInvokeError();
             throw new InvalidOperationException($"SetDllDirectory falló con código {err} para ruta '{sdkPath}'");
         }
+    }
 
+    /// <summary>Abre una sesión SDK + una empresa. Llama <see cref="RegisterSdkPath"/> internamente.</summary>
+    public static ContpaqiSession Open(string sdkPath, string usuario, string password, string rutaEmpresa)
+    {
+        RegisterSdkPath(sdkPath);
         var session = new ContpaqiSession();
 
         var sesionResult = ContpaqiSdkNative.fInicioSesionSDK(usuario, password);
