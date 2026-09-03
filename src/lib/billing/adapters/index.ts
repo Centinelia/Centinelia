@@ -15,6 +15,7 @@ import type { BillingAdapter } from '../adapter';
 import { CONTPAQiAdapter } from './contpaqi';
 import { MockBillingAdapter } from './mock';
 import { DropboxClient } from '../storage/dropbox';
+import { LocalFilesStorage } from '../storage/local-files';
 import { encrypt, decrypt } from '@/lib/crypto';
 
 // ---------------------------------------------------------------------------
@@ -29,7 +30,17 @@ export interface OrganizationIntegrationConfig {
   /** Tipo de adaptador a instanciar. */
   type: 'contpaqi' | 'mock';
 
-  // --- Dropbox (requerido para type='contpaqi') ---
+  /**
+   * Backend de almacenamiento para CONTPAQi. Default `dropbox` para compat.
+   * `local_files` habilita dev/E2E sin depender del setup Dropbox del cliente:
+   * lee/escribe archivos en un directorio absoluto del filesystem local
+   * indicado por `local_base_path`.
+   */
+  storage_backend?: 'dropbox' | 'local_files';
+  /** Directorio absoluto local (solo cuando storage_backend='local_files'). */
+  local_base_path?: string;
+
+  // --- Dropbox (requerido para type='contpaqi' con storage_backend='dropbox') ---
   /** Token de acceso a la cuenta Dropbox de la organizacion. */
   dropbox_token?: string;
   /** Ruta raiz en Dropbox donde viven los archivos de la organizacion. Ej: '/acme/contpaqi'. */
@@ -110,14 +121,9 @@ export function encryptDropboxToken(plaintext: string): string {
 export function buildAdapter(config: OrganizationIntegrationConfig): BillingAdapter {
   switch (config.type) {
     case 'contpaqi': {
-      if (
-        !config.dropbox_token ||
-        !config.dropbox_base_path ||
-        !config.fiscal ||
-        !config.scheduled_task
-      ) {
+      if (!config.fiscal || !config.scheduled_task) {
         throw new Error(
-          'CONTPAQi adapter requires dropbox_token, dropbox_base_path, fiscal, scheduled_task'
+          'CONTPAQi adapter requires fiscal + scheduled_task'
         );
       }
 
@@ -128,9 +134,30 @@ export function buildAdapter(config: OrganizationIntegrationConfig): BillingAdap
         );
       }
 
+      const backend = config.storage_backend ?? 'dropbox';
+      let storage;
+      let basePath: string;
+      if (backend === 'local_files') {
+        if (!config.local_base_path) {
+          throw new Error(
+            'CONTPAQi adapter with storage_backend=local_files requires local_base_path (absolute path).'
+          );
+        }
+        storage = new LocalFilesStorage(config.local_base_path);
+        basePath = '';
+      } else {
+        if (!config.dropbox_token || !config.dropbox_base_path) {
+          throw new Error(
+            'CONTPAQi adapter with storage_backend=dropbox requires dropbox_token + dropbox_base_path'
+          );
+        }
+        storage = new DropboxClient(decryptDropboxToken(config.dropbox_token)!);
+        basePath = config.dropbox_base_path;
+      }
+
       return new CONTPAQiAdapter({
-        dropboxClient: new DropboxClient(decryptDropboxToken(config.dropbox_token)!),
-        basePath: config.dropbox_base_path,
+        dropboxClient: storage,
+        basePath,
         staleWarningMinutes: config.scheduled_task.stale_warning_minutes,
         staleEscalationHours: config.scheduled_task.stale_escalation_hours,
         xmlConfig: {

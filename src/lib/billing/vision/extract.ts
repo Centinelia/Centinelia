@@ -76,10 +76,42 @@ export async function extractNoteFromImage(
   const textBlock = response.content.find((b) => b.type === 'text');
   const raw = textBlock?.type === 'text' ? textBlock.text.trim() : '';
 
-  const jsonMatch = raw.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
+  const parsed = extractFirstJsonObject(raw);
+  if (!parsed) {
     throw new Error('Vision model returned non-JSON output');
   }
 
-  return JSON.parse(jsonMatch[0]) as ExtractedNote;
+  return parsed as ExtractedNote;
+}
+
+/**
+ * Extrae el primer objeto JSON balanceado de un string. Tolera texto antes o
+ * después (código markdown, explicaciones libres). Ignora llaves dentro de
+ * strings (respeta escapes).
+ */
+function extractFirstJsonObject(s: string): unknown | null {
+  const first = s.indexOf('{');
+  if (first === -1) return null;
+
+  let depth = 0;
+  let inStr = false;
+  let esc = false;
+  for (let i = first; i < s.length; i++) {
+    const c = s[i];
+    if (esc) { esc = false; continue; }
+    if (inStr) {
+      if (c === '\\') esc = true;
+      else if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') { inStr = true; continue; }
+    if (c === '{') depth++;
+    else if (c === '}') {
+      depth--;
+      if (depth === 0) {
+        try { return JSON.parse(s.slice(first, i + 1)); } catch { return null; }
+      }
+    }
+  }
+  return null;
 }

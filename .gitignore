@@ -66,3 +66,7 @@ next-env.d.ts
 
 # Facturama output artifacts (fiscal data)
 /out-facturama/
+
+# Dev-only fixtures: real client data extracted from CONTPAQi BD.
+# Contains RFC/emails; never commit.
+dev-fixtures/

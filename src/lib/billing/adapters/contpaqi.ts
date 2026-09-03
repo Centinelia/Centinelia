@@ -25,19 +25,30 @@ import type {
   BillingAdapterHealth,
 } from '../adapter';
 import type { DropboxClient } from '../storage/dropbox';
+import type { LocalFilesStorage } from '../storage/local-files';
 import { parseClientsCsv, parseProductsCsv, parseFreshnessJson } from '../contpaqi/csv-parser';
 import { buildImportXml, type XmlImportConfig } from '../contpaqi/xml-import';
+
+/**
+ * Backend de almacenamiento que necesita CONTPAQiAdapter. Cualquier objeto con
+ * estos dos métodos sirve — `DropboxClient` (prod) y `LocalFilesStorage` (dev/E2E)
+ * satisfacen la forma.
+ */
+type FileStorage = Pick<DropboxClient, 'readFile' | 'writeFile'> | LocalFilesStorage;
 
 // ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
 
 export interface CONTPAQiAdapterConfig {
-  /** Instancia de DropboxClient configurada para la organizacion. */
-  dropboxClient: DropboxClient;
   /**
-   * Ruta raiz en Dropbox donde viven los archivos de la organizacion.
-   * Ej: '/acme/contpaqi'
+   * Backend de almacenamiento. En prod es `DropboxClient`; en dev/E2E puede ser
+   * `LocalFilesStorage`. Ambos exponen la misma forma `{ readFile, writeFile }`.
+   */
+  dropboxClient: FileStorage;
+  /**
+   * Ruta raiz donde viven los archivos de la organizacion.
+   * En Dropbox ej: '/acme/contpaqi'. En local es interno a `basePath` del storage.
    */
   basePath: string;
   /** Minutos de staleness antes de emitir advertencia (sin cortar operacion). */
@@ -109,7 +120,7 @@ function isFresh<T>(entry: CacheEntry<T> | null): entry is CacheEntry<T> {
 export class CONTPAQiAdapter implements BillingAdapter {
   readonly name = 'CONTPAQi Comercial Pro';
 
-  private readonly dropbox: DropboxClient;
+  private readonly dropbox: FileStorage;
   private readonly basePath: string;
   private readonly staleWarningMinutes: number;
   private readonly staleEscalationHours: number;
