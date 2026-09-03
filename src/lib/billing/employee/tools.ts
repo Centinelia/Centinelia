@@ -720,6 +720,156 @@ ${contextBlock}
         return adapter.freshness();
       },
     },
+
+    // -------------------------------------------------------------------------
+    // submit_invoice_batch
+    // -------------------------------------------------------------------------
+    {
+      name: 'submit_invoice_batch',
+      description:
+        'Envia una factura al sistema contable (CONTPAQi u otro) via el adaptador. ' +
+        'Para CONTPAQi genera un XML de importacion ADD y lo deposita en el destino configurado ' +
+        '(Dropbox del cliente en produccion, filesystem local en dev). El Windows agent local ' +
+        'lo procesara, importara a CONTPAQi y timbrara con el PAC contratado. ' +
+        'Usar cuando cliente y todos los productos matchearon con confianza suficiente y la regla ' +
+        'del cliente es frequency=immediate (o no hay regla y el adaptador es CONTPAQi, que factura ' +
+        'una-a-una por default). NO usar para clientes con frequency daily/weekly/monthly, esos ' +
+        'usan append_daily_sale o append_pending_client_sale.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          client_rfc: {
+            type: 'string',
+            description: 'RFC del receptor (13 chars personas fisicas o 12 morales). Debe existir en el catalogo del adaptador (verificar antes con match_client / get_client_by_rfc).',
+          },
+          lines: {
+            type: 'array',
+            description: 'Lineas de la factura. Al menos una.',
+            items: {
+              type: 'object',
+              properties: {
+                sku: {
+                  type: 'string',
+                  description: 'SKU del producto en el catalogo del adaptador (previamente resuelto con match_product).',
+                },
+                qty: {
+                  type: 'number',
+                  description: 'Cantidad. Debe ser mayor a 0. Puede ser decimal (Ej 2.5 kg).',
+                },
+                unit_price: {
+                  type: 'number',
+                  description: 'Precio unitario sin IVA. Si se omite se usa el precio del catalogo del adaptador.',
+                },
+                iva_tasa: {
+                  type: 'number',
+                  description: 'Tasa de IVA como decimal (0.16 = 16%, 0 = exento). Si se omite se toma del catalogo del adaptador.',
+                },
+              },
+              required: ['sku', 'qty'],
+            },
+            minItems: 1,
+          },
+          payment_method: {
+            type: 'string',
+            enum: ['efectivo', 'transferencia', 'cheque', 'tarjeta'],
+            description: 'Forma de pago detectada en la notita. Default: efectivo.',
+          },
+          uso_cfdi: {
+            type: 'string',
+            description: 'Clave de uso CFDI SAT. Si se omite se toma del cliente en el catalogo (fallback al default configurado en la integracion).',
+          },
+          serie: {
+            type: 'string',
+            description: 'Serie del comprobante. Si se omite se toma la serie default de la configuracion fiscal.',
+          },
+          date: {
+            type: 'string',
+            description: 'Fecha de emision YYYY-MM-DD. Default: fecha extraida de la notita, o fecha actual si no hay.',
+          },
+          notes: {
+            type: 'string',
+            description: 'Observaciones internas para el registro (no aparecen en el CFDI). Ej: correo origen, notita_ref.',
+          },
+        },
+        required: ['client_rfc', 'lines'],
+      },
+      handler: async (input: {
+        client_rfc:      string;
+        lines:           Array<{ sku: string; qty: number; unit_price?: number; iva_tasa?: number }>;
+        payment_method?: 'efectivo' | 'transferencia' | 'cheque' | 'tarjeta';
+        uso_cfdi?:       string;
+        serie?:          string;
+        date?:           string;
+        notes?:          string;
+      }) => {
+        // Verificar que el cliente exista antes de armar la factura.
+        const client = await adapter.getClientByRFC(input.client_rfc);
+        if (!client) {
+          return {
+            ok: false,
+            error: `Cliente RFC ${input.client_rfc} no existe en el catalogo del adaptador.`,
+          };
+        }
+
+        // Resolver defaults de cada linea contra el catalogo del adaptador.
+        // Falla ruidosamente si algun sku no existe (el LLM debio verificarlo con match_product antes).
+        const resolvedLines = [];
+        for (const line of input.lines) {
+          const product = await adapter.getProductBySKU(line.sku);
+          if (!product) {
+            return {
+              ok: false,
+              error: `Producto SKU ${line.sku} no existe en el catalogo del adaptador.`,
+            };
+          }
+          if (line.qty <= 0) {
+            return { ok: false, error: `Cantidad invalida para SKU ${line.sku}: ${line.qty}` };
+          }
+          resolvedLines.push({
+            sku:       line.sku,
+            qty:       line.qty,
+            unitPrice: line.unit_price ?? product.precio,
+            ivaTasa:   line.iva_tasa   ?? product.ivaTasa,
+          });
+        }
+
+        const invoice = {
+          clientRFC:     input.client_rfc,
+          date:          input.date ?? new Date().toISOString().slice(0, 10),
+          lines:         resolvedLines,
+          paymentMethod: input.payment_method ?? ('efectivo' as const),
+          usoCFDI:       input.uso_cfdi ?? client.usoCFDI,
+          ...(input.serie ? { serie: input.serie } : {}),
+          ...(input.notes ? { notes: input.notes } : {}),
+        };
+
+        const result = await adapter.submitInvoiceBatch([invoice]);
+
+        // Registrar en bitacora para trazabilidad.
+        await supabase.from('billing_activity_log').insert({
+          portal_email:   ctx.portalEmail,
+          integration_id: ctx.integrationId,
+          action_type:    'invoice_submitted',
+          severity:       result.errors.length > 0 ? 'error' : 'info',
+          entity_ref:     input.client_rfc,
+          context: {
+            email_id:      emailId,
+            mode:          result.mode,
+            ref:           result.ref,
+            errors:        result.errors,
+            lines_count:   resolvedLines.length,
+            subtotal:      resolvedLines.reduce((s, l) => s + l.qty * l.unitPrice, 0),
+          },
+        });
+
+        return {
+          ok:     result.errors.length === 0,
+          mode:   result.mode,
+          ref:    result.ref,
+          errors: result.errors,
+        };
+      },
+    },
   ];
 }
 

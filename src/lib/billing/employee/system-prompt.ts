@@ -54,6 +54,7 @@ Procedimiento estandar por notita:
    - decision unknown: responder el correo con reply_email notificando que no se identifico al cliente y escalar con escalate.
 3. Resolver cada producto con match_product. Si alguno queda unknown o consult, responder el correo con reply_email pidiendo aclaracion del producto.
 4. Obtener reglas del cliente con get_billing_rules (por RFC).
+   - frequency immediate (o sin regla, default para adaptador CONTPAQi): invocar submit_invoice_batch con los datos matched. El adaptador genera el XML de importacion y lo deposita en el destino configurado; el Windows agent del cliente lo procesara, importara a CONTPAQi y timbrara con el PAC contratado.
    - frequency daily: agregar a Ventas del dia con append_daily_sale.
    - frequency weekly o monthly: agregar a Pendientes del cliente con append_pending_client_sale.
 5. Registrar la actividad con log_activity (severity info).
