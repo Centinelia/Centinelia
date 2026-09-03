@@ -1253,7 +1253,23 @@ Eres un empleado inteligente. NO le pidas al humano que decida por defecto:
   const userPrompt = `EMAIL ENTRANTE:
 De: ${emailFrom}
 Asunto: ${emailSubject}
-${attachments.length ? `Adjuntos: ${attachments.map(a => a.name).join(', ')}` : ''}
+${attachments.length ? `Adjuntos:
+${attachments.map(a => {
+  // Para archivos text/CSV/JSON/XML: exponer la URL para que el LLM pueda
+  // invocar read_url y leer el contenido. Sin esto el LLM solo ve el nombre
+  // y no tiene forma de acceder a la data tabular. PDF/DOCX/imagen se
+  // asume vienen extraídos vía humanBlock ("Contenido de documentos adjuntos"),
+  // pero para inbound webhook eso solo pasa cuando el humano responde a un
+  // pedir_a_humano — no en correos directos. Para CSV/text del inbound
+  // webhook, el LLM debe fetchear por sí solo.
+  const canReadWithUrl = /^text\//i.test(a.type)
+    || /^application\/(json|xml|csv|x-yaml)/i.test(a.type)
+    || /\.(csv|txt|json|xml|md|yml|yaml|tsv)$/i.test(a.name);
+  const base = `- ${a.name} (${a.type}, ${Math.round(a.size / 1024)}KB)`;
+  return canReadWithUrl
+    ? `${base}\n  URL: ${a.url}\n  → Archivo tabular/text: invoca read_url con esta URL para leer el contenido antes de decidir la respuesta.`
+    : base;
+}).join('\n')}` : ''}
 ${originalEmailBody ? '(Este email es una respuesta a una solicitud de información previa — el hilo completo está en el cuerpo)' : ''}
 
 CUERPO:
