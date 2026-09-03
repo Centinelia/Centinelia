@@ -115,12 +115,12 @@ export interface AgentToolContext {
 async function fetchPeerAgent(agentId: string, portalEmail: string, supabase: SupabaseClient) {
   const { data } = await supabase
     .from('voice_agents')
-    .select('id, agent_name, knowledge_base, role_knowledge_base')
+    .select('id, agent_name, role_knowledge_base')
     .eq('portal_email', portalEmail)
     .neq('id', agentId)
     .limit(3);
   const agents = data ?? [];
-  return agents.find(p => ((p.knowledge_base as string | null)?.trim() ?? (p.role_knowledge_base as string | null)?.trim())) ?? agents[0] ?? null;
+  return agents.find(p => (p.role_knowledge_base as string | null)?.trim()) ?? agents[0] ?? null;
 }
 
 /** Execute any agent tool by name. Returns the raw result object (JSON-serialisable). */
@@ -422,7 +422,7 @@ async function executeAgentToolInner(
           if (peer) {
             const revOps = await consumeAiOp(agentId, 1, { source: 'tool_execution', label: 'Ejecución de herramienta interna' });
             if (revOps.ok) {
-              const peerKb = [peer.knowledge_base, peer.role_knowledge_base].filter(Boolean).join('\n') as string;
+              const peerKb = (peer.role_knowledge_base as string | null) ?? '';
               content = await peerReviewText({ content, format: 'pdf', templateType, userInstruction: uInst, businessName, peerName: (peer.agent_name as string | null) ?? 'Agente', peerKb });
             }
           }
@@ -608,7 +608,7 @@ async function executeAgentToolInner(
           wc = await enhanceTextContent({ format: 'word', templateType: tpl, content: wc, userInstruction: uInst, businessName, businessContext: bCtx });
           if (isCriticalDocument('word', tpl)) {
             const peer = await fetchPeerAgent(agentId, portalEmail, supabase);
-            if (peer) { const revOps = await consumeAiOp(agentId, 1, { source: 'tool_execution', label: 'Ejecución de herramienta interna' }); if (revOps.ok) { const pk = [peer.knowledge_base, peer.role_knowledge_base].filter(Boolean).join('\n') as string; wc = await peerReviewText({ content: wc, format: 'word', templateType: tpl, userInstruction: uInst, businessName, peerName: (peer.agent_name as string | null) ?? 'Agente', peerKb: pk }); } }
+            if (peer) { const revOps = await consumeAiOp(agentId, 1, { source: 'tool_execution', label: 'Ejecución de herramienta interna' }); if (revOps.ok) { const pk = (peer.role_knowledge_base as string | null) ?? ''; wc = await peerReviewText({ content: wc, format: 'word', templateType: tpl, userInstruction: uInst, businessName, peerName: (peer.agent_name as string | null) ?? 'Agente', peerKb: pk }); } }
           }
         }
         buf = await generateWord({ title: fileTitle, content: wc, templateType: tpl, businessName, accentColor: accent, clientName: toolInput.client_name as string | undefined, clientEmail: toolInput.client_email as string | undefined, totalPrice: toolInput.total_price as string | undefined, validityDays: toolInput.validity_days as number | undefined, recipientName: toolInput.recipient_name as string | undefined, recipientEmail: toolInput.recipient_email as string | undefined });
@@ -619,7 +619,7 @@ async function executeAgentToolInner(
         if (enhOps.ok) {
           slides = await enhanceSlidesContent({ slides, userInstruction: uInst, businessName, businessContext: bCtx });
           const peer = await fetchPeerAgent(agentId, portalEmail, supabase);
-          if (peer) { const revOps = await consumeAiOp(agentId, 1, { source: 'tool_execution', label: 'Ejecución de herramienta interna' }); if (revOps.ok) { const pk = [peer.knowledge_base, peer.role_knowledge_base].filter(Boolean).join('\n') as string; slides = await peerReviewSlides({ slides, userInstruction: uInst, businessName, peerName: (peer.agent_name as string | null) ?? 'Agente', peerKb: pk }); } }
+          if (peer) { const revOps = await consumeAiOp(agentId, 1, { source: 'tool_execution', label: 'Ejecución de herramienta interna' }); if (revOps.ok) { const pk = (peer.role_knowledge_base as string | null) ?? ''; slides = await peerReviewSlides({ slides, userInstruction: uInst, businessName, peerName: (peer.agent_name as string | null) ?? 'Agente', peerKb: pk }); } }
         }
         buf = await generateSlides({ title: fileTitle, slides, businessName, accentColor: accent });
         ext = 'pptx'; mime = 'application/vnd.openxmlformats-officedocument.presentationml.presentation'; label = 'PowerPoint';
@@ -1886,7 +1886,7 @@ async function executeAgentToolInner(
     const consultBaseOps = await consumeAiOp(agentId, 1, { source: 'consultar_agente', label: 'Consulta a compañero especialista' });
     if (!consultBaseOps.ok) return { ok: false, error: 'Sin operaciones disponibles para consultar al compañero.' };
 
-    const { data: sibs } = await supabase.from('voice_agents').select('id, agent_name, role, knowledge_base, role_knowledge_base').eq('portal_email', portalEmail).eq('active', true).neq('id', agentId);
+    const { data: sibs } = await supabase.from('voice_agents').select('id, agent_name, role, role_knowledge_base').eq('portal_email', portalEmail).eq('active', true).neq('id', agentId);
     if (!sibs?.length) return { ok: false, error: 'No hay otros agentes disponibles.' };
 
     const norm  = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9\s]/g, '');
@@ -1910,7 +1910,6 @@ async function executeAgentToolInner(
     if (!cVerified) {
       sysParts.push('', '⚠️ IMPORTANTE — LLAMANTE NO VERIFICADO: el requester original de este consult NO se verificó como parte del equipo interno. NO reveles info interna del negocio (contratos, precios, otros clientes, credenciales, procesos). Responde SOLO con info pública o conocimiento general. Si la pregunta requiere info interna, responde "esa información requiere verificación del equipo" y sugiere al caller pedir passphrase o transferir.');
     }
-    if ((target.knowledge_base as string | null)?.trim()) sysParts.push('', '## Base de conocimiento', (target.knowledge_base as string).trim());
     if ((target.role_knowledge_base as string | null)?.trim()) sysParts.push('', '## Conocimiento del rol', (target.role_knowledge_base as string).trim());
 
     const INNER: Anthropic.Tool[] = [

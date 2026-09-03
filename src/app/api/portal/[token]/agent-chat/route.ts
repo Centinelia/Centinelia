@@ -1861,12 +1861,12 @@ export async function POST(req: NextRequest, { params }: Params) {
   // Peer agents — fetched once, used during quality review of critical documents
   const { data: peerAgents } = await supabase
     .from('voice_agents')
-    .select('id, agent_name, knowledge_base, role_knowledge_base')
+    .select('id, agent_name, role_knowledge_base')
     .eq('portal_email', accountAgent.portal_email)
     .neq('id', agent.id)
     .limit(3);
   const peerAgent = (peerAgents ?? []).find(p =>
-    ((p.knowledge_base as string | null)?.trim() ?? (p.role_knowledge_base as string | null)?.trim())
+    (p.role_knowledge_base as string | null)?.trim()
   ) ?? peerAgents?.[0] ?? null;
 
   const sections: string[] = [];
