@@ -23,7 +23,7 @@
 
 import type {
   InvoicingProvider, CfdiInput, StampResult, TimbrarOpts,
-  CancelMotivo, CancelSubmitResult, CancelStatus, CancelOpts,
+  CancelMotivo, CancelSubmitResult, CancelStatus, CancelOpts, PagoInput,
 } from '../provider';
 import { buildCfdiXml } from '../solucion-factible/xml-builder';
 import { signXml } from '../solucion-factible/signer';
@@ -112,6 +112,10 @@ export class ContpaqiTimbraProvider implements InvoicingProvider {
     const qrPng = await generateQrPng(qrContent);
 
     return { ok: true, uuid, selloSat, certificadoSat, fechaTimbrado, cadenaOriginal, xmlTimbrado, qrPng };
+  }
+
+  async timbrarPago(_pago: PagoInput, _opts: TimbrarOpts): Promise<StampResult> {
+    return { ok: false, code: 501, message: 'timbrarPago no soportado por CONTPAQi Timbra aún', retryable: false };
   }
 
   async cancelar(

@@ -1,0 +1,38 @@
+Cliente: Distribuidora de Alimentos Sofia S de RL de CV,,,,,,,,
+RFC: DAS221118K85,,,,,,,,
+Quincena: 2a de agosto 2026 (16 al 31 de agosto),,,,,,,,
+Fecha de timbrado programada: 05 de septiembre 2026,,,,,,,,
+Enviado por: Sofia Bermudez Iglesias (fundadora),,,,,,,,
+Contacto: sofia@dist-sofia.mx | +52 811 442 9302,,,,,,,,
+,,,,,,,,
+Empleado,NSS,Puesto,Sueldo mensual,Dias trabajados,Horas extra dobles,Faltas,Comisiones,Bonos
+Sofia Bermudez Iglesias,12345678901,Directora General,45000,15,0,0,0,0
+Roberto Cavazos Chavez,23456789012,Gerente Operaciones,32000,15,0,0,0,2500
+Ricardo Delgado Palacios,34567890123,Encargado de Almacen,18000,15,4,0,0,0
+Miguel Angel Torres Villareal,45678901234,Repartidor Ruta 1,15000,15,2,0,3200,0
+Luis Fernando Ochoa Diaz,56789012345,Repartidor Ruta 2,15000,15,3,0,2800,0
+Jorge Alfredo Salinas Ramos,67890123456,Repartidor Ruta 3,15000,15,1,0,2600,0
+Alejandro Herrera Cantu,78901234567,Repartidor Ruta 4,15000,14,0,1,2400,0
+Sergio Ramirez Villegas,89012345678,Repartidor Ruta 5,15000,15,0,0,2900,0
+Fernanda Trujillo Aguilar,90123456789,Auxiliar Contable,12000,15,0,0,0,0
+Carolina Bermudez Iglesias,01234567890,Auxiliar Administrativa,12000,15,0,0,0,0
+Rodrigo Trevino Salas,11234567890,Cargador,10000,15,45,0,0,0
+Andres Ovalle Cavazos,22345678901,Cargador,10000,10,0,5,0,0
+,,,,,,,,
+NOTAS PARA NALA (alertas deliberadas para el demo):,,,,,,,,
+1. Rodrigo Trevino Salas tiene 45 horas extra en la quincena - MUY alto vs base sueldo 10000. Debe pedir confirmacion a Sofia antes de timbrar. Puede ser error de captura o realmente hizo el trabajo por descargas de mercancia.,,,,,,,,
+2. Andres Ovalle Cavazos tiene 10 dias trabajados y 5 faltas - patron atipico. Validar si fue baja o incapacidad.,,,,,,,,
+3. Los repartidores tienen comisiones distintas (2400-3200) - normal por rutas distintas pero validar contra Excel de ventas de la quincena para reconciliar.,,,,,,,,
+,,,,,,,,
+NOTAS FISCALES:,,,,,,,,
+- Regimen: PM RESICO,,,,,,,,
+- Todos los empleados son subordinados asalariados (no asimilables),,,,,,,,
+- ISR se calcula con tabla mensual proporcional a quincena,,,,,,,,
+- IMSS: patronal + trabajador segun tabla,,,,,,,,
+- INFONAVIT: 5% sobre SDI para todos,,,,,,,,
+,,,,,,,,
+Al finalizar timbrado Nala debe regresar:,,,,,,,,
+- ZIP con 12 XMLs timbrados (o los que resulten despues de resolver alertas),,,,,,,,
+- ZIP con 12 PDFs,,,,,,,,
+- Acuse de timbrado del PAC,,,,,,,,
+- Resumen ejecutivo: nomina bruta total, ISR retenido, IMSS trabajador, IMSS patronal, INFONAVIT, neto pagado.,,,,,,,,

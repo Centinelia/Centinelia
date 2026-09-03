@@ -69,10 +69,12 @@ export const TOOL_LABELS: Record<string, string> = {
   consultar_incidentes:         'Consultar incidentes',
   buscar_directorio:            'Buscar en directorio interno',
 
-  // Reportes cívicos
-  crear_reporte_civico:         'Crear reporte ciudadano',
-  consultar_reporte_civico:     'Consultar reporte ciudadano',
-  actualizar_reporte_civico:    'Actualizar reporte ciudadano',
+  // Reportes con folio (multi-vertical: gobierno = reporte ciudadano,
+  // financiero = reporte de intermediario, etc.). Labels neutrales para
+  // que la bandeja de actividad funcione en ambos contextos por sección.
+  crear_reporte_civico:         'Registrar reporte',
+  consultar_reporte_civico:     'Consultar reporte',
+  actualizar_reporte_civico:    'Actualizar reporte',
 
   // Trámites gobierno externos
   consultar_catalogo_externo:   'Consultar catálogo de trámites',
@@ -97,6 +99,8 @@ export const TOOL_LABELS: Record<string, string> = {
   solicitar_factura:            'Emitir factura CFDI',
   consultar_factura:            'Consultar estado de factura',
   solicitar_cancelacion_factura: 'Solicitar cancelación de factura',
+  emitir_cfdi_centinelia:       'Emitir CFDI Ingreso (Centinelia interno)',
+  solicitar_complemento_pago:   'Emitir Complemento de Pago (REP)',
   firmar_oc:                    'Firmar orden de compra',
   sf_timbrar_desde_oc:          'Timbrar CFDI desde orden de compra',
   sf_cancelar_cfdi:             'Cancelar CFDI',

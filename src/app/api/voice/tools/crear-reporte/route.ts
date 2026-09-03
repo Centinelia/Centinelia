@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
 
   if (agent?.transfer_whatsapp) {
     const msg = [
-      `📋 *Nuevo reporte ciudadano — ${agent.business_name}*`,
+      `📋 *Nuevo reporte — ${agent.business_name}*`,
       `Folio: *${folio}*`,
       tipo_tramite       ? `Trámite: ${tipo_tramite}`         : categoria ? `Tipo: ${categoria}` : null,
       area_responsable   ? `Área: ${area_responsable}`        : null,

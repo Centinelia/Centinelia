@@ -2,7 +2,7 @@
 import { XMLParser } from 'fast-xml-parser';
 import type {
   InvoicingProvider, CfdiInput, StampResult, TimbrarOpts,
-  CancelMotivo, CancelSubmitResult, CancelStatus, CancelOpts,
+  CancelMotivo, CancelSubmitResult, CancelStatus, CancelOpts, PagoInput,
 } from '../provider';
 import { buildCfdiXml } from './xml-builder';
 import { signXml } from './signer';
@@ -71,6 +71,10 @@ export class SolucionFactibleProvider implements InvoicingProvider {
     const qrContent = `https://verificacfdi.facturaelectronica.sat.gob.mx/default.aspx?id=${uuid}&re=${cfdi.emisor.rfc}&rr=${cfdi.receptor.rfc}&tt=${cfdi.total.toFixed(2)}&fe=${fe}`;
     const qrPng = await generateQrPng(qrContent);
     return { ok: true, uuid, selloSat, certificadoSat, fechaTimbrado, cadenaOriginal, xmlTimbrado, qrPng };
+  }
+
+  async timbrarPago(_pago: PagoInput, _opts: TimbrarOpts): Promise<StampResult> {
+    return { ok: false, code: 501, message: 'timbrarPago no soportado por Solución Factible aún', retryable: false };
   }
 
   async cancelar(

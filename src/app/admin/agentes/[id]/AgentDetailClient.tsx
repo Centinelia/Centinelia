@@ -24,7 +24,7 @@ import { AgentVersionTab } from '@/components/admin/AgentVersionTab';
 const MODULE_FEATURES: { key: keyof AgentFeatures; label: string; desc: string }[] = [
   { key: 'helpdesk',        label: 'Mesa de ayuda IT',      desc: 'Activa tools de tickets, incidentes y directorio' },
   { key: 'of_encuestas',    label: 'Encuestas telefónicas', desc: 'El empleado puede aplicar encuestas en llamada' },
-  { key: 'civic_reports',   label: 'Reportes ciudadanos',   desc: 'Módulo de reportes para verticales de gobierno' },
+  { key: 'civic_reports',   label: 'Reportes con folio',    desc: 'Módulo de reportes con seguimiento. En gobierno: ciudadanos. En financiero: intermediarios.' },
   { key: 'contract_drafts', label: 'Contratos',             desc: 'El empleado puede redactar borradores de contrato' },
 ];
 

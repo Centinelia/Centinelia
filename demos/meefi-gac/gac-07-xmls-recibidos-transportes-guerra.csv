@@ -1,0 +1,60 @@
+Cliente: Transportes Guerra Hermanos S de RL de CV,,,,,,,,,,
+RFC: TGH160228AS7,,,,,,,,,,
+Regimen: PM Coordinado (autotransporte),,,,,,,,,,
+Periodo: Agosto 2026 (representa muestra de 40 filas del volumen real ~500 XMLs recibidos del mes),,,,,,,,,,
+Fuente: XMLs descargados del Portal SAT + XMLs adjuntos en correos de proveedores,,,,,,,,,,
+,,,,,,,,,,
+UUID CFDI,Fecha emision,RFC emisor,Razon social emisor,Concepto principal,Subtotal,IVA,Total,Uso CFDI,Tipo operacion DIOT,Notas Nova
+E1F2A3B4-1111-4A5B-9C6D-000000000001,2026-08-02,PEMEX010101000,Petroleos Mexicanos,Diesel para autotransporte 500 litros,7800.00,1248.00,9048.00,G03,Nacional 16%,Combustible cargable
+A2B3C4D5-2222-4A5B-9C6D-000000000002,2026-08-02,CFE370814B72,Comision Federal de Electricidad,Suministro electrico patio Salinas Victoria julio,12500.00,2000.00,14500.00,G03,Nacional 16%,Servicio patio operativo
+B3C4D5E6-3333-4A5B-9C6D-000000000003,2026-08-03,CAT981027A31,Caseta Autopista Monterrey Nuevo Laredo,Paso caseta TAG unidad 042,180.00,28.80,208.80,G03,Nacional 16%,Caseta ruta norte
+D4E5F6A7-4444-4A5B-9C6D-000000000004,2026-08-03,PEMEX010101000,Petroleos Mexicanos,Diesel para autotransporte 600 litros,9360.00,1497.60,10857.60,G03,Nacional 16%,Combustible cargable
+E5F6A7B8-5555-4A5B-9C6D-000000000005,2026-08-03,LLA940802H55,Llantas y Alineaciones Cumbres SA,Cambio 4 llantas unidad 038,18400.00,2944.00,21344.00,G03,Nacional 16%,Mantenimiento vehicular
+F6A7B8C9-6666-4A5B-9C6D-000000000006,2026-08-04,CAT981027A31,Caseta Autopista Monterrey Nuevo Laredo,Paso caseta TAG unidad 015,180.00,28.80,208.80,G03,Nacional 16%,Caseta ruta norte
+A7B8C9D0-7777-4A5B-9C6D-000000000007,2026-08-04,SEG920516RX2,Seguros Monterrey New York,Prima seguro vehicular flotilla agosto,45000.00,7200.00,52200.00,G03,Nacional 16%,Servicio recurrente
+B8C9D0E1-8888-4A5B-9C6D-000000000008,2026-08-05,PEMEX010101000,Petroleos Mexicanos,Diesel para autotransporte 450 litros,7020.00,1123.20,8143.20,G03,Nacional 16%,Combustible cargable
+C9D0E1F2-9999-4A5B-9C6D-000000000009,2026-08-05,REF880210HH8,Refacciones Diesel Express,Filtro combustible y aceite unidad 022,3800.00,608.00,4408.00,G03,Nacional 16%,Mantenimiento vehicular
+D0E1F2A3-1010-4A5B-9C6D-000000000010,2026-08-06,CAT981027A31,Caseta Autopista Monterrey Nuevo Laredo,Paso caseta TAG unidad 028,180.00,28.80,208.80,G03,Nacional 16%,Caseta ruta norte
+E1F2A3B4-1111-4A5B-9C6D-000000000011,2026-08-06,PEMEX010101000,Petroleos Mexicanos,Diesel 620 litros,9672.00,1547.52,11219.52,G03,Nacional 16%,Combustible cargable
+F2A3B4C5-1212-4A5B-9C6D-000000000012,2026-08-07,SCT010101X01,Secretaria Comunicaciones Transportes,Renovacion permiso SCT anual unidad 015,8500.00,0.00,8500.00,G03,Nacional exento,Servicio gubernamental
+A3B4C5D6-1313-4A5B-9C6D-000000000013,2026-08-08,PEMEX010101000,Petroleos Mexicanos,Diesel 480 litros,7488.00,1198.08,8686.08,G03,Nacional 16%,Combustible cargable
+B4C5D6E7-1414-4A5B-9C6D-000000000014,2026-08-08,LLA940802H55,Llantas y Alineaciones Cumbres SA,Balanceo y alineacion unidad 038,2400.00,384.00,2784.00,G03,Nacional 16%,Mantenimiento vehicular
+C5D6E7F8-1515-4A5B-9C6D-000000000015,2026-08-09,CAT981027A31,Caseta Autopista Monterrey Nuevo Laredo,Paso caseta TAG unidad 042,180.00,28.80,208.80,G03,Nacional 16%,Caseta ruta norte
+D6E7F8A9-1616-4A5B-9C6D-000000000016,2026-08-10,PEMEX010101000,Petroleos Mexicanos,Diesel 550 litros,8580.00,1372.80,9952.80,G03,Nacional 16%,Combustible cargable
+E7F8A9B0-1717-4A5B-9C6D-000000000017,2026-08-11,CAT981027A31,Caseta Autopista Monterrey Nuevo Laredo,Paso caseta TAG unidad 022,180.00,28.80,208.80,G03,Nacional 16%,Caseta ruta norte
+F8A9B0C1-1818-4A5B-9C6D-000000000018,2026-08-12,PEMEX010101000,Petroleos Mexicanos,Diesel 700 litros,10920.00,1747.20,12667.20,G03,Nacional 16%,Combustible cargable
+A9B0C1D2-1919-4A5B-9C6D-000000000019,2026-08-13,IMSSN010101,Instituto Mexicano Seguro Social,Cuota patronal julio,68500.00,0.00,68500.00,G03,Nacional exento,Seguridad social
+B0C1D2E3-2020-4A5B-9C6D-000000000020,2026-08-14,TAL930111XX2,Talleres Alanis Especializados,Reparacion caja de velocidades unidad 015,45000.00,7200.00,52200.00,G03,Nacional 16%,Mantenimiento mayor
+C1D2E3F4-2121-4A5B-9C6D-000000000021,2026-08-15,PEMEX010101000,Petroleos Mexicanos,Diesel 580 litros,9048.00,1447.68,10495.68,G03,Nacional 16%,Combustible cargable
+D2E3F4A5-2222-4A5B-9C6D-000000000022,2026-08-16,CAT981027A31,Caseta Autopista,TAG unidad 028,180.00,28.80,208.80,G03,Nacional 16%,Caseta
+E3F4A5B6-2323-4A5B-9C6D-000000000023,2026-08-17,ISN990304TS4,Impuestos Sobre Nomina Estatal NL,ISN julio 2026,18500.00,0.00,18500.00,G03,Nacional exento,Impuesto estatal
+F4A5B6C7-2424-4A5B-9C6D-000000000024,2026-08-18,PEMEX010101000,Petroleos Mexicanos,Diesel 490 litros,7644.00,1223.04,8867.04,G03,Nacional 16%,Combustible cargable
+A5B6C7D8-2525-4A5B-9C6D-000000000025,2026-08-19,REF880210HH8,Refacciones Diesel Express,Bomba de agua unidad 038,5800.00,928.00,6728.00,G03,Nacional 16%,Mantenimiento vehicular
+B6C7D8E9-2626-4A5B-9C6D-000000000026,2026-08-20,TEL840218XR9,Telefonos de Mexico,Servicio celular flotilla operadores agosto,8500.00,1360.00,9860.00,G03,Nacional 16%,Servicio recurrente
+C7D8E9F0-2727-4A5B-9C6D-000000000027,2026-08-21,CAT981027A31,Caseta Autopista,TAG unidad 015,180.00,28.80,208.80,G03,Nacional 16%,Caseta
+D8E9F0A1-2828-4A5B-9C6D-000000000028,2026-08-22,PEMEX010101000,Petroleos Mexicanos,Diesel 660 litros,10296.00,1647.36,11943.36,G03,Nacional 16%,Combustible cargable
+E9F0A1B2-2929-4A5B-9C6D-000000000029,2026-08-23,MOB800812XW2,Mobil Aceites y Lubricantes,Aceite motor 40W flotilla,15200.00,2432.00,17632.00,G03,Nacional 16%,Mantenimiento vehicular
+F0A1B2C3-3030-4A5B-9C6D-000000000030,2026-08-24,CAT981027A31,Caseta Autopista,TAG unidad 022,180.00,28.80,208.80,G03,Nacional 16%,Caseta
+A1B2C3D4-3131-4A5B-9C6D-000000000031,2026-08-25,PEMEX010101000,Petroleos Mexicanos,Diesel 520 litros,8112.00,1297.92,9409.92,G03,Nacional 16%,Combustible cargable
+B2C3D4E5-3232-4A5B-9C6D-000000000032,2026-08-26,REP180412UU3,Reparaciones Electricas Nogal,Diagnostico y reparacion sistema electrico unidad 042,3400.00,544.00,3944.00,G03,Nacional 16%,Mantenimiento vehicular
+C3D4E5F6-3333-4A5B-9C6D-000000000033,2026-08-27,CAT981027A31,Caseta Autopista,TAG unidad 028,180.00,28.80,208.80,G03,Nacional 16%,Caseta
+D4E5F6A7-3434-4A5B-9C6D-000000000034,2026-08-28,PEMEX010101000,Petroleos Mexicanos,Diesel 590 litros,9204.00,1472.64,10676.64,G03,Nacional 16%,Combustible cargable
+E5F6A7B8-3535-4A5B-9C6D-000000000035,2026-08-29,PROV991211II7,Proveedor Desconocido SA,Servicio de asesoria administrativa,25000.00,4000.00,29000.00,G03,Nacional 16%,DUPLICADO CON XML SIGUIENTE Y RFC INVALIDO
+F6A7B8C9-3636-4A5B-9C6D-000000000036,2026-08-29,PROV991211II7,Proveedor Desconocido SA,Servicio de asesoria administrativa,25000.00,4000.00,29000.00,G03,Nacional 16%,DUPLICADO XML DEL PROVEEDOR
+A7B8C9D0-3737-4A5B-9C6D-000000000037,2026-08-30,CAT981027A31,Caseta Autopista,TAG unidad 038,180.00,28.80,208.80,G03,Nacional 16%,Caseta
+B8C9D0E1-3838-4A5B-9C6D-000000000038,2026-08-30,PEMEX010101000,Petroleos Mexicanos,Diesel 630 litros,9828.00,1572.48,11400.48,G03,Nacional 16%,Combustible cargable
+C9D0E1F2-3939-4A5B-9C6D-000000000039,2026-08-31,LLA940802H55,Llantas y Alineaciones Cumbres SA,Cambio 6 llantas unidad 022,27600.00,4416.00,32016.00,G03,Nacional 16%,Mantenimiento vehicular
+D0E1F2A3-4040-4A5B-9C6D-000000000040,2026-08-31,MOB800812XW2,Mobil Aceites,Aceite hidraulico transmision,4800.00,768.00,5568.00,G03,Nacional 16%,Mantenimiento vehicular
+,,,,,,,,,,
+RESUMEN AGRUPADO POR TIPO DIOT:,,,,,,,,,,
+Combustible cargable (14 XMLs): 114900.00 subtotal + 18384.00 IVA = 133284.00 total,,,,,,,,,,
+Casetas (10 XMLs): 1800.00 + 288.00 IVA = 2088.00 total,,,,,,,,,,
+Mantenimiento vehicular (9 XMLs): 126200.00 + 20192.00 IVA = 146392.00 total,,,,,,,,,,
+Servicios recurrentes (4 XMLs): 78000.00 + 12480.00 IVA = 90480.00 total,,,,,,,,,,
+Impuestos y gubernamental (4 XMLs): 103500.00 + 0.00 IVA = 103500.00 total,,,,,,,,,,
+Servicios profesionales sospechosos (2 XMLs): 50000.00 + 8000.00 = 58000.00 total (DUPLICADO Y RFC INVALIDO),,,,,,,,,,
+,,,,,,,,,,
+ALERTAS PARA NOVA (deliberadas para el demo):,,,,,,,,,,
+1. UUIDs 000000000035 y 000000000036 son DUPLICADOS emitidos por PROV991211II7 con RFC que no cuadra formato SAT valido. Nova debe flaggear y NO capturar hasta que Ricardo Uranga confirme con el cliente.,,,,,,,,,,
+2. Concentracion de combustible + casetas: 32% del gasto total - normal para autotransporte pero alto vs promedio de 26% - senal de que aumentaron viajes o subieron precios diesel.,,,,,,,,,,
+3. Mantenimiento mayor de 45000 (transmision unidad 015) - eventual capitalizable como mejora vs gasto directo - flaggear a contador.,,,,,,,,,,

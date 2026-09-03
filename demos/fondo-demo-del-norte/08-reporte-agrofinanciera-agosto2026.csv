@@ -1,0 +1,44 @@
+AGROFINANCIERA DEL OCCIDENTE S.A.P.I. DE C.V. SOFOM E.R.
+RFC: AFO150719QP1
+Reporte de Cartera al Cierre de Agosto 2026
+Preparado para: Fondo Demo del Norte
+
+HOJA 1: RESUMEN EJECUTIVO
+Concepto,Monto MXN,Var vs mes anterior
+Cartera total colocada,95100000,+1600000
+Saldo dispuesto de linea con FDN,95100000,+1600000
+Linea autorizada FDN,100000000,0
+Utilizacion (%),95.1,+1.6
+IMOR (%),5.80,+0.42
+Aforo (x),1.22,-0.03
+Cobertura de reservas (%),110.0,-2.1
+
+HOJA 2: DETALLE POR BUCKET DE MORA
+Bucket,Saldo,Numero de acreditados,IMOR bucket
+Vigente,89580000,412,-
+Mora 1-30 dias,2100000,28,2.21
+Mora 31-60 dias,1580000,19,1.66
+Mora 61-90 dias,940000,11,0.99
+Mora mayor a 90 dias,900000,9,0.95
+TOTAL,95100000,479,5.80
+
+HOJA 3: COLOCACION Y COBRANZA
+Concepto,Monto MXN
+Colocacion del mes (nuevo credito),3900000
+Cobranza del mes (capital + interes),3350000
+Reestructuras del mes,780000
+Castigos del mes,240000
+
+HOJA 4: DESGLOSE POR CULTIVO
+Cultivo,Cartera vigente,Cartera vencida,IMOR
+Aguacate,42800000,3210000,7.0
+Berries,18200000,780000,4.1
+Hortalizas,15400000,410000,2.6
+Otros,13180000,1120000,7.8
+
+NOTA DEL EMISOR:
+El deterioro observado en agosto responde a la caida de precios internacionales del aguacate en la segunda quincena.
+Se espera estabilizacion en Q4 2026. Se solicito refuerzo de capital de trabajo a los productores mas afectados.
+
+Elaboro: Ing. Agr. Jorge Alfonso Meza Villasenor, Tesorero
+Contacto: jmeza@agrofinancieraoccidente.mx

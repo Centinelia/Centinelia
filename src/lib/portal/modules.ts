@@ -96,8 +96,8 @@ export const PORTAL_MODULES = [
   // ROUTE_MODULE_MAP por retrocompat con sub-users que ya lo tengan asignado.
   // ─ OPERACIÓN — sector Gobierno / Municipio ─
   {
-    id: 'of_reportes_ciudadanos', label: 'Reportes ciudadanos', group: 'Oficina', giros: ['gobierno'] as string[],
-    desc: 'Folios de reportes recibidos por ciudadanos: baches, alumbrado, limpieza, etc.',
+    id: 'of_reportes_ciudadanos', label: 'Reportes con folio', group: 'Oficina', giros: ['gobierno', 'financiero'] as string[],
+    desc: 'Folios de reportes con seguimiento. En gobierno: reportes ciudadanos (baches, alumbrado). En financiero: reportes de intermediarios (cartera mensual, incidencias).',
   },
   {
     id: 'of_cabildo', label: 'Cabildo', group: 'Oficina', giros: ['gobierno'] as string[],
@@ -113,6 +113,7 @@ export const PORTAL_MODULES = [
 export const GIRO_GROUPS: { id: string; label: string }[] = [
   { id: 'gobierno',   label: 'Gobierno / Municipio' },
   { id: 'tecnologia', label: 'Tecnología / IT' },
+  { id: 'financiero', label: 'Financiera / Segundo piso' },
 ];
 
 export type PortalModuleId = (typeof PORTAL_MODULES)[number]['id'];

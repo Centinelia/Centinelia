@@ -79,6 +79,8 @@ export const VOICE_TO_CHAT: Record<string, string | null> = {
   solicitar_factura:              'solicitar_factura',
   consultar_factura:              'consultar_factura',
   solicitar_cancelacion_factura:  'solicitar_cancelacion_factura',
+  emitir_cfdi_centinelia:         'emitir_cfdi_centinelia',
+  solicitar_complemento_pago:     'solicitar_complemento_pago',
   revisar_desempeno_equipo:   'revisar_desempeno_equipo',
   aprobar_gasto:              'aprobar_gasto',
   evaluar_limite_gasto:       'evaluar_limite_gasto',

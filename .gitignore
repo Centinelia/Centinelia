@@ -63,3 +63,6 @@ next-env.d.ts
 
 # Obsidian vault (local exploration, no need to version)
 .obsidian/
+
+# Facturama output artifacts (fiscal data)
+/out-facturama/

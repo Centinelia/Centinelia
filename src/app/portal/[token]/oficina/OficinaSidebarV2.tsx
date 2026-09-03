@@ -30,6 +30,10 @@ interface NavItem {
   icon:      React.ElementType;
   badgeKey:  string;
   vertical?: string;
+  // Override del label por vertical del org. Si el vertical del org
+  // matchea una key, ese label gana. Si no, cae al `label` base.
+  // Usado por módulos multi-vertical (reportes ciudadanos vs de intermediarios).
+  labelByVertical?: Record<string, string>;
   // Permiso alternativo. Si el sub-user tiene moduleId O moduleIdOr, ve el link.
   // Usado por Campañas para admitir usuarios con solo `of_encuestas` (unificación
   // de Campañas + Encuestas bajo /oficina/campanas — 2026-08-09).
@@ -68,7 +72,11 @@ const NAV_SECTIONS: NavSection[] = [
       { href: '/plantillas',           moduleId: 'of_plantillas',           label: 'Plantillas',          icon: LayoutTemplate, badgeKey: '' },
       { href: '/tareas',               moduleId: 'of_tareas_programadas',   label: 'Tareas',              icon: CalendarClock,  badgeKey: '' },
       { href: '/juntas',               moduleId: 'of_juntas',               label: 'Juntas',              icon: Mic,            badgeKey: 'juntas' },
-      { href: '/reportes-ciudadanos',  moduleId: 'of_reportes_ciudadanos',  label: 'Reportes ciudadanos', icon: ClipboardList,  badgeKey: 'reportesCiudadanos', vertical: 'gobierno' },
+      // Multi-vertical: label cambia según el vertical del org.
+      // Ya no gated por `vertical` a nivel item; el gate lo hace modules.ts
+      // (giros: ['gobierno', 'financiero']) para permitir ambos.
+      { href: '/reportes-ciudadanos',  moduleId: 'of_reportes_ciudadanos',  label: 'Reportes con folio', icon: ClipboardList,  badgeKey: 'reportesCiudadanos',
+        labelByVertical: { gobierno: 'Reportes ciudadanos', financiero: 'Reportes de intermediarios' } },
       { href: '/cabildo',              moduleId: 'of_cabildo',              label: 'Cabildo',             icon: Gavel,          badgeKey: '', vertical: 'gobierno' },
     ],
   },
@@ -239,7 +247,9 @@ export default function OficinaSidebarV2({
                       />
                     )}
                     <Icon size={14} strokeWidth={1.75} style={{ opacity: isActive ? 1 : 0.75, flexShrink: 0 }} />
-                    <span className="flex-1 truncate">{item.label}</span>
+                    <span className="flex-1 truncate">
+                      {(vertical && item.labelByVertical?.[vertical]) || item.label}
+                    </span>
                     {count > 0 && (
                       <span
                         className="flex items-center justify-center rounded-full text-[10px] font-bold tabular-nums"

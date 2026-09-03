@@ -1,0 +1,30 @@
+Meefi - Master de Clientes y Metricas Mensuales,,,,,,,,,
+Corte: Agosto 2026,,,,,,,,,
+,,,,,,,,,
+Cliente,RFC,Sector,Sede,TPV agosto USD,Ops agosto,Divisas activas,Take rate estimado,Comision agosto USD,Estatus comercial
+Grupo Textiles del Norte SA,GTN180314M52,Importadora textiles,Guadalupe NL,412540.00,26,USD y EUR,1.35%,5569.29,Al corriente
+Electronica Global Pacifico SA,EGP200622HB4,Importadora electronica,Zapopan JAL,224180.00,41,USD y CNY,1.68%,3766.22,Al corriente
+Autopartes Rio Bravo SAPI,ARB150818LM9,Importadora refacciones,Nuevo Laredo TAM,658920.00,62,USD y KRW,1.15%,7577.58,Al corriente cliente ancla
+Distribuidora de Vinos Meridiano SA,DVM191104GS2,Importadora vinos,CDMX,92450.00,15,EUR USD CLP,1.85%,1710.33,Al corriente
+Insumos Medicos MedCore SA,IMM160903P84,Importadora dispositivos medicos,San Nicolas NL,182340.00,19,EUR y USD,1.55%,2826.27,Al corriente
+Ferretera Industrial Aztlan SA,FIA170512DP6,Importadora herramientas,San Andres Cholula PUE,151760.00,29,CNY y USD,1.72%,2610.27,Comision agosto NO PAGADA - dias 28
+Cafe y Empaques Boutique SA,CEB211015N43,Importa maquinaria exporta cafe,Tuxtla y CDMX,88420.00,18,EUR y USD,1.90%,1679.98,Excepcion abierta - diferencia fee corresponsal Turquia
+,,,,,,,,,
+TOTALES,,,,1810610.00,210,,1.42% promedio ponderado,25739.94,
+,,,,,,,,,
+Metricas del mes vs julio:,,,,,,,,,
+TPV agosto vs julio: +12.3% (crecimiento),,,,,,,,,
+Operaciones: +8 ops mes vs mes,,,,,,,,,
+Nuevos clientes originados: 0 (Cafe y Empaques Boutique cerro julio),,,,,,,,,
+Clientes con TPV creciendo 3sigma: 1 (Ferretera Aztlan +45% vs baseline - revisar),,,,,,,,,
+Corredores activos: 8 paises (India China Turquia Espana Italia Chile Alemania EEUU Corea NZ),,,,,,,,,
+Concentracion top 3 clientes: 71.4% del TPV,,,,,,,,,
+Concentracion por corredor mas alta: MX-EEUU 44% del TPV,,,,,,,,,
+Concentracion por divisa: USD 68%, CNY 14%, EUR 12%, otros 6%,,,,,,,,,
+,,,,,,,,,
+Alertas para reporting diario:,,,,,,,,,
+- Ferretera Aztlan: TPV +45% vs baseline - validar si es real o error de captura,,,,,,,,,
+- Ferretera Aztlan: comision agosto vencida 28 dias - Nico debe llamar,,,,,,,,,
+- Cafe y Empaques: excepcion abierta por fee corresponsal Turquia $850 USD - resolver con banco,,,,,,,,,
+- Concentracion top 3 clientes en 71% - alerta al comite de riesgos (umbral 60%),,,,,,,,,
+- Nuevos beneficiarios agosto en paises sensibles: 0 - OK,,,,,,,,,

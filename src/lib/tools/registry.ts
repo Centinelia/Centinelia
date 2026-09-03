@@ -71,6 +71,9 @@ const TOOL_REGISTRY_BASE: Omit<ToolEntry, 'pack'>[] = [
   // fiscal
   { name: 'solicitar_factura',        description: 'Emite CFDI vía el PAC del negocio (SF, CONTPAQi)',      channels: A, category: 'fiscal',    destructive: true,  gatedByRole: ['nico'], gatedByFeature: null, capability: null, policy: policyFor('solicitar_factura') },
   { name: 'consultar_factura',        description: 'Consulta estado de solicitud de CFDI',                  channels: A, category: 'fiscal',    destructive: false, gatedByRole: ['nico'], gatedByFeature: null, capability: null, policy: policyFor('consultar_factura') },
+  // fiscal internos Centinelia (Nala) — timbra a nombre de Centinelia hacia sus clientes via Facturama
+  { name: 'emitir_cfdi_centinelia',   description: 'Emite CFDI Ingreso a nombre de Centinelia (Nala interna, Facturama)', channels: A, category: 'fiscal', destructive: true,  gatedByRole: ['nala'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
+  { name: 'solicitar_complemento_pago', description: 'Emite Complemento de Pago (REP) para un CFDI PPD ya timbrado (Nala interna, Facturama)', channels: A, category: 'fiscal', destructive: true,  gatedByRole: ['nala'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
 
   // productos / ML (feature-gated 'mercadolibre')
   { name: 'buscar_producto',          description: 'Busca producto en catálogo Notion',                     channels: A, category: 'catalog',   destructive: false, gatedByRole: ['noah'], gatedByFeature: null, capability: null, policy: policyFor('buscar_producto') },

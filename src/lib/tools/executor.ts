@@ -48,6 +48,11 @@ import { fetchLookup } from '@/lib/tramites/lookup';
 import { submitTramite } from '@/lib/tramites/submit';
 import { solicitarFactura, type SolicitarFacturaItem } from '@/lib/fiscal/request-factura';
 import { lookupFacturas } from '@/lib/fiscal/lookup-factura';
+import { emitirIngresoFacturama, emitirPagoFacturama } from '@/lib/invoicing/facturama/emitir';
+import {
+  getCentineliaFiscalConfig, getFacturamaCredentials, isFacturamaSandbox,
+} from '@/lib/invoicing/facturama/centinelia-preset';
+import type { CfdiInput, PagoInput } from '@/lib/invoicing/provider';
 import * as sheetsService from '@/lib/services/sheets';
 import { upsertLeadWithDedup, upsertOutboundContactWithDedup } from '@/lib/leads/dedup';
 
@@ -2064,6 +2069,187 @@ async function executeAgentToolInner(
     }, agentId, supabase);
     if (!res.ok) return { ok: false, error: res.message };
     return { ok: true, count: res.results.length, results: res.results, message: res.message };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // emitir_cfdi_centinelia — CFDI Ingreso a nombre de Centinelia (Nala interna)
+  // Timbra vía Facturama con datos fiscales hardcoded de Nazre (RFC AAMN951208I25).
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'emitir_cfdi_centinelia') {
+    try {
+      const centinelia = getCentineliaFiscalConfig();
+      const creds = getFacturamaCredentials();
+      const testMode = isFacturamaSandbox();
+
+      const items = (toolInput.items as Array<{
+        descripcion: string; valor_unitario: number; cantidad?: number; con_iva?: boolean;
+      }> | undefined) ?? [];
+      if (items.length === 0) return { ok: false, error: 'items requerido (array de conceptos)' };
+
+      const conceptos = items.map(it => {
+        const cantidad = it.cantidad ?? 1;
+        const importe = +(cantidad * it.valor_unitario).toFixed(2);
+        const iva = (it.con_iva !== false) ? +(importe * 0.16).toFixed(2) : undefined;
+        return {
+          claveProdServ: '81112501',
+          claveUnidad: 'E48',
+          cantidad,
+          descripcion: it.descripcion,
+          valorUnitario: it.valor_unitario,
+          importe,
+          iva,
+        };
+      });
+      const subtotal = +conceptos.reduce((s, c) => s + c.importe, 0).toFixed(2);
+      const iva = +conceptos.reduce((s, c) => s + (c.iva ?? 0), 0).toFixed(2);
+      const total = +(subtotal + iva).toFixed(2);
+
+      const cfdi: CfdiInput = {
+        emisor: {
+          rfc: centinelia.rfc,
+          regimenFiscal: centinelia.regimenFiscal,
+          nombre: centinelia.razonSocial,
+        },
+        receptor: {
+          rfc:            String(toolInput.receptor_rfc ?? ''),
+          nombre:         String(toolInput.receptor_nombre ?? ''),
+          usoCfdi:        String(toolInput.uso_cfdi ?? 'G03'),
+          regimenFiscal:  String(toolInput.receptor_regimen ?? '601'),
+          domicilioFiscal: String(toolInput.receptor_cp ?? ''),
+        },
+        lugarExpedicion: centinelia.lugarExpedicion,
+        formaPago:  String(toolInput.forma_pago ?? '99'),
+        metodoPago: (toolInput.metodo_pago === 'PUE' ? 'PUE' : 'PPD'),
+        moneda: 'MXN',
+        conceptos,
+        subtotal, iva, total,
+        csd: { cerPem: '', keyPem: '', noCertificado: '' },
+        pacCredentials: creds,
+      };
+
+      if (!cfdi.receptor.rfc || !cfdi.receptor.nombre || !cfdi.receptor.domicilioFiscal) {
+        return { ok: false, error: 'receptor_rfc, receptor_nombre y receptor_cp son requeridos' };
+      }
+
+      const emailReceptor = toolInput.receptor_email as string | undefined;
+
+      const result = await emitirIngresoFacturama(cfdi, {
+        testMode,
+        timeoutMs: 60000,
+        sendToEmail: emailReceptor,
+        emailFrom: `${centinelia.razonSocial} <${centinelia.emailContacto}>`,
+      });
+
+      if (!result.ok) return { ok: false, error: `[${result.code}] ${result.message}` };
+
+      return {
+        ok: true,
+        uuid: result.uuid,
+        total,
+        fecha_timbrado: result.fechaTimbrado,
+        email_enviado: result.emailSent ?? false,
+        message: `CFDI Ingreso timbrado por ${total.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}. UUID ${result.uuid}. ${emailReceptor ? (result.emailSent ? `Enviado a ${emailReceptor}.` : `NO se pudo enviar por correo a ${emailReceptor}.`) : 'No se envió por correo.'}`,
+      };
+    } catch (e) {
+      return { ok: false, error: `emitir_cfdi_centinelia: ${(e as Error).message}` };
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // solicitar_complemento_pago — REP para CFDI PPD ya timbrado (Nala interna)
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'solicitar_complemento_pago') {
+    try {
+      const centinelia = getCentineliaFiscalConfig();
+      const creds = getFacturamaCredentials();
+      const testMode = isFacturamaSandbox();
+
+      const cfdiUuid   = String(toolInput.cfdi_uuid_original ?? '');
+      const montoPago  = Number(toolInput.monto_pagado ?? 0);
+      const fechaPago  = String(toolInput.fecha_pago ?? '');
+      const numOp      = toolInput.num_operacion as string | undefined;
+      const saldoAnt   = Number(toolInput.saldo_anterior ?? montoPago);
+      const saldoInso  = Number(toolInput.saldo_insoluto ?? Math.max(0, saldoAnt - montoPago));
+      const parcialid  = Number(toolInput.num_parcialidad ?? 1);
+      const ivaBase    = Number(toolInput.iva_base ?? 0);
+      const ivaImporte = Number(toolInput.iva_importe ?? 0);
+
+      if (!cfdiUuid || !montoPago || !fechaPago) {
+        return { ok: false, error: 'cfdi_uuid_original, monto_pagado y fecha_pago son requeridos' };
+      }
+
+      const pago: PagoInput = {
+        emisor: {
+          rfc: centinelia.rfc,
+          regimenFiscal: centinelia.regimenFiscal,
+          nombre: centinelia.razonSocial,
+        },
+        receptor: {
+          rfc:            String(toolInput.receptor_rfc ?? ''),
+          nombre:         String(toolInput.receptor_nombre ?? ''),
+          regimenFiscal:  String(toolInput.receptor_regimen ?? '601'),
+          domicilioFiscal:String(toolInput.receptor_cp ?? ''),
+          usoCfdi: 'CP01',
+        },
+        lugarExpedicion: centinelia.lugarExpedicion,
+        pago: {
+          fechaPago,
+          formaDePagoP: String(toolInput.forma_pago ?? '03'),
+          monedaP: 'MXN',
+          monto: montoPago,
+          numOperacion: numOp,
+          documentosRelacionados: [{
+            uuid: cfdiUuid,
+            monedaDR: 'MXN',
+            metodoDePagoDR: 'PPD',
+            numParcialidad: parcialid,
+            impSaldoAnt: saldoAnt,
+            impPagado: montoPago,
+            impSaldoInsoluto: saldoInso,
+            objetoImpDR: ivaImporte > 0 ? '02' : '01',
+            ...(ivaImporte > 0 ? {
+              taxes: [{
+                base: ivaBase,
+                impuesto: '002' as const,
+                tipoFactor: 'Tasa' as const,
+                tasaOCuota: 0.16,
+                importe: ivaImporte,
+                isRetencion: false,
+              }],
+            } : {}),
+          }],
+        },
+        csd: { cerPem: '', keyPem: '', noCertificado: '' },
+        pacCredentials: creds,
+      };
+
+      if (!pago.receptor.rfc || !pago.receptor.nombre || !pago.receptor.domicilioFiscal) {
+        return { ok: false, error: 'receptor_rfc, receptor_nombre y receptor_cp son requeridos' };
+      }
+
+      const emailReceptor = toolInput.receptor_email as string | undefined;
+
+      const result = await emitirPagoFacturama(pago, {
+        testMode,
+        timeoutMs: 60000,
+        sendToEmail: emailReceptor,
+        emailFrom: `${centinelia.razonSocial} <${centinelia.emailContacto}>`,
+      });
+
+      if (!result.ok) return { ok: false, error: `[${result.code}] ${result.message}` };
+
+      return {
+        ok: true,
+        uuid: result.uuid,
+        monto_pagado: montoPago,
+        cfdi_referenciado: cfdiUuid,
+        fecha_timbrado: result.fechaTimbrado,
+        email_enviado: result.emailSent ?? false,
+        message: `Complemento de Pago timbrado por ${montoPago.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}. UUID ${result.uuid}, referenciando CFDI ${cfdiUuid}. ${emailReceptor ? (result.emailSent ? `Enviado a ${emailReceptor}.` : `NO se pudo enviar por correo a ${emailReceptor}.`) : 'No se envió por correo.'}`,
+      };
+    } catch (e) {
+      return { ok: false, error: `solicitar_complemento_pago: ${(e as Error).message}` };
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────

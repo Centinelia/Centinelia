@@ -8,10 +8,12 @@
 import type { InvoicingProvider } from './provider';
 import { solucionFactibleProvider } from './solucion-factible';
 import { contpaqiTimbraProvider } from './contpaqi';
+import { facturamaProvider } from './facturama';
 
 export const PROVIDER_REGISTRY: Record<string, InvoicingProvider> = {
   solucion_factible: solucionFactibleProvider,
   contpaqi_timbra:   contpaqiTimbraProvider,
+  facturama:         facturamaProvider,
 };
 
 export function getProvider(id: string | null | undefined): InvoicingProvider | null {

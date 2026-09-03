@@ -32,7 +32,8 @@ export interface AgentFeatures {
   outbound_capabilities?: string[];
 
   // Vertical del cliente — controla qué secciones de Oficina se muestran
-  vertical?: 'negocio' | 'gobierno';
+  // y los labels condicionales por giro (ver [[project-centinelia-fondo-demo-del-norte]]).
+  vertical?: 'negocio' | 'gobierno' | 'financiero';
 
   // IT Helpdesk — activa las tools de tickets, incidentes y directorio
   helpdesk?: boolean;

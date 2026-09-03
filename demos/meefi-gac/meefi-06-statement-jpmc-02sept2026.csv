@@ -1,0 +1,49 @@
+JPMorgan Chase - Nostro Account Statement,,,,,,
+Account Holder: Meefi Inc,,,,,,
+Account Number: XXXX-XXXX-8347,,,,,,
+Statement Date: 2026-09-02,,,,,,
+Currency: USD,,,,,,
+,,,,,,
+Opening Balance: 2456782.14,,,,,,
+Closing Balance: 2891245.67,,,,,,
+Total Credits: 987432.55,,,,,,
+Total Debits: 552968.02,,,,,,
+,,,,,,
+Value Date,Reference,Description,Type,Amount USD,Currency,Balance
+2026-09-02,MT103-2609020001,Wire OUT to HDFC Bank Mumbai IN - Beneficiary: Kaveri Textiles Ltd,DEBIT,85320.00,USD,2371462.14
+2026-09-02,MT103-2609020002,Wire OUT to Bank of China Shenzhen - Beneficiary: Shenzhen Electronica Co Ltd,DEBIT,42150.00,USD,2329312.14
+2026-09-02,MT103-2609020003,Wire OUT to Wells Fargo Detroit - Beneficiary: MotorParts Michigan LLC,DEBIT,167890.00,USD,2161422.14
+2026-09-02,ACH-CR-2609020004,ACH Credit inbound from Coffee Roasters Inc Seattle - Ref: Cafe y Empaques Boutique invoice CEB-2026-0812,CREDIT,28500.00,USD,2189922.14
+2026-09-02,MT103-2609020005,Wire OUT to Deutsche Bank Frankfurt - Beneficiary: MedTech Systems GmbH,DEBIT,54780.00,USD,2135142.14
+2026-09-02,MT103-2609020006,Wire OUT to Banco Santander Madrid - Beneficiary: Bodegas Rioja Alta SA,DEBIT,18420.00,USD,2116722.14
+2026-09-02,FEE-CORR-2609020007,Correspondent bank fee - Bank of China intermediary,DEBIT,25.00,USD,2116697.14
+2026-09-02,FEE-CORR-2609020008,Correspondent bank fee - Deutsche Bank intermediary,DEBIT,35.00,USD,2116662.14
+2026-09-02,MT103-2609020009,Wire OUT to ICBC Shanghai - Beneficiary: Foshan Hardware Industrial Co,DEBIT,32450.00,USD,2084212.14
+2026-09-02,MT103-2609020010,Wire OUT to Woori Bank Seoul - Beneficiary: Hyundai Parts Trading Co,DEBIT,78120.00,USD,2006092.14
+2026-09-02,ACH-CR-2609020011,ACH Credit inbound from Whole Foods Vendor Payment - Ref: Cafe y Empaques Boutique CEB-2026-0813,CREDIT,15400.00,USD,2021492.14
+2026-09-02,MT103-2609020012,Wire OUT to Bank of Communications Beijing - Beneficiary: Yiwu Electronics Trading Ltd,DEBIT,28900.00,USD,1992592.14
+2026-09-02,MT103-2609020013,Wire OUT to BBVA Barcelona - Beneficiary: Vinos y Vinedos Torrella SL,DEBIT,12680.00,USD,1979912.14
+2026-09-02,MT103-2609020014,Wire OUT to KEB Hana Bank Busan - Beneficiary: Busan Auto Parts Co,DEBIT,45200.00,USD,1934712.14
+2026-09-02,FEE-CORR-2609020015,Correspondent bank fee - ICBC intermediary,DEBIT,25.00,USD,1934687.14
+2026-09-02,MT103-2609020016,Wire OUT to Turkiye Is Bankasi Istanbul - Beneficiary: Bursa Textile Manufacturing AS,DEBIT,62480.00,USD,1872207.14
+2026-09-02,MT103-2609020017,Wire OUT to State Bank of India Delhi - Beneficiary: Delhi Cotton Exports Pvt Ltd,DEBIT,38900.00,USD,1833307.14
+2026-09-02,ACH-CR-2609020018,ACH Credit inbound from Import Financial Services - REVERSAL of ACH sent 2026-08-31 - insufficient beneficiary details,CREDIT,7850.00,USD,1841157.14
+2026-09-02,MT103-2609020019,Wire OUT to Bank of China Guangzhou - Beneficiary: Guangzhou Semiconductor Trading Ltd,DEBIT,52340.00,USD,1788817.14
+2026-09-02,MT103-2609020020,Wire OUT to Wells Fargo Los Angeles - Beneficiary: Pacific Auto Parts Distribution,DEBIT,89670.00,USD,1699147.14
+2026-09-02,MT103-2609020021,Wire OUT to Commerzbank Frankfurt - Beneficiary: Bavaria Precision Instruments GmbH,DEBIT,44200.00,USD,1654947.14
+2026-09-02,MT103-2609020022,Wire OUT to Intesa Sanpaolo Milano - Beneficiary: Sacmi Imola SpA packaging machinery,DEBIT,71830.00,USD,1583117.14
+2026-09-02,FEE-CORR-2609020023,Correspondent bank fee - Wells Fargo intermediary,DEBIT,35.00,USD,1583082.14
+2026-09-02,FEE-CORR-2609020024,Correspondent bank fee - Turkiye Is Bankasi intermediary,DEBIT,40.00,USD,1583042.14
+2026-09-02,MT103-2609020025,Wire OUT to Banco de Chile Santiago - Beneficiary: Vinedos del Valle Central,DEBIT,9840.00,USD,1573202.14
+2026-09-02,ACH-CR-2609020026,ACH Credit inbound UNKNOWN SOURCE - Ref: swift ref FTP2609020022 - REQUIRES INVESTIGATION,CREDIT,142000.00,USD,1715202.14
+2026-09-02,MT103-2609020027,Wire OUT to Yes Bank Bangalore - Beneficiary: Bangalore Textile Exports,DEBIT,26150.00,USD,1689052.14
+2026-09-02,MT103-2609020028,Wire OUT to Bank of Ningbo - Beneficiary: Ningbo Industrial Supplies Trading,DEBIT,18740.00,USD,1670312.14
+2026-09-02,MT103-2609020029,Wire OUT to ANZ Bank Auckland - Beneficiary: Auckland Coffee Import Ltd,DEBIT,5230.00,USD,1665082.14
+2026-09-02,ACH-CR-2609020030,ACH Credit inbound from Amazon Vendor Payment - Ref: Cafe y Empaques Boutique CEB-2026-0814,CREDIT,22400.00,USD,1687482.14
+2026-09-02,SWIFT-FEE-2609020031,SWIFT network fees monthly aggregation,DEBIT,180.00,USD,1687302.14
+2026-09-02,INTEREST-CR-2609020032,Overnight interest credit,CREDIT,1247.00,USD,1688549.14
+,,,,,,
+NOTAS PARA EL DEMO (Nova debe detectar):,,,,,,
+1. MT103-2609020018 = ACH REVERSAL de una operacion del 31-ago que no llego a beneficiario. Debe conciliar y notificar al cliente afectado.,,,,,,
+2. MT103-2609020026 = credito de $142K USD con SOURCE UNKNOWN. Debe flaggear como BREAK critico para investigacion urgente.,,,,,,
+3. Multiples FEE-CORR ($25-$40) que se aplicaron a wires salientes. Nova debe distribuirlos al cliente correcto para reconciliar sub-ledger.,,,,,,

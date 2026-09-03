@@ -108,7 +108,7 @@ const CAPABILITY_GROUPS: { label: string; color: string; tools: string[] }[] = [
   { label: 'Timbra y cancela CFDIs',    color: '#a16207', tools: ['sf_timbrar_desde_oc', 'sf_cancelar_cfdi', 'sf_consultar_estado_sat'] },
   { label: 'Archivo fiscal',            color: '#a16207', tools: ['archivar_expediente'] },
   { label: 'Helpdesk IT',           color: '#ef4444', tools: ['crear_ticket', 'consultar_incidentes', 'buscar_directorio'] },
-  { label: 'Servicios municipales', color: '#3b82f6', tools: ['crear_reporte_civico', 'consultar_reporte_civico', 'actualizar_reporte_civico'] },
+  { label: 'Reportes con folio',    color: '#3b82f6', tools: ['crear_reporte_civico', 'consultar_reporte_civico', 'actualizar_reporte_civico'] },
   { label: 'Onboarding y bienvenida', color: '#a855f7', tools: ['iniciar_onboarding'] },
   { label: 'Insights de marca',     color: '#c084fc', tools: ['extraer_voz_del_cliente', 'extraer_tono_de_marca'] },
   { label: 'Dirección general',     color: '#8b5cf6', tools: ['revisar_desempeno_equipo', 'aprobar_gasto'] },
@@ -226,13 +226,13 @@ const BUSINESS_CATEGORIES: { label: string; color: string; specialized?: boolean
     ],
   },
   {
-    label: 'Servicios municipales',
+    label: 'Reportes con folio',
     color: '#f97316', // nara
     specialized: true,
     tools: [
-      { key: 'crear_reporte_civico', label: 'Registrar reporte ciudadano' },
-      { key: 'consultar_reporte_civico', label: 'Consultar estado de reporte' },
-      { key: 'actualizar_reporte_civico', label: 'Actualizar reporte ciudadano' },
+      { key: 'crear_reporte_civico',      label: 'Registrar reporte' },
+      { key: 'consultar_reporte_civico',  label: 'Consultar estado de reporte' },
+      { key: 'actualizar_reporte_civico', label: 'Actualizar reporte' },
     ],
   },
 ];

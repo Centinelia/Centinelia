@@ -1,0 +1,37 @@
+Meefi - Ledger Interno de Operaciones,,,,,,,
+Fecha corte: 2026-09-02,,,,,,,
+,,,,,,,
+Operacion ID,Fecha ordenada,Cliente ordenante,RFC ordenante,Beneficiario,Pais destino,Monto USD,Rieles,Estado,Referencia interna
+OP-2609-0001,2026-09-02,Grupo Textiles del Norte SA,GTN180314M52,Kaveri Textiles Ltd,India,85320.00,SWIFT MT103,Enviado,GTN-2026-09-001
+OP-2609-0002,2026-09-02,Electronica Global Pacifico SA,EGP200622HB4,Shenzhen Electronica Co Ltd,China,42150.00,SWIFT MT103,Enviado,EGP-2026-09-001
+OP-2609-0003,2026-09-02,Autopartes Rio Bravo SAPI,ARB150818LM9,MotorParts Michigan LLC,EEUU,167890.00,SWIFT MT103,Enviado,ARB-2026-09-001
+OP-2609-0004,2026-09-02,Insumos Medicos MedCore SA,IMM160903P84,MedTech Systems GmbH,Alemania,54780.00,SWIFT MT103,Enviado,IMM-2026-09-001
+OP-2609-0005,2026-09-02,Distribuidora de Vinos Meridiano SA,DVM191104GS2,Bodegas Rioja Alta SA,Espana,18420.00,SWIFT MT103,Enviado,DVM-2026-09-001
+OP-2609-0006,2026-09-02,Ferretera Industrial Aztlan SA,FIA170512DP6,Foshan Hardware Industrial Co,China,32450.00,SWIFT MT103,Enviado,FIA-2026-09-001
+OP-2609-0007,2026-09-02,Autopartes Rio Bravo SAPI,ARB150818LM9,Hyundai Parts Trading Co,Corea,78120.00,SWIFT MT103,Enviado,ARB-2026-09-002
+OP-2609-0008,2026-09-02,Electronica Global Pacifico SA,EGP200622HB4,Yiwu Electronics Trading Ltd,China,28900.00,SWIFT MT103,Enviado,EGP-2026-09-002
+OP-2609-0009,2026-09-02,Distribuidora de Vinos Meridiano SA,DVM191104GS2,Vinos y Vinedos Torrella SL,Espana,12680.00,SWIFT MT103,Enviado,DVM-2026-09-002
+OP-2609-0010,2026-09-02,Autopartes Rio Bravo SAPI,ARB150818LM9,Busan Auto Parts Co,Corea,45200.00,SWIFT MT103,Enviado,ARB-2026-09-003
+OP-2609-0011,2026-09-02,Grupo Textiles del Norte SA,GTN180314M52,Bursa Textile Manufacturing AS,Turquia,62480.00,SWIFT MT103,Enviado,GTN-2026-09-002
+OP-2609-0012,2026-09-02,Grupo Textiles del Norte SA,GTN180314M52,Delhi Cotton Exports Pvt Ltd,India,38900.00,SWIFT MT103,Enviado,GTN-2026-09-003
+OP-2609-0013,2026-09-02,Electronica Global Pacifico SA,EGP200622HB4,Guangzhou Semiconductor Trading Ltd,China,52340.00,SWIFT MT103,Enviado,EGP-2026-09-003
+OP-2609-0014,2026-09-02,Autopartes Rio Bravo SAPI,ARB150818LM9,Pacific Auto Parts Distribution,EEUU,89670.00,SWIFT MT103,Enviado,ARB-2026-09-004
+OP-2609-0015,2026-09-02,Insumos Medicos MedCore SA,IMM160903P84,Bavaria Precision Instruments GmbH,Alemania,44200.00,SWIFT MT103,Enviado,IMM-2026-09-002
+OP-2609-0016,2026-09-02,Cafe y Empaques Boutique SA,CEB211015N43,Sacmi Imola SpA,Italia,71830.00,SWIFT MT103,Enviado,CEB-2026-09-001
+OP-2609-0017,2026-09-02,Distribuidora de Vinos Meridiano SA,DVM191104GS2,Vinedos del Valle Central,Chile,9840.00,SWIFT MT103,Enviado,DVM-2026-09-003
+OP-2609-0018,2026-09-02,Grupo Textiles del Norte SA,GTN180314M52,Bangalore Textile Exports,India,26150.00,SWIFT MT103,Enviado,GTN-2026-09-004
+OP-2609-0019,2026-09-02,Ferretera Industrial Aztlan SA,FIA170512DP6,Ningbo Industrial Supplies Trading,China,18740.00,SWIFT MT103,Enviado,FIA-2026-09-002
+OP-2609-0020,2026-09-02,Cafe y Empaques Boutique SA,CEB211015N43,Auckland Coffee Import Ltd,Nueva Zelanda,5230.00,SWIFT MT103,Enviado,CEB-2026-09-002
+OP-2609-0021,2026-09-01,Cafe y Empaques Boutique SA,CEB211015N43,Coffee Roasters Inc Seattle,EEUU,28500.00,ACH inbound,Confirmado,CEB-2026-09-COLL-001
+OP-2609-0022,2026-09-01,Cafe y Empaques Boutique SA,CEB211015N43,Whole Foods Vendor Payment,EEUU,15400.00,ACH inbound,Confirmado,CEB-2026-09-COLL-002
+OP-2609-0023,2026-09-01,Cafe y Empaques Boutique SA,CEB211015N43,Amazon Vendor Payment,EEUU,22400.00,ACH inbound,Confirmado,CEB-2026-09-COLL-003
+OP-2609-0024,2026-08-31,Distribuidora de Vinos Meridiano SA,DVM191104GS2,Cliente cancelado - devolucion ACH,EEUU,7850.00,ACH outbound REVERSED,Devuelto por corresponsal,DVM-2026-08-999
+,,,,,,,
+Total operaciones outbound del dia: 20 = 985110.00 USD,,,,,,,
+Total collections del dia: 3 = 66300.00 USD,,,,,,,
+Devolucion del dia anterior confirmada: 1 = 7850.00 USD,,,,,,,
+,,,,,,,
+NOTAS PARA RECONCILIACION:,,,,,,,
+- OP-2609-0018 (ACH REVERSED del 31-ago) aparece correctamente en el statement JPMC como CREDIT porque el corresponsal devolvio los fondos. Actualizar sub-ledger de Distribuidora Vinos con reversal aplicado.,,,,,,,
+- OP-2609-0026 en el statement JPMC (CREDIT $142K UNKNOWN SOURCE) NO existe en este ledger. Es el break critico que Nova debe flaggear.,,,,,,,
+- Los FEE-CORR del statement (varios de $25-$40) NO estan capturados aqui. Nova debe distribuirlos a las operaciones OP correspondientes segun el corresponsal indicado.,,,,,,,
