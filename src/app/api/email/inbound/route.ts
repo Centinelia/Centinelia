@@ -208,14 +208,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  // 2. Check if this is a direct reply to a specific agent
+  // 2. Direct email a un agente específico (agent-token 12 chars).
+  //
+  // Este path atiende DOS casos:
+  //   a) cliente responde a un correo previo del agente (thread continuation)
+  //   b) cliente/humano manda correo nuevo dirigido al agente para pedirle algo
+  //
+  // Pre-2026-09-03 solo cubría (a): creaba agent_messages + agent_tasks y
+  // retornaba sin invocar el LLM. Bug: correos nuevos al agent-token quedaban
+  // sin procesamiento — Nova/Nala/etc nunca contestaban. Ahora además de
+  // registrar el task de tracking, invocamos processInboxEmail con el agente
+  // como opsAgent + sendReplyFn dirigido, replicando el pattern del webhook
+  // portal-shared path (línea ~360 abajo).
   const agentMatch = await resolveAgentFromToken(token);
 
   if (agentMatch) {
-    // Route directly to the targeted agent — create a task so the agent processes the reply
     const { data: targetAgent } = await supabase
       .from('voice_agents')
-      .select('id, portal_email, agent_name, role, knowledge_base, role_knowledge_base, business_name')
+      .select('id, portal_email, agent_name, role, knowledge_base, role_knowledge_base, business_name, client_email, portal_token, email_from, email_domain_verified, trust_stage, features, approval_email, auto_mode')
       .eq('id', agentMatch.agentId)
       .single();
 
@@ -241,12 +251,98 @@ export async function POST(req: NextRequest) {
         portal_email:   agentMatch.portalEmail,
         created_by:     null,
         assigned_to:    targetAgent.id,
-        title:          `Respuesta por correo${senderName ? ` de ${senderName}` : ''}: ${subject || '(sin asunto)'}`.slice(0, 200),
-        description:    `El compañero humano ${senderName || from} respondió tu correo.`,
+        title:          `Correo${senderName ? ` de ${senderName}` : ''}: ${subject || '(sin asunto)'}`.slice(0, 200),
+        description:    `${senderName || from} escribió al inbox del empleado.`,
         status:         'pending',
         trigger_type:   'email_reply',
         source_context: `De: ${from}\nAsunto: ${subject}\n\n${text.trim().slice(0, 500)}`,
       });
+
+      // Attachments: reutilizar el mismo pipeline de storage que el
+      // portal-shared path para que create_file/pdf de Neus/Nova/Nala puedan
+      // adjuntarse al reply.
+      const agentStoredAttachments: StoredAttachment[] = [];
+      const monthAgt = new Date().toISOString().slice(0, 7);
+      for (const att of rawAttachments) {
+        const safeName = att.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const path     = `${agentMatch.portalEmail}/${monthAgt}/${Date.now()}-${safeName}`;
+        const { data: stored } = await supabase.storage
+          .from('email-attachments')
+          .upload(path, att.buf, { contentType: att.type, upsert: false });
+        if (stored?.path) {
+          const { data: { publicUrl } } = supabase.storage
+            .from('email-attachments')
+            .getPublicUrl(stored.path);
+          agentStoredAttachments.push({
+            name: att.name, url: publicUrl, type: att.type, size: att.buf.length,
+          });
+        } else {
+          console.error('[email-inbound agent-token] attachment_upload_failed', {
+            path, filename: att.name, mime: att.type, size: att.buf.length,
+          });
+        }
+      }
+
+      const ownerEmail = (targetAgent as Record<string, unknown>).client_email as string | null;
+      if (ownerEmail) {
+        // Traer org-level para KB + kill switch auto-mode
+        const { data: orgDataAgt } = await supabase
+          .from('organizations')
+          .select('knowledge_base, auto_mode_disabled_at')
+          .eq('portal_email', agentMatch.portalEmail)
+          .maybeSingle();
+
+        const brandedFromAgt = agentBrandedFrom({
+          agent_name:            targetAgent.agent_name as string | null,
+          business_name:         targetAgent.business_name as string | null,
+          email_from:            (targetAgent as Record<string, unknown>).email_from as string | null,
+          email_domain_verified: (targetAgent as Record<string, unknown>).email_domain_verified as boolean | null,
+        });
+        const replySubjectAgt = subject.startsWith('Re:') ? subject : `Re: ${subject}`;
+        const escapeHtmlAgt = (s: string) => s
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        const sendReplyFnAgt = async (body: string, attachments?: ReplyAttachment[]) => {
+          const bodyHtml = `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;white-space:pre-wrap;color:#1a1a1a;line-height:1.5;font-size:14px">${escapeHtmlAgt(body)}</div>`;
+          const ok = await sendEmail({
+            to:      from,
+            subject: replySubjectAgt,
+            html:    bodyHtml,
+            from:    brandedFromAgt,
+            attachments: attachments?.map(a => ({
+              filename: a.filename,
+              content:  a.content.toString('base64'),
+            })),
+          });
+          if (!ok) throw new Error('sendEmail returned false — RESEND_API_KEY missing or Resend rejected');
+        };
+
+        const orgDisabledAgt = !!(orgDataAgt as Record<string, unknown> | null)?.auto_mode_disabled_at;
+        const autoModeAgt = resolveAutoMode({
+          trust_stage: (targetAgent as Record<string, unknown>).trust_stage as number | null,
+          orgDisabled: orgDisabledAgt,
+        });
+
+        processInboxEmail({
+          agentId:       targetAgent.id,
+          source:        'sendgrid',
+          emailFrom:     from,
+          emailSubject:  subject,
+          emailBody:     text,
+          attachments:   agentStoredAttachments,
+          agentName:     (targetAgent.agent_name as string | null) ?? 'Centinelia',
+          businessName:  targetAgent.business_name as string,
+          knowledgeBase: (orgDataAgt?.knowledge_base as string | null) ?? (targetAgent.knowledge_base as string | null),
+          roleKB:        targetAgent.role_knowledge_base as string | null,
+          agentRole:     targetAgent.role as string | null,
+          ownerEmail,
+          portalToken:   targetAgent.portal_token as string,
+          portalEmail:   agentMatch.portalEmail,
+          autoMode:      autoModeAgt,
+          approvalEmail: (targetAgent as Record<string, unknown>).approval_email as string | null | undefined,
+          sendReplyFn:   sendReplyFnAgt,
+        }).catch(err => console.error('[ops agent-token] inbox-processor error:', err));
+      }
     }
 
     return NextResponse.json({ ok: true });
