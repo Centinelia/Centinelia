@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
-import { MONTHLY_CONFIG } from '@/lib/billing/plans';
-import type { Plan, MinutesTier } from '@/lib/billing/plans';
 import { alertCronPartialFailure } from '@/lib/cron/alert-partial-failure';
 import { todayInMexico } from '@/lib/billing/tz';
 
@@ -21,11 +19,14 @@ export async function GET(req: Request) {
   nextResetDate.setDate(nextResetDate.getDate() + 30);
   const nextResetIso = nextResetDate.toISOString().slice(0, 10);
 
-  // Orgs con reset vencido, agrupadas por billing_model
+  // Orgs con reset vencido O sin pool_reset_date inicializado. Antes el filtro
+  // `.lte(pool_reset_date, today)` excluía rows con null → clientes recién
+  // activados (Tortillería, test-followup) nunca recibían renewal grant y
+  // get_pool_cap (refactor 2026-09-02) no podía detectar rollover legítimo.
   const { data: due } = await supabase
     .from('organizations')
     .select('portal_email, pool_reset_date, monthly_ops_used, monthly_ops_pool, billing_model, ops_ledger_enabled, active_contract_id')
-    .lte('pool_reset_date', today);
+    .or(`pool_reset_date.is.null,pool_reset_date.lte.${today}`);
 
   let annualGrants = 0;
   let stripeSafetyNets = 0;
@@ -43,20 +44,20 @@ export async function GET(req: Request) {
         await supabase.rpc('apply_ops_annual_grant', { p_portal_email: email });
         annualGrants++;
       } else if (ledgerOn && (model === 'stripe' || !model)) {
-        // Stripe safety net: si invoice.paid webhook no llegó, insertamos renewal manual.
-        // Sumamos el aiOps del plan de cada agente activo para calcular el crédito total.
+        // Stripe safety net: si invoice.paid webhook no llegó, insertamos
+        // renewal manual. Usamos get_plan_base_ops (mismo cálculo que
+        // get_ops_pool_cap sin rollover) — antes se sumaba
+        // MONTHLY_CONFIG[plan][tier].aiOps que daba 300 para pro-scale cuando
+        // JORNADA_CONFIG dice 520 para jornada combinada.
         const { data: agents } = await supabase
           .from('voice_agents')
-          .select('id, plan, minutes_plan, ai_ops_limit')
+          .select('id')
           .eq('portal_email', email)
-          .eq('active', true);
-
-        let totalOps = 0;
-        const primaryAgentId = agents?.[0]?.id ?? null;
-        for (const a of agents ?? []) {
-          const cfg = MONTHLY_CONFIG[a.plan as Plan]?.[a.minutes_plan as MinutesTier];
-          totalOps += cfg?.aiOps ?? (a.ai_ops_limit as number) ?? 0;
-        }
+          .eq('active', true)
+          .limit(1);
+        const primaryAgentId = (agents?.[0]?.id as string | null) ?? null;
+        const { data: planBase } = await supabase.rpc('get_plan_base_ops', { p_portal_email: email });
+        const totalOps = (planBase as number | null) ?? 0;
 
         if (totalOps > 0 && primaryAgentId) {
           await supabase.rpc('apply_ops_ledger_entry', {

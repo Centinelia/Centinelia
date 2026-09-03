@@ -128,6 +128,7 @@ export default function HistorialConsumoClient({
   const [tab, setTab] = useState<'minutos' | 'tareas'>('minutos');
   const [fromDate, setFromDate] = useState<string>('');
   const [toDate,   setToDate]   = useState<string>('');
+  type QuickRange = 'hoy' | '7d' | 'mes' | 'todo';
 
   const filteredMinutes = useMemo(() => filterByDate(minutes, fromDate, toDate), [minutes, fromDate, toDate]);
   const filteredTasks   = useMemo(() => filterByDate(tasks,   fromDate, toDate), [tasks,   fromDate, toDate]);
@@ -141,7 +142,7 @@ export default function HistorialConsumoClient({
   const clearFilters = () => { setFromDate(''); setToDate(''); };
   const hasFilters = !!(fromDate || toDate);
 
-  const applyQuickRange = (range: 'hoy' | '7d' | 'mes' | 'todo') => {
+  const applyQuickRange = (range: QuickRange) => {
     const now = new Date();
     const iso = (d: Date) => d.toISOString().slice(0, 10);
     if (range === 'todo') { setFromDate(''); setToDate(''); return; }
@@ -155,6 +156,22 @@ export default function HistorialConsumoClient({
       setFromDate(iso(from)); setToDate(iso(now)); return;
     }
   };
+
+  // Cuando el cliente edita los inputs DESDE/HASTA a mano, el rango deja de
+  // coincidir con cualquier preset — el pill activo pasa a 'custom' (ninguno
+  // pintado) para no mentir sobre qué rango está activo.
+  const currentPreset: QuickRange | 'custom' = useMemo(() => {
+    if (!fromDate && !toDate) return 'todo';
+    const now = new Date();
+    const iso = (d: Date) => d.toISOString().slice(0, 10);
+    const today = iso(now);
+    if (fromDate === today && toDate === today) return 'hoy';
+    const weekFrom = new Date(now); weekFrom.setDate(weekFrom.getDate() - 6);
+    if (fromDate === iso(weekFrom) && toDate === today) return '7d';
+    const monthFrom = new Date(now.getFullYear(), now.getMonth(), 1);
+    if (fromDate === iso(monthFrom) && toDate === today) return 'mes';
+    return 'custom';
+  }, [fromDate, toDate]);
 
   return (
     <div className="flex flex-col">
@@ -189,17 +206,20 @@ export default function HistorialConsumoClient({
               { key: '7d'  as const, label: '7 días' },
               { key: 'mes' as const, label: 'Este mes' },
               { key: 'todo' as const, label: 'Todo' },
-            ].map(r => (
-              <button key={r.key} onClick={() => applyQuickRange(r.key)}
-                className="text-[11px] px-2.5 py-1 rounded-full font-medium transition-colors"
-                style={{
-                  background: !hasFilters && r.key === 'todo' ? '#1A0A3B' : '#ffffff',
-                  color:      !hasFilters && r.key === 'todo' ? '#ffffff' : '#6B6480',
-                  border:     '1px solid ' + (!hasFilters && r.key === 'todo' ? '#1A0A3B' : '#E8E3F5'),
-                }}>
-                {r.label}
-              </button>
-            ))}
+            ].map(r => {
+              const isActive = currentPreset === r.key;
+              return (
+                <button key={r.key} onClick={() => applyQuickRange(r.key)}
+                  className="text-[11px] px-2.5 py-1 rounded-full font-medium transition-colors"
+                  style={{
+                    background: isActive ? '#1A0A3B' : '#ffffff',
+                    color:      isActive ? '#ffffff' : '#6B6480',
+                    border:     '1px solid ' + (isActive ? '#1A0A3B' : '#E8E3F5'),
+                  }}>
+                  {r.label}
+                </button>
+              );
+            })}
             {/* Export CSV — respeta el filtro de fechas activo del UI (fix N3
                 audit). Sin filtros = historial completo. Minutes incluye
                 duración exacta + minutos cobrados para auditar el redondeo. */}

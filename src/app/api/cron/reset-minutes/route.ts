@@ -34,24 +34,65 @@ export async function GET(req: Request) {
 
   let refreshed = 0;
   let resetDate = 0;
+  let renewalGrants = 0;
   const errors: string[] = [];
   // Accounts a procesar = todos menos non-stripe.
   const stripeAccounts = (allAccounts ?? []).filter(a => !nonStripeSet.has(a.portal_email as string));
   for (const acct of stripeAccounts) {
     try {
+      const email = acct.portal_email as string;
+
+      // Si el reset_date ya expiró, escribir renewal grant en el ledger ANTES
+      // de refrescar el cache. get_pool_cap (refactor 2026-09-02) requiere
+      // este grant en el ciclo previo para reconocer rollover legítimo — sin
+      // grant, ningún cliente acumula rollover aunque haya pagado. Safety-net:
+      // si invoice.paid webhook ya insertó renewal con misma referencia, el
+      // ON CONFLICT DO NOTHING de apply_ledger_entry lo hace idempotente.
+      const { data: acctMinsRow } = await supabase
+        .from('account_minutes')
+        .select('minutes_reset_date')
+        .eq('portal_email', email)
+        .maybeSingle();
+      const currentReset = acctMinsRow?.minutes_reset_date as string | null;
+      const cycleExpired = currentReset && currentReset <= today;
+
+      if (cycleExpired) {
+        const { data: planBase } = await supabase.rpc('get_plan_base_minutes', { p_portal_email: email });
+        const planBaseMin = (planBase as number | null) ?? 0;
+        const { data: agents } = await supabase
+          .from('voice_agents')
+          .select('id')
+          .eq('portal_email', email)
+          .eq('active', true)
+          .limit(1);
+        const primaryAgentId = (agents?.[0]?.id as string | null) ?? null;
+
+        if (planBaseMin > 0 && primaryAgentId) {
+          await supabase.rpc('apply_ledger_entry', {
+            p_portal_email: email,
+            p_agent_id:     primaryAgentId,
+            p_amount:       planBaseMin,
+            p_kind:         'renewal',
+            p_reference_id: `cron-safety-${currentReset}`,
+            p_description:  `Renovación mensual (cron safety-net): ${planBaseMin} min`,
+          });
+          renewalGrants++;
+        }
+      }
+
       // Refresca cache desde ledger (balance, cap, used_30d).
-      await supabase.rpc('refresh_pool_cache', { p_portal_email: acct.portal_email });
+      await supabase.rpc('refresh_pool_cache', { p_portal_email: email });
       refreshed++;
       // Si el reset_date pasó, avanzarlo al siguiente ciclo (metadata solamente).
       await supabase.from('account_minutes')
         .update({ minutes_reset_date: nextDate })
-        .eq('portal_email', acct.portal_email)
+        .eq('portal_email', email)
         .lt('minutes_reset_date', today);
       resetDate++;
       // Limpiar flag de fallback al arrancar el nuevo ciclo (idempotente).
       await supabase.from('organizations')
         .update({ fallback_notified_at: null })
-        .eq('portal_email', acct.portal_email)
+        .eq('portal_email', email)
         .not('fallback_notified_at', 'is', null);
     } catch (err) {
       errors.push(`${acct.portal_email}: ${err instanceof Error ? err.message : String(err)}`);
@@ -79,7 +120,7 @@ export async function GET(req: Request) {
     agentReset++;
   }
 
-  console.log(`[reset-minutes] Refreshed: ${refreshed}, Reset dates: ${resetDate}, Agentes legacy: ${agentReset}, Errores: ${errors.length}`);
+  console.log(`[reset-minutes] Refreshed: ${refreshed}, Reset dates: ${resetDate}, Renewal grants: ${renewalGrants}, Agentes legacy: ${agentReset}, Errores: ${errors.length}`);
 
   // Alerta si hubo procesamiento parcial (H13 fix). No block la respuesta.
   await alertCronPartialFailure(supabase, {
@@ -94,6 +135,7 @@ export async function GET(req: Request) {
     next_date:         nextDate,
     accounts_refreshed: refreshed,
     reset_dates:       resetDate,
+    renewal_grants:    renewalGrants,
     agents_legacy:     agentReset,
     errors:            errors.length,
   });

@@ -3,7 +3,6 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
 import { claimCronRun, releaseCronRun } from '@/lib/cron/lock';
-import { consumeAiOp } from '@/lib/ai/ops-guard';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,20 +33,15 @@ export async function GET(req: NextRequest) {
   }
 
   const supabase = createAdminClient();
-  // Sin lock, deploy race + crash mid-loop → doble ops charge per callId
-  // (chargedCallIds Set solo en memoria per invocation). Ver Scope C2 HIGH #5.
   const claim = await claimCronRun(supabase, 'batch-eval-retrieve', 25 * 60 * 1000);
   if (!claim.ok) return NextResponse.json({ ok: true, skipped: claim.reason });
 
-  // Solo procesar batches que aún NO se descargaron. Antes incluíamos 'ended'
-  // aquí, pero el update final (línea de más abajo) también escribía 'ended'
-  // → mismo batch se re-pescaba en la siguiente corrida, se re-descargaban
-  // resultados y se re-cobraban ops. Bug de doble/N-cobro. Fix 2026-08-24:
-  // (1) status terminal nuevo 'retrieved' escrito al terminar de descargar,
-  // (2) query excluye 'ended' (legacy pre-fix) y 'retrieved' (post-fix).
+  // Solo procesar batches que aún NO se descargaron. El status terminal
+  // 'retrieved' se escribe al terminar la descarga; excluimos también 'ended'
+  // (legacy pre-fix 2026-08-24) para evitar re-procesar batches viejos.
   const { data: batches } = await supabase
     .from('anthropic_batches')
-    .select('id, batch_id, status, charged_call_ids')
+    .select('id, batch_id, status')
     .eq('kind', 'call_eval')
     .in('status', ['in_progress', 'validating'])
     .limit(10);
@@ -65,15 +59,6 @@ export async function GET(req: NextRequest) {
         continue;
       }
 
-      // Mid-loop resilience (2026-08-24): hidratamos el Set con los callIds
-      // ya cobrados en corridas previas de este mismo batch. Si el cron
-      // muere después de cobrar N y antes de marcar 'retrieved', la siguiente
-      // corrida arranca desde donde quedó en vez de re-cobrar desde cero.
-      // El Set vive por batch (antes vivía por invocación → doble cobro entre
-      // batches del mismo callId, aunque en la práctica los callIds solo
-      // aparecen en un batch por diseño del creador).
-      const chargedCallIds = new Set<string>((b.charged_call_ids as string[] | null) ?? []);
-
       const results = await anthropic.messages.batches.results(b.batch_id as string);
       for await (const item of results) {
         const cid = item.custom_id;
@@ -88,35 +73,10 @@ export async function GET(req: NextRequest) {
         const parsed = extractJson(text);
         if (!parsed) continue;
 
-        // Cobrar 1 op al agente dueño de esta llamada (una vez por callId por batch).
-        if (!chargedCallIds.has(callId)) {
-          chargedCallIds.add(callId);
-          try {
-            const { data: callRow } = await supabase
-              .from('voice_calls')
-              .select('agent_id')
-              .eq('id', callId)
-              .maybeSingle();
-            if (callRow?.agent_id) {
-              await consumeAiOp(callRow.agent_id as string, 1, {
-                source:       'batch_eval',
-                label:        'Evaluación CES + auto-evaluación (batch)',
-                reference_id: callId,
-                context:      `batch_id=${b.batch_id}`,
-              });
-              // Persistir inmediatamente que este callId ya fue cobrado.
-              // Un fallo aquí NO revierte el cobro (ya sucedió en el pool);
-              // pero sí abre ventana a re-cobro en la próxima corrida.
-              // Es best-effort: si el UPDATE falla, log-only.
-              await supabase
-                .from('anthropic_batches')
-                .update({ charged_call_ids: Array.from(chargedCallIds) })
-                .eq('id', b.id);
-            }
-          } catch (chargeErr) {
-            console.error('[batch-eval-retrieve] cobro de op falló', chargeErr);
-          }
-        }
+        // NOTA: Antes se cobraba 1 op al pool aquí. Evaluación CES + auto-eval
+        // es monitoreo INTERNO de calidad de Centinelia (no lo pidió el
+        // cliente); el costo Anthropic Batches lo absorbe Centinelia como
+        // margen. Ver [[feedback-pool-cost-based]].
 
         if (isCes) {
           // Sanitize CES data
@@ -150,7 +110,8 @@ export async function GET(req: NextRequest) {
       }
 
       // Terminal: 'retrieved' evita que la próxima corrida re-descargue este
-      // batch y re-cobre ops por los mismos callIds. Ver comentario del query.
+      // batch (los updates de voice_calls son idempotentes pero re-descargar
+      // gasta tokens Anthropic sin nueva info).
       await supabase.from('anthropic_batches').update({ status: 'retrieved', ended_at: new Date().toISOString() }).eq('id', b.id);
     } catch (err) {
       errors.push(`${b.batch_id}: ${String(err)}`);
