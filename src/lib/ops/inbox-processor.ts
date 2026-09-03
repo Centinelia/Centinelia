@@ -1864,7 +1864,15 @@ CATEGORÍAS:
         }
 
         const __ipT = Date.now();
-        const __ipM = 'claude-haiku-4-5-20251001';
+        // Sonnet 4.6 en vez de Haiku 4.5 para el main LLM del loop de tools.
+        // Debug 2026-09-03 pipeline correo Neus: Haiku ignoraba consistentemente
+        // instrucciones críticas del userPrompt (iters=0, tools=[] en 11 intentos
+        // con statement CSV) — devolvía JSON pending directo sin invocar
+        // read_url/create_file. Sonnet 4.6 obedece prompt engineering mejor.
+        // Trade-off: costo ~10x por correo, pero para casos como Neus (tesorería,
+        // reconciliación bancaria) el análisis vale. Observer y summary siguen
+        // en Haiku (no requieren tool_use complejo).
+        const __ipM = 'claude-sonnet-4-6';
         let response;
         try {
           response = await anthropic.messages.create({
