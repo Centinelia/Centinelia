@@ -3,69 +3,89 @@ using System.Runtime.InteropServices;
 namespace Centinelia.BillingContpaqi.Writer.Sdk;
 
 /// <summary>
-/// P/Invoke bindings for the CONTPAQi Comercial native SDK
-/// (<c>MGW_SDK.dll</c> / <c>CONTPAQ_I_DLL.dll</c>).
+/// P/Invoke bindings al SDK nativo de CONTPAQi Comercial.
 ///
-/// CONTPAQi SDK is native x86 C, not COM. Consumer process must be 32-bit
-/// (see csproj Platforms/PlatformTarget=x86). PATH must contain the SDK
-/// folder or use SetDllDirectory at startup.
+/// DLL: <c>MGWServicios.dll</c> — se distribuye con CONTPAQi Comercial
+/// Premium/Pro en <c>C:\Program Files (x86)\Compac\COMERCIAL\SDK\</c>
+/// junto con sus dependencias (<c>contpaqi_rt.dll</c>, <c>librerias.dll</c>,
+/// <c>CONTPAQ_I_DLL.dll</c>). Todas son x86; el proceso consumidor DEBE
+/// ser 32-bit (ver csproj <c>PlatformTarget=x86</c>).
 ///
-/// Function names are the ones documented in CONTPAQi's public SDK manual
-/// for Comercial Premium/Pro. Signatures follow the standard convention:
-///   - Return value: int (0 = ok; non-zero = error code, translate via <c>fError</c>)
-///   - Strings: ANSI (CharSet.Ansi) unless documented otherwise
+/// Convenciones:
+/// - Return type <c>int</c>: 0 = éxito (<see cref="SdkConstants.CodigoExito"/>),
+///   cualquier otro valor es código de error (traducible con <c>fError</c>).
+/// - Strings: ANSI (CharSet.Ansi por default en DllImport aquí).
+/// - Calling convention: WinAPI (StdCall en x86).
 ///
-/// This scaffold covers Day 1 (open/close session + fetch version). Additional
-/// functions (createDocumento, agregaMovimiento, timbraDocumento, etc.) will
-/// be added in Day 2-4.
+/// Las firmas exactas provienen de la documentación pública del SDK,
+/// validadas contra el wrapper open-source AR Software (referencia:
+/// https://github.com/AndresRamos/ARSoftware.Contpaqi.Comercial).
 /// </summary>
 internal static class ContpaqiSdkNative
 {
-    // The DLL name is resolved via LoadLibrary; PATH or SetDllDirectory must
-    // include the CONTPAQi SDK folder. Typical:
-    //   C:\Program Files (x86)\Compac\COMERCIAL\SDK
-    private const string DllName = "MGW_SDK.dll";
+    private const string DllName = "MGWServicios.dll";
 
     // ---- Session lifecycle -----------------------------------------------
 
-    /// <summary>Inicia la sesión del SDK con el usuario y la contraseña.</summary>
-    /// <returns>0 si OK. Codigo de error si falla.</returns>
-    [DllImport(DllName, CharSet = CharSet.Ansi, CallingConvention = CallingConvention.StdCall)]
+    [DllImport(DllName, EntryPoint = "fInicioSesionSDK", CharSet = CharSet.Ansi)]
     public static extern int fInicioSesionSDK(string usuario, string password);
 
-    /// <summary>Termina la sesión del SDK y libera recursos.</summary>
-    [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+    [DllImport(DllName, EntryPoint = "fTerminaSDK")]
     public static extern void fTerminaSDK();
 
-    // ---- Empresa (opens against the company database) --------------------
+    [DllImport(DllName, EntryPoint = "fAbreEmpresa", CharSet = CharSet.Ansi)]
+    public static extern int fAbreEmpresa(string aDirectorioEmpresa);
 
-    /// <summary>Abre una empresa de CONTPAQi Comercial dada la ruta al directorio de la empresa.</summary>
-    /// <param name="rutaEmpresa">
-    ///   Ruta absoluta al directorio de la empresa CONTPAQi.
-    ///   Ejemplo piloto: <c>C:\Compac\Empresas\adTortillasEstrella_PILOTO_D</c>
-    /// </param>
-    [DllImport(DllName, CharSet = CharSet.Ansi, CallingConvention = CallingConvention.StdCall)]
-    public static extern int fAbreEmpresa(string rutaEmpresa);
-
-    /// <summary>Cierra la empresa actualmente abierta.</summary>
-    [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+    [DllImport(DllName, EntryPoint = "fCierraEmpresa")]
     public static extern int fCierraEmpresa();
 
     // ---- Diagnostics ------------------------------------------------------
 
-    /// <summary>
-    /// Traduce un código de error numérico devuelto por otras funciones del
-    /// SDK a un string legible. Copia el resultado en <paramref name="buffer"/>
-    /// (mínimo 512 bytes recomendado por la documentación pública).
-    /// </summary>
-    [DllImport(DllName, CharSet = CharSet.Ansi, CallingConvention = CallingConvention.StdCall)]
+    [DllImport(DllName, EntryPoint = "fError", CharSet = CharSet.Ansi)]
     public static extern void fError(int codigo, System.Text.StringBuilder buffer, int tamano);
 
-    /// <summary>
-    /// Devuelve la versión del SDK cargado. Copia el resultado en
-    /// <paramref name="buffer"/>. Útil para validar que la instalación de
-    /// CONTPAQi está viva antes de cualquier operación.
-    /// </summary>
-    [DllImport(DllName, CharSet = CharSet.Ansi, CallingConvention = CallingConvention.StdCall)]
+    [DllImport(DllName, EntryPoint = "fVersionSDK", CharSet = CharSet.Ansi)]
     public static extern void fVersionSDK(System.Text.StringBuilder buffer, int tamano);
+
+    // ---- Búsqueda de catálogos (posiciona el "puntero interno" del SDK)  -
+
+    /// <summary>
+    /// Busca un cliente/proveedor por su código interno. Regresa 0 si lo
+    /// encuentra y deja el "puntero" interno del SDK posicionado en él.
+    /// </summary>
+    [DllImport(DllName, EntryPoint = "fBuscaCteProv", CharSet = CharSet.Ansi)]
+    public static extern int fBuscaCteProv(string aCodCteProv);
+
+    /// <summary>
+    /// Busca un producto/servicio por su código. Regresa 0 si lo encuentra.
+    /// </summary>
+    [DllImport(DllName, EntryPoint = "fBuscaProducto", CharSet = CharSet.Ansi)]
+    public static extern int fBuscaProducto(string aCodProducto);
+
+    // ---- Alta de documentos y movimientos --------------------------------
+
+    /// <summary>
+    /// Crea un nuevo documento a partir de un <see cref="Structs.TDocumento"/>.
+    /// Al éxito, <paramref name="aIdDocumento"/> queda con el ID interno del
+    /// documento recién creado (necesario para <c>fAltaMovimiento</c>).
+    /// El documento queda como "Sin afectar" — hay que llamar
+    /// <c>fAfectaDocto</c> aparte para activarlo.
+    /// </summary>
+    [DllImport(DllName, EntryPoint = "fAltaDocumento", CharSet = CharSet.Ansi)]
+    public static extern int fAltaDocumento(ref int aIdDocumento, ref Structs.TDocumento aDocumento);
+
+    /// <summary>
+    /// Agrega un movimiento (línea de detalle) al documento <paramref name="aIdDocumento"/>.
+    /// Al éxito, <paramref name="aIdMovimiento"/> queda con el ID del movimiento.
+    /// </summary>
+    [DllImport(DllName, EntryPoint = "fAltaMovimiento", CharSet = CharSet.Ansi)]
+    public static extern int fAltaMovimiento(int aIdDocumento, ref int aIdMovimiento, ref Structs.TMovimiento astMovimiento);
+
+    /// <summary>
+    /// Afecta o des-afecta un documento existente identificado por
+    /// concepto + serie + folio. <c>afecta=true</c> activa el documento
+    /// (baja stock, actualiza saldos, listo para timbrar).
+    /// </summary>
+    [DllImport(DllName, EntryPoint = "fAfectaDocto", CharSet = CharSet.Ansi)]
+    public static extern int fAfectaDocto(ref Structs.TLlaveDoc aLlaveDocto, bool aAfecta);
 }
