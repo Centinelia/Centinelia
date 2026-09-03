@@ -25,8 +25,12 @@ public sealed class ContpaqiSession : IDisposable
     private bool _empresaOpen;
     private bool _sessionOpen;
     private bool _disposed;
+    private string _empresaPath = "";
 
     private ContpaqiSession() { }
+
+    /// <summary>Ruta absoluta de la empresa CONTPAQi actualmente abierta.</summary>
+    public string EmpresaPath => _empresaPath;
 
     /// <summary>
     /// Añade el directorio del SDK a la lista de búsqueda de DLLs. Debe
@@ -81,6 +85,7 @@ public sealed class ContpaqiSession : IDisposable
             throw new ContpaqiSdkException("fAbreEmpresa", empresaResult, DescribeError(empresaResult));
         }
         session._empresaOpen = true;
+        session._empresaPath = rutaEmpresa;
 
         return session;
     }
@@ -130,8 +135,12 @@ public sealed class ContpaqiSession : IDisposable
     /// "Sin afectar" — usar <see cref="AffectDocument"/> para activarlo
     /// después de agregar todas las líneas.
     /// </summary>
-    /// <returns>ID interno del documento (necesario para <see cref="AddLine"/>).</returns>
-    public int CreateDocumentHeader(InvoiceHeader header)
+    /// <returns>
+    ///   ID interno del documento (necesario para <see cref="AddLine"/>) y folio
+    ///   asignado por CONTPAQi para la serie. El folio se necesita después para
+    ///   timbrar y extraer el XML.
+    /// </returns>
+    public (int IdDocumento, double Folio) CreateDocumentHeader(InvoiceHeader header)
     {
         var doc = new Structs.TDocumento
         {
@@ -160,7 +169,8 @@ public sealed class ContpaqiSession : IDisposable
         {
             throw new ContpaqiSdkException("fAltaDocumento", r, DescribeError(r));
         }
-        return idDoc;
+        // El SDK reescribe doc.aFolio con el folio auto-asignado al pasar aFolio=0.
+        return (idDoc, doc.aFolio);
     }
 
     /// <summary>Agrega una línea al documento identificado por <paramref name="idDocumento"/>.</summary>
@@ -221,6 +231,55 @@ public sealed class ContpaqiSession : IDisposable
         {
             throw new ContpaqiSdkException("fEmitirDocumento", r, DescribeError(r));
         }
+    }
+
+    // ---- Recuperación de CFDI timbrado -----------------------------------
+
+    /// <summary>
+    /// Extrae el XML timbrado de un documento a disco y devuelve su contenido.
+    /// El SDK deposita el archivo en <c>{empresa}\XML_SDK\{serie}{folio}.xml</c>.
+    /// El documento debe estar previamente timbrado (<see cref="StampDocument"/>);
+    /// llamar sobre un documento sin timbre devolverá un XML sin nodo TFD.
+    /// </summary>
+    /// <returns>Contenido completo del XML timbrado (UTF-8).</returns>
+    public string FetchTimbradoXml(string codConcepto, string serie, double folio)
+    {
+        // fEntregEnDiscoXML necesita current directory con las DLLs; sesión ya lo dejó ahí.
+        // aFormatoAmig se pasa vacío para XML (solo aplica a PDFs).
+        var r = ContpaqiSdkNative.fEntregEnDiscoXML(
+            codConcepto, serie, folio, SdkConstants.TipoArchivoXml, "");
+        if (r != SdkConstants.CodigoExito)
+        {
+            throw new ContpaqiSdkException("fEntregEnDiscoXML", r, DescribeError(r));
+        }
+
+        var folioText = folio.ToString("0", System.Globalization.CultureInfo.InvariantCulture);
+        var xmlPath = Path.Combine(_empresaPath, SdkConstants.DirectorioArchivosDigitales, $"{serie}{folioText}.xml");
+        if (!File.Exists(xmlPath))
+        {
+            throw new FileNotFoundException(
+                $"fEntregEnDiscoXML devolvió éxito pero el archivo no existe: {xmlPath}. " +
+                "Verificar que el documento esté timbrado y que el usuario tenga permisos de escritura en la empresa.",
+                xmlPath);
+        }
+        return File.ReadAllText(xmlPath);
+    }
+
+    /// <summary>
+    /// Devuelve el UUID (folio fiscal) del CFDI timbrado del documento.
+    /// El documento debe estar previamente timbrado.
+    /// </summary>
+    public string GetDocumentUuid(string codConcepto, string serie, double folio)
+    {
+        var conceptoBuf = new StringBuilder(codConcepto, SdkConstants.kLongCodigo);
+        var serieBuf    = new StringBuilder(serie,       SdkConstants.kLongSerie);
+        var uuidBuf     = new StringBuilder(SdkConstants.kLongitudUUID);
+        var r = ContpaqiSdkNative.fDocumentoUUID(conceptoBuf, serieBuf, folio, uuidBuf);
+        if (r != SdkConstants.CodigoExito)
+        {
+            throw new ContpaqiSdkException("fDocumentoUUID", r, DescribeError(r));
+        }
+        return uuidBuf.ToString();
     }
 
     // ---- IDisposable ------------------------------------------------------

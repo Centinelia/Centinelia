@@ -20,4 +20,17 @@ internal static class SdkConstants
     public const int kLongReferencia = 21;
     public const int kLongRFC        = 21;
     public const int kLongNombre     = 61;
+    // UUID CFDI: 36 chars + null terminator; el SDK reserva 37.
+    public const int kLongitudUUID   = 37;
+
+    // Códigos de formato para fEntregEnDiscoXML.
+    public const int TipoArchivoXml = 0;
+    public const int TipoArchivoPdf = 1;
+
+    /// <summary>
+    /// Nombre del directorio (relativo al de la empresa) donde
+    /// <c>fEntregEnDiscoXML</c> deposita los XMLs y PDFs generados.
+    /// El SDK lo crea automáticamente si no existe.
+    /// </summary>
+    public const string DirectorioArchivosDigitales = "XML_SDK";
 }

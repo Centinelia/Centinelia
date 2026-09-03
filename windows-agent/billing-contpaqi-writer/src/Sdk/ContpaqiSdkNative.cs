@@ -123,4 +123,37 @@ internal static class ContpaqiSdkNative
         double aFolio,
         [MarshalAs(UnmanagedType.LPStr)] string aPassword,
         [MarshalAs(UnmanagedType.LPStr)] string aArchivoAdicional);
+
+    // ---- Recuperación de CFDI timbrado -----------------------------------
+
+    /// <summary>
+    /// Escribe a disco el archivo XML (o PDF) del documento timbrado
+    /// identificado por concepto + serie + folio.
+    /// La ruta destino es fija: <c>{rutaEmpresa}\XML_SDK\{serie}{folio}.xml</c>.
+    /// El directorio <c>XML_SDK</c> se crea automáticamente si no existe.
+    /// </summary>
+    /// <param name="aFormato">0 = XML, 1 = PDF (ver <see cref="SdkConstants"/>).</param>
+    /// <param name="aFormatoAmig">
+    ///   Ruta a plantilla PDF (solo aplica cuando <paramref name="aFormato"/> = 1).
+    ///   Para XML se pasa cadena vacía.
+    /// </param>
+    [DllImport(DllName, EntryPoint = "fEntregEnDiscoXML", CharSet = CharSet.Ansi)]
+    public static extern int fEntregEnDiscoXML(
+        string aCodConcepto,
+        string aSerie,
+        double aFolio,
+        int aFormato,
+        string aFormatoAmig);
+
+    /// <summary>
+    /// Recupera el UUID del CFDI de un documento timbrado.
+    /// Los parámetros de entrada (concepto/serie/folio) van como StringBuilder
+    /// por la firma histórica del SDK, aunque solo se usen como IN.
+    /// </summary>
+    [DllImport(DllName, EntryPoint = "fDocumentoUUID", CharSet = CharSet.Ansi)]
+    public static extern int fDocumentoUUID(
+        System.Text.StringBuilder aCodConcepto,
+        System.Text.StringBuilder aSerie,
+        double aFolio,
+        System.Text.StringBuilder atPtrCFDIUUID);
 }
