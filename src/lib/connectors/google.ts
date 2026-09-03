@@ -195,7 +195,7 @@ class GoogleEmail implements EmailConnector {
     } catch { return null; }
   }
 
-  async sendReply({ messageId, threadId, to = '', subject = '', body, fromDisplay }: ReplyParams): Promise<void> {
+  async sendReply({ messageId, threadId, to = '', subject = '', body, fromDisplay, attachments }: ReplyParams): Promise<void> {
     const replySubject = subject.startsWith('Re:') ? subject : `Re: ${subject}`;
     const encodedSubject = encodeHeaderRFC2047(replySubject);
     // From con display name: "Noah - Pneuma Studio <cuenta@gmail.com>". Gmail
@@ -223,15 +223,55 @@ class GoogleEmail implements EmailConnector {
         }
       } catch { /* omit headers on failure — threadId alone still threads in Gmail */ }
     }
-    const raw = [
+
+    const commonHeaders = [
       `To: ${to}`,
       ...(fromHeader ? [`From: ${fromHeader}`] : []),
       `Subject: ${encodedSubject}`,
       ...refHeaders,
-      'Content-Type: text/plain; charset=utf-8',
-      '',
-      body,
-    ].join('\r\n');
+      'MIME-Version: 1.0',
+    ];
+
+    // Sin attachments: text/plain simple. Con attachments: multipart/mixed
+    // conforme RFC 2046. Boundary aleatorio para evitar colisión con contenido
+    // del body. Cada part propio Content-Type + Content-Transfer-Encoding.
+    let raw: string;
+    if (!attachments?.length) {
+      raw = [
+        ...commonHeaders,
+        'Content-Type: text/plain; charset=utf-8',
+        '',
+        body,
+      ].join('\r\n');
+    } else {
+      const boundary = `----=_ntl_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+      const parts: string[] = [
+        ...commonHeaders,
+        `Content-Type: multipart/mixed; boundary="${boundary}"`,
+        '',
+        `--${boundary}`,
+        'Content-Type: text/plain; charset=utf-8',
+        'Content-Transfer-Encoding: 7bit',
+        '',
+        body,
+      ];
+      for (const att of attachments) {
+        // Base64 en líneas de 76 chars (RFC 2045 5.9.2). Sin wrap, algunos
+        // servers rechazan / truncan mails largos.
+        const b64 = att.content.toString('base64').replace(/(.{76})/g, '$1\r\n');
+        const safeName = att.filename.replace(/[\r\n"]/g, '_');
+        parts.push(
+          `--${boundary}`,
+          `Content-Type: ${att.mimeType}; name="${safeName}"`,
+          `Content-Disposition: attachment; filename="${safeName}"`,
+          'Content-Transfer-Encoding: base64',
+          '',
+          b64,
+        );
+      }
+      parts.push(`--${boundary}--`, '');
+      raw = parts.join('\r\n');
+    }
     const sendRes = await fetch(`${GMAIL}/messages/send`, {
       method:  'POST',
       headers: { ...this.h(), 'Content-Type': 'application/json' },

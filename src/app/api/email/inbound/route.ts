@@ -11,6 +11,9 @@ import { processHandoffReply, type HandoffAttachment } from '@/lib/human-handoff
 import { processInboxEmail } from '@/lib/ops/inbox-processor';
 import { applyCommsRouting } from '@/lib/comms/routing';
 import { findNoxAgent, processEmailWithNox } from '@/lib/ops/nox-coordinator';
+import { sendEmail, agentBrandedFrom } from '@/lib/email/send';
+import { resolveAutoMode } from '@/lib/email/email-sync';
+import type { ReplyAttachment } from '@/lib/connectors';
 
 interface StoredAttachment {
   name: string;
@@ -252,10 +255,13 @@ export async function POST(req: NextRequest) {
   const portalEmail = await resolveInboxToken(token);
   if (!portalEmail) return NextResponse.json({ ok: true }); // unknown inbox, ignore
 
-  // Find the ops agent (with role) or fall back to first agent
+  // Find the ops agent (with role) or fall back to first agent.
+  // Columnas extras (email_from, email_domain_verified, trust_stage, features,
+  // approval_email, auto_mode) las necesita el webhook sendReplyFn +
+  // autoMode resolver — sin ellas Nova nunca enviaría reply automático.
   const { data: agents } = await supabase
     .from('voice_agents')
-    .select('id, role, knowledge_base, role_knowledge_base, business_name, client_email, portal_token, agent_name')
+    .select('id, role, knowledge_base, role_knowledge_base, business_name, client_email, portal_token, agent_name, email_from, email_domain_verified, trust_stage, features, approval_email, auto_mode')
     .eq('portal_email', portalEmail)
     .order('created_at', { ascending: true });
 
@@ -265,6 +271,13 @@ export async function POST(req: NextRequest) {
   const agent    = { id: opsAgent.id };
 
   if (!agent) return NextResponse.json({ ok: true });
+
+  // Traer org-level para KB + kill switch auto-mode. Match con resume.ts pattern.
+  const { data: orgData } = await supabase
+    .from('organizations')
+    .select('knowledge_base, auto_mode_disabled_at')
+    .eq('portal_email', portalEmail)
+    .maybeSingle();
 
   // Store attachments in Supabase Storage
   const storedAttachments: StoredAttachment[] = [];
@@ -351,6 +364,44 @@ export async function POST(req: NextRequest) {
   // Ops AI processing (non-blocking — returns 200 immediately)
   const ownerEmail = opsAgent.client_email;
   if (ownerEmail) {
+    // Webhook sendReplyFn: cuando el correo llega vía inbound webhook (no
+    // Gmail/Outlook OAuth integration), enviamos la respuesta con `sendEmail`
+    // de Resend. Soporta attachments generados por create_file/create_document,
+    // usa branded from del agente y setea reply-to al inbox address del
+    // agente para que futuras respuestas del cliente vuelvan a caer aquí.
+    // Sin este fn, Nova y compañía nunca contestaban vía webhook path — se
+    // quedaban en pending (bug arquitectural pre-2026-09-03).
+    const brandedFrom = agentBrandedFrom({
+      agent_name:            opsAgent.agent_name as string | null,
+      business_name:         opsAgent.business_name as string | null,
+      email_from:            (opsAgent as Record<string, unknown>).email_from as string | null,
+      email_domain_verified: (opsAgent as Record<string, unknown>).email_domain_verified as boolean | null,
+    });
+    const replySubjectBase = subject.startsWith('Re:') ? subject : `Re: ${subject}`;
+    const escapeHtml = (s: string) => s
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const sendReplyFn = async (body: string, attachments?: ReplyAttachment[]) => {
+      const bodyHtml = `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;white-space:pre-wrap;color:#1a1a1a;line-height:1.5;font-size:14px">${escapeHtml(body)}</div>`;
+      const ok = await sendEmail({
+        to:      from,
+        subject: replySubjectBase,
+        html:    bodyHtml,
+        from:    brandedFrom,
+        attachments: attachments?.map(a => ({
+          filename: a.filename,
+          content:  a.content.toString('base64'),
+        })),
+      });
+      if (!ok) throw new Error('sendEmail returned false — RESEND_API_KEY missing or Resend rejected');
+    };
+
+    const orgDisabled = !!(orgData as Record<string, unknown> | null)?.auto_mode_disabled_at;
+    const autoMode = resolveAutoMode({
+      trust_stage: (opsAgent as Record<string, unknown>).trust_stage as number | null,
+      orgDisabled,
+    });
+
     processInboxEmail({
       agentId:       opsAgent.id,
       source:        'sendgrid',
@@ -360,12 +411,15 @@ export async function POST(req: NextRequest) {
       attachments:   storedAttachments,
       agentName:     (opsAgent.agent_name as string | null) ?? 'Centinelia',
       businessName:  opsAgent.business_name as string,
-      knowledgeBase: opsAgent.knowledge_base as string | null,
+      knowledgeBase: (orgData?.knowledge_base as string | null) ?? (opsAgent.knowledge_base as string | null),
       roleKB:        opsAgent.role_knowledge_base as string | null,
       agentRole:     opsAgent.role as string | null,
       ownerEmail,
       portalToken:   opsAgent.portal_token as string,
       portalEmail,
+      autoMode,
+      approvalEmail: (opsAgent as Record<string, unknown>).approval_email as string | null | undefined,
+      sendReplyFn,
     }).catch(err => console.error('[ops] inbox-processor error:', err));
   }
 

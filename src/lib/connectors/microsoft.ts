@@ -81,7 +81,18 @@ class MicrosoftEmail implements EmailConnector {
     });
   }
 
-  async sendReply({ messageId, body }: ReplyParams): Promise<void> {
+  async sendReply({ messageId, body, attachments }: ReplyParams): Promise<void> {
+    // Attachments requieren flujo separado en Microsoft Graph: createReply →
+    // POST /messages/{draftId}/attachments (uno por uno o via /$value para
+    // >4MB) → /messages/{draftId}/send. TODO: implementar cuando algún piloto
+    // Outlook necesite adjuntar files generados por Nova/Niva. Por ahora
+    // logeamos y enviamos el reply sin adjuntos — mejor que fallar silencioso.
+    if (attachments?.length) {
+      console.warn(
+        '[microsoft.sendReply] attachments no soportados aún, enviando sin adjuntos',
+        { count: attachments.length, names: attachments.map(a => a.filename) },
+      );
+    }
     await fetch(`${GRAPH}/me/messages/${messageId}/reply`, {
       method:  'POST',
       headers: { ...this.h(), 'Content-Type': 'application/json' },

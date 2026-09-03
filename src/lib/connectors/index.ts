@@ -8,7 +8,7 @@ import { getOrgToken } from '@/lib/portal/org-token';
 import type { Connector } from './types';
 import type { createAdminClient } from '@/lib/supabase/admin';
 
-export type { Connector, EmailConnector, FilesConnector, ContactsConnector, ContactResult, EmailMessage, FileItem, Attachment, UploadResult, FolderResult, ReplyParams } from './types';
+export type { Connector, EmailConnector, FilesConnector, ContactsConnector, ContactResult, EmailMessage, FileItem, Attachment, UploadResult, FolderResult, ReplyParams, ReplyAttachment } from './types';
 
 export interface IntegrationRow {
   id:                  string;

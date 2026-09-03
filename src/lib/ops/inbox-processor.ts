@@ -6,6 +6,7 @@ import { approvalEmailHtml } from '@/lib/ops/approval-email';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
 import { EMAIL_BODY_TRUNCATE_CHARS } from '@/lib/constants';
 import { executeAgentTool, type ReadUrlCounter } from '@/lib/tools/executor';
+import type { ReplyAttachment } from '@/lib/connectors';
 import { getQBClient } from '@/lib/qb/client';
 import { quickClassifyEmail } from '@/lib/ops/email-quick-classify';
 import { classifyEmailDraft, type AutoModeVerdict } from '@/lib/tools/email-classifier';
@@ -907,7 +908,7 @@ export async function processInboxEmail(params: {
   originalEmailBody?: string;        // original email body from the info_requested record
   fromSpamFolder?:   boolean;        // true when fetched from provider spam/junk folder
   unmarkSpamFn?:     (messageId: string) => Promise<void>; // best-effort: move out of spam in provider
-  sendReplyFn?:      (body: string) => Promise<void>;
+  sendReplyFn?:      (body: string, attachments?: ReplyAttachment[]) => Promise<void>;
   // Imágenes que el humano adjuntó vía pedir_a_humano response. Se pasan como
   // contenido multimodal a Claude para que el LLM las vea (Haiku/Sonnet 4.5+
   // soportan vision). Docs (PDF/DOCX) ya vienen parseados en el emailBody.
@@ -934,6 +935,12 @@ export async function processInboxEmail(params: {
   // al inbox correcto. Sin esto, la row se crea después del LLM y las solicitudes
   // quedan con source_inbox_id=null, rompiendo el resume flow.
   const reservedInboxId = existingInboxId ?? randomUUID();
+
+  // Files generados durante el loop de tools (create_file / create_document).
+  // Se acumulan aquí y al momento de llamar sendReplyFn se descargan de Storage
+  // y se adjuntan al reply. Path bucket 'agent-documents' es donde el executor
+  // sube los outputs — ver executor.ts create_document/create_file.
+  const generatedFiles: Array<{ storagePath: string; filename: string; mimeType: string }> = [];
 
   // Metadata común de asignación — se aplica a AMBOS inserts (quick-classify y LLM).
   const dispatcherCols = {
@@ -1887,6 +1894,19 @@ CATEGORÍAS:
           const output: unknown = r.status === 'fulfilled' ? r.value : { ok: false, error: String(r.reason) };
           const okShape = output && typeof output === 'object' && (output as { ok?: unknown }).ok !== false;
           if (okShape) toolsInvokedOk.push(b.name);
+          // Capturar files generados por create_file/create_document para
+          // adjuntarlos al reply. Sin esta captura los files quedan en Storage
+          // pero nunca llegan al remitente. Ver Fase 3 brecha pipeline correo.
+          if (okShape && (b.name === 'create_file' || b.name === 'create_document')) {
+            const out = output as { file_id?: string; filename?: string; mime_type?: string };
+            if (out.file_id && out.filename && out.mime_type) {
+              generatedFiles.push({
+                storagePath: out.file_id,
+                filename:    out.filename,
+                mimeType:    out.mime_type,
+              });
+            }
+          }
           toolResults.push({ type: 'tool_result', tool_use_id: b.id, content: JSON.stringify(output) });
         }
 
@@ -2168,6 +2188,29 @@ CATEGORÍAS:
   const portalUrl = `${baseUrl}/portal/${portalToken}/oficina/bandeja`;
   const notifyTo  = approvalEmail || ownerEmail;
 
+  // Helper: descarga los files acumulados en generatedFiles como ReplyAttachment[].
+  // Fire-and-forget individual — si un file falla la descarga se skipea (log) y
+  // los demás siguen. Sin esto, un fallo puntual bloquearía todo el reply.
+  const loadGeneratedAttachments = async (): Promise<ReplyAttachment[]> => {
+    if (!generatedFiles.length) return [];
+    const supa = createAdminClient();
+    const results: ReplyAttachment[] = [];
+    for (const gf of generatedFiles) {
+      try {
+        const { data, error } = await supa.storage.from('agent-documents').download(gf.storagePath);
+        if (error || !data) {
+          console.error('[inbox-processor] failed to load generated file for reply', { path: gf.storagePath, error });
+          continue;
+        }
+        const buf = Buffer.from(await data.arrayBuffer());
+        results.push({ filename: gf.filename, content: buf, mimeType: gf.mimeType });
+      } catch (err) {
+        console.error('[inbox-processor] exception loading generated file', { path: gf.storagePath, err });
+      }
+    }
+    return results;
+  };
+
   // Helper: log auto-reply al outbound_emails para que aparezca en tab Enviados.
   // Antes solo se marcaba ops_inbox.sent_at pero no había registro en outbound_emails,
   // así el owner no veía las auto-respuestas en la tab Enviados aunque semánticamente
@@ -2192,7 +2235,11 @@ CATEGORÍAS:
   if (finalStatus === 'info_requested' && result.requestToSender && sendReplyFn) {
     try {
       const body = stripMarkdown(result.requestToSender);
-      await sendReplyFn(body);
+      // Info-requested no debería llegar con files generados (el LLM pide info,
+      // no entrega work-product), pero pasamos por si acaso — el flujo es
+      // idempotente y trivial cuando el array está vacío.
+      const genAttachments = await loadGeneratedAttachments();
+      await sendReplyFn(body, genAttachments.length ? genAttachments : undefined);
       if (item?.id) {
         await supabase.from('ops_inbox').update({ sent_at: new Date().toISOString() }).eq('id', item.id);
       }
@@ -2204,7 +2251,11 @@ CATEGORÍAS:
   } else if (finalStatus === 'auto_replied' && result.draft && sendReplyFn && item) {
     try {
       const body = stripMarkdown(result.draft);
-      await sendReplyFn(body);
+      // Files generados durante el loop (create_file / create_document) se
+      // adjuntan al reply. Sin esto quedaban solo en Storage — el remitente
+      // recibía texto sin el archivo prometido en el body.
+      const genAttachments = await loadGeneratedAttachments();
+      await sendReplyFn(body, genAttachments.length ? genAttachments : undefined);
       await supabase.from('ops_inbox').update({ sent_at: new Date().toISOString() }).eq('id', item.id);
       void logAutoReplyToOutbound(body, result.category ?? null);
       // Encola al digest diario (no urgente).

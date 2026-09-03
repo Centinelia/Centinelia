@@ -38,6 +38,17 @@ export interface FolderResult {
   name: string;
 }
 
+/**
+ * Attachment listo para adjuntar al envío. `content` es Buffer de bytes crudos
+ * — cada connector lo codifica al formato que su API espera (base64 multipart
+ * para Gmail SMTP raw, base64 JSON para Resend, etc.).
+ */
+export interface ReplyAttachment {
+  filename: string;
+  content:  Buffer;
+  mimeType: string;
+}
+
 export interface ReplyParams {
   messageId: string;
   threadId?: string;
@@ -50,6 +61,12 @@ export interface ReplyParams {
    * cambios de display name pero ignoran/rechazan direcciones no verificadas.
    */
   fromDisplay?: string;
+  /**
+   * Archivos generados por tools (create_file, create_document, etc.) que se
+   * adjuntan al reply. Gmail lo arma como multipart/mixed. Microsoft Graph
+   * requiere flujo separado (createReply → addAttachments → send) — TODO.
+   */
+  attachments?: ReplyAttachment[];
 }
 
 export interface EmailConnector {
