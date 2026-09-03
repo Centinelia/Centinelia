@@ -1,0 +1,19 @@
+Semaforo SAT - GAC Demo - Vencimiento 17 septiembre 2026,,,,,,,,,,
+Fecha corte: 14 sept 2026,,,,,,,,,,
+,,,,,,,,,,
+Cliente,RFC,Regimen,Servicios,Contador GAC,Declaracion status,Importe SAT MXN,Deposito cliente status,Semaforo,Linea captura,Contacto para aviso
+Refaccionaria Industrial Del Norte SA,RIN190617FR3,PM Regimen General,ISR + IVA + DIOT,Ricardo Uranga,Lista,142850.00,Depositado 12-sept,VERDE,0202-0000-8842-1145-3306,vsalgado@refaccionariadelnorte.mx / +52 811 442 3018
+Transportes Guerra Hermanos S de RL,TGH160228AS7,PM Coordinado,ISR + IVA + Retenciones + Carta Porte,Adriana Villegas,Lista,318420.00,Depositado 11-sept,VERDE,0202-0000-8842-1148-7290,jm@transportesguerra.mx / +52 811 340 5820
+Constructora Almar del Valle SA,CAV170819LN2,PM Regimen General,ISR + IVA + Retenciones,Ricardo Uranga,Lista,89340.00,PENDIENTE,AMARILLO,0202-0000-8842-1149-5518,jc@almardelvalle.mx / +52 811 502 7745
+Clinica Dental Ceballos PF,CEFA850912A26,PF Actividad Empresarial,ISR + IVA,Fernanda Vega,Lista,18240.00,PENDIENTE,AMARILLO,0202-0000-8842-1150-8823,adriana@clinicaceballos.mx / +52 811 218 4903
+Distribuidora de Alimentos Sofia S de RL,DAS221118K85,RESICO PM,ISR RESICO + IVA,Fernanda Vega,Lista,42150.00,Depositado 13-sept,VERDE,0202-0000-8842-1151-3319,sofia@dist-sofia.mx / +52 811 442 9302
+Grupo Restaurantero Barra Cinco SA,GRB151112DP4,PM Regimen General,ISR + IVA + Retenciones + Nomina,Adriana Villegas,PENDIENTE cierre pendiente,SIN CALCULAR,SIN CALCULAR,ROJO,,pvillasenor@barra5.mx / +52 811 340 2287
+,,,,,,,,,,
+Resumen:,,,,,,,,,,
+Verdes:,3,clientes,,,,,,,,
+Amarillos:,2,clientes,Constructora Almar + Clinica Ceballos - Nara debe avisar hoy,,,,,,,
+Rojos:,1,cliente,Grupo Restaurantero Barra Cinco - escalar a Adriana Villegas para cerrar contabilidad HOY,,,,,,,
+,,,,,,,,,,
+Nota para el demo:,,,,,,,,,,
+En vivo Nara consulta este sheet, arma dashboard 3-2-1 (verde-amarillo-rojo) y envia 2 correos a los AMARILLOS con importe + linea de captura + fecha limite,,,,,,,,,,
+Nara tambien flagea el ROJO para que Miguel escale con Adriana antes de que se vuelva critico,,,,,,,,,,

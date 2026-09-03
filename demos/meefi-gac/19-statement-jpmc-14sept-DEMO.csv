@@ -1,0 +1,35 @@
+JP Morgan Chase Bank NA - Correspondent Statement,,,,,,,,
+Account: Meefi Technologies SAPI de CV,,,,,,,,
+Account number: 8842-4592-3306,,,,,,,,
+Period: 2026-09-14 00:00:00 UTC to 2026-09-14 23:59:59 UTC,,,,,,,,
+Currency of account: USD,,,,,,,,
+Opening balance: 4218450.32,,,,,,,,
+Closing balance: 4276320.14,,,,,,,,
+,,,,,,,,
+Trans ID,Value date,Booking date,Type,Direction,Amount USD,Beneficiary or ordering party,Reference,Notes
+JPMC-20260914-001,2026-09-14,2026-09-14,SWIFT MT103 outgoing,DEBIT,12400.00,Detroit Motor Parts LLC,MT103-8842,Ordered by Autopartes Rio Bravo SAPI. Correspondent chain JPMC-BOA. Beneficiary bank: Comerica Bank Detroit.
+JPMC-20260914-002,2026-09-14,2026-09-14,SWIFT MT103 outgoing,DEBIT,5205.14,Hyundai KRW Parts Co Ltd,MT103-8843,Ordered by Autopartes Rio Bravo SAPI. FX USD to KRW. Fee corresponsal $5.14 aplicado en tránsito.
+JPMC-20260914-003,2026-09-14,2026-09-14,ACH outgoing,DEBIT,10800.00,Border Wholesale Inc,ACH-2201,Ordered by Autopartes Rio Bravo SAPI. Same day ACH.
+JPMC-20260914-004,2026-09-14,2026-09-14,SWIFT MT103 outgoing,DEBIT,8875.00,Anadolu Kumas AS Istanbul,MT103-8844,Ordered by Grupo Textiles del Norte SA. Fee corresponsal Garanti Bank $25.00 aplicado - importe original ordenado $8900.00.
+JPMC-20260914-005,2026-09-14,2026-09-14,SWIFT MT103 outgoing,DEBIT,2600.00,Bombay Cotton Traders Pvt,MT103-8845,Ordered by Grupo Textiles del Norte SA. Beneficiary bank State Bank of India.
+JPMC-20260914-006,2026-09-14,2026-09-14,SWIFT MT103 outgoing,DEBIT,7400.00,Textilio Milano SRL,MT103-8846,Ordered by Grupo Textiles del Norte SA. FX USD to EUR spot.
+JPMC-20260914-007,2026-09-14,2026-09-14,SWIFT MT103 outgoing,DEBIT,4900.00,Shenzhen Chip Ltd,MT103-8847,Ordered by Electronica Global Pacifico. FX USD to CNY.
+JPMC-20260914-008,2026-09-14,2026-09-14,SWIFT MT103 outgoing,DEBIT,3600.00,Shanghai Panels Inc,MT103-8848,Ordered by Electronica Global Pacifico. FX USD to CNY.
+JPMC-20260914-009,2026-09-14,2026-09-14,SWIFT MT103 outgoing,DEBIT,2740.00,Guangzhou Cables Co,MT103-8849,Ordered by Electronica Global Pacifico. FX USD to CNY.
+JPMC-20260914-010,2026-09-14,2026-09-14,SWIFT MT103 outgoing,DEBIT,5060.00,Siemens Healthineers AG,MT103-8850,Ordered by Insumos Medicos MedCore SA. FX USD to EUR.
+JPMC-20260914-011,2026-09-14,2026-09-14,SPEI internacional outgoing,DEBIT,3140.00,Boston Scientific USA Corp,SPEI-int-4021,Ordered by Insumos Medicos MedCore SA. Rieles alternativos por urgencia.
+JPMC-20260914-012,2026-09-14,2026-09-14,SWIFT MT103 outgoing,DEBIT,4600.00,Ningbo Tools Co,MT103-8851,Ordered by Ferretera Industrial Aztlan SA. FX USD to CNY.
+JPMC-20260914-013,2026-09-14,2026-09-14,SWIFT MT103 incoming,CREDIT,18400.00,Cafe verde export receivable,MT103-INC-9931,Recibido de Kaffeewerk Berlin GmbH. Referencia comercial CEB-EXP-2026-092. FX EUR to USD ya aplicado.
+JPMC-20260914-014,2026-09-14,2026-09-14,SWIFT MT103 incoming,CREDIT,47469.82,UNKNOWN SENDER - investigation required,MT103-INC-9932,BREAK - credito recibido sin operacion asociada en ledger interno Meefi. Originator: Delta Trade Holdings HK Ltd. Investigar antes de acreditar a cliente alguno.
+JPMC-20260914-015,2026-09-14,2026-09-14,Fee corresponsal aplicado,DEBIT,25.00,Garanti Bank Istanbul,FEE-GAR-8844,Fee de banco intermediario turco sobre MT103-8844. Aplicado al ordenante Grupo Textiles del Norte SA.
+JPMC-20260914-016,2026-09-14,2026-09-14,Interest earned on balance,CREDIT,168.42,JPMC internal,INT-20260914,Interes ganado sobre saldo overnight cuenta corresponsal.
+,,,,,,,,
+End of statement,,,,,,,,
+Total DEBITS: 71890.00,,,,,,,,
+Total CREDITS: 66038.24,,,,,,,,
+Net change: -5851.76,,,,,,,,
+,,,,,,,,
+NOTA PARA DEMO Nova: este statement contiene 3 alertas deliberadas para escenario M5 reconciliacion,,,,,,,,
+1. MT103-8842 aparece en statement pero en el ledger interno esta marcado como pendiente sin confirmacion (Nova debe detectar mismatch y flagear que ya llego confirmacion),,,,,,,,
+2. MT103-8844 llego con diferencia de $25.00 vs importe ordenado ($8875 vs $8900) - Nova debe detectar fee de corresponsal Garanti Bank y ligar con FEE-GAR-8844,,,,,,,,
+3. MT103-INC-9932 es un CREDIT sin operacion asociada - Nova debe flagearlo como break potencialmente grave y escalar a Roberto Alcala Sofia Zambrano Gerardo Daniel,,,,,,,,
