@@ -19,7 +19,7 @@ de CONTPAQi hacia Dropbox para que Nala tenga referencia de los códigos.
                               CFDI timbrado al receptor por correo
 ```
 
-## Estado actual — Days 1-4 completos y timbrando end-to-end
+## Estado actual — Days 1-5 completos: timbrando + XML extraído end-to-end
 
 Validado contra empresa dedicada `Kemper Urgate PRUEBAS SDK` (RFC de pruebas
 SAT `EKU9003173C9`, CSD público SAT descargado de facturoporti, password
@@ -33,6 +33,12 @@ SAT `EKU9003173C9`, CSD público SAT descargado de facturoporti, password
 - **Timbrar (`fEmitirDocumento`) ✅** → devuelve éxito, UUID poblado en BD
   con prefijo `00000000-` (marca sandbox de CONTPAQi trial). El PAC del
   trial es un mock interno que no llama al SAT real — perfecto para dev.
+- **Extraer XML timbrado (`fEntregEnDiscoXML`) ✅** → escribe el CFDI 4.0
+  completo (con nodo `TimbreFiscalDigital` y sello del PAC) a
+  `{empresa}\XML_SDK\{serie}{folio}.xml`. El writer lo lee y lo devuelve
+  al caller por stdout o a la ruta `--out`.
+- **UUID directo (`fDocumentoUUID`) ✅** → recupera solo el UUID sin
+  materializar el XML completo (útil para verificar rápido).
 
 ## Setup requerido en la máquina donde corre este agente
 
@@ -57,24 +63,36 @@ Para desarrollar sin riesgo fiscal:
 - El PAC del trial CONTPAQi devuelve UUIDs sandbox (prefijo `00000000-`)
   sin llamar al SAT — desarrollo ilimitado sin costo ni riesgo
 
-Pendientes (Day 5-10):
-- Day 5: extraer XML timbrado (queda en BD, no en disco — usar
-  `fBuscarXMLdeDocumento` o similar) + envío por correo al receptor.
+Pendientes (Day 6-10):
 - Day 6: watcher Dropbox `pendientes/` → SDK → mover a `timbrados/` o
-  `errores/`.
+  `errores/`. Nala en Vercel deposita XML pendiente, el writer lo levanta,
+  crea + timbra + fetch-xml, deposita XML timbrado en `timbrados/`, Nala
+  lo detecta y lo envía por correo al receptor.
 - Day 7: retries, structured logging, error escalation a Nala.
 - Day 8: tests contra CONTPAQi real (empresa piloto Tortillería).
 - Day 9-10: MSI installer + Windows Service + tarea programada.
 
-Legacy: (originalmente el plan describía Day 2 crear header, Day 3 líneas
-y afectar. En realidad afectar sucede automático al agregar la primera
-línea, así que Day 2 y Day 3 colapsaron en uno).
-- Day 4: timbrar (llama al PAC de CONTPAQi).
-- Day 5: envío CFDI al receptor + descarga XML/PDF.
-- Day 6: watcher Dropbox `pendientes/` → SDK → mover a `timbrados/` o `errores/`.
-- Day 7: error handling, retries, logging estructurado.
-- Day 8: tests contra CONTPAQi real (empresa piloto).
-- Day 9-10: packaging MSI + Windows Service + tarea programada.
+### Uso del modo fetch-xml
+
+```powershell
+# XML a disco
+BillingContpaqiWriter.exe --mode fetch-xml --concepto 440 --serie FTEN --folio 3 \
+  --empresa "C:\Compac\Empresas\adKemper_Urgate_PRUEBA" \
+  --out C:\timbrados\FTEN-3.xml
+
+# XML a stdout (para pipeline). Los logs [writer] van a stderr.
+BillingContpaqiWriter.exe --mode fetch-xml --concepto 440 --serie FTEN --folio 3 \
+  --empresa "C:\Compac\Empresas\adKemper_Urgate_PRUEBA" | Out-File cfdi.xml
+
+# Solo UUID (fast path para verificar timbrado)
+BillingContpaqiWriter.exe --mode uuid --concepto 440 --serie FTEN --folio 3 \
+  --empresa "C:\Compac\Empresas\adKemper_Urgate_PRUEBA"
+```
+
+Nota: el plan original tenía Day 2 = header, Day 3 = líneas + afectar. En la
+realidad afectar sucede automático al agregar la primera línea, así que Day
+2 y Day 3 colapsaron en uno. El Day 5 original ("envío CFDI + descarga
+XML/PDF") se dividió en Day 5 (fetch-xml, este) y Day 6 (watcher + envío).
 
 ## Por qué .NET 8 en target **x86** y NO AnyCPU/x64
 

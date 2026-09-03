@@ -11,6 +11,8 @@ namespace Centinelia.BillingContpaqi.Writer;
 ///   <c>--mode find</c>      Day 2a: busca cliente y producto por código en el catálogo real.
 ///   <c>--mode create</c>    Day 2b: crea un documento nuevo con 1 línea (queda "Sin afectar").
 ///   <c>--mode stamp</c>     Day 4: timbra un documento afectado por concepto + serie + folio.
+///   <c>--mode fetch-xml</c> Day 5: extrae el XML timbrado a disco (o stdout con --out -).
+///   <c>--mode uuid</c>      Day 5: imprime el UUID del CFDI de un documento timbrado.
 ///
 /// Ejemplos:
 ///   BillingContpaqiWriter --mode session
@@ -69,6 +71,36 @@ public static class Program
                     Console.WriteLine("[writer] Verificar XML+PDF en la carpeta XML_SDK del directorio de la empresa.");
                     break;
 
+                case "fetch-xml":
+                    Require(opts.Concepto, "--concepto");
+                    Require(opts.Serie,    "--serie");
+                    if (opts.Folio <= 0) throw new ArgumentException("Requiere --folio > 0");
+
+                    var xml = session.FetchTimbradoXml(opts.Concepto!, opts.Serie!, opts.Folio);
+
+                    if (string.IsNullOrEmpty(opts.OutPath) || opts.OutPath == "-")
+                    {
+                        // stdout: emitir el XML crudo sin prefijos [writer].
+                        // Todos los logs informativos van a stderr para que el caller pueda pipear.
+                        Console.Error.WriteLine($"[writer] XML extraído ({xml.Length} chars) — enviando a stdout");
+                        Console.Out.Write(xml);
+                    }
+                    else
+                    {
+                        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(opts.OutPath)) ?? ".");
+                        File.WriteAllText(opts.OutPath, xml);
+                        Console.WriteLine($"[writer] XML escrito a: {opts.OutPath} ({xml.Length} chars)");
+                    }
+                    break;
+
+                case "uuid":
+                    Require(opts.Concepto, "--concepto");
+                    Require(opts.Serie,    "--serie");
+                    if (opts.Folio <= 0) throw new ArgumentException("Requiere --folio > 0");
+                    var uuid = session.GetDocumentUuid(opts.Concepto!, opts.Serie!, opts.Folio);
+                    Console.WriteLine($"[writer] UUID: {uuid}");
+                    break;
+
                 case "create":
                     Require(opts.Concepto, "--concepto");
                     Require(opts.Serie,    "--serie");
@@ -86,8 +118,8 @@ public static class Program
                         Fecha          = DateTime.Now.ToString("MM/dd/yyyy"),
                         Referencia     = "piloto-nala-writer-day2",
                     };
-                    var idDoc = session.CreateDocumentHeader(header);
-                    Console.WriteLine($"[writer] Documento creado con ID interno: {idDoc}");
+                    var (idDoc, folioAsignado) = session.CreateDocumentHeader(header);
+                    Console.WriteLine($"[writer] Documento creado con ID interno: {idDoc}, folio: {folioAsignado}");
 
                     var line = new InvoiceLine
                     {
@@ -99,7 +131,7 @@ public static class Program
                     var idMov = session.AddLine(idDoc, line);
                     Console.WriteLine($"[writer] Movimiento agregado con ID interno: {idMov}");
 
-                    Console.WriteLine("[writer] Documento quedó 'Sin afectar'. Day 3 agregará AffectDocument.");
+                    Console.WriteLine($"[writer] Siguiente paso: --mode stamp --concepto {opts.Concepto} --serie {opts.Serie} --folio {folioAsignado} --csd-pwd <pwd>");
                     break;
 
                 default:
@@ -145,7 +177,8 @@ public static class Program
         double Precio,
         string Almacen,
         double Folio,
-        string? CsdPassword);
+        string? CsdPassword,
+        string? OutPath);
 
     private static CliOptions? ParseArgs(string[] args)
     {
@@ -160,6 +193,7 @@ public static class Program
         string almacen = "1";   // "Almacen Uno" es el default estándar en CONTPAQi Comercial.
         double folio = 0;
         string? csdPassword = null;
+        string? outPath = null;
 
         for (var i = 0; i < args.Length; i++)
         {
@@ -179,6 +213,7 @@ public static class Program
                 case "--csd-pwd":   csdPassword = args[++i]; break;
                 case "--cantidad":  cantidad = double.Parse(args[++i], System.Globalization.CultureInfo.InvariantCulture); break;
                 case "--precio":    precio   = double.Parse(args[++i], System.Globalization.CultureInfo.InvariantCulture); break;
+                case "--out":       outPath  = args[++i]; break;
                 case "--help":
                 case "-h":
                     PrintUsage();
@@ -191,7 +226,7 @@ public static class Program
         }
         return new CliOptions(sdk, empresa, usuario, password, mode,
                               concepto, serie, cliente, producto, cantidad, precio, almacen,
-                              folio, csdPassword);
+                              folio, csdPassword, outPath);
     }
 
     private static void PrintUsage()
@@ -223,6 +258,18 @@ public static class Program
           --serie <serie>    ej. FTEN
           --folio <n>        ej. 72852
           --csd-pwd <pwd>    password del CSD cargado en CONTPAQi (default "")
+
+        Modo 'fetch-xml':
+          --concepto <cod>   ej. 440
+          --serie <serie>    ej. FTEN
+          --folio <n>        ej. 72852
+          --out <ruta>       opcional. Si se omite o vale '-', el XML sale por stdout.
+                             Con --out, los logs [writer] siguen en stdout.
+
+        Modo 'uuid':
+          --concepto <cod>   ej. 440
+          --serie <serie>    ej. FTEN
+          --folio <n>        ej. 72852
         """);
     }
 }
