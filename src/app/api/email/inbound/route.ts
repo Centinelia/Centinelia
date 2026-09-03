@@ -68,6 +68,7 @@ export async function POST(req: NextRequest) {
   }
 
   const token = parseToToken(to);
+  console.log('[email-inbound] entry', { to, from, subject, token, tokenLen: token.length, hasAttachments: rawAttachments.length });
   if (!token) return NextResponse.json({ ok: true });
 
   const supabase = createAdminClient();
@@ -221,13 +222,15 @@ export async function POST(req: NextRequest) {
   // como opsAgent + sendReplyFn dirigido, replicando el pattern del webhook
   // portal-shared path (línea ~360 abajo).
   const agentMatch = await resolveAgentFromToken(token);
+  console.log('[email-inbound] agentMatch result', { token, matched: !!agentMatch, agentId: agentMatch?.agentId, portalEmail: agentMatch?.portalEmail });
 
   if (agentMatch) {
-    const { data: targetAgent } = await supabase
+    const { data: targetAgent, error: targetAgentErr } = await supabase
       .from('voice_agents')
       .select('id, portal_email, agent_name, role, knowledge_base, role_knowledge_base, business_name, client_email, portal_token, email_from, email_domain_verified, trust_stage, features, approval_email, auto_mode')
       .eq('id', agentMatch.agentId)
       .single();
+    console.log('[email-inbound] targetAgent fetch', { agentId: agentMatch.agentId, found: !!targetAgent, err: targetAgentErr?.message });
 
     if (targetAgent) {
       const senderName = parseSenderName(from);
@@ -237,7 +240,7 @@ export async function POST(req: NextRequest) {
         preview ? (preview.length < text.trim().length ? preview + '…' : preview) : null,
       ].filter(Boolean).join(' — ') || 'Correo sin cuerpo.';
 
-      await supabase.from('agent_messages').insert({
+      const { error: msgInsErr } = await supabase.from('agent_messages').insert({
         portal_email:  agentMatch.portalEmail,
         from_agent_id: null,
         to_agent_id:   targetAgent.id,
@@ -246,8 +249,9 @@ export async function POST(req: NextRequest) {
         content:       content.slice(0, 400),
         metadata:      { from, from_name: senderName, subject: subject || null },
       });
+      console.log('[email-inbound] agent_messages insert', { ok: !msgInsErr, err: msgInsErr?.message });
 
-      await supabase.from('agent_tasks').insert({
+      const { error: taskInsErr } = await supabase.from('agent_tasks').insert({
         portal_email:   agentMatch.portalEmail,
         created_by:     null,
         assigned_to:    targetAgent.id,
@@ -257,6 +261,7 @@ export async function POST(req: NextRequest) {
         trigger_type:   'email_reply',
         source_context: `De: ${from}\nAsunto: ${subject}\n\n${text.trim().slice(0, 500)}`,
       });
+      console.log('[email-inbound] agent_tasks insert', { ok: !taskInsErr, err: taskInsErr?.message });
 
       // Attachments: reutilizar el mismo pipeline de storage que el
       // portal-shared path para que create_file/pdf de Neus/Nova/Nala puedan
@@ -284,6 +289,7 @@ export async function POST(req: NextRequest) {
       }
 
       const ownerEmail = (targetAgent as Record<string, unknown>).client_email as string | null;
+      console.log('[email-inbound] pre-processInboxEmail', { ownerEmail, attachmentsCount: agentStoredAttachments.length, agentId: targetAgent.id });
       if (ownerEmail) {
         // Traer org-level para KB + kill switch auto-mode
         const { data: orgDataAgt } = await supabase
