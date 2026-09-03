@@ -44,18 +44,35 @@ public sealed class ContpaqiSession : IDisposable
         }
     }
 
-    /// <summary>Abre una sesión SDK + una empresa. Llama <see cref="RegisterSdkPath"/> internamente.</summary>
+    /// <summary>
+    /// Abre una sesión SDK + una empresa siguiendo la secuencia canónica:
+    /// SetDllDirectory + SetCurrentDirectory + fInicioSesionSDK + fSetNombrePAQ + fAbreEmpresa.
+    /// </summary>
+    /// <remarks>
+    /// El SDK NECESITA que el proceso tenga como current directory el folder
+    /// donde vive MGWServicios.dll y sus dependencias, porque internamente
+    /// hace loads con rutas relativas (patrón típico de DLLs nativas viejas).
+    /// </remarks>
     public static ContpaqiSession Open(string sdkPath, string usuario, string password, string rutaEmpresa)
     {
         RegisterSdkPath(sdkPath);
+        Directory.SetCurrentDirectory(sdkPath);
+
         var session = new ContpaqiSession();
 
-        var sesionResult = ContpaqiSdkNative.fInicioSesionSDK(usuario, password);
-        if (sesionResult != SdkConstants.CodigoExito)
-        {
-            throw new ContpaqiSdkException("fInicioSesionSDK", sesionResult, DescribeError(sesionResult));
-        }
+        // fInicioSesionSDK es VOID — no retorna código de error.
+        ContpaqiSdkNative.fInicioSesionSDK(usuario, password);
         session._sessionOpen = true;
+
+        // fSetNombrePAQ("CONTPAQ I COMERCIAL") debe llamarse ANTES de fAbreEmpresa.
+        // Si se omite, fAbreEmpresa devuelve códigos de error crípticos porque el SDK
+        // no sabe qué producto contactar (Comercial vs Contabilidad vs Facturación).
+        var setPaqResult = ContpaqiSdkNative.fSetNombrePAQ("CONTPAQ I COMERCIAL");
+        if (setPaqResult != SdkConstants.CodigoExito)
+        {
+            session.Dispose();
+            throw new ContpaqiSdkException("fSetNombrePAQ", setPaqResult, DescribeError(setPaqResult));
+        }
 
         var empresaResult = ContpaqiSdkNative.fAbreEmpresa(rutaEmpresa);
         if (empresaResult != SdkConstants.CodigoExito)

@@ -27,8 +27,20 @@ internal static class ContpaqiSdkNative
 
     // ---- Session lifecycle -----------------------------------------------
 
+    /// <summary>
+    /// IMPORTANTE: retorna <c>void</c>, no int. Un intento previo de leerla
+    /// como int devolvía valores basura (leyendo del stack).
+    /// </summary>
     [DllImport(DllName, EntryPoint = "fInicioSesionSDK", CharSet = CharSet.Ansi)]
-    public static extern int fInicioSesionSDK(string usuario, string password);
+    public static extern void fInicioSesionSDK(string usuario, string password);
+
+    /// <summary>
+    /// Selecciona el sistema PAQ dentro del SDK. DEBE llamarse entre
+    /// <c>fInicioSesionSDK</c> y <c>fAbreEmpresa</c>, con el string
+    /// "CONTPAQ I COMERCIAL" para Comercial Premium/Pro.
+    /// </summary>
+    [DllImport(DllName, EntryPoint = "fSetNombrePAQ", CharSet = CharSet.Ansi)]
+    public static extern int fSetNombrePAQ(string aSistema);
 
     [DllImport(DllName, EntryPoint = "fTerminaSDK")]
     public static extern void fTerminaSDK();
