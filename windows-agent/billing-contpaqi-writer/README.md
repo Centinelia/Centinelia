@@ -19,15 +19,56 @@ de CONTPAQi hacia Dropbox para que Nala tenga referencia de los códigos.
                               CFDI timbrado al receptor por correo
 ```
 
-## Estado actual
+## Estado actual — Days 1-4 completos y timbrando end-to-end
 
-**Day 1 (scaffold + hello world)**: valida que el proyecto compila 32-bit, que
-las bindings P/Invoke cargan el SDK nativo, y que se puede abrir/cerrar una
-sesión + empresa.
+Validado contra empresa dedicada `Kemper Urgate PRUEBAS SDK` (RFC de pruebas
+SAT `EKU9003173C9`, CSD público SAT descargado de facturoporti, password
+`12345678a`). El ciclo completo funciona:
 
-Pendientes (Day 2-10):
-- Day 2: crear documento vacío con encabezado.
-- Day 3: agregar movimientos + afectar.
+- Session + PAQ + open empresa ✅
+- Buscar cliente y producto por código ✅
+- Crear documento (`fAltaDocumento`) ✅
+- Agregar movimiento (`fAltaMovimiento`) ✅
+- Afectar (auto — colapsa con Day 3) ✅
+- **Timbrar (`fEmitirDocumento`) ✅** → devuelve éxito, UUID poblado en BD
+  con prefijo `00000000-` (marca sandbox de CONTPAQi trial). El PAC del
+  trial es un mock interno que no llama al SAT real — perfecto para dev.
+
+## Setup requerido en la máquina donde corre este agente
+
+Además de tener CONTPAQi Comercial Premium/Pro instalado con la empresa
+del cliente, hay 2 cambios de registro que tuvimos que hacer:
+
+1. `HKLM:\SOFTWARE\WOW6432Node\Computación en Acción, SA CV\CONTPAQ I SDK\NOMBRESERVIDOR`
+   debe apuntar al SQL Server que sirve la BD de CONTPAQi. En la instalación
+   del piloto era `tcp:LAPTOP-RDIHSMS9,1433` (el valor original `localhost`
+   no resolvía porque la instancia real es `SQLEXPRESS`).
+2. La empresa debe crearse en CONTPAQi UI con CSD cargado desde el
+   momento de la creación (el diálogo Nueva Empresa tiene la sección
+   "Datos generales del certificado" — no se puede saltar).
+
+## Ambiente de pruebas sin timbrar de verdad
+
+Para desarrollar sin riesgo fiscal:
+- Descargar CSD público SAT de pruebas (RFC `EKU9003173C9` persona moral)
+  desde https://software.facturoporti.com.mx/TaaS/Json/Api/Csd-Prueba.zip
+- Password del `.key`: `12345678a`
+- Crear empresa CONTPAQi con ese RFC y cargar el CSD
+- El PAC del trial CONTPAQi devuelve UUIDs sandbox (prefijo `00000000-`)
+  sin llamar al SAT — desarrollo ilimitado sin costo ni riesgo
+
+Pendientes (Day 5-10):
+- Day 5: extraer XML timbrado (queda en BD, no en disco — usar
+  `fBuscarXMLdeDocumento` o similar) + envío por correo al receptor.
+- Day 6: watcher Dropbox `pendientes/` → SDK → mover a `timbrados/` o
+  `errores/`.
+- Day 7: retries, structured logging, error escalation a Nala.
+- Day 8: tests contra CONTPAQi real (empresa piloto Tortillería).
+- Day 9-10: MSI installer + Windows Service + tarea programada.
+
+Legacy: (originalmente el plan describía Day 2 crear header, Day 3 líneas
+y afectar. En realidad afectar sucede automático al agregar la primera
+línea, así que Day 2 y Day 3 colapsaron en uno).
 - Day 4: timbrar (llama al PAC de CONTPAQi).
 - Day 5: envío CFDI al receptor + descarga XML/PDF.
 - Day 6: watcher Dropbox `pendientes/` → SDK → mover a `timbrados/` o `errores/`.
