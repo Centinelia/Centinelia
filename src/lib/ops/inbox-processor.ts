@@ -1250,24 +1250,37 @@ Eres un empleado inteligente. NO le pidas al humano que decida por defecto:
   * Si recomendación = review (poco historial o monto variable): draft=null, needs_info=false — aparece como "necesita tu ojo" al humano.
   * Si recomendación = unknown_vendor (proveedor nuevo): draft=null, needs_info=false — humano revisa manualmente la primera vez.` : '';
 
-  const userPrompt = `EMAIL ENTRANTE:
+  // Detectar attachments text/CSV/JSON antes del userPrompt para poder inyectar
+  // regla crítica al principio (el LLM ignora instrucciones que quedan enterradas
+  // debajo del cuerpo del correo — la observación de Haiku 4.5 en el debug del
+  // pipeline 2026-09-03 mostró iters=0 tools=[] consistente cuando la
+  // instrucción de read_url estaba solo dentro de "Adjuntos:").
+  const readableAttachments = attachments.filter(a =>
+    /^text\//i.test(a.type)
+    || /^application\/(json|xml|csv|x-yaml)/i.test(a.type)
+    || /\.(csv|txt|json|xml|md|yml|yaml|tsv)$/i.test(a.name)
+  );
+  const readUrlDirective = readableAttachments.length ? `
+🚨 INSTRUCCIÓN CRÍTICA — NO GENEREs draft NI JSON HASTA CUMPLIR ESTO:
+Este correo trae ${readableAttachments.length} archivo(s) text/CSV/JSON en attachments. NO puedes clasificar, resumir ni responder sin haber leído el contenido. TU PRIMERA ACCIÓN OBLIGATORIA es invocar read_url para CADA URL de abajo. Solo DESPUÉS de tener el contenido en tu contexto puedes decidir categoría, invocar create_file/create_document si aplica, y emitir el JSON final.
+
+URLs a leer (invoca read_url una por una):
+${readableAttachments.map((a, i) => `${i + 1}. ${a.name} (${a.type}) → read_url("${a.url}", purpose: "leer ${a.name}")`).join('\n')}
+
+Si NO invocas read_url primero, tu respuesta será rechazada automáticamente por incumplir esta regla.
+` : '';
+
+  const userPrompt = `${readUrlDirective}EMAIL ENTRANTE:
 De: ${emailFrom}
 Asunto: ${emailSubject}
 ${attachments.length ? `Adjuntos:
 ${attachments.map(a => {
-  // Para archivos text/CSV/JSON/XML: exponer la URL para que el LLM pueda
-  // invocar read_url y leer el contenido. Sin esto el LLM solo ve el nombre
-  // y no tiene forma de acceder a la data tabular. PDF/DOCX/imagen se
-  // asume vienen extraídos vía humanBlock ("Contenido de documentos adjuntos"),
-  // pero para inbound webhook eso solo pasa cuando el humano responde a un
-  // pedir_a_humano — no en correos directos. Para CSV/text del inbound
-  // webhook, el LLM debe fetchear por sí solo.
   const canReadWithUrl = /^text\//i.test(a.type)
     || /^application\/(json|xml|csv|x-yaml)/i.test(a.type)
     || /\.(csv|txt|json|xml|md|yml|yaml|tsv)$/i.test(a.name);
   const base = `- ${a.name} (${a.type}, ${Math.round(a.size / 1024)}KB)`;
   return canReadWithUrl
-    ? `${base}\n  URL: ${a.url}\n  → Archivo tabular/text: invoca read_url con esta URL para leer el contenido antes de decidir la respuesta.`
+    ? `${base}\n  URL: ${a.url}\n  → Archivo tabular/text: usa read_url con esta URL (regla crítica arriba).`
     : base;
 }).join('\n')}` : ''}
 ${originalEmailBody ? '(Este email es una respuesta a una solicitud de información previa — el hilo completo está en el cuerpo)' : ''}
