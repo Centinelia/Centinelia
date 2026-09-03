@@ -2,7 +2,12 @@
 // Configure your provider to POST to:
 //   https://www.centinelia.mx/api/email/inbound?secret=EMAIL_INBOUND_SECRET
 // SendGrid: set MX record for EMAIL_INBOX_DOMAIN → mx.sendgrid.net
-export const dynamic = 'force-dynamic';
+export const dynamic     = 'force-dynamic';
+// processInboxEmail dispara LLM Haiku con loop de tools + posible download
+// de attachments generados + envío Resend con adjuntos. Puede tomar 30-90s
+// para statements grandes. Default Vercel Hobby 10s / Pro 60s mataría el
+// fire-and-forget silenciosamente (nada se persistiría en ops_inbox).
+export const maxDuration = 300;
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -258,7 +263,7 @@ export async function POST(req: NextRequest) {
         title:          `Correo${senderName ? ` de ${senderName}` : ''}: ${subject || '(sin asunto)'}`.slice(0, 200),
         description:    `${senderName || from} escribió al inbox del empleado.`,
         status:         'pending',
-        trigger_type:   'email_reply',
+        trigger_type:   'email',
         source_context: `De: ${from}\nAsunto: ${subject}\n\n${text.trim().slice(0, 500)}`,
       });
       console.log('[email-inbound] agent_tasks insert', { ok: !taskInsErr, err: taskInsErr?.message });
