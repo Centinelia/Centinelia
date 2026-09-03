@@ -204,6 +204,25 @@ public sealed class ContpaqiSession : IDisposable
         }
     }
 
+    /// <summary>
+    /// Timbra un documento afectado. Invoca al PAC contratado por el cliente
+    /// (CONTPAQi maneja la comunicación con el PAC internamente vía sus
+    /// credenciales configuradas).
+    /// </summary>
+    /// <param name="codConcepto">Código interno del concepto (ej. "440").</param>
+    /// <param name="serie">Serie del comprobante (ej. "FTEN").</param>
+    /// <param name="folio">Folio numérico del documento afectado.</param>
+    /// <param name="csdPassword">Password del CSD del emisor cargado en CONTPAQi.</param>
+    /// <param name="archivoAdicional">Ruta a XML complementario (opcional; pasar "" si no aplica).</param>
+    public void StampDocument(string codConcepto, string serie, double folio, string csdPassword, string archivoAdicional = "")
+    {
+        var r = ContpaqiSdkNative.fEmitirDocumento(codConcepto, serie, folio, csdPassword, archivoAdicional);
+        if (r != SdkConstants.CodigoExito)
+        {
+            throw new ContpaqiSdkException("fEmitirDocumento", r, DescribeError(r));
+        }
+    }
+
     // ---- IDisposable ------------------------------------------------------
 
     public void Dispose()

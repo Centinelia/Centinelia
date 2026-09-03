@@ -100,4 +100,27 @@ internal static class ContpaqiSdkNative
     /// </summary>
     [DllImport(DllName, EntryPoint = "fAfectaDocto", CharSet = CharSet.Ansi)]
     public static extern int fAfectaDocto(ref Structs.TLlaveDoc aLlaveDocto, bool aAfecta);
+
+    /// <summary>
+    /// Timbra un documento afectado ante el PAC contratado por el cliente
+    /// en CONTPAQi. El documento debe estar previamente afectado.
+    /// Requiere que CONTPAQi tenga configurado:
+    ///   - CSD (certificado + llave privada) cargado
+    ///   - PAC contratado (con folios disponibles)
+    ///   - Conexión a internet
+    /// </summary>
+    /// <param name="aCodConcepto">Código interno del concepto (ej. "440").</param>
+    /// <param name="aSerie">Serie (ej. "FTEN").</param>
+    /// <param name="aFolio">Folio numérico del documento a timbrar.</param>
+    /// <param name="aPassword">Password del CSD del emisor.</param>
+    /// <param name="aArchivoAdicional">
+    ///   Ruta opcional a un XML complementario (pasar vacío si no aplica).
+    /// </param>
+    [DllImport(DllName, EntryPoint = "fEmitirDocumento")]
+    public static extern int fEmitirDocumento(
+        [MarshalAs(UnmanagedType.LPStr)] string aCodConcepto,
+        [MarshalAs(UnmanagedType.LPStr)] string aSerie,
+        double aFolio,
+        [MarshalAs(UnmanagedType.LPStr)] string aPassword,
+        [MarshalAs(UnmanagedType.LPStr)] string aArchivoAdicional);
 }
