@@ -66,7 +66,7 @@ export async function registrarClienteNuevo(ctx: any, args: RegistrarClienteNuev
   if (insErr) throw new Error(`registrar_cliente_nuevo insert: ${insErr.message}`);
   const incidentId = incidentRow.id;
 
-  let anySent = false;
+  let sentCount = 0;
   if (recipients.length > 0) {
     const { subject, html } = renderNewClientCardEmail({
       businessName:     args.business_name,
@@ -92,27 +92,33 @@ export async function registrarClienteNuevo(ctx: any, args: RegistrarClienteNuev
             email_domain_verified: ctx.agent.email_domain_verified,
           },
         }, ctx.supabase);
-        if (sendRes.ok) {
-          anySent = true;
-          // Cobrar 1 tarea por cada correo real enviado (Resend/OAuth tienen
-          // costo). Multi-recipient → N tareas. Solo tras éxito, sin refund.
-          await consumeAiOp(ctx.agent.id, 1, {
-            source: 'alta_cliente_notif',
-            label:  'Aviso de alta de cliente al encargado por correo',
-            reference_id: incidentId,
-          });
-        }
+        if (sendRes.ok) sentCount += 1;
         else console.warn(`registrar_cliente_nuevo email a ${recipient.email} failed silently:`, sendRes.error);
       } catch (err) {
         console.error(`registrar_cliente_nuevo sendMeerkatHtmlEmail a ${recipient.email} threw:`, err);
       }
     }
-    if (anySent) {
+    if (sentCount > 0) {
+      // Batched-consume: 1 sola RPC + 1 sola INSERT en vez de N awaits en loop.
+      // Ver comentario largo en registrar-incidencia.ts sobre por qué el patrón
+      // per-iteration produce undercharge sistemático. try/catch para no abortar
+      // el flow si el cobro tira (drift detector es la red de seguridad).
+      try {
+        await consumeAiOp(ctx.agent.id, sentCount, {
+          source: 'alta_cliente_notif',
+          label:  sentCount > 1
+            ? `Aviso de alta de cliente al encargado por correo (${sentCount} recipients)`
+            : 'Aviso de alta de cliente al encargado por correo',
+          reference_id: incidentId,
+        });
+      } catch (err) {
+        console.error(`registrar_cliente_nuevo consumeAiOp(${sentCount}) failed silently:`, err);
+      }
       await ctx.supabase.from('client_incidents')
         .update({ email_sent_at: new Date().toISOString() })
         .eq('id', incidentId);
     }
   }
 
-  return { ok: true as const, incident_id: incidentId, email_sent: anySent };
+  return { ok: true as const, incident_id: incidentId, email_sent: sentCount > 0 };
 }

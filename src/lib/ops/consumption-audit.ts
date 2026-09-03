@@ -281,29 +281,58 @@ export async function detectOutboundWithoutLedger(
   const opsSince = new Date(Date.now() - hoursBack * 3_600_000 - buffer).toISOString();
   let opsQ = supabase
     .from('ai_ops_log')
-    .select('agent_id, created_at')
+    .select('agent_id, count, created_at')
     .gte('created_at', opsSince);
   if (portalEmail) opsQ = opsQ.eq('portal_email', portalEmail);
   const { data: opsRows } = await opsQ;
 
-  const opsByAgent = new Map<string, number[]>();   // agent_id → sorted timestamps (ms)
+  // Slot-based: cada fila ai_ops_log tiene un `count` (ej: registrar_incidencia
+  // multi-recipient cobra 1 sola vez con count=N). El slot tiene capacidad =
+  // count. Cada envío consume 1 slot; si un slot ya se agotó, el envío busca
+  // otro dentro de la ventana o se marca como drift. La versión previa hacía
+  // `arr.some(t => Math.abs(t - outT) <= 30s)` — falso negativo: un mismo op
+  // "cubría" N envíos en la ventana aunque solo hubiera cobrado 1x.
+  interface OpsSlot { t: number; remaining: number }
+  const opsByAgent = new Map<string, OpsSlot[]>();
   for (const r of opsRows ?? []) {
     const aid = r.agent_id as string | null;
     if (!aid) continue;
-    const t = new Date(r.created_at as string).getTime();
+    const t     = new Date(r.created_at as string).getTime();
+    const count = (r.count as number | null) ?? 1;
     if (!opsByAgent.has(aid)) opsByAgent.set(aid, []);
-    opsByAgent.get(aid)!.push(t);
+    opsByAgent.get(aid)!.push({ t, remaining: Math.max(1, count) });
   }
-  for (const arr of opsByAgent.values()) arr.sort((a, b) => a - b);
+  for (const arr of opsByAgent.values()) arr.sort((a, b) => a.t - b.t);
+
+  // Procesamos outbounds en orden cronológico para que el matching sea
+  // determinístico (el envío más temprano toma el slot más cercano primero).
+  const outboundsSorted = [...outbounds].sort((a, b) =>
+    new Date(a.created_at as string).getTime() - new Date(b.created_at as string).getTime(),
+  );
 
   const drift: OutboundDrift[] = [];
-  for (const row of outbounds) {
+  for (const row of outboundsSorted) {
     const aid = row.agent_id as string | null;
     if (!aid) continue;   // sin agent_id no se puede correlacionar; se ignora
     const outT = new Date(row.created_at as string).getTime();
     const arr  = opsByAgent.get(aid) ?? [];
-    const hit  = arr.some(t => Math.abs(t - outT) <= OUTBOUND_LEDGER_WINDOW_MS);
-    if (!hit) {
+
+    // Busca el slot con capacidad disponible más cercano en tiempo dentro de ±30s.
+    let bestIdx = -1;
+    let bestDist = Infinity;
+    for (let i = 0; i < arr.length; i++) {
+      const slot = arr[i];
+      if (slot.remaining <= 0) continue;
+      const dist = Math.abs(slot.t - outT);
+      if (dist <= OUTBOUND_LEDGER_WINDOW_MS && dist < bestDist) {
+        bestDist = dist;
+        bestIdx  = i;
+      }
+    }
+
+    if (bestIdx >= 0) {
+      arr[bestIdx].remaining -= 1;
+    } else {
       drift.push({
         outbound_id: row.id as string,
         agent_id:    aid,
