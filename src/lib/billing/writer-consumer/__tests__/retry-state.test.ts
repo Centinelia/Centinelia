@@ -83,24 +83,28 @@ class MockSupabase {
   }
 }
 
-// markExhausted usa .update().eq() sin .select(). Ajustamos el mock:
-function bindExhaustedMock(mock: MockSupabase) {
+// markExhausted usa .update().eq() sin .select(). Wrapper minimal:
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function bindExhaustedMock(mock: MockSupabase): void {
   const orig = mock.from.bind(mock);
-  mock.from = (table: string) => {
-    const chain = orig(table);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (mock as any).from = (table: string) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const chain: any = orig(table);
     const originalUpdate = chain.update;
-    chain.update = (payload: Partial<Row>) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    chain.update = (payload: Partial<Row>): any => {
       const result = originalUpdate(payload);
-      return {
-        ...result,
-        eq: (col: string, val: string) => {
-          const eqResult = result.eq(col, val);
-          return {
-            ...eqResult,
-            then: (resolve: () => void) => { mock.updateSimple(val, payload); resolve(); },
-          };
-        },
+      const originalEq = result.eq;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      result.eq = (col: string, val: string): any => {
+        const eqResult = originalEq(col, val);
+        // Cuando el caller await'ea el eq directamente (sin .select()), lo
+        // interpretamos como markExhausted y aplicamos el patch al mock local.
+        eqResult.then = (resolve: () => void) => { mock.updateSimple(val, payload); resolve(); };
+        return eqResult;
       };
+      return result;
     };
     return chain;
   };
@@ -133,7 +137,7 @@ describe('bumpAttempt', () => {
       last = await bumpAttempt(mock as any, 'facturas_x', 'org@x.mx', `attempt ${i}`);
     }
     expect(last?.attempts).toBe(MAX_PAC_RETRY_ATTEMPTS + 1);
-    expect(last?.attempts > MAX_PAC_RETRY_ATTEMPTS).toBe(true);
+    expect((last?.attempts ?? 0) > MAX_PAC_RETRY_ATTEMPTS).toBe(true);
   });
 
   it('returns null when insert fails (BD problem)', async () => {
