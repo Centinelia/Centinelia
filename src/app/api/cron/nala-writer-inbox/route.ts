@@ -278,7 +278,16 @@ async function processIntegration(
         ...auditBase, basename, severity: 'error',
         context: { kind: action.kind, humanMessage: action.humanMessage },
       });
-      if (!escalation) return;
+      if (!escalation) {
+        // Si es error fatal/crítico y no hay dónde escalar, TIRAR para que
+        // consumeErrores deje el archivo en errores/ (no lo mueve a consumidos)
+        // y el próximo tick con escalation configurado lo reintente.
+        // Auditoría 2026-09-04.
+        throw new Error(
+          `BILLING_ESCALATION_EMAIL no configurado y hay que escalar kind=${action.kind} para ${basename}. ` +
+          `Configúralo en Vercel para que este error no se pierda silenciosamente.`,
+        );
+      }
       await sendBillingMail({
         to: escalation,
         subject: `[Writer inbox] escalación kind=${action.kind} para ${basename}`,
@@ -295,6 +304,25 @@ async function processIntegration(
     deliverCfdi: async (basename, xmlContent) => {
       const corr = await correlateBasenameToEmail(supabase, basename, integ.portal_email);
       if (!corr) return false;
+
+      // Guard idempotencia: si ya entregamos este basename antes (movimiento
+      // a entregados/ falló tras sendMail exitoso), NO volver a enviar. El
+      // audit trail 'writer_cfdi_delivered' es fuente de verdad. Auditoría
+      // 2026-09-04: sin este guard, un moveFile flakey causaba doble envío
+      // del mismo CFDI al mismo cliente.
+      const { data: alreadyDelivered } = await supabase
+        .from('billing_activity_log')
+        .select('id')
+        .eq('action_type', 'writer_cfdi_delivered')
+        .eq('entity_ref', basename)
+        .eq('portal_email', integ.portal_email)
+        .limit(1)
+        .maybeSingle();
+      if (alreadyDelivered) {
+        log('info', 'CFDI ya entregado previamente, saltando envío duplicado (idempotencia)', { basename });
+        return true; // Devolver true para que moveFile se ejecute y limpie.
+      }
+
       // Cobrar 1 op por CFDI entregado (representa el consumo del PAC del
       // cliente + el envío por correo con adjunto). El writer .NET timbra en
       // la máquina de Beatriz pero ese consumo se atribuye acá, en Vercel,

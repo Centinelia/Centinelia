@@ -84,16 +84,29 @@ export async function consumeErrores(deps: ConsumeErroresDeps): Promise<ConsumeR
       }
 
       // Un solo report a la vez, secuencial: mantener orden de reply/escalate.
+      // Si el escalate falla (ej. BILLING_ESCALATION_EMAIL no configurado y
+      // había que mandar mail), NO movemos a consumidos — el archivo se queda
+      // para que un próximo tick con env correcto lo reintente y no se pierda
+      // silenciosamente. Auditoría 2026-09-04 (escalación silenciosa).
+      let shouldMoveToConsumidos = true;
       if ('results' in report) {
         await processBatchReport(basename, report as BatchReport, deps);
       } else {
-        await processFatalReport(basename, report as FatalReport, deps);
+        const fatal = await processFatalReport(basename, report as FatalReport, deps);
+        if (fatal.escalateFailed) {
+          shouldMoveToConsumidos = false;
+          result.errors++;
+        }
       }
 
-      // Mover .json + .xml original (mismo basename) a consumidos/.
-      await moveToConsumidos(deps.dropbox, entry.path, consumidosPath, entry.name);
-      await tryMoveOriginalXml(deps, erroresPath, consumidosPath, basename);
-      result.processed++;
+      if (shouldMoveToConsumidos) {
+        // Mover .json + .xml original (mismo basename) a consumidos/.
+        await moveToConsumidos(deps.dropbox, entry.path, consumidosPath, entry.name);
+        await tryMoveOriginalXml(deps, erroresPath, consumidosPath, basename);
+        result.processed++;
+      } else {
+        deps.log('warn', 'archivo se queda en errores/ hasta que escalation email esté configurado', { file: entry.name });
+      }
     } catch (err) {
       deps.log('error', 'error procesando reporte, dejo el archivo para el siguiente tick', {
         file: entry.name, err: err instanceof Error ? err.message : String(err),
@@ -148,16 +161,20 @@ async function processBatchReport(
 
 async function processFatalReport(
   basename: string, report: FatalReport, deps: ConsumeErroresDeps,
-): Promise<void> {
+): Promise<{ escalateFailed: boolean }> {
   const action = resolveFatalAction(report);
   if (action.type === 'escalate_to_nazre') {
-    try { await deps.escalate(basename, action); }
-    catch (err) {
-      deps.log('error', 'escalate falló para reporte fatal, se mueve igual', {
+    try {
+      await deps.escalate(basename, action);
+      return { escalateFailed: false };
+    } catch (err) {
+      deps.log('error', 'escalate falló para reporte fatal, NO muevo a consumidos', {
         basename, err: err instanceof Error ? err.message : String(err),
       });
+      return { escalateFailed: true };
     }
   }
+  return { escalateFailed: false };
 }
 
 // ── consumeTimbrados ──────────────────────────────────────────────────────────

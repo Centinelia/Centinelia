@@ -176,7 +176,37 @@ export async function extractRemisionesFromImage(
     if (!parsed || typeof parsed !== 'object' || !Array.isArray((parsed as { remisiones?: unknown }).remisiones)) {
       throw new Error('Vision model returned non-JSON or missing remisiones[] array');
     }
-    return parsed as ExtractedNoteSet;
+    const set = parsed as ExtractedNoteSet;
+
+    // Validar que cualquier cliente_matched_rfc devuelto por el LLM realmente
+    // exista en el catálogo. Sin este guard, el LLM podía alucinar un RFC
+    // "plausible" que no está en catálogo, y los callers downstream
+    // facturarían a RFC inexistente. Auditoría 2026-09-04.
+    if (context && context.clientes.length > 0) {
+      const validRfcs = new Set(context.clientes.map((c) => c.rfc.trim().toUpperCase()));
+      for (const r of set.remisiones) {
+        if (r.cliente_matched_rfc) {
+          const rfc = r.cliente_matched_rfc.trim().toUpperCase();
+          if (!validRfcs.has(rfc)) {
+            // Anulamos el match alucinado; caller cae a fuzzy fallback.
+            r.cliente_matched_rfc = null;
+            if (r.confianza) r.confianza.cliente = Math.min(r.confianza.cliente, 0.3);
+          }
+        }
+      }
+    }
+    // Igual para sku_matched — no aceptar SKUs que no existen.
+    if (context && context.productos.length > 0) {
+      const validSkus = new Set(context.productos.map((p) => p.sku));
+      for (const r of set.remisiones) {
+        for (const p of r.productos) {
+          if (p.sku_matched && !validSkus.has(p.sku_matched)) {
+            p.sku_matched = null;
+          }
+        }
+      }
+    }
+    return set;
   };
 
   // Sin billing opts, no cobramos (dev + tests + callers legacy).

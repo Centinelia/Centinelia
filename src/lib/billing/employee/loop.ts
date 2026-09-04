@@ -27,6 +27,7 @@ import { buildSystemPrompt } from './system-prompt';
 import { buildEmployeeTools, toAnthropicTools } from './tools';
 import type { BillingAdapter } from '../adapter';
 import type { OrgCtx } from '../matching/client';
+import { chargePool } from '../pool-charge';
 
 // ---------------------------------------------------------------------------
 // Tipos publicos
@@ -52,6 +53,14 @@ export interface BillingEmployeeConfig {
   escalationEmail: string;
   /** Nombre de la organizacion (para el system prompt). */
   orgName?: string;
+  /**
+   * ID del voice_agent que representa a Nala en esta organización. Cuando
+   * se pasa, cada iteración del LLM loop cobra 1 op batched al pool del
+   * cliente con source='nala_billing_loop'. Sin agentId, el loop corre
+   * pero NO cobra (degradación graceful — útil para tests + rollout
+   * gradual controlado por kill switch en pool-charge).
+   */
+  agentId?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -237,6 +246,7 @@ export class BillingEmployee {
       { role: 'user', content: userMessage },
     ];
 
+    let iterationsExecuted = 0;
     for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
       let response: Anthropic.Message;
       try {
@@ -247,6 +257,7 @@ export class BillingEmployee {
           tools: anthropicTools,
           messages: messages as Anthropic.MessageParam[],
         });
+        iterationsExecuted++;
       } catch (llmErr) {
         const msg = llmErr instanceof Error ? llmErr.message : String(llmErr);
         result.errors.push(`LLM call failed at iteration ${iteration}: ${msg}`);
@@ -315,6 +326,25 @@ export class BillingEmployee {
 
       // Agregar resultados de tools al historial.
       messages.push({ role: 'user', content: toolResults });
+    }
+
+    // Cobrar al pool las iteraciones que realmente ejecutamos (batched-consume).
+    // Un correo típico = 3-10 iters × Sonnet 4-6 (~$0.03-0.10 USD real). Si
+    // agentId no está seteado (test / config incompleta), no cobra pero
+    // tampoco crashea. Kill switch en pool-charge decide si se ejecuta.
+    if (this.config.agentId && iterationsExecuted > 0) {
+      try {
+        await chargePool({
+          agentId:      this.config.agentId,
+          source:       'nala_billing_loop',
+          reference_id: emailId,
+          label:        `Procesar correo (${iterationsExecuted} iters LLM)`,
+          context:      `Modelo ${model}. Sales: ${result.processed}. Escalated: ${result.escalated}. Consulted: ${result.consulted}. Errors: ${result.errors.length}`,
+        }, iterationsExecuted);
+      } catch (chargeErr) {
+        console.error('[billing/employee] chargePool iterations failed:',
+          chargeErr instanceof Error ? chargeErr.message : String(chargeErr));
+      }
     }
 
     return result;

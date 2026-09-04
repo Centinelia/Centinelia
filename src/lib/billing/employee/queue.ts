@@ -187,6 +187,18 @@ async function handleProcessNotes(job: BillingJobRow): Promise<void> {
 
   const adapter = buildAdapter(integration.config);
 
+  // Resolver el voice_agent de Nala para cobrar el loop LLM al pool. Si no
+  // encontramos Nala activa para esta org, degradamos silencioso — el loop
+  // corre pero no cobra. Auditoría 2026-09-04.
+  const { data: nalaAgent } = await supabase
+    .from('voice_agents')
+    .select('id')
+    .eq('portal_email', job.portal_email)
+    .ilike('agent_name', '%nala%')
+    .eq('active', true)
+    .maybeSingle();
+  const nalaAgentId = (nalaAgent?.id as string | null) ?? undefined;
+
   const employee = new BillingEmployee(adapter, {
     portalEmail: job.portal_email,
     integrationId: job.integration_id,
@@ -194,6 +206,7 @@ async function handleProcessNotes(job: BillingJobRow): Promise<void> {
     dropboxBasePath: process.env.BILLING_DROPBOX_BASE_PATH ?? '/Facturacion',
     escalationEmail: process.env.BILLING_ESCALATION_EMAIL ?? job.portal_email,
     orgName: job.portal_email,
+    ...(nalaAgentId ? { agentId: nalaAgentId } : {}),
   });
 
   const result = await employee.runOnEmail(emailId);
