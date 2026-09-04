@@ -374,6 +374,29 @@ function WorkspaceCallout({ provider }: { provider: 'gmail' | 'outlook' | null }
   );
 }
 
+/* ── per-employee banner ────────────────────────────────────────────────── */
+
+function PerEmployeeBanner({ token, text }: { token: string; text: string }) {
+  return (
+    <div
+      className="flex items-start gap-2.5 rounded-lg px-3 py-2.5"
+      style={{ background: 'rgba(108,59,255,0.05)', border: '1px solid rgba(108,59,255,0.16)' }}
+    >
+      <Users size={13} style={{ color: '#9B6DFF', flexShrink: 0, marginTop: 2 }} />
+      <div className="text-xs leading-relaxed flex-1" style={{ color: '#1A0A3B' }}>
+        <p style={{ color: '#6B6480' }}>{text}</p>
+        <a
+          href={`/portal/${token}/empleados`}
+          className="inline-block mt-1 font-semibold"
+          style={{ color: '#6C3BFF' }}
+        >
+          Ir a la lista de empleados →
+        </a>
+      </div>
+    </div>
+  );
+}
+
 /* ── capability row (dentro del surface único, con divider) ─────────────── */
 
 interface PackBadge {
@@ -543,13 +566,9 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
     ? `${emailConn.provider === 'gmail' ? 'Google Workspace' : 'Microsoft 365'}${emailConn.email ? ` · ${emailConn.email}` : ''}`
     : undefined;
 
-  const calViaEmail    = emailConn
-    ? { provider: emailConn.provider, email: emailConn.email ?? '' }
-    : null;
-
-  const calSubtitle    = calViaEmail
-    ? `${calViaEmail.provider === 'gmail' ? 'Google Calendar' : 'Outlook Calendar'} · ${calViaEmail.email}`
-    : status.cal?.calendar_type
+  // Google/Outlook Calendar ya no se infieren del OAuth de Gmail — se conectan
+  // per-empleado desde su ficha. Ver .brain/decisions/2026-09-04-integraciones-per-agent-vs-org-level.md
+  const calSubtitle    = status.cal?.calendar_type
     ? ({ google: 'Google Calendar', outlook_cal: 'Outlook Calendar', cal_com: 'Cal.com', calendly: 'Calendly' }[status.cal.calendar_type] ?? status.cal.calendar_type)
     : undefined;
 
@@ -571,13 +590,11 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
     ? 'Solucion Factible · Timbrado CFDI 4.0'
     : 'Elige tu proveedor y emite CFDI 4.0 automáticamente';
 
+  // Google Drive / OneDrive ya no se infieren del OAuth de Gmail — se conectan
+  // per-empleado desde su ficha. Aquí solo se muestra Dropbox (org-level).
   function buildStorageSubtitle(s: HubStatus): string | undefined {
-    const providers: string[] = [];
-    if (s.emails.find(e => e.provider === 'gmail'))   providers.push('Google Drive');
-    if (s.emails.find(e => e.provider === 'outlook')) providers.push('OneDrive');
-    if (s.dropbox?.connected) providers.push('Dropbox');
-    if (providers.length === 0) return 'Google Drive, OneDrive o Dropbox — conecta el que uses';
-    return providers.join(' · ');
+    if (s.dropbox?.connected) return 'Dropbox';
+    return 'Dropbox (compartido). Google Drive y OneDrive se configuran por empleado.';
   }
 
   /* ── summary caps ───────────────────────────────────────────────────── */
@@ -586,7 +603,9 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
     // 'correo' (Bandeja compartida) removido 2026-09-04: la integración org-level
     // se contraponía a los correos que cada empleado ya tiene conectados individualmente
     // en su configurar. Ver [[org-level-email-deprecated]].
-    { id: 'calendario',  label: 'Calendario',  connected: !!calViaEmail || !!status.cal?.calendar_type },
+    // Calendario aquí es solo org-level (Cal.com / Calendly). Google Calendar y
+    // Outlook Calendar son per-empleado. Ver .brain/decisions/2026-09-04-...
+    { id: 'calendario',  label: 'Calendario',  connected: !!status.cal?.calendar_type },
     { id: 'crm',      label: 'Conocimiento del cliente', connected: !!status.notion?.connected },
     ...(hasOpsAgent ? [{ id: 'mensajeria', label: 'Mensajería', connected: !!status.teamsEmail }] : []),
     { id: 'comercio',    label: 'Comercio',    connected: !!status.ml?.connected },
@@ -613,16 +632,23 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
       key: 'calendario',
       icon: <Calendar size={16} style={{ color: '#6C3BFF' }} />,
       connectedIcon:
-        (calViaEmail?.provider ?? status.cal?.calendar_type) === 'gmail'
+        status.cal?.calendar_type === 'google'
           ? RowIcons.gcal
-          : (calViaEmail?.provider ?? status.cal?.calendar_type) === 'outlook' ||
-            status.cal?.calendar_type === 'outlook_cal'
+          : status.cal?.calendar_type === 'outlook_cal'
           ? RowIcons.mcal
           : undefined,
       label: 'Calendario',
       subtitle: calSubtitle,
-      connected: !!calViaEmail || !!status.cal?.calendar_type,
-      children: <IntegrationsSection token={token} plan={plan} emailConn={calViaEmail} />,
+      connected: !!status.cal?.calendar_type,
+      children: (
+        <div className="flex flex-col gap-4">
+          <PerEmployeeBanner
+            token={token}
+            text="Google Calendar y Outlook Calendar se configuran individualmente en la ficha de cada empleado."
+          />
+          <IntegrationsSection token={token} plan={plan} emailConn={null} />
+        </div>
+      ),
     },
     {
       key: 'crm',
@@ -667,8 +693,16 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
       icon: <Cloud size={16} style={{ color: '#6C3BFF' }} />,
       label: 'Almacenamiento en la nube',
       subtitle: buildStorageSubtitle(status),
-      connected: !!status.dropbox?.connected || !!status.emails.find(e => e.provider === 'gmail' || e.provider === 'outlook'),
-      children: <StorageSection token={token} />,
+      connected: !!status.dropbox?.connected,
+      children: (
+        <div className="flex flex-col gap-4">
+          <PerEmployeeBanner
+            token={token}
+            text="Google Drive y OneDrive se configuran individualmente en la ficha de cada empleado."
+          />
+          <StorageSection token={token} />
+        </div>
+      ),
     },
   ];
 
