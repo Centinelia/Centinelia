@@ -20,7 +20,7 @@ export async function GET(req: NextRequest, { params }: Params) {
   const supabase  = createAdminClient();
   const portalEmail = await getOrgEmail(token, supabase);
   if (!portalEmail) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-  if (auth.portalEmail && auth.portalEmail !== portalEmail)
+  if (!auth.portalEmail || auth.portalEmail !== portalEmail)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const { data: org } = await supabase
@@ -38,7 +38,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const supabase  = createAdminClient();
   const portalEmail = await getOrgEmail(token, supabase);
   if (!portalEmail) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-  if (auth.portalEmail && auth.portalEmail !== portalEmail)
+  if (!auth.portalEmail || auth.portalEmail !== portalEmail)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const body = await req.json() as { directory?: DirectoryPerson[] };

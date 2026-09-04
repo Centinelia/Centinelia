@@ -144,7 +144,10 @@ export async function extractRemisionesFromImage(
       ? `${buildContextBlock(context)}\n\n${EXTRACT_NOTE_USER}`
       : EXTRACT_NOTE_USER;
 
-    const response = await client.messages.create({
+    // Retry con backoff exponencial para 429 rate limit y 529 overloaded.
+    // Sin esto, Beatriz subiendo 20 fotos a la vez podía perder 1-2 por
+    // rate limit sin causa útil visible. Auditoría 2026-09-04.
+    const response = await callAnthropicWithRetry(() => client.messages.create({
       model,
       max_tokens: maxTokens,
       system: EXTRACT_NOTE_SYSTEM,
@@ -167,7 +170,7 @@ export async function extractRemisionesFromImage(
           ],
         },
       ],
-    });
+    }));
 
     const textBlock = response.content.find((b) => b.type === 'text');
     const raw = textBlock?.type === 'text' ? textBlock.text.trim() : '';
@@ -267,6 +270,32 @@ export async function extractNoteFromImage(
  * después (código markdown, explicaciones libres). Ignora llaves dentro de
  * strings (respeta escapes).
  */
+/**
+ * Retry helper para Anthropic: reintenta ante 429 (rate limit) y 529
+ * (overloaded) con backoff exponencial. Otras excepciones se propagan
+ * inmediato (bugs de request, credenciales, etc.).
+ */
+async function callAnthropicWithRetry<T>(
+  fn: () => Promise<T>,
+  maxAttempts = 3,
+  baseDelayMs = 1000,
+): Promise<T> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      const status = (err as { status?: number })?.status ?? 0;
+      const isRetryable = status === 429 || status === 529;
+      if (!isRetryable || attempt >= maxAttempts) throw err;
+      const delay = baseDelayMs * Math.pow(4, attempt - 1); // 1s, 4s, 16s
+      console.warn(`[vision/extract] Anthropic ${status} attempt ${attempt}/${maxAttempts}, retry en ${delay}ms`);
+      await new Promise(r => setTimeout(r, delay));
+    }
+  }
+  // Unreachable but appeases TS.
+  throw new Error('callAnthropicWithRetry: unreachable');
+}
+
 function extractFirstJsonObject(s: string): unknown | null {
   const first = s.indexOf('{');
   if (first === -1) return null;

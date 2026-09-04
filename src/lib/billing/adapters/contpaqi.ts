@@ -30,6 +30,36 @@ import { parseClientsCsv, parseProductsCsv, parseFreshnessJson } from '../contpa
 import { buildImportXml, type XmlImportConfig } from '../contpaqi/xml-import';
 
 /**
+ * Decodifica un buffer CSV auto-detectando encoding. CONTPAQi Comercial exporta
+ * en Windows-1252 (Latin-1); si tratamos como UTF-8, cualquier ñ/acento se
+ * convierte a U+FFFD � y el fuzzy matching cae por debajo de MIN_SCORE → el
+ * cliente nunca se encuentra y la factura nunca se emite. Auditoría 2026-09-04.
+ *
+ * Heurística: si contiene BOM UTF-8 (0xEF 0xBB 0xBF) o si al parsear como
+ * UTF-8 estricto no aparece U+FFFD, es UTF-8. Si no, decodificamos como
+ * Windows-1252 (superset ISO-8859-1 con euro/tilde en 0x80-0x9F).
+ */
+function decodeCsvBuffer(buf: Buffer): string {
+  // BOM = UTF-8 seguro.
+  if (buf.length >= 3 && buf[0] === 0xef && buf[1] === 0xbb && buf[2] === 0xbf) {
+    return buf.toString('utf-8');
+  }
+  const asUtf8 = buf.toString('utf-8');
+  // Si el decode UTF-8 no metió U+FFFD (replacement char) y no tiene bytes
+  // 0x80-0xFF sueltos (que UTF-8 sí codificaría como 2 bytes), es UTF-8 válido.
+  if (!asUtf8.includes('�')) {
+    return asUtf8;
+  }
+  // Fallback: Windows-1252 (superset ISO-8859-1). Node TextDecoder soporta 'windows-1252'.
+  try {
+    return new TextDecoder('windows-1252').decode(buf);
+  } catch {
+    // Último recurso: latin1 (mapping 1-a-1).
+    return buf.toString('latin1');
+  }
+}
+
+/**
  * Backend de almacenamiento que necesita CONTPAQiAdapter. Cualquier objeto con
  * estos dos métodos sirve — `DropboxClient` (prod) y `LocalFilesStorage` (dev/E2E)
  * satisfacen la forma.
@@ -192,7 +222,7 @@ export class CONTPAQiAdapter implements BillingAdapter {
       return this.clientsCache.data;
     }
     const buf = await this.dropbox.readFile(`${this.basePath}/Config/contpaqi_clientes.csv`);
-    const clients = parseClientsCsv(buf.toString('utf-8'));
+    const clients = parseClientsCsv(decodeCsvBuffer(buf));
     this.clientsCache = { data: clients, expiresAt: Date.now() + this.cacheTtlMs };
     return clients;
   }

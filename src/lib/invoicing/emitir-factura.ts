@@ -143,7 +143,56 @@ export async function emitirFacturaAuto(
     csd, pacCredentials: creds,
   };
 
-  // Stamp
+  // Stamp con guard idempotencia. Auditoría 2026-09-04: sin este bloque,
+  // retry-failed-stamps podía relanzar el mismo requestId mientras otro
+  // proceso aún lo estaba timbrando o justo después de que el PAC facturó
+  // pero el UPDATE local se perdió (timeout de red) → doble timbre real +
+  // doble UUID SAT + doble cobro.
+  //
+  // Layer 1: si YA hay stamp_uuid poblado, el timbre entró antes — devolver
+  // éxito idempotente.
+  // Layer 2: si stamp_started_at es reciente (< 5 min), otro proceso está en
+  // vuelo o acaba de fallar sin completar rollback — abstenerse y dejar que
+  // el próximo tick lo mire.
+  const { data: currentStamp } = await supabase
+    .from('factura_requests')
+    .select('stamp_uuid, stamp_started_at, status')
+    .eq('id', requestId)
+    .maybeSingle();
+  if (currentStamp?.stamp_uuid) {
+    // Ya se timbró. Retornar retrying (no failed) para que el caller no
+    // marque como error terminal. Idempotencia protegida contra doble
+    // llamada al PAC. Auditoría 2026-09-04.
+    console.warn(
+      `[emitir-factura] guard idempotencia: requestId=${requestId} ya tiene stamp_uuid=${currentStamp.stamp_uuid}, skip re-timbre`,
+    );
+    return {
+      outcome: 'retrying',
+      error: `Ya timbrado previamente con UUID ${currentStamp.stamp_uuid} (idempotencia)`,
+    };
+  }
+  if (currentStamp?.stamp_started_at) {
+    const startedAt = new Date(currentStamp.stamp_started_at as string).getTime();
+    const ageMs = Date.now() - startedAt;
+    if (ageMs < 5 * 60 * 1000) {
+      return { outcome: 'retrying', error: `stamp_started_at reciente (${Math.round(ageMs / 1000)}s), evitando doble timbre` };
+    }
+    // TODO: si stamp_started_at > 5min y stamp_uuid null, hacer GET al PAC
+    // consultando por request_id / serie+folio para verificar si sí timbró.
+    // Sin esto queda ventana pequeña de doble timbre en caso extremo:
+    // proceso original murió DESPUÉS de que el PAC facturó pero antes de
+    // completar el UPDATE. Documentado en auditoría 2026-09-04.
+  }
+
+  // Marcar stamp_started_at ANTES del timbre. Si el cron ve rows con
+  // stamp_started_at reciente (<5min) las skip para no reintentar mientras
+  // otro proceso (que quizá ya timbró exitoso pero perdió la response) aún
+  // podría estar corriendo. Ver retry-failed-stamps.
+  await supabase.from('factura_requests').update({
+    stamp_started_at: new Date().toISOString(),
+    status: 'stamping',
+  }).eq('id', requestId);
+
   const provider = getProvider(org.invoicing_provider);
   if (!provider) {
     return { outcome: 'failed', error: `PAC no soportado: ${org.invoicing_provider}`, retryable: false };

@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
   }
 
   const token = parseToToken(to);
-  console.log('[email-inbound] entry', { to, from, subject, token, tokenLen: token.length, hasAttachments: rawAttachments.length });
+  console.log('[email-inbound] entry', { to, from, subject, tokenLen: token.length, tokenHash: token.slice(0,4) + '***' + token.slice(-2), hasAttachments: rawAttachments.length });
   if (!token) return NextResponse.json({ ok: true });
 
   const supabase = createAdminClient();
@@ -227,7 +227,7 @@ export async function POST(req: NextRequest) {
   // como opsAgent + sendReplyFn dirigido, replicando el pattern del webhook
   // portal-shared path (línea ~360 abajo).
   const agentMatch = await resolveAgentFromToken(token);
-  console.log('[email-inbound] agentMatch result', { token, matched: !!agentMatch, agentId: agentMatch?.agentId, portalEmail: agentMatch?.portalEmail });
+  console.log('[email-inbound] agentMatch result', { tokenLen: token.length, matched: !!agentMatch, agentId: agentMatch?.agentId, portalEmail: agentMatch?.portalEmail });
 
   if (agentMatch) {
     const { data: targetAgent, error: targetAgentErr } = await supabase

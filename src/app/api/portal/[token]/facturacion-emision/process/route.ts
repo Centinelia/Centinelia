@@ -48,7 +48,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const { token } = await params;
   const resolved = await resolveOrgFromToken(token);
   if (!resolved) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  if (auth.portalEmail && auth.portalEmail !== resolved.portalEmail) {
+  if (!auth.portalEmail || auth.portalEmail !== resolved.portalEmail) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 

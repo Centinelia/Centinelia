@@ -26,16 +26,24 @@ export async function GET(req: NextRequest, { params }: Params) {
   const { token } = await params;
   const resolved = await resolveOrgFromToken(token);
   if (!resolved) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  if (auth.portalEmail && auth.portalEmail !== resolved.portalEmail) {
+  if (!auth.portalEmail || auth.portalEmail !== resolved.portalEmail) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   const path = req.nextUrl.searchParams.get('path');
   if (!path) return NextResponse.json({ error: 'path is required' }, { status: 400 });
 
-  // Only allow XML files under the pendientes folder — defense in depth against
-  // reading anything else from the storage backend.
-  if (!path.includes('/Importables_CONTPAQi/pendientes/') || !path.endsWith('.xml')) {
+  // Path traversal fix (auditoría 2026-09-04): antes `path.includes('/pendientes/')`
+  // aceptaba `../../etc/passwd/Importables_CONTPAQi/pendientes/x.xml`. Ahora:
+  //   (a) NO permite `..` en ninguna parte del path.
+  //   (b) Debe empezar con `/` seguido de segmentos válidos.
+  //   (c) Debe contener `/Importables_CONTPAQi/pendientes/` como segmento
+  //       propio (no substring cualquiera).
+  const pathOk =
+    !path.includes('..') &&
+    path.startsWith('/') &&
+    /(^|\/)Importables_CONTPAQi\/pendientes\/[^/]+\.xml$/.test(path);
+  if (!pathOk) {
     return NextResponse.json({ error: 'path not allowed' }, { status: 403 });
   }
 

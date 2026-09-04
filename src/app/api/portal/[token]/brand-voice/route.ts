@@ -23,7 +23,7 @@ export async function GET(req: NextRequest, { params }: Params) {
   const supabase  = createAdminClient();
   const portalEmail = await resolvePortalEmail(supabase, token);
   if (!portalEmail) return NextResponse.json({ error: 'Portal no encontrado' }, { status: 404 });
-  if (auth.portalEmail && auth.portalEmail !== portalEmail)
+  if (!auth.portalEmail || auth.portalEmail !== portalEmail)
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   const guide = await getBrandVoiceGuide(portalEmail, supabase);
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const supabase  = createAdminClient();
   const portalEmail = await resolvePortalEmail(supabase, token);
   if (!portalEmail) return NextResponse.json({ error: 'Portal no encontrado' }, { status: 404 });
-  if (auth.portalEmail && auth.portalEmail !== portalEmail)
+  if (!auth.portalEmail || auth.portalEmail !== portalEmail)
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   const body = await req.json() as { samples?: string[]; guide?: string };
@@ -74,7 +74,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   const supabase  = createAdminClient();
   const portalEmail = await resolvePortalEmail(supabase, token);
   if (!portalEmail) return NextResponse.json({ error: 'Portal no encontrado' }, { status: 404 });
-  if (auth.portalEmail && auth.portalEmail !== portalEmail)
+  if (!auth.portalEmail || auth.portalEmail !== portalEmail)
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   await supabase

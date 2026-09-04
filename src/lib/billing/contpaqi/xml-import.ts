@@ -37,11 +37,21 @@ export interface XmlImportConfig {
 }
 
 /**
- * Escapa los caracteres especiales XML: &, <, >, ".
- * Necesario para cualquier valor textual que se inserte en el XML.
+ * Escapa los caracteres especiales XML y remueve control chars inválidos.
+ *
+ * Auditoría 2026-09-04: XML 1.0 solo acepta control chars TAB (U+0009),
+ * LF (U+000A), CR (U+000D). Cualquier otro (soft-hyphen U+00AD, zero-width
+ * space U+200B, control chars U+0000-U+001F excepto los 3 anteriores)
+ * genera XML técnicamente inválido; el writer .NET con XmlReader lo rechaza
+ * silenciosamente y el batch entero se pierde. Notas manuscritas pegadas
+ * desde WhatsApp frecuentemente traen estos chars invisibles.
  */
 function escapeXml(value: string): string {
   return value
+    // Strip control chars inválidos EXCEPTO TAB (\t=0x09), LF (\n=0x0A), CR (\r=0x0D).
+    // Range: 0x00-0x08, 0x0B, 0x0C, 0x0E-0x1F. Y también surrogates unpaired (0xD800-0xDFFF).
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F￾￿]/g, '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -91,10 +101,15 @@ function buildMovimiento(line: BillingLineItem): string {
   const ivaTasaNum = line.ivaTasa ?? 0;
   const ivaTasaStr = fmtIvaTasa(ivaTasaNum);
 
+  // Cantidad con precision fija: hasta 6 decimales, trim trailing zeros.
+  // Sin esto, 0.1+0.2 = 0.30000000000000004 se emitía crudo (CONTPAQi trunca
+  // silencioso). Auditoría 2026-09-04.
+  const qtyStr = Number(line.qty.toFixed(6)).toString();
+
   return [
     '      <Movimiento>',
     `        <CodigoProducto>${escapeXml(line.sku)}</CodigoProducto>`,
-    `        <Cantidad>${line.qty}</Cantidad>`,
+    `        <Cantidad>${qtyStr}</Cantidad>`,
     `        <PrecioUnitario>${fmt(line.unitPrice)}</PrecioUnitario>`,
     `        <Importe>${fmt(importe)}</Importe>`,
     `        <IvaTasa>${ivaTasaStr}</IvaTasa>`,

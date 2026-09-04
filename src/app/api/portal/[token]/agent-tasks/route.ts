@@ -18,7 +18,7 @@ export async function GET(req: NextRequest, { params }: Params) {
   const resolved = await resolveOrgFromToken(token);
   if (!resolved?.portalEmail) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   const acct = { portal_email: resolved.portalEmail };
-  if (auth.portalEmail && auth.portalEmail !== acct.portal_email)
+  if (!auth.portalEmail || auth.portalEmail !== acct.portal_email)
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   const statusParam   = req.nextUrl.searchParams.get('status') ?? 'awaiting_plan_approval';

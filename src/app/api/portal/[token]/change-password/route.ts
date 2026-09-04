@@ -31,7 +31,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const resolved = await resolveOrgFromToken(token);
   if (!resolved) return NextResponse.json({ error: 'Token inválido.' }, { status: 401 });
 
-  if (auth.portalEmail && auth.portalEmail !== resolved.portalEmail)
+  if (!auth.portalEmail || auth.portalEmail !== resolved.portalEmail)
     return NextResponse.json({ error: 'No autorizado.' }, { status: 403 });
 
   const supabase = createAdminClient();
