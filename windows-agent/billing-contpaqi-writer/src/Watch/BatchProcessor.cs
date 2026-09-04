@@ -78,8 +78,11 @@ public sealed class BatchProcessor
                     CodigoConcepto = _concepto,
                     Serie          = invoice.Serie,
                     CodigoCliente  = codigoCliente,
-                    // CONTPAQi acepta MM/dd/yyyy. Convertimos desde el YYYY-MM-DD que emite Nala.
-                    Fecha          = DateTime.Parse(invoice.Fecha).ToString("MM/dd/yyyy"),
+                    // CONTPAQi acepta MM/dd/yyyy. Convertimos desde el YYYY-MM-DD que
+                    // emite Nala. InvariantCulture obligatorio: en Windows es-MX
+                    // (máquina de Beatriz) el parser default puede interpretar
+                    // fechas ISO alternativas de forma incorrecta. Auditoría 2026-09-04.
+                    Fecha          = ParseNalaDate(invoice.Fecha).ToString("MM/dd/yyyy", System.Globalization.CultureInfo.InvariantCulture),
                     Referencia     = $"nala:{basename}#{index}",
                 };
                 var (idDoc, _) = _session.CreateDocumentHeader(header);
@@ -99,10 +102,21 @@ public sealed class BatchProcessor
                 }
 
                 var stampLabel = $"stamp {_concepto}-{invoice.Serie}-{folio} rfc={invoice.RfcReceptor}";
+                // uuidCheck permite al RetryPolicy detectar "el timbre entró
+                // aunque el PAC devolvió error de red" y evitar duplicado fiscal.
                 RetryPolicy.Stamp(
                     () => _session.StampDocument(_concepto, invoice.Serie, folio, _csdPassword),
                     _logger,
-                    stampLabel);
+                    stampLabel,
+                    uuidCheck: () =>
+                    {
+                        try
+                        {
+                            var u = _session.GetDocumentUuid(_concepto, invoice.Serie, folio);
+                            return string.IsNullOrEmpty(u) ? null : u;
+                        }
+                        catch { return null; }
+                    });
                 var uuid = _session.GetDocumentUuid(_concepto, invoice.Serie, folio);
                 var xml  = _session.FetchTimbradoXml(_concepto, invoice.Serie, folio);
 
@@ -154,6 +168,33 @@ public sealed class BatchProcessor
             ProcessedAt: DateTime.UtcNow,
             Results:     results,
             AllOk:       results.All(r => r.Ok));
+    }
+
+    /// <summary>
+    /// Parseo estricto de la fecha que emite Nala en el XML (formato ISO
+    /// YYYY-MM-DD o timestamp UTC ISO). InvariantCulture obligatorio para no
+    /// depender de la cultura del OS (es-MX interpreta formatos diferente).
+    /// </summary>
+    private static DateTime ParseNalaDate(string s)
+    {
+        var invariant = System.Globalization.CultureInfo.InvariantCulture;
+        var formats = new[]
+        {
+            "yyyy-MM-dd",
+            "yyyy-MM-ddTHH:mm:ss",
+            "yyyy-MM-ddTHH:mm:ssZ",
+            "yyyy-MM-ddTHH:mm:ss.fffZ",
+            "yyyy-MM-dd HH:mm:ss",
+        };
+        if (DateTime.TryParseExact(s, formats, invariant,
+                System.Globalization.DateTimeStyles.AssumeUniversal |
+                System.Globalization.DateTimeStyles.AdjustToUniversal,
+                out var dt))
+            return dt;
+        // Fallback tolerante también con InvariantCulture (no CurrentCulture).
+        return DateTime.Parse(s, invariant,
+            System.Globalization.DateTimeStyles.AssumeUniversal |
+            System.Globalization.DateTimeStyles.AdjustToUniversal);
     }
 }
 

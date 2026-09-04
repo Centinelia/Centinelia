@@ -17,7 +17,7 @@
 ;   - Al desinstalar, para y remueve el service.
 
 #define AppName        "Centinelia Billing Writer"
-#define AppVersion     "0.10.1"
+#define AppVersion     "0.10.2"
 #define AppPublisher   "Centinelia"
 #define ServiceName    "Centinelia.BillingWriter"
 #define ExeName        "BillingContpaqiWriter.exe"
@@ -45,27 +45,21 @@ ArchitecturesInstallIn64BitMode=
 Source: "..\dist\*"; DestDir: "{app}"; Excludes: "appsettings.json"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\dist\appsettings.json"; DestDir: "{commonappdata}\Centinelia\BillingWriter"; \
     Flags: onlyifdoesntexist uninsneveruninstall
+; Batch auxiliar para registrar el service (evita ambigüedad de quoting anidado).
+Source: "register-service.cmd"; DestDir: "{app}"; Flags: ignoreversion
 
 [Dirs]
 Name: "{commonappdata}\Centinelia\BillingWriter\logs"; Permissions: users-modify
 Name: "{commonappdata}\Centinelia\BillingWriter"; Permissions: users-modify
 
 [Run]
-; Detiene el service si ya existía (upgrade en caliente).
-Filename: "sc.exe"; Parameters: "stop {#ServiceName}"; Flags: runhidden; StatusMsg: "Deteniendo servicio previo..."
-Filename: "sc.exe"; Parameters: "delete {#ServiceName}"; Flags: runhidden
-
-; Registra el service. binPath incluye "--mode service" y apunta al EXE final.
-Filename: "sc.exe"; \
-    Parameters: "create {#ServiceName} binPath= ""\""{app}\{#ExeName}\"" --mode service"" start= auto DisplayName= ""{#AppName}"""; \
-    Flags: runhidden; StatusMsg: "Registrando servicio Windows..."
-Filename: "sc.exe"; \
-    Parameters: "description {#ServiceName} ""Procesa XMLs de importación depositados por Nala y timbra CFDIs contra CONTPAQi Comercial vía el SDK nativo."""; \
-    Flags: runhidden
-; Recovery: reintentar 3 veces con delay creciente (10s, 30s, 60s), luego rendirse.
-Filename: "sc.exe"; \
-    Parameters: "failure {#ServiceName} reset= 86400 actions= restart/10000/restart/30000/restart/60000"; \
-    Flags: runhidden
+; Registra el service via batch auxiliar. El batch maneja stop + delete +
+; create + description + recovery + verify en un solo lugar; evita la
+; ambigüedad de quoting anidado que Inno tiene con `sc create binPath=...`.
+Filename: "{app}\register-service.cmd"; \
+    Parameters: """{app}\{#ExeName}"" ""{#AppName}"""; \
+    Flags: runhidden waituntilterminated; \
+    StatusMsg: "Registrando Windows Service..."
 
 ; Endurecer ACL de appsettings.json: contiene CSD password, SQL password y
 ; Dropbox token en plaintext. Solo SYSTEM (donde corre el service) y
