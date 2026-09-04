@@ -1,4 +1,5 @@
 using Centinelia.BillingContpaqi.Writer.Sdk;
+using Centinelia.BillingContpaqi.Writer.Watch;
 
 namespace Centinelia.BillingContpaqi.Writer;
 
@@ -13,6 +14,10 @@ namespace Centinelia.BillingContpaqi.Writer;
 ///   <c>--mode stamp</c>     Day 4: timbra un documento afectado por concepto + serie + folio.
 ///   <c>--mode fetch-xml</c> Day 5: extrae el XML timbrado a disco (o stdout con --out -).
 ///   <c>--mode uuid</c>      Day 5: imprime el UUID del CFDI de un documento timbrado.
+///   <c>--mode watch</c>     Day 6: bucle que procesa XMLs de importación depositados
+///                                    por Nala en <c>--inbox</c>, escribe los XMLs
+///                                    timbrados a <c>--outbox/timbrados/</c> y mueve el
+///                                    original a <c>procesados/</c> o <c>errores/</c>.
 ///
 /// Ejemplos:
 ///   BillingContpaqiWriter --mode session
@@ -101,6 +106,31 @@ public static class Program
                     Console.WriteLine($"[writer] UUID: {uuid}");
                     break;
 
+                case "watch":
+                    Require(opts.Concepto,   "--concepto");
+                    Require(opts.Inbox,      "--inbox");
+                    Require(opts.Outbox,     "--outbox");
+                    Require(opts.SqlConnStr, "--sql");
+                    // csd-pwd puede ser vacío si CONTPAQi ya tiene el CSD sin password (raro pero legal).
+                    var catalog   = new CatalogLookup(opts.SqlConnStr!);
+                    var processor = new BatchProcessor(
+                        session, catalog, opts.Concepto!, opts.CsdPassword ?? "",
+                        Path.Combine(opts.Outbox!, "timbrados"));
+                    var loop = new WatchLoop(processor, opts.Inbox!, opts.Outbox!,
+                        TimeSpan.FromSeconds(opts.PollSecs));
+
+                    using (var cts = new CancellationTokenSource())
+                    {
+                        Console.CancelKeyPress += (_, ev) =>
+                        {
+                            Console.WriteLine("[writer] Ctrl+C recibido; cerrando loop...");
+                            ev.Cancel = true; // deja al proceso terminar de forma limpia
+                            cts.Cancel();
+                        };
+                        loop.RunAsync(cts.Token).GetAwaiter().GetResult();
+                    }
+                    break;
+
                 case "create":
                     Require(opts.Concepto, "--concepto");
                     Require(opts.Serie,    "--serie");
@@ -178,7 +208,11 @@ public static class Program
         string Almacen,
         double Folio,
         string? CsdPassword,
-        string? OutPath);
+        string? OutPath,
+        string? Inbox,
+        string? Outbox,
+        string? SqlConnStr,
+        int PollSecs);
 
     private static CliOptions? ParseArgs(string[] args)
     {
@@ -194,6 +228,8 @@ public static class Program
         double folio = 0;
         string? csdPassword = null;
         string? outPath = null;
+        string? inbox = null, outbox = null, sqlConnStr = null;
+        int pollSecs = 10;
 
         for (var i = 0; i < args.Length; i++)
         {
@@ -214,6 +250,10 @@ public static class Program
                 case "--cantidad":  cantidad = double.Parse(args[++i], System.Globalization.CultureInfo.InvariantCulture); break;
                 case "--precio":    precio   = double.Parse(args[++i], System.Globalization.CultureInfo.InvariantCulture); break;
                 case "--out":       outPath  = args[++i]; break;
+                case "--inbox":     inbox    = args[++i]; break;
+                case "--outbox":    outbox   = args[++i]; break;
+                case "--sql":       sqlConnStr = args[++i]; break;
+                case "--poll-secs": pollSecs = int.Parse(args[++i], System.Globalization.CultureInfo.InvariantCulture); break;
                 case "--help":
                 case "-h":
                     PrintUsage();
@@ -226,7 +266,8 @@ public static class Program
         }
         return new CliOptions(sdk, empresa, usuario, password, mode,
                               concepto, serie, cliente, producto, cantidad, precio, almacen,
-                              folio, csdPassword, outPath);
+                              folio, csdPassword, outPath,
+                              inbox, outbox, sqlConnStr, pollSecs);
     }
 
     private static void PrintUsage()
@@ -270,6 +311,14 @@ public static class Program
           --concepto <cod>   ej. 440
           --serie <serie>    ej. FTEN
           --folio <n>        ej. 72852
+
+        Modo 'watch':
+          --concepto <cod>   ej. 440 (concepto CONTPAQi para todos los documentos del lote)
+          --csd-pwd <pwd>    password del CSD cargado en CONTPAQi
+          --inbox <ruta>     carpeta donde Nala deposita XMLs de importación
+          --outbox <ruta>    carpeta base para timbrados/, procesados/, errores/
+          --sql <connstr>    conexión a la BD CONTPAQi para lookup RFC→código y folio
+          --poll-secs <n>    intervalo de polling en segundos (default 10)
         """);
     }
 }

@@ -19,7 +19,7 @@ de CONTPAQi hacia Dropbox para que Nala tenga referencia de los códigos.
                               CFDI timbrado al receptor por correo
 ```
 
-## Estado actual — Days 1-5 completos: timbrando + XML extraído end-to-end
+## Estado actual — Days 1-6 completos: watcher orquestando el ciclo
 
 Validado contra empresa dedicada `Kemper Urgate PRUEBAS SDK` (RFC de pruebas
 SAT `EKU9003173C9`, CSD público SAT descargado de facturoporti, password
@@ -39,6 +39,10 @@ SAT `EKU9003173C9`, CSD público SAT descargado de facturoporti, password
   al caller por stdout o a la ruta `--out`.
 - **UUID directo (`fDocumentoUUID`) ✅** → recupera solo el UUID sin
   materializar el XML completo (útil para verificar rápido).
+- **Watcher local (`--mode watch`) ✅** → bucle de polling que lee XMLs
+  de importación multi-factura depositados por Nala en `--inbox`,
+  procesa cada uno contra CONTPAQi, escribe los CFDIs timbrados a
+  `--outbox/timbrados/` y mueve el original a `procesados/` o `errores/`.
 
 ## Setup requerido en la máquina donde corre este agente
 
@@ -63,12 +67,10 @@ Para desarrollar sin riesgo fiscal:
 - El PAC del trial CONTPAQi devuelve UUIDs sandbox (prefijo `00000000-`)
   sin llamar al SAT — desarrollo ilimitado sin costo ni riesgo
 
-Pendientes (Day 6-10):
-- Day 6: watcher Dropbox `pendientes/` → SDK → mover a `timbrados/` o
-  `errores/`. Nala en Vercel deposita XML pendiente, el writer lo levanta,
-  crea + timbra + fetch-xml, deposita XML timbrado en `timbrados/`, Nala
-  lo detecta y lo envía por correo al receptor.
-- Day 7: retries, structured logging, error escalation a Nala.
+Pendientes (Day 7-10):
+- Day 7: retries + structured logging + Dropbox real (reemplazar filesystem
+  local por `Dropbox.Api`; el `--inbox`/`--outbox` se convierten en paths
+  Dropbox). Error escalation a Nala.
 - Day 8: tests contra CONTPAQi real (empresa piloto Tortillería).
 - Day 9-10: MSI installer + Windows Service + tarea programada.
 
@@ -87,6 +89,48 @@ BillingContpaqiWriter.exe --mode fetch-xml --concepto 440 --serie FTEN --folio 3
 # Solo UUID (fast path para verificar timbrado)
 BillingContpaqiWriter.exe --mode uuid --concepto 440 --serie FTEN --folio 3 \
   --empresa "C:\Compac\Empresas\adKemper_Urgate_PRUEBA"
+```
+
+### Uso del modo watch
+
+```powershell
+BillingContpaqiWriter.exe --mode watch `
+  --empresa "C:\Compac\Empresas\adKemper_Urgate_PRUEBA" `
+  --concepto 440 `
+  --csd-pwd 12345678a `
+  --inbox  "C:\centinelia-inbox" `
+  --outbox "C:\centinelia-outbox" `
+  --sql "Server=localhost\SQLEXPRESS;Database=adKemper_Urgate_PRUEBA;User Id=SA;Password=xxx;TrustServerCertificate=True" `
+  --poll-secs 10
+```
+
+Layout de carpetas resultante:
+```
+inbox/
+  facturas_2026-09-03_abc123.xml   ← Nala deposita aquí (formato importación multi-factura)
+
+outbox/
+  timbrados/
+    facturas_2026-09-03_abc123_FTEN12.xml   ← un CFDI 4.0 por factura del lote
+    facturas_2026-09-03_abc123_FTEN13.xml
+  procesados/
+    facturas_2026-09-03_abc123.xml          ← original, movido cuando allOk
+  errores/
+    facturas_2026-09-03_def456.xml          ← original, movido cuando algo falló
+    facturas_2026-09-03_def456.json         ← reporte por factura (camelCase JSON)
+```
+
+El reporte de errores tiene shape:
+```json
+{
+  "sourceFile": "facturas_2026-09-03_def456.xml",
+  "processedAt": "2026-09-03T18:10:00Z",
+  "results": [
+    { "index": 0, "rfc": "XAXX010101000", "ok": true, "serie": "FTEN", "folio": 6, "uuid": "00000000-...", "timbradoPath": "...", "error": null },
+    { "index": 1, "rfc": "NOEXISTE999", "ok": false, "serie": "FTEN", "folio": 0, "uuid": null, "timbradoPath": null, "error": "..." }
+  ],
+  "allOk": false
+}
 ```
 
 Nota: el plan original tenía Day 2 = header, Day 3 = líneas + afectar. En la
