@@ -157,7 +157,7 @@ async function processIntegration(
   const erroresResult = await consumeErrores({
     dropbox, basePath, log,
     replyToClient: async (basename, action) => {
-      const corr = await correlateBasenameToEmail(supabase, basename);
+      const corr = await correlateBasenameToEmail(supabase, basename, integ.portal_email);
       if (!corr) {
         log('warn', 'sin correlación email_id, no puedo replicar al cliente. Escalo en su lugar.', {
           basename, kind: action.kind,
@@ -272,7 +272,7 @@ async function processIntegration(
   const timbradosResult = await consumeTimbrados({
     dropbox, basePath, log,
     deliverCfdi: async (basename, xmlContent) => {
-      const corr = await correlateBasenameToEmail(supabase, basename);
+      const corr = await correlateBasenameToEmail(supabase, basename, integ.portal_email);
       if (!corr) return false;
       await replyToInboundEmail(
         corr.emailId,

@@ -112,33 +112,90 @@ export async function POST(req: NextRequest, { params }: Params) {
     );
   }
 
-  // 2. Match client
+  // 2. Match client. CRITICAL: preferimos el `cliente_matched_rfc` que el LLM
+  // resolvió CON contexto del catálogo (ya validó fuzzy + reglas de negocio)
+  // sobre el fuzzy top-1 de searchClient (que puede tomar falsos positivos
+  // con score 0.31). Este bug se encontró en la auditoría 2026-09-04.
   let clientCandidates: BillingClientMatch[] = [];
   let clientChosen: BillingClientMatch | null = null;
-  if (extracted.cliente_texto) {
-    clientCandidates = await adapter.searchClient(extracted.cliente_texto, 5);
-    clientChosen = clientCandidates[0] ?? null;
+
+  if (extracted.cliente_matched_rfc) {
+    // El LLM ya matcheó. Validamos que el RFC realmente exista en catálogo
+    // (defensa contra alucinación) y lo usamos si sí.
+    const validated = await adapter.getClientByRFC(extracted.cliente_matched_rfc);
+    if (validated) {
+      clientChosen = { ...validated, score: extracted.confianza.cliente };
+      clientCandidates = [clientChosen];
+    }
   }
 
-  // 3. Match each product
+  if (!clientChosen && extracted.cliente_texto) {
+    // Fallback: fuzzy search del texto crudo. Requiere score alto para auto-emitir.
+    clientCandidates = await adapter.searchClient(extracted.cliente_texto, 5);
+    const top = clientCandidates[0] ?? null;
+    // Solo aceptar si el score fuzzy es lo suficientemente alto Y no hay
+    // ambigüedad con el segundo candidato. Sin esto, un score 0.31 se
+    // aceptaba como match y facturaba al cliente equivocado.
+    const secondScore = clientCandidates[1]?.score ?? 0;
+    if (top && top.score >= 0.85 && (top.score - secondScore) >= 0.1) {
+      clientChosen = top;
+    }
+  }
+
+  // 3. Match each product. Preferir sku_matched del LLM si existe.
   const products: MatchedProduct[] = [];
   for (const p of extracted.productos) {
-    const candidates = await adapter.searchProduct(p.nombre, 3);
-    products.push({ extracted: p, candidates, chosen: candidates[0] ?? null });
+    let chosen: BillingProductMatch | null = null;
+    let candidates: BillingProductMatch[] = [];
+
+    if (p.sku_matched) {
+      const bySku = await adapter.getProductBySKU(p.sku_matched);
+      if (bySku) {
+        chosen = { ...bySku, score: 1.0 };
+        candidates = [chosen];
+      }
+    }
+    if (!chosen) {
+      candidates = await adapter.searchProduct(p.nombre, 3);
+      chosen = candidates[0] ?? null;
+    }
+    products.push({ extracted: p, candidates, chosen });
   }
 
   // 4. Build invoice preview (only if we have client + at least one product chosen)
   let xml: string | null = null;
   let savedPath: string | null = null;
   let invoice: BillingInvoice | null = null;
+  let aritmeticaOk = true;
+  let aritmeticaMensaje: string | null = null;
 
-  // Solo armamos invoice si TODOS los productos matchearon Y tienen cantidad
-  // conocida (>0). Líneas con cantidad null (vision no pudo leer) NO se
-  // facturan silenciosamente — se dejan fuera y el user decide en UI.
+  // Solo armamos invoice si TODOS los productos matchearon, TODOS tienen
+  // cantidad conocida (>0), Y la aritmética cuadra con el monto_total escrito.
   const allProductsMatched =
     products.length > 0 &&
     products.every((p) => p.chosen !== null && (p.extracted.cantidad ?? 0) > 0);
-  if (clientChosen && allProductsMatched) {
+
+  // CRITICAL: validar sum(qty × precio) ≈ monto_total ANTES de emitir. Sin
+  // esto se podía facturar por monto distinto al que el cliente firmó en
+  // la nota (bug detectado en la auditoría 2026-09-04). Confiar en el
+  // `aritmetica_delta` del LLM no basta: puede alucinar 0.
+  if (clientChosen && allProductsMatched && extracted.monto_total !== null) {
+    const subtotalCalc = products
+      .filter((p) => p.chosen !== null && p.extracted.cantidad !== null && p.extracted.cantidad > 0)
+      .reduce((s, p) => s + (p.extracted.cantidad as number) * p.chosen!.precio, 0);
+    // Aceptamos delta hasta $2 (redondeo) o exactamente 16% (IVA sumado).
+    const delta = subtotalCalc - extracted.monto_total;
+    const isRounding = Math.abs(delta) <= 2;
+    const isIvaSum = Math.abs(subtotalCalc * 1.16 - extracted.monto_total) <= 2;
+    if (!isRounding && !isIvaSum) {
+      aritmeticaOk = false;
+      aritmeticaMensaje =
+        `Los productos suman $${subtotalCalc.toFixed(2)} pero la nota dice $${extracted.monto_total.toFixed(2)} ` +
+        `(delta $${delta.toFixed(2)}). Revisa cantidades antes de emitir.`;
+    }
+  }
+
+  if (clientChosen && allProductsMatched && aritmeticaOk) {
     const lines: BillingLineItem[] = products
       .filter(
         (p): p is MatchedProduct & { chosen: BillingProductMatch; extracted: { cantidad: number } } =>
@@ -184,5 +241,9 @@ export async function POST(req: NextRequest, { params }: Params) {
     invoice,
     xml,
     savedPath,
+    // Exponer resultado de reconciliación aritmética al UI. Si false, el UI
+    // debe mostrar el warning y forzar confirmación humana antes de reintentar.
+    aritmeticaOk,
+    aritmeticaMensaje,
   });
 }

@@ -108,12 +108,35 @@ async function processBatchReport(
   basename: string, report: BatchReport, deps: ConsumeErroresDeps,
 ): Promise<void> {
   const failed = report.results.filter((r: InvoiceResult) => !r.ok);
+
+  // CRITICAL: dedup pacError POR BATCH (no por factura). El writer procesa 1
+  // XML por tick, no N; N pacError en el mismo reporte cuentan como UN intento
+  // de red, no N. Sin este dedup, un batch de 4 facturas con pacError elevaba
+  // attempts 0→4 en un solo tick y disparaba exhausted inmediato — retries
+  // efectivos = 0. Este bug se detectó en la auditoría 2026-09-04.
+  //
+  // Ejecutamos redepositPending una sola vez, con la primera acción pacError
+  // encontrada. Las otras acciones (reply_to_client, escalate) SÍ se ejecutan
+  // por factura porque cada RFC/SKU distinto merece su propio reply.
+  let pacHandled = false;
+
   for (const inv of failed) {
     const action = resolveInvoiceAction(inv);
     try {
-      if (action.type === 'reply_to_client')      await deps.replyToClient(basename, action);
-      else if (action.type === 'redeposit_pending') await deps.redepositPending(basename, action);
-      else if (action.type === 'escalate_to_nazre') await deps.escalate(basename, action);
+      if (action.type === 'reply_to_client') {
+        await deps.replyToClient(basename, action);
+      } else if (action.type === 'redeposit_pending') {
+        if (!pacHandled) {
+          await deps.redepositPending(basename, action);
+          pacHandled = true;
+        } else {
+          deps.log('info', 'pacError adicional en el mismo lote — skipping (ya bump-eado)', {
+            basename, index: inv.index,
+          });
+        }
+      } else if (action.type === 'escalate_to_nazre') {
+        await deps.escalate(basename, action);
+      }
     } catch (err) {
       deps.log('error', 'acción falló, se mueve el reporte igual para no loopear', {
         basename, index: inv.index, actionType: action.type,

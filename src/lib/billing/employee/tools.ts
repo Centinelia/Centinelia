@@ -903,6 +903,12 @@ ${contextBlock}
             email_id:      emailId,
             mode:          result.mode,
             ref:           result.ref,
+            // Basename explícito para lookup exacto desde writer-consumer/correlate.ts.
+            // Antes se hacía ilike '%basename%' sobre ref, lo cual permitía
+            // cross-match entre batches con prefijo compartido (fuga fiscal).
+            basename:      typeof result.ref === 'string'
+              ? result.ref.split('/').pop()?.replace(/\.xml$/i, '') ?? null
+              : null,
             errors:        result.errors,
             lines_count:   resolvedLines.length,
             subtotal:      resolvedLines.reduce((s, l) => s + l.qty * l.unitPrice, 0),
