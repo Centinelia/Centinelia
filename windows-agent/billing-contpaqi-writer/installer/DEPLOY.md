@@ -53,7 +53,8 @@ ls installer\Output\BillingWriter-Setup-*.exe
    requiere admin).
 3. Al final del install, un mensaje recuerda editar `appsettings.json`.
 4. Editar `C:\ProgramData\Centinelia\BillingWriter\appsettings.json` con
-   los valores reales del cliente:
+   los valores reales del cliente (por ACL solo SYSTEM y Administrators
+   pueden abrirlo, protege el token Dropbox + CSD pwd + SQL pwd):
    - `EmpresaPath` — ruta absoluta de la empresa CONTPAQi
      (`C:\Compac\Empresas\adPILOTO...`).
    - `Concepto` — código interno del concepto CONTPAQi (típicamente `440`
@@ -77,7 +78,12 @@ ls installer\Output\BillingWriter-Setup-*.exe
 - **Logs** — `C:\ProgramData\Centinelia\BillingWriter\logs\writer-YYYYMMDD.log`
   (rotación diaria, 14 días de retención).
 - **Event Viewer** — Application log, source `Centinelia.BillingWriter`
-  (nivel Warning y arriba).
+  (nivel Warning y arriba). El source se auto-registra al primer arranque
+  del service (Serilog `manageEventSource=true` + LocalSystem tiene admin).
+  Nota dev: correr `--mode service` desde consola SIN admin lanza
+  `SecurityException` al verificar el source. En dev usar `--mode watch`,
+  o `DOTNET_ENVIRONMENT=Development` (carga `appsettings.Development.json`
+  sin sink de EventLog), o correr elevado.
 - **Smoke** — depositar un XML de test en el inbox configurado (backend
   local) o Dropbox `pendientes/` (backend dropbox), esperar el próximo tick
   (`PollSeconds`) y verificar:
