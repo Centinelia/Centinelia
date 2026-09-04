@@ -14,7 +14,7 @@ async function resolveSession(token: string, cookieValue: string): Promise<{ por
   const supabase = createAdminClient();
   const data = await getPrimaryAgentFromToken<{ portal_email: string | null }>(token, 'portal_email', supabase);
   if (!data?.portal_email) return null;
-  if (auth.portalEmail && auth.portalEmail !== data.portal_email) return null;
+  if (!auth.portalEmail || auth.portalEmail !== data.portal_email) return null;
   return { portalEmail: data.portal_email as string, isSubUser: auth.isSubUser };
 }
 

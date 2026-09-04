@@ -27,7 +27,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   // 1. Resolve org (acepta org token o legacy voice_agents.portal_token)
   const resolved = await resolveOrgFromToken(token);
   if (!resolved) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  if (auth.portalEmail && auth.portalEmail !== resolved.portalEmail)
+  if (!auth.portalEmail || auth.portalEmail !== resolved.portalEmail)
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
 
   // 2. Cargar item con JOIN al agente para ownership org-scoped (permite

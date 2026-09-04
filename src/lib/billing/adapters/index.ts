@@ -16,7 +16,7 @@ import { CONTPAQiAdapter } from './contpaqi';
 import { MockBillingAdapter } from './mock';
 import { DropboxClient } from '../storage/dropbox';
 import { LocalFilesStorage } from '../storage/local-files';
-import { encrypt, decrypt } from '@/lib/crypto';
+import { encrypt, decryptOrPassthrough } from '@/lib/crypto';
 
 // ---------------------------------------------------------------------------
 // OrganizationIntegrationConfig
@@ -92,7 +92,8 @@ export interface OrganizationIntegrationConfig {
  */
 export function decryptDropboxToken(raw: string | undefined | null): string | undefined {
   if (!raw) return undefined;
-  return decrypt(raw);
+  const { value } = decryptOrPassthrough(raw);
+  return value;
 }
 
 /**

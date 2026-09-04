@@ -22,7 +22,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const resolved = await resolveOrgFromToken(token);
   if (!resolved) return NextResponse.json({ error: 'Sin contraseña configurada' }, { status: 404 });
 
-  if (auth.portalEmail && auth.portalEmail !== resolved.portalEmail)
+  if (!auth.portalEmail || auth.portalEmail !== resolved.portalEmail)
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   // Fuente de verdad: organizations.portal_password_hash. Fallback a voice_agents legacy.

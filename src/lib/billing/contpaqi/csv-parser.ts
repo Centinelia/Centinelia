@@ -75,11 +75,73 @@ function parseCsvRow(line: string): string[] {
 }
 
 /**
- * Divide el contenido CSV en lineas ignorando las vacias.
- * Soporta CRLF y LF.
+ * Divide el contenido CSV en filas RFC 4180 respetando comillas dobles
+ * (los campos entre "..." pueden contener \n embebido). Antes se hacía
+ * split naive por \r?\n; una razón social con newline embebido rompía la
+ * fila en dos y corrompía el catálogo silenciosamente. Auditoría 2026-09-04.
  */
 function splitLines(content: string): string[] {
-  return content.split(/\r?\n/).filter((l) => l.length > 0);
+  const rows: string[] = [];
+  let cur = '';
+  let inQuotes = false;
+  for (let i = 0; i < content.length; i++) {
+    const ch = content[i];
+    if (ch === '"') {
+      // Manejar "" (escape). Si estamos en quotes y siguiente char es ", es escape.
+      if (inQuotes && content[i + 1] === '"') {
+        cur += '""';
+        i++;
+        continue;
+      }
+      inQuotes = !inQuotes;
+      cur += ch;
+      continue;
+    }
+    if (!inQuotes && (ch === '\n' || (ch === '\r' && content[i + 1] === '\n'))) {
+      if (ch === '\r') i++;
+      if (cur.length > 0) rows.push(cur);
+      cur = '';
+      continue;
+    }
+    if (!inQuotes && ch === '\r') {
+      if (cur.length > 0) rows.push(cur);
+      cur = '';
+      continue;
+    }
+    cur += ch;
+  }
+  if (cur.length > 0) rows.push(cur);
+  return rows;
+}
+
+/**
+ * Normaliza un RFC leído del catálogo: trim, uppercase. CONTPAQi (Windows)
+ * suele guardar con case mixto y a veces trailing spaces por columnas CHAR
+ * fixed-length de versiones viejas. Este normalize + case-insensitive lookup
+ * en callers evita "cliente no encontrado" en clientes que SÍ existen.
+ * Auditoría 2026-09-04.
+ */
+function normalizeRfc(raw: string): string {
+  return raw.trim().toUpperCase();
+}
+
+/**
+ * Parsea un número decimal con separador tanto punto como coma. CONTPAQi
+ * exportado con locale es-MX puede escribir "18,00" en vez de "18.00";
+ * parseFloat naive convierte "18,00" a 18 (truncando decimales). Peor:
+ * "1,500" en locale MX (mil quinientos) se convertía a 1. Auditoría 2026-09-04.
+ */
+function parseDecimal(raw: string | undefined): number {
+  if (!raw) return 0;
+  const s = raw.trim();
+  if (s.length === 0) return 0;
+  // Si tiene , y . asumimos formato en-US con , como thousands (2,500.00 → 2500.00).
+  // Si tiene solo , asumimos coma decimal (18,00 → 18.00).
+  const normalized = s.includes('.') && s.includes(',')
+    ? s.replace(/,/g, '')
+    : s.replace(',', '.');
+  const n = parseFloat(normalized);
+  return Number.isFinite(n) ? n : 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -96,23 +158,38 @@ function splitLines(content: string): string[] {
  * Los campos email y telefono se ignoran (no forman parte de BillingClient).
  * Los campos vacios se mantienen como string vacio.
  */
+/** Columnas mínimas esperadas del CSV de clientes. Rows con menos = malformada. */
+const CLIENT_MIN_COLS = 6;
+
 export function parseClientsCsv(csvContent: string): BillingClient[] {
   const lines = splitLines(stripBom(csvContent));
   if (lines.length <= 1) return []; // Solo cabecera o vacio
 
   const [, ...rows] = lines; // Ignorar linea de cabecera
 
-  return rows.map((line) => {
-    const [rfc, adapterId, razonSocial, usoCFDI, regimen, codigoPostal] = parseCsvRow(line);
-    return {
-      rfc: rfc ?? '',
-      adapterId: adapterId ?? '',
-      razonSocial: razonSocial ?? '',
-      usoCFDI: usoCFDI ?? '',
-      regimen: regimen ?? '',
-      codigoPostal: codigoPostal ?? '',
-    };
-  });
+  const out: BillingClient[] = [];
+  for (const line of rows) {
+    const fields = parseCsvRow(line);
+    // Fila con menos columnas = malformada. Antes: se aceptaba silencioso →
+    // cliente cargado con usoCFDI vacío → CFDI rechazado por SAT (código
+    // CFDI40147). Ahora: skip + warn. Auditoría 2026-09-04.
+    if (fields.length < CLIENT_MIN_COLS) {
+      console.warn(
+        `[csv-parser] fila cliente descartada por menos de ${CLIENT_MIN_COLS} columnas (tenía ${fields.length}): "${line.slice(0, 100)}"`,
+      );
+      continue;
+    }
+    const [rfc, adapterId, razonSocial, usoCFDI, regimen, codigoPostal] = fields;
+    out.push({
+      rfc: normalizeRfc(rfc ?? ''),
+      adapterId: (adapterId ?? '').trim(),
+      razonSocial: (razonSocial ?? '').trim(),
+      usoCFDI: (usoCFDI ?? '').trim(),
+      regimen: (regimen ?? '').trim(),
+      codigoPostal: (codigoPostal ?? '').trim(),
+    });
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -127,23 +204,34 @@ export function parseClientsCsv(csvContent: string): BillingClient[] {
  *
  * precio e iva_tasa se convierten a number con parseFloat.
  */
+const PRODUCT_MIN_COLS = 6;
+
 export function parseProductsCsv(csvContent: string): BillingProduct[] {
   const lines = splitLines(stripBom(csvContent));
   if (lines.length <= 1) return [];
 
   const [, ...rows] = lines;
 
-  return rows.map((line) => {
-    const [sku, nombre, unidad, precioStr, claveSAT, ivaTasaStr] = parseCsvRow(line);
-    return {
-      sku: sku ?? '',
-      nombre: nombre ?? '',
-      unidad: unidad ?? '',
-      precio: parseFloat(precioStr ?? '0'),
-      claveSAT: claveSAT ?? '',
-      ivaTasa: parseFloat(ivaTasaStr ?? '0'),
-    };
-  });
+  const out: BillingProduct[] = [];
+  for (const line of rows) {
+    const fields = parseCsvRow(line);
+    if (fields.length < PRODUCT_MIN_COLS) {
+      console.warn(
+        `[csv-parser] fila producto descartada por menos de ${PRODUCT_MIN_COLS} columnas: "${line.slice(0, 100)}"`,
+      );
+      continue;
+    }
+    const [sku, nombre, unidad, precioStr, claveSAT, ivaTasaStr] = fields;
+    out.push({
+      sku: (sku ?? '').trim(),
+      nombre: (nombre ?? '').trim(),
+      unidad: (unidad ?? '').trim(),
+      precio: parseDecimal(precioStr),
+      claveSAT: (claveSAT ?? '').trim(),
+      ivaTasa: parseDecimal(ivaTasaStr),
+    });
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------
