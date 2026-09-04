@@ -31,6 +31,11 @@ const NOTIFICATION_LOCAL_PARTS = [
   'no-reply', 'noreply', 'no_reply',
   'donotreply', 'do-not-reply', 'do_not_reply',
   'notification', 'notifications',
+  // Spanish equivalents — bancos MX (Banamex, BBVA, Santander) usan
+  // `notificaciones@` para alerts transaccionales. Sin esto se colaban
+  // como category=otro action_required=true (screenshot Pneuma 2026-09-04).
+  'notificacion', 'notificaciones', 'notifica', 'notif',
+  'aviso', 'avisos', 'informacion', 'información', 'info',
   'alert', 'alerts',
   'automated', 'automatic',
   'system', 'sys',
@@ -39,6 +44,9 @@ const NOTIFICATION_LOCAL_PARTS = [
   'postmaster',
   'boletin', 'boletines', 'newsletter', 'newsletters',
   'noticias', 'promociones', 'promocion',
+  // Transactional local-parts adicionales — receipts, envíos, órdenes.
+  'receipts', 'receipt', 'orders', 'pedidos', 'envios', 'envíos',
+  'shipping', 'billing', 'invoicing', 'facturacion', 'facturación',
   // Alumni / asociaciones institucionales — invitaciones a eventos,
   // presentaciones de nuevos rectores/directivos, boletines de escuela.
   // Casi nunca son "cliente pidiendo cotización". Añadido tras caso UDEM
