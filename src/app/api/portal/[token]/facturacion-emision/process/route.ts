@@ -31,7 +31,10 @@ export const maxDuration = 60;
 interface Params { params: Promise<{ token: string }> }
 
 interface MatchedProduct {
-  extracted: { nombre: string; cantidad: number; unidad: string | null };
+  // cantidad nullable desde v2 del vision: el LLM puede reportar null si la
+  // columna CANT manuscrita está vacía o ilegible. Filtramos abajo antes de
+  // armar el invoice para no facturar líneas sin cantidad.
+  extracted: { nombre: string; cantidad: number | null; unidad: string | null; precio_unitario: number | null };
   candidates: BillingProductMatch[];
   chosen: BillingProductMatch | null;
 }
@@ -116,10 +119,18 @@ export async function POST(req: NextRequest, { params }: Params) {
   let savedPath: string | null = null;
   let invoice: BillingInvoice | null = null;
 
-  const allProductsMatched = products.length > 0 && products.every((p) => p.chosen !== null);
+  // Solo armamos invoice si TODOS los productos matchearon Y tienen cantidad
+  // conocida (>0). Líneas con cantidad null (vision no pudo leer) NO se
+  // facturan silenciosamente — se dejan fuera y el user decide en UI.
+  const allProductsMatched =
+    products.length > 0 &&
+    products.every((p) => p.chosen !== null && (p.extracted.cantidad ?? 0) > 0);
   if (clientChosen && allProductsMatched) {
     const lines: BillingLineItem[] = products
-      .filter((p): p is MatchedProduct & { chosen: BillingProductMatch } => p.chosen !== null)
+      .filter(
+        (p): p is MatchedProduct & { chosen: BillingProductMatch; extracted: { cantidad: number } } =>
+          p.chosen !== null && p.extracted.cantidad !== null && p.extracted.cantidad > 0,
+      )
       .map((p) => ({
         sku: p.chosen.sku,
         qty: p.extracted.cantidad,
