@@ -27,12 +27,17 @@ public sealed class CatalogLookup
     /// </summary>
     public string? FindClientCodeByRfc(string rfc)
     {
+        // CONTPAQi guarda RFC con posible trailing space (CHAR fixed-length en
+        // versiones viejas) y a veces con case mixto. Normalizamos ambos lados
+        // en la query para evitar "RFC not found" en clientes que SÍ existen.
+        // Auditoría 2026-09-04.
+        var normalized = rfc.Trim().ToUpperInvariant();
         using var conn = new SqlConnection(_connectionString);
         conn.Open();
         using var cmd = new SqlCommand(
-            "SELECT TOP 1 CCODIGOCLIENTE FROM admClientes WHERE CRFC = @rfc",
+            "SELECT TOP 1 CCODIGOCLIENTE FROM admClientes WHERE UPPER(RTRIM(CRFC)) = @rfc",
             conn);
-        cmd.Parameters.AddWithValue("@rfc", rfc);
+        cmd.Parameters.AddWithValue("@rfc", normalized);
         var result = cmd.ExecuteScalar();
         return result is null or DBNull ? null : (string)result;
     }
