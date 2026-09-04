@@ -19,7 +19,7 @@ de CONTPAQi hacia Dropbox para que Nala tenga referencia de los códigos.
                               CFDI timbrado al receptor por correo
 ```
 
-## Estado actual — Days 1-7 completos: watcher + storage abstracta + retries + logging
+## Estado actual — Days 1-8: reporte con errores categorizados listo para Nala
 
 Validado contra empresa dedicada `Kemper Urgate PRUEBAS SDK` (RFC de pruebas
 SAT `EKU9003173C9`, CSD público SAT descargado de facturoporti, password
@@ -51,6 +51,11 @@ SAT `EKU9003173C9`, CSD público SAT descargado de facturoporti, password
   Errores permanentes (RFC ghost, XML mal formado) fallan al primer intento.
 - **Structured logging ✅** → `Microsoft.Extensions.Logging` con timestamps UTC,
   level, source y line-oriented. Facilita grep/tail y futura ingesta a Loki/Datadog.
+- **Errores categorizados ✅** → cada factura fallida trae `kind`
+  (`rfcNotFound | skuNotFound | pacError | invalidData | catalogAccess | other`)
+  + `humanMessage` en español para el operador Centinelia. Nala hace switch
+  por `kind` para decidir: responder al cliente, reintentar en unos minutos,
+  o escalar a Nazre.
 
 ## Setup requerido en la máquina donde corre este agente
 
@@ -75,14 +80,15 @@ Para desarrollar sin riesgo fiscal:
 - El PAC del trial CONTPAQi devuelve UUIDs sandbox (prefijo `00000000-`)
   sin llamar al SAT — desarrollo ilimitado sin costo ni riesgo
 
-Pendientes (Day 8-10):
-- Day 8: tests contra CONTPAQi real (empresa piloto Tortillería, no la de pruebas).
-  Con RFCs reales y catálogo real del cliente. Validar que las conversiones de
-  fecha, la lookup por RFC y el manejo de errores mensajean bien al usuario.
-  Además: primera integración real con Dropbox App de Beatriz (token real).
-- Day 9-10: MSI installer + Windows Service + tarea programada.
-  Escalation de errores irrecoverables: Nala en Vercel monitorea `errores/` y
-  ella misma responde al cliente pidiendo aclaración (no el writer via HTTP).
+Pendientes (Day 9-10):
+- Day 9: consumer de Nala en Vercel — watcher/cron que revisa `errores/`, parsea
+  el JSON con `kind` + `humanMessage` y dispara reply_email / retry / escalate
+  según la tabla arriba. Este trabajo es en el repo Centinelia, no aquí.
+- Day 9 (bloqueadores externos): Dropbox App real de Beatriz + smoke contra
+  empresa piloto Tortillería real con 1-2 timbres controlados (CSD real,
+  cancelación via portal SAT tras validar).
+- Day 10: MSI installer + Windows Service + tarea programada para arranque
+  con la sesión de Windows en la máquina del cliente.
 - Day 8: tests contra CONTPAQi real (empresa piloto Tortillería).
 - Day 9-10: MSI installer + Windows Service + tarea programada.
 
@@ -147,18 +153,50 @@ outbox/
     facturas_2026-09-03_def456.json         ← reporte por factura (camelCase JSON)
 ```
 
-El reporte de errores tiene shape:
+Reporte por factura (uno por lote parcialmente fallido):
 ```json
 {
   "sourceFile": "facturas_2026-09-03_def456.xml",
-  "processedAt": "2026-09-03T18:10:00Z",
+  "processedAt": "2026-09-04T00:41:53Z",
   "results": [
-    { "index": 0, "rfc": "XAXX010101000", "ok": true, "serie": "FTEN", "folio": 6, "uuid": "00000000-...", "timbradoPath": "...", "error": null },
-    { "index": 1, "rfc": "NOEXISTE999", "ok": false, "serie": "FTEN", "folio": 0, "uuid": null, "timbradoPath": null, "error": "..." }
+    {
+      "index": 0, "rfc": "XAXX010101000", "ok": true,
+      "serie": "FTEN", "folio": 6, "uuid": "00000000-...",
+      "timbradoPath": "facturas_2026-09-03_def456_FTEN6.xml",
+      "kind": "other", "humanMessage": null, "error": null
+    },
+    {
+      "index": 1, "rfc": "RFCGHOST999", "ok": false,
+      "serie": "FTEN", "folio": 0, "uuid": null, "timbradoPath": null,
+      "kind": "rfcNotFound",
+      "humanMessage": "El RFC del cliente no está en el catálogo de CONTPAQi. Dálo de alta con los datos fiscales completos y reintenta la factura.",
+      "error": "InvalidOperationException: RFC 'RFCGHOST999' no existe en admClientes de la empresa abierta"
+    }
   ],
   "allOk": false
 }
 ```
+
+Reporte fatal (cuando falla el parse antes de tocar facturas):
+```json
+{
+  "sourceFile": "malformed.xml",
+  "processedAt": "2026-09-04T00:41:53Z",
+  "fatalKind": "invalidData",
+  "fatalMessage": "El XML de importación no cumple el schema esperado. Reporta a Nazre, probablemente hay un bug en el generador de Nala.",
+  "fatalError": "InvalidDataException: Documento sin líneas <Movimiento>"
+}
+```
+
+Valores de `kind`:
+| kind             | acción sugerida para Nala                                                            |
+|------------------|--------------------------------------------------------------------------------------|
+| `rfcNotFound`    | reply_email al cliente pidiendo dar de alta el RFC en CONTPAQi                       |
+| `skuNotFound`    | reply_email al cliente aclarando qué producto no reconocemos                         |
+| `pacError`       | re-depositar el XML en pendientes/ (content-hash idempotente); si persiste, escalar  |
+| `invalidData`    | escalar a Nazre (bug en el generador)                                                |
+| `catalogAccess`  | alertar al operador Centinelia (SQL/CONTPAQi caído en el cliente)                    |
+| `other`          | revisar log del writer                                                               |
 
 Nota: el plan original tenía Day 2 = header, Day 3 = líneas + afectar. En la
 realidad afectar sucede automático al agregar la primera línea, así que Day
