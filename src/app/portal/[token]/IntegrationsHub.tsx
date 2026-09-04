@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Calendar, Mail, MessageSquare, ShoppingCart, ChevronDown, Check, Users, DollarSign, Plug, Sparkles, FileText, Cloud } from 'lucide-react';
+import { Calendar, Mail, MessageSquare, ShoppingCart, ChevronDown, Check, Users, DollarSign, Plug, Sparkles, FileText } from 'lucide-react';
 import type { Plan } from '@/types/agent';
 
 import IntegrationsSection       from './IntegrationsSection';
@@ -13,7 +13,7 @@ import MercadoLibreSection       from './MercadoLibreSection';
 import QuickBooksSection         from './QuickBooksSection';
 import GoogleWorkspaceCard       from './GoogleWorkspaceCard';
 import SolucionFactibleSection   from './oficina/integraciones/solucion-factible/SolucionFactibleSection';
-import StorageSection            from './StorageSection';
+// StorageSection removido 2026-09-04 (Dropbox / Drive / OneDrive ahora per-agent).
 
 /* ── types ─────────────────────────────────────────────────────────────── */
 
@@ -23,7 +23,7 @@ interface EmailStatus  { provider: 'gmail' | 'outlook'; email?: string }
 interface MLStatus     { connected: boolean; nickname: string | null }
 interface QBStatus     { connected: boolean; company_name: string | null }
 interface SFStatus     { connected: boolean }
-interface DropboxStatus { connected: boolean; email?: string }
+// DropboxStatus removido 2026-09-04 (org-level dropbox descontinuado en UI).
 interface HubStatus    {
   cal:        CalStatus | null;
   notion:     NotionStatus | null;
@@ -32,7 +32,6 @@ interface HubStatus    {
   ml:         MLStatus | null;
   qb:         QBStatus | null;
   sf:         SFStatus | null;
-  dropbox:    DropboxStatus | null;
 }
 
 interface PacksInfo {
@@ -500,7 +499,7 @@ interface Props {
 
 export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }: Props) {
   const [status, setStatus] = useState<HubStatus>({
-    cal: null, notion: null, emails: [], teamsEmail: null, ml: null, qb: null, sf: null, dropbox: null,
+    cal: null, notion: null, emails: [], teamsEmail: null, ml: null, qb: null, sf: null,
   });
   const [statusLoaded, setStatusLoaded] = useState(false);
   const [packsInfo, setPacksInfo] = useState<PacksInfo | null>(null);
@@ -537,8 +536,7 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
           ? fetch(`/api/portal/${token}/teams`).then(r => r.json()).catch(() => null)
           : Promise.resolve(null),
         fetch(`/api/portal/${token}/invoicing/config`).then(r => r.json()).catch(() => null),
-        fetch(`/api/portal/${token}/dropbox-oauth`).then(r => r.json()).catch(() => null),
-      ]).then(([calData, notionData, emailData, mlData, qbData, teamsData, sfData, dropboxData]) => {
+      ]).then(([calData, notionData, emailData, mlData, qbData, teamsData, sfData]) => {
         if (cancelled) return;
         setStatus({
           cal:        calData    ?? null,
@@ -548,7 +546,6 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
           ml:         mlData    ?? null,
           qb:         qbData    ?? null,
           sf:         sfData    ?? null,
-          dropbox:    dropboxData ?? null,
         });
         setStatusLoaded(true);
       });
@@ -585,12 +582,7 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
     ? 'Solución Factible · Timbrado CFDI 4.0'
     : 'Elige tu proveedor y emite CFDI 4.0 automáticamente';
 
-  // Google Drive / OneDrive ya no se infieren del OAuth de Gmail — se conectan
-  // per-empleado desde su ficha. Aquí solo se muestra Dropbox (org-level).
-  function buildStorageSubtitle(s: HubStatus): string | undefined {
-    if (s.dropbox?.connected) return 'Dropbox';
-    return 'Dropbox (compartido). Google Drive y OneDrive se configuran por empleado.';
-  }
+  // buildStorageSubtitle removido 2026-09-04 — Storage row eliminado.
 
   /* ── summary caps ───────────────────────────────────────────────────── */
 
@@ -683,22 +675,10 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
       connected: !!status.sf?.connected,
       children: <SolucionFactibleSection token={token} />,
     },
-    {
-      key: 'storage',
-      icon: <Cloud size={16} style={{ color: '#6C3BFF' }} />,
-      label: 'Almacenamiento en la nube',
-      subtitle: buildStorageSubtitle(status),
-      connected: !!status.dropbox?.connected,
-      children: (
-        <div className="flex flex-col gap-4">
-          <PerEmployeeBanner
-            token={token}
-            text="Google Drive y OneDrive se configuran individualmente en la ficha de cada empleado."
-          />
-          <StorageSection token={token} />
-        </div>
-      ),
-    },
+    // 'storage' (Almacenamiento en la nube) removido 2026-09-04: Dropbox, Google
+    // Drive y OneDrive ahora se configuran per-empleado (ver AgentAccountsSection
+    // kind='storage'). El pack cloud_catalog queda sin UI de configuración hasta
+    // que se refactorice para leer desde el Drive/Dropbox de un meerkat designado.
   ];
 
   /* ── packs badge helpers ─────────────────────────────────────────────── */
@@ -708,7 +688,7 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
   const CAPABILITY_TO_PACK: Record<string, string> = {
     finanzas:          'quickbooks',
     solucion_factible: 'invoicing_cfdi',
-    storage:           'cloud_catalog',
+    // 'storage' row removido — pack cloud_catalog pendiente de nueva home per-agent
   };
 
   function packForCapability(key: string): PacksInfo['allPacks'][number] | null {

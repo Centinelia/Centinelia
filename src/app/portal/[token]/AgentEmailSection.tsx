@@ -65,13 +65,19 @@ export default function AgentEmailSection({ token, agentId }: { token: string; a
   const [loading,       setLoading]       = useState(true);
   const [disconnecting, setDisconnecting] = useState<string | null>(null);
   const [justConnected, setJustConnected] = useState<string | null>(null);
+  const [dupError,      setDupError]      = useState<string | null>(null);
   const [otroExpanded,  setOtroExpanded]  = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const p = new URLSearchParams(window.location.search);
-    if (p.get('email') === 'connected') {
+    const emailFlag = p.get('email');
+    if (emailFlag === 'connected') {
       setJustConnected(p.get('provider'));
+    } else if (emailFlag === 'already_used_by_teammate') {
+      setDupError(p.get('provider') === 'outlook' ? 'Outlook' : 'Gmail');
+    }
+    if (emailFlag) {
       const next = new URL(window.location.href);
       next.searchParams.delete('email');
       next.searchParams.delete('provider');
@@ -147,6 +153,18 @@ export default function AgentEmailSection({ token, agentId }: { token: string; a
           >
             <CheckCircle size={13} />
             Correo conectado correctamente. Los mensajes nuevos se procesarán en los próximos minutos.
+          </div>
+        )}
+
+        {dupError && (
+          <div
+            className="flex items-start gap-2 px-3 py-2.5 rounded-lg text-xs"
+            style={{ background: 'rgba(239,68,68,0.08)', color: '#991b1b', border: '1px solid rgba(239,68,68,0.25)' }}
+          >
+            <AlertTriangle size={13} style={{ flexShrink: 0, marginTop: 2, color: '#ef4444' }} />
+            <div className="leading-snug">
+              <b>No se puede conectar esa cuenta de {dupError}.</b> Ya la tiene registrada otro empleado del portal. Cada meerkat debe tener su propio buzón de correo (los alias del mismo dominio, tipo <span style={{ fontFamily: 'monospace' }}>nia@empresa.com</span> y <span style={{ fontFamily: 'monospace' }}>nash@empresa.com</span>, cuentan como cuentas distintas).
+            </div>
           </div>
         )}
 

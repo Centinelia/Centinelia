@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
     }
 
     const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
-    const encryptedRefresh = encrypt(tokens.refresh_token);
+    const encryptedRefresh = tokens.refresh_token ? encrypt(tokens.refresh_token) : null;
 
     const { data: existing } = await supabase
       .from('integration_accounts')

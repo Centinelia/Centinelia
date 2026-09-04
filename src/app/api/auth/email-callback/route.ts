@@ -67,6 +67,38 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(`${appUrl}/portal/${state}?tab=organizacion&email=org_level_deprecated#integraciones`);
     }
 
+    // Regla 2026-09-04: cada cuenta de correo pertenece a UN solo empleado
+    // del org. Si otro meerkat del mismo portal_email ya tiene esta dirección
+    // conectada, rechazamos el registro. Fundamento: bandeja compartida crea
+    // colisiones (dos meerkats procesando el mismo hilo, marcando leído en
+    // momentos distintos, contexto pisado). Ver deprecación email org-level.
+    // Calendar y Storage sí permiten compartir cuenta (con warning en UI).
+    if (agent.portal_email && tokens.email) {
+      const { data: roster } = await supabase
+        .from('voice_agents')
+        .select('id')
+        .eq('portal_email', agent.portal_email)
+        .neq('id', agent.id);
+      const otherIds = (roster ?? []).map((r: { id: string }) => r.id);
+      if (otherIds.length > 0) {
+        const { data: dup } = await supabase
+          .from('email_integrations')
+          .select('agent_id')
+          .eq('email', tokens.email)
+          .eq('provider', provider)
+          .in('agent_id', otherIds)
+          .maybeSingle();
+        if (dup) {
+          console.warn('[email-callback] rechazado: email ya usado por otro empleado del org', {
+            email: tokens.email, provider, org: agent.portal_email,
+          });
+          return NextResponse.redirect(
+            `${appUrl}/portal/${state}/configurar?email=already_used_by_teammate&provider=${provider}`
+          );
+        }
+      }
+    }
+
     await supabase.from('email_integrations').upsert({
       agent_id:           agent.id,
       provider,

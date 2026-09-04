@@ -7,12 +7,20 @@ import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { resolveOrgFromToken } from '@/lib/portal/org-token';
 import { googleAuthUrl, GOOGLE_SCOPES } from '@/lib/email/gmail';
 import { microsoftAuthUrl, MICROSOFT_SCOPES } from '@/lib/email/outlook';
+import { dropboxAuthUrl } from '@/lib/dropbox/oauth';
 import { issueOAuthState } from '@/lib/oauth/state';
 
 interface Params { params: Promise<{ token: string }> }
 
-// Inicia OAuth per-agent para Google Drive / OneDrive.
-// Requiere ?provider=google|microsoft&agentId=<uuid>.
+type StorageProvider = 'google' | 'microsoft' | 'dropbox';
+const NONCE_TAG: Record<StorageProvider, string> = {
+  google:    'google-drive',
+  microsoft: 'microsoft-drive',
+  dropbox:   'dropbox-agent',
+};
+
+// Inicia OAuth per-agent para Google Drive / OneDrive / Dropbox.
+// Requiere ?provider=google|microsoft|dropbox&agentId=<uuid>.
 export async function GET(req: NextRequest, { params }: Params) {
   const { token } = await params;
 
@@ -20,9 +28,13 @@ export async function GET(req: NextRequest, { params }: Params) {
   const session = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const provider = req.nextUrl.searchParams.get('provider') as 'google' | 'microsoft' | null;
-  const agentId  = req.nextUrl.searchParams.get('agentId');
-  if (provider !== 'google' && provider !== 'microsoft') {
+  const providerParam = req.nextUrl.searchParams.get('provider');
+  const provider: StorageProvider | null =
+    providerParam === 'google' || providerParam === 'microsoft' || providerParam === 'dropbox'
+      ? providerParam
+      : null;
+  const agentId = req.nextUrl.searchParams.get('agentId');
+  if (!provider) {
     return NextResponse.json({ error: 'Invalid provider' }, { status: 400 });
   }
   if (!agentId) {
@@ -46,11 +58,12 @@ export async function GET(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Empleado no válido para este portal' }, { status: 403 });
   }
 
-  const oauthProvider = provider === 'google' ? 'google-drive' : 'microsoft-drive';
-  const oauth = issueOAuthState(oauthProvider, `${token}::agent-storage::${agentId}`);
+  const oauth = issueOAuthState(NONCE_TAG[provider], `${token}::agent-storage::${agentId}`);
   const url = provider === 'google'
     ? googleAuthUrl(oauth.state, GOOGLE_SCOPES.drive, 'storage-callback/google')
-    : microsoftAuthUrl(oauth.state, MICROSOFT_SCOPES.drive, 'storage-callback/microsoft');
+    : provider === 'microsoft'
+    ? microsoftAuthUrl(oauth.state, MICROSOFT_SCOPES.drive, 'storage-callback/microsoft')
+    : dropboxAuthUrl(oauth.state, 'storage-callback/dropbox');
 
   const final = NextResponse.redirect(url);
   final.cookies.set(oauth.cookieName, oauth.cookieValue, oauth.cookieOptions);

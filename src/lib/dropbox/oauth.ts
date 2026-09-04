@@ -19,10 +19,10 @@ export const DROPBOX_SCOPES = [
   'account_info.read',
 ].join(' ');
 
-export function dropboxAuthUrl(state: string): string {
+export function dropboxAuthUrl(state: string, callbackPath?: string): string {
   const p = new URLSearchParams({
     client_id:          process.env.DROPBOX_APP_KEY!,
-    redirect_uri:       callbackUrl(),
+    redirect_uri:       callbackUrl(callbackPath),
     response_type:      'code',
     token_access_type:  'offline',
     scope:              DROPBOX_SCOPES,
@@ -31,8 +31,8 @@ export function dropboxAuthUrl(state: string): string {
   return `${DROPBOX_AUTH_URL}?${p}`;
 }
 
-export async function dropboxExchangeCode(code: string): Promise<{
-  access_token: string; refresh_token: string; expires_in: number; email: string;
+export async function dropboxExchangeCode(code: string, callbackPath?: string): Promise<{
+  access_token: string; refresh_token: string | undefined; expires_in: number; email: string;
 }> {
   const res = await fetch(DROPBOX_TOKEN_URL, {
     method:  'POST',
@@ -42,7 +42,7 @@ export async function dropboxExchangeCode(code: string): Promise<{
       grant_type:    'authorization_code',
       client_id:     process.env.DROPBOX_APP_KEY!,
       client_secret: process.env.DROPBOX_APP_SECRET!,
-      redirect_uri:  callbackUrl(),
+      redirect_uri:  callbackUrl(callbackPath),
     }),
   });
   if (!res.ok) throw new Error(`Dropbox token exchange failed: ${await res.text()}`);
@@ -86,7 +86,9 @@ async function getAccountEmail(accessToken: string): Promise<string> {
   return data.email;
 }
 
-function callbackUrl(): string {
+function callbackUrl(path?: string): string {
   const base = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
-  return `${base}/api/auth/dropbox-callback`;
+  if (!path) return `${base}/api/auth/dropbox-callback`;
+  const clean = path.startsWith('/') ? path.slice(1) : path;
+  return `${base}/api/auth/${clean}`;
 }

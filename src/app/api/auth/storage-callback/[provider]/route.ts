@@ -5,18 +5,29 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { resolveOrgFromToken } from '@/lib/portal/org-token';
 import { googleExchangeCode } from '@/lib/email/gmail';
 import { microsoftExchangeCode, MICROSOFT_SCOPES } from '@/lib/email/outlook';
+import { dropboxExchangeCode } from '@/lib/dropbox/oauth';
 import { encrypt } from '@/lib/crypto';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { verifyOAuthState, clearOAuthState } from '@/lib/oauth/state';
 
 interface Params { params: Promise<{ provider: string }> }
 
-// Callback OAuth per-agent para Google Drive / OneDrive.
+type StorageProvider = 'google' | 'microsoft' | 'dropbox';
+const NONCE_TAG: Record<StorageProvider, string> = {
+  google:    'google-drive',
+  microsoft: 'microsoft-drive',
+  dropbox:   'dropbox-agent',
+};
+
+// Callback OAuth per-agent para Google Drive / OneDrive / Dropbox.
 // State esperado: `${token}::agent-storage::${agentId}[.nonce]`
 export async function GET(req: NextRequest, { params }: Params) {
   const appUrl   = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
   const { provider: providerParam } = await params;
-  const provider = providerParam === 'google' || providerParam === 'microsoft' ? providerParam : null;
+  const provider: StorageProvider | null =
+    providerParam === 'google' || providerParam === 'microsoft' || providerParam === 'dropbox'
+      ? providerParam
+      : null;
   const code     = req.nextUrl.searchParams.get('code');
   const rawState = req.nextUrl.searchParams.get('state') ?? '';
   const oauthErr = req.nextUrl.searchParams.get('error');
@@ -26,8 +37,7 @@ export async function GET(req: NextRequest, { params }: Params) {
     return NextResponse.redirect(genericError);
   }
 
-  const nonceProvider = provider === 'google' ? 'google-drive' : 'microsoft-drive';
-  const stateCheck = verifyOAuthState(req, nonceProvider, rawState);
+  const stateCheck = verifyOAuthState(req, NONCE_TAG[provider], rawState);
   if (!stateCheck.ok || !stateCheck.portalToken) {
     console.warn('[storage-callback] nonce mismatch:', stateCheck.reason);
     return NextResponse.redirect(`${appUrl}/portal/?tab=organizacion&storage=csrf_nonce#integraciones`);
@@ -62,7 +72,9 @@ export async function GET(req: NextRequest, { params }: Params) {
 
     const tokens = provider === 'google'
       ? await googleExchangeCode(code, 'storage-callback/google')
-      : await microsoftExchangeCode(code, MICROSOFT_SCOPES.drive, 'storage-callback/microsoft');
+      : provider === 'microsoft'
+      ? await microsoftExchangeCode(code, MICROSOFT_SCOPES.drive, 'storage-callback/microsoft')
+      : await dropboxExchangeCode(code, 'storage-callback/dropbox');
 
     const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
     const encryptedRefresh = tokens.refresh_token ? encrypt(tokens.refresh_token) : null;

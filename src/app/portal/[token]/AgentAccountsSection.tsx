@@ -7,14 +7,15 @@ import { AlertTriangle, Calendar, CheckCircle, Cloud, Loader2, Trash2 } from 'lu
 // Fase 1 del desacople per-agent (ver .brain/decisions/2026-09-04-integraciones-per-agent-vs-org-level.md).
 
 type Kind = 'calendar' | 'storage';
-type Provider = 'google' | 'microsoft';
+type Provider = 'google' | 'microsoft' | 'dropbox';
 
 interface Account {
-  provider:     Provider;
-  capability:   string;
-  email:        string;
-  needs_reauth: boolean;
-  expires_at:   string | null;
+  provider:      Provider;
+  capability:    string;
+  email:         string;
+  needs_reauth:  boolean;
+  expires_at:    string | null;
+  also_used_by?: string[];
 }
 
 interface ProviderMeta {
@@ -72,6 +73,17 @@ const STORAGE_PROVIDERS: ProviderMeta[] = [
       </svg>
     ),
   },
+  {
+    id: 'dropbox', label: 'Dropbox', color: '#0061FF',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 48 48" fill="none">
+        <path d="M12 6l12 8-12 8L0 14l12-8z" fill="#0061FF" />
+        <path d="M36 6l12 8-12 8-12-8 12-8z" fill="#0061FF" />
+        <path d="M12 22l12 8-12 8L0 30l12-8z" fill="#0061FF" />
+        <path d="M36 22l12 8-12 8-12-8 12-8z" fill="#0061FF" />
+      </svg>
+    ),
+  },
 ];
 
 const KIND_META: Record<Kind, {
@@ -95,7 +107,7 @@ const KIND_META: Record<Kind, {
     urlFlag:   'storage',
     Icon:      Cloud,
     title:     'Almacenamiento del empleado',
-    desc:      'Conecta el Drive u OneDrive donde este empleado guardará y buscará sus archivos.',
+    desc:      'Conecta el Drive, OneDrive o Dropbox donde este empleado guardará y buscará sus archivos.',
     providers: STORAGE_PROVIDERS,
   },
 };
@@ -243,9 +255,22 @@ export default function AgentAccountsSection({
                 </div>
 
                 {acc ? (
-                  <p className="text-xs mt-0.5 truncate font-mono" style={{ color: '#1A0A3B' }}>
-                    {acc.email}
-                  </p>
+                  <>
+                    <p className="text-xs mt-0.5 truncate font-mono" style={{ color: '#1A0A3B' }}>
+                      {acc.email}
+                    </p>
+                    {acc.also_used_by && acc.also_used_by.length > 0 && (
+                      <div
+                        className="flex items-start gap-1.5 mt-1.5 px-2 py-1.5 rounded-md text-[11px] leading-snug"
+                        style={{ background: 'rgba(245,158,11,0.08)', color: '#92400e', border: '1px solid rgba(245,158,11,0.22)' }}
+                      >
+                        <AlertTriangle size={11} style={{ flexShrink: 0, marginTop: 1, color: '#f59e0b' }} />
+                        <span>
+                          Esta cuenta también la usa <b>{acc.also_used_by.join(', ')}</b>. Recuerda pedirle a este empleado que firme sus mensajes o archivos con su nombre para que se distingan.
+                        </span>
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <p className="text-xs mt-0.5" style={{ color: '#6B6480' }}>
                     No conectado

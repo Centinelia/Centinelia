@@ -49,12 +49,42 @@ export async function GET(req: NextRequest, { params }: Params) {
     .in('capability', CAPABILITIES as unknown as string[])
     .neq('status', 'disconnected');
 
-  const accounts = (data ?? []).map((r) => ({
-    provider:     r.provider,       // 'google' | 'microsoft'
-    capability:   r.capability,     // 'calendar_google' | 'calendar_microsoft'
-    email:        r.account_label,
-    needs_reauth: r.status === 'needs_reauth',
-    expires_at:   r.expires_at,
+  const rows = data ?? [];
+
+  // Cross-meerkat lookup: qué otros agentes del org tienen la misma cuenta.
+  // Se permite compartir en calendar (a diferencia de correo) pero se avisa
+  // al usuario para que firme cada evento con su nombre.
+  const labels = rows.map(r => r.account_label).filter(Boolean) as string[];
+  let siblings: Array<{ agent_id: string; capability: string; account_label: string; agent_name: string }> = [];
+  if (labels.length > 0) {
+    const { data: sib } = await supabase
+      .from('integration_accounts')
+      .select('agent_id, capability, account_label, voice_agents!inner(agent_name, portal_email)')
+      .in('capability', CAPABILITIES as unknown as string[])
+      .in('account_label', labels)
+      .neq('agent_id', agentId)
+      .eq('voice_agents.portal_email', g.resolved.portalEmail)
+      .neq('status', 'disconnected');
+    siblings = (sib ?? []).map((s: {
+      agent_id: string; capability: string; account_label: string;
+      voice_agents: { agent_name: string | null }[] | { agent_name: string | null } | null;
+    }) => ({
+      agent_id:      s.agent_id,
+      capability:    s.capability,
+      account_label: s.account_label,
+      agent_name:    (Array.isArray(s.voice_agents) ? s.voice_agents[0]?.agent_name : s.voice_agents?.agent_name) ?? 'otro empleado',
+    }));
+  }
+
+  const accounts = rows.map((r) => ({
+    provider:      r.provider,
+    capability:    r.capability,
+    email:         r.account_label,
+    needs_reauth:  r.status === 'needs_reauth',
+    expires_at:    r.expires_at,
+    also_used_by:  siblings
+      .filter((s) => s.capability === r.capability && s.account_label === r.account_label)
+      .map((s) => s.agent_name),
   }));
 
   return NextResponse.json({ accounts });
