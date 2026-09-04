@@ -104,7 +104,23 @@ export async function POST(req: NextRequest, { params }: Params) {
         ? { rfc: integration.config.fiscal.rfc_emisor }
         : undefined,
     });
-    extracted = await extractNoteFromImage(imageBuffer, mimeType, visionCtx);
+    // Cobrar al pool: resolver Nala del cliente para atribuir el costo del
+    // vision LLM. Sin agentId, extract corre pero no cobra (degradación).
+    const { data: nalaAgent } = await supabase
+      .from('voice_agents')
+      .select('id')
+      .eq('portal_email', resolved.portalEmail)
+      .ilike('agent_name', '%nala%')
+      .eq('active', true)
+      .maybeSingle();
+    const visionBilling = nalaAgent?.id
+      ? {
+          agentId:     nalaAgent.id as string,
+          referenceId: `portal-facturacion-${Date.now()}`,
+          labelPrefix: 'Leer notita subida por portal',
+        }
+      : undefined;
+    extracted = await extractNoteFromImage(imageBuffer, mimeType, visionCtx, visionBilling);
   } catch (err) {
     return NextResponse.json(
       { error: `Vision extraction failed: ${(err as Error).message}` },

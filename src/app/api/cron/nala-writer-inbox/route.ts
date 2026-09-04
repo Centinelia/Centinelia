@@ -150,6 +150,22 @@ async function processIntegration(
     );
   };
 
+  // Resolver agentId de Nala para esta org — necesario para cobrar al pool
+  // (auditoría 2026-09-04). Buscamos el voice_agent con nombre "Nala" y
+  // portal_email de la integración. Si no existe, saltamos el cobro pero
+  // NO abortamos el procesamiento (degradación graceful).
+  const { data: nalaAgent } = await supabase
+    .from('voice_agents')
+    .select('id')
+    .eq('portal_email', integ.portal_email)
+    .ilike('agent_name', '%nala%')
+    .eq('active', true)
+    .maybeSingle();
+  const nalaAgentId: string | null = (nalaAgent?.id as string | null) ?? null;
+  if (!nalaAgentId) {
+    log('warn', 'no encontré voice_agent activo llamado Nala para esta org — no cobraré ops', {});
+  }
+
   const auditBase = { supabase, portalEmail: integ.portal_email };
 
   try {
@@ -176,7 +192,12 @@ async function processIntegration(
         }
         return;
       }
-      await replyToInboundEmail(corr.emailId, wrapClientReplyHtml(action.humanMessage, action.kind));
+      await replyToInboundEmail(
+        corr.emailId,
+        wrapClientReplyHtml(action.humanMessage, action.kind),
+        undefined,
+        nalaAgentId ? { agentId: nalaAgentId, referenceId: basename, source: 'nala_writer_reply_kind_' + action.kind } : undefined,
+      );
       await logWriterAudit('writer_reply_sent', {
         ...auditBase, basename,
         context: { kind: action.kind, emailId: corr.emailId, humanMessage: action.humanMessage },
@@ -274,14 +295,46 @@ async function processIntegration(
     deliverCfdi: async (basename, xmlContent) => {
       const corr = await correlateBasenameToEmail(supabase, basename, integ.portal_email);
       if (!corr) return false;
+      // Cobrar 1 op por CFDI entregado (representa el consumo del PAC del
+      // cliente + el envío por correo con adjunto). El writer .NET timbra en
+      // la máquina de Beatriz pero ese consumo se atribuye acá, en Vercel,
+      // cuando confirmamos entrega al receptor. Auditoría 2026-09-04.
       await replyToInboundEmail(
         corr.emailId,
         wrapCfdiDeliveryHtml(),
         [{ filename: `${basename}.xml`, content: xmlContent }],
+        nalaAgentId
+          ? {
+              agentId:     nalaAgentId,
+              referenceId: basename,
+              source:      'nala_cfdi_delivered',
+              label:       `CFDI ${basename} enviado al receptor`,
+            }
+          : undefined,
       );
+      // Además del cobro por el envío (dentro de sendBillingMail), cobramos
+      // 1 op adicional por el TIMBRADO en sí (folio PAC consumido). Con Nala
+      // adapter Facturama esto es explícito; con writer CONTPAQi es implícito
+      // pero igual consume folio del PAC contratado por el cliente.
+      if (nalaAgentId) {
+        try {
+          const { chargePool } = await import('@/lib/billing/pool-charge');
+          await chargePool({
+            agentId:      nalaAgentId,
+            source:       'nala_pac_timbre',
+            reference_id: basename,
+            label:        `Timbrado CFDI ${basename}`,
+            context:      `PAC folio consumido para CFDI ${basename}, entregado al correo ${corr.emailId}`,
+          });
+        } catch (err) {
+          log('warn', 'chargePool PAC timbre falló (audit gap)', {
+            basename, err: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
       await logWriterAudit('writer_cfdi_delivered', {
         ...auditBase, basename,
-        context: { emailId: corr.emailId, sizeBytes: xmlContent.length },
+        context: { emailId: corr.emailId, sizeBytes: xmlContent.length, poolCharged: !!nalaAgentId },
       });
       return true;
     },

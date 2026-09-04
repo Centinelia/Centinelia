@@ -20,8 +20,27 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { EXTRACT_NOTE_SYSTEM, EXTRACT_NOTE_USER, buildContextBlock } from './prompt';
+import { withBatchedPoolCharge } from '../pool-charge';
 
 const DEFAULT_MODEL = 'claude-sonnet-4-6';
+
+/**
+ * Contexto opcional de facturación al pool. Cuando se pasa, cada foto
+ * procesada por vision cobra `remisiones.length` ops (batched — vision es
+ * UNA sola llamada Anthropic pero puede extraer N remisiones; cobramos por
+ * cada una porque cada una consume un slot de trabajo del cliente).
+ *
+ * Sin este opts, no se cobra — útil para tests + callers legacy que aún
+ * no propagan agentId. La memoria feedback_batched_consume_multi_io exige
+ * batched-consume; este helper cumple con ese patrón.
+ */
+export interface BillingChargeOpts {
+  agentId:  string;
+  /** Identificador del evento origen (email_id, foto hash, request id). */
+  referenceId?: string;
+  /** Label descriptivo corto para el historial de consumo del cliente. */
+  labelPrefix?: string;
+}
 
 // ── Shape v2 ─────────────────────────────────────────────────────────────────
 
@@ -111,52 +130,75 @@ export async function extractRemisionesFromImage(
   imageBuffer: Buffer,
   mimeType: string,
   context?: VisionContext,
+  billing?: BillingChargeOpts,
 ): Promise<ExtractedNoteSet> {
-  const model = process.env.BILLING_VISION_MODEL ?? DEFAULT_MODEL;
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  const doExtract = async (): Promise<ExtractedNoteSet> => {
+    const model = process.env.BILLING_VISION_MODEL ?? DEFAULT_MODEL;
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-  // Con contexto de catálogo el prompt crece; damos más presupuesto de output
-  // para que el LLM pueda incluir aritmética de reconciliación por remisión.
-  const maxTokens = context ? 8192 : 4096;
+    // Con contexto de catálogo el prompt crece; damos más presupuesto de output
+    // para que el LLM pueda incluir aritmética de reconciliación por remisión.
+    const maxTokens = context ? 8192 : 4096;
 
-  const userText = context
-    ? `${buildContextBlock(context)}\n\n${EXTRACT_NOTE_USER}`
-    : EXTRACT_NOTE_USER;
+    const userText = context
+      ? `${buildContextBlock(context)}\n\n${EXTRACT_NOTE_USER}`
+      : EXTRACT_NOTE_USER;
 
-  const response = await client.messages.create({
-    model,
-    max_tokens: maxTokens,
-    system: EXTRACT_NOTE_SYSTEM,
-    messages: [
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'image',
-            source: {
-              type: 'base64',
-              media_type: mimeType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
-              data: imageBuffer.toString('base64'),
+    const response = await client.messages.create({
+      model,
+      max_tokens: maxTokens,
+      system: EXTRACT_NOTE_SYSTEM,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: mimeType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
+                data: imageBuffer.toString('base64'),
+              },
             },
-          },
-          {
-            type: 'text',
-            text: userText,
-          },
-        ],
-      },
-    ],
-  });
+            {
+              type: 'text',
+              text: userText,
+            },
+          ],
+        },
+      ],
+    });
 
-  const textBlock = response.content.find((b) => b.type === 'text');
-  const raw = textBlock?.type === 'text' ? textBlock.text.trim() : '';
+    const textBlock = response.content.find((b) => b.type === 'text');
+    const raw = textBlock?.type === 'text' ? textBlock.text.trim() : '';
 
-  const parsed = extractFirstJsonObject(raw);
-  if (!parsed || typeof parsed !== 'object' || !Array.isArray((parsed as { remisiones?: unknown }).remisiones)) {
-    throw new Error('Vision model returned non-JSON or missing remisiones[] array');
-  }
+    const parsed = extractFirstJsonObject(raw);
+    if (!parsed || typeof parsed !== 'object' || !Array.isArray((parsed as { remisiones?: unknown }).remisiones)) {
+      throw new Error('Vision model returned non-JSON or missing remisiones[] array');
+    }
+    return parsed as ExtractedNoteSet;
+  };
 
-  return parsed as ExtractedNoteSet;
+  // Sin billing opts, no cobramos (dev + tests + callers legacy).
+  if (!billing) return doExtract();
+
+  // Con billing: cobramos batched — 1 op por cada remisión que el LLM
+  // extrajo. Una foto con 3 remisiones = 3 ops (representan 3 unidades de
+  // trabajo que Nala hizo por el cliente). Si el LLM devuelve 0 remisiones,
+  // no cobramos (foto ilegible = no hubo trabajo entregable).
+  return withBatchedPoolCharge(
+    {
+      agentId:      billing.agentId,
+      source:       'nala_vision_extract',
+      reference_id: billing.referenceId,
+      label:        billing.labelPrefix ?? 'Leer notita manuscrita',
+      context:      `Vision LLM (${DEFAULT_MODEL}) extrajo remisiones de una foto`,
+    },
+    async () => {
+      const result = await doExtract();
+      return { count: result.remisiones.length, result };
+    },
+  );
 }
 
 /**
@@ -173,8 +215,9 @@ export async function extractNoteFromImage(
   imageBuffer: Buffer,
   mimeType: string,
   context?: VisionContext,
+  billing?: BillingChargeOpts,
 ): Promise<ExtractedRemision> {
-  const set = await extractRemisionesFromImage(imageBuffer, mimeType, context);
+  const set = await extractRemisionesFromImage(imageBuffer, mimeType, context, billing);
   if (set.remisiones.length === 0) {
     throw new Error('Vision model devolvió 0 remisiones — imagen ilegible o no es una notita');
   }
