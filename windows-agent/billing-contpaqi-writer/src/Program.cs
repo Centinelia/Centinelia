@@ -1,5 +1,7 @@
 using Centinelia.BillingContpaqi.Writer.Sdk;
 using Centinelia.BillingContpaqi.Writer.Watch;
+using Centinelia.BillingContpaqi.Writer.Watch.Storage;
+using Microsoft.Extensions.Logging;
 
 namespace Centinelia.BillingContpaqi.Writer;
 
@@ -108,26 +110,36 @@ public static class Program
 
                 case "watch":
                     Require(opts.Concepto,   "--concepto");
-                    Require(opts.Inbox,      "--inbox");
-                    Require(opts.Outbox,     "--outbox");
                     Require(opts.SqlConnStr, "--sql");
                     // csd-pwd puede ser vacío si CONTPAQi ya tiene el CSD sin password (raro pero legal).
-                    var catalog   = new CatalogLookup(opts.SqlConnStr!);
-                    var processor = new BatchProcessor(
-                        session, catalog, opts.Concepto!, opts.CsdPassword ?? "",
-                        Path.Combine(opts.Outbox!, "timbrados"));
-                    var loop = new WatchLoop(processor, opts.Inbox!, opts.Outbox!,
-                        TimeSpan.FromSeconds(opts.PollSecs));
-
-                    using (var cts = new CancellationTokenSource())
+                    using (var loggerFactory = BuildLoggerFactory())
                     {
-                        Console.CancelKeyPress += (_, ev) =>
+                        var procLogger  = loggerFactory.CreateLogger("BatchProcessor");
+                        var watchLogger = loggerFactory.CreateLogger("WatchLoop");
+
+                        IInboxStorage storage = BuildStorage(opts);
+                        try
                         {
-                            Console.WriteLine("[writer] Ctrl+C recibido; cerrando loop...");
-                            ev.Cancel = true; // deja al proceso terminar de forma limpia
-                            cts.Cancel();
-                        };
-                        loop.RunAsync(cts.Token).GetAwaiter().GetResult();
+                            var catalog   = new CatalogLookup(opts.SqlConnStr!);
+                            var processor = new BatchProcessor(
+                                session, catalog, storage,
+                                opts.Concepto!, opts.CsdPassword ?? "", procLogger);
+                            var loop = new WatchLoop(processor, storage,
+                                TimeSpan.FromSeconds(opts.PollSecs), watchLogger);
+
+                            using var cts = new CancellationTokenSource();
+                            Console.CancelKeyPress += (_, ev) =>
+                            {
+                                watchLogger.LogInformation("[watch] Ctrl+C recibido; cerrando loop");
+                                ev.Cancel = true; // deja al proceso terminar de forma limpia
+                                cts.Cancel();
+                            };
+                            loop.RunAsync(cts.Token).GetAwaiter().GetResult();
+                        }
+                        finally
+                        {
+                            (storage as IDisposable)?.Dispose();
+                        }
                     }
                     break;
 
@@ -193,6 +205,52 @@ public static class Program
             throw new ArgumentException($"Requiere flag {flag}");
     }
 
+    /// <summary>
+    /// Instancia el <see cref="IInboxStorage"/> según la config del CLI.
+    /// Valida los flags mínimos por backend y falla ruidosamente si faltan
+    /// para evitar arrancar un watcher que después no puede listar el inbox.
+    /// </summary>
+    private static IInboxStorage BuildStorage(CliOptions opts)
+    {
+        switch (opts.Storage.ToLowerInvariant())
+        {
+            case "local":
+                Require(opts.Inbox,  "--inbox (con --storage local)");
+                Require(opts.Outbox, "--outbox (con --storage local)");
+                return new LocalInboxStorage(opts.Inbox!, opts.Outbox!);
+
+            case "dropbox":
+                Require(opts.DropboxToken, "--dropbox-token (con --storage dropbox)");
+                Require(opts.DropboxRoot,  "--dropbox-root (con --storage dropbox)");
+                return new DropboxInboxStorage(opts.DropboxToken!, opts.DropboxRoot!);
+
+            default:
+                throw new ArgumentException(
+                    $"--storage inválido: '{opts.Storage}'. Valores: local | dropbox");
+        }
+    }
+
+    /// <summary>
+    /// Factory de <see cref="ILoggerFactory"/> con Console provider en un
+    /// formato leíble para consola local + tail-friendly para archivos.
+    /// Cada línea es prefijada con timestamp UTC y level para facilitar el
+    /// grep / structured search.
+    /// </summary>
+    private static ILoggerFactory BuildLoggerFactory()
+    {
+        return LoggerFactory.Create(builder =>
+        {
+            builder.SetMinimumLevel(LogLevel.Information);
+            builder.AddSimpleConsole(opts =>
+            {
+                opts.SingleLine       = true;
+                opts.TimestampFormat  = "yyyy-MM-dd HH:mm:ss.fff ";
+                opts.UseUtcTimestamp  = true;
+                opts.IncludeScopes    = false;
+            });
+        });
+    }
+
     private sealed record CliOptions(
         string SdkPath,
         string EmpresaPath,
@@ -212,7 +270,10 @@ public static class Program
         string? Inbox,
         string? Outbox,
         string? SqlConnStr,
-        int PollSecs);
+        int PollSecs,
+        string Storage,
+        string? DropboxToken,
+        string? DropboxRoot);
 
     private static CliOptions? ParseArgs(string[] args)
     {
@@ -230,6 +291,8 @@ public static class Program
         string? outPath = null;
         string? inbox = null, outbox = null, sqlConnStr = null;
         int pollSecs = 10;
+        string storage = "local";
+        string? dropboxToken = null, dropboxRoot = null;
 
         for (var i = 0; i < args.Length; i++)
         {
@@ -250,10 +313,13 @@ public static class Program
                 case "--cantidad":  cantidad = double.Parse(args[++i], System.Globalization.CultureInfo.InvariantCulture); break;
                 case "--precio":    precio   = double.Parse(args[++i], System.Globalization.CultureInfo.InvariantCulture); break;
                 case "--out":       outPath  = args[++i]; break;
-                case "--inbox":     inbox    = args[++i]; break;
-                case "--outbox":    outbox   = args[++i]; break;
-                case "--sql":       sqlConnStr = args[++i]; break;
-                case "--poll-secs": pollSecs = int.Parse(args[++i], System.Globalization.CultureInfo.InvariantCulture); break;
+                case "--inbox":         inbox        = args[++i]; break;
+                case "--outbox":        outbox       = args[++i]; break;
+                case "--sql":           sqlConnStr   = args[++i]; break;
+                case "--poll-secs":     pollSecs     = int.Parse(args[++i], System.Globalization.CultureInfo.InvariantCulture); break;
+                case "--storage":       storage      = args[++i]; break;
+                case "--dropbox-token": dropboxToken = args[++i]; break;
+                case "--dropbox-root":  dropboxRoot  = args[++i]; break;
                 case "--help":
                 case "-h":
                     PrintUsage();
@@ -267,7 +333,8 @@ public static class Program
         return new CliOptions(sdk, empresa, usuario, password, mode,
                               concepto, serie, cliente, producto, cantidad, precio, almacen,
                               folio, csdPassword, outPath,
-                              inbox, outbox, sqlConnStr, pollSecs);
+                              inbox, outbox, sqlConnStr, pollSecs,
+                              storage, dropboxToken, dropboxRoot);
     }
 
     private static void PrintUsage()
@@ -313,12 +380,19 @@ public static class Program
           --folio <n>        ej. 72852
 
         Modo 'watch':
-          --concepto <cod>   ej. 440 (concepto CONTPAQi para todos los documentos del lote)
-          --csd-pwd <pwd>    password del CSD cargado en CONTPAQi
-          --inbox <ruta>     carpeta donde Nala deposita XMLs de importación
-          --outbox <ruta>    carpeta base para timbrados/, procesados/, errores/
-          --sql <connstr>    conexión a la BD CONTPAQi para lookup RFC→código y folio
-          --poll-secs <n>    intervalo de polling en segundos (default 10)
+          --concepto <cod>       ej. 440 (concepto CONTPAQi para todos los documentos del lote)
+          --csd-pwd <pwd>        password del CSD cargado en CONTPAQi
+          --sql <connstr>        conexión a la BD CONTPAQi para lookup RFC→código y folio
+          --poll-secs <n>        intervalo de polling en segundos (default 10)
+          --storage local|dropbox  backend del inbox/outbox (default local)
+          # Backend local:
+          --inbox <ruta>         carpeta filesystem donde Nala deposita XMLs de importación
+          --outbox <ruta>        carpeta base filesystem para timbrados/, procesados/, errores/
+          # Backend dropbox:
+          --dropbox-token <t>    access token de la App Dropbox del cliente
+          --dropbox-root <path>  base de Dropbox (ej. /Apps/Centinelia/piloto-estrella).
+                                  El watcher lee de {root}/pendientes y escribe a
+                                  {root}/timbrados|procesados|errores.
         """);
     }
 }

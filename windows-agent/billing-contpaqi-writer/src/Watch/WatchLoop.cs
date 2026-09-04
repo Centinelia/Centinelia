@@ -1,80 +1,110 @@
+using Centinelia.BillingContpaqi.Writer.Watch.Storage;
+using Microsoft.Extensions.Logging;
+
 namespace Centinelia.BillingContpaqi.Writer.Watch;
 
 /// <summary>
-/// Bucle de polling: cada N segundos revisa <c>{inbox}</c> por archivos .xml
-/// y los procesa con <see cref="BatchProcessor"/>. Al final de cada archivo:
-///   - Todo OK  → mueve el original a <c>{outbox}/procesados/</c>.
-///   - Algo falló → deja detalle JSON en <c>{outbox}/errores/</c>, y ADEMÁS
-///     mueve el original a <c>{outbox}/errores/</c> para que Nala no lo
-///     re-procese en el siguiente barrido.
+/// Bucle de polling: cada N segundos revisa el inbox del <see cref="IInboxStorage"/>
+/// y por cada archivo pendiente invoca <see cref="BatchProcessor"/>. Al terminar
+/// cada archivo:
+///   - Todo OK  → mueve el original a subdir <c>procesados/</c>.
+///   - Algo falló → deja detalle JSON en <c>errores/</c>, y ADEMÁS mueve el
+///     original ahí para que no se re-procese en el siguiente barrido.
 ///
-/// Los XMLs timbrados individuales quedan en <c>{outbox}/timbrados/</c>
-/// (los deposita <see cref="BatchProcessor"/>).
+/// Los XMLs timbrados individuales quedan en <c>timbrados/</c> (los deposita
+/// <see cref="BatchProcessor"/> directamente al storage).
 ///
-/// Cancelación: escuchar Ctrl+C. El loop termina el archivo en curso y sale
+/// Cancelación: escucha Ctrl+C. El loop termina el archivo en curso y sale
 /// limpio (el caller cierra la sesión CONTPAQi con Dispose).
 /// </summary>
 public sealed class WatchLoop
 {
     private readonly BatchProcessor _processor;
-    private readonly string _inbox;
-    private readonly string _outbox;
+    private readonly IInboxStorage _storage;
     private readonly TimeSpan _pollInterval;
+    private readonly ILogger _logger;
 
-    public WatchLoop(BatchProcessor processor, string inbox, string outbox, TimeSpan pollInterval)
+    public WatchLoop(BatchProcessor processor, IInboxStorage storage, TimeSpan pollInterval, ILogger logger)
     {
         _processor    = processor;
-        _inbox        = inbox;
-        _outbox       = outbox;
+        _storage      = storage;
         _pollInterval = pollInterval;
+        _logger       = logger;
     }
 
     public async Task RunAsync(CancellationToken ct)
     {
-        Directory.CreateDirectory(_inbox);
-        Directory.CreateDirectory(Path.Combine(_outbox, "procesados"));
-        Directory.CreateDirectory(Path.Combine(_outbox, "errores"));
-        Directory.CreateDirectory(Path.Combine(_outbox, "timbrados"));
-
-        Console.WriteLine($"[watch] inbox: {_inbox}");
-        Console.WriteLine($"[watch] outbox: {_outbox}");
-        Console.WriteLine($"[watch] poll: {_pollInterval.TotalSeconds}s. Ctrl+C para detener.");
+        _logger.LogInformation("[watch] iniciando loop, poll={poll}s (Ctrl+C detiene)",
+            _pollInterval.TotalSeconds);
 
         while (!ct.IsCancellationRequested)
         {
-            var pending = Directory.GetFiles(_inbox, "*.xml")
-                .OrderBy(f => File.GetCreationTimeUtc(f))
-                .ToList();
+            IReadOnlyList<string> pending;
+            try
+            {
+                pending = await _storage.ListInboxAsync(ct);
+            }
+            catch (Exception ex) when (!ct.IsCancellationRequested)
+            {
+                // Falla del backend (Dropbox 429, red, credencial expirada). No abortar
+                // el loop; loguear y volver a intentar en el siguiente tick.
+                _logger.LogError(ex, "[watch] ListInboxAsync falló, reintentando en el siguiente tick");
+                pending = Array.Empty<string>();
+            }
 
-            foreach (var file in pending)
+            foreach (var filename in pending)
             {
                 if (ct.IsCancellationRequested) break;
-                ProcessOne(file);
+                await ProcessOneAsync(filename, ct);
             }
 
             try { await Task.Delay(_pollInterval, ct); }
             catch (TaskCanceledException) { break; }
         }
-        Console.WriteLine("[watch] deteniendo loop por cancelación");
+        _logger.LogInformation("[watch] loop detenido por cancelación");
     }
 
-    private void ProcessOne(string filePath)
+    private async Task ProcessOneAsync(string filename, CancellationToken ct)
     {
-        var filename = Path.GetFileName(filePath);
-        Console.WriteLine($"[watch] procesando {filename}");
+        _logger.LogInformation("[watch] procesando {filename}", filename);
         BatchReport report;
         try
         {
-            report = _processor.Process(filePath);
+            report = await _processor.ProcessAsync(filename, ct);
         }
         catch (Exception ex)
         {
-            // Falla previa al procesamiento por factura (ej: XML mal formado).
-            // Movemos a errores/ con un JSON explicando por qué.
-            var errPath = Path.Combine(_outbox, "errores", filename);
-            SafeMove(filePath, errPath);
-            var reportPath = Path.Combine(_outbox, "errores", Path.ChangeExtension(filename, ".json"));
-            File.WriteAllText(reportPath, System.Text.Json.JsonSerializer.Serialize(new
+            // Falla previa al procesamiento por factura (ej: XML mal formado,
+            // storage fail al leer). Movemos a errores/ con un JSON explicando.
+            await SafeMoveToErrorAsync(filename, ex, ct);
+            _logger.LogError(ex, "[watch] {filename} falló pre-parseo: {msg}", filename, ex.Message);
+            return;
+        }
+
+        var okCount   = report.Results.Count(r => r.Ok);
+        var failCount = report.Results.Count - okCount;
+        _logger.LogInformation("[watch] {filename} → {ok} timbradas, {fail} fallidas",
+            filename, okCount, failCount);
+
+        if (report.AllOk)
+        {
+            await _storage.MoveToOutboxAsync("procesados", filename, ct);
+        }
+        else
+        {
+            await _storage.MoveToOutboxAsync("errores", filename, ct);
+            var reportName = Path.ChangeExtension(filename, ".json");
+            await _storage.WriteOutboxTextAsync("errores", reportName, report.ToJson(), ct);
+        }
+    }
+
+    private async Task SafeMoveToErrorAsync(string filename, Exception ex, CancellationToken ct)
+    {
+        try
+        {
+            await _storage.MoveToOutboxAsync("errores", filename, ct);
+            var reportName = Path.ChangeExtension(filename, ".json");
+            var payload = System.Text.Json.JsonSerializer.Serialize(new
             {
                 sourceFile = filename,
                 processedAt = DateTime.UtcNow,
@@ -83,32 +113,14 @@ public sealed class WatchLoop
             {
                 WriteIndented = true,
                 PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
-            }));
-            Console.WriteLine($"[watch] {filename} FALLÓ pre-parseo: {ex.Message}");
-            return;
+            });
+            await _storage.WriteOutboxTextAsync("errores", reportName, payload, ct);
         }
-
-        var okCount   = report.Results.Count(r => r.Ok);
-        var failCount = report.Results.Count - okCount;
-        Console.WriteLine($"[watch] {filename} → {okCount} timbradas, {failCount} fallidas");
-
-        if (report.AllOk)
+        catch (Exception moveEx)
         {
-            var destPath = Path.Combine(_outbox, "procesados", filename);
-            SafeMove(filePath, destPath);
+            _logger.LogCritical(moveEx,
+                "[watch] no se pudo mover {filename} a errores/. El siguiente tick lo intentará de nuevo.",
+                filename);
         }
-        else
-        {
-            var destPath = Path.Combine(_outbox, "errores", filename);
-            SafeMove(filePath, destPath);
-            var reportPath = Path.Combine(_outbox, "errores", Path.ChangeExtension(filename, ".json"));
-            File.WriteAllText(reportPath, report.ToJson());
-        }
-    }
-
-    private static void SafeMove(string src, string dest)
-    {
-        if (File.Exists(dest)) File.Delete(dest);
-        File.Move(src, dest);
     }
 }

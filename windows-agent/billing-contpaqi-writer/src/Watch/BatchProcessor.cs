@@ -1,55 +1,66 @@
 using System.Text.Json;
 using Centinelia.BillingContpaqi.Writer.Sdk;
+using Centinelia.BillingContpaqi.Writer.Watch.Storage;
+using Microsoft.Extensions.Logging;
 
 namespace Centinelia.BillingContpaqi.Writer.Watch;
 
 /// <summary>
 /// Procesa un archivo XML de importación multi-factura contra CONTPAQi vía
 /// una <see cref="ContpaqiSession"/> ya abierta. Por cada factura del lote:
-/// resuelve RFC→código, crea el documento, agrega líneas, timbra y extrae
-/// el XML timbrado. Al final produce un <see cref="BatchReport"/>.
+/// resuelve RFC→código, crea el documento, agrega líneas, timbra con retry y
+/// extrae el XML timbrado. Los CFDIs individuales se escriben al outbox via
+/// el <see cref="IInboxStorage"/> inyectado. Al final produce un
+/// <see cref="BatchReport"/> que el <see cref="WatchLoop"/> usa para decidir
+/// dónde mover el archivo original.
 ///
-/// El procesador NO abre/cierra la sesión — asume que el caller (el watcher
-/// loop) reusa una sesión durante toda la vida del proceso, porque abrir
-/// sesión CONTPAQi toma segundos y no queremos pagarlo por archivo.
+/// El procesador NO abre/cierra la sesión CONTPAQi — asume que el caller
+/// (el watcher loop) reusa una sesión durante toda la vida del proceso,
+/// porque abrir sesión toma segundos y no queremos pagarlo por archivo.
 /// </summary>
 public sealed class BatchProcessor
 {
     private readonly ContpaqiSession _session;
     private readonly CatalogLookup   _catalog;
+    private readonly IInboxStorage   _storage;
     private readonly string          _concepto;
     private readonly string          _csdPassword;
-    private readonly string          _timbradosDir;
+    private readonly ILogger         _logger;
 
     public BatchProcessor(
         ContpaqiSession session,
         CatalogLookup catalog,
+        IInboxStorage storage,
         string concepto,
         string csdPassword,
-        string timbradosDir)
+        ILogger logger)
     {
-        _session      = session;
-        _catalog      = catalog;
-        _concepto     = concepto;
-        _csdPassword  = csdPassword;
-        _timbradosDir = timbradosDir;
+        _session     = session;
+        _catalog     = catalog;
+        _storage     = storage;
+        _concepto    = concepto;
+        _csdPassword = csdPassword;
+        _logger      = logger;
     }
 
     /// <summary>
-    /// Procesa un archivo de lote. Escribe los XMLs timbrados a <c>{timbradosDir}</c>
-    /// con nombre <c>{basename}_{serie}{folio}.xml</c>. Devuelve el reporte con
-    /// resultado por factura.
+    /// Procesa un archivo de lote leyéndolo del storage. Escribe los XMLs
+    /// timbrados al subdir <c>timbrados/</c> con nombre <c>{basename}_{serie}{folio}.xml</c>.
+    /// Devuelve el reporte con resultado por factura para que el caller decida
+    /// dónde mover el archivo original (procesados o errores).
     /// </summary>
-    public BatchReport Process(string sourcePath)
+    public async Task<BatchReport> ProcessAsync(string filename, CancellationToken ct)
     {
-        var basename = Path.GetFileNameWithoutExtension(sourcePath);
-        var invoices = ImportXmlParser.Parse(File.ReadAllText(sourcePath));
+        var basename = Path.GetFileNameWithoutExtension(filename);
+        var text     = await _storage.ReadInboxTextAsync(filename, ct);
+        var invoices = ImportXmlParser.Parse(text);
 
         var results = new List<InvoiceResult>();
         var index   = 0;
 
         foreach (var invoice in invoices)
         {
+            if (ct.IsCancellationRequested) break;
             try
             {
                 var codigoCliente = _catalog.FindClientCodeByRfc(invoice.RfcReceptor)
@@ -87,13 +98,16 @@ public sealed class BatchProcessor
                     });
                 }
 
-                _session.StampDocument(_concepto, invoice.Serie, folio, _csdPassword);
+                var stampLabel = $"stamp {_concepto}-{invoice.Serie}-{folio} rfc={invoice.RfcReceptor}";
+                RetryPolicy.Stamp(
+                    () => _session.StampDocument(_concepto, invoice.Serie, folio, _csdPassword),
+                    _logger,
+                    stampLabel);
                 var uuid = _session.GetDocumentUuid(_concepto, invoice.Serie, folio);
                 var xml  = _session.FetchTimbradoXml(_concepto, invoice.Serie, folio);
 
-                Directory.CreateDirectory(_timbradosDir);
-                var outPath = Path.Combine(_timbradosDir, $"{basename}_{invoice.Serie}{folio}.xml");
-                File.WriteAllText(outPath, xml);
+                var timbradoName = $"{basename}_{invoice.Serie}{folio}.xml";
+                await _storage.WriteOutboxTextAsync("timbrados", timbradoName, xml, ct);
 
                 results.Add(new InvoiceResult(
                     Index: index,
@@ -102,8 +116,11 @@ public sealed class BatchProcessor
                     Serie: invoice.Serie,
                     Folio: folio,
                     Uuid:  uuid,
-                    TimbradoPath: outPath,
+                    TimbradoPath: timbradoName,
                     Error: null));
+                _logger.LogInformation(
+                    "[batch] {basename}#{index} rfc={rfc} timbrada como {serie}{folio} uuid={uuid}",
+                    basename, index, invoice.RfcReceptor, invoice.Serie, folio, uuid);
             }
             catch (Exception ex)
             {
@@ -116,12 +133,15 @@ public sealed class BatchProcessor
                     Uuid:  null,
                     TimbradoPath: null,
                     Error: $"{ex.GetType().Name}: {ex.Message}"));
+                _logger.LogError(ex,
+                    "[batch] {basename}#{index} rfc={rfc} falló: {msg}",
+                    basename, index, invoice.RfcReceptor, ex.Message);
             }
             index++;
         }
 
         return new BatchReport(
-            SourceFile:  Path.GetFileName(sourcePath),
+            SourceFile:  filename,
             ProcessedAt: DateTime.UtcNow,
             Results:     results,
             AllOk:       results.All(r => r.Ok));
