@@ -190,13 +190,25 @@ async function handleProcessNotes(job: BillingJobRow): Promise<void> {
   // Resolver el voice_agent de Nala para cobrar el loop LLM al pool. Si no
   // encontramos Nala activa para esta org, degradamos silencioso — el loop
   // corre pero no cobra. Auditoría 2026-09-04.
-  const { data: nalaAgent } = await supabase
+  // Resolver Nala robusto: preferir role='facturacion' (canónico), fallback a
+  // ilike '%nala%' para orgs que no migraron aún. Auditoría 2026-09-04 ronda 2.
+  const { data: nalaAgentByRole } = await supabase
     .from('voice_agents')
     .select('id')
     .eq('portal_email', job.portal_email)
-    .ilike('agent_name', '%nala%')
+    .eq('role', 'facturacion')
     .eq('active', true)
     .maybeSingle();
+  const { data: nalaAgent } = nalaAgentByRole
+    ? { data: nalaAgentByRole }
+    : await supabase
+        .from('voice_agents')
+        .select('id')
+        .eq('portal_email', job.portal_email)
+        .ilike('agent_name', '%nala%')
+        .eq('active', true)
+        .limit(1)
+        .maybeSingle();
   const nalaAgentId = (nalaAgent?.id as string | null) ?? undefined;
 
   const employee = new BillingEmployee(adapter, {

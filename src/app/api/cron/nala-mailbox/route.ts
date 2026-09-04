@@ -74,6 +74,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
+  // Feature flag: scheduled en vercel.json pero NO procesa hasta que
+  // NALA_MAILBOX_ENABLED=true. Auditoría R2 detectó que este cron NO
+  // estaba scheduleado antes; ahora sí pero gated.
+  if (process.env.NALA_MAILBOX_ENABLED !== 'true') {
+    return NextResponse.json({ skipped: 'disabled', reason: 'NALA_MAILBOX_ENABLED != true' });
+  }
+
   const titanCfg = getTitanConfig();
   if (!titanCfg) {
     return NextResponse.json({ error: 'TITAN_APP_PASSWORD no configurado' }, { status: 500 });

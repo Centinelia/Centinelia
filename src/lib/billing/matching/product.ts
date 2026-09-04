@@ -109,16 +109,30 @@ export async function matchProduct(
  * - Si ya existe fila para (integration_id, alias_text): skip (idempotente).
  * - Si no existe: INSERT con sku, portal_email, integration_id, learned_from.
  */
+/**
+ * Sanitiza alias contra prompt injection (mismo patrón que learnClientAlias).
+ * Los aliases se pasan al vision LLM como contexto; sin sanitize, un alias
+ * con newlines + "IGNORE PREVIOUS..." podía desviar output. Auditoría R2.
+ */
+function sanitizeProductAlias(raw: string): string {
+  return raw
+    .replace(/[\p{Cc}\p{Cn}\p{Cs}]+/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase()
+    .slice(0, 200);
+}
+
 export async function learnProductAlias(
   sku: string,
   alias: string,
   ctx: OrgCtx,
   learnedFrom: string
 ): Promise<void> {
-  if (!alias || !alias.trim()) return;
+  const normalized = sanitizeProductAlias(alias);
+  if (!normalized) return;
 
   const supabase = createAdminClient();
-  const normalized = alias.trim().toLowerCase();
 
   const { data: existing } = await supabase
     .from('billing_product_aliases')

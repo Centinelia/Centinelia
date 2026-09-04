@@ -232,6 +232,18 @@
     {
       "path": "/api/cron/nala-writer-inbox",
       "schedule": "*/3 * * * *"
+    },
+    {
+      "path": "/api/cron/nala-mailbox",
+      "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/nala-billing-cycle",
+      "schedule": "0 15 * * *"
+    },
+    {
+      "path": "/api/cron/nala-payment-reminders",
+      "schedule": "0 16 * * *"
     }
   ]
 }
