@@ -17,7 +17,7 @@
 ;   - Al desinstalar, para y remueve el service.
 
 #define AppName        "Centinelia Billing Writer"
-#define AppVersion     "0.10.3"
+#define AppVersion     "0.10.4"
 #define AppPublisher   "Centinelia"
 #define ServiceName    "Centinelia.BillingWriter"
 #define ExeName        "BillingContpaqiWriter.exe"
@@ -49,7 +49,10 @@ Source: "..\dist\appsettings.json"; DestDir: "{commonappdata}\Centinelia\Billing
 Source: "register-service.cmd"; DestDir: "{app}"; Flags: ignoreversion
 
 [Dirs]
-Name: "{commonappdata}\Centinelia\BillingWriter\logs"; Permissions: users-modify
+; ProgramData\Centinelia\BillingWriter accesible por users (para que admin edite
+; appsettings.json sin elevar cada vez). logs/ se endurece post-install con
+; icacls a SYSTEM+Admin only (auditoría R2).
+Name: "{commonappdata}\Centinelia\BillingWriter\logs"
 Name: "{commonappdata}\Centinelia\BillingWriter"; Permissions: users-modify
 
 [Run]
@@ -68,6 +71,15 @@ Filename: "{app}\register-service.cmd"; \
 Filename: "icacls.exe"; \
     Parameters: """{commonappdata}\Centinelia\BillingWriter\appsettings.json"" /inheritance:r /grant:r ""SYSTEM:(F)"" ""Administrators:(F)"""; \
     Flags: runhidden; StatusMsg: "Endureciendo permisos de appsettings.json..."
+
+; Endurecer ACL del directorio logs/. Serilog captura excepciones que pueden
+; incluir connection strings SQL con password embebido, rutas a CSD, y
+; mensajes del SDK CONTPAQi con datos fiscales. Sin ACL restrictivo, cualquier
+; usuario local no-admin lee secretos operativos de logs rotados 14 días.
+; Auditoría R2 2026-09-04.
+Filename: "icacls.exe"; \
+    Parameters: """{commonappdata}\Centinelia\BillingWriter\logs"" /inheritance:r /grant:r ""SYSTEM:(F)"" ""Administrators:(F)"""; \
+    Flags: runhidden; StatusMsg: "Endureciendo permisos de logs/..."
 
 ; Solo arrancar automáticamente si el admin marca la casilla (default off para
 ; que primero edite appsettings.json).
