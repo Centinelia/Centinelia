@@ -39,8 +39,14 @@ if errorlevel 1 (
 echo Configurando descripción...
 sc description "%SERVICE_NAME%" "Procesa XMLs de importación depositados por Nala y timbra CFDIs contra CONTPAQi Comercial vía el SDK nativo."
 
-echo Configurando recovery (3 retries con backoff)...
-sc failure "%SERVICE_NAME%" reset= 86400 actions= restart/10000/restart/30000/restart/60000
+echo Configurando recovery (3 retries con backoff, luego log fatal)...
+REM reset=3600 → si el servicio corre 1h estable, contador se resetea.
+REM 3 retries con backoff creciente; después "run" ejecuta un comando que
+REM escribe al EventLog para que un monitor externo detecte el fatal.
+sc failure "%SERVICE_NAME%" reset= 3600 actions= restart/10000/restart/30000/restart/60000/run/60000
+sc failureflag "%SERVICE_NAME%" 1
+REM Comando a ejecutar tras el 4to fallo: escribe evento crítico al EventLog.
+sc failure "%SERVICE_NAME%" command= "eventcreate /L Application /T ERROR /SO Centinelia.BillingWriter /ID 9999 /D \"Centinelia BillingWriter falló 3 veces consecutivas. Requiere intervención manual.\""
 
 echo Verificando registro exitoso...
 sc qc "%SERVICE_NAME%" >nul
