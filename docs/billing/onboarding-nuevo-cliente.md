@@ -31,7 +31,8 @@ VALUES (
   '<portal_email_cliente>',
   'contpaqi',
   jsonb_build_object(
-    'dropbox_token', '<CIPHERTEXT_del_encrypt-dropbox-token.ts>',
+    'inbox_email', '<inbox_dedicado>@centinelia.mx',  -- dirección a la que el cliente reenvía notitas
+    'dropbox_token', '',  -- se llena en el paso 2.5 vía sync script
     'dropbox_base_path', '/Facturacion',  -- ajustar si el cliente usa otra ruta
     'storage_backend', 'dropbox',
     'fiscal', jsonb_build_object(
@@ -51,10 +52,36 @@ VALUES (
 );
 ```
 
-Para cifrar el token Dropbox:
+## Paso 2.5 — Cliente autoriza Dropbox App vía portal
+
+El cliente entra a `/portal/<token>?tab=organizacion#integraciones` y clickea
+"Conectar Dropbox". El callback OAuth guarda access_token + refresh_token en
+`integration_accounts`. Verificar:
+
+```sql
+SELECT portal_email, provider, status, expires_at
+FROM integration_accounts
+WHERE portal_email = '<portal_email_cliente>' AND provider = 'dropbox';
+```
+
+Después correr el sync script para puentear el token a
+`organization_integrations`:
+
+```powershell
+tsx scripts/sync-dropbox-token-to-billing.ts <portal_email_cliente>
+# → "[cliente] ok (refreshed)"
+```
+
+El cron `/api/cron/sync-dropbox-tokens` corre cada 3h y mantiene el token
+sincronizado automáticamente (los tokens Dropbox expiran cada ~4h). No hay
+que correr el script manual salvo debug.
+
+**Alternativa legacy** (si no se puede usar el portal OAuth): cifrar un
+token largo-vivo manualmente e insertarlo:
 
 ```powershell
 tsx scripts/encrypt-dropbox-token.ts <token_plaintext>
+# → pegar ciphertext en organization_integrations.config.dropbox_token
 ```
 
 ## Paso 3 — Registrar Nala como voice_agent
@@ -128,12 +155,15 @@ Enviar por gmail personal a `<portal_email_cliente>`:
 
 ## Paso 8 — Smoke E2E
 
-1. Mandar una notita de prueba desde `nazre20@gmail.com` (regla
-   `feedback-no-tests-a-clientes`).
+1. Desde `nazre20@gmail.com` (regla `feedback-no-tests-a-clientes`), enviar
+   un correo con foto de notita adjunta a la dirección `config.inbox_email`
+   configurada en el paso 2 (ej. `notitas-tortilleria@centinelia.mx`).
+   El endpoint `/api/billing/inbox` matchea al cliente por destinatario, no
+   por remitente, así que el smoke desde nazre20 es seguro.
 2. Verificar en `billing_activity_log` que aparecen:
-   - `invoice_submitted` (tool disparado).
+   - `invoice_submitted` (tool disparado por Nala).
    - `writer_cfdi_delivered` (cron writer inbox entregó CFDI).
-3. Verificar que el correo con CFDI llegó threaded al gmail personal.
+3. Verificar que el correo con CFDI llegó threaded a `nazre20@gmail.com`.
 
 ## Paso 9 — Activar cobro al pool (kill switch)
 
