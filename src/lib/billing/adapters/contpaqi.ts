@@ -80,20 +80,58 @@ function normalize(s: string): string {
 }
 
 /**
+ * Distancia de Levenshtein (número mínimo de inserciones, borrados o
+ * sustituciones para convertir a en b). Iterativo, memoria O(min(|a|,|b|)).
+ */
+function levenshtein(a: string, b: string): number {
+  if (a === b) return 0;
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
+  // Aseguramos a como el más corto para minimizar memoria.
+  if (a.length > b.length) { const tmp = a; a = b; b = tmp; }
+  const prev = new Array<number>(a.length + 1);
+  for (let i = 0; i <= a.length; i++) prev[i] = i;
+  for (let j = 1; j <= b.length; j++) {
+    let diagonal = prev[0];
+    prev[0] = j;
+    for (let i = 1; i <= a.length; i++) {
+      const above = prev[i];
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      prev[i] = Math.min(prev[i] + 1, prev[i - 1] + 1, diagonal + cost);
+      diagonal = above;
+    }
+  }
+  return prev[a.length];
+}
+
+/**
  * Calcula un score de similitud entre dos strings (0 a 1).
- * Orden de prioridad: igualdad exacta > inclusion de substring > palabras en comun.
+ * Combina 3 señales, se queda con la máxima:
+ *   1. Igualdad exacta → 1.
+ *   2. Inclusion de substring → 0.85.
+ *   3. Overlap de palabras (Jaccard sobre tokens) → 0-1.
+ *   4. Levenshtein normalizado (tolera typos de OCR) → 0-1.
+ * La #4 permite que "Bolaces Supremes" (mal-OCR) se acerque a "Ballas Superstore"
+ * en el catálogo. Suele quedar en rango 0.5-0.7 (bucket "consult"), lo cual
+ * fuerza confirmación humana + learnClientAlias para futuros matches auto.
  */
 function similarity(a: string, b: string): number {
   const na = normalize(a);
   const nb = normalize(b);
   if (na === nb) return 1;
   if (nb.includes(na) || na.includes(nb)) return 0.85;
+
   const wordsA = new Set(na.split(/\s+/).filter(Boolean));
   const wordsB = new Set(nb.split(/\s+/).filter(Boolean));
-  // Both empty strings have no tokens in common — score is 0 by definition.
-  if (wordsA.size === 0 && wordsB.size === 0) return 0;
-  const common = [...wordsA].filter((w) => wordsB.has(w)).length;
-  return common / Math.max(wordsA.size, wordsB.size);
+  const wordOverlap =
+    wordsA.size === 0 && wordsB.size === 0
+      ? 0
+      : [...wordsA].filter((w) => wordsB.has(w)).length / Math.max(wordsA.size, wordsB.size);
+
+  const maxLen = Math.max(na.length, nb.length);
+  const editSim = maxLen === 0 ? 0 : 1 - levenshtein(na, nb) / maxLen;
+
+  return Math.max(wordOverlap, editSim);
 }
 
 const MIN_SCORE = 0.3;

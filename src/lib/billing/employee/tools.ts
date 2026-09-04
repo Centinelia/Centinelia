@@ -20,7 +20,7 @@ import type { BillingAdapter } from '../adapter';
 import type { OrgCtx } from '../matching/client';
 import { matchClient, learnClientAlias } from '../matching/client';
 import { matchProduct, learnProductAlias } from '../matching/product';
-import { extractNoteFromImage } from '../vision/extract';
+import { extractNoteFromImage, extractRemisionesFromImage } from '../vision/extract';
 import { DropboxClient } from '../storage/dropbox';
 import { SnapshotStorage } from '../storage/snapshot';
 import { ExcelWorkbook } from '../excel/workbook';
@@ -67,8 +67,11 @@ export function buildEmployeeTools(toolsCtx: ToolsContext): EmployeeTool[] {
     {
       name: 'extract_note_from_image',
       description:
-        'Extrae datos estructurados de una foto de notita de venta manuscrita. ' +
-        'Devuelve cliente_texto, productos (nombre, cantidad, unidad), metodo_pago, fecha, monto_total y scores de confianza.',
+        'Extrae datos estructurados de UNA foto de notita de venta manuscrita. ' +
+        'Devuelve folio_remision, cliente_texto, productos (nombre, cantidad, unidad, precio_unitario), ' +
+        'metodo_pago, fecha, monto_total y scores de confianza. ' +
+        'ATENCIÓN: si la foto contiene múltiples remisiones apiladas, esta tool falla; ' +
+        'usar `extract_remisiones_from_image` en su lugar.',
       input_schema: {
         type: 'object',
         properties: {
@@ -86,6 +89,37 @@ export function buildEmployeeTools(toolsCtx: ToolsContext): EmployeeTool[] {
       handler: async (input: { image_base64: string; mime_type: string }) => {
         const buffer = Buffer.from(input.image_base64, 'base64');
         return extractNoteFromImage(buffer, input.mime_type);
+      },
+    },
+
+    // -------------------------------------------------------------------------
+    // extract_remisiones_from_image
+    // -------------------------------------------------------------------------
+    {
+      name: 'extract_remisiones_from_image',
+      description:
+        'Extrae TODAS las remisiones visibles en una foto (puede contener varias apiladas). ' +
+        'Devuelve un array `remisiones[]` donde cada elemento tiene folio_remision, cliente_texto, ' +
+        'productos (con precio_unitario), fecha, monto_total y confianza. ' +
+        'Es la tool preferida en producción cuando los repartidores mandan fotos de WhatsApp con ' +
+        'varias notitas en la misma imagen.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          image_base64: {
+            type: 'string',
+            description: 'Contenido de la imagen en base64.',
+          },
+          mime_type: {
+            type: 'string',
+            description: 'MIME type de la imagen. Ej: image/jpeg, image/png.',
+          },
+        },
+        required: ['image_base64', 'mime_type'],
+      },
+      handler: async (input: { image_base64: string; mime_type: string }) => {
+        const buffer = Buffer.from(input.image_base64, 'base64');
+        return extractRemisionesFromImage(buffer, input.mime_type);
       },
     },
 
