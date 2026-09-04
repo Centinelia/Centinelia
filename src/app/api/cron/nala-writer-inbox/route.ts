@@ -62,6 +62,15 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
+  // Feature flag: el cron está scheduleado en vercel.json pero NO procesa
+  // hasta que activemos NALA_WRITER_INBOX_ENABLED=true en el dashboard.
+  // El piloto tortillería (Beatriz) todavía no tiene su Dropbox App
+  // autorizada; sin ella no hay integración contpaqi que procesar. Flip
+  // este env var el día que conectemos con ella; no requiere redeploy.
+  if (process.env.NALA_WRITER_INBOX_ENABLED !== 'true') {
+    return NextResponse.json({ skipped: 'disabled', reason: 'NALA_WRITER_INBOX_ENABLED != true' });
+  }
+
   const supabase = createAdminClient();
 
   const { data: rows, error: dbErr } = await supabase
