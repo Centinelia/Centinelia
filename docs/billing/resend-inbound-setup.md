@@ -1,4 +1,17 @@
-# Setup Resend Inbound para pipeline Nala (BLOQUEADOR piloto Beatriz)
+# Setup Resend Inbound para pipeline Nala (LEGACY — no usar)
+
+> ⚠️ **DEPRECATED 2026-09-04.** Este path fue diseñado antes de que se
+> shippeara SMTP outbound + IMAP inbound per-empleado (`voice_agents.features.smtp_config`).
+> El endpoint `/api/billing/inbox` sigue funcional para casos donde Resend
+> Inbound sea la única opción, pero el path canónico para nuevos clientes
+> es el cron `/api/cron/agent-mailboxes` que polea el buzón real del
+> cliente vía IMAP. Ver `docs/billing/onboarding-nuevo-cliente.md` paso 3.
+>
+> Este doc se conserva por si alguna vez necesitamos onboardear un cliente
+> que NO puede darnos credenciales SMTP/IMAP (raro; requeriría que él
+> configure forwarding a una dirección nuestra).
+
+
 
 ## Diagnóstico (2026-09-04)
 

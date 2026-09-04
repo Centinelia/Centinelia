@@ -44,12 +44,29 @@ Pídele por WhatsApp/correo antes de agendar:
 - Alternativa si no puede entrar al portal: token largo-vivo de su
   Dropbox App Console (ver alternativa legacy en onboarding paso 2.5).
 
-### 5. Contactabilidad
+### 5. Credenciales correo del empleado (SMTP + IMAP)
 
-- WhatsApp / correo para follow-up del piloto.
-- Dirección `inbox_email` que quieres darle para reenvíos (ej.
-  `notitas-tortilleria@centinelia.mx`). Verificar antes que el MX/webhook
-  de Resend Inbound apunte al dominio y el endpoint responda.
+Nala usa una dirección real del cliente (ej.
+`facturacion@tortillasestrella.com.mx`). El cliente la crea en su
+webmail y comparte:
+
+- Correo/usuario completo.
+- Contraseña del webmail (NO app-password; usa la misma que él usa para
+  entrar al webmail).
+- Host SMTP (típicamente `mail.<dominio>` o `smtp.<dominio>`).
+- Host IMAP (típicamente el mismo; si Telmex/Prodigy usa `smtp.` no
+  `mail.` porque `mail.` no resuelve).
+- Puertos: SMTP 465 (SSL) / 587 (STARTTLS); IMAP 993.
+- Si es Telmex/Prodigy: marcar "Ignorar validación TLS" en el portal.
+
+El cliente puede probar directamente entrando al portal
+`/portal/<token>/configurar` → seleccionar a Nala → sección "Servidor
+SMTP del negocio" y llenar. El portal valida SMTP + IMAP en vivo antes
+de guardar.
+
+### 6. Contactabilidad
+
+- WhatsApp / correo personal para follow-up del piloto.
 
 ## Herramientas para la sesión
 

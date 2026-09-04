@@ -31,7 +31,6 @@ VALUES (
   '<portal_email_cliente>',
   'contpaqi',
   jsonb_build_object(
-    'inbox_email', '<inbox_dedicado>@centinelia.mx',  -- dirección a la que el cliente reenvía notitas
     'dropbox_token', '',  -- se llena en el paso 2.5 vía sync script
     'dropbox_base_path', '/Facturacion',  -- ajustar si el cliente usa otra ruta
     'storage_backend', 'dropbox',
@@ -84,7 +83,7 @@ tsx scripts/encrypt-dropbox-token.ts <token_plaintext>
 # → pegar ciphertext en organization_integrations.config.dropbox_token
 ```
 
-## Paso 3 — Registrar Nala como voice_agent
+## Paso 3 — Registrar Nala como voice_agent + conectar buzón cliente
 
 ```sql
 INSERT INTO voice_agents (portal_email, agent_name, role, active, features)
@@ -98,6 +97,27 @@ VALUES (
   )
 );
 ```
+
+Después, el cliente entra al portal `/portal/<token>/configurar` →
+selecciona a Nala → "Servidor SMTP del negocio" → llena datos del correo
+que Nala usará como identidad (típicamente `facturacion@tudominio.com.mx`
+o similar en el dominio real del cliente):
+
+- **SMTP:** host, puerto (465 SSL o 587 STARTTLS), usuario/correo,
+  contraseña del webmail.
+- **IMAP inbound (marcar checkbox "Empleado también lee este buzón"):**
+  host IMAP (típicamente el mismo hostname o `imap.` en vez de `smtp.`),
+  puerto 993.
+- **Ignorar validación TLS**: activar si el hosting es
+  Telmex/Prodigy/CarrierZone (cert mismatch conocido).
+
+El portal hace prueba real de autenticación SMTP + IMAP antes de guardar
+y manda un correo de prueba. Sin IMAP marcado, Nala solo envía; con IMAP
+marcado, el cron `/api/cron/agent-mailboxes` polea su inbox cada 10 min y
+rutea los correos entrantes a `enqueueBillingEmail`.
+
+**Requiere** que el flag `AGENT_MAILBOXES_ENABLED=true` esté en Vercel
+prod (redeploy). Sin flag, IMAP se guarda pero no se polea.
 
 ## Paso 4 — Primera sync CONTPAQi (writer .NET)
 
@@ -156,14 +176,22 @@ Enviar por gmail personal a `<portal_email_cliente>`:
 ## Paso 8 — Smoke E2E
 
 1. Desde `nazre20@gmail.com` (regla `feedback-no-tests-a-clientes`), enviar
-   un correo con foto de notita adjunta a la dirección `config.inbox_email`
-   configurada en el paso 2 (ej. `notitas-tortilleria@centinelia.mx`).
-   El endpoint `/api/billing/inbox` matchea al cliente por destinatario, no
-   por remitente, así que el smoke desde nazre20 es seguro.
-2. Verificar en `billing_activity_log` que aparecen:
+   un correo con foto de notita adjunta a la dirección SMTP configurada
+   en el paso 3 (ej. `facturacion@tortillasestrella.com.mx`). El cron
+   `/api/cron/agent-mailboxes` (cada 10 min) polea el IMAP de Nala,
+   detecta el correo entrante y rutea a `enqueueBillingEmail`.
+2. Verificar en `billing_incoming_emails` que aparece la fila (contacto
+   directo, sin esperar procesamiento):
+   ```sql
+   SELECT id, from_address, to_address, attachment_count, created_at
+   FROM billing_incoming_emails
+   ORDER BY created_at DESC LIMIT 1;
+   ```
+3. Verificar en `billing_activity_log` que aparecen:
    - `invoice_submitted` (tool disparado por Nala).
    - `writer_cfdi_delivered` (cron writer inbox entregó CFDI).
-3. Verificar que el correo con CFDI llegó threaded a `nazre20@gmail.com`.
+4. Verificar que el correo con CFDI llegó threaded a `nazre20@gmail.com`
+   (Nala responde vía SMTP del cliente).
 
 ## Paso 9 — Activar cobro al pool (kill switch)
 

@@ -1,4 +1,6 @@
 import nodemailer from 'nodemailer';
+import { ImapFlow } from 'imapflow';
+import { simpleParser, type ParsedMail, type Attachment as MailAttachment } from 'mailparser';
 import type { Attachment, Connector, EmailConnector } from './types';
 
 export interface SmtpConfig {
@@ -16,6 +18,28 @@ export interface SmtpConfig {
    *  vía diálogo "confiar siempre"; nosotros lo exponemos como toggle.
    *  Default false = validación estricta. */
   tlsInsecure?: boolean;
+  /** IMAP inbound (Fase 2). Opcional: si está presente, el empleado puede
+   *  leer su inbox. Default: puerto 993, secure=true. */
+  imapHost?: string;
+  imapPort?: number;
+}
+
+export interface FetchedEmail {
+  uid:         number;
+  messageId:   string | null;
+  from:        string;
+  fromName:    string | null;
+  to:          string[];
+  subject:     string;
+  bodyText:    string;
+  bodyHtml:    string | null;
+  date:        Date | null;
+  attachments: Array<{
+    filename:    string;
+    contentType: string;
+    size:        number;
+    content:     Buffer;
+  }>;
 }
 
 function buildTransportOptions(cfg: SmtpConfig) {
@@ -88,6 +112,132 @@ export async function verifySmtpCreds(cfg: SmtpConfig): Promise<void> {
   }
 }
 
+// ---------------------------------------------------------------------------
+// IMAP inbound (Fase 2)
+// ---------------------------------------------------------------------------
+
+/** Extrae host + puerto IMAP de la config, con defaults 993 + secure. */
+function imapConn(cfg: SmtpConfig): { host: string; port: number } {
+  const host = cfg.imapHost ?? cfg.host;
+  const port = cfg.imapPort ?? 993;
+  return { host, port };
+}
+
+async function connectImap(cfg: SmtpConfig): Promise<ImapFlow> {
+  const { host, port } = imapConn(cfg);
+  const client = new ImapFlow({
+    host, port,
+    secure: true,
+    auth:   { user: cfg.username, pass: cfg.password },
+    logger: false,
+    tls:    cfg.tlsInsecure ? { rejectUnauthorized: false } : undefined,
+  });
+  await client.connect();
+  return client;
+}
+
+/**
+ * Verifica creds IMAP conectando + auth sin hacer fetch. Análogo a
+ * verifySmtpCreds. Se usa desde el endpoint /test antes de guardar.
+ */
+export async function verifyImapCreds(cfg: SmtpConfig): Promise<void> {
+  const client = await connectImap(cfg);
+  try {
+    // conectar + auth ya lo hace connectImap; abrir INBOX confirma acceso
+    const lock = await client.getMailboxLock('INBOX');
+    lock.release();
+  } finally {
+    await client.logout().catch(() => { /* ignore */ });
+  }
+}
+
+function extractFromEmail(parsed: ParsedMail): { addr: string; name: string | null } {
+  const from = parsed.from?.value?.[0];
+  return { addr: from?.address ?? '', name: from?.name?.trim() || null };
+}
+
+function extractToAddresses(parsed: ParsedMail): string[] {
+  const to = parsed.to;
+  if (!to) return [];
+  const arr = Array.isArray(to) ? to : [to];
+  return arr.flatMap(t => (t.value ?? []).map(v => v.address).filter(Boolean) as string[]);
+}
+
+function mapAttachments(atts: MailAttachment[]): FetchedEmail['attachments'] {
+  return atts
+    .filter(a => a.content && Buffer.isBuffer(a.content))
+    .map(a => ({
+      filename:    a.filename ?? 'attachment',
+      contentType: a.contentType ?? 'application/octet-stream',
+      size:        a.size ?? a.content.length,
+      content:     a.content,
+    }));
+}
+
+/**
+ * Trae los N emails más recientes NO leídos (\Seen=false) del INBOX. NO los
+ * marca como leídos — el caller decide después de procesar exitosamente.
+ * Espejo de fetchUnreadFromTitan; adaptado para SmtpConfig per-empleado.
+ */
+export async function fetchUnreadFromImap(
+  cfg: SmtpConfig, opts: { limit?: number } = {},
+): Promise<FetchedEmail[]> {
+  const client = await connectImap(cfg);
+  const results: FetchedEmail[] = [];
+  const limit = opts.limit ?? 20;
+
+  try {
+    const lock = await client.getMailboxLock('INBOX');
+    try {
+      const uids = await client.search({ seen: false }, { uid: true });
+      if (!uids || uids.length === 0) return [];
+
+      const targetUids = uids.slice(-limit);
+      for await (const msg of client.fetch(targetUids, { source: true, envelope: true, uid: true }, { uid: true })) {
+        if (!msg.source) continue;
+        const parsed = await simpleParser(msg.source);
+        const { addr, name } = extractFromEmail(parsed);
+        results.push({
+          uid:         msg.uid,
+          messageId:   parsed.messageId ?? null,
+          from:        addr,
+          fromName:    name,
+          to:          extractToAddresses(parsed),
+          subject:     parsed.subject ?? '(sin asunto)',
+          bodyText:    parsed.text ?? '',
+          bodyHtml:    parsed.html || null,
+          date:        parsed.date ?? null,
+          attachments: mapAttachments(parsed.attachments ?? []),
+        });
+      }
+    } finally {
+      lock.release();
+    }
+  } finally {
+    await client.logout().catch(() => { /* ignore */ });
+  }
+
+  return results;
+}
+
+/**
+ * Marca UIDs como leídos (\Seen) en INBOX. Espejo de markSeenInTitan.
+ */
+export async function markSeenInImap(cfg: SmtpConfig, uids: number[]): Promise<void> {
+  if (uids.length === 0) return;
+  const client = await connectImap(cfg);
+  try {
+    const lock = await client.getMailboxLock('INBOX');
+    try {
+      await client.messageFlagsAdd(uids, ['\\Seen'], { uid: true });
+    } finally {
+      lock.release();
+    }
+  } finally {
+    await client.logout().catch(() => { /* ignore */ });
+  }
+}
+
 /**
  * Construye un EmailConnector minimal-outbound: solo `send()` funciona; el
  * resto (fetchUnread, sendReply, markRead) throw. Suficiente para MVP porque
@@ -101,14 +251,44 @@ export function createImapSmtpConnector(cfg: SmtpConfig): Connector {
       // Ignoramos `_fromEmail` — SMTP no permite spoof. Siempre sale desde cfg.username.
       await sendViaSmtp(cfg, to, subject, body, attachment, htmlBody);
     },
-    async fetchUnread() {
-      throw new Error('IMAP fetchUnread aún no implementado (Fase 2)');
+    async fetchUnread(_since, _folder) {
+      // Sólo devolvemos correos si el empleado tiene IMAP configurado.
+      // `_since` se ignora — IMAP unread ya filtra por \Seen=false.
+      // `_folder` se ignora — solo INBOX por ahora.
+      if (!cfg.imapHost && !cfg.host) return [];
+      const emails = await fetchUnreadFromImap(cfg);
+      return emails.map(e => ({
+        id:       String(e.uid),
+        threadId: e.messageId ?? String(e.uid),
+        from:     e.from,
+        subject:  e.subject,
+        body:     e.bodyText,
+      }));
     },
-    async sendReply() {
-      throw new Error('IMAP sendReply aún no implementado (Fase 2)');
+    async sendReply(params) {
+      const from = cfg.fromDisplay ? `${cfg.fromDisplay} <${cfg.username}>` : cfg.username;
+      const transporter = nodemailer.createTransport(buildTransportOptions(cfg));
+      const subj = params.subject ?? '';
+      try {
+        await transporter.sendMail({
+          from,
+          to:         params.to ?? cfg.username,
+          subject:    subj.toLowerCase().startsWith('re:') ? subj : `Re: ${subj}`,
+          text:       params.body,
+          inReplyTo:  params.threadId ?? params.messageId,
+          references: params.threadId ?? params.messageId,
+          attachments: params.attachments?.map(a => ({
+            filename: a.filename, content: a.content, contentType: a.mimeType,
+          })),
+        });
+      } finally {
+        transporter.close();
+      }
     },
-    async markRead() {
-      throw new Error('IMAP markRead aún no implementado (Fase 2)');
+    async markRead(messageId) {
+      const uid = Number.parseInt(messageId, 10);
+      if (!Number.isFinite(uid)) return;
+      await markSeenInImap(cfg, [uid]);
     },
   };
 

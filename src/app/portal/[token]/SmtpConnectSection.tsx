@@ -12,6 +12,9 @@ interface Config {
   from_display: string | null;
   status:       'active' | 'error' | null;
   tls_insecure: boolean;
+  imap_host:    string | null;
+  imap_port:    number | null;
+  imap_configured: boolean;
 }
 
 /**
@@ -35,6 +38,9 @@ export default function SmtpConnectSection({ token, agentId }: { token: string; 
   const [password,     setPassword]     = useState('');
   const [fromDisplay,  setFromDisplay]  = useState('');
   const [tlsInsecure,  setTlsInsecure]  = useState(false);
+  const [enableImap,   setEnableImap]   = useState(false);
+  const [imapHost,     setImapHost]     = useState('');
+  const [imapPort,     setImapPort]     = useState('993');
 
   async function load() {
     setLoading(true);
@@ -49,6 +55,9 @@ export default function SmtpConnectSection({ token, agentId }: { token: string; 
         setUsername((data.username as string) ?? '');
         setFromDisplay((data.from_display as string) ?? '');
         setTlsInsecure(data.tls_insecure === true);
+        setEnableImap(data.imap_configured === true);
+        setImapHost((data.imap_host as string) ?? '');
+        setImapPort(String(data.imap_port ?? 993));
       }
     } catch {
       setError('No pude cargar la configuración actual.');
@@ -69,6 +78,7 @@ export default function SmtpConnectSection({ token, agentId }: { token: string; 
           from_display: fromDisplay || undefined,
           send_test: true,
           tls_insecure: tlsInsecure,
+          ...(enableImap && imapHost ? { imap_host: imapHost, imap_port: Number(imapPort) || 993 } : {}),
         }),
       });
       const data = await res.json();
@@ -115,9 +125,14 @@ export default function SmtpConnectSection({ token, agentId }: { token: string; 
           <div className="flex-1 min-w-0">
             <p className="text-[13px] font-semibold" style={{ color: 'var(--c-text-1)' }}>{cfg.username}</p>
             <p className="text-[11px] mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-              {cfg.host}:{cfg.port} · {cfg.secure ? 'SSL/TLS' : 'STARTTLS'}
+              SMTP {cfg.host}:{cfg.port} · {cfg.secure ? 'SSL/TLS' : 'STARTTLS'}
               {cfg.from_display ? ` · "${cfg.from_display}"` : ''}
             </p>
+            {cfg.imap_configured && (
+              <p className="text-[11px] mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+                IMAP {cfg.imap_host}:{cfg.imap_port} · empleado lee inbox
+              </p>
+            )}
           </div>
         </div>
         <div className="flex gap-2">
@@ -185,6 +200,29 @@ export default function SmtpConnectSection({ token, agentId }: { token: string; 
           </span>
         </span>
       </label>
+
+      <label className="flex items-start gap-2 text-[12px]" style={{ color: 'var(--c-text-2)' }}>
+        <input type="checkbox" checked={enableImap} onChange={e => setEnableImap(e.target.checked)} className="mt-0.5" />
+        <span>
+          Empleado también lee este buzón (IMAP inbound)
+          <span className="block text-[10px] mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+            Necesario para que el empleado responda correos entrantes (facturación, cotizaciones, etc.). Sin esto solo envía. Se poléa cada 10 minutos.
+          </span>
+        </span>
+      </label>
+
+      {enableImap && (
+        <div className="grid grid-cols-2 gap-2 pl-6">
+          <label className="flex flex-col gap-1">
+            <span className="text-[11px] font-medium" style={{ color: 'var(--c-text-3)' }}>Servidor IMAP</span>
+            <input value={imapHost} onChange={e => setImapHost(e.target.value)} placeholder="mail.tudominio.com.mx" className="px-2.5 py-2 rounded-md text-[12px]" style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text-1)' }} />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-[11px] font-medium" style={{ color: 'var(--c-text-3)' }}>Puerto IMAP</span>
+            <input value={imapPort} onChange={e => setImapPort(e.target.value)} placeholder="993" className="px-2.5 py-2 rounded-md text-[12px]" style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text-1)' }} />
+          </label>
+        </div>
+      )}
 
       <div className="flex gap-2">
         <button onClick={save} disabled={saving || !host || !username || !password || !port} className="flex items-center gap-2 text-[12px] px-4 py-2 rounded-md font-semibold" style={{ background: '#6C3BFF', color: '#fff', border: 'none', opacity: (saving || !host || !username || !password || !port) ? 0.5 : 1 }}>

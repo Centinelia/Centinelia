@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { resolveOrgFromToken } from '@/lib/portal/org-token';
 import { encrypt } from '@/lib/crypto';
-import { verifySmtpCreds, sendViaSmtp } from '@/lib/connectors/imap-smtp';
+import { verifySmtpCreds, verifyImapCreds, sendViaSmtp } from '@/lib/connectors/imap-smtp';
 
 interface Params { params: Promise<{ token: string }> }
 
@@ -18,6 +18,9 @@ interface PublicConfig {
   from_display: string | null;
   status:       'active' | 'error' | null;
   tls_insecure: boolean;
+  imap_host:    string | null;
+  imap_port:    number | null;
+  imap_configured: boolean;
 }
 
 interface SmtpConfigJson {
@@ -30,6 +33,8 @@ interface SmtpConfigJson {
   status:       'active' | 'error';
   updated_at:   string;
   tls_insecure: boolean;
+  imap_host?:   string;
+  imap_port?:   number;
 }
 
 async function requireAgent(req: NextRequest, token: string) {
@@ -75,6 +80,8 @@ function readSmtp(agent: { features: Record<string, unknown> | null }): SmtpConf
     status:       (smtp.status as 'active' | 'error' | undefined) ?? 'active',
     updated_at:   smtp.updated_at ?? new Date().toISOString(),
     tls_insecure: smtp.tls_insecure === true,
+    imap_host:    smtp.imap_host,
+    imap_port:    smtp.imap_port,
   };
 }
 
@@ -86,24 +93,30 @@ export async function GET(req: NextRequest, { params }: Params) {
   const cfg = readSmtp(gate.agent!);
   const publicCfg: PublicConfig = cfg
     ? {
-        configured:   true,
-        host:         cfg.host,
-        port:         cfg.port,
-        secure:       cfg.secure,
-        username:     cfg.username,
-        from_display: cfg.from_display,
-        status:       cfg.status,
-        tls_insecure: cfg.tls_insecure,
+        configured:      true,
+        host:            cfg.host,
+        port:            cfg.port,
+        secure:          cfg.secure,
+        username:        cfg.username,
+        from_display:    cfg.from_display,
+        status:          cfg.status,
+        tls_insecure:    cfg.tls_insecure,
+        imap_host:       cfg.imap_host ?? null,
+        imap_port:       cfg.imap_port ?? null,
+        imap_configured: Boolean(cfg.imap_host),
       }
     : {
-        configured:   false,
-        host:         null,
-        port:         null,
-        secure:       true,
-        username:     null,
-        from_display: null,
-        status:       null,
-        tls_insecure: false,
+        configured:      false,
+        host:            null,
+        port:            null,
+        secure:          true,
+        username:        null,
+        from_display:    null,
+        status:          null,
+        tls_insecure:    false,
+        imap_host:       null,
+        imap_port:       null,
+        imap_configured: false,
       };
   return NextResponse.json(publicCfg);
 }
@@ -117,6 +130,8 @@ interface SaveBody {
   from_display?: string;
   send_test?:   boolean;
   tls_insecure?: boolean;
+  imap_host?:   string;
+  imap_port?:   number;
 }
 
 export async function POST(req: NextRequest, { params }: Params) {
@@ -133,6 +148,8 @@ export async function POST(req: NextRequest, { params }: Params) {
   const fromDisplay = (body.from_display ?? '').trim() || undefined;
   const sendTest    = body.send_test !== false;
   const tlsInsecure = body.tls_insecure === true;
+  const imapHost    = (body.imap_host ?? '').trim() || undefined;
+  const imapPort    = body.imap_port ? Number(body.imap_port) : undefined;
 
   if (!host || !username || !password || !port) {
     return NextResponse.json({ error: 'Faltan campos: host, port, username, password son obligatorios.' }, { status: 400 });
@@ -147,6 +164,15 @@ export async function POST(req: NextRequest, { params }: Params) {
       ? ' — parece un problema del certificado TLS. Marca "Ignorar validación de certificado" e intenta de nuevo (común en Telmex/Prodigy hospedado por CarrierZone).'
       : '';
     return NextResponse.json({ error: `No pude autenticar contra ${host}:${port}. ${msg}${hint}` }, { status: 400 });
+  }
+
+  if (imapHost) {
+    try {
+      await verifyImapCreds({ host, port, secure, username, password, tlsInsecure, imapHost, imapPort });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return NextResponse.json({ error: `SMTP OK pero IMAP falló contra ${imapHost}:${imapPort ?? 993}. ${msg}` }, { status: 400 });
+    }
   }
 
   if (sendTest) {
@@ -170,6 +196,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     status:       'active',
     updated_at:   new Date().toISOString(),
     tls_insecure: tlsInsecure,
+    ...(imapHost ? { imap_host: imapHost, imap_port: imapPort ?? 993 } : {}),
   };
   const nextFeatures = { ...(gate.agent!.features ?? {}), smtp_config: nextSmtp };
   const { error } = await gate.supabase!
