@@ -35,6 +35,8 @@ import { decryptDropboxToken } from '@/lib/billing/adapters';
 import { sendBillingMail, replyToInboundEmail } from '@/lib/billing/mail/send';
 import { consumeErrores, consumeTimbrados, type ConsumeResult } from '@/lib/billing/writer-consumer/consume';
 import { correlateBasenameToEmail } from '@/lib/billing/writer-consumer/correlate';
+import { logWriterAudit } from '@/lib/billing/writer-consumer/audit';
+import { bumpAttempt, markExhausted, MAX_PAC_RETRY_ATTEMPTS } from '@/lib/billing/writer-consumer/retry-state';
 
 export const dynamic     = 'force-dynamic';
 export const maxDuration = 300;
@@ -89,6 +91,15 @@ export async function GET(req: Request) {
     return NextResponse.json({ processed: 0, results: [] });
   }
 
+  // Warn temprano: si hay integrations pero no hay dónde escalar,
+  // los errores fatales (invalidData / catalogAccess) desaparecen silenciosos.
+  if (!process.env.BILLING_ESCALATION_EMAIL) {
+    console.warn(
+      '[nala-writer-inbox] BILLING_ESCALATION_EMAIL no configurado.',
+      'Los errores de kind invalidData/catalogAccess/other quedarán solo en logs (no se envían por correo).',
+    );
+  }
+
   const results: PerOrgResult[] = [];
   for (const integ of integrations) {
     try {
@@ -128,6 +139,8 @@ async function processIntegration(
     );
   };
 
+  const auditBase = { supabase, portalEmail: integ.portal_email };
+
   const erroresResult = await consumeErrores({
     dropbox, basePath, log,
     replyToClient: async (basename, action) => {
@@ -135,6 +148,10 @@ async function processIntegration(
       if (!corr) {
         log('warn', 'sin correlación email_id, no puedo replicar al cliente. Escalo en su lugar.', {
           basename, kind: action.kind,
+        });
+        await logWriterAudit('writer_correlation_missing', {
+          ...auditBase, basename, severity: 'warning',
+          context: { kind: action.kind, humanMessage: action.humanMessage },
         });
         if (escalation) {
           await sendBillingMail({
@@ -147,17 +164,66 @@ async function processIntegration(
         return;
       }
       await replyToInboundEmail(corr.emailId, wrapClientReplyHtml(action.humanMessage, action.kind));
-    },
-    redepositPending: async (basename, action) => {
-      // Re-depositar el XML original de errores/consumidos/ back to pendientes/.
-      // No lo movemos aquí — el content-hash de Nala hace que sea idempotente:
-      // si Nala vuelve a mandar el mismo XML, el writer lo procesará otra vez.
-      // Por ahora solo dejamos log; retry lo dispara Nala en el siguiente ciclo.
-      log('info', 'kind=pacError, marcado para retry en siguiente ciclo de Nala', {
-        basename, reason: action.reason,
+      await logWriterAudit('writer_reply_sent', {
+        ...auditBase, basename,
+        context: { kind: action.kind, emailId: corr.emailId, humanMessage: action.humanMessage },
       });
     },
+    redepositPending: async (basename, action) => {
+      // pacError: incrementar attempts en writer_pac_retry_state y decidir.
+      // Nala vuelve a mandar el mismo XML (content-hash), y CONTPAQi lo
+      // procesa como si nunca lo hubiera visto (idempotencia por serie+folio
+      // solo si se afectó; los pacError NO afectan el documento).
+      const state = await bumpAttempt(supabase, basename, integ.portal_email, action.reason);
+      if (!state) {
+        log('error', 'no pude actualizar writer_pac_retry_state, escalando por seguridad', { basename });
+        if (escalation) {
+          await sendBillingMail({
+            to: escalation,
+            subject: `[Writer inbox] retry-state DB error para ${basename}`,
+            body: `<p>No pude registrar attempt del pacError. Revisar migración y BD.</p>
+                   <p><b>Reason:</b> ${escapeHtml(action.reason)}</p>`,
+          });
+        }
+        return;
+      }
+      if (state.attempts <= MAX_PAC_RETRY_ATTEMPTS) {
+        log('info', `pacError attempt ${state.attempts}/${MAX_PAC_RETRY_ATTEMPTS}, marcado para retry`, {
+          basename, reason: action.reason,
+        });
+        await logWriterAudit('writer_pac_retry_marked', {
+          ...auditBase, basename,
+          context: { attempts: state.attempts, cap: MAX_PAC_RETRY_ATTEMPTS, reason: action.reason },
+        });
+        // TODO Day 11: mover XML de errores/consumidos/ back a pendientes/
+        // via dropbox.moveFile. Por ahora Nala lo re-envía por su lado si detecta
+        // la row en writer_pac_retry_state con attempts < cap.
+      } else {
+        await markExhausted(supabase, basename);
+        log('error', 'pacError retries exhausted, escalando', { basename, attempts: state.attempts });
+        await logWriterAudit('writer_pac_retry_exhausted', {
+          ...auditBase, basename, severity: 'error',
+          context: { attempts: state.attempts, cap: MAX_PAC_RETRY_ATTEMPTS, reason: action.reason },
+        });
+        if (escalation) {
+          await sendBillingMail({
+            to: escalation,
+            subject: `[Writer inbox] pacError agotó ${MAX_PAC_RETRY_ATTEMPTS} intentos para ${basename}`,
+            body: `<p><b>Portal:</b> ${integ.portal_email}</p>
+                   <p><b>Basename:</b> ${basename}</p>
+                   <p><b>Attempts:</b> ${state.attempts}</p>
+                   <p><b>Último error del PAC:</b> ${escapeHtml(action.reason)}</p>
+                   <p>Revisa CSD vigente, saldo PAC y conectividad. Reset con:</p>
+                   <pre>UPDATE writer_pac_retry_state SET attempts=0, exhausted=false WHERE basename='${basename}';</pre>`,
+          });
+        }
+      }
+    },
     escalate: async (basename, action) => {
+      await logWriterAudit('writer_escalated', {
+        ...auditBase, basename, severity: 'error',
+        context: { kind: action.kind, humanMessage: action.humanMessage },
+      });
       if (!escalation) return;
       await sendBillingMail({
         to: escalation,
@@ -180,6 +246,10 @@ async function processIntegration(
         wrapCfdiDeliveryHtml(),
         [{ filename: `${basename}.xml`, content: xmlContent }],
       );
+      await logWriterAudit('writer_cfdi_delivered', {
+        ...auditBase, basename,
+        context: { emailId: corr.emailId, sizeBytes: xmlContent.length },
+      });
       return true;
     },
   });
