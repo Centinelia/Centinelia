@@ -37,6 +37,8 @@ import { consumeErrores, consumeTimbrados, type ConsumeResult } from '@/lib/bill
 import { correlateBasenameToEmail } from '@/lib/billing/writer-consumer/correlate';
 import { logWriterAudit } from '@/lib/billing/writer-consumer/audit';
 import { bumpAttempt, markExhausted, MAX_PAC_RETRY_ATTEMPTS } from '@/lib/billing/writer-consumer/retry-state';
+import { acquireInboxLock, releaseInboxLock } from '@/lib/billing/writer-consumer/lock';
+import { scanStuckTimbrados, STUCK_TIMBRADO_THRESHOLD_HOURS } from '@/lib/billing/writer-consumer/stuck-alert';
 
 export const dynamic     = 'force-dynamic';
 export const maxDuration = 300;
@@ -55,6 +57,7 @@ interface PerOrgResult {
   portal_email: string;
   errores?:     ConsumeResult;
   timbrados?:   ConsumeResult;
+  stuckAlerts?: { scanned: number; stuck: number; alerted: number };
   skipped?:     string;
   error?:       string;
 }
@@ -128,6 +131,14 @@ async function processIntegration(
     return { portal_email: integ.portal_email, skipped: 'no_token' };
   }
 
+  // Adquiere lock por org antes de tocar Dropbox. Si otro tick lo tiene,
+  // salteamos esta org en este tick (el lock expira en 4 min si el otro
+  // proceso muere).
+  const lock = await acquireInboxLock(supabase, integ.portal_email);
+  if (!lock) {
+    return { portal_email: integ.portal_email, skipped: 'locked_by_other_tick' };
+  }
+
   const dropbox    = new DropboxClient(token);
   const basePath   = `${base}/Importables_CONTPAQi`;
   const escalation = process.env.BILLING_ESCALATION_EMAIL;
@@ -140,6 +151,8 @@ async function processIntegration(
   };
 
   const auditBase = { supabase, portalEmail: integ.portal_email };
+
+  try {
 
   const erroresResult = await consumeErrores({
     dropbox, basePath, log,
@@ -188,16 +201,36 @@ async function processIntegration(
         return;
       }
       if (state.attempts <= MAX_PAC_RETRY_ATTEMPTS) {
-        log('info', `pacError attempt ${state.attempts}/${MAX_PAC_RETRY_ATTEMPTS}, marcado para retry`, {
+        log('info', `pacError attempt ${state.attempts}/${MAX_PAC_RETRY_ATTEMPTS}, redepositando en pendientes/`, {
           basename, reason: action.reason,
         });
+        // Auto-redeposit: mueve el XML original de errores/ a pendientes/
+        // para que el writer lo reprocese en su siguiente tick. Idempotencia
+        // en el writer + content-hash de Nala garantizan que no hay duplicados
+        // en CONTPAQi (pacError no afecta el documento, así que no hay serie/folio
+        // huérfano). Silenciamos "not found" porque otro pacError del mismo lote
+        // pudo haberlo movido antes en este mismo tick.
+        let redeposited = false;
+        try {
+          await dropbox.moveFile(
+            `${basePath}/errores/${basename}.xml`,
+            `${basePath}/pendientes/${basename}.xml`,
+          );
+          redeposited = true;
+        } catch (moveErr) {
+          const msg = moveErr instanceof Error ? moveErr.message : String(moveErr);
+          if (msg.includes('not_found') || msg.includes('path_not_found')) {
+            // Ya se movió (otro pacError del mismo lote) — OK.
+          } else {
+            log('warn', 'no pude redepositar el XML, quedará stuck hasta reset manual', {
+              basename, moveErr: msg,
+            });
+          }
+        }
         await logWriterAudit('writer_pac_retry_marked', {
           ...auditBase, basename,
-          context: { attempts: state.attempts, cap: MAX_PAC_RETRY_ATTEMPTS, reason: action.reason },
+          context: { attempts: state.attempts, cap: MAX_PAC_RETRY_ATTEMPTS, reason: action.reason, redeposited },
         });
-        // TODO Day 11: mover XML de errores/consumidos/ back a pendientes/
-        // via dropbox.moveFile. Por ahora Nala lo re-envía por su lado si detecta
-        // la row en writer_pac_retry_state con attempts < cap.
       } else {
         await markExhausted(supabase, basename);
         log('error', 'pacError retries exhausted, escalando', { basename, attempts: state.attempts });
@@ -254,11 +287,35 @@ async function processIntegration(
     },
   });
 
-  return {
-    portal_email: integ.portal_email,
-    errores:      erroresResult,
-    timbrados:    timbradosResult,
-  };
+  // Al final del ciclo, escanear timbrados stuck. Dedup por 7 días vía
+  // audit log — un mismo basename no genera más de un correo por semana.
+  const stuckResult = await scanStuckTimbrados({
+    supabase, dropbox, basePath,
+    portalEmail: integ.portal_email,
+    log,
+    sendAlert: async (basename, ageHours) => {
+      if (!escalation) return;
+      await sendBillingMail({
+        to: escalation,
+        subject: `[Writer inbox] CFDI timbrado sin entregar hace ${ageHours}h: ${basename}`,
+        body: `<p><b>Portal:</b> ${integ.portal_email}</p>
+               <p><b>Basename:</b> ${basename}</p>
+               <p><b>Antigüedad:</b> ${ageHours} horas (umbral ${STUCK_TIMBRADO_THRESHOLD_HOURS}h)</p>
+               <p>El CFDI está en Dropbox <code>timbrados/</code> pero no se ha podido correlacionar con un correo original para entregarlo al receptor. Verifica <code>billing_activity_log</code> con <code>action_type='invoice_submitted'</code> y ref similar al basename.</p>
+               <p>La alerta se re-enviará en máximo 7 días si el CFDI sigue ahí.</p>`,
+      });
+    },
+  });
+
+    return {
+      portal_email: integ.portal_email,
+      errores:      erroresResult,
+      timbrados:    timbradosResult,
+      stuckAlerts:  stuckResult,
+    };
+  } finally {
+    await releaseInboxLock(supabase, lock);
+  }
 }
 
 // ── HTML builders ─────────────────────────────────────────────────────────────

@@ -21,7 +21,8 @@ export type WriterAuditAction =
   | 'writer_pac_retry_marked'    // pacError detectado, redepositado
   | 'writer_pac_retry_exhausted' // se agotaron retries, escalate
   | 'writer_correlation_missing' // basename sin email_id (contra escalate)
-  | 'writer_report_unparseable'; // json malformado
+  | 'writer_report_unparseable'  // json malformado
+  | 'writer_stuck_alert';        // timbrado en carpeta > umbral sin entregar
 
 export interface WriterAuditContext {
   supabase:      SupabaseClient;
