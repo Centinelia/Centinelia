@@ -32,7 +32,7 @@ export function dropboxAuthUrl(state: string, callbackPath?: string): string {
 }
 
 export async function dropboxExchangeCode(code: string, callbackPath?: string): Promise<{
-  access_token: string; refresh_token: string | undefined; expires_in: number; email: string;
+  access_token: string; refresh_token: string; expires_in: number; email: string;
 }> {
   const res = await fetch(DROPBOX_TOKEN_URL, {
     method:  'POST',
@@ -47,8 +47,11 @@ export async function dropboxExchangeCode(code: string, callbackPath?: string): 
   });
   if (!res.ok) throw new Error(`Dropbox token exchange failed: ${await res.text()}`);
   const data = await res.json() as {
-    access_token: string; refresh_token: string; expires_in: number;
+    access_token: string; refresh_token?: string; expires_in: number;
   };
+  if (!data.refresh_token) {
+    throw new Error('Dropbox no devolvió refresh_token — verificar que dropboxAuthUrl pide token_access_type=offline');
+  }
   const email = await getAccountEmail(data.access_token);
   return {
     access_token:  data.access_token,
