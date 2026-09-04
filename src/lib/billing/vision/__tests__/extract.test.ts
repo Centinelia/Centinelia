@@ -28,13 +28,15 @@ import { extractNoteFromImage, extractRemisionesFromImage } from '../extract';
 const HAPPY_REMISION = {
   folio_remision: '12828',
   cliente_texto: 'Tortas Dona Mari',
+  cliente_matched_rfc: 'TDM040101ABC',
   fecha: '2026-09-03',
   productos: [
-    { nombre: 'tortilla maiz', cantidad: 5, unidad: 'kg', precio_unitario: 18 },
+    { nombre: 'tortilla maiz', cantidad: 5, unidad: 'kg', precio_unitario: 18, sku_matched: 'TOR-MAI-KG' },
   ],
   metodo_pago: 'transferencia',
   monto_total: 90,
-  confianza: { cliente: 0.95, productos: 0.9, metodo_pago: 0.85, global: 0.9 },
+  aritmetica_delta: 0,
+  confianza: { cliente: 0.95, productos: 0.9, metodo_pago: 0.85, aritmetica: 1.0, global: 0.9 },
   notas_raw: 'D. Mari 5kg tor maiz trans',
 };
 
@@ -118,9 +120,32 @@ describe('extractNoteFromImage (legacy single)', () => {
     expect(result.productos[0].cantidad).toBe(5);
     expect(result.productos[0].unidad).toBe('kg');
     expect(result.productos[0].precio_unitario).toBe(18);
+    expect(result.productos[0].sku_matched).toBe('TOR-MAI-KG');
     expect(result.folio_remision).toBe('12828');
+    expect(result.cliente_matched_rfc).toBe('TDM040101ABC');
     expect(result.metodo_pago).toBe('transferencia');
     expect(result.monto_total).toBe(90);
+    expect(result.aritmetica_delta).toBe(0);
+    expect(result.confianza.aritmetica).toBe(1.0);
+  });
+
+  it('acepta VisionContext y lo mete al mensaje del usuario', async () => {
+    mockCreate.mockResolvedValueOnce(makeResponse(JSON.stringify(SET_SINGLE)));
+    const buf = Buffer.from('fake-image');
+    const { extractNoteFromImage: fn } = await import('../extract');
+    const ctx = {
+      clientes: [{ rfc: 'AAA010101ABC', nombre: 'Cliente Uno' }],
+      productos: [{ sku: 'X-1', nombre: 'Producto Uno', precio_unitario: 10 }],
+      emisor: { rfc: 'EMI010101ABC' },
+    };
+    await fn(buf, 'image/jpeg', ctx);
+    const callArgs = mockCreate.mock.calls[0][0];
+    const userText = callArgs.messages[0].content.find((c: { type: string }) => c.type === 'text').text;
+    expect(userText).toContain('CONTEXTO DEL NEGOCIO');
+    expect(userText).toContain('AAA010101ABC');
+    expect(userText).toContain('Cliente Uno');
+    expect(userText).toContain('Producto Uno');
+    expect(userText).toContain('EMI010101ABC');
   });
 
   it('tira error si hay múltiples remisiones (evita bug silencioso)', async () => {

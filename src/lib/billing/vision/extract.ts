@@ -8,12 +8,18 @@
  *     `ExtractedNote` se preserva como alias de `ExtractedRemision` para
  *     que los callers que solo esperan 1 notita (portal /facturacion-emision)
  *     sigan funcionando via `flattenSingleRemision`.
+ *   - v3 (2026-09-04): acepta VisionContext con catálogo del negocio
+ *     (clientes conocidos + productos preimpresos con precios). El LLM
+ *     coteja el nombre manuscrito contra la lista de clientes y valida
+ *     que sum(qty × precio) ≈ total antes de devolver. Sin esto, facturar
+ *     al cliente equivocado o por monto equivocado eran riesgos reales
+ *     porque la lectura OCR era ambigua.
  *
  * Usa claude-sonnet-4-6 por default (configurable via BILLING_VISION_MODEL).
  */
 
 import Anthropic from '@anthropic-ai/sdk';
-import { EXTRACT_NOTE_SYSTEM, EXTRACT_NOTE_USER } from './prompt';
+import { EXTRACT_NOTE_SYSTEM, EXTRACT_NOTE_USER, buildContextBlock } from './prompt';
 
 const DEFAULT_MODEL = 'claude-sonnet-4-6';
 
@@ -25,20 +31,31 @@ export interface ExtractedProduct {
   unidad: string | null;
   /** Precio unitario preimpreso en la columna P.UNIT, o manuscrito si fue modificado. */
   precio_unitario: number | null;
+  /** SKU del catálogo si el LLM lo pudo resolver (v3+). */
+  sku_matched: string | null;
 }
 
 export interface ExtractedRemision {
   /** Número de folio grande arriba a la derecha (típicamente 4-5 dígitos). */
   folio_remision: string | null;
   cliente_texto: string | null;
+  /** RFC o código del cliente si el LLM lo pudo resolver contra el catálogo (v3+). */
+  cliente_matched_rfc: string | null;
   fecha: string | null;
   productos: ExtractedProduct[];
   metodo_pago: 'efectivo' | 'transferencia' | 'cheque' | 'tarjeta' | null;
   monto_total: number | null;
+  /**
+   * Diferencia (en pesos) entre sum(qty × precio) y monto_total, después de
+   * que el LLM ajustó las cantidades. Un valor cercano a 0 (± IVA) es señal
+   * de que las cantidades cuadran con el total escrito.
+   */
+  aritmetica_delta: number | null;
   confianza: {
     cliente: number;
     productos: number;
     metodo_pago: number;
+    aritmetica: number;
     global: number;
   };
   notas_raw: string;
@@ -53,22 +70,62 @@ export interface ExtractedNoteSet {
 /** Alias legacy — un caller que espera 1 notita puede seguir tipando `ExtractedNote`. */
 export type ExtractedNote = ExtractedRemision;
 
+// ── Vision context (catálogo del negocio) ────────────────────────────────────
+
+export interface VisionContextClient {
+  /** RFC del cliente (13 char persona física, 12 moral). Se usa para resolver el match. */
+  rfc: string;
+  /** Razón social o nombre comercial como aparecería escrito en la notita. */
+  nombre: string;
+  /** Nombres alternativos aprendidos previamente (billing_client_rules.aliases). */
+  aliases?: string[];
+}
+
+export interface VisionContextProduct {
+  sku: string;
+  /** Descripción como aparece preimpresa en la notita. */
+  nombre: string;
+  /** Precio unitario canónico del catálogo. */
+  precio_unitario: number;
+}
+
+export interface VisionContext {
+  clientes: VisionContextClient[];
+  productos: VisionContextProduct[];
+  /** Emisor (dueño del negocio); ayuda al LLM a NO confundirlo con un cliente. */
+  emisor?: { nombre?: string; rfc?: string };
+}
+
 // ── Vision call ──────────────────────────────────────────────────────────────
 
 /**
  * Extrae UNA o VARIAS remisiones de una foto. Si la foto solo tiene una
  * remisión, `remisiones` será array de 1.
+ *
+ * Cuando se pasa `context`, el LLM coteja el nombre manuscrito contra el
+ * catálogo de clientes (resolviendo a RFC si hay match razonable) y valida
+ * que sum(qty × precio_unitario) ≈ monto_total, ajustando cantidades
+ * ambiguas si es necesario.
  */
 export async function extractRemisionesFromImage(
   imageBuffer: Buffer,
   mimeType: string,
+  context?: VisionContext,
 ): Promise<ExtractedNoteSet> {
   const model = process.env.BILLING_VISION_MODEL ?? DEFAULT_MODEL;
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+  // Con contexto de catálogo el prompt crece; damos más presupuesto de output
+  // para que el LLM pueda incluir aritmética de reconciliación por remisión.
+  const maxTokens = context ? 8192 : 4096;
+
+  const userText = context
+    ? `${buildContextBlock(context)}\n\n${EXTRACT_NOTE_USER}`
+    : EXTRACT_NOTE_USER;
+
   const response = await client.messages.create({
     model,
-    max_tokens: 4096,
+    max_tokens: maxTokens,
     system: EXTRACT_NOTE_SYSTEM,
     messages: [
       {
@@ -84,7 +141,7 @@ export async function extractRemisionesFromImage(
           },
           {
             type: 'text',
-            text: EXTRACT_NOTE_USER,
+            text: userText,
           },
         ],
       },
@@ -115,8 +172,9 @@ export async function extractRemisionesFromImage(
 export async function extractNoteFromImage(
   imageBuffer: Buffer,
   mimeType: string,
+  context?: VisionContext,
 ): Promise<ExtractedRemision> {
-  const set = await extractRemisionesFromImage(imageBuffer, mimeType);
+  const set = await extractRemisionesFromImage(imageBuffer, mimeType, context);
   if (set.remisiones.length === 0) {
     throw new Error('Vision model devolvió 0 remisiones — imagen ilegible o no es una notita');
   }

@@ -167,6 +167,19 @@ export interface BillingAdapter {
   getProductBySKU(sku: string): Promise<BillingProduct | null>;
 
   /**
+   * Devuelve el catálogo completo de clientes cargado. Se usa como contexto
+   * al vision LLM para que coteje nombres manuscritos contra la lista real
+   * en lugar de adivinar. Los adapters pueden implementar cache interno.
+   */
+  listAllClients(): Promise<BillingClient[]>;
+
+  /**
+   * Devuelve el catálogo completo de productos cargado. Se usa como contexto
+   * al vision LLM para resolver SKU y validar precios/aritmética.
+   */
+  listAllProducts(): Promise<BillingProduct[]>;
+
+  /**
    * Envia un lote de facturas al sistema contable.
    * @param invoices Lista de facturas a generar.
    * @returns Resultado del lote con modo, referencia y errores por factura.
