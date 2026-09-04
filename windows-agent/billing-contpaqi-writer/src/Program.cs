@@ -1,7 +1,13 @@
 using Centinelia.BillingContpaqi.Writer.Sdk;
+using Centinelia.BillingContpaqi.Writer.Service;
 using Centinelia.BillingContpaqi.Writer.Watch;
 using Centinelia.BillingContpaqi.Writer.Watch.Storage;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Hosting.WindowsServices;
 using Microsoft.Extensions.Logging;
+using Serilog;
 
 namespace Centinelia.BillingContpaqi.Writer;
 
@@ -20,6 +26,10 @@ namespace Centinelia.BillingContpaqi.Writer;
 ///                                    por Nala en <c>--inbox</c>, escribe los XMLs
 ///                                    timbrados a <c>--outbox/timbrados/</c> y mueve el
 ///                                    original a <c>procesados/</c> o <c>errores/</c>.
+///   <c>--mode service</c>   Day 10: como watch pero configurado vía appsettings.json
+///                                    + env vars, envuelto en un Host que corre bajo el
+///                                    Windows Service Control Manager. El instalador MSI
+///                                    lo registra para arranque automático.
 ///
 /// Ejemplos:
 ///   BillingContpaqiWriter --mode session
@@ -39,6 +49,13 @@ public static class Program
     {
         var opts = ParseArgs(args);
         if (opts is null) return 2;
+
+        // Service mode tiene su propio ciclo de vida (Host + BackgroundService).
+        // No compartimos la sesión local que usan los modos atómicos.
+        if (opts.Mode == "service")
+        {
+            return RunAsService(args);
+        }
 
         Console.WriteLine($"[writer] BillingContpaqiWriter — modo: {opts.Mode}");
         Console.WriteLine($"[writer] SDK path: {opts.SdkPath}");
@@ -203,6 +220,74 @@ public static class Program
     {
         if (string.IsNullOrWhiteSpace(value))
             throw new ArgumentException($"Requiere flag {flag}");
+    }
+
+    // ------------------------------------------------------------------------
+    // --mode service: Windows Service host + Serilog rolling file logging
+    // ------------------------------------------------------------------------
+
+    /// <summary>
+    /// Arranca el writer como Host. Bajo el SCM se comporta como Windows
+    /// Service; corrido desde consola se comporta como app normal (útil para
+    /// dev). El Host lee <c>appsettings.json</c> del content root del EXE
+    /// y las env vars con prefijo <c>CENTINELIA_</c>.
+    /// </summary>
+    private static int RunAsService(string[] args)
+    {
+        // ContentRoot debe apuntar al folder del EXE (no al CWD del SCM, que
+        // es typicamente C:\Windows\System32). Sin esto, appsettings.json no
+        // se encuentra cuando corre como servicio.
+        var exeDir = AppContext.BaseDirectory;
+
+        var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
+        {
+            Args             = args,
+            ContentRootPath  = exeDir,
+            EnvironmentName  = Environments.Production,
+        });
+
+        builder.Configuration
+            .SetBasePath(exeDir)
+            .AddJsonFile("appsettings.json", optional: false)
+            .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
+            .AddEnvironmentVariables(prefix: "CENTINELIA_");
+
+        // Serilog leyendo del "Serilog" section de appsettings.json (sinks,
+        // niveles, rutas rolling).
+        Log.Logger = new LoggerConfiguration()
+            .ReadFrom.Configuration(builder.Configuration)
+            .Enrich.FromLogContext()
+            .CreateLogger();
+        builder.Logging.ClearProviders();
+        builder.Services.AddSerilog();
+
+        // UseWindowsService(): auto-detecta si corre bajo SCM. Sin SCM se
+        // comporta como app de consola (útil para dev con `writer.exe --mode service`).
+        builder.Services.AddWindowsService(opts =>
+        {
+            opts.ServiceName = "Centinelia.BillingWriter";
+        });
+
+        builder.Services
+            .AddOptions<WriterServiceOptions>()
+            .Bind(builder.Configuration.GetSection(WriterServiceOptions.SectionName));
+        builder.Services.AddHostedService<WriterBackgroundService>();
+
+        try
+        {
+            var host = builder.Build();
+            host.Run();
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            Log.Fatal(ex, "[service] Host terminó con error");
+            return 1;
+        }
+        finally
+        {
+            Log.CloseAndFlush();
+        }
     }
 
     /// <summary>
