@@ -1024,10 +1024,25 @@ export async function processInboxEmail(params: {
       const { createAdminClient: createAdminClient2 } = await import('@/lib/supabase/admin');
       const { data: orgContact } = await createAdminClient2()
         .from('organizations')
-        .select('business_email, brand_phone, business_website, brand_website, brand_address')
+        .select('business_email, brand_phone, business_website, brand_website, brand_address, business_description, industry')
         .eq('portal_email', portalEmail)
         .maybeSingle();
-      const orgC = orgContact as { business_email?: string | null; brand_phone?: string | null; business_website?: string | null; brand_website?: string | null; brand_address?: string | null } | null;
+      const orgC = orgContact as { business_email?: string | null; brand_phone?: string | null; business_website?: string | null; brand_website?: string | null; brand_address?: string | null; business_description?: string | null; industry?: string | null } | null;
+
+      // # Perfil del negocio — bloque prominente para pre-check de relevancia
+      // en la sección CLASIFICACIÓN. Sin esto el LLM tenía que inferir el giro
+      // desde el KB largo y muchas veces dejaba pasar correos claramente
+      // off-topic (viajes, gaming, bancos personales) como category=otro
+      // action_required=true. Ver [[org-level-email-deprecated]] contexto Pneuma
+      // 2026-09-04.
+      if (orgC?.business_description || orgC?.industry) {
+        const perfilLines = ['# Perfil del negocio'];
+        if (orgC.industry)              perfilLines.push(`- Industria: ${orgC.industry}`);
+        if (orgC.business_description)  perfilLines.push(`- Descripción: ${orgC.business_description}`);
+        perfilLines.push('- USA este perfil en el PRE-CHECK DE RELEVANCIA de la sección CLASIFICACIÓN.');
+        contextBlocks.push(perfilLines.join('\n'));
+      }
+
       const contactLines: string[] = [];
       const contactEmail = orgC?.business_email || portalEmail;
       const contactSite  = orgC?.business_website || orgC?.brand_website;
@@ -1126,10 +1141,30 @@ Regla de oro: PEDIR AYUDA es SIEMPRE mejor que INVENTAR. Un correo con "voy a ve
 
 === CLASIFICACIÓN ===
 
-Categorías: proveedor, cliente, urgente, factura, spam, otro.
+PRE-CHECK DE RELEVANCIA AL GIRO — HAZ ESTO ANTES DE ELEGIR CATEGORÍA:
+
+Mira el bloque "Perfil del negocio" y el KB "NEGOCIO" arriba. Pregúntate literalmente:
+"¿Este correo tiene que ver con lo que hace ${businessName}?"
+
+Si el remitente ofrece un producto/servicio de CONSUMO PERSONAL o ajeno al giro (ej. viajes, ropa, gaming, ofertas de tarjetas de crédito personales, promociones de bancos al titular como persona física, apps de entretenimiento, boletines de sectores no relacionados, tiendas de retail, aerolíneas, cruceros), es SPAM aunque no traiga cupón "20% off". La regla es: si el negocio NO consume ese producto/servicio para operar, es ruido.
+
+Si el remitente es una plataforma o proveedor que el negocio SÍ usa operacionalmente (Vercel, Stripe, GitHub, CONTPAQi, Drive, Google Workspace, Twilio, Vapi, Anthropic, banco corporativo del negocio, ISP, telco del negocio) con un recibo/FYI/alerta rutinaria, es NOTIFICACION con action_required=false. Solo pasa a "otro" o "factura" si trae algo accionable (factura nueva, error de servicio, cambio de plan).
+
+Ejemplos para calibrar (independientes del giro):
+- Aeroméxico "Vuela desde $7,102" a agencia de software → SPAM (el negocio no vende viajes ni los consume operacionalmente).
+- NVIDIA GeForce NOW anunciando juegos a agencia de software → SPAM (gaming personal, no operacional).
+- Klar difiere compras a agencia → SPAM (fintech de consumo personal, no proveedor).
+- Banco Plata "análisis semanal de portafolio" a agencia → SPAM (inversión personal, no del negocio).
+- Banamex "retiro con tu cuenta" a agencia → NOTIFICACION action_required=false (transaccional personal informativa).
+- Vercel "tu build falló" a agencia de software → OTRO/URGENTE action_required=true (operacional real).
+- Stripe "invoice paid" a agencia → NOTIFICACION action_required=false salvo que la agencia deba conciliar.
+
+Categorías: proveedor, cliente, urgente, factura, notificacion, spam, otro.
 - "urgente": emergencias, quejas graves, solicitudes de alta prioridad.
-- "factura": cualquier email con factura, cargo o solicitud de pago de un proveedor.
-- "otro": correos de trabajo legítimos que no encajan en las otras 4 categorías.
+- "factura": cualquier email con factura, cargo o solicitud de pago de un proveedor REAL del negocio.
+- "notificacion": recibos/FYI/alertas rutinarias de plataformas operacionales del negocio. action_required=false.
+- "spam": todo lo que falló el PRE-CHECK DE RELEVANCIA arriba, o publicidad genérica.
+- "otro": correos de trabajo legítimos que no encajan en las otras categorías.
 
 MARCA COMO 'spam' TODO CORREO QUE NO REQUIERE ATENCIÓN DEL EQUIPO:
 - Publicidad/promociones de tiendas, marcas, o servicios que NO son proveedores actuales
@@ -1137,6 +1172,7 @@ MARCA COMO 'spam' TODO CORREO QUE NO REQUIERE ATENCIÓN DEL EQUIPO:
 - Notificaciones automáticas de plataformas que NO son operacionales (LinkedIn "añade a...", Google Analytics reports, security alerts genéricas)
 - Ofertas comerciales frías (cold outreach de vendedores externos)
 - Contenido educativo/motivacional no solicitado
+- Cualquier correo que falla el PRE-CHECK DE RELEVANCIA de arriba
 
 Si dudas entre 'spam' y 'otro', piensa: "¿el equipo tiene que hacer algo con esto?".
 Si no, es spam. Mejor archivar de más que llenar la bandeja con ruido.

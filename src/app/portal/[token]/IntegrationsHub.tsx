@@ -583,7 +583,9 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
   /* ── summary caps ───────────────────────────────────────────────────── */
 
   const caps: CapabilitySummary[] = [
-    { id: 'correo',      label: 'Bandeja compartida', connected: status.emails.length > 0 },
+    // 'correo' (Bandeja compartida) removido 2026-09-04: la integración org-level
+    // se contraponía a los correos que cada empleado ya tiene conectados individualmente
+    // en su configurar. Ver [[org-level-email-deprecated]].
     { id: 'calendario',  label: 'Calendario',  connected: !!calViaEmail || !!status.cal?.calendar_type },
     { id: 'crm',      label: 'Conocimiento del cliente', connected: !!status.notion?.connected },
     ...(hasOpsAgent ? [{ id: 'mensajeria', label: 'Mensajería', connected: !!status.teamsEmail }] : []),
@@ -605,49 +607,8 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
   };
 
   const rows: CapRow[] = [
-    {
-      key: 'correo',
-      icon: <Mail size={16} style={{ color: '#6C3BFF' }} />,
-      connectedIcon: emailConn?.provider === 'gmail' ? RowIcons.gmail : RowIcons.outlook,
-      label: 'Bandeja compartida',
-      subtitle: emailSubtitle ?? 'Correos entrantes se rutean automáticamente al empleado que corresponde por rol',
-      connected: status.emails.length > 0,
-      children: (
-        <>
-          <div
-            className="mb-4 flex gap-2.5 rounded-lg px-3 py-2.5"
-            style={{ background: 'rgba(108,59,255,0.05)', border: '1px solid rgba(108,59,255,0.16)' }}
-          >
-            <Users size={13} style={{ color: '#6C3BFF', flexShrink: 0, marginTop: 2 }} />
-            <div className="text-[12px] leading-relaxed" style={{ color: '#6B6480' }}>
-              <p className="font-semibold" style={{ color: '#1A0A3B' }}>
-                Cómo funciona la bandeja compartida
-              </p>
-              <p className="mt-0.5" style={{ color: '#6B6480' }}>
-                Los correos que lleguen a esta dirección se distribuyen automáticamente entre tus empleados según su rol: <strong>ventas</strong> a tu vendedor, <strong>cobranza</strong> a tu cobrador, <strong>facturación</strong> a quien lleva cuentas, etc. Cada empleado responde desde su propio correo si tiene uno conectado; si no, sale desde esta bandeja.
-              </p>
-              <p className="mt-1.5" style={{ color: '#6B6480' }}>
-                Si el asignación automática no acierta, puedes reasignar cualquier correo desde la Bandeja de la Oficina.
-              </p>
-            </div>
-          </div>
-          <EmailOAuthSection
-            token={token}
-            workspacePanel={
-              emailConn?.provider === 'gmail' || !emailConn ? (
-                <GoogleWorkspaceCard
-                  token={token}
-                  connected={emailConn?.provider === 'gmail'}
-                  email={emailConn?.email ?? null}
-                />
-              ) : (
-                <WorkspaceCallout provider={emailConn.provider} />
-              )
-            }
-          />
-        </>
-      ),
-    },
+    // 'correo' (Bandeja compartida) removido 2026-09-04. Cada empleado conecta
+    // su propio correo desde su página de configurar. Ver [[org-level-email-deprecated]].
     {
       key: 'calendario',
       icon: <Calendar size={16} style={{ color: '#6C3BFF' }} />,

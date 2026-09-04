@@ -58,50 +58,28 @@ export async function GET(req: NextRequest) {
     const expiresAt       = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
     const encryptedRefresh = tokens.refresh_token ? encrypt(tokens.refresh_token) : null;
 
-    // ── 1. Per-agent (scope=agent) → email_integrations. Org-level NO escribe aquí. ──
-    // Antes escribíamos en ambos, lo que causaba que la conexión org apareciera como
-    // "correo del empleado" en la config del agente que casualmente inició el OAuth.
-    if (isAgentScope) {
-      await supabase.from('email_integrations').upsert({
-        agent_id:           agent.id,
-        provider,
-        email:              tokens.email,
-        access_token:       tokens.access_token,
-        refresh_token:      encryptedRefresh,
-        token_expires_at:   expiresAt,
-        last_sync_at:       null,
-        needs_reauth:       false,
-        reauth_notified_at: null,
-      }, { onConflict: 'agent_id,provider' });
+    // Solo per-agent (scope=agent) → email_integrations. Org-level fue deprecado
+    // 2026-09-04 (ver [[org-level-email-deprecated]]) — se contraponía a los
+    // correos que cada empleado ya tiene conectados individualmente. Si llega
+    // un OAuth sin agent scope, se rechaza en vez de crear row org-level.
+    if (!isAgentScope) {
+      console.warn('[email-callback] rechazado: OAuth org-level ya no está soportado. Usa la config per-empleado.');
+      return NextResponse.redirect(`${appUrl}/portal/${state}?tab=organizacion&email=org_level_deprecated#integraciones`);
     }
 
-    // ── 2. Org-level (IntegrationsHub) → integration_accounts. ──
-    if (!isAgentScope && agent.portal_email) {
-      const { data: existing } = await supabase
-        .from('integration_accounts')
-        .select('metadata')
-        .eq('portal_email', agent.portal_email)
-        .eq('provider', provider)
-        .maybeSingle();
+    await supabase.from('email_integrations').upsert({
+      agent_id:           agent.id,
+      provider,
+      email:              tokens.email,
+      access_token:       tokens.access_token,
+      refresh_token:      encryptedRefresh,
+      token_expires_at:   expiresAt,
+      last_sync_at:       null,
+      needs_reauth:       false,
+      reauth_notified_at: null,
+    }, { onConflict: 'agent_id,provider' });
 
-      const existingMeta = (existing?.metadata as Record<string, unknown>) ?? {};
-
-      await supabase.from('integration_accounts').upsert({
-        portal_email:  agent.portal_email,
-        provider,
-        capability:    'email',
-        account_label: tokens.email,
-        access_token:  tokens.access_token,
-        refresh_token: encryptedRefresh,
-        expires_at:    expiresAt,
-        status:        'active',
-        metadata:      { auto_reply: false, last_sync_at: null, ...existingMeta },
-      }, { onConflict: 'portal_email,provider' });
-    }
-
-    const successUrl = isAgentScope
-      ? `${appUrl}/portal/${state}/configurar?email=connected&provider=${provider}`
-      : `${appUrl}/portal/${state}?tab=organizacion&email=connected&provider=${provider}#integraciones`;
+    const successUrl = `${appUrl}/portal/${state}/configurar?email=connected&provider=${provider}`;
 
     const successRes = NextResponse.redirect(successUrl);
     clearOAuthState(successRes);
