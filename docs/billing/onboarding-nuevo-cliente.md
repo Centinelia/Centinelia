@@ -112,9 +112,15 @@ o similar en el dominio real del cliente):
   Telmex/Prodigy/CarrierZone (cert mismatch conocido).
 
 El portal hace prueba real de autenticación SMTP + IMAP antes de guardar
-y manda un correo de prueba. Sin IMAP marcado, Nala solo envía; con IMAP
-marcado, el cron `/api/cron/agent-mailboxes` polea su inbox cada 10 min y
-rutea los correos entrantes a `enqueueBillingEmail`.
+y manda un correo de prueba. Sin IMAP marcado, el empleado solo envía;
+con IMAP marcado, el cron `/api/cron/agent-mailboxes` polea su inbox
+cada 10 min. El routing depende del `role`:
+
+- `role='facturacion'` (Nala) → `enqueueBillingEmail` → billing pipeline
+  (writer .NET → timbrado → entrega CFDI threaded).
+- Cualquier otro role (Nelia atencion_cliente, otros) → runner genérico
+  `processInboxEmail` que carga prompt/tools per-agent y responde desde
+  su propio buzón SMTP.
 
 **Requiere** que el flag `AGENT_MAILBOXES_ENABLED=true` esté en Vercel
 prod (redeploy). Sin flag, IMAP se guarda pero no se polea.

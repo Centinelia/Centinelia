@@ -14,16 +14,21 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { mockFetchUnread, mockMarkSeen, mockEnqueue, mockDecrypt } = vi.hoisted(() => ({
-  mockFetchUnread: vi.fn(),
-  mockMarkSeen:    vi.fn(),
-  mockEnqueue:     vi.fn(),
-  mockDecrypt:     vi.fn(),
+const { mockFetchUnread, mockMarkSeen, mockEnqueue, mockDecrypt, mockProcessInbox } = vi.hoisted(() => ({
+  mockFetchUnread:  vi.fn(),
+  mockMarkSeen:     vi.fn(),
+  mockEnqueue:      vi.fn(),
+  mockDecrypt:      vi.fn(),
+  mockProcessInbox: vi.fn(),
 }));
 
 vi.mock('@/lib/connectors/imap-smtp', () => ({
-  fetchUnreadFromImap: mockFetchUnread,
-  markSeenInImap:      mockMarkSeen,
+  fetchUnreadFromImap:      mockFetchUnread,
+  markSeenInImap:           mockMarkSeen,
+  createImapSmtpConnector:  () => ({ email: { sendReply: vi.fn() } }),
+}));
+vi.mock('@/lib/ops/inbox-processor', () => ({
+  processInboxEmail: mockProcessInbox,
 }));
 vi.mock('@/lib/billing/employee/queue', () => ({
   enqueueBillingEmail: mockEnqueue,
@@ -37,11 +42,13 @@ vi.mock('@/lib/auth/cron-auth', () => ({
   },
 }));
 
-const { mockAgentsList, mockIntegrationLookup, mockEmailInsert, mockLockAcquire } = vi.hoisted(() => ({
+const { mockAgentsList, mockIntegrationLookup, mockEmailInsert, mockLockAcquire, mockAgentFull, mockOrgKB } = vi.hoisted(() => ({
   mockAgentsList:        vi.fn(),
   mockIntegrationLookup: vi.fn(),
   mockEmailInsert:       vi.fn(),
-  mockLockAcquire:       vi.fn(),  // devuelve { data, error } para el .maybeSingle() del UPDATE / INSERT
+  mockLockAcquire:       vi.fn(),
+  mockAgentFull:         vi.fn(),  // routeGenericAgent select extra fields
+  mockOrgKB:             vi.fn(),  // organizations knowledge_base
 }));
 
 vi.mock('@/lib/supabase/admin', () => ({
@@ -50,9 +57,21 @@ vi.mock('@/lib/supabase/admin', () => ({
       if (table === 'voice_agents') {
         return {
           select: () => ({
-            eq: () => ({
-              not: () => mockAgentsList(),
-            }),
+            eq: (col: string, _val: string) => {
+              // Listing del cron (por active) vs lookup por id de routeGenericAgent
+              if (col === 'active') {
+                return { not: () => mockAgentsList() };
+              }
+              // Lookup por id → maybeSingle
+              return { maybeSingle: mockAgentFull };
+            },
+          }),
+        };
+      }
+      if (table === 'organizations') {
+        return {
+          select: () => ({
+            eq: () => ({ maybeSingle: mockOrgKB }),
           }),
         };
       }
@@ -114,6 +133,16 @@ beforeEach(() => {
   mockEnqueue.mockResolvedValue({ jobId: 'job-1' });
   // Default: lock acquired successfully (UPDATE devuelve handle)
   mockLockAcquire.mockResolvedValue({ data: { agent_id: 'a', holder_id: 'h' }, error: null });
+  mockAgentFull.mockResolvedValue({
+    data: {
+      business_name: 'Tortillería X', client_email: 'owner@x.com',
+      portal_token: 'tok', role_knowledge_base: null, approval_email: null,
+      auto_reply: true, trust_stage: null,
+    },
+    error: null,
+  });
+  mockOrgKB.mockResolvedValue({ data: { knowledge_base: null }, error: null });
+  mockProcessInbox.mockResolvedValue(undefined);
 });
 
 function makeReq(auth = 'Bearer valid-secret') {
@@ -195,21 +224,44 @@ describe('GET /api/cron/agent-mailboxes', () => {
     expect(mockMarkSeen).toHaveBeenCalledWith(expect.any(Object), [42]);
   });
 
-  it('role no soportado → skip sin markSeen', async () => {
+  it('role atencion_cliente → rutea a processInboxEmail y marca seen', async () => {
     mockAgentsList.mockResolvedValue({
       data: [{ ...AGENT_FACT, role: 'atencion_cliente' }],
       error: null,
     });
     mockFetchUnread.mockResolvedValue([
-      { uid: 1, messageId: null, from: 'x@x.com', fromName: null, to: [], subject: '', bodyText: '', bodyHtml: null, date: null, attachments: [] },
+      { uid: 7, messageId: '<atn@x>', from: 'cliente@x.com', fromName: 'Cliente', to: ['nelia@ex.com'], subject: 'Consulta', bodyText: 'Hola, tengo una duda', bodyHtml: null, date: new Date(), attachments: [] },
     ]);
 
     const res = await GET(makeReq());
     const body = await res.json();
-    expect(body.results[0].skipped).toBe(1);
-    expect(body.results[0].markedSeen).toBe(0);
-    expect(mockEnqueue).not.toHaveBeenCalled();
-    expect(mockMarkSeen).not.toHaveBeenCalled();
+    expect(body.results[0].enqueued).toBe(1);
+    expect(body.results[0].markedSeen).toBe(1);
+    expect(mockProcessInbox).toHaveBeenCalledWith(expect.objectContaining({
+      agentId:     'agent-fact',
+      source:      'imap-smtp',
+      agentRole:   'atencion_cliente',
+      emailFrom:   'cliente@x.com',
+      businessName:'Tortillería X',
+    }));
+    expect(mockEnqueue).not.toHaveBeenCalled();  // no facturacion → no billing_jobs
+    expect(mockMarkSeen).toHaveBeenCalledWith(expect.any(Object), [7]);
+  });
+
+  it('role atencion_cliente con imagen → attachmentImages populated (base64)', async () => {
+    mockAgentsList.mockResolvedValue({
+      data: [{ ...AGENT_FACT, role: 'atencion_cliente' }],
+      error: null,
+    });
+    mockFetchUnread.mockResolvedValue([
+      { uid: 8, messageId: '<img@x>', from: 'c@x.com', fromName: null, to: ['nelia@ex.com'], subject: 'foto', bodyText: '', bodyHtml: null, date: null, attachments: [{ filename: 'p.jpg', contentType: 'image/jpeg', size: 100, content: Buffer.from('xx') }] },
+    ]);
+
+    const res = await GET(makeReq());
+    await res.json();
+    expect(mockProcessInbox).toHaveBeenCalledWith(expect.objectContaining({
+      attachmentImages: expect.arrayContaining([expect.objectContaining({ mimeType: 'image/jpeg' })]),
+    }));
   });
 
   it('correo sin attachments → kind=reply_missing_attachments', async () => {

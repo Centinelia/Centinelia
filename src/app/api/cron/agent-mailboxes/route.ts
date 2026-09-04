@@ -26,9 +26,10 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
 import { decrypt } from '@/lib/crypto';
-import { fetchUnreadFromImap, markSeenInImap, type SmtpConfig, type FetchedEmail } from '@/lib/connectors/imap-smtp';
+import { fetchUnreadFromImap, markSeenInImap, createImapSmtpConnector, type SmtpConfig, type FetchedEmail } from '@/lib/connectors/imap-smtp';
 import { enqueueBillingEmail } from '@/lib/billing/employee/queue';
 import { acquireAgentMailboxLock, releaseAgentMailboxLock } from '@/lib/agent-mailboxes/lock';
+import { processInboxEmail } from '@/lib/ops/inbox-processor';
 
 export const dynamic     = 'force-dynamic';
 export const maxDuration = 300;
@@ -77,6 +78,101 @@ function buildCfg(smtp: SmtpFeatures): SmtpConfig | null {
     imapHost:     smtp.imap_host,
     imapPort:     smtp.imap_port ?? 993,
   };
+}
+
+async function routeGenericAgent(
+  supabase: ReturnType<typeof createAdminClient>,
+  agent: AgentRow,
+  email: FetchedEmail,
+  cfg: SmtpConfig,
+): Promise<{ ok: boolean; error?: string }> {
+  // Campos adicionales para el runner genérico
+  const { data: agentFull, error: agentErr } = await supabase
+    .from('voice_agents')
+    .select('business_name, client_email, portal_token, role_knowledge_base, approval_email, auto_reply, trust_stage')
+    .eq('id', agent.id)
+    .maybeSingle<{
+      business_name:        string | null;
+      client_email:         string | null;
+      portal_token:         string | null;
+      role_knowledge_base:  string | null;
+      approval_email:       string | null;
+      auto_reply:           boolean | null;
+      trust_stage:          string | null;
+    }>();
+  if (agentErr || !agentFull) return { ok: false, error: `agent extra: ${agentErr?.message ?? 'not found'}` };
+  if (!agentFull.client_email || !agentFull.portal_token || !agentFull.business_name) {
+    return { ok: false, error: 'agent sin client_email/portal_token/business_name' };
+  }
+
+  // KB de la org (opcional)
+  let knowledgeBase: string | null = null;
+  if (agent.portal_email) {
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('knowledge_base')
+      .eq('portal_email', agent.portal_email)
+      .maybeSingle<{ knowledge_base: string | null }>();
+    knowledgeBase = org?.knowledge_base ?? null;
+  }
+
+  // Separar imágenes para vision multimodal (cap 4 por Claude) de otros
+  // attachments. Los no-imagen quedan como metas — el runner podrá listarlos
+  // pero descarga por URL no está implementada para IMAP (aceptable para
+  // atencion_cliente que raramente necesita leer PDFs entrantes).
+  const isVisionMime = (ct: string): ct is 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' =>
+    /^image\/(jpeg|png|gif|webp)$/i.test(ct);
+  const attachmentImages = email.attachments
+    .filter(a => isVisionMime(a.contentType))
+    .slice(0, 4)
+    .map(a => ({
+      name:     a.filename,
+      base64:   a.content.toString('base64'),
+      mimeType: a.contentType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
+    }));
+  const attachmentMetas = email.attachments.map(a => ({
+    name: a.filename,
+    url:  `imap:${email.uid}/${a.filename}`,
+    type: a.contentType,
+    size: a.size,
+  }));
+
+  const connector = createImapSmtpConnector(cfg);
+
+  try {
+    await processInboxEmail({
+      agentId:           agent.id,
+      source:            'imap-smtp',
+      rawMessageId:      String(email.uid),
+      threadId:          email.messageId ?? undefined,
+      emailFrom:         email.from,
+      emailSubject:      email.subject,
+      emailBody:         email.bodyText,
+      attachments:       attachmentMetas,
+      attachmentImages:  attachmentImages.length > 0 ? attachmentImages : undefined,
+      agentName:         agent.agent_name,
+      businessName:      agentFull.business_name,
+      knowledgeBase,
+      roleKB:            agentFull.role_knowledge_base,
+      agentRole:         agent.role,
+      ownerEmail:        agentFull.client_email,
+      portalToken:       agentFull.portal_token,
+      portalEmail:       agent.portal_email ?? undefined,
+      autoMode:          agentFull.auto_reply ? 'auto' : 'off',
+      approvalEmail:     agentFull.approval_email,
+      sendReplyFn: (body, attachments) => connector.email.sendReply({
+        messageId: String(email.uid),
+        threadId:  email.messageId ?? undefined,
+        to:        email.from,
+        subject:   email.subject,
+        body,
+        attachments,
+      }),
+    });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: `processInboxEmail: ${(e as Error).message}` };
+  }
 }
 
 async function routeFacturacion(
@@ -185,20 +281,23 @@ async function processAgent(
 
     const seenUids: number[] = [];
 
+    const roleLower = (agent.role ?? '').toLowerCase();
+
     for (const email of emails) {
-      if ((agent.role ?? '').toLowerCase() !== 'facturacion') {
-        // Otros roles no tienen pipeline aún — skip sin markSeen para no
-        // perder correos que después podamos rutear.
-        result.skipped++;
-        continue;
-      }
-      const routed = await routeFacturacion(supabase, agent, email);
+      // Routing: facturacion tiene pipeline especializado (billing_jobs +
+      // writer .NET). Cualquier otro role va al runner genérico
+      // processInboxEmail que carga prompt/tools per-agent y responde
+      // desde su propio buzón SMTP.
+      const routed = roleLower === 'facturacion'
+        ? await routeFacturacion(supabase, agent, email)
+        : await routeGenericAgent(supabase, agent, email, cfg);
+
       if (routed.ok) {
         result.enqueued++;
         seenUids.push(email.uid);
       } else {
         result.skipped++;
-        console.warn(`[agent-mailboxes] ${agent.agent_name} skip uid=${email.uid}: ${routed.error}`);
+        console.warn(`[agent-mailboxes] ${agent.agent_name} (${agent.role ?? 'sin-role'}) skip uid=${email.uid}: ${routed.error}`);
       }
     }
 
