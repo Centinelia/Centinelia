@@ -149,26 +149,26 @@ export async function emitirFacturaAuto(
   // pero el UPDATE local se perdió (timeout de red) → doble timbre real +
   // doble UUID SAT + doble cobro.
   //
-  // Layer 1: si YA hay stamp_uuid poblado, el timbre entró antes — devolver
+  // Layer 1: si YA hay uuid poblado, el timbre entró antes — devolver
   // éxito idempotente.
   // Layer 2: si stamp_started_at es reciente (< 5 min), otro proceso está en
   // vuelo o acaba de fallar sin completar rollback — abstenerse y dejar que
   // el próximo tick lo mire.
   const { data: currentStamp } = await supabase
     .from('factura_requests')
-    .select('stamp_uuid, stamp_started_at, status')
+    .select('uuid, stamp_started_at, status')
     .eq('id', requestId)
     .maybeSingle();
-  if (currentStamp?.stamp_uuid) {
+  if (currentStamp?.uuid) {
     // Ya se timbró. Retornar retrying (no failed) para que el caller no
     // marque como error terminal. Idempotencia protegida contra doble
     // llamada al PAC. Auditoría 2026-09-04.
     console.warn(
-      `[emitir-factura] guard idempotencia: requestId=${requestId} ya tiene stamp_uuid=${currentStamp.stamp_uuid}, skip re-timbre`,
+      `[emitir-factura] guard idempotencia: requestId=${requestId} ya tiene uuid=${currentStamp.uuid}, skip re-timbre`,
     );
     return {
       outcome: 'retrying',
-      error: `Ya timbrado previamente con UUID ${currentStamp.stamp_uuid} (idempotencia)`,
+      error: `Ya timbrado previamente con UUID ${currentStamp.uuid} (idempotencia)`,
     };
   }
   if (currentStamp?.stamp_started_at) {
@@ -177,7 +177,7 @@ export async function emitirFacturaAuto(
     if (ageMs < 5 * 60 * 1000) {
       return { outcome: 'retrying', error: `stamp_started_at reciente (${Math.round(ageMs / 1000)}s), evitando doble timbre` };
     }
-    // TODO: si stamp_started_at > 5min y stamp_uuid null, hacer GET al PAC
+    // TODO: si stamp_started_at > 5min y uuid null, hacer GET al PAC
     // consultando por request_id / serie+folio para verificar si sí timbró.
     // Sin esto queda ventana pequeña de doble timbre en caso extremo:
     // proceso original murió DESPUÉS de que el PAC facturó pero antes de
