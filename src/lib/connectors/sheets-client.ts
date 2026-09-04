@@ -12,8 +12,12 @@ export const SHEETS_SCOPE = 'https://www.googleapis.com/auth/spreadsheets';
  *
  * Throws 'sheets_no_conectado' when no active Google integration exists for the org.
  *
- * Scope enforcement lives at OAuth grant time (GMAIL_SCOPES); no runtime check
- * until integration_accounts.scopes is added.
+ * SCOPE WARNING (Fase 1, 2026-09-04): GMAIL_SCOPES ya no incluye spreadsheets.
+ * Orgs que reconecten correo post-Fase-1 obtendrán token sin scope Sheets y este
+ * helper fallará silenciosamente con 403. La solución es Fase 2: OAuth separado
+ * para Google Sheets (GOOGLE_SCOPES.sheets) y lookup por (agent_id, capability='sheets').
+ * Orgs con row antigua (scope amplio previo) siguen funcionando hasta que reconecten.
+ * No hay runtime check de scopes aún — integration_accounts.scopes no existe.
  *
  * Callers (tools) are responsible for catching errors and shaping them into
  * { ok: false, reason } responses — this helper throws, does not return ok/error.

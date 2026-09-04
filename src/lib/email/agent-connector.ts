@@ -12,6 +12,9 @@ export const NO_DRIVE_ERROR = `No tienes Google Drive ni OneDrive conectado. Con
  * 1. Legacy `email_integrations` per-agent (una row por agent_id).
  * 2. Fallback org-level `integration_accounts` con capability='email' — cualquier
  *    agente hereda el email conectado por su portal.
+ *    SCOPE WARNING (Fase 1, 2026-09-04): GMAIL_SCOPES ya no incluye drive/calendar.
+ *    Orgs que reconecten post-Fase-1 no tendrán access para Files/Calendar desde
+ *    este fallback. Fase 2 migra a integration_accounts per-agent por capability.
  * 3. Fallback secundario: Dropbox conectado standalone como file provider.
  *    Retorna Connector minimal con solo `.files` (sin email/contacts/calendar).
  *

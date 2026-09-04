@@ -561,11 +561,6 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
 
   /* ── computed subtitles ─────────────────────────────────────────────── */
 
-  const emailConn      = status.emails[0] ?? null;
-  const emailSubtitle  = emailConn
-    ? `${emailConn.provider === 'gmail' ? 'Google Workspace' : 'Microsoft 365'}${emailConn.email ? ` · ${emailConn.email}` : ''}`
-    : undefined;
-
   // Google/Outlook Calendar ya no se infieren del OAuth de Gmail — se conectan
   // per-empleado desde su ficha. Ver .brain/decisions/2026-09-04-integraciones-per-agent-vs-org-level.md
   const calSubtitle    = status.cal?.calendar_type
@@ -587,7 +582,7 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
     : undefined;
 
   const sfSubtitle     = status.sf?.connected
-    ? 'Solucion Factible · Timbrado CFDI 4.0'
+    ? 'Solución Factible · Timbrado CFDI 4.0'
     : 'Elige tu proveedor y emite CFDI 4.0 automáticamente';
 
   // Google Drive / OneDrive ya no se infieren del OAuth de Gmail — se conectan
@@ -646,7 +641,7 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
             token={token}
             text="Google Calendar y Outlook Calendar se configuran individualmente en la ficha de cada empleado."
           />
-          <IntegrationsSection token={token} plan={plan} emailConn={null} />
+          <IntegrationsSection token={token} plan={plan} />
         </div>
       ),
     },

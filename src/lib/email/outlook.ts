@@ -53,7 +53,7 @@ export async function microsoftExchangeCode(
   scopes: readonly string[],
   callbackPath: string,
 ): Promise<{
-  access_token: string; refresh_token: string; expires_in: number; email: string;
+  access_token: string; refresh_token: string | undefined; expires_in: number; email: string;
 }> {
   const { client_id, client_secret } = credentials();
   const res = await fetch(`${AUTH_BASE}/token`, {

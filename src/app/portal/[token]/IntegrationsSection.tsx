@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Calendar, CalendarCheck, Check, ChevronDown, ChevronUp, ExternalLink, Lock, MessageCircle, Save } from 'lucide-react';
+import { Calendar, Check, ChevronDown, ChevronUp, ExternalLink, Lock, MessageCircle, Save } from 'lucide-react';
 import type { Plan } from '@/types/agent';
 
 const PLAN_ORDER: Plan[] = ['pro'];
@@ -107,10 +107,9 @@ interface State {
 
 const SUPPORT_WA = (process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP ?? '').replace(/\D/g, '');
 
-export default function IntegrationsSection({ token, plan, emailConn }: {
+export default function IntegrationsSection({ token, plan }: {
   token:     string;
   plan:      Plan;
-  emailConn?: { provider: 'gmail' | 'outlook'; email: string } | null;
 }) {
   const [state, setState]       = useState<State>({
     calendar_type: null, calendar_event_type_id: '', calendar_link: '',
@@ -187,44 +186,8 @@ export default function IntegrationsSection({ token, plan, emailConn }: {
     </div>
   );
 
-  const calLabel = emailConn?.provider === 'gmail' ? 'Google Calendar' : 'Outlook Calendar';
-  const calColor = emailConn?.provider === 'gmail' ? '#4285F4' : '#0078D4';
-
   return (
     <div className="flex flex-col gap-3">
-
-      {/* ── OAuth direct connection banner ─────────────────────────────── */}
-      {emailConn && (
-        <div className="rounded-xl overflow-hidden"
-          style={{ border: `1px solid ${calColor}33`, background: `${calColor}08` }}>
-          <div className="flex items-center gap-3 px-4 py-3">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: '#fff', border: `1px solid ${calColor}33` }}>
-              <CalendarCheck size={16} style={{ color: calColor }} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>{calLabel}</p>
-                <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-                  style={{ background: 'rgba(34,197,94,0.12)', color: '#22c55e' }}>Activo</span>
-              </div>
-              <p className="text-xs mt-0.5 truncate" style={{ color: '#6B6480' }}>{emailConn.email}</p>
-            </div>
-          </div>
-          <div className="px-4 pb-3 pt-0">
-            <p className="text-xs p-3 rounded-lg" style={{ background: `${calColor}08`, color: '#6B6480', border: `1px solid ${calColor}20` }}>
-              Tu empleado puede consultar disponibilidad y crear eventos directamente en {calLabel}, sin necesidad de compartir links de reserva.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* ── Link-sharing options ────────────────────────────────────────── */}
-      {emailConn && (
-        <p className="text-xs px-1" style={{ color: '#9B8FB5' }}>
-          O activa un link de reserva externo como alternativa o fallback:
-        </p>
-      )}
 
       {INTEGRATIONS.map(intg => {
         const allowed    = canUse(plan, intg.requiredPlan);

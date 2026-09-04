@@ -59,7 +59,7 @@ export async function googleExchangeCode(
   code: string,
   callbackPath: string,
 ): Promise<{
-  access_token: string; refresh_token: string; expires_in: number; email: string;
+  access_token: string; refresh_token: string | undefined; expires_in: number; email: string;
 }> {
   const res = await fetch(GMAIL_TOKEN_URL, {
     method:  'POST',

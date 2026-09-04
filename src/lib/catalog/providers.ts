@@ -20,7 +20,12 @@ export async function resolveFilesConnector(portalEmail: string, provider: Catal
   }
 
   // Google/Microsoft: usan integration_accounts capability='email' con provider gmail/outlook.
-  // El email connector viene con files gratis (Drive/OneDrive).
+  // SCOPE WARNING (Fase 1, 2026-09-04): GMAIL_SCOPES ya no incluye drive.
+  // Orgs que reconecten correo post-Fase-1 obtendrán token sin scope Drive y los
+  // file searches del catálogo fallarán con 403. Fase 2 migra esto a un OAuth
+  // separado (GOOGLE_SCOPES.drive) por empleado. Por ahora funciona para orgs
+  // con tokens emitidos antes del 2026-09-04 (scope amplio).
+  // El email connector viene con files gratis (Drive/OneDrive) solo si el token lo tiene.
   const expectedEmailProvider = provider === 'google' ? 'gmail' : 'outlook';
   const { data: orgAcct } = await supabase
     .from('integration_accounts')

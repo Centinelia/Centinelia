@@ -62,9 +62,10 @@ describe('getSheetsClient', () => {
   });
 
   // NOTE: scope_missing check is NOT implemented because integration_accounts has no
-  // scopes column. Scope enforcement lives at OAuth grant time (GMAIL_SCOPES).
-  // If scope_missing runtime checks are needed in the future, add integration_accounts.scopes
-  // and re-enable this test case.
+  // scopes column. Scope enforcement happens at OAuth grant time.
+  // ATENCIÓN Fase 1 (2026-09-04): GMAIL_SCOPES ya no incluye spreadsheets — nuevas
+  // reconexiones de correo no obtienen acceso Sheets. La solución es Fase 2 (OAuth
+  // separado por capability). Agrega integration_accounts.scopes y reactiva este test.
 
   it('returns sheets client when account is properly configured', async () => {
     const row = {

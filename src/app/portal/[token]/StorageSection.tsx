@@ -3,23 +3,20 @@
 import { useState, useEffect, useCallback } from 'react';
 import { CheckCircle, Loader2, Trash2, BookOpen, RefreshCw, Cloud } from 'lucide-react';
 
-// Estado unificado de los 3 providers de almacenamiento en la nube.
-// Drive y OneDrive vienen "gratis" al conectar Gmail/Outlook (mismo OAuth).
-// Dropbox es OAuth separado.
+// Storage a nivel org: solo Dropbox. Google Drive y OneDrive se conectan
+// per-empleado en la ficha del meerkat (ver AgentAccountsSection kind='storage').
 
 interface ProviderState {
-  connected: boolean;
-  email?:    string;
-  via?:      string;  // 'gmail' | 'outlook' | 'dropbox' — qué OAuth lo activó
+  connected:    boolean;
+  email?:       string;
+  needs_reauth?: boolean;
 }
 
 interface StorageStatus {
-  google:    ProviderState;
-  microsoft: ProviderState;
-  dropbox:   ProviderState & { needs_reauth?: boolean };
+  dropbox: ProviderState;
 }
 
-type CatalogProvider = 'dropbox' | 'google' | 'microsoft';
+type CatalogProvider = 'dropbox';
 
 interface CatalogConfig {
   provider:    CatalogProvider;
@@ -38,21 +35,6 @@ const DBLogo = () => (
   </svg>
 );
 
-const DriveLogo = () => (
-  <svg width="18" height="18" viewBox="0 0 48 48" fill="none">
-    <path d="M6 38h36l-6-10H12L6 38z" fill="#FBBC04" />
-    <path d="M24 4h12L24 24H12L24 4z" fill="#4285F4" />
-    <path d="M4 38l8-14L24 4 12 24 6 38H4z" fill="#34A853" />
-  </svg>
-);
-
-const OneDriveLogo = () => (
-  <svg width="18" height="18" viewBox="0 0 48 48" fill="none">
-    <path d="M12 22a8 8 0 0116 0" fill="none" stroke="#0078D4" strokeWidth="3" />
-    <ellipse cx="24" cy="30" rx="20" ry="8" fill="#0078D4" />
-  </svg>
-);
-
 export default function StorageSection({ token }: { token: string }) {
   const [status, setStatus] = useState<StorageStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -61,7 +43,6 @@ export default function StorageSection({ token }: { token: string }) {
   // Catalog state
   const [catalogEnabled, setCatalogEnabled] = useState(false);
   const [config,         setConfig]         = useState<CatalogConfig | null>(null);
-  const [provider,       setProvider]       = useState<CatalogProvider>('dropbox');
   const [docPath,        setDocPath]        = useState('');
   const [headers,        setHeaders]        = useState<string[]>([]);
   const [skuCol,         setSkuCol]         = useState('');
@@ -74,23 +55,16 @@ export default function StorageSection({ token }: { token: string }) {
 
   const load = useCallback(async () => {
     try {
-      const [emailRes, dbxRes, catRes] = await Promise.all([
-        fetch(`/api/portal/${token}/email-oauth`).then(r => r.json()).catch(() => ({ integrations: [] })),
+      const [dbxRes, catRes] = await Promise.all([
         fetch(`/api/portal/${token}/dropbox-oauth`).then(r => r.json()).catch(() => ({ connected: false })),
         fetch(`/api/portal/${token}/catalog`).then(r => r.json()).catch(() => ({ enabled: false, config: null })),
       ]);
-      const emails = (emailRes.integrations ?? []) as Array<{ provider: string; email?: string }>;
-      const gmail   = emails.find(e => e.provider === 'gmail');
-      const outlook = emails.find(e => e.provider === 'outlook');
       setStatus({
-        google:    { connected: !!gmail,   email: gmail?.email,   via: 'gmail'   },
-        microsoft: { connected: !!outlook, email: outlook?.email, via: 'outlook' },
-        dropbox:   { connected: !!dbxRes.connected, email: dbxRes.email, via: 'dropbox', needs_reauth: dbxRes.needs_reauth },
+        dropbox: { connected: !!dbxRes.connected, email: dbxRes.email, needs_reauth: dbxRes.needs_reauth },
       });
       setCatalogEnabled(!!catRes.enabled);
       if (catRes.config) {
         setConfig(catRes.config);
-        setProvider(catRes.config.provider ?? 'dropbox');
         setDocPath(catRes.config.doc_path ?? '');
         setSkuCol(catRes.config.sku_column ?? '');
         setDescCol(catRes.config.desc_column ?? '');
@@ -119,11 +93,11 @@ export default function StorageSection({ token }: { token: string }) {
     setError(null);
     setMessage(null);
     if (!docPath.trim()) {
-      setError('Ingresa el path o ID del documento.');
+      setError('Ingresa la ruta del documento en Dropbox.');
       return;
     }
-    if (provider === 'dropbox' && !docPath.startsWith('/')) {
-      setError('Para Dropbox el path debe iniciar con / (ej. /Catalogo/codigos.xlsx)');
+    if (!docPath.startsWith('/')) {
+      setError('La ruta debe iniciar con / (ej. /Catalogo/codigos.xlsx)');
       return;
     }
     setLoadingHeaders(true);
@@ -131,7 +105,7 @@ export default function StorageSection({ token }: { token: string }) {
       const res = await fetch(`/api/portal/${token}/catalog/columns`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider, doc_path: docPath.trim() }),
+        body: JSON.stringify({ provider: 'dropbox', doc_path: docPath.trim() }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -161,7 +135,7 @@ export default function StorageSection({ token }: { token: string }) {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          provider,
+          provider: 'dropbox',
           doc_path: docPath.trim(),
           sku_column: skuCol,
           desc_column: descCol,
@@ -191,43 +165,23 @@ export default function StorageSection({ token }: { token: string }) {
     );
   }
 
-  const connectedProviders: Array<{ id: CatalogProvider; label: string }> = [];
-  if (status.dropbox.connected)   connectedProviders.push({ id: 'dropbox',   label: 'Dropbox' });
-  if (status.google.connected)    connectedProviders.push({ id: 'google',    label: 'Google Drive' });
-  if (status.microsoft.connected) connectedProviders.push({ id: 'microsoft', label: 'OneDrive' });
+  const dropboxConnected = status.dropbox.connected;
 
   return (
     <div className="flex flex-col gap-4">
 
-      {/* ── Providers row ─────────────────────────────────────────────── */}
+      {/* ── Dropbox (única integración de almacenamiento org-level) ────── */}
       <div className="rounded-xl p-4"
         style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
         <p className="text-[10px] font-semibold tracking-widest uppercase mb-3"
           style={{ color: 'var(--c-text-4)' }}>
-          Servicios conectados
+          Dropbox de la empresa
         </p>
 
-        {/* Google Drive */}
-        <ProviderRow
-          logo={<DriveLogo />}
-          name="Google Drive"
-          hint="Se conecta con tu cuenta Gmail"
-          state={status.google}
-        />
-
-        {/* OneDrive */}
-        <ProviderRow
-          logo={<OneDriveLogo />}
-          name="OneDrive"
-          hint="Se conecta con tu cuenta Outlook"
-          state={status.microsoft}
-        />
-
-        {/* Dropbox */}
         <ProviderRow
           logo={<DBLogo />}
           name="Dropbox"
-          hint="Conexión independiente"
+          hint="Repositorio compartido para catálogos y archivos administrativos"
           state={status.dropbox}
           connectHref={`/api/portal/${token}/dropbox-oauth/connect`}
           onDisconnect={disconnectDropbox}
@@ -235,8 +189,8 @@ export default function StorageSection({ token }: { token: string }) {
         />
       </div>
 
-      {/* ── Catálogo config (si feature activo + hay al menos 1 provider) ── */}
-      {catalogEnabled && connectedProviders.length > 0 && (
+      {/* ── Catálogo config (si feature activo + Dropbox conectado) ── */}
+      {catalogEnabled && dropboxConnected && (
         <div className="rounded-xl p-4"
           style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
           <p className="text-[10px] font-semibold tracking-widest uppercase mb-3"
@@ -244,25 +198,17 @@ export default function StorageSection({ token }: { token: string }) {
             Catálogo de códigos
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+          <div className="grid grid-cols-1 gap-3 mb-3">
             <div>
-              <label className="text-xs font-medium block mb-1" style={{ color: 'var(--c-text-2)' }}>Proveedor</label>
-              <select value={provider} onChange={e => { setProvider(e.target.value as CatalogProvider); setHeaders([]); }}
-                className="w-full px-3 py-2 rounded-lg text-sm"
-                style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}>
-                {connectedProviders.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
-              </select>
-            </div>
-            <div className="sm:col-span-2">
               <label className="text-xs font-medium block mb-1" style={{ color: 'var(--c-text-2)' }}>
-                {provider === 'dropbox' ? 'Ruta del archivo (ej. /Catalogo/codigos.xlsx)' : 'ID del archivo'}
+                Ruta del archivo en Dropbox (ej. /Catalogo/codigos.xlsx)
               </label>
               <div className="flex gap-2">
                 <input
                   type="text"
                   value={docPath}
                   onChange={e => setDocPath(e.target.value)}
-                  placeholder={provider === 'dropbox' ? '/Catalogo/codigos.xlsx' : 'fileId'}
+                  placeholder="/Catalogo/codigos.xlsx"
                   className="flex-1 px-3 py-2 rounded-lg text-sm"
                   style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
                 />
@@ -335,7 +281,7 @@ export default function StorageSection({ token }: { token: string }) {
         </div>
       )}
 
-      {!catalogEnabled && connectedProviders.length > 0 && (
+      {!catalogEnabled && dropboxConnected && (
         <div className="rounded-xl p-3 text-xs"
           style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text-3)' }}>
           Almacenamiento conectado. El pack Catálogo de códigos aún no está activo para tu cuenta. Contacta a soporte para activarlo.

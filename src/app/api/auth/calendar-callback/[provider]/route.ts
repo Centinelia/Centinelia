@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { resolveOrgFromToken } from '@/lib/portal/org-token';
-import { googleExchangeCode, GOOGLE_SCOPES } from '@/lib/email/gmail';
+import { googleExchangeCode } from '@/lib/email/gmail';
 import { microsoftExchangeCode, MICROSOFT_SCOPES } from '@/lib/email/outlook';
 import { encrypt } from '@/lib/crypto';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
@@ -64,10 +64,6 @@ export async function GET(req: NextRequest, { params }: Params) {
     const tokens = provider === 'google'
       ? await googleExchangeCode(code, 'calendar-callback/google')
       : await microsoftExchangeCode(code, MICROSOFT_SCOPES.calendar, 'calendar-callback/microsoft');
-
-    // Referencia a scopes: reservado para runtime scope check si integration_accounts
-    // agrega columna scopes en el futuro. Ver connectors/sheets-client.ts.
-    void GOOGLE_SCOPES;
 
     const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
     const encryptedRefresh = tokens.refresh_token ? encrypt(tokens.refresh_token) : null;

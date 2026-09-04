@@ -575,29 +575,33 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
                   </Card>
                 </div>
 
-              <div id="calendario-empleado" style={SCROLL_STYLE}>
-                <Card border elevated={false} padding="sm">
-                  <SectionHeader
-                    as="h2"
-                    title="Calendario"
-                    tooltip="Conecta el calendario personal de este empleado (Google o Outlook). Al agendar o consultar citas, usará esta cuenta directamente."
-                    className="mb-4"
-                  />
-                  <AgentAccountsSection token={token} agentId={agent.id as string} kind="calendar" />
-                </Card>
-              </div>
+              {!isCoordinator && (
+                <div id="calendario-empleado" style={SCROLL_STYLE}>
+                  <Card border elevated={false} padding="sm">
+                    <SectionHeader
+                      as="h2"
+                      title="Calendario"
+                      tooltip="Conecta el calendario personal de este empleado (Google o Outlook). Al agendar o consultar citas, usará esta cuenta directamente."
+                      className="mb-4"
+                    />
+                    <AgentAccountsSection token={token} agentId={agent.id as string} kind="calendar" />
+                  </Card>
+                </div>
+              )}
 
-              <div id="almacenamiento-empleado" style={SCROLL_STYLE}>
-                <Card border elevated={false} padding="sm">
-                  <SectionHeader
-                    as="h2"
-                    title="Almacenamiento en la nube"
-                    tooltip="Conecta el Drive u OneDrive del empleado. Los archivos que guarde o busque vivirán en esta cuenta."
-                    className="mb-4"
-                  />
-                  <AgentAccountsSection token={token} agentId={agent.id as string} kind="storage" />
-                </Card>
-              </div>
+              {!isCoordinator && (
+                <div id="almacenamiento-empleado" style={SCROLL_STYLE}>
+                  <Card border elevated={false} padding="sm">
+                    <SectionHeader
+                      as="h2"
+                      title="Almacenamiento en la nube"
+                      tooltip="Conecta el Drive u OneDrive del empleado. Los archivos que guarde o busque vivirán en esta cuenta."
+                      className="mb-4"
+                    />
+                    <AgentAccountsSection token={token} agentId={agent.id as string} kind="storage" />
+                  </Card>
+                </div>
+              )}
 
               {!isCoordinator && hasVoiceJornada && !!(agent as any).phone_number && (
                 <div id="desvio" style={SCROLL_STYLE}>

@@ -110,6 +110,7 @@ export default function AgentAccountsSection({
   const meta = KIND_META[kind];
   const [accounts,      setAccounts]      = useState<Account[]>([]);
   const [loading,       setLoading]       = useState(true);
+  const [error,         setError]         = useState(false);
   const [disconnecting, setDisconnecting] = useState<Provider | null>(null);
   const [justConnected, setJustConnected] = useState<string | null>(null);
 
@@ -129,8 +130,11 @@ export default function AgentAccountsSection({
   const load = useCallback(async () => {
     try {
       const res  = await fetch(`/api/portal/${token}/${meta.routeSlug}?agentId=${agentId}`);
+      if (!res.ok) throw new Error('fetch-error');
       const data = await res.json();
       setAccounts(data.accounts ?? []);
+    } catch {
+      setError(true);
     } finally { setLoading(false); }
   }, [token, agentId, meta.routeSlug]);
 
@@ -140,13 +144,17 @@ export default function AgentAccountsSection({
     const label = meta.providers.find(p => p.id === provider)?.label ?? provider;
     if (!confirm(`¿Desconectar ${label} de este empleado?`)) return;
     setDisconnecting(provider);
+    const snapshot = accounts;
+    setAccounts(prev => prev.filter(a => a.provider !== provider));
     try {
-      await fetch(`/api/portal/${token}/${meta.routeSlug}`, {
+      const res = await fetch(`/api/portal/${token}/${meta.routeSlug}`, {
         method:  'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ agentId, provider }),
       });
-      setAccounts(prev => prev.filter(a => a.provider !== provider));
+      if (!res.ok) throw new Error('delete-failed');
+    } catch {
+      setAccounts(snapshot);
     } finally { setDisconnecting(null); }
   }
 
@@ -155,6 +163,15 @@ export default function AgentAccountsSection({
       <div className="flex items-center gap-2 py-4" style={{ color: '#6B6480' }}>
         <Loader2 size={14} className="animate-spin" />
         <span className="text-sm">Cargando...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center gap-2 py-4 text-sm" style={{ color: '#f59e0b' }}>
+        <AlertTriangle size={14} />
+        No se pudo cargar la información. Recarga la página para intentar de nuevo.
       </div>
     );
   }
@@ -261,7 +278,8 @@ export default function AgentAccountsSection({
                         border:     '1px solid #E8E3F5',
                         opacity:    disconnecting === provider.id ? 0.5 : 1,
                       }}
-                      title="Desconectar"
+                      title={`Desconectar ${provider.label}`}
+                      aria-label={`Desconectar ${provider.label}`}
                     >
                       {disconnecting === provider.id
                         ? <Loader2 size={12} className="animate-spin" />
