@@ -44,6 +44,33 @@ export async function GET(req: Request) {
         await supabase.rpc('apply_ops_annual_grant', { p_portal_email: email });
         annualGrants++;
       } else if (ledgerOn && (model === 'stripe' || !model)) {
+        // Idempotency (fix 2026-09-04): antes solo se protegía contra doble
+        // ejecución del cron via `reference_id=cron-safety-{today}` (ON CONFLICT
+        // DO NOTHING en apply_ops_ledger_entry). Pero si un backfill manual o el
+        // webhook de Stripe ya insertaron un renewal con OTRO reference_id en el
+        // ciclo actual, el cron insertaba UN SEGUNDO renewal — disparaba
+        // rollover_cap y descartaba tareas del cliente. Incidencia real:
+        // Tortillería Estrella 2026-09-03 (backfill +520 a 00:38 + cron +520 a
+        // 06:00 → cap descartó 496). Ahora skipeamos si YA existe cualquier
+        // renewal en los últimos 25 días para este org.
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - 25);
+        const { data: existingRenewal } = await supabase
+          .from('ops_ledger')
+          .select('id')
+          .eq('portal_email', email)
+          .eq('kind', 'renewal')
+          .gte('created_at', cutoff.toISOString())
+          .limit(1);
+        if (existingRenewal && existingRenewal.length > 0) {
+          console.warn(`[reset-ops-pool] skip ${email}: renewal ya existe en los últimos 25 días (idempotency guard)`);
+          // Igual actualizamos pool_reset_date para no reprocesarlo cada tick.
+          await supabase.from('organizations')
+            .update({ pool_reset_date: nextResetIso })
+            .eq('portal_email', email);
+          continue;
+        }
+
         // Stripe safety net: si invoice.paid webhook no llegó, insertamos
         // renewal manual. Usamos get_plan_base_ops (mismo cálculo que
         // get_ops_pool_cap sin rollover) — antes se sumaba

@@ -57,26 +57,47 @@ export async function GET(req: Request) {
       const cycleExpired = currentReset && currentReset <= today;
 
       if (cycleExpired) {
-        const { data: planBase } = await supabase.rpc('get_plan_base_minutes', { p_portal_email: email });
-        const planBaseMin = (planBase as number | null) ?? 0;
-        const { data: agents } = await supabase
-          .from('voice_agents')
+        // Idempotency (fix 2026-09-04): mismo bug que reset-ops-pool. El
+        // ON CONFLICT DO NOTHING de apply_ledger_entry solo protege contra
+        // duplicados con MISMO reference_id. Si un backfill manual o
+        // invoice.paid webhook insertó renewal con OTRO reference_id en el
+        // ciclo, el cron generaba un segundo renewal y disparaba rollover_cap.
+        // Ver incidencia Tortillería 2026-09-03 (aunque fue en ops, aplica
+        // mismo patrón a minutos). Skipeamos si YA existe cualquier renewal
+        // en los últimos 25 días para este org.
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - 25);
+        const { data: existingRenewal } = await supabase
+          .from('minutes_ledger')
           .select('id')
           .eq('portal_email', email)
-          .eq('active', true)
+          .eq('kind', 'renewal')
+          .gte('created_at', cutoff.toISOString())
           .limit(1);
-        const primaryAgentId = (agents?.[0]?.id as string | null) ?? null;
+        if (existingRenewal && existingRenewal.length > 0) {
+          console.warn(`[reset-minutes] skip ${email}: renewal ya existe en los últimos 25 días (idempotency guard)`);
+        } else {
+          const { data: planBase } = await supabase.rpc('get_plan_base_minutes', { p_portal_email: email });
+          const planBaseMin = (planBase as number | null) ?? 0;
+          const { data: agents } = await supabase
+            .from('voice_agents')
+            .select('id')
+            .eq('portal_email', email)
+            .eq('active', true)
+            .limit(1);
+          const primaryAgentId = (agents?.[0]?.id as string | null) ?? null;
 
-        if (planBaseMin > 0 && primaryAgentId) {
-          await supabase.rpc('apply_ledger_entry', {
-            p_portal_email: email,
-            p_agent_id:     primaryAgentId,
-            p_amount:       planBaseMin,
-            p_kind:         'renewal',
-            p_reference_id: `cron-safety-${currentReset}`,
-            p_description:  `Renovación mensual (cron safety-net): ${planBaseMin} min`,
-          });
-          renewalGrants++;
+          if (planBaseMin > 0 && primaryAgentId) {
+            await supabase.rpc('apply_ledger_entry', {
+              p_portal_email: email,
+              p_agent_id:     primaryAgentId,
+              p_amount:       planBaseMin,
+              p_kind:         'renewal',
+              p_reference_id: `cron-safety-${currentReset}`,
+              p_description:  `Renovación mensual (cron safety-net): ${planBaseMin} min`,
+            });
+            renewalGrants++;
+          }
         }
       }
 
