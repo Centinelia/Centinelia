@@ -19,7 +19,7 @@ de CONTPAQi hacia Dropbox para que Nala tenga referencia de los códigos.
                               CFDI timbrado al receptor por correo
 ```
 
-## Estado actual — Days 1-8: reporte con errores categorizados listo para Nala
+## Estado actual — Days 1-10: Windows Service + installer + consumer Vercel
 
 Validado contra empresa dedicada `Kemper Urgate PRUEBAS SDK` (RFC de pruebas
 SAT `EKU9003173C9`, CSD público SAT descargado de facturoporti, password
@@ -56,6 +56,19 @@ SAT `EKU9003173C9`, CSD público SAT descargado de facturoporti, password
   + `humanMessage` en español para el operador Centinelia. Nala hace switch
   por `kind` para decidir: responder al cliente, reintentar en unos minutos,
   o escalar a Nazre.
+- **Windows Service (`--mode service`) ✅** → mismo watch loop pero envuelto
+  como `BackgroundService` bajo el Windows Service Control Manager. Config
+  vía `appsettings.json` + env vars `CENTINELIA_*`. Serilog con rolling file
+  diario + Event Viewer para warnings/errores.
+- **Inno Setup installer ✅** → script en `installer/BillingWriter.iss` que
+  publica el .exe self-contained x86, deposita `appsettings.json` template
+  editable en `%ProgramData%\Centinelia\BillingWriter\`, registra el
+  Windows Service con arranque automático + recovery (3 retries con
+  backoff). Guía completa en `installer/DEPLOY.md`.
+- **Consumer Vercel (PR #38 del repo Centinelia) ✅** → cron
+  `/api/cron/nala-writer-inbox` que lee `errores/*.json` y `timbrados/*.xml`
+  del Dropbox del cliente, replica al remitente por reply threaded, escala
+  a Nazre cuando toca, y entrega el CFDI adjunto al receptor original.
 
 ## Setup requerido en la máquina donde corre este agente
 
@@ -80,15 +93,14 @@ Para desarrollar sin riesgo fiscal:
 - El PAC del trial CONTPAQi devuelve UUIDs sandbox (prefijo `00000000-`)
   sin llamar al SAT — desarrollo ilimitado sin costo ni riesgo
 
-Pendientes (Day 9-10):
-- Day 9: consumer de Nala en Vercel — watcher/cron que revisa `errores/`, parsea
-  el JSON con `kind` + `humanMessage` y dispara reply_email / retry / escalate
-  según la tabla arriba. Este trabajo es en el repo Centinelia, no aquí.
-- Day 9 (bloqueadores externos): Dropbox App real de Beatriz + smoke contra
-  empresa piloto Tortillería real con 1-2 timbres controlados (CSD real,
-  cancelación via portal SAT tras validar).
-- Day 10: MSI installer + Windows Service + tarea programada para arranque
-  con la sesión de Windows en la máquina del cliente.
+Bloqueadores externos (nada más pendiente del lado del writer/consumer):
+- Merge de PRs #32 (submit_invoice_batch), #33 (writer Days 1-10), #38
+  (consumer Vercel).
+- Setup humano en la máquina del cliente: CONTPAQi Comercial licenciado,
+  registro NOMBRESERVIDOR, empresa creada con CSD (ver `installer/DEPLOY.md`).
+- Dropbox App autorizada por Beatriz con token de acceso.
+- Autorización explícita para 1-2 timbres reales con CSD de Beatriz en el
+  smoke E2E prod (auto-mode bloquea querying su BD real sin permiso).
 - Day 8: tests contra CONTPAQi real (empresa piloto Tortillería).
 - Day 9-10: MSI installer + Windows Service + tarea programada.
 
@@ -122,6 +134,23 @@ BillingContpaqiWriter.exe --mode watch `
   --sql "Server=localhost\SQLEXPRESS;Database=adKemper_Urgate_PRUEBA;User Id=SA;Password=xxx;TrustServerCertificate=True" `
   --poll-secs 10
 ```
+
+### Uso del modo service (prod, Windows Service)
+
+Ver `installer/DEPLOY.md` para el flujo completo. TL;DR local:
+
+```powershell
+$env:CENTINELIA_Writer__EmpresaPath = 'C:\Compac\Empresas\adKemper_Urgate_PRUEBA'
+$env:CENTINELIA_Writer__Concepto = '440'
+$env:CENTINELIA_Writer__CsdPassword = '12345678a'
+$env:CENTINELIA_Writer__SqlConnectionString = 'Server=localhost\SQLEXPRESS;Database=adKemper_Urgate_PRUEBA;User Id=SA;Password=xxx;TrustServerCertificate=True'
+$env:CENTINELIA_Writer__Storage__Backend = 'local'
+$env:CENTINELIA_Writer__Storage__InboxPath = 'C:\centinelia-inbox'
+$env:CENTINELIA_Writer__Storage__OutboxPath = 'C:\centinelia-outbox'
+.\BillingContpaqiWriter.exe --mode service
+```
+
+Corre como consola en dev; bajo el SCM se comporta como Windows Service.
 
 ### Uso del modo watch — backend Dropbox (prod)
 
