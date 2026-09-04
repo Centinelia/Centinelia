@@ -32,10 +32,22 @@ export interface BuildContextOpts {
 export async function buildVisionContextFromAdapter(
   opts: BuildContextOpts,
 ): Promise<VisionContext> {
-  const [clients, products] = await Promise.all([
-    opts.adapter.listAllClients(),
-    opts.adapter.listAllProducts(),
-  ]);
+  // Degradación graceful: si el catálogo falla (CSV corrupto en Dropbox,
+  // Dropbox 500, timeout), NO tirar — devolver contexto vacío para que el
+  // vision LLM al menos extraiga texto crudo. El caller decide qué hacer
+  // sin cliente/producto matched. Auditoría 2026-09-04.
+  let clients: Awaited<ReturnType<typeof opts.adapter.listAllClients>> = [];
+  let products: Awaited<ReturnType<typeof opts.adapter.listAllProducts>> = [];
+  try { clients = await opts.adapter.listAllClients(); }
+  catch (err) {
+    console.warn('[vision/build-context] listAllClients falló, sigo sin catálogo de clientes:',
+      err instanceof Error ? err.message : String(err));
+  }
+  try { products = await opts.adapter.listAllProducts(); }
+  catch (err) {
+    console.warn('[vision/build-context] listAllProducts falló, sigo sin catálogo de productos:',
+      err instanceof Error ? err.message : String(err));
+  }
 
   const maxClientes = opts.maxClientes ?? 200;
   const maxProductos = opts.maxProductos ?? 100;

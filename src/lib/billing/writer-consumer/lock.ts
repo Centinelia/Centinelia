@@ -17,8 +17,16 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { randomUUID } from 'crypto';
 
-/** TTL del lock: mayor que la cadence (3 min) pero menor que Vercel maxDuration (5 min). */
-export const INBOX_LOCK_TTL_SECONDS = 240; // 4 minutos
+/**
+ * TTL del lock: MAYOR que Vercel maxDuration del cron (300s / 5min) para que
+ * si un tick va lento no expire mientras aún procesa. Cadence es 3min, así
+ * que el próximo tick lo verá activo y hará skip limpio (`locked_by_other_tick`).
+ * Si el proceso muere, el lock expira tras 6 min y otro tick lo agarra.
+ *
+ * Auditoría 2026-09-04: antes era 240s < maxDuration=300s → race si el tick
+ * corría >4min.
+ */
+export const INBOX_LOCK_TTL_SECONDS = 360; // 6 minutos
 
 export interface LockHandle {
   portalEmail: string;

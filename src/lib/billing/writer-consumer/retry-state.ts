@@ -61,6 +61,13 @@ export async function bumpAttempt(
     return rowToState(data);
   }
 
+  // Guard: si ya está exhausted, no bump-eamos más. Devolvemos el estado
+  // tal cual para que el caller lo trate como "escalated" sin loop de
+  // emails cada tick. Auditoría 2026-09-04 (spam escalations).
+  if (existing.exhausted === true) {
+    return rowToState(existing);
+  }
+
   const newAttempts = (existing.attempts as number) + 1;
   const { data, error } = await supabase
     .from('writer_pac_retry_state')
