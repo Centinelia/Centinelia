@@ -228,6 +228,10 @@
     {
       "path": "/api/cron/billing-daily-report",
       "schedule": "0 22 * * *"
+    },
+    {
+      "path": "/api/cron/nala-writer-inbox",
+      "schedule": "*/3 * * * *"
     }
   ]
 }
