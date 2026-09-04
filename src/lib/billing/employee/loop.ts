@@ -272,8 +272,22 @@ export class BillingEmployee {
         (block): block is Anthropic.ToolUseBlock => block.type === 'tool_use',
       );
 
-      if (toolUses.length === 0 || response.stop_reason === 'end_turn') {
+      // Auditoría 2026-09-04 ronda 2: manejar stop_reasons no-happy.
+      // max_tokens: si viene con tool_uses pendientes, ejecutarlos y salir del
+      //   loop — la siguiente iteración con tool_results órfanos causa API 400.
+      // refusal/pause_turn: salir del loop y registrar como error.
+      // stop_sequence: raro pero tratable como end_turn.
+      const isTerminalStop = response.stop_reason === 'end_turn'
+        || response.stop_reason === 'stop_sequence';
+      const isAbnormalStop = response.stop_reason === 'refusal'
+        || response.stop_reason === 'pause_turn'
+        || response.stop_reason === 'max_tokens';
+
+      if (toolUses.length === 0 || isTerminalStop) {
         break;
+      }
+      if (isAbnormalStop) {
+        result.errors.push(`llm_stop_reason: ${response.stop_reason}`);
       }
 
       // -----------------------------------------------------------------------
@@ -296,8 +310,17 @@ export class BillingEmployee {
         }
 
         try {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const output = await tool.handler(use.input as any);
+          // Timeout global por tool: 60s. Sin esto un adapter congelado
+          // (CONTPAQi Windows agent muerto, Dropbox 30s hang, SF SOAP timeout)
+          // dejaba el job en `status='running'` sin `finished_at` hasta que
+          // el cron externo lo matara. Auditoría 2026-09-04 ronda 2.
+          const output = await Promise.race([
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            tool.handler(use.input as any),
+            new Promise((_r, reject) =>
+              setTimeout(() => reject(new Error(`tool ${use.name} timeout 60s`)), 60_000),
+            ),
+          ]);
           toolResults.push({
             type: 'tool_result',
             tool_use_id: use.id,

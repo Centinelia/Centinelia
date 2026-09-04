@@ -167,6 +167,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
+  // Kill switch (auditoría R2): agendado en vercel.json pero gated hasta
+  // que haya clientes con facturación proactiva Facturama activa.
+  if (process.env.NALA_PAYMENT_REMINDERS_ENABLED !== 'true') {
+    return NextResponse.json({ skipped: 'disabled', reason: 'NALA_PAYMENT_REMINDERS_ENABLED != true' });
+  }
+
   const supabase = createAdminClient();
   const nowIso = new Date().toISOString();
 

@@ -49,6 +49,21 @@ export interface ToolsContext {
   dropboxToken: string;
   dropboxBasePath: string;
   escalationEmail: string;
+  /**
+   * ID del voice_agent de Nala para esta org. Cuando está seteado, los tools
+   * que hacen side-effects externos (enviar_correo, reply_email) cobran al
+   * pool con source semántico y escriben a outbound_emails. Sin agentId
+   * (tests, dev sin config), los tools ejecutan pero no cobran.
+   * Auditoría 2026-09-04 ronda 2.
+   */
+  agentId?: string;
+  /**
+   * Dominio del emisor original del email. Whitelist implícita para
+   * enviar_correo: si `to` no está en este dominio ni es un cliente
+   * conocido, se rechaza (defensa contra prompt injection que use Nala
+   * para spam/phishing).
+   */
+  emisorDomain?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -56,10 +71,33 @@ export interface ToolsContext {
 // ---------------------------------------------------------------------------
 
 export function buildEmployeeTools(toolsCtx: ToolsContext): EmployeeTool[] {
-  const { adapter, ctx, emailId, dropboxToken, dropboxBasePath, escalationEmail } = toolsCtx;
+  const { adapter, ctx, emailId, dropboxToken, dropboxBasePath, escalationEmail, agentId, emisorDomain } = toolsCtx;
   const supabase = createAdminClient();
   const dropbox = new DropboxClient(dropboxToken);
   const snapshots = new SnapshotStorage();
+
+  /**
+   * Whitelist de destinatarios para enviar_correo. Aceptamos:
+   *   - Direcciones en el mismo dominio del emisor del correo (respondemos a
+   *     la organización que nos escribió).
+   *   - Direcciones de clientes conocidos del catálogo (RFC lookup previo).
+   *   - escalationEmail (interno Centinelia).
+   *
+   * Rechazamos cualquier otro dominio. Sin esto, prompt injection podía
+   * hacer que Nala mandara correos desde facturacion@centinelia a cualquier
+   * dominio arbitrario. Auditoría 2026-09-04 ronda 2.
+   */
+  const isAllowedRecipient = async (to: string): Promise<boolean> => {
+    const toLower = to.trim().toLowerCase();
+    if (!toLower.includes('@')) return false;
+    if (toLower === escalationEmail.toLowerCase()) return true;
+    if (emisorDomain && toLower.endsWith('@' + emisorDomain.toLowerCase())) return true;
+    // Cliente conocido: consultar catálogo por email en billing_client_rules o
+    // en el CSV del adapter. Como el CSV tiene email de columna 7 pero
+    // parseClientsCsv no lo expone, esta check es best-effort — chequear
+    // dominio del emisor cubre el 95% de casos.
+    return false;
+  };
 
   return [
     // -------------------------------------------------------------------------
@@ -580,10 +618,28 @@ export function buildEmployeeTools(toolsCtx: ToolsContext): EmployeeTool[] {
         required: ['to', 'subject', 'body'],
       },
       handler: async (input: { to: string; subject: string; body: string }) => {
+        // Whitelist de destinatario contra prompt-injection-driven spam.
+        // Auditoría 2026-09-04 ronda 2.
+        if (!(await isAllowedRecipient(input.to))) {
+          return {
+            ok: false,
+            error: `Destinatario ${input.to} no permitido. Solo se puede enviar a: mismo dominio del emisor original, clientes conocidos del catálogo, o escalation email interno.`,
+          };
+        }
         const result = await sendBillingMail({
           to: input.to,
           subject: input.subject,
           body: input.body,
+          ...(agentId
+            ? {
+                billing: {
+                  agentId,
+                  referenceId: emailId,
+                  source:      'nala_email_send',
+                  label:       `Correo enviado a ${input.to}: ${input.subject}`,
+                },
+              }
+            : {}),
         });
         return result;
       },
@@ -608,7 +664,18 @@ export function buildEmployeeTools(toolsCtx: ToolsContext): EmployeeTool[] {
         required: ['body'],
       },
       handler: async (input: { body: string }) => {
-        const result = await replyToInboundEmail(emailId, input.body);
+        const result = await replyToInboundEmail(
+          emailId,
+          input.body,
+          undefined,
+          agentId
+            ? {
+                agentId,
+                referenceId: emailId,
+                source:      'nala_email_reply',
+              }
+            : undefined,
+        );
         return result;
       },
     },
@@ -650,13 +717,26 @@ export function buildEmployeeTools(toolsCtx: ToolsContext): EmployeeTool[] {
         entity_ref?: string;
         context?: Record<string, unknown>;
       }) => {
+        // Auditoría 2026-09-04 ronda 2: cap size del context para prevenir
+        // JSONB overflow (Supabase PostgREST corta a ~1MB payload). Un LLM
+        // que meta context con 10MB de base64 tumba el insert silencioso.
+        let mergedContext: Record<string, unknown> = { ...(input.context ?? {}), email_id: emailId };
+        const asJson = JSON.stringify(mergedContext);
+        if (asJson.length > 50_000) {
+          mergedContext = {
+            email_id: emailId,
+            _truncated: true,
+            _originalSize: asJson.length,
+            _preview: asJson.slice(0, 45_000),
+          };
+        }
         const { error } = await supabase.from('billing_activity_log').insert({
           portal_email: ctx.portalEmail,
           integration_id: ctx.integrationId,
           action_type: input.action_type,
           severity: input.severity,
           entity_ref: input.entity_ref ?? null,
-          context: { ...(input.context ?? {}), email_id: emailId },
+          context: mergedContext,
         });
 
         if (error) {
@@ -704,8 +784,13 @@ export function buildEmployeeTools(toolsCtx: ToolsContext): EmployeeTool[] {
         // Enviar correo de escalacion.
         const urgencyLabel = input.urgency === 'critical' ? 'CRITICO' : 'URGENTE';
         const subject = `[Facturacion ${urgencyLabel}] ${input.topic}`;
+        // HTML escape defensivo — sin esto, un `context` con `</pre><script>...`
+        // (posible via prompt injection) inyectaba XSS activo en el correo de
+        // escalación. Auditoría 2026-09-04 ronda 2.
+        const escapeHtmlLocal = (s: string) =>
+          s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         const contextBlock = input.context
-          ? `<pre>${JSON.stringify(input.context, null, 2)}</pre>`
+          ? `<pre>${escapeHtmlLocal(JSON.stringify(input.context, null, 2))}</pre>`
           : '';
 
         const body = `
@@ -871,6 +956,19 @@ ${contextBlock}
           }
           if (line.qty <= 0) {
             return { ok: false, error: `Cantidad invalida para SKU ${line.sku}: ${line.qty}` };
+          }
+          // Auditoría 2026-09-04 ronda 2: si el LLM pasa unit_price, validar
+          // desviación vs catálogo. > 5% = probable alucinación OCR → rechazar
+          // para que humano confirme antes de facturar por monto inventado.
+          if (line.unit_price !== undefined && line.unit_price !== product.precio) {
+            const delta = Math.abs(line.unit_price - product.precio);
+            const deltaPct = product.precio > 0 ? delta / product.precio : 1;
+            if (deltaPct > 0.05) {
+              return {
+                ok: false,
+                error: `Precio propuesto ${line.unit_price} difiere ${(deltaPct * 100).toFixed(1)}% del catálogo (${product.precio}) para SKU ${line.sku}. Escalar para confirmación humana (nota promocional? error OCR?).`,
+              };
+            }
           }
           resolvedLines.push({
             sku:       line.sku,

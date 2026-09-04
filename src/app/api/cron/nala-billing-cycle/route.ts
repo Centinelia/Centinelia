@@ -92,6 +92,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
+  // Kill switch (auditoría R2): agendado en vercel.json pero NO corre en prod
+  // hasta que se pague plan Facturama API (memoria: handoff-nala-reactivar-
+  // al-pagar-facturama-prod). Flip cuando esté todo listo.
+  if (process.env.NALA_BILLING_CYCLE_ENABLED !== 'true') {
+    return NextResponse.json({ skipped: 'disabled', reason: 'NALA_BILLING_CYCLE_ENABLED != true' });
+  }
+
   const supabase = createAdminClient();
   const testMode = isFacturamaSandbox();
   const hoy = new Date().toISOString().slice(0, 10);
