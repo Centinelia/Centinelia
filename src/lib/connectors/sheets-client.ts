@@ -10,29 +10,67 @@ export const SHEETS_SCOPE = 'https://www.googleapis.com/auth/spreadsheets';
  * orgId = portal_email (primary key of organizations table, used as org identifier
  * throughout this codebase).
  *
+ * agentId = optional. Cuando se provee, primero busca email_integrations per-agent
+ * (rows pre-Fase-1 con scope amplio que incluye spreadsheets). Fallback a
+ * integration_accounts org-level capability='email' provider='gmail'.
+ * Emite console.warn cuando cae al fallback legacy para medir dependencia.
+ *
+ * TODO Fase 3: cuando exista UI para capability='sheets_google' en integration_accounts,
+ * agregar lookup per-agent por ese capability antes del email_integrations path.
+ *
  * Throws 'sheets_no_conectado' when no active Google integration exists for the org.
  *
  * SCOPE WARNING (Fase 1, 2026-09-04): GMAIL_SCOPES ya no incluye spreadsheets.
  * Orgs que reconecten correo post-Fase-1 obtendrán token sin scope Sheets y este
- * helper fallará silenciosamente con 403. La solución es Fase 2: OAuth separado
- * para Google Sheets (GOOGLE_SCOPES.sheets) y lookup por (agent_id, capability='sheets').
+ * helper fallará silenciosamente con 403. La solución es Fase 3: OAuth separado
+ * para Google Sheets (GOOGLE_SCOPES.sheets) y lookup por (agent_id, capability='sheets_google').
  * Orgs con row antigua (scope amplio previo) siguen funcionando hasta que reconecten.
  * No hay runtime check de scopes aún — integration_accounts.scopes no existe.
  *
  * Callers (tools) are responsible for catching errors and shaping them into
  * { ok: false, reason } responses — this helper throws, does not return ok/error.
  */
-export async function getSheetsClient(orgId: string): Promise<sheets_v4.Sheets> {
+export async function getSheetsClient(orgId: string, agentId?: string): Promise<sheets_v4.Sheets> {
   const supabase = createAdminClient();
 
-  const { data: account } = await supabase
-    .from('integration_accounts')
-    .select('access_token, refresh_token, expires_at, status')
-    .eq('portal_email', orgId)
-    .eq('provider', 'gmail')
-    .neq('status', 'disconnected')
-    .maybeSingle();
+  let accountData: { access_token: unknown; refresh_token: unknown; expires_at: unknown; status: unknown } | null = null;
 
+  // 1. Per-agent email_integrations (OAuth Gmail/Outlook broad-scope, rows pre-Fase-1).
+  //    Preferred cuando agentId disponible porque incluye spreadsheets scope.
+  if (agentId) {
+    const { data: perAgentEmail } = await supabase
+      .from('email_integrations')
+      .select('access_token, refresh_token, token_expires_at, needs_reauth')
+      .eq('agent_id', agentId)
+      .eq('provider', 'gmail')
+      .maybeSingle();
+    if (perAgentEmail) {
+      accountData = {
+        access_token:  perAgentEmail.access_token,
+        refresh_token: perAgentEmail.refresh_token,
+        expires_at:    perAgentEmail.token_expires_at,
+        status:        perAgentEmail.needs_reauth ? 'needs_reauth' : 'active',
+      };
+    }
+  }
+
+  // 2. Fallback org-level integration_accounts capability='email' provider='gmail'.
+  //    WARN: tokens emitidos post-2026-09-04 no tienen scope spreadsheets.
+  if (!accountData) {
+    if (agentId) {
+      console.warn(`[sheets-client] agentId=${agentId} (orgId=${orgId}) sin email_integrations per-agent Gmail — cayendo a integration_accounts org-level. Tokens post-2026-09-04 no tienen scope Sheets.`);
+    }
+    const { data: orgAccount } = await supabase
+      .from('integration_accounts')
+      .select('access_token, refresh_token, expires_at, status')
+      .eq('portal_email', orgId)
+      .eq('provider', 'gmail')
+      .neq('status', 'disconnected')
+      .maybeSingle();
+    accountData = orgAccount;
+  }
+
+  const account = accountData;
   if (!account) {
     throw new Error('sheets_no_conectado');
   }

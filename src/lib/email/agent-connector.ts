@@ -68,7 +68,7 @@ export async function getFileConnector(agentId: string, supabase: SupabaseClient
     return { integration: synthetic, conn };
   }
 
-  // 1. Legacy path — email_integrations per-agent (OAuth Gmail/Outlook)
+  // 1. Legacy path — email_integrations per-agent (OAuth Gmail/Outlook broad-scope)
   const { data } = await supabase
     .from('email_integrations')
     .select('*')
@@ -79,7 +79,121 @@ export async function getFileConnector(agentId: string, supabase: SupabaseClient
     return { integration: data as IntegrationRow, conn };
   }
 
-  // 2. Fallback org-level — cualquier agente hereda el email conectado por su portal
+  // 1.5 Per-agent storage capability — Fase 2. Lookup en integration_accounts
+  //     con agent_id IS NOT NULL y capability IN storage_google/microsoft/dropbox.
+  //     Preferred sobre el fallback org-level porque el token tiene scope exacto.
+  const storageCapabilities = ['storage_google', 'storage_microsoft', 'storage_dropbox'] as const;
+  const { data: perAgentStorage } = await supabase
+    .from('integration_accounts')
+    .select('provider, account_label, access_token, refresh_token, expires_at, status, metadata, capability')
+    .eq('agent_id', agentId)
+    .in('capability', [...storageCapabilities])
+    .neq('status', 'disconnected')
+    .maybeSingle();
+
+  if (perAgentStorage) {
+    const { decrypt: dec } = await import('@/lib/crypto');
+    const rawAccess = perAgentStorage.access_token ? dec(perAgentStorage.access_token as string) : '';
+
+    // Refresh if near expiry
+    let accessToken = rawAccess;
+    const expiresAt = perAgentStorage.expires_at ? new Date(perAgentStorage.expires_at as string) : null;
+    const needsRefresh = !expiresAt || expiresAt.getTime() - Date.now() < 5 * 60 * 1000;
+    if (needsRefresh && perAgentStorage.refresh_token) {
+      try {
+        const plainRefresh = dec(perAgentStorage.refresh_token as string);
+        const cap = perAgentStorage.capability as string;
+        if (cap === 'storage_google') {
+          const { gmailRefreshToken } = await import('@/lib/email/gmail');
+          const refreshed = await gmailRefreshToken(plainRefresh);
+          accessToken = refreshed.access_token;
+          await supabase.from('integration_accounts')
+            .update({ access_token: refreshed.access_token, expires_at: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(), status: 'active' })
+            .eq('agent_id', agentId)
+            .eq('capability', cap);
+        } else if (cap === 'storage_microsoft') {
+          const { outlookRefreshToken } = await import('@/lib/email/outlook');
+          const refreshed = await outlookRefreshToken(plainRefresh);
+          accessToken = refreshed.access_token;
+          await supabase.from('integration_accounts')
+            .update({ access_token: refreshed.access_token, expires_at: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(), status: 'active' })
+            .eq('agent_id', agentId)
+            .eq('capability', cap);
+        } else if (cap === 'storage_dropbox') {
+          const { dropboxRefreshToken } = await import('@/lib/dropbox/oauth');
+          const refreshed = await dropboxRefreshToken(plainRefresh);
+          accessToken = refreshed.access_token;
+          await supabase.from('integration_accounts')
+            .update({ access_token: refreshed.access_token, expires_at: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(), status: 'active' })
+            .eq('agent_id', agentId)
+            .eq('capability', cap);
+        }
+      } catch {
+        // Refresh failed — continue with current token or fall through
+      }
+    }
+
+    const provider = perAgentStorage.provider as string;
+    const cap = perAgentStorage.capability as string;
+
+    if (cap === 'storage_google') {
+      const { createGoogleConnector } = await import('@/lib/connectors/google');
+      const conn = createGoogleConnector(accessToken);
+      const synth: IntegrationRow = {
+        id:                 `agent:${agentId}:storage_google`,
+        agent_id:           agentId,
+        provider:           'gmail' as const,
+        email:              (perAgentStorage.account_label as string | null) ?? '',
+        access_token:       accessToken,
+        refresh_token:      (perAgentStorage.refresh_token as string | null) ?? null,
+        token_expires_at:   (perAgentStorage.expires_at as string | null) ?? null,
+        last_sync_at:       null,
+        needs_reauth:       perAgentStorage.status === 'needs_reauth',
+        reauth_notified_at: null,
+      };
+      return { integration: synth, conn };
+    }
+    if (cap === 'storage_microsoft') {
+      const { createMicrosoftConnector } = await import('@/lib/connectors/microsoft');
+      const conn = createMicrosoftConnector(accessToken);
+      const synth: IntegrationRow = {
+        id:                 `agent:${agentId}:storage_microsoft`,
+        agent_id:           agentId,
+        provider:           'outlook' as const,
+        email:              (perAgentStorage.account_label as string | null) ?? '',
+        access_token:       accessToken,
+        refresh_token:      (perAgentStorage.refresh_token as string | null) ?? null,
+        token_expires_at:   (perAgentStorage.expires_at as string | null) ?? null,
+        last_sync_at:       null,
+        needs_reauth:       perAgentStorage.status === 'needs_reauth',
+        reauth_notified_at: null,
+      };
+      return { integration: synth, conn };
+    }
+    if (cap === 'storage_dropbox') {
+      const { createDropboxConnector } = await import('@/lib/connectors/dropbox');
+      const conn = createDropboxConnector(accessToken);
+      const synth: IntegrationRow = {
+        id:                 `agent:${agentId}:storage_dropbox`,
+        agent_id:           agentId,
+        provider:           'gmail' as const, // shape compat — solo se lee .conn.files
+        email:              '',
+        access_token:       accessToken,
+        refresh_token:      null,
+        token_expires_at:   null,
+        last_sync_at:       null,
+        needs_reauth:       false,
+        reauth_notified_at: null,
+      };
+      return { integration: synth, conn };
+    }
+    // Unknown provider — fall through
+    console.warn(`[agent-connector] per-agent storage capability '${cap}' con provider '${provider}' sin handler — cayendo a fallback org-level capability='email'`);
+  }
+
+  // 2. Fallback org-level — cualquier agente hereda el email conectado por su portal.
+  //    WARN: GMAIL_SCOPES ya no incluye drive/calendar (Fase 1, 2026-09-04).
+  //    Orgs que reconecten post-Fase-1 fallarán con 403 en files. Migrar a per-agent.
   const portalEmail = (agentSmtpRow as { portal_email?: string | null } | null)?.portal_email;
   if (!portalEmail) return null;
 
@@ -90,6 +204,10 @@ export async function getFileConnector(agentId: string, supabase: SupabaseClient
     .eq('capability', 'email')
     .neq('status', 'disconnected')
     .maybeSingle();
+
+  if (orgAcct) {
+    console.warn(`[agent-connector] agentId=${agentId} usando fallback org-level capability='email' (portalEmail=${portalEmail}). Orgs que reconecten correo post-2026-09-04 perderán acceso a Files. Conecta storage per-agent para resolver.`);
+  }
 
   if (orgAcct && orgAcct.provider === 'imap_smtp') {
     // Retrocompat: rows viejas de imap_smtp org-level (creadas por MVP inicial

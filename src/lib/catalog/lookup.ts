@@ -85,7 +85,7 @@ export async function getDropboxAccessToken(portalEmail: string, supabase: Supab
 }
 
 /** Baja el archivo + devuelve fingerprint para caché — routed por provider. */
-async function downloadWithFingerprint(portalEmail: string, config: CatalogConfig, supabase: SupabaseClient): Promise<{ fingerprint: string; buffer: Buffer } | { error: string }> {
+async function downloadWithFingerprint(portalEmail: string, config: CatalogConfig, supabase: SupabaseClient, agentId?: string): Promise<{ fingerprint: string; buffer: Buffer } | { error: string }> {
   if (config.provider === 'dropbox') {
     const token = await getDropboxAccessToken(portalEmail, supabase);
     if (!token) return { error: 'Dropbox no conectado o token invalido' };
@@ -102,10 +102,11 @@ async function downloadWithFingerprint(portalEmail: string, config: CatalogConfi
     }
   }
 
-  // Google / Microsoft: usar FilesConnector genérico via getConnectorForOrg.
+  // Google / Microsoft: usar FilesConnector genérico via resolveFilesConnector.
   // fileId es el doc_path del config (para Drive es un fileId opaco, para OneDrive un item id).
+  // agentId opcional habilita lookup per-agent capability='storage_google'/'storage_microsoft' (Fase 2).
   const { resolveFilesConnector } = await import('./providers');
-  const connResult = await resolveFilesConnector(portalEmail, config.provider, supabase);
+  const connResult = await resolveFilesConnector(portalEmail, config.provider, supabase, agentId);
   if ('error' in connResult) return connResult;
   const dl = await connResult.files.download(config.doc_path, '');
   if (!dl) return { error: 'No se pudo descargar el archivo. Verifica el ID.' };
@@ -173,8 +174,13 @@ export async function getCatalogHeaders(portalEmail: string, provider: CatalogPr
   return first ? Object.keys(first) : [];
 }
 
-/** Busca en el catálogo. Retorna matches (top 20) con SKU/descripción/precio. */
-export async function searchCatalog(portalEmail: string, config: CatalogConfig, query: string, opts: { exact?: boolean; limit?: number } = {}): Promise<{ matches: CatalogMatch[]; total: number } | { error: string }> {
+/** Busca en el catálogo. Retorna matches (top 20) con SKU/descripción/precio.
+ *
+ * agentId opcional — cuando se provee, se pasa a resolveFilesConnector para
+ * habilitar lookup per-agent por capability='storage_google'/'storage_microsoft'
+ * (Fase 2, 2026-09-04). Sin agentId usa el fallback org-level (retrocompat).
+ */
+export async function searchCatalog(portalEmail: string, config: CatalogConfig, query: string, opts: { exact?: boolean; limit?: number; agentId?: string } = {}): Promise<{ matches: CatalogMatch[]; total: number } | { error: string }> {
   const supabase = (await import('@/lib/supabase/admin')).createAdminClient();
 
   const cacheKey = `${portalEmail}:${config.provider}:${config.doc_path}`;
@@ -195,7 +201,7 @@ export async function searchCatalog(portalEmail: string, config: CatalogConfig, 
         return { matches: filtered.slice(0, opts.limit ?? 20), total: filtered.length };
       }
     }
-    const dl = await downloadWithFingerprint(portalEmail, config, supabase);
+    const dl = await downloadWithFingerprint(portalEmail, config, supabase, opts.agentId);
     if ('error' in dl) return dl;
     const ext = config.doc_path.toLowerCase().split('.').pop() ?? '';
     const rows = ext === 'csv' ? parseCsv(dl.buffer) : parseXlsx(dl.buffer);

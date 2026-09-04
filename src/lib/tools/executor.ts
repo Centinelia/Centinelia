@@ -2002,7 +2002,7 @@ async function executeAgentToolInner(
     const { query, exact } = toolInput as { query?: string; exact?: boolean };
     if (!query?.trim()) return { ok: false, error: 'Proporciona un término a buscar (SKU o descripción).' };
     const { searchCatalog } = await import('@/lib/catalog/lookup');
-    const res = await searchCatalog(portalEmail, config, query.trim(), { exact: !!exact });
+    const res = await searchCatalog(portalEmail, config, query.trim(), { exact: !!exact, agentId });
     if ('error' in res) return { ok: false, error: res.error };
     if (res.matches.length === 0) {
       return { ok: false, error: `Sin coincidencias para "${query}" en el catálogo.` };
