@@ -23,6 +23,7 @@
 import { sendEmail } from '@/lib/email/send';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { randomUUID } from 'crypto';
+import { chargePool } from '../pool-charge';
 
 // ── Default from address ──────────────────────────────────────────────────────
 
@@ -58,6 +59,24 @@ export interface SendBillingMailOpts {
   attachments?: BillingAttachment[];
   /** Threading context. Sets In-Reply-To and References headers. */
   threadRef?: BillingThreadRef;
+  /**
+   * Facturación al pool del cliente. Cuando se pasa, cada envío exitoso cobra
+   * 1 op al `agentId` con source='nala_email_send' y escribe a `outbound_emails`
+   * (necesario para que el drift detector no reporte falso "envío sin ledger").
+   *
+   * Si se omite, el envío ocurre pero NO se cobra ni se registra en
+   * outbound_emails. Útil para tests y para correos "internos de sistema"
+   * (retention reports, ops alerts) que Centinelia absorbe.
+   */
+  billing?: {
+    agentId:      string;
+    /** Reference al evento origen (email_id, request_id). */
+    referenceId?: string;
+    /** Label descriptivo para historial del cliente (default: subject). */
+    label?:       string;
+    /** Source semántico (default: 'nala_email_send'). */
+    source?:      string;
+  };
 }
 
 export interface MailSendResult {
@@ -108,7 +127,46 @@ export async function sendBillingMail(
     );
   }
 
-  return { messageId: `<billing-${randomUUID()}@centinelia.internal>` };
+  const messageId = `<billing-${randomUUID()}@centinelia.internal>`;
+
+  // Ledger + audit: cobrar al pool y escribir a outbound_emails para que el
+  // drift detector Nash tenga trazabilidad. Fire-and-await con log-only si
+  // falla — nunca revertimos el envío por audit failure.
+  if (opts.billing) {
+    try {
+      const supabase = createAdminClient();
+      // Resolver portal_email desde agentId para poblar la columna que el
+      // drift detector (consumption-audit.ts) filtra por org.
+      const { data: agentRow } = await supabase
+        .from('voice_agents')
+        .select('portal_email')
+        .eq('id', opts.billing.agentId)
+        .maybeSingle();
+      await supabase.from('outbound_emails').insert({
+        agent_id:     opts.billing.agentId,
+        portal_email: (agentRow?.portal_email as string | null) ?? null,
+        to_email:     opts.to,
+        subject:      opts.subject,
+        ok:           true,
+        provider:     'resend',
+      });
+    } catch (err) {
+      console.error('[billing/mail] outbound_emails insert failed:', err);
+    }
+    try {
+      await chargePool({
+        agentId:      opts.billing.agentId,
+        source:       opts.billing.source ?? 'nala_email_send',
+        reference_id: opts.billing.referenceId,
+        label:        opts.billing.label ?? `Correo enviado: ${opts.subject}`,
+        context:      `Destinatario ${opts.to}. Adjuntos: ${opts.attachments?.length ?? 0}. ThreadRef: ${opts.threadRef?.messageId ?? 'none'}`,
+      });
+    } catch (err) {
+      console.error('[billing/mail] chargePool failed:', err);
+    }
+  }
+
+  return { messageId };
 }
 
 // ── Threading helpers ─────────────────────────────────────────────────────────
@@ -146,6 +204,7 @@ export async function replyToInboundEmail(
   emailId: string,
   body: string,
   attachments?: BillingAttachment[],
+  billing?: SendBillingMailOpts['billing'],
 ): Promise<MailSendResult> {
   const supabase = createAdminClient();
 
@@ -189,5 +248,16 @@ export async function replyToInboundEmail(
     body,
     attachments,
     threadRef,
+    // Propagar billing con reference_id = emailId por default para trazabilidad.
+    ...(billing
+      ? {
+          billing: {
+            ...billing,
+            referenceId: billing.referenceId ?? emailId,
+            label:       billing.label ?? `Reply a correo: ${subject}`,
+            source:      billing.source ?? 'nala_email_reply',
+          },
+        }
+      : {}),
   });
 }
