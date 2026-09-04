@@ -239,11 +239,15 @@ public static class Program
         // se encuentra cuando corre como servicio.
         var exeDir = AppContext.BaseDirectory;
 
+        // EnvironmentName respeta DOTNET_ENVIRONMENT si está seteado (dev override),
+        // Production por default en prod bajo el service (LocalSystem, admin, sinks completos).
+        var envName = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")
+                    ?? Environments.Production;
         var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
         {
             Args             = args,
             ContentRootPath  = exeDir,
-            EnvironmentName  = Environments.Production,
+            EnvironmentName  = envName,
         });
 
         builder.Configuration

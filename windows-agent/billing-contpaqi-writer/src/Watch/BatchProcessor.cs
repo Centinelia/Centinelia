@@ -106,7 +106,11 @@ public sealed class BatchProcessor
                 var uuid = _session.GetDocumentUuid(_concepto, invoice.Serie, folio);
                 var xml  = _session.FetchTimbradoXml(_concepto, invoice.Serie, folio);
 
-                var timbradoName = $"{basename}_{invoice.Serie}{folio}.xml";
+                // Formato invariante para que la cultura del OS (es-MX usa coma decimal)
+                // no meta un separador en el nombre del archivo. Folios de CONTPAQi son
+                // enteros consecutivos, pero mejor defensivo que sorpresa a las 2 AM.
+                var folioStr = folio.ToString("0", System.Globalization.CultureInfo.InvariantCulture);
+                var timbradoName = $"{basename}_{invoice.Serie}{folioStr}.xml";
                 await _storage.WriteOutboxTextAsync("timbrados", timbradoName, xml, ct);
 
                 results.Add(new InvoiceResult(

@@ -17,7 +17,7 @@
 ;   - Al desinstalar, para y remueve el service.
 
 #define AppName        "Centinelia Billing Writer"
-#define AppVersion     "0.10.0"
+#define AppVersion     "0.10.1"
 #define AppPublisher   "Centinelia"
 #define ServiceName    "Centinelia.BillingWriter"
 #define ExeName        "BillingContpaqiWriter.exe"
@@ -66,6 +66,14 @@ Filename: "sc.exe"; \
 Filename: "sc.exe"; \
     Parameters: "failure {#ServiceName} reset= 86400 actions= restart/10000/restart/30000/restart/60000"; \
     Flags: runhidden
+
+; Endurecer ACL de appsettings.json: contiene CSD password, SQL password y
+; Dropbox token en plaintext. Solo SYSTEM (donde corre el service) y
+; Administrators pueden leerlo. Se elimina la herencia primero para que
+; Users no herede acceso de ProgramData.
+Filename: "icacls.exe"; \
+    Parameters: """{commonappdata}\Centinelia\BillingWriter\appsettings.json"" /inheritance:r /grant:r ""SYSTEM:(F)"" ""Administrators:(F)"""; \
+    Flags: runhidden; StatusMsg: "Endureciendo permisos de appsettings.json..."
 
 ; Solo arrancar automáticamente si el admin marca la casilla (default off para
 ; que primero edite appsettings.json).
