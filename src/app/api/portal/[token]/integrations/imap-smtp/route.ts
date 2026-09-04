@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { resolveOrgFromToken } from '@/lib/portal/org-token';
-import { encrypt } from '@/lib/crypto';
+import { encrypt, decrypt } from '@/lib/crypto';
 import { verifySmtpCreds, verifyImapCreds, sendViaSmtp } from '@/lib/connectors/imap-smtp';
 
 interface Params { params: Promise<{ token: string }> }
@@ -144,15 +144,31 @@ export async function POST(req: NextRequest, { params }: Params) {
   const port        = Number(body.port ?? 465);
   const secure      = body.secure !== false;
   const username    = (body.username    ?? '').trim();
-  const password    = (body.password    ?? '').trim();
+  const passwordIn  = (body.password    ?? '').trim();
   const fromDisplay = (body.from_display ?? '').trim() || undefined;
   const sendTest    = body.send_test !== false;
   const tlsInsecure = body.tls_insecure === true;
   const imapHost    = (body.imap_host ?? '').trim() || undefined;
   const imapPort    = body.imap_port ? Number(body.imap_port) : undefined;
 
-  if (!host || !username || !password || !port) {
-    return NextResponse.json({ error: 'Faltan campos: host, port, username, password son obligatorios.' }, { status: 400 });
+  // Password puede venir vacío en edición: si ya hay cfg guardada, reusar
+  // el password_enc existente en lugar de forzar re-ingreso. El UI muestra
+  // placeholder "deja vacío para conservar" así que el usuario espera esto.
+  const existingCfg = readSmtp(gate.agent!);
+  let password: string;
+  let passwordEnc: string;
+  if (passwordIn) {
+    password    = passwordIn;
+    passwordEnc = encrypt(passwordIn);
+  } else if (existingCfg?.password_enc) {
+    password    = decrypt(existingCfg.password_enc);
+    passwordEnc = existingCfg.password_enc;
+  } else {
+    return NextResponse.json({ error: 'Falta password (primera configuración requiere ingresarla).' }, { status: 400 });
+  }
+
+  if (!host || !username || !port) {
+    return NextResponse.json({ error: 'Faltan campos: host, port, username son obligatorios.' }, { status: 400 });
   }
 
   try {
@@ -191,7 +207,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const nextSmtp: SmtpConfigJson = {
     host, port, secure, username,
-    password_enc: encrypt(password),
+    password_enc: passwordEnc,
     from_display: fromDisplay ?? null,
     status:       'active',
     updated_at:   new Date().toISOString(),

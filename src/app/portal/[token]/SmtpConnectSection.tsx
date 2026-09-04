@@ -225,7 +225,7 @@ export default function SmtpConnectSection({ token, agentId }: { token: string; 
       )}
 
       <div className="flex gap-2">
-        <button onClick={save} disabled={saving || !host || !username || !password || !port} className="flex items-center gap-2 text-[12px] px-4 py-2 rounded-md font-semibold" style={{ background: '#6C3BFF', color: '#fff', border: 'none', opacity: (saving || !host || !username || !password || !port) ? 0.5 : 1 }}>
+        <button onClick={save} disabled={saving || !host || !username || (!password && !cfg?.configured) || !port || (enableImap && !imapHost)} className="flex items-center gap-2 text-[12px] px-4 py-2 rounded-md font-semibold" style={{ background: '#6C3BFF', color: '#fff', border: 'none', opacity: (saving || !host || !username || (!password && !cfg?.configured) || !port || (enableImap && !imapHost)) ? 0.5 : 1 }}>
           {saving ? <><Loader2 size={12} className="animate-spin" /> Probando…</> : 'Probar y guardar'}
         </button>
         {editing && (

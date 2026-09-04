@@ -37,10 +37,11 @@ vi.mock('@/lib/auth/cron-auth', () => ({
   },
 }));
 
-const { mockAgentsList, mockIntegrationLookup, mockEmailInsert } = vi.hoisted(() => ({
+const { mockAgentsList, mockIntegrationLookup, mockEmailInsert, mockLockAcquire } = vi.hoisted(() => ({
   mockAgentsList:        vi.fn(),
   mockIntegrationLookup: vi.fn(),
   mockEmailInsert:       vi.fn(),
+  mockLockAcquire:       vi.fn(),  // devuelve { data, error } para el .maybeSingle() del UPDATE / INSERT
 }));
 
 vi.mock('@/lib/supabase/admin', () => ({
@@ -67,11 +68,33 @@ vi.mock('@/lib/supabase/admin', () => ({
         };
       }
       if (table === 'billing_incoming_emails') {
+        const chainable: any = {
+          select: () => ({ single: mockEmailInsert }),
+        };
         return {
-          insert: () => ({
-            select: () => ({
-              single: mockEmailInsert,
+          insert: () => chainable,
+          upsert: () => chainable,
+        };
+      }
+      if (table === 'agent_mailboxes_lock') {
+        // acquireAgentMailboxLock: UPDATE lock expirado → si null, INSERT nuevo.
+        // El mock ejerce ambos: primero UPDATE devuelve el handle O null; si null,
+        // INSERT devuelve el handle. Por simplicidad, hacemos UPDATE devolver
+        // lo que mockLockAcquire retorne, e INSERT también (dev-only sanity).
+        const lockRes = () => mockLockAcquire();
+        return {
+          update: () => ({
+            eq: () => ({
+              lt: () => ({
+                select: () => ({ maybeSingle: lockRes }),
+              }),
             }),
+          }),
+          insert: () => ({
+            select: () => ({ maybeSingle: lockRes }),
+          }),
+          delete: () => ({
+            eq: () => ({ eq: () => Promise.resolve({ error: null }) }),
           }),
         };
       }
@@ -89,6 +112,8 @@ beforeEach(() => {
   mockIntegrationLookup.mockResolvedValue({ data: { id: 'integ-1' }, error: null });
   mockEmailInsert.mockResolvedValue({ data: { id: 'email-1' }, error: null });
   mockEnqueue.mockResolvedValue({ jobId: 'job-1' });
+  // Default: lock acquired successfully (UPDATE devuelve handle)
+  mockLockAcquire.mockResolvedValue({ data: { agent_id: 'a', holder_id: 'h' }, error: null });
 });
 
 function makeReq(auth = 'Bearer valid-secret') {
@@ -207,5 +232,28 @@ describe('GET /api/cron/agent-mailboxes', () => {
     expect(body.results[0].fetched).toBe(0);
     expect(mockEnqueue).not.toHaveBeenCalled();
     expect(mockMarkSeen).not.toHaveBeenCalled();
+  });
+
+  it('lock ocupado por otro tick → skip sin fetch', async () => {
+    mockAgentsList.mockResolvedValue({ data: [AGENT_FACT], error: null });
+    // UPDATE devuelve null (no había lock expirado) e INSERT falla con 23505
+    mockLockAcquire.mockResolvedValue({ data: null, error: { code: '23505', message: 'unique_violation' } });
+
+    const res = await GET(makeReq());
+    const body = await res.json();
+    expect(body.results[0].lockedByOther).toBe(true);
+    expect(body.summary.agents_locked).toBe(1);
+    expect(mockFetchUnread).not.toHaveBeenCalled();
+  });
+
+  it('role con case distinto también matchea facturacion', async () => {
+    mockAgentsList.mockResolvedValue({ data: [{ ...AGENT_FACT, role: 'Facturacion' }], error: null });
+    mockFetchUnread.mockResolvedValue([
+      { uid: 1, messageId: '<x>', from: 'x@x.com', fromName: null, to: ['nala@ex.com'], subject: 'x', bodyText: '', bodyHtml: null, date: null, attachments: [{ filename: 'x.jpg', contentType: 'image/jpeg', size: 1, content: Buffer.from('x') }] },
+    ]);
+
+    const res = await GET(makeReq());
+    await res.json();
+    expect(mockEnqueue).toHaveBeenCalled();
   });
 });

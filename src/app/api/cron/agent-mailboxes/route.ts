@@ -28,6 +28,7 @@ import { verifyCronAuth } from '@/lib/auth/cron-auth';
 import { decrypt } from '@/lib/crypto';
 import { fetchUnreadFromImap, markSeenInImap, type SmtpConfig, type FetchedEmail } from '@/lib/connectors/imap-smtp';
 import { enqueueBillingEmail } from '@/lib/billing/employee/queue';
+import { acquireAgentMailboxLock, releaseAgentMailboxLock } from '@/lib/agent-mailboxes/lock';
 
 export const dynamic     = 'force-dynamic';
 export const maxDuration = 300;
@@ -59,6 +60,7 @@ interface AgentResult {
   enqueued:    number;
   skipped:     number;
   markedSeen:  number;
+  lockedByOther?: boolean;
   error?:      string;
 }
 
@@ -100,22 +102,33 @@ async function routeFacturacion(
     size:        a.size,
   }));
 
-  const { data: row, error: insertErr } = await supabase
-    .from('billing_incoming_emails')
-    .insert({
-      portal_email:     agent.portal_email,
-      integration_id:   integ.id,
-      from_address:     email.from,
-      to_address:       email.to.join(', '),
-      subject:          email.subject || null,
-      body_text:        email.bodyText || null,
-      attachment_count: email.attachments.length,
-      attachments_meta: attachmentsMeta.length > 0 ? attachmentsMeta : null,
-      raw_payload:      { source: 'agent-mailboxes-cron', uid: email.uid },
-      message_id:       email.messageId,
-    })
-    .select('id')
-    .single();
+  // Upsert por (portal_email, message_id) — el índice único parcial
+  // dedup-ea si ya se insertó en un tick anterior (markSeen falló, tick
+  // solapado, etc). Sin message_id (raro pero legal), cae a insert normal.
+  const inputRow = {
+    portal_email:     agent.portal_email,
+    integration_id:   integ.id,
+    from_address:     email.from,
+    to_address:       email.to.join(', '),
+    subject:          email.subject || null,
+    body_text:        email.bodyText || null,
+    attachment_count: email.attachments.length,
+    attachments_meta: attachmentsMeta.length > 0 ? attachmentsMeta : null,
+    raw_payload:      { source: 'agent-mailboxes-cron', uid: email.uid },
+    message_id:       email.messageId,
+  };
+
+  const { data: row, error: insertErr } = email.messageId
+    ? await supabase
+        .from('billing_incoming_emails')
+        .upsert(inputRow, { onConflict: 'portal_email,message_id', ignoreDuplicates: false })
+        .select('id')
+        .single()
+    : await supabase
+        .from('billing_incoming_emails')
+        .insert(inputRow)
+        .select('id')
+        .single();
 
   if (insertErr || !row) return { ok: false, error: `insert: ${insertErr?.message}` };
 
@@ -152,46 +165,56 @@ async function processAgent(
   const cfg = buildCfg(smtp);
   if (!cfg) return { ...result, error: 'smtp_config sin imap_host' };
 
-  let emails: FetchedEmail[];
+  // Lock por agent_id para prevenir ticks solapados (Vercel no garantiza
+  // single-execution). Sin lock, dos runs paralelos duplican fetch IMAP
+  // (aunque el índice único de billing_incoming_emails ya dedupe inserts).
+  const lock = await acquireAgentMailboxLock(supabase, agent.id);
+  if (!lock) {
+    return { ...result, lockedByOther: true };
+  }
+
   try {
-    emails = await fetchUnreadFromImap(cfg, { limit: 20 });
-  } catch (e) {
-    return { ...result, error: `fetch: ${(e as Error).message}` };
-  }
-  result.fetched = emails.length;
-  if (emails.length === 0) return result;
-
-  const seenUids: number[] = [];
-
-  for (const email of emails) {
-    if (agent.role !== 'facturacion') {
-      // Otros roles no tienen pipeline aún — skip sin markSeen para no
-      // perder correos que después podamos rutear.
-      result.skipped++;
-      continue;
-    }
-    const routed = await routeFacturacion(supabase, agent, email);
-    if (routed.ok) {
-      result.enqueued++;
-      seenUids.push(email.uid);
-    } else {
-      result.skipped++;
-      // No agregar error a `result.error` — un correo malo no debe marcar
-      // fallo global del agente. El detalle queda en el log de Vercel.
-      console.warn(`[agent-mailboxes] ${agent.agent_name} skip uid=${email.uid}: ${routed.error}`);
-    }
-  }
-
-  if (seenUids.length > 0) {
+    let emails: FetchedEmail[];
     try {
-      await markSeenInImap(cfg, seenUids);
-      result.markedSeen = seenUids.length;
+      emails = await fetchUnreadFromImap(cfg, { limit: 20 });
     } catch (e) {
-      result.error = `markSeen: ${(e as Error).message}`;
+      return { ...result, error: `fetch: ${(e as Error).message}` };
     }
-  }
+    result.fetched = emails.length;
+    if (emails.length === 0) return result;
 
-  return result;
+    const seenUids: number[] = [];
+
+    for (const email of emails) {
+      if ((agent.role ?? '').toLowerCase() !== 'facturacion') {
+        // Otros roles no tienen pipeline aún — skip sin markSeen para no
+        // perder correos que después podamos rutear.
+        result.skipped++;
+        continue;
+      }
+      const routed = await routeFacturacion(supabase, agent, email);
+      if (routed.ok) {
+        result.enqueued++;
+        seenUids.push(email.uid);
+      } else {
+        result.skipped++;
+        console.warn(`[agent-mailboxes] ${agent.agent_name} skip uid=${email.uid}: ${routed.error}`);
+      }
+    }
+
+    if (seenUids.length > 0) {
+      try {
+        await markSeenInImap(cfg, seenUids);
+        result.markedSeen = seenUids.length;
+      } catch (e) {
+        result.error = `markSeen: ${(e as Error).message}`;
+      }
+    }
+
+    return result;
+  } finally {
+    await releaseAgentMailboxLock(supabase, lock).catch(() => { /* best-effort */ });
+  }
 }
 
 export async function GET(req: Request) {
@@ -225,13 +248,14 @@ export async function GET(req: Request) {
 
   const summary = results.reduce(
     (acc, r) => ({
-      agents_processed: acc.agents_processed + 1,
-      total_fetched:    acc.total_fetched    + r.fetched,
-      total_enqueued:   acc.total_enqueued   + r.enqueued,
-      total_skipped:    acc.total_skipped    + r.skipped,
+      agents_processed:  acc.agents_processed  + 1,
+      total_fetched:     acc.total_fetched     + r.fetched,
+      total_enqueued:    acc.total_enqueued    + r.enqueued,
+      total_skipped:     acc.total_skipped     + r.skipped,
+      agents_locked:     acc.agents_locked     + (r.lockedByOther ? 1 : 0),
       agents_with_error: acc.agents_with_error + (r.error ? 1 : 0),
     }),
-    { agents_processed: 0, total_fetched: 0, total_enqueued: 0, total_skipped: 0, agents_with_error: 0 },
+    { agents_processed: 0, total_fetched: 0, total_enqueued: 0, total_skipped: 0, agents_locked: 0, agents_with_error: 0 },
   );
 
   return NextResponse.json({ ok: true, summary, results });
