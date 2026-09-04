@@ -103,16 +103,24 @@ public sealed class WatchLoop
         try
         {
             await _storage.MoveToOutboxAsync("errores", filename, ct);
+            var (kind, humanMsg) = ErrorClassifier.Classify(ex);
             var reportName = Path.ChangeExtension(filename, ".json");
             var payload = System.Text.Json.JsonSerializer.Serialize(new
             {
-                sourceFile = filename,
-                processedAt = DateTime.UtcNow,
-                fatalError = $"{ex.GetType().Name}: {ex.Message}",
+                sourceFile   = filename,
+                processedAt  = DateTime.UtcNow,
+                fatalKind    = kind,
+                fatalMessage = humanMsg,
+                fatalError   = $"{ex.GetType().Name}: {ex.Message}",
             }, new System.Text.Json.JsonSerializerOptions
             {
                 WriteIndented = true,
                 PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+                Converters =
+                {
+                    new System.Text.Json.Serialization.JsonStringEnumConverter(
+                        System.Text.Json.JsonNamingPolicy.CamelCase),
+                },
             });
             await _storage.WriteOutboxTextAsync("errores", reportName, payload, ct);
         }

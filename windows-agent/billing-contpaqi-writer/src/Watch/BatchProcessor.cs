@@ -117,6 +117,8 @@ public sealed class BatchProcessor
                     Folio: folio,
                     Uuid:  uuid,
                     TimbradoPath: timbradoName,
+                    Kind:  ErrorKind.Other, // ignored when Ok=true
+                    HumanMessage: null,
                     Error: null));
                 _logger.LogInformation(
                     "[batch] {basename}#{index} rfc={rfc} timbrada como {serie}{folio} uuid={uuid}",
@@ -124,6 +126,7 @@ public sealed class BatchProcessor
             }
             catch (Exception ex)
             {
+                var (kind, humanMsg) = ErrorClassifier.Classify(ex);
                 results.Add(new InvoiceResult(
                     Index: index,
                     Rfc:   invoice.RfcReceptor,
@@ -132,10 +135,12 @@ public sealed class BatchProcessor
                     Folio: 0,
                     Uuid:  null,
                     TimbradoPath: null,
+                    Kind:  kind,
+                    HumanMessage: humanMsg,
                     Error: $"{ex.GetType().Name}: {ex.Message}"));
                 _logger.LogError(ex,
-                    "[batch] {basename}#{index} rfc={rfc} falló: {msg}",
-                    basename, index, invoice.RfcReceptor, ex.Message);
+                    "[batch] {basename}#{index} rfc={rfc} kind={kind}: {msg}",
+                    basename, index, invoice.RfcReceptor, kind, humanMsg);
             }
             index++;
         }
@@ -159,6 +164,12 @@ public sealed record BatchReport(
         WriteIndented = true,
         // camelCase para que el consumer JS (Nala) lo consuma sin ceremonias.
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        // ErrorKind se serializa como string ('rfcNotFound', 'pacError', ...)
+        // en vez de int; mucho más útil para Nala hacer switch por tipo.
+        Converters =
+        {
+            new System.Text.Json.Serialization.JsonStringEnumConverter(JsonNamingPolicy.CamelCase),
+        },
     });
 }
 
@@ -170,4 +181,9 @@ public sealed record InvoiceResult(
     double Folio,
     string? Uuid,
     string? TimbradoPath,
+    /// <summary>Categoría del error para que Nala decida acción (reintento, reply, escalar).</summary>
+    ErrorKind Kind,
+    /// <summary>Mensaje en español dirigido al operador Centinelia (Nala lo adapta para el cliente).</summary>
+    string? HumanMessage,
+    /// <summary>Detalle técnico (tipo + mensaje) para debug.</summary>
     string? Error);
