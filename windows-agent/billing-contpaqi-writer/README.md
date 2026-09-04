@@ -19,7 +19,7 @@ de CONTPAQi hacia Dropbox para que Nala tenga referencia de los códigos.
                               CFDI timbrado al receptor por correo
 ```
 
-## Estado actual — Days 1-6 completos: watcher orquestando el ciclo
+## Estado actual — Days 1-7 completos: watcher + storage abstracta + retries + logging
 
 Validado contra empresa dedicada `Kemper Urgate PRUEBAS SDK` (RFC de pruebas
 SAT `EKU9003173C9`, CSD público SAT descargado de facturoporti, password
@@ -39,10 +39,18 @@ SAT `EKU9003173C9`, CSD público SAT descargado de facturoporti, password
   al caller por stdout o a la ruta `--out`.
 - **UUID directo (`fDocumentoUUID`) ✅** → recupera solo el UUID sin
   materializar el XML completo (útil para verificar rápido).
-- **Watcher local (`--mode watch`) ✅** → bucle de polling que lee XMLs
+- **Watcher local (`--mode watch --storage local`) ✅** → bucle de polling que lee XMLs
   de importación multi-factura depositados por Nala en `--inbox`,
   procesa cada uno contra CONTPAQi, escribe los CFDIs timbrados a
   `--outbox/timbrados/` y mueve el original a `procesados/` o `errores/`.
+- **Watcher Dropbox (`--mode watch --storage dropbox`) ✅** → mismo loop pero contra
+  Dropbox API v2 vía la App autorizada del cliente (`--dropbox-token` + `--dropbox-root`).
+  Inbox = `{root}/pendientes`, outbox = `{root}/{timbrados|procesados|errores}`.
+- **Retries en timbrado ✅** → `fEmitirDocumento` reintenta hasta 3 veces con
+  backoff exponencial (2s, 4s, 8s) para tolerar fallas transient del PAC.
+  Errores permanentes (RFC ghost, XML mal formado) fallan al primer intento.
+- **Structured logging ✅** → `Microsoft.Extensions.Logging` con timestamps UTC,
+  level, source y line-oriented. Facilita grep/tail y futura ingesta a Loki/Datadog.
 
 ## Setup requerido en la máquina donde corre este agente
 
@@ -67,10 +75,14 @@ Para desarrollar sin riesgo fiscal:
 - El PAC del trial CONTPAQi devuelve UUIDs sandbox (prefijo `00000000-`)
   sin llamar al SAT — desarrollo ilimitado sin costo ni riesgo
 
-Pendientes (Day 7-10):
-- Day 7: retries + structured logging + Dropbox real (reemplazar filesystem
-  local por `Dropbox.Api`; el `--inbox`/`--outbox` se convierten en paths
-  Dropbox). Error escalation a Nala.
+Pendientes (Day 8-10):
+- Day 8: tests contra CONTPAQi real (empresa piloto Tortillería, no la de pruebas).
+  Con RFCs reales y catálogo real del cliente. Validar que las conversiones de
+  fecha, la lookup por RFC y el manejo de errores mensajean bien al usuario.
+  Además: primera integración real con Dropbox App de Beatriz (token real).
+- Day 9-10: MSI installer + Windows Service + tarea programada.
+  Escalation de errores irrecoverables: Nala en Vercel monitorea `errores/` y
+  ella misma responde al cliente pidiendo aclaración (no el writer via HTTP).
 - Day 8: tests contra CONTPAQi real (empresa piloto Tortillería).
 - Day 9-10: MSI installer + Windows Service + tarea programada.
 
@@ -91,17 +103,32 @@ BillingContpaqiWriter.exe --mode uuid --concepto 440 --serie FTEN --folio 3 \
   --empresa "C:\Compac\Empresas\adKemper_Urgate_PRUEBA"
 ```
 
-### Uso del modo watch
+### Uso del modo watch — backend local (dev)
 
 ```powershell
 BillingContpaqiWriter.exe --mode watch `
   --empresa "C:\Compac\Empresas\adKemper_Urgate_PRUEBA" `
   --concepto 440 `
   --csd-pwd 12345678a `
+  --storage local `
   --inbox  "C:\centinelia-inbox" `
   --outbox "C:\centinelia-outbox" `
   --sql "Server=localhost\SQLEXPRESS;Database=adKemper_Urgate_PRUEBA;User Id=SA;Password=xxx;TrustServerCertificate=True" `
   --poll-secs 10
+```
+
+### Uso del modo watch — backend Dropbox (prod)
+
+```powershell
+BillingContpaqiWriter.exe --mode watch `
+  --empresa "C:\Compac\Empresas\adPilotoBeatriz" `
+  --concepto 440 `
+  --csd-pwd <pwd-real> `
+  --storage dropbox `
+  --dropbox-token <sl.abc...> `
+  --dropbox-root '/Apps/Centinelia/piloto-estrella' `
+  --sql "Server=...;Database=adPilotoBeatriz;..." `
+  --poll-secs 15
 ```
 
 Layout de carpetas resultante:
