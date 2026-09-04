@@ -183,6 +183,10 @@ export class CONTPAQiAdapter implements BillingAdapter {
   // Carga de datos con cache
   // ---------------------------------------------------------------------------
 
+  // Público: usado por VisionContext y otros consumers que necesitan el catálogo entero.
+  async listAllClients(): Promise<BillingClient[]> { return this.loadClients(); }
+  async listAllProducts(): Promise<BillingProduct[]> { return this.loadProducts(); }
+
   private async loadClients(): Promise<BillingClient[]> {
     if (isFresh(this.clientsCache)) {
       return this.clientsCache.data;

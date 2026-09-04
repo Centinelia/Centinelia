@@ -21,6 +21,7 @@ import type { OrgCtx } from '../matching/client';
 import { matchClient, learnClientAlias } from '../matching/client';
 import { matchProduct, learnProductAlias } from '../matching/product';
 import { extractNoteFromImage, extractRemisionesFromImage } from '../vision/extract';
+import { buildVisionContextFromAdapter } from '../vision/build-context';
 import { DropboxClient } from '../storage/dropbox';
 import { SnapshotStorage } from '../storage/snapshot';
 import { ExcelWorkbook } from '../excel/workbook';
@@ -88,7 +89,14 @@ export function buildEmployeeTools(toolsCtx: ToolsContext): EmployeeTool[] {
       },
       handler: async (input: { image_base64: string; mime_type: string }) => {
         const buffer = Buffer.from(input.image_base64, 'base64');
-        return extractNoteFromImage(buffer, input.mime_type);
+        // Cargamos el catálogo del adapter para que el vision LLM coteje
+        // nombres/precios contra la realidad del negocio en vez de adivinar.
+        const visionCtx = await buildVisionContextFromAdapter({
+          adapter,
+          supabase,
+          integrationId: ctx.integrationId,
+        });
+        return extractNoteFromImage(buffer, input.mime_type, visionCtx);
       },
     },
 
@@ -119,7 +127,12 @@ export function buildEmployeeTools(toolsCtx: ToolsContext): EmployeeTool[] {
       },
       handler: async (input: { image_base64: string; mime_type: string }) => {
         const buffer = Buffer.from(input.image_base64, 'base64');
-        return extractRemisionesFromImage(buffer, input.mime_type);
+        const visionCtx = await buildVisionContextFromAdapter({
+          adapter,
+          supabase,
+          integrationId: ctx.integrationId,
+        });
+        return extractRemisionesFromImage(buffer, input.mime_type, visionCtx);
       },
     },
 

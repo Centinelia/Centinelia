@@ -82,6 +82,9 @@ export class MockBillingAdapter implements BillingAdapter {
     return this.data.products.find((p) => p.sku === sku) ?? null;
   }
 
+  async listAllClients(): Promise<BillingClient[]> { return [...this.data.clients]; }
+  async listAllProducts(): Promise<BillingProduct[]> { return [...this.data.products]; }
+
   async submitInvoiceBatch(invoices: BillingInvoice[]): Promise<BillingBatchResult> {
     // Mock genera un archivo XML por lote (mimics file-mode adapter)
     const filename = `mock_batch_${Date.now()}.xml`;

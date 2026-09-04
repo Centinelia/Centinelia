@@ -14,6 +14,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { resolveOrgFromToken } from '@/lib/portal/org-token';
 import { extractNoteFromImage } from '@/lib/billing/vision/extract';
+import { buildVisionContextFromAdapter } from '@/lib/billing/vision/build-context';
 import { buildAdapter, type OrganizationIntegrationConfig } from '@/lib/billing/adapters';
 import { buildImportXml } from '@/lib/billing/contpaqi/xml-import';
 import type {
@@ -88,10 +89,22 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const imageBuffer = Buffer.from(await file.arrayBuffer());
 
-  // 1. Extract note
+  // 1. Extract note. Pasa VisionContext con catálogo real del cliente para
+  // que el LLM coteje nombres manuscritos y valide sum(qty×precio)≈total.
+  // Sin esto, el modelo adivinaba y podía facturar al cliente equivocado
+  // o por monto equivocado — riesgo fiscal directo.
   let extracted;
   try {
-    extracted = await extractNoteFromImage(imageBuffer, mimeType);
+    const supabase = createAdminClient();
+    const visionCtx = await buildVisionContextFromAdapter({
+      adapter,
+      supabase,
+      integrationId: integration.id,
+      emisor: integration.config.fiscal
+        ? { rfc: integration.config.fiscal.rfc_emisor }
+        : undefined,
+    });
+    extracted = await extractNoteFromImage(imageBuffer, mimeType, visionCtx);
   } catch (err) {
     return NextResponse.json(
       { error: `Vision extraction failed: ${(err as Error).message}` },
