@@ -25,17 +25,50 @@ export async function GET(req: NextRequest) {
   const group    = req.nextUrl.searchParams.get('group') ?? 'open';
   const statuses = STATUS_GROUPS[group] ?? STATUS_GROUPS.open;
 
+  // Ordenamiento: siempre "más recientes en esta lista arriba". Para Abiertos,
+  // "más recientes" = created_at (cuándo entró el problema). Para Claude Code
+  // y Resueltos, "más recientes" = updated_at (cuándo cambió al estado actual).
+  // Sin esto, marcar como resuelto un incidente viejo lo dejaba enterrado en
+  // la pestaña Resueltos por su created_at original. Ver 2026-09-05.
+  const orderCol = group === 'open' ? 'created_at' : 'updated_at';
+
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from('platform_incidents')
     .select('*')
     .in('status', statuses)
-    .order('priority', { ascending: false })
-    .order('created_at', { ascending: false })
+    .order(orderCol, { ascending: false })
     .limit(200);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ items: data ?? [] });
+
+  // Metadata por portal_email para que el UI pueda buscar por nombre de empresa,
+  // portal_token o nombres de meerkats sin round-trips extra. Solo traemos los
+  // portals que aparecen en los incidentes de esta página.
+  const items = data ?? [];
+  const portalEmails = Array.from(new Set(items.map(i => i.affected_portal_email).filter(Boolean))) as string[];
+  const portalMeta: Record<string, { business_name: string | null; portal_token: string | null; agent_names: string[] }> = {};
+  if (portalEmails.length > 0) {
+    const { data: orgs } = await supabase
+      .from('organizations')
+      .select('portal_email, name, portal_token')
+      .in('portal_email', portalEmails);
+    const { data: agents } = await supabase
+      .from('voice_agents')
+      .select('portal_email, agent_name, business_name, portal_token')
+      .in('portal_email', portalEmails);
+    for (const email of portalEmails) {
+      const org = (orgs ?? []).find(o => o.portal_email === email);
+      const portalAgents = (agents ?? []).filter(a => a.portal_email === email);
+      portalMeta[email] = {
+        business_name: org?.name ?? portalAgents[0]?.business_name ?? null,
+        portal_token:  org?.portal_token ?? portalAgents[0]?.portal_token ?? null,
+        agent_names:   portalAgents.map(a => a.agent_name).filter(Boolean) as string[],
+      };
+    }
+  }
+
+  return NextResponse.json({ items, portal_meta: portalMeta });
 }
 
 export async function POST(req: NextRequest) {

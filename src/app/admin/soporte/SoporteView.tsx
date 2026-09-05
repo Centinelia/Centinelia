@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertOctagon, Bot, CheckCircle2, ExternalLink, GitBranch, Inbox, Pause, Play, Plus, RefreshCw, User, X } from 'lucide-react';
+import { AlertOctagon, Bot, CheckCircle2, ExternalLink, GitBranch, Inbox, Pause, Play, Plus, RefreshCw, Search, User, X } from 'lucide-react';
 
 type Group    = 'open' | 'claude_code' | 'resolved';
 type Priority = 'low' | 'med' | 'high' | 'critical';
@@ -33,6 +33,12 @@ interface UnprocessedReport {
   tipo:         string;
   descripcion:  string;
   source:       string | null;
+}
+
+interface PortalMeta {
+  business_name: string | null;
+  portal_token:  string | null;
+  agent_names:   string[];
 }
 
 const GROUP_LABELS: Record<Group, string> = {
@@ -87,7 +93,8 @@ export function SoporteView() {
   const [nashEnabled, setNashEnabled] = useState<boolean | null>(null);
   const [togglingNash, setTogglingNash] = useState(false);
   const [unprocessed, setUnprocessed] = useState<UnprocessedReport[]>([]);
-  const [emailFilter, setEmailFilter] = useState<string>('all');
+  const [portalMeta, setPortalMeta] = useState<Record<string, PortalMeta>>({});
+  const [search, setSearch] = useState<string>('');
   const [sourceFilter, setSourceFilter] = useState<Set<Source>>(new Set());
 
   const load = useCallback(async () => {
@@ -101,6 +108,7 @@ export function SoporteView() {
       ]);
       const incData = await incRes.json();
       setItems(incData.items ?? []);
+      setPortalMeta(incData.portal_meta ?? {});
       if (unpRes) {
         const unpData = await unpRes.json();
         setUnprocessed(unpData.items ?? []);
@@ -148,32 +156,41 @@ export function SoporteView() {
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadNashStatus(); }, [loadNashStatus]);
 
-  // Lista de portal_emails únicos presentes en los incidentes cargados,
-  // para el dropdown de filtro por cliente.
-  const emailOptions = useMemo(() => {
-    const set = new Set<string>();
-    for (const it of items) if (it.affected_portal_email) set.add(it.affected_portal_email);
-    for (const u of unprocessed) if (u.portal_email) set.add(u.portal_email);
-    return Array.from(set).sort();
-  }, [items, unprocessed]);
+  // Búsqueda de texto libre matchea: portal_email, business_name del org,
+  // portal_token, nombres de meerkats, título y descripción del incidente.
+  // Client-side sobre los items ya cargados (limit 200 de la API). Case-insensitive.
+  const search_lower = search.trim().toLowerCase();
+
+  const matchesSearch = useCallback((portalEmail: string | null, extra: string[] = []): boolean => {
+    if (!search_lower) return true;
+    const meta = portalEmail ? portalMeta[portalEmail] : undefined;
+    const haystack: string[] = [
+      portalEmail ?? '',
+      meta?.business_name ?? '',
+      meta?.portal_token ?? '',
+      ...(meta?.agent_names ?? []),
+      ...extra,
+    ];
+    return haystack.some(v => v && v.toLowerCase().includes(search_lower));
+  }, [search_lower, portalMeta]);
 
   const filteredItems = useMemo(() => {
     return items.filter(it => {
-      if (emailFilter !== 'all' && it.affected_portal_email !== emailFilter) return false;
       if (sourceFilter.size > 0 && !sourceFilter.has(it.source)) return false;
+      if (!matchesSearch(it.affected_portal_email, [it.title, it.description])) return false;
       return true;
     });
-  }, [items, emailFilter, sourceFilter]);
+  }, [items, sourceFilter, matchesSearch]);
 
   const filteredUnprocessed = useMemo(() => {
     return unprocessed.filter(u => {
-      if (emailFilter !== 'all' && u.portal_email !== emailFilter) return false;
       // Los reportes crudos son todos source=bug_report. Si el filtro de source
       // está activo y no incluye bug_report, ocultamos toda la sección.
       if (sourceFilter.size > 0 && !sourceFilter.has('bug_report')) return false;
+      if (!matchesSearch(u.portal_email, [u.descripcion, u.tipo])) return false;
       return true;
     });
-  }, [unprocessed, emailFilter, sourceFilter]);
+  }, [unprocessed, sourceFilter, matchesSearch]);
 
   const toggleSource = (s: Source) => {
     setSourceFilter(prev => {
@@ -185,11 +202,11 @@ export function SoporteView() {
   };
 
   const clearFilters = () => {
-    setEmailFilter('all');
+    setSearch('');
     setSourceFilter(new Set());
   };
 
-  const filtersActive = emailFilter !== 'all' || sourceFilter.size > 0;
+  const filtersActive = search.trim() !== '' || sourceFilter.size > 0;
 
   return (
     <div>
@@ -229,9 +246,8 @@ export function SoporteView() {
       </div>
 
       <FilterBar
-        emailOptions={emailOptions}
-        emailFilter={emailFilter}
-        onEmailChange={setEmailFilter}
+        search={search}
+        onSearchChange={setSearch}
         sourceFilter={sourceFilter}
         onToggleSource={toggleSource}
         totalCount={items.length + unprocessed.length}
@@ -241,7 +257,7 @@ export function SoporteView() {
       />
 
       {group === 'open' && filteredUnprocessed.length > 0 && (
-        <UnprocessedSection reports={filteredUnprocessed} onRefresh={load} />
+        <UnprocessedSection reports={filteredUnprocessed} portalMeta={portalMeta} onRefresh={load} />
       )}
 
       {loading ? (
@@ -258,7 +274,7 @@ export function SoporteView() {
         </p>
       ) : (
         <div className="flex flex-col gap-3">
-          {filteredItems.map(item => <IncidentCard key={item.id} item={item} onChange={load} />)}
+          {filteredItems.map(item => <IncidentCard key={item.id} item={item} portalMeta={portalMeta} onChange={load} />)}
         </div>
       )}
 
@@ -322,9 +338,8 @@ function NashToggleControl({
 }
 
 function FilterBar({
-  emailOptions,
-  emailFilter,
-  onEmailChange,
+  search,
+  onSearchChange,
   sourceFilter,
   onToggleSource,
   totalCount,
@@ -332,9 +347,8 @@ function FilterBar({
   filtersActive,
   onClear,
 }: {
-  emailOptions:   string[];
-  emailFilter:    string;
-  onEmailChange:  (v: string) => void;
+  search:         string;
+  onSearchChange: (v: string) => void;
   sourceFilter:   Set<Source>;
   onToggleSource: (s: Source) => void;
   totalCount:     number;
@@ -347,20 +361,17 @@ function FilterBar({
       className="mb-4 p-3 rounded-xl flex flex-wrap items-center gap-3"
       style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
     >
-      <label className="flex items-center gap-2 text-xs" style={{ color: 'var(--c-text-3)' }}>
-        <span>Cliente:</span>
-        <select
-          value={emailFilter}
-          onChange={e => onEmailChange(e.target.value)}
-          className="px-2 py-1 rounded-md text-xs"
+      <div className="flex items-center gap-2 flex-1 min-w-[240px]">
+        <Search size={14} style={{ color: 'var(--c-text-4)' }} />
+        <input
+          type="text"
+          value={search}
+          onChange={e => onSearchChange(e.target.value)}
+          placeholder="Buscar por empresa, correo, token, meerkat, título…"
+          className="flex-1 px-2 py-1 rounded-md text-xs outline-none"
           style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
-        >
-          <option value="all">Todos ({emailOptions.length})</option>
-          {emailOptions.map(email => (
-            <option key={email} value={email}>{email}</option>
-          ))}
-        </select>
-      </label>
+        />
+      </div>
 
       <div className="flex items-center gap-1.5 flex-wrap">
         <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>Origen:</span>
@@ -402,10 +413,12 @@ function FilterBar({
 
 function UnprocessedSection({
   reports,
+  portalMeta,
   onRefresh,
 }: {
-  reports:   UnprocessedReport[];
-  onRefresh: () => void;
+  reports:    UnprocessedReport[];
+  portalMeta: Record<string, PortalMeta>;
+  onRefresh:  () => void;
 }) {
   return (
     <div
@@ -431,25 +444,28 @@ function UnprocessedSection({
         Estos reportes ya entraron pero Nash todavía no los convirtió en incidentes. Si Nash está activo, aparecerán en el listado principal en la próxima corrida (cada 10 min).
       </p>
       <div className="flex flex-col gap-2">
-        {reports.map(r => <UnprocessedCard key={r.id} report={r} />)}
+        {reports.map(r => <UnprocessedCard key={r.id} report={r} portalMeta={portalMeta} />)}
       </div>
     </div>
   );
 }
 
-function UnprocessedCard({ report }: { report: UnprocessedReport }) {
+function UnprocessedCard({ report, portalMeta }: { report: UnprocessedReport; portalMeta: Record<string, PortalMeta> }) {
+  const meta = report.portal_email ? portalMeta[report.portal_email] : undefined;
+  const clientLabel = meta?.business_name ?? report.portal_email;
   return (
     <div
       className="rounded-lg p-3"
       style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
     >
       <div className="flex items-center gap-2 mb-1 flex-wrap">
-        {report.portal_email && (
+        {clientLabel && (
           <span
             className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-semibold"
             style={{ background: `${NASH_COLOR}15`, color: NASH_COLOR, border: `1px solid ${NASH_COLOR}30` }}
+            title={report.portal_email ?? ''}
           >
-            {report.portal_email}
+            {clientLabel}
           </span>
         )}
         <span
@@ -467,10 +483,12 @@ function UnprocessedCard({ report }: { report: UnprocessedReport }) {
   );
 }
 
-function IncidentCard({ item, onChange }: { item: Incident; onChange: () => void }) {
+function IncidentCard({ item, portalMeta, onChange }: { item: Incident; portalMeta: Record<string, PortalMeta>; onChange: () => void }) {
   const SIcon = SOURCE_ICON[item.source];
   const pColor = PRIORITY_COLOR[item.priority];
   const [busy, setBusy] = useState(false);
+  const meta = item.affected_portal_email ? portalMeta[item.affected_portal_email] : undefined;
+  const clientLabel = meta?.business_name ?? item.affected_portal_email;
 
   const patch = async (patch: Record<string, unknown>) => {
     setBusy(true);
@@ -494,13 +512,13 @@ function IncidentCard({ item, onChange }: { item: Incident; onChange: () => void
       <div className="flex items-start gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-2 flex-wrap">
-            {item.affected_portal_email && (
+            {clientLabel && (
               <span
                 className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-semibold"
                 style={{ background: `${NASH_COLOR}15`, color: NASH_COLOR, border: `1px solid ${NASH_COLOR}30` }}
-                title="Cliente afectado"
+                title={item.affected_portal_email ?? 'Cliente afectado'}
               >
-                {item.affected_portal_email}
+                {clientLabel}
               </span>
             )}
             <span
