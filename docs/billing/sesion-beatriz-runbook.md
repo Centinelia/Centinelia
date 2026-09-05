@@ -15,9 +15,11 @@ que trabajan como si fueran humanos con computadora.
 
 Nazre confirma en tu laptop:
 
-- [ ] Vercel `AGENT_MAILBOXES_ENABLED`, `NALA_WRITER_INBOX_ENABLED`,
-      `NALA_MAILBOX_ENABLED` visibles en dashboard (Settings → Environment
-      Variables → Production). Todos deben estar en `false` por ahora.
+- [ ] Vercel: kill switches ya flipeados y redeploy hecho. Verificar
+      con Logs (últimos 15 min) que los crons `agent-mailboxes` y
+      `nala-writer-inbox` responden con patrones esperados
+      (skip clean, sin errors inesperados). Si aún ves
+      `{ skipped: 'disabled' }`, el redeploy no surtió efecto.
 - [ ] `git pull` para tener los últimos commits (incluye Fase 2 IMAP +
       cron agent-mailboxes + fixes).
 - [ ] `.env.local` con `ENCRYPTION_KEY` (32 bytes hex).
@@ -352,41 +354,28 @@ Beatriz.
 
 ---
 
-## FASE 6. Flip kill switches en Vercel + redeploy (10 min)
+## FASE 6. Activar cobro al pool para Nala (2 min)
 
-**Importante:** los env vars nuevos NO surten efecto sin redeploy.
+Los kill switches Vercel (`AGENT_MAILBOXES_ENABLED` y
+`NALA_WRITER_INBOX_ENABLED`) ya se flipearon a `true` + redeploy antes
+de esta sesión. Los crons ya están activos y solo esperan config
+completa de Beatriz para procesarla.
 
-### 6.1 Cambiar a `true` los flags en Vercel dashboard
-
-En `https://vercel.com/centinelia1/centinelia_product` → Settings →
-Environment Variables:
-
-- `AGENT_MAILBOXES_ENABLED` → editar → `true`
-- `NALA_WRITER_INBOX_ENABLED` → editar → `true`
-- Dejar `NALA_MAILBOX_ENABLED=false` (esto es la Nala INTERNA de
-  Centinelia, distinta al piloto; solo se activa cuando se pague
-  Facturama prod).
-
-### 6.2 Redeploy
-
-Deployments → tres puntos del último → Redeploy → sin "Use existing
-build cache" → Redeploy.
-
-Esperar ~2 min a que quede "Ready".
-
-### 6.3 Verificar que el cron se activó
-
-Esperar el próximo tick del cron `agent-mailboxes` (cada 10 min).
-Chequear Vercel Logs → filtrar `agent-mailboxes`. Debe verse el
-response con `{ ok: true, summary: {...} }` (no `{ skipped: 'disabled' }`).
-
-### 6.4 Activar cobro al pool para Nala
+Solo falta activar el cobro al pool para Nala del piloto (per-agent,
+no se puede pre-hacer):
 
 ```sql
 UPDATE voice_agents
 SET features = jsonb_set(features, '{nala_pool_charge_enabled}', 'true')
 WHERE portal_email = '<beatriz>' AND role = 'facturacion';
 ```
+
+**Verificación quick** (opcional, en Vercel Logs):
+- `/api/cron/agent-mailboxes`: debe verse `agents_processed >= 2`
+  (Nelia + Nala), con Nala en `total_fetched` (correo de smoke pending)
+  o `error: 'smtp_config sin imap_host'` si aún no configuró IMAP.
+- `/api/cron/nala-writer-inbox`: `results` incluye Tortillería con
+  actividad si Beatriz ya autorizó Dropbox y el sync token corrió.
 
 ---
 
