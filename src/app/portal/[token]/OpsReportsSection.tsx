@@ -278,7 +278,7 @@ export default function OpsReportsSection({ token, agents, meerkatRoleId, report
               {bannerMeerkats.map((m, i) => (
                 <img key={m.id} src={m.imagen} alt={m.nombre}
                   style={{
-                    width: 80, height: 80, objectFit: 'cover', objectPosition: '50% 10%',
+                    width: 80, height: 80, objectFit: 'contain', objectPosition: 'center',
                     borderRadius: '50%', flexShrink: 0,
                     border: `2px solid ${(m.color ?? acColor)}30`,
                     background: '#ffffff',

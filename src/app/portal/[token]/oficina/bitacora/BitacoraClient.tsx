@@ -62,6 +62,29 @@ function nextMonday(isoMonday: string): string {
   return d.toISOString();
 }
 
+function mondayOfDate(yyyyMmDd: string): string {
+  // Parse as local date (avoid UTC shift from new Date('YYYY-MM-DD')).
+  const [y, m, day] = yyyyMmDd.split('-').map(Number);
+  const d = new Date(y, (m ?? 1) - 1, day ?? 1);
+  const dow = d.getDay();                     // 0=dom, 1=lun
+  const diff = dow === 0 ? -6 : 1 - dow;
+  d.setDate(d.getDate() + diff);
+  return d.toISOString();
+}
+
+function toInputDate(iso: string): string {
+  const d = new Date(iso);
+  const y  = d.getFullYear();
+  const m  = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dd}`;
+}
+
+function ordinalAttempt(n: number): string {
+  const suffix = n === 1 ? 'er' : n === 2 ? 'do' : n === 3 ? 'er' : 'to';
+  return `${n}${suffix} Intento`;
+}
+
 const RESULT_LABEL: Record<string, string> = {
   ok:           'OK',
   no_visitado:  'No visitado',
@@ -162,7 +185,7 @@ export function BitacoraClient({ token, initial }: Props) {
                       className="px-1.5 py-0.5 rounded text-[10px] font-semibold"
                       style={{ background: 'rgba(108,59,255,0.1)', color: '#6C3BFF' }}
                     >
-                      intento {u.attempt_num}
+                      {ordinalAttempt(u.attempt_num)}
                     </span>
                     <span className="capitalize" style={{ color: '#1A0A3B' }}>{dateStr} {timeStr}</span>
                   </div>
@@ -175,7 +198,7 @@ export function BitacoraClient({ token, initial }: Props) {
 
       {/* Week navigator */}
       <div
-        className="flex items-center justify-between px-4 py-2 rounded-xl"
+        className="flex items-center justify-between gap-3 px-4 py-2 rounded-xl flex-wrap"
         style={{ background: '#ffffff', border: '1px solid #E8E3F5' }}
       >
         <button
@@ -186,9 +209,21 @@ export function BitacoraClient({ token, initial }: Props) {
         >
           <ChevronLeft size={14} /> Semana anterior
         </button>
-        <span className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>
-          {weekLabel}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>
+            {weekLabel}
+          </span>
+          <input
+            type="date"
+            value={toInputDate(initial.weekStart)}
+            onChange={(e) => {
+              if (e.target.value) navigate(mondayOfDate(e.target.value));
+            }}
+            title="Ir a una semana específica"
+            className="text-xs px-2 py-1 rounded"
+            style={{ color: '#6C3BFF', background: 'rgba(108,59,255,0.07)', border: '1px solid rgba(108,59,255,0.2)', cursor: 'pointer' }}
+          />
+        </div>
         <button
           type="button"
           onClick={() => navigate(nextMonday(initial.weekStart))}
