@@ -1,5 +1,5 @@
 import type { createAdminClient } from '@/lib/supabase/admin';
-import type { Attachment, IntegrationRow, Connector } from '@/lib/connectors';
+import type { Attachment, IntegrationRow, Connector, SendMeta } from '@/lib/connectors';
 import { sendEmail, agentBrandedFrom } from './send';
 import { getFileConnector } from './agent-connector';
 
@@ -32,6 +32,9 @@ export interface SendAsAgentResult {
   ok:       boolean;
   provider: 'gmail' | 'outlook' | 'resend' | 'none';
   error?:   string;
+  /** Metadata cruda del provider (solo SMTP la puebla hoy). Se propaga a
+   *  `outbound_emails.smtp_response` para diagnosticar deliverability. */
+  meta?:    SendMeta['provider_response'];
 }
 
 /**
@@ -70,8 +73,12 @@ export async function sendMeerkatHtmlEmail(
     const sendFrom = ((ic.integration as unknown as Record<string, unknown>).send_as_email as string | null | undefined) ?? undefined;
     try {
       const plainFallback = htmlToPlainText(input.html);
-      await ic.conn.email.send(input.to, input.subject, plainFallback, input.attachment, sendFrom, input.html);
-      result = { ok: true, provider: ic.integration.provider as 'gmail' | 'outlook' };
+      const meta = await ic.conn.email.send(input.to, input.subject, plainFallback, input.attachment, sendFrom, input.html);
+      result = {
+        ok:       true,
+        provider: ic.integration.provider as 'gmail' | 'outlook',
+        meta:     (meta as SendMeta | undefined)?.provider_response,
+      };
     } catch (err) {
       console.warn('[sendMeerkatHtmlEmail] OAuth send failed, cayendo a Resend:', err);
       result = await sendViaResend(input);
@@ -134,6 +141,7 @@ async function logOutboundEmail(
       provider:        result.provider,
       ok:              result.ok,
       error:           result.ok ? null : (result.error ?? 'send failed'),
+      smtp_response:   result.meta ?? null,
     });
   } catch { /* best-effort — mismo patrón que el insert original en executeSendEmail */ }
 }

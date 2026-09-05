@@ -69,9 +69,26 @@ export interface ReplyParams {
   attachments?: ReplyAttachment[];
 }
 
+/**
+ * Metadata opcional que un connector puede devolver tras un `send()`. La usa
+ * SMTP para persistir la respuesta cruda del relay (accepted/rejected/response)
+ * en `outbound_emails.smtp_response`, útil para diagnosticar bugs de
+ * entregabilidad. Gmail/Outlook devuelven `undefined` — su lib no expone el
+ * response del server con el mismo detalle.
+ */
+export interface SendMeta {
+  provider_response?: {
+    messageId?: string;
+    response?:  string;
+    accepted?:  string[];
+    rejected?:  string[];
+    envelope?:  { from: string; to: string[] };
+  };
+}
+
 export interface EmailConnector {
   fetchUnread(since: Date, folder?: 'inbox' | 'spam'): Promise<EmailMessage[]>;
-  send(to: string, subject: string, body: string, attachment?: Attachment, fromEmail?: string, htmlBody?: string): Promise<void>;
+  send(to: string, subject: string, body: string, attachment?: Attachment, fromEmail?: string, htmlBody?: string): Promise<SendMeta | void>;
   sendReply(params: ReplyParams): Promise<void>;
   markRead(messageId: string): Promise<void>;
   unmarkSpam?(messageId: string): Promise<void>;

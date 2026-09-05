@@ -1,7 +1,8 @@
 import nodemailer from 'nodemailer';
+import MailComposer from 'nodemailer/lib/mail-composer/index.js';
 import { ImapFlow } from 'imapflow';
 import { simpleParser, type ParsedMail, type Attachment as MailAttachment } from 'mailparser';
-import type { Attachment, Connector, EmailConnector } from './types';
+import type { Attachment, Connector, EmailConnector, SendMeta } from './types';
 
 export interface SmtpConfig {
   host:     string;
@@ -61,14 +62,31 @@ function buildTransportOptions(cfg: SmtpConfig) {
 }
 
 /**
+ * Metadata que devuelve el SMTP relay al aceptar el mensaje. `response` es la
+ * línea 250 completa; `accepted`/`rejected` son las direcciones que el relay
+ * confirmó o rechazó en la sesión (no garantiza entrega final — un `250` puede
+ * ser aceptado y luego rebotar). Se persiste en `outbound_emails.smtp_response`
+ * para diagnosticar deliverability post-facto.
+ */
+export interface SmtpSendResult {
+  messageId?: string;
+  response:   string;
+  accepted:   string[];
+  rejected:   string[];
+  envelope:   { from: string; to: string[] };
+}
+
+/**
  * Envía un correo por SMTP directo al servidor del cliente (Telmex/Prodigy,
  * Titan, cPanel, cualquier proveedor con IMAP/SMTP estándar). Reutilizable
  * desde la ruta de test (probar creds antes de guardar) y desde el connector
  * per-agent que resuelve `getFileConnector`.
  *
- * Retorna void para ser drop-in del `EmailConnector.send` que Gmail/Outlook
- * cumplen (Connector interface espera Promise<void>; el caller mapea
- * excepción → error). Solo outbound por ahora — MVP.
+ * Adicional a `sendMail`, si el cfg tiene IMAP configurado hace **IMAP APPEND
+ * al folder Sent** con el mismo raw MIME que salió por SMTP. Sin esto, los
+ * clientes webmail (Roundcube, Zimbra, Telmex) que leen vía IMAP muestran
+ * "Enviados" vacío aunque los correos hayan salido — el owner cree que el
+ * empleado no manda. Descubierto 2026-09-05 con Tortillería Estrella.
  */
 export async function sendViaSmtp(
   cfg:      SmtpConfig,
@@ -77,14 +95,15 @@ export async function sendViaSmtp(
   bodyText: string,
   attachment?: Attachment,
   htmlBody?:   string,
-): Promise<void> {
-  const transporter = nodemailer.createTransport(buildTransportOptions(cfg));
-
+): Promise<SmtpSendResult> {
   const from = cfg.fromDisplay
     ? `${cfg.fromDisplay} <${cfg.username}>`
     : cfg.username;
 
-  await transporter.sendMail({
+  // Construimos el MIME UNA vez (via MailComposer) y lo usamos tanto para
+  // enviar como para el APPEND. Evita divergencia entre lo enviado y lo
+  // guardado en Sent.
+  const composer = new MailComposer({
     from,
     to,
     subject,
@@ -94,8 +113,85 @@ export async function sendViaSmtp(
       ? [{ filename: attachment.filename, content: attachment.content, contentType: attachment.mimeType }]
       : undefined,
   });
+  const rawBuffer: Buffer = await new Promise((resolve, reject) => {
+    composer.compile().build((err: Error | null, message: Buffer) => {
+      if (err) reject(err); else resolve(message);
+    });
+  });
 
-  transporter.close();
+  const transporter = nodemailer.createTransport(buildTransportOptions(cfg));
+  let info: nodemailer.SentMessageInfo;
+  try {
+    info = await transporter.sendMail({
+      envelope: { from: cfg.username, to: [to] },
+      raw:      rawBuffer,
+    });
+  } finally {
+    transporter.close();
+  }
+
+  // Best-effort IMAP APPEND — no bloquea ni propaga error. Si el IMAP no
+  // está disponible (no imap_host, timeout, folder no encontrado), el send
+  // sigue siendo exitoso pero el mensaje no aparecerá en el webmail.
+  void appendToSentFolder(cfg, rawBuffer).catch(err => {
+    console.warn(`[sendViaSmtp] APPEND a Sent falló (envío sí salió) para ${cfg.username} → ${to}:`,
+      err instanceof Error ? err.message : err);
+  });
+
+  return {
+    messageId: info.messageId,
+    response:  String(info.response ?? ''),
+    accepted:  (info.accepted ?? []).map(String),
+    rejected:  (info.rejected ?? []).map(String),
+    envelope:  { from: cfg.username, to: [to] },
+  };
+}
+
+// Nombres típicos del folder Sent, en orden de preferencia. Distintos servidores
+// (Zimbra/Telmex, cPanel/Roundcube, Titan, Exchange) usan nombres distintos.
+// Buscamos el flag SPECIAL-USE `\Sent` primero y caemos a nombres comunes.
+const SENT_FOLDER_CANDIDATES = [
+  'Sent',
+  'Sent Items',
+  'Sent Messages',
+  'INBOX.Sent',
+  'Enviados',
+  'INBOX.Enviados',
+  '[Gmail]/Sent Mail',
+];
+
+async function findSentFolderName(client: ImapFlow): Promise<string | null> {
+  try {
+    const list = await client.list();
+    // Primero por SPECIAL-USE \Sent (RFC 6154) — es lo correcto donde exista.
+    const bySpecial = list.find(m => Array.isArray(m.specialUse) ? m.specialUse.includes('\\Sent') : m.specialUse === '\\Sent');
+    if (bySpecial) return bySpecial.path;
+    // Fallback: buscamos por nombre exacto entre candidatos.
+    const names = new Set(list.map(m => m.path));
+    for (const c of SENT_FOLDER_CANDIDATES) if (names.has(c)) return c;
+  } catch {
+    // Si list falla, retornamos null y el caller salta el APPEND.
+  }
+  return null;
+}
+
+async function appendToSentFolder(cfg: SmtpConfig, rawMime: Buffer): Promise<void> {
+  // Skip si no hay IMAP configurado — cfg.host puede ser SMTP-only. En ese
+  // caso no hay a dónde escribir el Sent.
+  if (!cfg.imapHost && !cfg.host) return;
+  const client = await connectImap(cfg);
+  try {
+    const sentFolder = await findSentFolderName(client);
+    if (!sentFolder) {
+      console.warn(`[sendViaSmtp] no encontré folder Sent en IMAP de ${cfg.username} — APPEND skipped`);
+      return;
+    }
+    // Flag \Seen para que aparezca ya leído (el owner no lo mandó "manualmente";
+    // no queremos que se llenen los "no leídos" del webmail).
+    await client.append(sentFolder, rawMime, ['\\Seen']);
+  } finally {
+    await client.logout().catch(() => { /* ignore */ });
+  }
 }
 
 /**
@@ -247,9 +343,18 @@ export async function markSeenInImap(cfg: SmtpConfig, uids: number[]): Promise<v
  */
 export function createImapSmtpConnector(cfg: SmtpConfig): Connector {
   const email: EmailConnector = {
-    async send(to, subject, body, attachment, _fromEmail, htmlBody) {
+    async send(to, subject, body, attachment, _fromEmail, htmlBody): Promise<SendMeta> {
       // Ignoramos `_fromEmail` — SMTP no permite spoof. Siempre sale desde cfg.username.
-      await sendViaSmtp(cfg, to, subject, body, attachment, htmlBody);
+      const result = await sendViaSmtp(cfg, to, subject, body, attachment, htmlBody);
+      return {
+        provider_response: {
+          messageId: result.messageId,
+          response:  result.response,
+          accepted:  result.accepted,
+          rejected:  result.rejected,
+          envelope:  result.envelope,
+        },
+      };
     },
     async fetchUnread(_since, _folder) {
       // Sólo devolvemos correos si el empleado tiene IMAP configurado.
