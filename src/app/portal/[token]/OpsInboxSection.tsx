@@ -190,6 +190,7 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
     }).catch(() => {});
   }, [token]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   const [draftEdits, setDraftEdits] = useState<Record<string, string>>({});

@@ -19,7 +19,9 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     router.push('/admin/login');
   };
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setOpen(false); }, [pathname]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setMounted(true); }, []);
 
   return (

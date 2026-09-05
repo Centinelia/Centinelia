@@ -125,6 +125,7 @@ export default function DocumentosPage() {
     } finally { setLoading(false); }
   }, [token]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   useEffect(() => {

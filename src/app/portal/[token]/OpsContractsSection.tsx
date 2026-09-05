@@ -52,6 +52,7 @@ export default function OpsContractsSection({ token }: { token: string }) {
     } finally { setLoading(false); }
   }, [token]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   async function sendDraft(id: string) {

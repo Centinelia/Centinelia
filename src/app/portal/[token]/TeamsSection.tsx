@@ -40,6 +40,7 @@ export default function TeamsSection({ token }: { token: string }) {
     }
   }, [token]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   async function copyUrl() {

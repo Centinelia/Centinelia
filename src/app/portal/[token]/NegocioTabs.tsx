@@ -66,6 +66,7 @@ export default function NegocioTabs({ children }: Props) {
   // Sync URL → tab
   useEffect(() => {
     const resolved = resolveTab(navFromUrl);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (resolved !== tab) setTab(resolved);
   }, [navFromUrl, tab]);
 

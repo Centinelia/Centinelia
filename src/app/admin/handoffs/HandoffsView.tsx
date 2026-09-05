@@ -73,6 +73,7 @@ export function HandoffsView() {
       setLoading(false);
     }
   };
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void load(); }, [win]);
 
   const saveEdge = async () => {

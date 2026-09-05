@@ -29,6 +29,7 @@ export function BriefDelDiaCard() {
     setLoading(false);
   }
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchLatest(); }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) return null;

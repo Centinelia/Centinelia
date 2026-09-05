@@ -90,6 +90,7 @@ export default function GoogleWorkspaceCard({ token, connected, email, needsReau
   // Fetch sheets_mappings count when connected
   useEffect(() => {
     if (!connected || needsReauth) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSheetCount(null);
       return;
     }

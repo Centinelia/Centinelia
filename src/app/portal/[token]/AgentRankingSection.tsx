@@ -79,6 +79,7 @@ export default function AgentRankingSection({ token }: { token: string }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     fetch(`/api/portal/${token}/ranking?periodo=${period}`)
       .then(r => r.json())

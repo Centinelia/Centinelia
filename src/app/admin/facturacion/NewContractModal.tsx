@@ -279,6 +279,7 @@ function OrgAutocomplete({ value, onChange }: { value: OrgOption | null; onChang
   useEffect(() => {
     let cancelled = false;
     const q = query.trim();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     const t = setTimeout(async () => {
       try {

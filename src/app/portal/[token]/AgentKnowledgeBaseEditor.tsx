@@ -129,6 +129,7 @@ export default function AgentKnowledgeBaseEditor({
 
   useEffect(() => {
     if (dirtyLearnings) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (initialLearnings !== learnings) setLearnings(initialLearnings);
     if (learningRunning && initialLearnings !== learnings) {
       const params = new URLSearchParams(searchParams?.toString() ?? '');

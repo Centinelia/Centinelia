@@ -61,6 +61,7 @@ export default function EnviadosSection({ token }: { token: string }) {
     setLoading(false);
   }
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [token]);
 
   return (

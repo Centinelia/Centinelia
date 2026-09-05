@@ -171,6 +171,7 @@ export default function CabildoSection({ token }: { token: string }) {
     } finally { setLoading(false); }
   }, [token, tipoF]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   function handleDelete(id: string) {

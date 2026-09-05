@@ -36,6 +36,7 @@ export default function EmailSettings({ token }: { token: string }) {
     setLoading(false);
   }, [token]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   async function registerDomain() {

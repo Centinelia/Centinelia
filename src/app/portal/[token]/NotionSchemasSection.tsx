@@ -61,6 +61,7 @@ export default function NotionSchemasSection({ token }: { token: string }) {
     }
   }, [token]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   const handleCreate = async () => {

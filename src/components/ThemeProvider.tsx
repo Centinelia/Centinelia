@@ -18,6 +18,7 @@ export function ThemeProvider({ children, storageKey = 'Centinelia-theme', defau
 
   useEffect(() => {
     const stored = (localStorage.getItem(storageKey) as Theme | null) ?? defaultTheme;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTheme(stored);
     document.documentElement.setAttribute('data-theme', stored);
   }, [storageKey, defaultTheme]);

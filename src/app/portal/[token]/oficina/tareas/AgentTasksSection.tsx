@@ -58,6 +58,7 @@ export default function AgentTasksSection({ token }: { token: string }) {
     } finally { setLoading(false); }
   }, [token, filter]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   const currentFilter = FILTERS.find(f => f.key === filter);

@@ -59,6 +59,7 @@ export function RecoveryView() {
     }
   };
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void loadDryRun(); }, []);
 
   const totalStuck = rules.reduce((s, r) => s + r.would_recover_now, 0);

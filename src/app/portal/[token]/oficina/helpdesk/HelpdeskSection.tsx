@@ -133,6 +133,7 @@ export default function HelpdeskSection({ token, subUserName, employeeName }: { 
     }
   }, [token, subUserName]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   const updateTicket = async (id: string, patch: Record<string, unknown>) => {

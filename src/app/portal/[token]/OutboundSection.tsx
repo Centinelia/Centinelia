@@ -474,6 +474,7 @@ function CampaignForm({
   // Si el empleado asignado deja de ser elegible al cambiar capability, elige el primero.
   useEffect(() => {
     if (!eligibleAgents.find(a => a.id === assignedAgentId) && eligibleAgents.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setAssignedAgentId(eligibleAgents[0].id);
     }
   }, [eligibleAgents, assignedAgentId]);

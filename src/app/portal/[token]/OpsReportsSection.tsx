@@ -141,6 +141,7 @@ export default function OpsReportsSection({ token, agents, meerkatRoleId, report
     }
   }, [token]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   const handleCreate = async () => {

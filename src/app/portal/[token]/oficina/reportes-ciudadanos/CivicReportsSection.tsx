@@ -305,6 +305,7 @@ export default function CivicReportsSection({ token, tramiteDocs }: { token: str
     } finally { setLoading(false); }
   }, [token, statusF, categoryF, search]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   function handleUpdate(folio: string, patch: Partial<CivicReport>) {

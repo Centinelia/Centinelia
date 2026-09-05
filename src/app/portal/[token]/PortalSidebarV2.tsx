@@ -141,6 +141,7 @@ export default function PortalSidebarV2(props: PortalSidebarV2Props) {
     const active = groups
       .filter(g => isGroupActive(g, token, currentPath, currentSearch))
       .map(g => g.id);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setOpenIds(prev => {
       // Add newly active groups; don't collapse already-open ones
       const next = new Set(prev);

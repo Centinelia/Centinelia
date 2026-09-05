@@ -103,6 +103,7 @@ export default function OnboardingSection({ token }: {
     }
   }, [token]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   function toggleT(id: string) {

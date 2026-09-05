@@ -66,6 +66,7 @@ export function TemplateUploader({ token, agentId, current, uploadCost }: Props)
   // desde el bucket. Se usa para mostrar cols sin mapear y grid semanal,
   // no solo las que Claude asignó a un campo canónico.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!state?.mapping) { setAllColumns([]); return; }
     let cancelled = false;
     (async () => {

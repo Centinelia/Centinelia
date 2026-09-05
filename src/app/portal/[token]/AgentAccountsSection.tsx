@@ -131,6 +131,7 @@ export default function AgentAccountsSection({
     if (typeof window === 'undefined') return;
     const p = new URLSearchParams(window.location.search);
     if (p.get(meta.urlFlag) === 'connected') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setJustConnected(p.get('provider'));
       const next = new URL(window.location.href);
       next.searchParams.delete(meta.urlFlag);
@@ -150,6 +151,7 @@ export default function AgentAccountsSection({
     } finally { setLoading(false); }
   }, [token, agentId, meta.routeSlug]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   async function disconnect(provider: Provider) {

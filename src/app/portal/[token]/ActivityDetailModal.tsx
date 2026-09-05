@@ -134,6 +134,7 @@ export default function ActivityDetailModal({ type, item, isPro, token, onClose 
   const [call, setCall] = useState<MatchedCall | null | undefined>(undefined);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!isPro) { setCall(null); return; }
     fetch(`/api/portal/${token}/call-for?date=${encodeURIComponent(item.created_at)}`)
       .then(r => r.json())

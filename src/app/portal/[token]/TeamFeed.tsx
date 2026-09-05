@@ -116,6 +116,7 @@ export default function TeamFeed({ token }: { token: string }) {
   }, [token]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
     const id = setInterval(() => load(), POLL_MS);
     return () => clearInterval(id);

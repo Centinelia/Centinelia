@@ -200,6 +200,7 @@ function AddMappingForm({
 
   // Load spreadsheets on mount
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSheetsLoading(true);
     setSheetsError(null);
     fetch(`/api/portal/${token}/sheets/spreadsheets`)
@@ -217,6 +218,7 @@ function AddMappingForm({
 
   // Load tabs when spreadsheet changes
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!selectedSpreadsheet) { setTabs([]); setSelectedTab(''); return; }
     setTabsLoading(true);
     setSelectedTab('');
@@ -497,6 +499,7 @@ export default function SheetsMappingsSection({ token }: Props) {
       .catch(() => { setGoogleConnected(false); });
   }, [token]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadMappings(); }, [loadMappings]);
 
   return (

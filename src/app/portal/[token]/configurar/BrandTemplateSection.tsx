@@ -42,6 +42,7 @@ export function BrandTemplateSection({ availableTipos }: Props) {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);

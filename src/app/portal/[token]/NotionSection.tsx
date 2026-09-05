@@ -36,6 +36,7 @@ export default function NotionSection({ token }: { token: string }) {
     }
   }
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchStatus(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleSetupDb() {

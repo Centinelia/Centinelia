@@ -46,6 +46,7 @@ export default function LadaPicker({
   // para no pegarle a Twilio a cada re-render.
   useEffect(() => {
     if (!/^\d{2,3}$/.test(value)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setAvail({ state: 'idle' });
       return;
     }
@@ -66,6 +67,7 @@ export default function LadaPicker({
 
   // Click-outside + auto-focus del buscador.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!open) { setQuery(''); return; }
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);

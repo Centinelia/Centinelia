@@ -64,6 +64,7 @@ export default function ContractTrackerSection({ token }: { token: string }) {
     } finally { setLoading(false); }
   }, [token]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   const markRead = useCallback((id: string) => {

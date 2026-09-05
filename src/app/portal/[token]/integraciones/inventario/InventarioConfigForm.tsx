@@ -180,6 +180,7 @@ export default function InventarioConfigForm({ token }: { token: string }) {
     }
   }, [token]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void load(); }, [load]);
 
   const update = <K extends keyof FormState>(k: K, v: FormState[K]) => {

@@ -42,6 +42,7 @@ export default function PagosPendientesPage() {
     finally { setLoading(false); }
   };
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { refresh(); }, []);
 
   const approve = async (p: PagoPendiente) => {

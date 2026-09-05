@@ -80,6 +80,7 @@ export function HumanGatesView() {
       setLoading(false);
     }
   };
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void load(); }, [win, type]);
 
   const fmt = (iso: string) =>

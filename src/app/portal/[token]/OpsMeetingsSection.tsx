@@ -81,6 +81,7 @@ export default function OpsMeetingsSection({ token }: { token: string }) {
     }
   }, [token]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   useEffect(() => {

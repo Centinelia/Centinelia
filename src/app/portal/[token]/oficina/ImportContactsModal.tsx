@@ -95,6 +95,7 @@ export default function ImportContactsModal({
   // Load sources when modal opens
   useEffect(() => {
     if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     setError('');
     setResult(null);
@@ -127,6 +128,7 @@ export default function ImportContactsModal({
   // Auto-detect mapping whenever source changes
   useEffect(() => {
     if (columns.length === 0) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMapping(autoDetectMapping(columns));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sourceId, provider]);

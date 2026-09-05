@@ -73,6 +73,7 @@ export default function AgentEmailSection({ token, agentId }: { token: string; a
     const p = new URLSearchParams(window.location.search);
     const emailFlag = p.get('email');
     if (emailFlag === 'connected') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setJustConnected(p.get('provider'));
     } else if (emailFlag === 'already_used_by_teammate') {
       setDupError(p.get('provider') === 'outlook' ? 'Outlook' : 'Gmail');

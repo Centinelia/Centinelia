@@ -59,6 +59,7 @@ export default function ConfigurarTabs({ children }: Props) {
   // Sync URL → tab when user pastes a link with ?tab=x (con retrocompat)
   useEffect(() => {
     const resolved = resolveTab(tabFromUrl);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (resolved !== tab) setTab(resolved);
   }, [tabFromUrl, tab]);
 

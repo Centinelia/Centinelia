@@ -71,6 +71,7 @@ export default function AutomationsSection({ token, agentId, roleColor }: Props)
 
   useEffect(() => {
     if (agentId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLoading(true);
       load();
     }

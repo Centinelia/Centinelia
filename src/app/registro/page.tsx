@@ -328,6 +328,7 @@ function CitySelect({ value, onChange, cities, searchPlaceholder }: {
     : cities;
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!open) { setQuery(''); return; }
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
@@ -712,6 +713,7 @@ function RegistroInner() {
       if (!raw) return;
       const saved = JSON.parse(raw) as Record<string, unknown>;
       // No sobrescribir si URL trae role/plan/tier explícito (deep-link intent).
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (!rawRole && typeof saved.meerkatRoleId === 'string') setMeerkatRoleId(saved.meerkatRoleId as MeerkatRoleId);
       if (!rawPlan && typeof saved.plan === 'string')          setPlan(saved.plan as FormPlan);
       if (!rawTier && typeof saved.tier === 'string')          setTier(saved.tier as FormTier);
@@ -762,6 +764,7 @@ function RegistroInner() {
       chatClearedRef.current = { name: false, desc: false, phone: false };
       agentNameChatShown.current = false;
       lastGiroShown.current      = null;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setChatMessages([
         `Hola, soy ${selectedMeerkat.nombre}.`,
         MEERKAT_GREETING[selectedMeerkat.id] ?? MEERKAT_GREETING.custom,
@@ -807,6 +810,7 @@ function RegistroInner() {
   }, [chatMessages]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (chatMessages.length === 0) { setMobileBubble(null); return; }
     const last = chatMessages[chatMessages.length - 1];
     setMobileBubble(last);

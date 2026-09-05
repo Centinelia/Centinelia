@@ -128,6 +128,7 @@ export default function ActividadFeed({ token }: { token: string }) {
     }
   }, [token]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(days, type, limit); }, [load, days, type, limit]);
 
   // 'all' total comes from the server; per-type counts are only reliable

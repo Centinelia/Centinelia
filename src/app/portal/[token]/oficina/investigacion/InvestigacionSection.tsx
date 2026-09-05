@@ -110,6 +110,7 @@ export default function InvestigacionSection({ token, researchers = [], defaultR
   const acColor            = meerkat?.color ?? '#6C3BFF';
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!loading) { setLoadingStep(0); return; }
     const id = setInterval(() => {
       setLoadingStep(prev => (prev + 1) % LOADING_MESSAGES.length);

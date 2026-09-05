@@ -44,6 +44,7 @@ export default function CuentaUsageTabsCard({ usoContent, comprarContent, recarg
 
   useEffect(() => {
     const initial = hashToTab();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (initial) setValue(initial);
     const onHash = () => {
       const next = hashToTab();

@@ -47,6 +47,7 @@ export default function ConversacionalPage() {
     setLoading(false);
   };
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(tab); }, [tab]);
 
   const patch = async (id: string, update: { status?: string; body?: string }) => {

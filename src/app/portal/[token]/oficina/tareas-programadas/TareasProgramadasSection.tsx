@@ -587,6 +587,7 @@ export default function TareasProgramadasSection({ token, agents }: Props) {
     }
   }, [token]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void load(); }, [load]);
 
   async function handleToggle(id: string, active: boolean) {

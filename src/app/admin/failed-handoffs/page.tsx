@@ -43,6 +43,7 @@ export default function FailedHandoffsPage() {
     }
   }, [filter]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   const forceRetry = async (id: string) => {

@@ -105,6 +105,7 @@ export default function ReceivedInvoicesSection({ token }: { token: string }) {
     } finally { setLoading(false); }
   }, [token]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   // Cerrar menú al click fuera

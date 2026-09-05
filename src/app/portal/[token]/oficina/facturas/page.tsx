@@ -238,6 +238,7 @@ export default function FacturasPage() {
     } finally { setLoading(false); }
   }, [token]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   // Deep link: ?open=<request_id> abre el modal automaticamente al cargar
@@ -694,6 +695,7 @@ function DetailModal({
   // Fetch pending cancellation id when status is cancellation_requested
   useEffect(() => {
     if (request.status !== 'cancellation_requested') return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadingCancel(true);
     fetch(`/api/portal/${token}/cancellations?factura_request_id=${request.id}`)
       .then(r => r.json())

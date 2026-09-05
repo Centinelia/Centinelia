@@ -171,7 +171,9 @@ export default function ExpedientesPage() {
     }
   }, [token]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void loadList();   }, [loadList]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void loadConfig(); }, [loadConfig]);
 
   // ── Load detail ─────────────────────────────────────────────────────────

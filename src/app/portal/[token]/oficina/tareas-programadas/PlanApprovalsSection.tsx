@@ -41,6 +41,7 @@ export default function PlanApprovalsSection({ token }: { token: string }) {
     }
   }, [token]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   const decide = async (t: PendingTask, action: 'approve' | 'reject') => {

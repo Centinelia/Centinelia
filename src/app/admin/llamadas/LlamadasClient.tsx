@@ -288,6 +288,7 @@ export default function LlamadasClient({
 
   const [phoneInput, setPhoneInput] = useState(currentFilters.search);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setPhoneInput(currentFilters.search); }, [currentFilters.search]);
 
   const agentMap = Object.fromEntries(agents.map(a => [a.id, a]));

@@ -83,6 +83,7 @@ export default function ClientesClient({
   const [credOpen,   setCredOpen]   = useState<Set<string>>(new Set());
   const [credForms,  setCredForms]  = useState<Record<string, CredForm>>({});
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setSearchInput(currentSearch); }, [currentSearch]);
 
   const navigate = (search: string, p: number) => {

@@ -115,6 +115,7 @@ export default function AgentesClient({
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setSearchInput(currentFilters.search); }, [currentFilters.search]);
 
   const navigate = (overrides: Partial<Filters & { page: number }>) => {

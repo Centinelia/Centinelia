@@ -58,6 +58,7 @@ export default function EmailOAuthSection({ token, only, workspacePanel }: { tok
     setLoading(false);
   }, [token]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   function connectedFor(provider: 'gmail' | 'outlook') {

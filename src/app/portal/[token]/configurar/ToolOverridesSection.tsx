@@ -104,6 +104,7 @@ export default function ToolOverridesSection({ token, agentId, agentName, roleCo
     }
   }, [token, agentId]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void load(); }, [load]);
 
   const toggleGroup = (id: string) => setOpenGroups(s => ({ ...s, [id]: !s[id] }));
