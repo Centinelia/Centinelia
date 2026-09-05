@@ -1,0 +1,4 @@
+# Shell scripts siempre LF para que bash en Linux (Vercel build env) no
+# falle por CRLF. Windows locales pueden checkoutearlos como CRLF pero al
+# push se normalizan a LF.
+*.sh text eol=lf
