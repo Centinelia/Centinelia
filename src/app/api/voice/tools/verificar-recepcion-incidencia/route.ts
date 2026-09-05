@@ -24,13 +24,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ results: [{ toolCallId, result: { error: 'agent not found' } }] });
     }
 
-    const result = await verificarRecepcionIncidencia({ supabase, agent }, args);
+    // Cargar directory de la org para que el executor pueda mandar el correo
+    // tarjeta con el resultado a los mismos recipients del inicial.
+    const { data: org, error: orgErr } = await supabase
+      .from('organizations')
+      .select('directory')
+      .eq('portal_email', agent.portal_email)
+      .single();
+    if (orgErr) console.warn('[verificar_recepcion_incidencia] org lookup warning:', orgErr.message);
+
+    const result = await verificarRecepcionIncidencia({ supabase, agent, org, channel: 'voice' }, args);
     // Formato {result: string} — mismo cambio que registrar-incidencia (ver 2026-08-28).
+    const emailSuffix = result.email_sent ? ' Correo enviado al encargado.' : '';
     const msg = result.verification_result === 'ok'
-      ? 'Verificación registrada como recibida. Caso cerrado.'
+      ? `Verificación registrada como recibida. Caso cerrado.${emailSuffix}`
       : result.verification_result === 'no_visitado'
-      ? 'Verificación registrada como NO visitado — queda en rojo en la bitácora esta semana.'
-      : 'Verificación registrada como sin respuesta — queda en gris en la bitácora.';
+      ? `Verificación registrada como NO visitado — queda en rojo en la bitácora esta semana.${emailSuffix}`
+      : `Verificación registrada como sin respuesta — queda en gris en la bitácora.${emailSuffix}`;
     return NextResponse.json({ result: msg });
   } catch (err: any) {
     console.error('[verificar_recepcion_incidencia] unhandled:', err);

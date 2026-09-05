@@ -81,6 +81,73 @@ interface NewClientEmailInput {
   agentDisplayName: string;
 }
 
+interface VerificationEmailInput {
+  businessName:  string;
+  sucursal?:     string | null;
+  contactName?:  string | null;
+  contactPhone:  string;
+  address:       string;
+  motivoOriginal: string;
+  motivoOriginalCapturedAt: Date;
+  resultado:     'ok' | 'no_visitado' | 'sin_respuesta';
+  notas?:        string | null;
+  verifiedAt:    Date;
+  attemptNumber: number;
+  agentDisplayName: string;
+  /** Vendedor asignado a este cliente. Columna solo-humano (se edita en la
+   *  bitácora, no la escribe el meerkat). Si viene, se muestra prominente
+   *  para que el correo sepa a quién responsabilizar. */
+  vendedor?:     string | null;
+}
+
+// Colores por resultado — verde (buena noticia: sí fue el vendedor),
+// rojo (mala noticia: no fue), gris (sin respuesta, indeterminado).
+const RESULT_META: Record<VerificationEmailInput['resultado'], { label: string; bg: string; headline: string }> = {
+  ok:            { label: 'SÍ VISITÓ',      bg: '#a7f3d0', headline: 'El cliente confirma que sí recibió la visita del vendedor.' },
+  no_visitado:   { label: 'NO VISITÓ',      bg: '#fca5a5', headline: 'El cliente confirma que NO recibió la visita del vendedor. Requiere acción.' },
+  sin_respuesta: { label: 'SIN RESPUESTA',  bg: '#d1d5db', headline: 'No se logró contactar al cliente en este intento.' },
+};
+
+export function renderVerificationReportEmail(input: VerificationEmailInput): { subject: string; html: string } {
+  const meta = RESULT_META[input.resultado];
+  const fechaVerif   = formatFecha(input.verifiedAt);
+  const horaVerif    = formatHora(input.verifiedAt);
+  const fechaOriginal = formatFecha(input.motivoOriginalCapturedAt);
+  const contacto = contactoLine(input.contactName, input.contactPhone);
+  const attemptLabel = input.attemptNumber === 1 ? '1er intento' : `${input.attemptNumber}° intento`;
+  const subject = `Verificación (${meta.label}): ${input.businessName} (${fechaVerif})`;
+  const sucursalRow = input.sucursal
+    ? `<tr><td style="background-color: ${meta.bg}; font-weight: bold;">SUCURSAL</td><td>${input.sucursal}</td></tr>`
+    : '';
+  const notasRow = input.notas
+    ? `<tr><td style="background-color: ${meta.bg}; font-weight: bold;">NOTAS DE LA VERIFICACIÓN</td><td>${input.notas}</td></tr>`
+    : '';
+  // Vendedor solo aparece si el humano ya lo pobló en la bitácora. Si no
+  // está asignado todavía, no ensuciamos el correo con "&nbsp;".
+  const vendedorRow = input.vendedor && input.vendedor.trim()
+    ? `<tr><td style="background-color: ${meta.bg}; font-weight: bold;">VENDEDOR</td><td>${input.vendedor.trim()}</td></tr>`
+    : '';
+  const html = `
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <p style="margin: 0 0 16px 0; color: #333;">${meta.headline}</p>
+  <table border="1" cellspacing="0" cellpadding="10" style="border-collapse: collapse; width: 100%; border-color: #ccc;">
+    <tr><td style="background-color: ${meta.bg}; font-weight: bold; width: 35%;">RESULTADO</td><td><strong>${meta.label}</strong> · ${attemptLabel}</td></tr>
+    <tr><td style="background-color: ${meta.bg}; font-weight: bold;">FECHA DE VERIFICACIÓN</td><td>${fechaVerif} ${horaVerif}</td></tr>
+    <tr><td style="background-color: ${meta.bg}; font-weight: bold;">NOMBRE DEL NEGOCIO</td><td>${input.businessName}</td></tr>
+    ${sucursalRow}
+    <tr><td style="background-color: ${meta.bg}; font-weight: bold;">DIRECCIÓN</td><td>${input.address}</td></tr>
+    <tr><td style="background-color: ${meta.bg}; font-weight: bold;">CONTACTO</td><td>${contacto}</td></tr>
+    ${vendedorRow}
+    <tr><td style="background-color: ${meta.bg}; font-weight: bold;">INCIDENCIA ORIGINAL (${fechaOriginal})</td><td>${input.motivoOriginal}</td></tr>
+    ${notasRow}
+  </table>
+  <p style="margin: 16px 0 0 0; color: #666; font-size: 13px;">
+    Verificación realizada por ${input.agentDisplayName}.
+  </p>
+</div>`.trim();
+  return { subject, html };
+}
+
 export function renderNewClientCardEmail(input: NewClientEmailInput): { subject: string; html: string } {
   const fecha = formatFecha(input.capturedAt);
   const hora = formatHora(input.capturedAt);
