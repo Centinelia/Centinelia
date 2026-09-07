@@ -288,7 +288,7 @@ export default function OpsReportsSection({ token, agents, meerkatRoleId, report
                     backgroundImage: `url(${m.imagen})`,
                     backgroundRepeat: 'no-repeat',
                     backgroundSize: '100%',
-                    backgroundPosition: 'center 12%',
+                    backgroundPosition: 'center 15px',
                     marginLeft: i > 0 ? -20 : 0,
                     zIndex: bannerMeerkats.length - i,
                   }} />
