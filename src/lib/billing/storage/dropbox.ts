@@ -30,11 +30,26 @@ export class DropboxClient {
     this.dbx = new Dropbox({ accessToken, fetch });
   }
 
-  /** Download a file and return its contents as a Buffer. */
+  /** Download a file and return its contents as a Buffer.
+   *
+   * Nota: `filesDownload` cambia la forma del `result` según entorno.
+   *   - Node local: `result.fileBinary` = Buffer.
+   *   - Node serverless con `fetch` pasado (Vercel): `result.fileBinary` puede
+   *     ser undefined y el binario aparece como `fileBlob` (Blob), o en un
+   *     stream del propio response. Fallback a fileBlob + arrayBuffer.
+   */
   async readFile(path: string): Promise<Buffer> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const res: any = await this.dbx.filesDownload({ path });
-    return Buffer.from(res.result.fileBinary);
+    const bin = res.result?.fileBinary;
+    if (bin) return Buffer.isBuffer(bin) ? bin : Buffer.from(bin);
+    const blob = res.result?.fileBlob;
+    if (blob && typeof blob.arrayBuffer === 'function') {
+      return Buffer.from(await blob.arrayBuffer());
+    }
+    throw new Error(
+      `DropboxClient.readFile: no binary field in response (keys: ${Object.keys(res.result ?? {}).join(',')})`,
+    );
   }
 
   /**
