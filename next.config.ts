@@ -34,6 +34,11 @@ const CSP = [
 ].join("; ");
 
 const nextConfig: NextConfig = {
+  // sharp usa binarios nativos (libvips) que Next intenta bundle-ar y rompe
+  // el linking del `.so`. Externalizar hace que se cargue con require() en
+  // runtime desde node_modules. Fix del dry run FASE 4 (2026-09-07):
+  // ERR_DLOPEN_FAILED libvips-cpp.so.8.18.6 en Vercel.
+  serverExternalPackages: ['sharp'],
   images: {
     deviceSizes: [640, 828, 1080, 1200, 1920, 2560, 3840],
     formats: ['image/avif', 'image/webp'],
