@@ -16,7 +16,6 @@ import AgentRankingSection             from '../AgentRankingSection';
 import { COORDINATOR_ROLE_IDS, MEERKAT_MAP } from '@/lib/portal/meerkat-roles';
 import type { MeerkatRoleId }          from '@/lib/portal/meerkat-roles';
 import { MEERKAT_VOICE_DISTRIBUTION }  from '@/lib/vapi/sync';
-import { resolveOrgPackContext, resolveActivePacks, filterByActivePacks } from '@/lib/tools/packs';
 import { PageContainer, PageSection, SectionHeader, Card, EmptyState } from '@/components/portal-ui';
 
 interface ToolChip { label: string; color: string }
@@ -342,14 +341,6 @@ export default async function AgentesPage({ params }: Props) {
     : { data: null };
   const hasPassphrase = !!orgRow?.owner_passphrase?.trim();
 
-  // Resuelve packs activos del org — para filtrar los chips del card y solo
-  // mostrar capacidades REALES (ej: Nelia solo tiene incidencia_flow si el
-  // org lo tiene activado; sin catalog no muestra buscar_cliente; etc).
-  // Sin este filtro se veía la distribución "ideal" del meerkat, no la real.
-  const activePacks = lookupEmail
-    ? resolveActivePacks(await resolveOrgPackContext(lookupEmail, supabase))
-    : new Set<string>();
-
   // Anual: si la org está en contrato prepagado, no se puede autocontratar por Stripe.
   const billingModel = (orgRow?.billing_model as string | null) ?? 'stripe';
   const isAnnualOrExpired = billingModel === 'annual_prepaid' || billingModel === 'expired';
@@ -543,17 +534,13 @@ export default async function AgentesPage({ params }: Props) {
 
         const meerkatDef    = meerkatId ? MEERKAT_MAP[meerkatId as MeerkatRoleId] ?? null : null;
         const agentFeatures = (a.features as Record<string, unknown>) ?? {};
-        const rawTools      = getAgentTools(agentFeatures);
-        // Filtra por packs activos del org para eliminar capacidades fantasma.
-        // Excepción: si TODAS las tools del meerkat son de un mismo pack no-activo
-        // (típico de Nala/Nami/Nalú cuyo trabajo entero depende de un pack), el
-        // filtro dejaría el card en 0 capacidades y el dueño no vería qué hace
-        // ese empleado. En ese caso mostramos las capabilities sin filtrar —
-        // son grupos abstractos ("Firma OCs", "Consulta stock"), no promesas
-        // atómicas, así que no engañan.
-        const activeToolNames = new Set(filterByActivePacks(rawTools.map(t => t.label), activePacks));
-        const filteredTools   = rawTools.filter(t => activeToolNames.has(t.label));
-        const tools           = filteredTools.length === 0 && rawTools.length > 0 ? rawTools : filteredTools;
+        const tools         = getAgentTools(agentFeatures);
+        // Card muestra las capacidades BASE del rol, sin filtrar por packs
+        // activos del org. Cada empresa opera flujos distintos y puede tener
+        // packs custom que no están en el registry central — filtrar aquí
+        // dejaría cards vacías. Los CAPABILITY_GROUPS son grupos abstractos
+        // ("Firma OCs", "Consulta stock"), no promesas atómicas de que la
+        // integración concreta esté conectada.
         const capabilities    = getAgentCapabilities(tools);
 
         const accentColor = hasRole ? roleColor : color;
