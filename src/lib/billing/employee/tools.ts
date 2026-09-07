@@ -788,25 +788,57 @@ export function buildEmployeeTools(toolsCtx: ToolsContext): EmployeeTool[] {
         urgency: 'high' | 'critical';
         context?: Record<string, unknown>;
       }) => {
-        // Enviar correo de escalacion.
+        // Persistir en billing_pending_review para que aparezca en la página
+        // /portal/[token]/oficina/facturacion-emision/pendientes con card
+        // estructurada (imagen + extracción + edit + botones aprobar/rechazar).
+        // El correo escalation ya no lleva wall-of-text — solo link a la card.
+        try {
+          const ctxObj = (input.context ?? {}) as Record<string, unknown>;
+          const imageIdx = typeof ctxObj['image_index'] === 'number'
+            ? ctxObj['image_index'] as number
+            : null;
+          const candidates = ctxObj['top_candidate'] || ctxObj['segundo_candidato']
+            ? {
+                top:      ctxObj['top_candidate'] ?? null,
+                segundo:  ctxObj['segundo_candidato'] ?? null,
+              }
+            : null;
+          await supabase.from('billing_pending_review').insert({
+            portal_email:  ctx.portalEmail,
+            email_id:      emailId,
+            image_index:   imageIdx,
+            reason:        input.topic.slice(0, 200),
+            extracted:     ctxObj,
+            candidates,
+            status:        'pending',
+          });
+        } catch (persistErr) {
+          console.error('[tools/escalate] pending review insert failed:', persistErr);
+          // No bloquear el flow — el correo sigue siendo el fallback.
+        }
+
+        // Enviar correo de escalacion — versión corta con link a la card.
         const urgencyLabel = input.urgency === 'critical' ? 'CRITICO' : 'URGENTE';
         const subject = `[Facturacion ${urgencyLabel}] ${input.topic}`;
-        // HTML escape defensivo — sin esto, un `context` con `</pre><script>...`
-        // (posible via prompt injection) inyectaba XSS activo en el correo de
-        // escalación. Auditoría 2026-09-04 ronda 2.
-        const escapeHtmlLocal = (s: string) =>
-          s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        const contextBlock = input.context
-          ? `<pre>${escapeHtmlLocal(JSON.stringify(input.context, null, 2))}</pre>`
-          : '';
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
+        // Necesitamos el portal_token para armar el link. Query por portal_email.
+        let pendientesUrl = baseUrl;
+        try {
+          const { data: org } = await supabase
+            .from('organizations')
+            .select('portal_token')
+            .eq('portal_email', ctx.portalEmail)
+            .maybeSingle<{ portal_token: string }>();
+          if (org?.portal_token) {
+            pendientesUrl = `${baseUrl}/portal/${org.portal_token}/oficina/facturacion-emision/pendientes`;
+          }
+        } catch { /* no-op — fallback a baseUrl */ }
 
         const body = `
-<p>El empleado digital de facturacion requiere intervencion humana.</p>
-<p><strong>Tema:</strong> ${input.topic}</p>
-<p><strong>Correo de origen:</strong> ${emailId}</p>
-<p><strong>Organizacion:</strong> ${ctx.portalEmail}</p>
-${contextBlock}
-<p>Por favor revise y tome accion.</p>
+<p>Nala necesita tu revisión para timbrar una notita.</p>
+<p><strong>Motivo:</strong> ${input.topic}</p>
+<p><a href="${pendientesUrl}" style="background:#6C3BFF;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;display:inline-block;font-weight:600">Revisar en Centinelia →</a></p>
+<p style="color:#6B6480;font-size:12px">Verás la foto, lo que Nala leyó y podrás corregir o aprobar en un click.</p>
         `.trim();
 
         let mailResult: { messageId: string } | null = null;
