@@ -318,6 +318,12 @@ export class CONTPAQiAdapter implements BillingAdapter {
     try {
       data = await this.loadFreshness();
     } catch (err) {
+      // Log detallado del error para diagnóstico. Sin esto el path a `Infinity`
+      // no deja pista de la causa raíz (auth/red/parse/path).
+      console.error('[contpaqi.freshness] loadFreshness failed:', {
+        basePath: this.basePath,
+        error: err instanceof Error ? { message: err.message, stack: err.stack } : String(err),
+      });
       return {
         lastSyncAt: null,
         minutesStale: Infinity,
