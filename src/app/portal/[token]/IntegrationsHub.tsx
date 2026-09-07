@@ -593,8 +593,9 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
     // Calendario aquí es solo org-level (Cal.com / Calendly). Google Calendar y
     // Outlook Calendar son per-empleado. Ver .brain/decisions/2026-09-04-...
     { id: 'calendario',  label: 'Calendario',  connected: !!status.cal?.calendar_type },
-    { id: 'crm',      label: 'Conocimiento del cliente', connected: !!status.notion?.connected },
-    ...(hasOpsAgent ? [{ id: 'mensajeria', label: 'Mensajería', connected: !!status.teamsEmail }] : []),
+    // 'crm' (Notion / Conocimiento del cliente) hidden 2026-09-07: nadie lo usa
+    // en prod. NotionSection y schemas preservados en código para reactivación futura.
+    // 'mensajeria' (Teams) hidden 2026-09-07: mismo motivo. TeamsSection preservado.
     { id: 'comercio',    label: 'Comercio',    connected: !!status.ml?.connected },
     // 'finanzas' (QuickBooks) hidden 2026-08-28. Ver comentario en rows[] abajo.
     { id: 'facturacion', label: 'Facturación', connected: !!status.sf?.connected },
@@ -637,31 +638,10 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
         </div>
       ),
     },
-    {
-      key: 'crm',
-      icon: <Users size={16} style={{ color: '#6C3BFF' }} />,
-      connectedIcon: RowIcons.notion,
-      label: 'Conocimiento del cliente',
-      subtitle: notionSubtitle,
-      connected: !!status.notion?.connected,
-      children: (
-        <div className="flex flex-col gap-5">
-          <NotionSection token={token} />
-          {hasNotion && <NotionSchemasSection token={token} />}
-        </div>
-      ),
-    },
-    ...(hasOpsAgent
-      ? [{
-          key: 'mensajeria',
-          icon: <MessageSquare size={16} style={{ color: '#5865F2' }} />,
-          connectedIcon: RowIcons.teams,
-          label: 'Mensajería',
-          subtitle: teamsSubtitle,
-          connected: !!status.teamsEmail,
-          children: <TeamsSection token={token} />,
-        }]
-      : []),
+    // 'crm' (Notion / Conocimiento del cliente) row hidden 2026-09-07: nadie lo
+    // usa en prod. NotionSection + NotionSchemasSection preservados en código para
+    // reactivación futura (imports arriba también preservados).
+    // 'mensajeria' (Teams) row hidden 2026-09-07: mismo motivo. TeamsSection preservado.
     // MercadoLibre hidden 2026-08-19: 0 orgs activos. Reactivar via pack mercado_libre (Capa 2).
     // QuickBooks (Finanzas) hidden 2026-08-28: piloto AC nunca conectó cuenta real,
     // cero orgs en prod. QuickBooksSection component preservado + tools/executors/routes
