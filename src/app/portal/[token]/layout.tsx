@@ -41,16 +41,18 @@ export default async function TokenLayout({
       .order('created_at', { ascending: true });
     opsAgents = (data ?? []).map((a: any) => {
       const mid     = (a.features?.meerkat_role_id as string | undefined) ?? null;
-      const meerkat = mid ? (MEERKAT_MAP as Record<string, { genero?: 'M' | 'F'; color?: string; imagen?: string | null }>)[mid] : null;
+      const meerkat = mid ? (MEERKAT_MAP as Record<string, { genero?: 'M' | 'F'; color?: string; imagen?: string | null; avatarPosition?: string; avatarScale?: number }>)[mid] : null;
       return {
-        id:            a.id,
-        agent_name:    a.agent_name,
-        role:          a.role,
-        business_name: a.business_name,
+        id:              a.id,
+        agent_name:      a.agent_name,
+        role:            a.role,
+        business_name:   a.business_name,
         // Fallback ladder: custom → canónico del rol → null. Ver bug fix 2026-08-19.
-        avatar_url:    (a.features?.avatar     as string | null) ?? meerkat?.imagen ?? null,
-        role_color:    (a.features?.role_color as string | null) ?? meerkat?.color  ?? null,
-        genero:        meerkat?.genero ?? 'M',
+        avatar_url:      (a.features?.avatar     as string | null) ?? meerkat?.imagen ?? null,
+        role_color:      (a.features?.role_color as string | null) ?? meerkat?.color  ?? null,
+        genero:          meerkat?.genero ?? 'M',
+        avatar_position: meerkat?.avatarPosition ?? null,
+        avatar_scale:    meerkat?.avatarScale ?? null,
       } satisfies AgentOption;
     });
   }

@@ -45,6 +45,44 @@ function toolLabel(name: string): string {
   return TOOL_LABELS[name] ?? `Usando ${name.replace(/_/g, ' ')}`;
 }
 
+// Avatar del meerkat con cover + objectPosition + scale para que la cara
+// llene el círculo aun en tamaños pequeños (28-40px). Respeta la metadata
+// avatarPosition/avatarScale del roster (ver meerkat-roles.ts).
+function MeerkatAvatar({
+  agent, size, color, initial, radius,
+}: {
+  agent:   Pick<AgentOption, 'avatar_url' | 'avatar_position' | 'avatar_scale'>;
+  size:    number;
+  color:   string;
+  initial: string;
+  radius:  number;
+}) {
+  const pos   = agent.avatar_position ?? 'center 3%';
+  const scale = agent.avatar_scale ?? 1;
+  return (
+    <div
+      className="flex-shrink-0 overflow-hidden flex items-center justify-center"
+      style={{
+        width:        size,
+        height:       size,
+        borderRadius: radius,
+        background:   `${color}20`,
+        border:       `1px solid ${color}35`,
+      }}>
+      {agent.avatar_url
+        ? <img src={agent.avatar_url} alt="" style={{
+            width: '100%', height: '100%',
+            objectFit: 'cover',
+            objectPosition: pos,
+            transform: scale !== 1 ? `scale(${scale})` : 'none',
+            transformOrigin: pos,
+          }} />
+        : <span style={{ fontSize: Math.round(size * 0.42), fontWeight: 700, color }}>{initial}</span>
+      }
+    </div>
+  );
+}
+
 const FILE_URL_RE = /https?:\/\/[^\s]+\.(?:pdf|docx?|xlsx?|pptx?|png|jpe?g|gif|zip|txt|csv|mp3|mp4|webm|wav|ogg)(?:\?[^\s]*)?/gi;
 
 type ContentPart = string | { url: string; name: string };
@@ -72,13 +110,17 @@ function agentColor(id: string): string {
 }
 
 export interface AgentOption {
-  id:            string;
-  agent_name:    string | null;
-  role:          string | null;
-  business_name: string;
-  avatar_url?:   string | null;
-  role_color?:   string | null;
-  genero?:       'M' | 'F';
+  id:              string;
+  agent_name:      string | null;
+  role:            string | null;
+  business_name:   string;
+  avatar_url?:     string | null;
+  role_color?:     string | null;
+  genero?:         'M' | 'F';
+  // Focus del avatar cuando se recorta a círculo/cuadro pequeño. Viene del
+  // roster de meerkats (avatarPosition/avatarScale). Default 'center 3%' / 1.
+  avatar_position?: string | null;
+  avatar_scale?:    number | null;
 }
 
 type Message = { role: 'user' | 'assistant'; content: string; tools?: string[] };
@@ -326,13 +368,7 @@ export default function OpsAgentChatFab({ token, agents }: Props) {
           {/* Header */}
           <div className="flex items-center gap-3 px-4 py-3 flex-shrink-0"
             style={{ borderBottom: '1px solid #E8E3F5', background: `${color}08` }}>
-            <div className="w-8 h-8 rounded-xl flex-shrink-0 overflow-hidden flex items-center justify-center"
-              style={{ background: `${color}20`, border: `1px solid ${color}35` }}>
-              {selectedAgent.avatar_url
-                ? <img src={selectedAgent.avatar_url} alt="" className="w-full h-full object-contain p-0.5" />
-                : <span className="text-sm font-bold" style={{ color }}>{initial}</span>
-              }
-            </div>
+            <MeerkatAvatar agent={selectedAgent} size={40} radius={12} color={color} initial={initial} />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>
                 {selectedAgent.agent_name?.trim() || 'Agente'}
@@ -363,12 +399,8 @@ export default function OpsAgentChatFab({ token, agents }: Props) {
             {messages.map((msg, i) => (
               <div key={i} className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 {msg.role === 'assistant' && (
-                  <div className="w-6 h-6 rounded-lg flex-shrink-0 mt-0.5 overflow-hidden flex items-center justify-center"
-                    style={{ background: `${color}20`, border: `1px solid ${color}30` }}>
-                    {selectedAgent.avatar_url
-                      ? <img src={selectedAgent.avatar_url} alt="" className="w-full h-full object-contain" />
-                      : <span className="text-xs font-bold" style={{ color }}>{initial}</span>
-                    }
+                  <div className="mt-0.5">
+                    <MeerkatAvatar agent={selectedAgent} size={32} radius={10} color={color} initial={initial} />
                   </div>
                 )}
                 <div
@@ -480,23 +512,13 @@ export default function OpsAgentChatFab({ token, agents }: Props) {
           }}
         >
           {/* Avatar */}
-          <div
-            className="flex-shrink-0 overflow-hidden flex items-center justify-center"
-            style={{
-              width:        28,
-              height:       28,
-              borderRadius: 8,
-              background:   `${bubble.agent.role_color || agentColor(bubble.agent.id)}20`,
-              border:       `1px solid ${bubble.agent.role_color || agentColor(bubble.agent.id)}35`,
-            }}
-          >
-            {bubble.agent.avatar_url
-              ? <img src={bubble.agent.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-              : <span style={{ fontSize: 11, fontWeight: 700, color: bubble.agent.role_color || agentColor(bubble.agent.id) }}>
-                  {(bubble.agent.agent_name?.trim() || bubble.agent.business_name).charAt(0).toUpperCase()}
-                </span>
-            }
-          </div>
+          <MeerkatAvatar
+            agent={bubble.agent}
+            size={40}
+            radius={12}
+            color={bubble.agent.role_color || agentColor(bubble.agent.id)}
+            initial={(bubble.agent.agent_name?.trim() || bubble.agent.business_name).charAt(0).toUpperCase()}
+          />
 
           {/* Speech bubble */}
           <div
