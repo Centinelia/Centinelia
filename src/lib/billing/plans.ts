@@ -75,8 +75,8 @@ export const JORNADA_CONFIG: Record<JornadaType, Record<MinutesTier, JornadaAllo
   },
   minutos: {
     starter:    { minutes: 500,  aiOps: 20 },
-    growth:     { minutes: 1000, aiOps: 20 },
-    scale:      { minutes: 2000, aiOps: 20 },
+    growth:     { minutes: 900,  aiOps: 20 },
+    scale:      { minutes: 1800, aiOps: 20 },
     enterprise: { minutes: 0,    aiOps: 0  },
   },
   tareas: {

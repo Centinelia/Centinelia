@@ -71,7 +71,7 @@ Todos los precios + IVA 16%. Sin contratos de permanencia. La jornada se aumenta
 | Sabor | Media Jornada | Jornada Completa | Alta Demanda |
 |-------|---------------|------------------|--------------|
 | Combinada (default) | 250 min + 300 tareas | 500 min + 600 tareas | 1,000 min + 1,200 tareas |
-| Solo minutos | 500 min + 20 tareas | 1,000 min + 20 tareas | 2,000 min + 20 tareas |
+| Solo minutos | 500 min + 20 tareas | 900 min + 20 tareas | 1,800 min + 20 tareas |
 | Solo tareas | 500 tareas (0 min) | 1,200 tareas (0 min) | 3,000 tareas (0 min) |
 
 Se elige al contratar y se puede cambiar desde el portal.
