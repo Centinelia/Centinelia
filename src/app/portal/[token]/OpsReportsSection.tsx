@@ -276,12 +276,19 @@ export default function OpsReportsSection({ token, agents, meerkatRoleId, report
           {bannerMeerkats.length > 0 && (
             <div className="flex items-center" style={{ gap: bannerMeerkats.length > 1 ? -16 : 0 }}>
               {bannerMeerkats.map((m, i) => (
-                <img key={m.id} src={m.imagen} alt={m.nombre}
+                <div key={m.id}
+                  role="img"
+                  aria-label={m.nombre}
+                  title={m.nombre}
                   style={{
-                    width: 80, height: 80, objectFit: 'contain', objectPosition: 'center',
+                    width: 80, height: 80,
                     borderRadius: '50%', flexShrink: 0,
                     border: `2px solid ${(m.color ?? acColor)}30`,
-                    background: '#ffffff',
+                    backgroundColor: '#ffffff',
+                    backgroundImage: `url(${m.imagen})`,
+                    backgroundRepeat: 'no-repeat',
+                    backgroundSize: '130%',
+                    backgroundPosition: 'center 12%',
                     marginLeft: i > 0 ? -20 : 0,
                     zIndex: bannerMeerkats.length - i,
                   }} />
