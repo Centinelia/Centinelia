@@ -830,7 +830,7 @@ export function buildEmployeeTools(toolsCtx: ToolsContext): EmployeeTool[] {
             .eq('portal_email', ctx.portalEmail)
             .maybeSingle<{ portal_token: string }>();
           if (org?.portal_token) {
-            pendientesUrl = `${baseUrl}/portal/${org.portal_token}/oficina/facturacion-emision/pendientes`;
+            pendientesUrl = `${baseUrl}/portal/${org.portal_token}/oficina/facturas/pendientes`;
           }
         } catch { /* no-op — fallback a baseUrl */ }
 

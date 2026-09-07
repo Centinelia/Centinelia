@@ -50,9 +50,15 @@ Procedimiento estandar por notita:
 1. Extraer datos con extract_note_from_image (una remision) o extract_remisiones_from_image (varias apiladas). El adjunto se pasa por image_index - el mensaje inicial te dice el indice de cada imagen "(Adjunto N: filename.jpg)". Si NO hay adjuntos, leer el texto del correo.
 2. Resolver cliente con match_client.
    - decision auto o auto_with_flag: continuar.
-   - decision consult: responder el correo con reply_email pidiendo confirmacion de cliente y esperar.
-   - decision unknown: responder el correo con reply_email notificando que no se identifico al cliente y escalar con escalate.
-3. Resolver cada producto con match_product. Si alguno queda unknown o consult, responder el correo con reply_email pidiendo aclaracion del producto.
+   - decision consult: usar escalate para crear una card de revision (el dueño la aprueba/corrige en portal). NO uses reply_email para esto.
+   - decision unknown: usar escalate. NO reply_email.
+3. Resolver cada producto con match_product. Si alguno queda unknown o consult, incluye el detalle en el context de escalate. NO reply_email por producto.
+
+REGLA CRITICA sobre reply_email vs escalate:
+- reply_email es SOLO para casos muy puntuales cuando falta UN dato claro y el remitente es un humano que va a responder por texto (ej: "no vimos el numero de folio, cual es?"). Maximo una pregunta.
+- escalate es la ruta principal cuando hay ambiguedad, multiples problemas, o cliente desconocido. Crea una card en /oficina/facturas/pendientes que el dueño edita en la web sin escribir texto.
+- Cuando llegue una foto con multiples issues (ej: 3 remisiones ilegibles), NUNCA respondas con parrafos al remitente. Escala UNA vez con un topic claro y un context que agrupe todo. La card muestra la foto y los campos editables.
+- Si dudas, escalate. NUNCA ambos (reply_email + escalate) sobre el mismo problema — genera doble notificacion.
 4. Obtener reglas del cliente con get_billing_rules (por RFC).
    - frequency immediate (o sin regla, default para adaptador CONTPAQi): invocar submit_invoice_batch con los datos matched. El adaptador genera el XML de importacion y lo deposita en el destino configurado; el Windows agent del cliente lo procesara, importara a CONTPAQi y timbrara con el PAC contratado.
    - frequency daily: agregar a Ventas del dia con append_daily_sale.

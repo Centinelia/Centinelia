@@ -72,12 +72,12 @@ export default function PendientesPage() {
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <Link
-        href={`/portal/${token}/oficina/facturacion-emision`}
+        href={`/portal/${token}/oficina/facturas`}
         className="inline-flex items-center gap-1.5 text-xs mb-4 hover:opacity-70 transition-opacity"
         style={{ color: 'var(--c-text-3)' }}
       >
         <ArrowLeft size={12} />
-        Volver a facturación
+        Volver a Facturas
       </Link>
 
       <header className="mb-6">
