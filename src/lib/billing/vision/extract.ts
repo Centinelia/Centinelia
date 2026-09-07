@@ -132,6 +132,12 @@ export async function extractRemisionesFromImage(
   context?: VisionContext,
   billing?: BillingChargeOpts,
 ): Promise<ExtractedNoteSet> {
+  // Normalizamos toda imagen a JPEG 1568×1568 max, metadata stripped.
+  // Screenshots grandes, HEIC de iPhone, y variantes MIME (image/jpg /
+  // image/jfif) fallaban con 400 en Anthropic; ver dry run FASE 4 (2026-09-07).
+  const { normalizeImageForVision } = await import('./image-normalize');
+  const normalized = await normalizeImageForVision({ buffer: imageBuffer, mimeType });
+
   const doExtract = async (): Promise<ExtractedNoteSet> => {
     const model = process.env.BILLING_VISION_MODEL ?? DEFAULT_MODEL;
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -159,8 +165,8 @@ export async function extractRemisionesFromImage(
               type: 'image',
               source: {
                 type: 'base64',
-                media_type: mimeType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
-                data: imageBuffer.toString('base64'),
+                media_type: normalized.mimeType,
+                data: normalized.buffer.toString('base64'),
               },
             },
             {

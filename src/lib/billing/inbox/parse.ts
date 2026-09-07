@@ -30,12 +30,21 @@ export interface ParsedInboundEmail {
   messageId:       string | null;
 }
 
-/** MIME types accepted as billing note attachments. */
+/** MIME types accepted as billing note attachments.
+ * Se normalizan a JPEG antes de mandarlos a Anthropic vision — ver
+ * `@/lib/billing/vision/image-normalize`. Aliases comunes incluidos porque
+ * clientes de correo mandan `image/jpg` o `image/jfif` en headers reales. */
 const ALLOWED_TYPES = new Set([
   'image/jpeg',
+  'image/jpg',
+  'image/jfif',
+  'image/pjpeg',
   'image/png',
   'image/webp',
   'image/heic',
+  'image/heif',
+  'image/heic-sequence',
+  'image/heif-sequence',
   'application/pdf',
 ]);
 
