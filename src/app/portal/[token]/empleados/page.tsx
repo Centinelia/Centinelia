@@ -227,7 +227,7 @@ const BUSINESS_CATEGORIES: { label: string; color: string; specialized?: boolean
   },
   {
     label: 'Reportes con folio',
-    color: '#f97316', // nara
+    color: '#4338CA', // nara
     specialized: true,
     tools: [
       { key: 'crear_reporte_civico',      label: 'Registrar reporte' },

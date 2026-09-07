@@ -31,7 +31,7 @@ const NIA: AgentDef = {
 
 const SPECIALISTS: AgentDef[] = [
   { id: 'noah',  role: 'Ventas',       color: '#22c55e', img: '/meerkats/noah.png',  mobileImgShiftX: '0',    mobileImgShiftY: '3px',   mobileImgScale: 1.1 },
-  { id: 'nara',  role: 'Coordinadora', color: '#f97316', img: '/meerkats/nara.png',  mobileImgShiftX: '-2px', mobileImgShiftY: '4px' },
+  { id: 'nara',  role: 'Coordinadora', color: '#4338CA', img: '/meerkats/nara.png',  mobileImgShiftX: '-2px', mobileImgShiftY: '4px' },
   { id: 'nico',  role: 'Cobranza',     color: '#f59e0b', img: '/meerkats/nico.png',  mobileImgShiftY: '1.5px' },
   { id: 'naia',  role: 'RR.HH.',       color: '#ec4899', img: '/meerkats/naia.png',  mobileImgShiftX: '-0.5px' },
   { id: 'nelia', role: 'Atención',     color: '#3b82f6', img: '/meerkats/nelia.png', mobileImgShiftX: '0',    mobileImgShiftY: '3px' },
