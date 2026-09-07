@@ -353,24 +353,28 @@ export default function AgentEmailSection({ token, agentId, agentName }: { token
 
           {otroExpanded && (
             <div className="px-4 pb-4" style={{ borderTop: '1px solid #F0EDF9' }}>
-              <div
-                className="mt-3 mb-4 flex gap-2 rounded-lg px-3 py-2.5"
-                style={{ background: 'rgba(108,59,255,0.05)', border: '1px solid rgba(108,59,255,0.12)' }}
-              >
-                <Mail size={12} style={{ color: '#9B6DFF', flexShrink: 0, marginTop: 2 }} />
-                <p className="text-[12px] leading-relaxed" style={{ color: '#6B6480' }}>
-                  Si tienes Gmail Workspace o Outlook/Microsoft 365, usa esas opciones — es mucho más simple (un click de OAuth). Esta ruta es para dominios hospedados en otros proveedores (Telmex, Zoho, Titan, cPanel, iCloud). Fase 1: solo envío. Fase 2 traerá lectura de inbox.
-                </p>
-              </div>
-              <SmtpConnectSection token={token} agentId={agentId} />
-              <details className="mt-4">
-                <summary className="text-[11px] cursor-pointer" style={{ color: '#9B8FB5' }}>
-                  Opción avanzada: usar Resend con verificación de dominio (DNS)
-                </summary>
-                <div className="mt-3">
-                  <EmailSettings token={token} />
+              {!smtp?.configured && (
+                <div
+                  className="mt-3 mb-4 flex gap-2 rounded-lg px-3 py-2.5"
+                  style={{ background: 'rgba(108,59,255,0.05)', border: '1px solid rgba(108,59,255,0.12)' }}
+                >
+                  <Mail size={12} style={{ color: '#9B6DFF', flexShrink: 0, marginTop: 2 }} />
+                  <p className="text-[12px] leading-relaxed" style={{ color: '#6B6480' }}>
+                    Si tienes Gmail Workspace o Outlook/Microsoft 365, usa esas opciones — es mucho más simple (un click de OAuth). Esta ruta es para dominios hospedados en otros proveedores (Telmex, Zoho, Titan, cPanel, iCloud).
+                  </p>
                 </div>
-              </details>
+              )}
+              <SmtpConnectSection token={token} agentId={agentId} />
+              {!smtp?.configured && (
+                <details className="mt-4">
+                  <summary className="text-[11px] cursor-pointer" style={{ color: '#9B8FB5' }}>
+                    Opción avanzada: usar Resend con verificación de dominio (DNS)
+                  </summary>
+                  <div className="mt-3">
+                    <EmailSettings token={token} />
+                  </div>
+                </details>
+              )}
             </div>
           )}
         </div>
