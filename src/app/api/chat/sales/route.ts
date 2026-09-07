@@ -175,7 +175,7 @@ Cuentas nuevas: límite de 50 llamadas salientes por día los primeros 30 días.
 
 "¿Qué pasa si se acaban los minutos?": El empleado avisa al 80% de uso. Al llegar al 100% se pausa. Compras saldo adicional desde el portal en segundos y se reactiva de inmediato. El owner también puede activar auto-topup para que nunca se pause.
 
-"¿Qué jornada me recomiendas?": Depende del volumen. Media Jornada cubre hasta 5 llamadas al día. Jornada Completa hasta 10, que es lo que necesita la mayoría de los negocios. Alta Demanda para operaciones con alto volumen.
+"¿Qué jornada me recomiendas?": Depende del volumen. Media Jornada cubre hasta 4 llamadas al día. Jornada Completa hasta 8, que es lo que necesita la mayoría de los negocios. Alta Demanda para operaciones con alto volumen (~17 llamadas al día).
 
 "¿Puedo tener más de un empleado?": Sí. Cada empleado tiene su propio rol y todos comparten el pool de minutos y tareas de la cuenta. Y cuando tienes más de uno, entre ellos se revisan los documentos importantes antes de entregártelos.
 
