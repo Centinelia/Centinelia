@@ -48,6 +48,14 @@ const PROVIDERS = [
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+const COMBINING_MARKS = /[̀-ͯ]/g;
+function emailSlugFromName(name: string | null | undefined): string {
+  const raw = (name ?? '').trim().split(/\s+/)[0] ?? '';
+  const ascii = raw.normalize('NFD').replace(COMBINING_MARKS, '');
+  const clean = ascii.toLowerCase().replace(/[^a-z0-9]/g, '');
+  return clean || 'nia';
+}
+
 function timeAgo(iso: string | null): string {
   if (!iso) return 'Nunca';
   const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
@@ -60,13 +68,15 @@ function timeAgo(iso: string | null): string {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function AgentEmailSection({ token, agentId }: { token: string; agentId: string }) {
+export default function AgentEmailSection({ token, agentId, agentName }: { token: string; agentId: string; agentName?: string | null }) {
+  const slug = emailSlugFromName(agentName);
   const [connections,   setConnections]   = useState<AgentEmail[]>([]);
   const [loading,       setLoading]       = useState(true);
   const [disconnecting, setDisconnecting] = useState<string | null>(null);
   const [justConnected, setJustConnected] = useState<string | null>(null);
   const [dupError,      setDupError]      = useState<string | null>(null);
   const [otroExpanded,  setOtroExpanded]  = useState(false);
+  const [smtp,          setSmtp]          = useState<{ configured: boolean; username: string | null; host: string | null } | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -88,12 +98,22 @@ export default function AgentEmailSection({ token, agentId }: { token: string; a
 
   const load = useCallback(async () => {
     try {
-      const res  = await fetch(`/api/portal/${token}/agent-email`);
-      const data = await res.json();
+      const [oauthRes, smtpRes] = await Promise.all([
+        fetch(`/api/portal/${token}/agent-email`),
+        fetch(`/api/portal/${token}/integrations/imap-smtp?agent_id=${encodeURIComponent(agentId)}`),
+      ]);
+      const data = await oauthRes.json();
       const conns: AgentEmail[] = data.connections ?? [];
       setConnections(conns);
+      if (smtpRes.ok) {
+        const s = await smtpRes.json();
+        setSmtp({ configured: s.configured === true, username: s.username ?? null, host: s.host ?? null });
+        if (s.configured === true) setOtroExpanded(true);
+      } else {
+        setSmtp({ configured: false, username: null, host: null });
+      }
     } finally { setLoading(false); }
-  }, [token]);
+  }, [token, agentId]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -130,22 +150,24 @@ export default function AgentEmailSection({ token, agentId }: { token: string; a
             Correo del empleado
           </p>
           <p className="text-xs mt-0.5 leading-relaxed" style={{ color: '#6B6480' }}>
-            Conecta la bandeja real que este empleado atenderá (por ejemplo <span style={{ fontFamily: 'monospace', color: '#1A0A3B' }}>nia@tuempresa.com</span>). Centinelia leerá y enviará correos desde ahí como si el empleado tuviera la contraseña.
+            Conecta la bandeja real que este empleado atenderá (por ejemplo <span style={{ fontFamily: 'monospace', color: '#1A0A3B' }}>{slug}@tuempresa.com</span>). Centinelia leerá y enviará correos desde ahí como si el empleado tuviera la contraseña.
           </p>
         </div>
 
-        <div
-          className="flex gap-2.5 rounded-lg px-3 py-2.5"
-          style={{ background: 'rgba(108,59,255,0.05)', border: '1px solid rgba(108,59,255,0.16)' }}
-        >
-          <Mail size={13} style={{ color: '#9B6DFF', flexShrink: 0, marginTop: 2 }} />
-          <div className="text-xs leading-relaxed" style={{ color: '#1A0A3B' }}>
-            <p className="font-semibold" style={{ color: '#1A0A3B' }}>Cómo funciona el acceso</p>
-            <p className="mt-0.5" style={{ color: '#6B6480' }}>
-              Al hacer clic en <strong>Conectar</strong> abre el login de Google o Microsoft. Inicia sesión con las credenciales de la cuenta que quieres darle al empleado (no la tuya). Centinelia guarda un token que renueva solo — no tenemos ni guardamos la contraseña.
-            </p>
+        {!smtp?.configured && (
+          <div
+            className="flex gap-2.5 rounded-lg px-3 py-2.5"
+            style={{ background: 'rgba(108,59,255,0.05)', border: '1px solid rgba(108,59,255,0.16)' }}
+          >
+            <Mail size={13} style={{ color: '#9B6DFF', flexShrink: 0, marginTop: 2 }} />
+            <div className="text-xs leading-relaxed" style={{ color: '#1A0A3B' }}>
+              <p className="font-semibold" style={{ color: '#1A0A3B' }}>Cómo funciona el acceso</p>
+              <p className="mt-0.5" style={{ color: '#6B6480' }}>
+                Al hacer clic en <strong>Conectar</strong> abre el login de Google o Microsoft. Inicia sesión con las credenciales de la cuenta que quieres darle al empleado (no la tuya). Centinelia guarda un token que renueva solo — no tenemos ni guardamos la contraseña.
+              </p>
+            </div>
           </div>
-        </div>
+        )}
 
         {justConnected && (
           <div
@@ -169,7 +191,7 @@ export default function AgentEmailSection({ token, agentId }: { token: string; a
           </div>
         )}
 
-        {PROVIDERS.map(provider => {
+        {!smtp?.configured && PROVIDERS.map(provider => {
           const conn = connections.find(c => c.provider === provider.id);
           return (
             <div
@@ -275,7 +297,7 @@ export default function AgentEmailSection({ token, agentId }: { token: string; a
           className="rounded-xl overflow-hidden"
           style={{
             background: '#ffffff',
-            border:     '1px solid #F0EDF9',
+            border:     smtp?.configured ? '1px solid rgba(34,197,94,0.2)' : '1px solid #F0EDF9',
           }}
         >
           <button
@@ -290,17 +312,32 @@ export default function AgentEmailSection({ token, agentId }: { token: string; a
               <Globe size={18} style={{ color: '#6C3BFF' }} />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>
-                  Otro correo
+                  {smtp?.configured ? 'Correo con dominio propio' : 'Otro correo'}
                 </span>
-                <span className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ background: '#FAFAFB', color: '#9B8FB5', border: '1px solid #E8E3F5' }}>
-                  Setup técnico
-                </span>
+                {smtp?.configured ? (
+                  <span
+                    className="flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full"
+                    style={{ background: 'rgba(34,197,94,0.1)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.2)' }}
+                  >
+                    <CheckCircle size={10} /> Conectado
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ background: '#FAFAFB', color: '#9B8FB5', border: '1px solid #E8E3F5' }}>
+                    Setup técnico
+                  </span>
+                )}
               </div>
-              <p className="text-xs mt-0.5" style={{ color: '#6B6480' }}>
-                Tu dominio con Telmex, Zoho, Titan, hosting propio, iCloud. Solo necesitas host, puerto y contraseña — sin DNS.
-              </p>
+              {smtp?.configured ? (
+                <p className="text-xs mt-0.5 truncate font-mono" style={{ color: '#1A0A3B' }}>
+                  {smtp.username}
+                </p>
+              ) : (
+                <p className="text-xs mt-0.5" style={{ color: '#6B6480' }}>
+                  Tu dominio con Telmex, Zoho, Titan, hosting propio, iCloud. Solo necesitas host, puerto y contraseña — sin DNS.
+                </p>
+              )}
             </div>
             <ChevronDown
               size={16}

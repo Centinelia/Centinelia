@@ -152,7 +152,7 @@ function AgentAccordion({ agent }: { agent: AgentRow }) {
             <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
               Una sola conexión de Gmail u Outlook activa los tres. Conecta el correo del area para habilitarlos.
             </p>
-            <AgentEmailSection token={agent.portal_token} agentId={agent.id} />
+            <AgentEmailSection token={agent.portal_token} agentId={agent.id} agentName={agent.agent_name} />
           </div>
 
           {/* Notion */}

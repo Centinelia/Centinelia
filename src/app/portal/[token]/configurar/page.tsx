@@ -550,7 +550,7 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
                     tooltip="Conecta la cuenta de correo que este empleado usará para enviar y leer mensajes."
                     className="mb-4"
                   />
-                  <AgentEmailSection token={token} agentId={agent.id as string} />
+                  <AgentEmailSection token={token} agentId={agent.id as string} agentName={agent.agent_name as string | null} />
 
                     {connectedEmail && (
                       <div className="mt-5 pt-5" style={{ borderTop: '1px solid var(--c-border)' }}>
