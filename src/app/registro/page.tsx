@@ -158,7 +158,7 @@ const AGENT_PLANS: AgentPlanDef[] = [
 type TierDef = { id: FormTier; label: string; minutes: number; aiOps: number; price: number; popular?: boolean };
 
 const TIERS: TierDef[] = [
-  { id: 'starter', label: 'Media Jornada',    minutes: 250,  aiOps: 320,  price: 2997 },
+  { id: 'starter', label: 'Media Jornada',    minutes: 250,  aiOps: 300,  price: 2997 },
   { id: 'growth',  label: 'Jornada Completa', minutes: 500,  aiOps: 600,  price: 5994, popular: true },
   { id: 'scale',   label: 'Alta Demanda',     minutes: 1000, aiOps: 1200, price: 11988 },
 ];

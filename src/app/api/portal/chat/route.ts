@@ -223,7 +223,7 @@ Precios en MXN + IVA (16%). Incorporación: pago único al contratar.
 - **Empresarial:** cotización personalizada para multisucursal, alto volumen o integraciones custom.
 
 Jornadas mensuales (Empleado Centinelia) — sabor **Combinada** (default):
-- **Media Jornada:** 250 min + 320 tareas → $2,997/mes (≈4 llamadas/día).
+- **Media Jornada:** 250 min + 300 tareas → $2,997/mes (≈4 llamadas/día).
 - **Jornada Completa:** 500 min + 600 tareas → $5,994/mes (≈8 llamadas/día).
 - **Alta Demanda:** 1,000 min + 1,200 tareas → $11,988/mes (≈17 llamadas/día).
 
