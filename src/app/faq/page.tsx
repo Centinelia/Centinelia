@@ -105,7 +105,7 @@ const CATEGORIES = [
       },
       {
         q: '¿Que son las jornadas? (Combinada, Solo minutos, Solo tareas)',
-        a: 'Cada tier tiene 3 sabores al mismo precio, para ajustar el mix minutos vs tareas segun tu operacion. Combinada (default) mezcla ambos; Solo minutos maximiza voz sin oficina; Solo tareas maximiza oficina sin voz. Distribucion exacta: — Combinada: Media 300 min + 320 tareas, Completa 600 min + 420 tareas, Alta 1,200 min + 520 tareas. — Solo minutos: Media 500 min + 20 tareas, Completa 1,000 min + 20 tareas, Alta 2,000 min + 20 tareas. — Solo tareas: Media 500 tareas + 0 min, Completa 1,200 tareas + 0 min, Alta 3,000 tareas + 0 min. Los coordinadores (Nox, Niva) usan automaticamente Solo tareas, no tienen voz.',
+        a: 'Cada tier tiene 3 sabores al mismo precio, para ajustar el mix minutos vs tareas segun tu operacion. Combinada (default) mezcla ambos; Solo minutos maximiza voz sin oficina; Solo tareas maximiza oficina sin voz. Distribucion exacta: — Combinada: Media 250 min + 320 tareas, Completa 500 min + 600 tareas, Alta 1,000 min + 1,200 tareas. — Solo minutos: Media 500 min + 20 tareas, Completa 1,000 min + 20 tareas, Alta 2,000 min + 20 tareas. — Solo tareas: Media 500 tareas + 0 min, Completa 1,200 tareas + 0 min, Alta 3,000 tareas + 0 min. Los coordinadores (Nox, Niva) usan automaticamente Solo tareas, no tienen voz.',
       },
       {
         q: '¿Que son las tareas?',
@@ -117,7 +117,7 @@ const CATEGORIES = [
       },
       {
         q: '¿Que pasa con los minutos no usados?',
-        a: 'Los minutos y tareas no usados acumulan al mes siguiente hasta un maximo del doble de tu tier (cap 2x). Si tienes 300 min en Media Jornada Combinada y solo usas 100, el siguiente mes empiezas con 500 min (300 incluidos + 200 acumulados). Al llegar al tope, los excedentes se pierden — el portal te avisa por correo cuando esto ocurre.',
+        a: 'Los minutos y tareas no usados acumulan al mes siguiente hasta un maximo del doble de tu tier (cap 2x). Si tienes 250 min en Media Jornada Combinada y solo usas 100, el siguiente mes empiezas con 400 min (250 incluidos + 150 acumulados). Al llegar al tope, los excedentes se pierden — el portal te avisa por correo cuando esto ocurre.',
       },
       {
         q: '¿Hay contrato de permanencia?',

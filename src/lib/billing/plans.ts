@@ -68,10 +68,10 @@ export interface JornadaAllocation {
 
 export const JORNADA_CONFIG: Record<JornadaType, Record<MinutesTier, JornadaAllocation>> = {
   combinada: {
-    starter:    { minutes: 300,  aiOps: 320 },
-    growth:     { minutes: 600,  aiOps: 420 },
-    scale:      { minutes: 1200, aiOps: 520 },
-    enterprise: { minutes: 0,    aiOps: 0   },
+    starter:    { minutes: 250,  aiOps: 320  },
+    growth:     { minutes: 500,  aiOps: 600  },
+    scale:      { minutes: 1000, aiOps: 1200 },
+    enterprise: { minutes: 0,    aiOps: 0    },
   },
   minutos: {
     starter:    { minutes: 500,  aiOps: 20 },

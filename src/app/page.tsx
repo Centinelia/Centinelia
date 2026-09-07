@@ -92,9 +92,10 @@ const AGENT_TYPES: {
   },
 ];
 
-// MINUTE_TIERS eliminado 2026-08-11: landmine con ops 100/200/300 stale
-// (real es 320/420/520 según JORNADA_CONFIG.combinada — bump +200 el 2026-08-28
-// para que las jornadas combinadas tengan mix trabajable de tareas). La landing
+// MINUTE_TIERS eliminado 2026-08-11: landmine con ops 100/200/300 stale.
+// Cifras reales viven en JORNADA_CONFIG.combinada de plans.ts. Bumps sucesivos:
+// 2026-08-28 (120/220/320 → 320/420/520) y 2026-09-07 (420/520 → 600/1200 en
+// growth/scale) para que combinada escale coherente en tareas. La landing
 // renderiza PricingSection.tsx que lee de plans.ts en runtime. Ver
 // [[feedback-audit-read-path-fidelity]].
 
