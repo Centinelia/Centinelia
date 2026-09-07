@@ -79,6 +79,28 @@ function MeerkatCardImage({ role }: { role: MeerkatRole }) {
   );
 }
 
+// Thumb chico usado en el hero de "detail" y "confirm" (64x80px). Usa cover
+// + center top para que la cara ocupe el thumb en vez de dejar aire con
+// contain (que hace verse a los meerkats verticales tipo Nalú/Nami minúsculos).
+function MeerkatHeroThumb({ role }: { role: MeerkatRole }) {
+  if (role.imagen) {
+    return (
+      <img
+        src={role.imagen}
+        alt={role.nombre}
+        className="w-full h-full"
+        style={{ objectFit: 'cover', objectPosition: 'center top' }}
+      />
+    );
+  }
+  return (
+    <div className="w-full h-full flex items-center justify-center text-2xl font-black"
+      style={{ background: `${role.color}18`, color: role.color }}>
+      {role.nombre[0]}
+    </div>
+  );
+}
+
 export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'starter', recommendations, preselect, triggerLabel }: {
   token:            string;
   plan?:            Plan;
@@ -316,7 +338,7 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
                     style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
                     <div className="w-16 h-20 rounded-xl overflow-hidden flex-shrink-0"
                       style={{ background: `${expandedRole.color}10` }}>
-                      <MeerkatCardImage role={expandedRole} />
+                      <MeerkatHeroThumb role={expandedRole} />
                     </div>
                     <div className="flex flex-col gap-0.5">
                       <span className="font-bold text-base leading-tight" style={{ color: '#1A0A3B' }}>
@@ -400,7 +422,7 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
                 <div className="flex items-center gap-4 p-4 rounded-xl"
                   style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
                   <div className="w-16 h-20 rounded-xl overflow-hidden flex-shrink-0" style={{ background: `${selected.color}10` }}>
-                    <MeerkatCardImage role={selected} />
+                    <MeerkatHeroThumb role={selected} />
                   </div>
                   <div>
                     <div className="font-bold text-base" style={{ color: '#1A0A3B' }}>
