@@ -275,24 +275,38 @@ export default function OpsReportsSection({ token, agents, meerkatRoleId, report
           </div>
           {bannerMeerkats.length > 0 && (
             <div className="flex items-center" style={{ gap: bannerMeerkats.length > 1 ? -16 : 0 }}>
-              {bannerMeerkats.map((m, i) => (
-                <div key={m.id}
-                  role="img"
-                  aria-label={m.nombre}
-                  title={m.nombre}
-                  style={{
-                    width: 80, height: 80,
-                    borderRadius: '50%', flexShrink: 0,
-                    border: `2px solid ${(m.color ?? acColor)}30`,
-                    backgroundColor: '#ffffff',
-                    backgroundImage: `url(${m.imagen})`,
-                    backgroundRepeat: 'no-repeat',
-                    backgroundSize: '100%',
-                    backgroundPosition: 'center 15px',
-                    marginLeft: i > 0 ? -20 : 0,
-                    zIndex: bannerMeerkats.length - i,
-                  }} />
-              ))}
+              {bannerMeerkats.map((m, i) => {
+                // Overrides finos del banner (80x80). El default global de cada
+                // meerkat sirve para thumbnails más pequeños en otras vistas;
+                // aquí el círculo es más grande y a veces conviene subir/bajar
+                // unos pixels para que la cara quede centrada.
+                const BANNER_POS_OVERRIDE: Record<string, string> = {
+                  nelia: 'center 10%',
+                };
+                const pos   = BANNER_POS_OVERRIDE[m.id] ?? m.avatarPosition ?? 'center 3%';
+                const scale = m.avatarScale ?? 1;
+                return (
+                  <div key={m.id}
+                    style={{
+                      width: 80, height: 80,
+                      borderRadius: '50%', flexShrink: 0,
+                      overflow: 'hidden',
+                      border: `2px solid ${(m.color ?? acColor)}30`,
+                      background: '#ffffff',
+                      marginLeft: i > 0 ? -20 : 0,
+                      zIndex: bannerMeerkats.length - i,
+                    }}>
+                    <img src={m.imagen ?? ''} alt={m.nombre}
+                      style={{
+                        width: '100%', height: '100%',
+                        objectFit: 'cover',
+                        objectPosition: pos,
+                        transform: scale !== 1 ? `scale(${scale})` : 'none',
+                        transformOrigin: pos,
+                      }} />
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
