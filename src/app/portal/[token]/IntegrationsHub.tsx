@@ -598,7 +598,10 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
     // 'mensajeria' (Teams) hidden 2026-09-07: mismo motivo. TeamsSection preservado.
     { id: 'comercio',    label: 'Comercio',    connected: !!status.ml?.connected },
     // 'finanzas' (QuickBooks) hidden 2026-08-28. Ver comentario en rows[] abajo.
-    { id: 'facturacion', label: 'Facturación', connected: !!status.sf?.connected },
+    // 'facturacion' (Solución Factible / PACs) movido 2026-09-07 a la ficha de Nala
+    // (única meerkat que factura). Storage sigue siendo org-level (1 RFC + 1 CSD),
+    // solo cambió la ubicación de la UI. Ver configurar/page.tsx sección
+    // "Facturación CFDI" gated a meerkatId === 'nala'.
   ];
 
   /* ── build capability rows ──────────────────────────────────────────── */
@@ -646,15 +649,10 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
     // QuickBooks (Finanzas) hidden 2026-08-28: piloto AC nunca conectó cuenta real,
     // cero orgs en prod. QuickBooksSection component preservado + tools/executors/routes
     // dormidos en código para reactivación futura. Ver pack `quickbooks` en packs.ts.
-    {
-      key: 'solucion_factible',
-      icon: <FileText size={16} style={{ color: '#1A56DB' }} />,
-      connectedIcon: RowIcons.solucion_factible,
-      label: 'Facturación CFDI',
-      subtitle: sfSubtitle,
-      connected: !!status.sf?.connected,
-      children: <SolucionFactibleSection token={token} />,
-    },
+    // Facturación CFDI (Solución Factible / PACs) movida 2026-09-07 a ficha de Nala
+    // (configurar/page.tsx). Storage sigue siendo org-level (1 RFC + 1 CSD por
+    // empresa), solo la UI vive donde se usa. Fetch de status.sf y SolucionFactibleSection
+    // preservados en imports para reactivación rápida si hiciera falta.
     // 'storage' (Almacenamiento en la nube) removido 2026-09-04: Dropbox, Google
     // Drive y OneDrive ahora se configuran per-empleado (ver AgentAccountsSection
     // kind='storage'). El pack cloud_catalog queda sin UI de configuración hasta

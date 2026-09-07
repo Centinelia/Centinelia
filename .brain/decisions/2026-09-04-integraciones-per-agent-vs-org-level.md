@@ -32,7 +32,7 @@ Datos compartidos entre meerkats, o entidad única de la empresa (RFC, catálogo
 |---|---|
 | Notion (CRM/knowledge base) | Records de clientes/leads son company-wide; per-agent crearía silos y rompería el "sistema nervioso central" |
 | Dropbox catálogo/archivos admin | Catálogo de productos es 1 por empresa; duplicarlo por meerkat = riesgo de inconsistencia |
-| Facturación CFDI (Solución Factible, Facturama) | 1 RFC emisor + 1 CSD por empresa. Legalmente no puede haber "Nala factura desde otra cuenta" |
+| Facturación CFDI (Solución Factible, Facturama) | 1 RFC emisor + 1 CSD por empresa. Legalmente no puede haber "Nala factura desde otra cuenta". **Actualización 2026-09-07:** el storage sigue siendo org-level pero la UI de configuración se movió a la ficha de Nala (única facturista, 1 Nala max por org). Ver `configurar/page.tsx` gated a `meerkatId === 'nala'`. |
 | Cal.com | Link público de reservación de la empresa (1 por org) |
 | Calendly | Mismo argumento que Cal.com |
 

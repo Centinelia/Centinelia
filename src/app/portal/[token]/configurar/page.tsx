@@ -32,6 +32,7 @@ import CallForwardingSection   from '../CallForwardingSection';
 import FallbackNumberSection  from '../FallbackNumberSection';
 import AgentEmailSection     from '../AgentEmailSection';
 import AgentAccountsSection  from '../AgentAccountsSection';
+import SolucionFactibleSection from '../oficina/integraciones/solucion-factible/SolucionFactibleSection';
 import SpamFolderToggle      from '../SpamFolderToggle';
 import AutomationsSection    from './AutomationsSection';
 import { BriefDelDiaSection } from './BriefDelDiaSection';
@@ -599,6 +600,20 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
                       className="mb-4"
                     />
                     <AgentAccountsSection token={token} agentId={agent.id as string} kind="storage" />
+                  </Card>
+                </div>
+              )}
+
+              {meerkatId === 'nala' && (
+                <div id="facturacion-cfdi" style={SCROLL_STYLE}>
+                  <Card border elevated={false} padding="sm">
+                    <SectionHeader
+                      as="h2"
+                      title="Facturación CFDI"
+                      tooltip="Conecta el PAC autorizado por el SAT para que Nala emita CFDI 4.0. Solo se muestra en la ficha de Nala porque ella es la única que factura. Storage sigue siendo 1 RFC + 1 CSD por organización."
+                      className="mb-4"
+                    />
+                    <SolucionFactibleSection token={token} />
                   </Card>
                 </div>
               )}
