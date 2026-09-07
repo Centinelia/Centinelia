@@ -277,6 +277,9 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
   // Read-only por default en voz + notificar_transferencia para redirigir si
   // ventas la marca por error en un flow no de inventario.
   nami:  ['inv_buscar_por_serie', 'inv_buscar_por_modelo', 'inv_buscar_por_cliente', 'inv_stock_snapshot', 'inv_pedir_reposicion', 'llamar_a', 'buscar_directorio', 'enviar_correo'],
+  // Nalú — analista de tesorería. Procesa statements bancarios, reconciliación,
+  // reporting diario. Tools chat/email principalmente.
+  nalu:  ['create_file', 'create_document', 'save_to_drive', 'buscar_archivo', 'leer_archivo', 'read_url', 'buscar_correo_enviado', 'buscar_documento_oficina', 'enviar_documento_oficina', 'extraer_voz_del_cliente', 'search_leads'],
 };
 
 // Universal tools que TODOS los meerkats reciben en voice y chat/email,

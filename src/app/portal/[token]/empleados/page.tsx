@@ -112,6 +112,10 @@ const CAPABILITY_GROUPS: { label: string; color: string; tools: string[] }[] = [
   { label: 'Onboarding y bienvenida', color: '#a855f7', tools: ['iniciar_onboarding'] },
   { label: 'Insights de marca',     color: '#c084fc', tools: ['extraer_voz_del_cliente', 'extraer_tono_de_marca'] },
   { label: 'Dirección general',     color: '#8b5cf6', tools: ['revisar_desempeno_equipo', 'aprobar_gasto'] },
+  // Inventario — pack inventory_excel (Nami / AC Proyectos)
+  { label: 'Consulta de stock',     color: '#EA580C', tools: ['inv_buscar_por_serie', 'inv_buscar_por_modelo', 'inv_buscar_por_cliente', 'inv_stock_snapshot'] },
+  { label: 'Movimientos de bodega', color: '#EA580C', tools: ['inv_agregar_equipo', 'inv_actualizar_estatus', 'inv_asignar_cliente', 'inv_registrar_venta', 'inv_transferir_bodega'] },
+  { label: 'Reposición y reportes', color: '#EA580C', tools: ['inv_pedir_reposicion', 'inv_importar_backlog', 'inv_normalizar_bodegas', 'inv_reporte_utilidad', 'inv_procesar_factura_trane'] },
 ];
 
 const BUSINESS_CATEGORIES: { label: string; color: string; specialized?: boolean; tools: { key: string; label: string }[] }[] = [
@@ -540,12 +544,16 @@ export default async function AgentesPage({ params }: Props) {
         const meerkatDef    = meerkatId ? MEERKAT_MAP[meerkatId as MeerkatRoleId] ?? null : null;
         const agentFeatures = (a.features as Record<string, unknown>) ?? {};
         const rawTools      = getAgentTools(agentFeatures);
-        // Filtra por packs realmente activos en el org (ej: incidencia_flow,
-        // catalog, sheets). Antes se mostraba la distribución "ideal" del
-        // meerkat aunque el org no tuviera ese pack activado — capacidades
-        // fantasma en la card. Tools sin pack (default) pasan siempre.
+        // Filtra por packs activos del org para eliminar capacidades fantasma.
+        // Excepción: si TODAS las tools del meerkat son de un mismo pack no-activo
+        // (típico de Nala/Nami/Nalú cuyo trabajo entero depende de un pack), el
+        // filtro dejaría el card en 0 capacidades y el dueño no vería qué hace
+        // ese empleado. En ese caso mostramos las capabilities sin filtrar —
+        // son grupos abstractos ("Firma OCs", "Consulta stock"), no promesas
+        // atómicas, así que no engañan.
         const activeToolNames = new Set(filterByActivePacks(rawTools.map(t => t.label), activePacks));
-        const tools           = rawTools.filter(t => activeToolNames.has(t.label));
+        const filteredTools   = rawTools.filter(t => activeToolNames.has(t.label));
+        const tools           = filteredTools.length === 0 && rawTools.length > 0 ? rawTools : filteredTools;
         const capabilities    = getAgentCapabilities(tools);
 
         const accentColor = hasRole ? roleColor : color;
