@@ -10,7 +10,7 @@
 //      `Authorization: Bearer <token>`, patrón Azure API Management)
 //   3. Confirmar shape response (aquí asumimos { status, uuid, selloSAT, ... })
 //   4. Correr integration test análogo al de SF (test-gated con env var)
-//   5. Cambiar enabled:true en PAC_CATALOG (SolucionFactibleSection.tsx)
+//   5. Cambiar enabled:true en PAC_CATALOG (FacturacionSection.tsx)
 //
 // Env vars requeridas:
 //   CONTPAQI_TIMBRA_ENDPOINT_TEST=https://sandbox.api.contpaqinube.com/timbra/v3

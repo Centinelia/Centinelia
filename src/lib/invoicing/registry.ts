@@ -2,7 +2,7 @@
 // Un nuevo PAC solo requiere agregar una entry aqui + su implementacion en
 // src/lib/invoicing/{id}/index.ts (implements InvoicingProvider).
 //
-// Los ids deben matchear PAC_CATALOG en SolucionFactibleSection.tsx y el valor
+// Los ids deben matchear PAC_CATALOG en FacturacionSection.tsx y el valor
 // que se persiste en organizations.invoicing_provider.
 
 import type { InvoicingProvider } from './provider';

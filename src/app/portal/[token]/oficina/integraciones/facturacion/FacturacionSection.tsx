@@ -25,6 +25,10 @@ interface Org {
 // El backend usa `organizations.invoicing_provider = <id>` para decidir en
 // `resolveInvoicingPath()` a qué provider singleton llamar.
 //
+// Renombrado 2026-09-07: SolucionFactibleSection → FacturacionSection porque
+// el componente es genérico (multi-PAC), no específico de SF. Los adapters
+// bajo src/lib/invoicing/{id}/ sí mantienen su nombre por PAC.
+//
 // Para agregar Facturama, Finkok, PACSA etc:
 //  1. Implementar src/lib/invoicing/{id}/index.ts (InvoicingProvider interface)
 //  2. Agregar case en resolveInvoicingPath() de emitir-factura.ts
@@ -81,7 +85,7 @@ function PacLogo({ color }: { color: string }) {
   );
 }
 
-export default function SolucionFactibleSection({ token }: { token: string }) {
+export default function FacturacionSection({ token }: { token: string }) {
   const [org, setOrg]     = useState<Org | null>(null);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg]     = useState<{ text: string; ok: boolean } | null>(null);

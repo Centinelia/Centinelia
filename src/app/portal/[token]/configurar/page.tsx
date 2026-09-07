@@ -32,7 +32,7 @@ import CallForwardingSection   from '../CallForwardingSection';
 import FallbackNumberSection  from '../FallbackNumberSection';
 import AgentEmailSection     from '../AgentEmailSection';
 import AgentAccountsSection  from '../AgentAccountsSection';
-import SolucionFactibleSection from '../oficina/integraciones/solucion-factible/SolucionFactibleSection';
+import FacturacionSection from '../oficina/integraciones/facturacion/FacturacionSection';
 import SpamFolderToggle      from '../SpamFolderToggle';
 import AutomationsSection    from './AutomationsSection';
 import { BriefDelDiaSection } from './BriefDelDiaSection';
@@ -613,7 +613,7 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
                       tooltip="Conecta el PAC autorizado por el SAT para que Nala emita CFDI 4.0. Solo se muestra en la ficha de Nala porque ella es la única que factura. Storage sigue siendo 1 RFC + 1 CSD por organización."
                       className="mb-4"
                     />
-                    <SolucionFactibleSection token={token} />
+                    <FacturacionSection token={token} />
                   </Card>
                 </div>
               )}

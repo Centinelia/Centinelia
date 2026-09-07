@@ -12,7 +12,7 @@ import EmailOAuthSection         from './EmailOAuthSection';
 import MercadoLibreSection       from './MercadoLibreSection';
 import QuickBooksSection         from './QuickBooksSection';
 import GoogleWorkspaceCard       from './GoogleWorkspaceCard';
-import SolucionFactibleSection   from './oficina/integraciones/solucion-factible/SolucionFactibleSection';
+import FacturacionSection        from './oficina/integraciones/facturacion/FacturacionSection';
 // StorageSection removido 2026-09-04 (Dropbox / Drive / OneDrive ahora per-agent).
 
 /* ── types ─────────────────────────────────────────────────────────────── */
@@ -651,7 +651,7 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
     // dormidos en código para reactivación futura. Ver pack `quickbooks` en packs.ts.
     // Facturación CFDI (Solución Factible / PACs) movida 2026-09-07 a ficha de Nala
     // (configurar/page.tsx). Storage sigue siendo org-level (1 RFC + 1 CSD por
-    // empresa), solo la UI vive donde se usa. Fetch de status.sf y SolucionFactibleSection
+    // empresa), solo la UI vive donde se usa. Fetch de status.sf y FacturacionSection
     // preservados en imports para reactivación rápida si hiciera falta.
     // 'storage' (Almacenamiento en la nube) removido 2026-09-04: Dropbox, Google
     // Drive y OneDrive ahora se configuran per-empleado (ver AgentAccountsSection

@@ -6,7 +6,7 @@
 - Credenciales sandbox SF: testing@solucionfactible.com / timbrado.SF.16672
 
 ## Escenario 1 — Onboarding SF
-1. Login portal `/portal/[token]/oficina/integraciones/solucion-factible`
+1. Login portal `/portal/[token]/oficina/integraciones/facturacion` (redirige a `/empleados` — abre Nala y ve a la sección "Facturación CFDI")
 2. Fill form con RFC LAN7008173R5, régimen 601, CP 64000, sandbox creds
 3. Click Conectar → verifica badge "Sin CSD"
 4. Sube .cer + .key + password del CSD de prueba
