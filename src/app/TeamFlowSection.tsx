@@ -4,22 +4,19 @@ import { useRef, useState, useEffect } from 'react';
 import { motion, useInView } from 'motion/react';
 import Image from 'next/image';
 import { Phone, Mail } from 'lucide-react';
+import { getMeerkatCrop } from '@/lib/portal/meerkat-avatar-crop';
 
 interface AgentDef {
-  id:              string;
-  role:            string;
-  color:           string;
-  img:             string | null;
-  imgPos?:         string;
-  imgScale?:       number;
-  imgOrigin?:      string;
-  imgShiftX?:      string;
-  imgShiftY?:      string;
+  id:               string;
+  role:             string;
+  color:            string;
+  img:              string | null;
+  /** Overrides mobile-only, en el resto se lee de MEERKAT_AVATAR_CROP. */
   mobileImgShiftX?: string;
   mobileImgShiftY?: string;
   mobileImgScale?:  number;
-  label?:          string;
-  badge?:          boolean;
+  label?:           string;
+  badge?:           boolean;
 }
 
 const CLIENTE: AgentDef = {
@@ -28,18 +25,18 @@ const CLIENTE: AgentDef = {
 
 const NIA: AgentDef = {
   id: 'nia', role: 'Recepcionista', label: 'Primer contacto', badge: true, color: '#6C3BFF',
-  img: '/meerkats/nia.png', imgPos: 'center 10%', imgScale: 1.35, imgOrigin: 'center 12%', imgShiftX: '15px',
+  img: '/meerkats/nia.png',
   mobileImgShiftX: '9px',
 };
 
 const SPECIALISTS: AgentDef[] = [
-  { id: 'noah',  role: 'Ventas',       color: '#22c55e', img: '/meerkats/noah.png',  imgPos: 'center 8%', imgScale: 1.2, imgShiftY: '5px', mobileImgShiftX: '0', mobileImgShiftY: '3px', mobileImgScale: 1.1 },
-  { id: 'nara',  role: 'Coordinadora', color: '#f97316', img: '/meerkats/nara.png',  imgPos: 'center 8%', imgScale: 1.2, imgOrigin: 'center 10%', imgShiftX: '-3px', imgShiftY: '4px', mobileImgShiftX: '-2px', mobileImgShiftY: '4px' },
-  { id: 'nico',  role: 'Cobranza',     color: '#f59e0b', img: '/meerkats/nico.png',  imgPos: 'center 8%', imgShiftY: '3px', mobileImgShiftY: '1.5px' },
-  { id: 'naia',  role: 'RR.HH.',       color: '#ec4899', img: '/meerkats/naia.png',  imgPos: 'center 8%', imgShiftX: '-0.5px', mobileImgShiftX: '-0.5px' },
-  { id: 'nelia', role: 'Atención',     color: '#3b82f6', img: '/meerkats/nelia.png', imgPos: 'center 8%', imgShiftY: '4px', mobileImgShiftX: '0', mobileImgShiftY: '3px' },
-  { id: 'neo',   role: 'Operaciones',  color: '#06b6d4', img: '/meerkats/neo.png',   imgPos: 'center 10%', imgScale: 1.45, imgOrigin: 'center 12%', imgShiftX: '15.5px', imgShiftY: '5px', mobileImgShiftX: '11px', mobileImgShiftY: '4px' },
-  { id: 'nova',  role: 'Despacho',     color: '#ef4444', img: '/meerkats/nova.png',  imgPos: 'center 5%', imgScale: 2.00, imgOrigin: 'center 12%', imgShiftX: '23px', imgShiftY: '6px', mobileImgShiftX: '16px', mobileImgShiftY: '5px' },
+  { id: 'noah',  role: 'Ventas',       color: '#22c55e', img: '/meerkats/noah.png',  mobileImgShiftX: '0',    mobileImgShiftY: '3px',   mobileImgScale: 1.1 },
+  { id: 'nara',  role: 'Coordinadora', color: '#f97316', img: '/meerkats/nara.png',  mobileImgShiftX: '-2px', mobileImgShiftY: '4px' },
+  { id: 'nico',  role: 'Cobranza',     color: '#f59e0b', img: '/meerkats/nico.png',  mobileImgShiftY: '1.5px' },
+  { id: 'naia',  role: 'RR.HH.',       color: '#ec4899', img: '/meerkats/naia.png',  mobileImgShiftX: '-0.5px' },
+  { id: 'nelia', role: 'Atención',     color: '#3b82f6', img: '/meerkats/nelia.png', mobileImgShiftX: '0',    mobileImgShiftY: '3px' },
+  { id: 'neo',   role: 'Operaciones',  color: '#06b6d4', img: '/meerkats/neo.png',   mobileImgShiftX: '11px', mobileImgShiftY: '4px' },
+  { id: 'nova',  role: 'Despacho',     color: '#ef4444', img: '/meerkats/nova.png',  mobileImgShiftX: '16px', mobileImgShiftY: '5px' },
 ];
 
 const NOX_COLOR  = '#0d9488';
@@ -103,14 +100,15 @@ function AvatarNode({
 }: {
   agent: AgentDef; size: number; delay: number; inView: boolean; isClient?: boolean; hidePill?: boolean; dimmed?: boolean; isMobile?: boolean;
 }) {
-  const shiftX = (isMobile && agent.mobileImgShiftX !== undefined) ? agent.mobileImgShiftX : agent.imgShiftX;
-  const shiftY = (isMobile && agent.mobileImgShiftY !== undefined) ? agent.mobileImgShiftY : agent.imgShiftY;
-  const scale  = (isMobile && agent.mobileImgScale  !== undefined) ? agent.mobileImgScale  : agent.imgScale;
+  const crop   = getMeerkatCrop(agent.id);
+  const shiftX = (isMobile && agent.mobileImgShiftX !== undefined) ? agent.mobileImgShiftX : crop.shiftX;
+  const shiftY = (isMobile && agent.mobileImgShiftY !== undefined) ? agent.mobileImgShiftY : crop.shiftY;
+  const scale  = (isMobile && agent.mobileImgScale  !== undefined) ? agent.mobileImgScale  : crop.scale;
   const transform = [
     (shiftX || shiftY)
       ? `translate(${shiftX ?? '0'}, ${shiftY ?? '0'})`
       : null,
-    scale ? `scale(${scale})` : null,
+    scale !== 1 ? `scale(${scale})` : null,
   ].filter(Boolean).join(' ') || undefined;
 
   return (
@@ -142,9 +140,9 @@ function AvatarNode({
               fill
               style={{
                 objectFit: 'cover',
-                objectPosition: agent.imgPos ?? 'center 3%',
+                objectPosition: crop.pos,
                 transform,
-                transformOrigin: agent.imgOrigin ?? 'center 10%',
+                transformOrigin: crop.origin ?? crop.pos,
               }}
             />
           </motion.div>

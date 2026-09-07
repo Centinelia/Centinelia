@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { EmptyState } from '@/components/portal-ui';
 import InfoTooltip from '@/components/InfoTooltip';
 import { MEERKAT_MAP } from '@/lib/portal/meerkat-roles';
+import { getMeerkatCrop, buildCropTransform } from '@/lib/portal/meerkat-avatar-crop';
 import CheckinsSection, { type CheckinsSectionAgent } from './reportes/CheckinsSection';
 import OficinaModal from './oficina/OficinaModal';
 
@@ -276,15 +277,8 @@ export default function OpsReportsSection({ token, agents, meerkatRoleId, report
           {bannerMeerkats.length > 0 && (
             <div className="flex items-center" style={{ gap: bannerMeerkats.length > 1 ? -16 : 0 }}>
               {bannerMeerkats.map((m, i) => {
-                // Overrides finos del banner (80x80). El default global de cada
-                // meerkat sirve para thumbnails más pequeños en otras vistas;
-                // aquí el círculo es más grande y a veces conviene subir/bajar
-                // unos pixels para que la cara quede centrada.
-                const BANNER_POS_OVERRIDE: Record<string, string> = {
-                  nelia: 'center 5%',
-                };
-                const pos   = BANNER_POS_OVERRIDE[m.id] ?? m.avatarPosition ?? 'center 3%';
-                const scale = m.avatarScale ?? 1;
+                const crop      = getMeerkatCrop(m.id);
+                const transform = buildCropTransform(crop);
                 return (
                   <div key={m.id}
                     style={{
@@ -300,9 +294,9 @@ export default function OpsReportsSection({ token, agents, meerkatRoleId, report
                       style={{
                         width: '100%', height: '100%',
                         objectFit: 'cover',
-                        objectPosition: pos,
-                        transform: scale !== 1 ? `scale(${scale})` : 'none',
-                        transformOrigin: pos,
+                        objectPosition: crop.pos,
+                        transform,
+                        transformOrigin: crop.origin ?? crop.pos,
                       }} />
                   </div>
                 );
