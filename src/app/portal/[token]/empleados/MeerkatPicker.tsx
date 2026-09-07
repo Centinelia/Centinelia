@@ -48,6 +48,10 @@ const CARD_SCALE: Partial<Record<MeerkatRoleId, number>> = {
   nia:   1.08,
   nelia: 0.965,
   niva:  0.985,
+  // Imágenes transparentes verticales (cara arriba, cuerpo lleno) — sin scale
+  // aparecen chicas contra las cuadradas porque objectFit:contain deja aire.
+  nalu:  1.15,
+  nami:  1.15,
 };
 
 function MeerkatCardImage({ role }: { role: MeerkatRole }) {
