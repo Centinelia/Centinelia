@@ -282,13 +282,18 @@ async function processAgent(
     const seenUids: number[] = [];
 
     const roleLower = (agent.role ?? '').toLowerCase();
+    // meerkat_role_id es canónico. `agent.role` es el display string ("Facturista",
+    // "Recepcionista", etc.) que puede variar por cliente. Matchear por role_id evita
+    // que Nala se ruteé al genérico cuando su display role es 'Facturista' y no 'facturacion'.
+    const meerkatRoleId = (agent.features as { meerkat_role_id?: string } | undefined)?.meerkat_role_id;
+    const isFacturacion = meerkatRoleId === 'nala' || roleLower === 'facturacion';
 
     for (const email of emails) {
       // Routing: facturacion tiene pipeline especializado (billing_jobs +
       // writer .NET). Cualquier otro role va al runner genérico
       // processInboxEmail que carga prompt/tools per-agent y responde
       // desde su propio buzón SMTP.
-      const routed = roleLower === 'facturacion'
+      const routed = isFacturacion
         ? await routeFacturacion(supabase, agent, email)
         : await routeGenericAgent(supabase, agent, email, cfg);
 
