@@ -61,6 +61,13 @@ export interface BillingEmployeeConfig {
    * gradual controlado por kill switch en pool-charge).
    */
   agentId?: string;
+  /**
+   * SMTP per-agent (features.smtp_config). Cuando se pasa, los tools de
+   * outbound (enviar_correo, reply_email, escalate) envían via este SMTP
+   * en vez de Resend. Necesario para clientes sin dominio verificado en
+   * Resend (Beatriz, GAC, AC Proyectos). Dry run FASE 4 (2026-09-07).
+   */
+  smtp?: import('../mail/send').AgentSmtpOverride;
 }
 
 // ---------------------------------------------------------------------------
@@ -204,6 +211,8 @@ export class BillingEmployee {
       dropboxToken: this.config.dropboxToken,
       dropboxBasePath: this.config.dropboxBasePath,
       escalationEmail: this.config.escalationEmail,
+      ...(this.config.agentId ? { agentId: this.config.agentId } : {}),
+      ...(this.config.smtp    ? { smtp:    this.config.smtp    } : {}),
     });
 
     const anthropicTools = toAnthropicTools(tools);

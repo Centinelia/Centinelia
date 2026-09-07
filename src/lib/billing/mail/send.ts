@@ -46,6 +46,22 @@ export interface BillingThreadRef {
   references?: string[];
 }
 
+/**
+ * Config SMTP per-agent (opcional). Cuando se pasa, `sendBillingMail` envía
+ * via el SMTP del empleado en vez de Resend. Necesario para clientes cuyo
+ * dominio no está verificado en Resend (Beatriz, GAC, AC Proyectos).
+ * Descubierto en dry run FASE 4 (2026-09-07).
+ */
+export interface AgentSmtpOverride {
+  host:        string;
+  port:        number;
+  secure:      boolean;
+  username:    string;
+  password:    string;
+  fromDisplay?: string;
+  tlsInsecure?: boolean;
+}
+
 export interface SendBillingMailOpts {
   to: string;
   subject: string;
@@ -59,6 +75,8 @@ export interface SendBillingMailOpts {
   attachments?: BillingAttachment[];
   /** Threading context. Sets In-Reply-To and References headers. */
   threadRef?: BillingThreadRef;
+  /** SMTP per-agent. Si se pasa, ignora Resend y envía via este servidor. */
+  smtp?: AgentSmtpOverride;
   /**
    * Facturación al pool del cliente. Cuando se pasa, cada envío exitoso cobra
    * 1 op al `agentId` con source='nala_email_send' y escribe a `outbound_emails`
@@ -111,19 +129,58 @@ export async function sendBillingMail(
       ) as string,
     }));
 
-  const ok = await sendEmail({
-    to: opts.to,
-    subject: opts.subject,
-    html: opts.body,
-    from: opts.from ?? BILLING_FROM,
-    ...(opts.replyTo ? { replyTo: opts.replyTo } : {}),
-    ...(attachments?.length ? { attachments } : {}),
-    ...(headers ? { headers } : {}),
-  });
+  let ok = false;
+  let provider: 'resend' | 'agent_smtp' = 'resend';
+  if (opts.smtp) {
+    // Path per-agent SMTP: nodemailer directo. No Resend, no dominio verificado
+    // — sale desde el correo real del empleado (features.smtp_config).
+    provider = 'agent_smtp';
+    try {
+      const nodemailer = (await import('nodemailer')).default;
+      const transporter = nodemailer.createTransport({
+        host:   opts.smtp.host,
+        port:   opts.smtp.port,
+        secure: opts.smtp.secure,
+        auth:   { user: opts.smtp.username, pass: opts.smtp.password },
+        ...(opts.smtp.tlsInsecure ? { tls: { rejectUnauthorized: false } } : {}),
+      });
+      const from = opts.smtp.fromDisplay
+        ? `${opts.smtp.fromDisplay} <${opts.smtp.username}>`
+        : opts.smtp.username;
+      try {
+        await transporter.sendMail({
+          from,
+          to:      opts.to,
+          subject: opts.subject,
+          html:    opts.body,
+          ...(opts.threadRef ? { inReplyTo: opts.threadRef.messageId, references: opts.threadRef.references ?? [opts.threadRef.messageId] } : {}),
+          ...(attachments?.length ? {
+            attachments: attachments.map(a => ({ filename: a.filename, content: a.content, encoding: 'base64' })),
+          } : {}),
+        });
+        ok = true;
+      } finally {
+        transporter.close();
+      }
+    } catch (err) {
+      console.error('[billing/mail] agent SMTP send failed:', (err as Error).message);
+      ok = false;
+    }
+  } else {
+    ok = await sendEmail({
+      to: opts.to,
+      subject: opts.subject,
+      html: opts.body,
+      from: opts.from ?? BILLING_FROM,
+      ...(opts.replyTo ? { replyTo: opts.replyTo } : {}),
+      ...(attachments?.length ? { attachments } : {}),
+      ...(headers ? { headers } : {}),
+    });
+  }
 
   if (!ok) {
     throw new Error(
-      `sendBillingMail: delivery failed for ${opts.to} / "${opts.subject}"`,
+      `sendBillingMail: delivery failed for ${opts.to} / "${opts.subject}" (via ${provider})`,
     );
   }
 
@@ -205,6 +262,7 @@ export async function replyToInboundEmail(
   body: string,
   attachments?: BillingAttachment[],
   billing?: SendBillingMailOpts['billing'],
+  smtp?: AgentSmtpOverride,
 ): Promise<MailSendResult> {
   const supabase = createAdminClient();
 
@@ -248,6 +306,7 @@ export async function replyToInboundEmail(
     body,
     attachments,
     threadRef,
+    ...(smtp ? { smtp } : {}),
     // Propagar billing con reference_id = emailId por default para trazabilidad.
     ...(billing
       ? {

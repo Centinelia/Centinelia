@@ -192,24 +192,50 @@ async function handleProcessNotes(job: BillingJobRow): Promise<void> {
   // corre pero no cobra. Auditoría 2026-09-04.
   // Resolver Nala robusto: preferir role='facturacion' (canónico), fallback a
   // ilike '%nala%' para orgs que no migraron aún. Auditoría 2026-09-04 ronda 2.
-  const { data: nalaAgentByRole } = await supabase
+  // Prefer role_id='nala' (canónico) sobre role='facturacion' (display string).
+  // Traemos también features para sacar smtp_config del agente, necesario para
+  // outbound sin depender de Resend (dry run FASE 4).
+  const { data: nalaByRoleId } = await supabase
     .from('voice_agents')
-    .select('id')
+    .select('id, features')
     .eq('portal_email', job.portal_email)
-    .eq('role', 'facturacion')
+    .eq('features->>meerkat_role_id', 'nala')
     .eq('active', true)
     .maybeSingle();
-  const { data: nalaAgent } = nalaAgentByRole
-    ? { data: nalaAgentByRole }
+  const { data: nalaAgent } = nalaByRoleId
+    ? { data: nalaByRoleId as { id: string; features: Record<string, unknown> | null } }
     : await supabase
         .from('voice_agents')
-        .select('id')
+        .select('id, features')
         .eq('portal_email', job.portal_email)
         .ilike('agent_name', '%nala%')
         .eq('active', true)
         .limit(1)
-        .maybeSingle();
+        .maybeSingle() as unknown as { data: { id: string; features: Record<string, unknown> | null } | null };
   const nalaAgentId = (nalaAgent?.id as string | null) ?? undefined;
+
+  // Extraer SMTP config del agente y desencriptar el password para pasarlo
+  // como AgentSmtpOverride al empleado.
+  let smtpOverride: import('../mail/send').AgentSmtpOverride | undefined;
+  const smtpRaw = (nalaAgent?.features as Record<string, unknown> | null | undefined)?.['smtp_config'] as
+    | { host?: string; port?: number; secure?: boolean; username?: string; password_enc?: string; from_display?: string | null; tls_insecure?: boolean }
+    | undefined;
+  if (smtpRaw?.host && smtpRaw.username && smtpRaw.password_enc) {
+    try {
+      const { decrypt } = await import('@/lib/crypto');
+      smtpOverride = {
+        host:        String(smtpRaw.host),
+        port:        Number(smtpRaw.port ?? 465),
+        secure:      Boolean(smtpRaw.secure ?? true),
+        username:    String(smtpRaw.username),
+        password:    decrypt(smtpRaw.password_enc),
+        ...(smtpRaw.from_display ? { fromDisplay: smtpRaw.from_display } : {}),
+        ...(smtpRaw.tls_insecure ? { tlsInsecure: true } : {}),
+      };
+    } catch (e) {
+      console.warn(`[billing/queue] no se pudo desencriptar smtp password: ${(e as Error).message}. Fallback a Resend.`);
+    }
+  }
 
   const employee = new BillingEmployee(adapter, {
     portalEmail: job.portal_email,
@@ -219,6 +245,7 @@ async function handleProcessNotes(job: BillingJobRow): Promise<void> {
     escalationEmail: process.env.BILLING_ESCALATION_EMAIL ?? job.portal_email,
     orgName: job.portal_email,
     ...(nalaAgentId ? { agentId: nalaAgentId } : {}),
+    ...(smtpOverride ? { smtp: smtpOverride } : {}),
   });
 
   const result = await employee.runOnEmail(emailId);

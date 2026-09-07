@@ -64,6 +64,13 @@ export interface ToolsContext {
    * para spam/phishing).
    */
   emisorDomain?: string;
+  /**
+   * SMTP per-agent (features.smtp_config del voice_agent). Si se pasa, los
+   * tools de outbound (enviar_correo, reply_email, escalate) mandan via
+   * este servidor SMTP en vez de Resend. Necesario cuando el dominio del
+   * cliente no está verificado en Resend. Dry run FASE 4 (2026-09-07).
+   */
+  smtp?: import('../mail/send').AgentSmtpOverride;
 }
 
 // ---------------------------------------------------------------------------
@@ -71,7 +78,7 @@ export interface ToolsContext {
 // ---------------------------------------------------------------------------
 
 export function buildEmployeeTools(toolsCtx: ToolsContext): EmployeeTool[] {
-  const { adapter, ctx, emailId, dropboxToken, dropboxBasePath, escalationEmail, agentId, emisorDomain } = toolsCtx;
+  const { adapter, ctx, emailId, dropboxToken, dropboxBasePath, escalationEmail, agentId, emisorDomain, smtp } = toolsCtx;
   const supabase = createAdminClient();
   const dropbox = new DropboxClient(dropboxToken);
   const snapshots = new SnapshotStorage();
@@ -628,6 +635,7 @@ export function buildEmployeeTools(toolsCtx: ToolsContext): EmployeeTool[] {
           to: input.to,
           subject: input.subject,
           body: input.body,
+          ...(smtp ? { smtp } : {}),
           ...(agentId
             ? {
                 billing: {
@@ -673,6 +681,7 @@ export function buildEmployeeTools(toolsCtx: ToolsContext): EmployeeTool[] {
                 source:      'nala_email_reply',
               }
             : undefined,
+          smtp,
         );
         return result;
       },
@@ -806,6 +815,7 @@ ${contextBlock}
             to: escalationEmail,
             subject,
             body,
+            ...(smtp ? { smtp } : {}),
           });
         } catch (mailErr) {
           console.error('[tools/escalate] mail send failed:', mailErr);
