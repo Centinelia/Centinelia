@@ -19,6 +19,7 @@
  * Output SIEMPRE: `{ mimeType: 'image/jpeg', buffer: Buffer }` o error.
  */
 import sharp from 'sharp';
+import type { Sharp, Metadata } from 'sharp';
 
 export const NORMALIZE_TARGET_MIME = 'image/jpeg' as const;
 
@@ -75,8 +76,8 @@ export async function normalizeImageForVision(
     );
   }
 
-  let img: sharp.Sharp;
-  let originalMeta: sharp.Metadata;
+  let img: Sharp;
+  let originalMeta: Metadata;
   try {
     img = sharp(attachment.buffer, { failOn: 'none' });
     originalMeta = await img.metadata();

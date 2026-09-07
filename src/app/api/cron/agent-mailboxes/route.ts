@@ -120,16 +120,29 @@ async function routeGenericAgent(
   // attachments. Los no-imagen quedan como metas — el runner podrá listarlos
   // pero descarga por URL no está implementada para IMAP (aceptable para
   // atencion_cliente que raramente necesita leer PDFs entrantes).
-  const isVisionMime = (ct: string): ct is 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' =>
-    /^image\/(jpeg|png|gif|webp)$/i.test(ct);
-  const attachmentImages = email.attachments
-    .filter(a => isVisionMime(a.contentType))
-    .slice(0, 4)
-    .map(a => ({
-      name:     a.filename,
-      base64:   a.content.toString('base64'),
-      mimeType: a.contentType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
-    }));
+  //
+  // Normalizamos cada imagen a JPEG 1568×1568 antes de mandarla a Claude,
+  // igual que Nala. Sin esto: HEIC de iPhone / screenshots grandes / MIME
+  // aliases (image/jpg, image/jfif) fallan con 400. Regla aplica a TODOS los
+  // meerkats (Nia recibiendo captura de un pedido, Noah una foto WhatsApp,
+  // etc). Ver dry run FASE 4 (2026-09-07).
+  const { normalizeImageForVision } = await import('@/lib/billing/vision/image-normalize');
+  const looksLikeImage = (ct: string): boolean => /^image\//i.test(ct);
+  const attachmentImages: Array<{ name: string; base64: string; mimeType: 'image/jpeg' }> = [];
+  for (const att of email.attachments) {
+    if (attachmentImages.length >= 4) break;
+    if (!looksLikeImage(att.contentType)) continue;
+    try {
+      const normalized = await normalizeImageForVision({ buffer: att.content, mimeType: att.contentType });
+      attachmentImages.push({
+        name:     att.filename,
+        base64:   normalized.buffer.toString('base64'),
+        mimeType: 'image/jpeg',
+      });
+    } catch (err) {
+      console.warn(`[agent-mailboxes] ${agent.agent_name} skip image ${att.filename} (${att.contentType}): ${(err as Error).message}`);
+    }
+  }
   const attachmentMetas = email.attachments.map(a => ({
     name: a.filename,
     url:  `imap:${email.uid}/${a.filename}`,
