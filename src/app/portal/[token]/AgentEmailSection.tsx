@@ -329,11 +329,7 @@ export default function AgentEmailSection({ token, agentId, agentName }: { token
                   </span>
                 )}
               </div>
-              {smtp?.configured ? (
-                <p className="text-xs mt-0.5 truncate font-mono" style={{ color: '#1A0A3B' }}>
-                  {smtp.username}
-                </p>
-              ) : (
+              {!smtp?.configured && (
                 <p className="text-xs mt-0.5" style={{ color: '#6B6480' }}>
                   Tu dominio con Telmex, Zoho, Titan, hosting propio, iCloud. Solo necesitas host, puerto y contraseña — sin DNS.
                 </p>
