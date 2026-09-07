@@ -281,7 +281,7 @@ export default function OpsReportsSection({ token, agents, meerkatRoleId, report
                 // aquí el círculo es más grande y a veces conviene subir/bajar
                 // unos pixels para que la cara quede centrada.
                 const BANNER_POS_OVERRIDE: Record<string, string> = {
-                  nelia: 'center 7%',
+                  nelia: 'center 5%',
                 };
                 const pos   = BANNER_POS_OVERRIDE[m.id] ?? m.avatarPosition ?? 'center 3%';
                 const scale = m.avatarScale ?? 1;
