@@ -548,10 +548,6 @@ FACTURAMA SANDBOX vs PROD: mientras la instalación esté en sandbox (FACTURAMA_
     rol:         'Analista de Tesorería',
     descripcion: 'Reporting diario, reconciliación bancaria y análisis financiero',
     imagen:      '/meerkats/nalu.png',
-    // Imagen transparente cuerpo entero — la cara queda en el tercio superior,
-    // por eso avatarPosition sube el crop y avatarScale zoomea para llenar el círculo.
-    avatarPosition: 'center 8%',
-    avatarScale:    1.4,
     color:       '#059669',
     genero:      'F',
     tagline:     'Cada peso conciliado, cada break atrapado.',
@@ -631,11 +627,6 @@ FILOSOFÍA: Un statement sin reconciliar es un riesgo esperando a explotar. Un b
     rol:         'Inventarios',
     descripcion: 'Lleva inventarios, controla stock por bodega y coordina reposiciones',
     imagen:      '/meerkats/nami.png',
-    // Imagen cuerpo entero — la cara queda arriba, cuerpo/escáner ocupan el
-    // resto del frame. Sin ajuste el avatar circular corta a la altura del
-    // chaleco. Sube el crop y zoomea a la cara.
-    avatarPosition: 'center 8%',
-    avatarScale:    1.4,
     color:       '#EA580C',
     genero:      'F',
     tagline:     'Cada serie, cada bodega, cada equipo. Todo bajo control.',
