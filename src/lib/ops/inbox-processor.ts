@@ -839,7 +839,7 @@ export const MEERKAT_EMAIL_DISTRIBUTION: Record<string, string[]> = {
   nox:   ['create_document', 'create_file', 'crear_borrador_contrato', 'save_to_drive', 'organize_files', 'buscar_documento_oficina', 'enviar_documento_oficina', 'buscar_archivo', 'leer_archivo', 'buscar_cliente', 'buscar_correo_enviado', 'catalogo_buscar_codigo', 'list_calendar_events', 'create_calendar_event', 'verificar_gasto_recurrente', 'sheets_agregar_fila', 'sheets_actualizar_fila', 'sheets_leer', 'sheets_buscar', 'preparar_brief_del_dia', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano', 'reportar_falla'],
   niva:  ['create_document', 'create_file', 'save_to_drive', 'buscar_documento_oficina', 'enviar_documento_oficina', 'buscar_archivo', 'leer_archivo', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'revisar_desempeno_equipo', 'generar_pitch_deck', 'generar_reporte_metricas_excel', 'aprobar_gasto', 'evaluar_limite_gasto', 'verificar_gasto_recurrente', 'list_calendar_events', 'search_leads', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
   nala:  ['qb_crear_orden_compra', 'qb_consultar_orden_compra', 'qb_descargar_oc_pdf', 'firmar_oc', 'sf_timbrar_desde_oc', 'sf_cancelar_cfdi', 'sf_consultar_estado_sat', 'enviar_oc_a_pagos', 'registrar_comprobante_pago', 'enviar_oc_a_proveedor', 'archivar_expediente', 'qb_crear_orden_compra_desde_cotizacion', 'buscar_archivo', 'leer_archivo', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
-  neus:  ['create_file', 'create_document', 'save_to_drive', 'buscar_archivo', 'leer_archivo', 'read_url', 'buscar_correo_enviado', 'buscar_documento_oficina', 'enviar_documento_oficina', 'extraer_voz_del_cliente', 'search_leads', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
+  nalu:  ['create_file', 'create_document', 'save_to_drive', 'buscar_archivo', 'leer_archivo', 'read_url', 'buscar_correo_enviado', 'buscar_documento_oficina', 'enviar_documento_oficina', 'extraer_voz_del_cliente', 'search_leads', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
   nami:  ['inv_agregar_equipo', 'inv_actualizar_estatus', 'inv_asignar_cliente', 'inv_registrar_venta', 'inv_transferir_bodega', 'inv_buscar_por_serie', 'inv_buscar_por_modelo', 'inv_buscar_por_cliente', 'inv_stock_snapshot', 'inv_importar_backlog', 'inv_pedir_reposicion', 'inv_normalizar_bodegas', 'inv_reporte_utilidad', 'inv_procesar_factura_trane', 'enviar_correo', 'buscar_correo_enviado', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
 };
 
@@ -1901,11 +1901,11 @@ CATEGORÍAS:
 
         const __ipT = Date.now();
         // Sonnet 4.6 en vez de Haiku 4.5 para el main LLM del loop de tools.
-        // Debug 2026-09-03 pipeline correo Neus: Haiku ignoraba consistentemente
+        // Debug 2026-09-03 pipeline correo Nalú (ex-Neus): Haiku ignoraba consistentemente
         // instrucciones críticas del userPrompt (iters=0, tools=[] en 11 intentos
         // con statement CSV) — devolvía JSON pending directo sin invocar
         // read_url/create_file. Sonnet 4.6 obedece prompt engineering mejor.
-        // Trade-off: costo ~10x por correo, pero para casos como Neus (tesorería,
+        // Trade-off: costo ~10x por correo, pero para casos como Nalú (tesorería,
         // reconciliación bancaria) el análisis vale. Observer y summary siguen
         // en Haiku (no requieren tool_use complejo).
         const __ipM = 'claude-sonnet-4-6';

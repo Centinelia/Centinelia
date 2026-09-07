@@ -10,7 +10,7 @@
  *    billing_jobs (compatible con /api/billing/inbox y Nala del piloto).
  *  - otros roles: skip por ahora (extensible cuando aparezcan casos).
  *
- * Cadence: cada 10 min (igual que nala-mailbox de Titan). Configurar en
+ * Cadence: cada 10 min (igual que neka-mailbox de Titan). Configurar en
  * vercel.json:
  *   { "path": "/api/cron/agent-mailboxes", "schedule": "*\/10 * * * *" }
  *

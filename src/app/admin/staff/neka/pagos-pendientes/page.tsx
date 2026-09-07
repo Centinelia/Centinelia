@@ -34,7 +34,7 @@ export default function PagosPendientesPage() {
   const refresh = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/staff/nala/pagos-pendientes');
+      const res = await fetch('/api/admin/staff/neka/pagos-pendientes');
       const data = await res.json();
       if (data.error) setError(data.error);
       else setPendientes(data.pendientes ?? []);
@@ -51,7 +51,7 @@ export default function PagosPendientesPage() {
     setApproving(p.id);
     setFeedback(null);
     try {
-      const res = await fetch(`/api/admin/staff/nala/pagos-pendientes/${p.id}/approve`, { method: 'POST' });
+      const res = await fetch(`/api/admin/staff/neka/pagos-pendientes/${p.id}/approve`, { method: 'POST' });
       const data = await res.json();
       if (data.error) setFeedback({ id: p.id, type: 'err', text: data.error });
       else {
@@ -72,7 +72,7 @@ export default function PagosPendientesPage() {
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <Link
-        href="/admin/staff/nala"
+        href="/admin/staff/neka"
         className="inline-flex items-center gap-1.5 text-xs mb-4 hover:opacity-70 transition-opacity"
         style={{ color: 'var(--c-text-3)' }}
       >
@@ -85,7 +85,7 @@ export default function PagosPendientesPage() {
           Pagos pendientes de verificación
         </h1>
         <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
-          Nala recibió comprobante SPEI que no cumplió reglas de auto-aprobación. Verifica en tu banco y aprueba para que Nala timbre el REP.
+          Neka recibió comprobante SPEI que no cumplió reglas de auto-aprobación. Verifica en tu banco y aprueba para que Neka timbre el REP.
         </p>
       </header>
 

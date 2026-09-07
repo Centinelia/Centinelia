@@ -7,7 +7,7 @@ import { ArrowLeft, FileText, ShieldCheck, KeyRound, Zap, MessageCircle, MailChe
 
 export const dynamic = 'force-dynamic';
 
-const NALA = MEERKAT_ROLES.find(r => r.id === 'nala')!;
+const NEKA = MEERKAT_ROLES.find(r => r.id === 'neka')!;
 
 function envStatusCentinelia() {
   const cfg = getCentineliaFiscalConfig();
@@ -17,9 +17,9 @@ function envStatusCentinelia() {
   return { cfg, sandbox, facturamaOk, resendOk };
 }
 
-export default async function NalaConfigPage() {
+export default async function NekaConfigPage() {
   if (!await isAdmin()) {
-    redirect('/admin/login?from=/admin/staff/nala');
+    redirect('/admin/login?from=/admin/staff/neka');
   }
 
   const env = envStatusCentinelia();
@@ -36,48 +36,48 @@ export default async function NalaConfigPage() {
       </Link>
 
       <header className="flex items-center gap-4 mb-8 flex-wrap">
-        {NALA.imagen && (
+        {NEKA.imagen && (
           <span
             style={{
               width: 64, height: 64, borderRadius: '50%',
               overflow: 'hidden', display: 'inline-block',
               flexShrink: 0,
               background: '#ffffff',
-              border: `2px solid ${NALA.color}33`,
+              border: `2px solid ${NEKA.color}33`,
             }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={NALA.imagen}
-              alt={NALA.nombre}
+              src={NEKA.imagen}
+              alt={NEKA.nombre}
               style={{
                 width: '100%', height: '100%',
                 objectFit: 'cover',
-                objectPosition: NALA.avatarPosition ?? 'center 3%',
-                transform: NALA.avatarScale && NALA.avatarScale !== 1 ? `scale(${NALA.avatarScale})` : 'none',
-                transformOrigin: NALA.avatarPosition ?? 'center 3%',
+                objectPosition: NEKA.avatarPosition ?? 'center 3%',
+                transform: NEKA.avatarScale && NEKA.avatarScale !== 1 ? `scale(${NEKA.avatarScale})` : 'none',
+                transformOrigin: NEKA.avatarPosition ?? 'center 3%',
               }}
             />
           </span>
         )}
         <div className="flex-1 min-w-0">
           <h1 className="text-xl font-bold" style={{ color: 'var(--c-text)' }}>
-            Configuración de {NALA.nombre}
+            Configuración de {NEKA.nombre}
           </h1>
-          <p className="text-sm mt-0.5" style={{ color: NALA.color }}>{NALA.rol}</p>
-          <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>{NALA.descripcion}</p>
+          <p className="text-sm mt-0.5" style={{ color: NEKA.color }}>{NEKA.rol}</p>
+          <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>{NEKA.descripcion}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link
-            href="/admin/staff/nala/chat"
+            href="/admin/staff/neka/chat"
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90"
-            style={{ background: NALA.color, color: '#fff' }}
+            style={{ background: NEKA.color, color: '#fff' }}
           >
             <MessageCircle size={14} />
-            Hablar con Nala
+            Hablar con Neka
           </Link>
           <Link
-            href="/admin/staff/nala/clientes"
+            href="/admin/staff/neka/clientes"
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90"
             style={{ background: 'rgba(161,98,7,0.1)', color: '#a16207', border: '1px solid rgba(161,98,7,0.3)' }}
           >
@@ -85,7 +85,7 @@ export default async function NalaConfigPage() {
             Clientes
           </Link>
           <Link
-            href="/admin/staff/nala/pagos-pendientes"
+            href="/admin/staff/neka/pagos-pendientes"
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90"
             style={{ background: 'rgba(245,158,11,0.1)', color: '#b45309', border: '1px solid rgba(245,158,11,0.3)' }}
           >
@@ -93,7 +93,7 @@ export default async function NalaConfigPage() {
             Pagos pendientes
           </Link>
           <Link
-            href="/admin/staff/nala/test-email"
+            href="/admin/staff/neka/test-email"
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90"
             style={{ background: 'rgba(108,59,255,0.1)', color: '#6C3BFF', border: '1px solid rgba(108,59,255,0.3)' }}
           >
@@ -115,7 +115,7 @@ export default async function NalaConfigPage() {
               Datos fiscales del emisor
             </h2>
             <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-              Nala usa estos datos para timbrar CFDIs a nombre de Centinelia. Overridables vía env vars <code>CENTINELIA_*</code>.
+              Neka usa estos datos para timbrar CFDIs a nombre de Centinelia. Overridables vía env vars <code>CENTINELIA_*</code>.
             </p>
           </div>
         </div>
@@ -183,7 +183,7 @@ export default async function NalaConfigPage() {
               Tools disponibles
             </h2>
             <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-              Registradas en el executor con <code>gatedByRole: [&#39;nala&#39;]</code>.
+              Registradas en el executor con <code>gatedByRole: [&#39;neka&#39;]</code>.
             </p>
           </div>
         </div>
@@ -212,7 +212,7 @@ export default async function NalaConfigPage() {
               Bandeja
             </h2>
             <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-              Nala comparte <code>hola@centinelia.mx</code> con Nash. El routing por asunto está pendiente (Fase 2b).
+              Neka comparte <code>hola@centinelia.mx</code> con Nash. El routing por asunto está pendiente (Fase 2b).
             </p>
           </div>
         </div>
@@ -220,7 +220,7 @@ export default async function NalaConfigPage() {
         <div className="rounded-lg p-3 text-xs" style={{ background: 'rgba(108,59,255,0.06)', color: 'var(--c-text-2)' }}>
           <p className="font-semibold mb-1" style={{ color: 'var(--c-text)' }}>Mientras Fase 2b se construye:</p>
           <p>
-            Puedes invocar a Nala vía CLI:{' '}
+            Puedes invocar a Neka vía CLI:{' '}
             <code style={{ color: 'var(--c-text)' }}>scripts/facturama-emitir-ingreso.ts</code>{' '}
             (CFDI) o{' '}
             <code style={{ color: 'var(--c-text)' }}>scripts/facturama-emitir-rep.ts</code>{' '}

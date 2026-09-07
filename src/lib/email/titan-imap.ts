@@ -1,6 +1,6 @@
 /**
  * IMAP client para leer correos entrantes de la cuenta Titan de Centinelia
- * (hola@centinelia.mx). Se usa desde el cron nala-mailbox para procesar
+ * (hola@centinelia.mx). Se usa desde el cron neka-mailbox para procesar
  * fiscales automáticamente.
  *
  * Config esperada en env:

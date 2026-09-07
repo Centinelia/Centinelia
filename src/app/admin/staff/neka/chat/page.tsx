@@ -5,11 +5,11 @@ import Link from 'next/link';
 import { ArrowLeft, Send, Loader2, Wrench, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { MEERKAT_ROLES } from '@/lib/portal/meerkat-roles';
 
-const NALA = MEERKAT_ROLES.find(r => r.id === 'nala')!;
+const NEKA = MEERKAT_ROLES.find(r => r.id === 'neka')!;
 
 type ChatMsg =
   | { kind: 'user'; text: string }
-  | { kind: 'nala'; text: string }
+  | { kind: 'neka'; text: string }
   | { kind: 'tool_call'; name: string; input: Record<string, unknown> }
   | { kind: 'tool_result'; name: string; result: { ok?: boolean; [k: string]: unknown } }
   | { kind: 'error'; error: string };
@@ -29,7 +29,7 @@ const EXAMPLES = [
   '¿Cómo se llena un CFDI para persona física con actividad profesional?',
 ];
 
-export default function NalaChatPage() {
+export default function NekaChatPage() {
   const [messages, setMessages]     = useState<ChatMsg[]>([]);
   const [input, setInput]           = useState('');
   const [loading, setLoading]       = useState(false);
@@ -50,11 +50,11 @@ export default function NalaChatPage() {
 
     // Transcript para el API: solo user + nala (los tool_call/tool_result son eventos visuales)
     const transcript = nextMessages
-      .filter((m): m is Extract<ChatMsg, { kind: 'user' | 'nala' }> => m.kind === 'user' || m.kind === 'nala')
+      .filter((m): m is Extract<ChatMsg, { kind: 'user' | 'neka' }> => m.kind === 'user' || m.kind === 'neka')
       .map(m => ({ role: m.kind === 'user' ? 'user' : 'assistant' as const, content: m.text }));
 
     try {
-      const res = await fetch('/api/admin/staff/nala/chat', {
+      const res = await fetch('/api/admin/staff/neka/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: transcript }),
@@ -66,7 +66,7 @@ export default function NalaChatPage() {
       }
       const appended: ChatMsg[] = [];
       for (const ev of data.events ?? []) {
-        if (ev.kind === 'text' && ev.text) appended.push({ kind: 'nala', text: ev.text });
+        if (ev.kind === 'text' && ev.text) appended.push({ kind: 'neka', text: ev.text });
         else if (ev.kind === 'tool_call' && ev.name) appended.push({ kind: 'tool_call', name: ev.name, input: ev.input ?? {} });
         else if (ev.kind === 'tool_result' && ev.name) appended.push({ kind: 'tool_result', name: ev.name, result: ev.result ?? {} });
         else if (ev.kind === 'error' && ev.error) appended.push({ kind: 'error', error: ev.error });
@@ -91,7 +91,7 @@ export default function NalaChatPage() {
       {/* Header */}
       <header className="p-6 pb-3 flex-shrink-0">
         <Link
-          href="/admin/staff/nala"
+          href="/admin/staff/neka"
           className="inline-flex items-center gap-1.5 text-xs mb-4 hover:opacity-70 transition-opacity"
           style={{ color: 'var(--c-text-3)' }}
         >
@@ -100,30 +100,30 @@ export default function NalaChatPage() {
         </Link>
 
         <div className="flex items-center gap-3">
-          {NALA.imagen && (
+          {NEKA.imagen && (
             <span
               style={{
                 width: 44, height: 44, borderRadius: '50%',
                 overflow: 'hidden', display: 'inline-block', flexShrink: 0,
-                background: '#ffffff', border: `2px solid ${NALA.color}33`,
+                background: '#ffffff', border: `2px solid ${NEKA.color}33`,
               }}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={NALA.imagen}
-                alt="Nala"
+                src={NEKA.imagen}
+                alt="Neka"
                 style={{
                   width: '100%', height: '100%',
                   objectFit: 'cover',
-                  objectPosition: NALA.avatarPosition ?? 'center 3%',
-                  transform: NALA.avatarScale && NALA.avatarScale !== 1 ? `scale(${NALA.avatarScale})` : 'none',
-                  transformOrigin: NALA.avatarPosition ?? 'center 3%',
+                  objectPosition: NEKA.avatarPosition ?? 'center 3%',
+                  transform: NEKA.avatarScale && NEKA.avatarScale !== 1 ? `scale(${NEKA.avatarScale})` : 'none',
+                  transformOrigin: NEKA.avatarPosition ?? 'center 3%',
                 }}
               />
             </span>
           )}
           <div>
-            <h1 className="font-semibold" style={{ color: 'var(--c-text)' }}>Chat con {NALA.nombre}</h1>
+            <h1 className="font-semibold" style={{ color: 'var(--c-text)' }}>Chat con {NEKA.nombre}</h1>
             <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
               Pídele que timbre CFDIs o REPs a nombre de Centinelia
             </p>
@@ -155,7 +155,7 @@ export default function NalaChatPage() {
             {loading && (
               <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--c-text-3)' }}>
                 <Loader2 size={12} className="animate-spin" />
-                Nala está pensando…
+                Neka está pensando…
               </div>
             )}
           </div>
@@ -182,7 +182,7 @@ export default function NalaChatPage() {
             onClick={() => send()}
             disabled={loading || !input.trim()}
             className="flex-shrink-0 p-2.5 rounded-xl transition-all hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ background: NALA.color, color: '#fff' }}
+            style={{ background: NEKA.color, color: '#fff' }}
           >
             {loading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
           </button>
@@ -208,7 +208,7 @@ function MessageBubble({ msg }: { msg: ChatMsg }) {
       </div>
     );
   }
-  if (msg.kind === 'nala') {
+  if (msg.kind === 'neka') {
     return (
       <div className="flex justify-start">
         <div

@@ -169,8 +169,10 @@ export async function GET(req: NextRequest) {
 
   // Kill switch (auditoría R2): agendado en vercel.json pero gated hasta
   // que haya clientes con facturación proactiva Facturama activa.
-  if (process.env.NALA_PAYMENT_REMINDERS_ENABLED !== 'true') {
-    return NextResponse.json({ skipped: 'disabled', reason: 'NALA_PAYMENT_REMINDERS_ENABLED != true' });
+  // Env legacy NALA_PAYMENT_REMINDERS_ENABLED sigue funcionando como fallback.
+  const enabled = process.env.NEKA_PAYMENT_REMINDERS_ENABLED === 'true' || process.env.NALA_PAYMENT_REMINDERS_ENABLED === 'true';
+  if (!enabled) {
+    return NextResponse.json({ skipped: 'disabled', reason: 'NEKA_PAYMENT_REMINDERS_ENABLED != true' });
   }
 
   const supabase = createAdminClient();
@@ -210,13 +212,13 @@ export async function GET(req: NextRequest) {
     const subject = tierToSend.subject(p.cliente_razon_social, p.ciclo_key);
     const bodyText = tierToSend.body(p.cliente_nombre_contacto, p.monto, p.ciclo_key, dias);
 
-    // Renderiza a HTML (usa marked como en nala-email-runner)
+    // Renderiza a HTML (usa marked como en neka-email-runner)
     const { marked } = await import('marked');
     marked.setOptions({ breaks: true, gfm: true });
     const rendered = await marked.parse(bodyText);
     const signature = `
       <div style="margin-top:24px;padding-top:12px;border-top:1px solid #E8E3F5;font-size:12px;color:#6b7280">
-        <p style="margin:0 0 4px 0"><strong style="color:#a16207">Nala</strong> · Facturista</p>
+        <p style="margin:0 0 4px 0"><strong style="color:#a16207">Neka</strong> · Facturista interna de Centinelia</p>
         <p style="margin:0">Centinelia · <a href="mailto:hola@centinelia.mx" style="color:#6C3BFF;text-decoration:none">hola@centinelia.mx</a></p>
       </div>`;
     const html = `<div style="font-family:system-ui,-apple-system,sans-serif;line-height:1.6;color:#1A0A3B">${rendered}${signature}</div>`;
@@ -225,7 +227,7 @@ export async function GET(req: NextRequest) {
       to: p.sent_to_email,
       subject,
       html, text: bodyText,
-      fromDisplay: 'Nala Centinelia',
+      fromDisplay: 'Neka Centinelia',
     });
 
     if (!sendResult.ok) {
@@ -267,7 +269,7 @@ export async function GET(req: NextRequest) {
       await sendEmail({
         to: cfg.emailContacto,
         subject: `[Centinelia] Cliente ${p.cliente_razon_social} — 15 días sin pago del ciclo ${p.ciclo_key}`,
-        html: `<p><strong>Aviso interno de Nala</strong></p>
+        html: `<p><strong>Aviso interno de Neka</strong></p>
 <p>Cliente <strong>${p.cliente_razon_social}</strong> (${p.cliente_rfc}) tiene el CFDI del ciclo <strong>${p.ciclo_key}</strong> por <strong>$${p.monto.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</strong> emitido hace <strong>${dias} días</strong> sin pago recibido.</p>
 <p>Ya se le enviaron los 3 recordatorios escalados y se marcó como <code>suspend_pending=true</code>. Su UUID es <code>${p.cfdi_uuid}</code>.</p>
 <p>Revisa en el admin qué hacer: contactarlo directo, extender plazo, o suspender el servicio de sus meerkats.</p>`,

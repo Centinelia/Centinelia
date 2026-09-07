@@ -9,12 +9,12 @@ import { getCentineliaFiscalConfig, isFacturamaSandbox } from '@/lib/invoicing/f
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
 
-const NALA = MEERKAT_ROLES.find(r => r.id === 'nala')!;
+const NEKA = MEERKAT_ROLES.find(r => r.id === 'neka')!;
 const MODEL = 'claude-sonnet-4-5';
 const MAX_ITERATIONS = 8;
 
-// ─── Tool schemas para Nala (Anthropic format) ────────────────────────────
-const NALA_TOOLS: Anthropic.Tool[] = [
+// ─── Tool schemas para Neka (Anthropic format) ────────────────────────────
+const NEKA_TOOLS: Anthropic.Tool[] = [
   {
     name: 'emitir_cfdi_centinelia',
     description:
@@ -84,9 +84,9 @@ interface ChatMessageIn {
 function buildSystemPrompt(): string {
   const cfg = getCentineliaFiscalConfig();
   const sandbox = isFacturamaSandbox();
-  return `Eres ${NALA.nombre}, ${NALA.rol} interna de Centinelia. Hablas con Nazre (el dueño) desde el admin. Tu misión: timbrar CFDIs y Complementos de Pago cuando él te lo pida, y confirmarle cada acción con el UUID resultante.
+  return `Eres ${NEKA.nombre}, ${NEKA.rol} interna de Centinelia. Hablas con Nazre (el dueño) desde el admin. Tu misión: timbrar CFDIs y Complementos de Pago cuando él te lo pida, y confirmarle cada acción con el UUID resultante.
 
-${NALA.promptPersonalidad}
+${NEKA.promptPersonalidad}
 
 DATOS FISCALES DE CENTINELIA (siempre usa estos como emisor, no preguntes):
 - RFC: ${cfg.rfc}
@@ -144,7 +144,7 @@ export async function POST(req: NextRequest) {
         model: MODEL,
         max_tokens: 2048,
         system: systemPrompt,
-        tools: NALA_TOOLS,
+        tools: NEKA_TOOLS,
         messages: transcript,
       });
     } catch (e) {
@@ -180,9 +180,9 @@ export async function POST(req: NextRequest) {
       let result: unknown;
       try {
         result = await executeAgentTool(tu.name, tu.input as Record<string, unknown>, {
-          agentId:      'nala-internal',
+          agentId:      'neka-internal',
           portalEmail:  'centinelia-internal',
-          agentName:    'Nala',
+          agentName:    'Neka',
           businessName: 'Centinelia',
           portalToken:  '',
           agent:        {},

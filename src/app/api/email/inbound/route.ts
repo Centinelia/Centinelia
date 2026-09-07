@@ -269,7 +269,7 @@ export async function POST(req: NextRequest) {
       console.log('[email-inbound] agent_tasks insert', { ok: !taskInsErr, err: taskInsErr?.message });
 
       // Attachments: reutilizar el mismo pipeline de storage que el
-      // portal-shared path para que create_file/pdf de Neus/Nova/Nala puedan
+      // portal-shared path para que create_file/pdf de Nalú/Nova/Nala puedan
       // adjuntarse al reply.
       const agentStoredAttachments: StoredAttachment[] = [];
       const monthAgt = new Date().toISOString().slice(0, 7);

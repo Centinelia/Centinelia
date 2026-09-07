@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { ArrowLeft, Send, Loader2, CheckCircle2, AlertCircle, Wrench, Filter } from 'lucide-react';
 import { MEERKAT_ROLES } from '@/lib/portal/meerkat-roles';
 
-const NALA = MEERKAT_ROLES.find(r => r.id === 'nala')!;
+const NEKA = MEERKAT_ROLES.find(r => r.id === 'neka')!;
 
 interface ClassifyResult {
   fiscal: boolean;
@@ -62,7 +62,7 @@ const PRESET_NO_FISCAL = {
   body: `Buenos días, ¿a qué hora abren mañana? Gracias.`,
 };
 
-export default function NalaTestEmailPage() {
+export default function NekaTestEmailPage() {
   const [from, setFrom]           = useState('');
   const [subject, setSubject]     = useState('');
   const [body, setBody]           = useState('');
@@ -87,7 +87,7 @@ export default function NalaTestEmailPage() {
     setError(null);
 
     try {
-      const res = await fetch('/api/admin/staff/nala/process-email', {
+      const res = await fetch('/api/admin/staff/neka/process-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -112,7 +112,7 @@ export default function NalaTestEmailPage() {
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <Link
-        href="/admin/staff/nala"
+        href="/admin/staff/neka"
         className="inline-flex items-center gap-1.5 text-xs mb-4 hover:opacity-70 transition-opacity"
         style={{ color: 'var(--c-text-3)' }}
       >
@@ -125,7 +125,7 @@ export default function NalaTestEmailPage() {
           Probar procesamiento de correo
         </h1>
         <p className="text-sm mt-1" style={{ color: 'var(--c-text-3)' }}>
-          Simula un correo entrante a hola@centinelia.mx. Nala clasifica si es fiscal, y si sí, ejecuta sus tools.
+          Simula un correo entrante a hola@centinelia.mx. Neka clasifica si es fiscal, y si sí, ejecuta sus tools.
           Los correos no-fiscales no los toca (retorna <code>skipped</code>).
         </p>
       </header>
@@ -187,7 +187,7 @@ export default function NalaTestEmailPage() {
                 checked={mode === 'process'}
                 onChange={() => setMode('process')}
               />
-              <span>Procesar completo (Nala ejecuta tools + genera respuesta)</span>
+              <span>Procesar completo (Neka ejecuta tools + genera respuesta)</span>
             </label>
             <label className="flex items-center gap-2 text-xs cursor-pointer" style={{ color: 'var(--c-text-2)' }}>
               <input
@@ -213,11 +213,11 @@ export default function NalaTestEmailPage() {
             onClick={submit}
             disabled={loading || !from.trim() || !subject.trim() || !body.trim()}
             className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ background: NALA.color, color: '#fff' }}
+            style={{ background: NEKA.color, color: '#fff' }}
           >
             {loading
               ? <><Loader2 size={14} className="animate-spin" /> Procesando…</>
-              : <><Send size={14} /> {mode === 'classify' ? 'Clasificar' : 'Procesar con Nala'}</>
+              : <><Send size={14} /> {mode === 'classify' ? 'Clasificar' : 'Procesar con Neka'}</>
             }
           </button>
         </section>
@@ -294,7 +294,7 @@ export default function NalaTestEmailPage() {
                 <div className="rounded-lg p-3 text-xs flex items-start gap-2"
                      style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.2)', color: 'var(--c-text-2)' }}>
                   <Filter size={12} className="mt-0.5 flex-shrink-0" style={{ color: '#6C3BFF' }} />
-                  <span>Correo <strong>no fiscal</strong>. Nala no lo toca.</span>
+                  <span>Correo <strong>no fiscal</strong>. Neka no lo toca.</span>
                 </div>
               )}
             </div>

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isAdmin } from '@/lib/admin/auth';
-import { processNalaEmail, classifyFiscalEmail, type NalaEmailInput } from '@/lib/ops/nala-email-runner';
+import { processNekaEmail, classifyFiscalEmail, type NekaEmailInput } from '@/lib/ops/neka-email-runner';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'from, subject y body son requeridos' }, { status: 400 });
   }
 
-  const input: NalaEmailInput = {
+  const input: NekaEmailInput = {
     from:            body.from,
     subject:         body.subject,
     body:            body.body,
@@ -32,6 +32,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ classification: classifyFiscalEmail(input) });
   }
 
-  const result = await processNalaEmail(input, { sendReply: !!body.sendReply });
+  const result = await processNekaEmail(input, { sendReply: !!body.sendReply });
   return NextResponse.json(result);
 }

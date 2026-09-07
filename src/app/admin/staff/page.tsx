@@ -19,7 +19,7 @@ const INTERNAL_STATUS: Record<string, {
       'Envía reportes diarios y semanales a Nazre.',
     ],
   },
-  nala: {
+  neka: {
     canales: ['CLI (dev)', 'chat via executor (WIP)'],
     features: ['emitir_cfdi_centinelia (Facturama)', 'solicitar_complemento_pago (Facturama)'],
     notas: [
@@ -27,7 +27,7 @@ const INTERNAL_STATUS: Record<string, {
       'PAC actual: Facturama sandbox. Cuando volumen suba, migrar a Solución Factible.',
       'Bandeja: comparte hola@centinelia.mx (no requiere alias separado).',
     ],
-    configHref: '/admin/staff/nala',
+    configHref: '/admin/staff/neka',
   },
 };
 

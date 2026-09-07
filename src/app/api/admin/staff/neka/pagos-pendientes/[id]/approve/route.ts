@@ -1,5 +1,5 @@
 /**
- * Aprueba manualmente un pago que Nala marcó como pendiente. Al aprobar,
+ * Aprueba manualmente un pago que Neka marcó como pendiente. Al aprobar,
  * dispara el timbrado del REP (mismo flow que auto-approve) y registra
  * pago_recibido + rep_emitido. Cierra el pendiente.
  */
@@ -11,7 +11,7 @@ import {
   getCentineliaFiscalConfig, getFacturamaCredentials, isFacturamaSandbox,
 } from '@/lib/invoicing/facturama/centinelia-preset';
 import type { PagoInput } from '@/lib/invoicing/provider';
-import { nalaCfdiSender } from '@/lib/ops/nala-cfdi-sender';
+import { nekaCfdiSender } from '@/lib/ops/neka-cfdi-sender';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
@@ -101,7 +101,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   const result = await emitirPagoFacturama(pago, {
     testMode, timeoutMs: 60000,
     sendToEmail: emailDestino,
-    sender: nalaCfdiSender,
+    sender: nekaCfdiSender,
   });
 
   if (!result.ok) {

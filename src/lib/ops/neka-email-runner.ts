@@ -1,17 +1,21 @@
 /**
- * Nala email runner — procesa un correo entrante a hola@centinelia.mx si es
+ * Neka email runner — procesa un correo entrante a hola@centinelia.mx si es
  * de tema fiscal (factura, complemento, CFDI, SPEI). Corre el LLM loop de
- * Nala con sus tools de Facturama y opcionalmente envía respuesta al remitente.
+ * Neka con sus tools de Facturama y opcionalmente envía respuesta al remitente.
+ *
+ * Neka es la facturista INTERNA de Centinelia (timbra CFDIs a nombre de
+ * Centinelia hacia sus clientes). Distinta de Nala, la variante contratable
+ * que se vende al cliente para su propia facturación.
  *
  * Flujo:
  *  1. Clasifica el correo con heurística de keywords + LLM zero-shot fallback.
- *  2. Si NO es fiscal, retorna { fiscal: false, skipped: true }. Nala no toca.
- *  3. Si SÍ es fiscal, ejecuta el loop LLM con Nala's promptPersonalidad + tools.
+ *  2. Si NO es fiscal, retorna { fiscal: false, skipped: true }. Neka no toca.
+ *  3. Si SÍ es fiscal, ejecuta el loop LLM con el promptPersonalidad de Neka + tools.
  *  4. Con opts.sendReply=true, manda la respuesta final por correo al remitente.
  *
  * Este runner está diseñado para ser invocado desde:
- *  - UI de test en /admin/staff/nala (Nazre pega un correo y prueba)
- *  - Cron/webhook futuro que lea la bandeja de hola@centinelia.mx (Fase 2b real)
+ *  - UI de test en /admin/staff/neka (Nazre pega un correo y prueba)
+ *  - Cron neka-mailbox que lee la bandeja hola@centinelia.mx por IMAP.
  */
 import Anthropic from '@anthropic-ai/sdk';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -20,7 +24,7 @@ import { MEERKAT_ROLES } from '@/lib/portal/meerkat-roles';
 import { getCentineliaFiscalConfig, isFacturamaSandbox } from '@/lib/invoicing/facturama/centinelia-preset';
 import { sendEmail } from '@/lib/email/send';
 
-const NALA = MEERKAT_ROLES.find(r => r.id === 'nala')!;
+const NEKA = MEERKAT_ROLES.find(r => r.id === 'neka')!;
 const MODEL = 'claude-sonnet-4-5';
 const MAX_ITERATIONS = 8;
 
@@ -95,7 +99,7 @@ function countTrackingLinks(body: string): number {
   ).length;
 }
 
-const NALA_EMAIL_TOOLS: Anthropic.Tool[] = [
+const NEKA_EMAIL_TOOLS: Anthropic.Tool[] = [
   {
     name: 'pedir_datos_faltantes',
     description: 'Llámala cuando el correo pide claramente una factura o REP PERO faltan datos que solo el cliente puede darte (RFC, razón social, CP, UUID original, monto, fecha SPEI, etc). Después de llamarla, tu último mensaje será la petición de datos al cliente en tono humano.',
@@ -200,7 +204,7 @@ const NALA_EMAIL_TOOLS: Anthropic.Tool[] = [
   },
 ];
 
-export interface NalaEmailInput {
+export interface NekaEmailInput {
   from:     string;
   subject:  string;
   body:     string;
@@ -211,7 +215,7 @@ export interface NalaEmailInput {
 }
 
 /**
- * Callback para enviar la respuesta de Nala. Diferentes flows usan distintos
+ * Callback para enviar la respuesta de Neka. Diferentes flows usan distintos
  * transports: UI de test usa Resend, cron IMAP usa Titan SMTP + appendToSent.
  * Retornar `true` si el envío fue exitoso.
  */
@@ -223,14 +227,14 @@ export type ReplySender = (input: {
   inReplyTo?: string;
 }) => Promise<boolean>;
 
-export interface NalaClassifyResult {
+export interface NekaClassifyResult {
   fiscal:      boolean;
   confidence:  'high' | 'med' | 'low';
   reason:      string;
   matchedKeywords: string[];
 }
 
-export interface NalaProcessResult {
+export interface NekaProcessResult {
   fiscal:  boolean;
   skipped: boolean;
   events?: Array<
@@ -241,10 +245,10 @@ export interface NalaProcessResult {
   >;
   replyText?: string;
   replySent?: boolean;
-  classifyResult: NalaClassifyResult;
+  classifyResult: NekaClassifyResult;
 }
 
-export function classifyFiscalEmail(input: NalaEmailInput): NalaClassifyResult {
+export function classifyFiscalEmail(input: NekaEmailInput): NekaClassifyResult {
   // Blocklist primero — si el remitente es de marketing/no-reply, skip sin analizar
   const senderBlocked = NEVER_FISCAL_SENDERS.some(re => re.test(input.from));
   if (senderBlocked) {
@@ -305,12 +309,12 @@ export function classifyFiscalEmail(input: NalaEmailInput): NalaClassifyResult {
   return { fiscal: false, confidence: 'high', reason: allMatched.length === 0 ? 'sin keywords fiscales' : `solo 1 keyword débil (${weakMatches[0]}) — insuficiente`, matchedKeywords: allMatched };
 }
 
-function buildSystemPrompt(input: NalaEmailInput): string {
+function buildSystemPrompt(input: NekaEmailInput): string {
   const cfg = getCentineliaFiscalConfig();
   const sandbox = isFacturamaSandbox();
-  return `Eres ${NALA.nombre}, ${NALA.rol} interna de Centinelia. Recibes correos a hola@centinelia.mx cuando son de tema fiscal (facturas, complementos, comprobantes SPEI). Tu misión: entender qué pide el remitente, timbrar el CFDI o REP correspondiente vía Facturama, y responderle por correo con el UUID resultante + XML/PDF adjuntos (la tool lo hace por ti si le pasas receptor_email).
+  return `Eres ${NEKA.nombre}, ${NEKA.rol} interna de Centinelia. Recibes correos a hola@centinelia.mx cuando son de tema fiscal (facturas, complementos, comprobantes SPEI). Tu misión: entender qué pide el remitente, timbrar el CFDI o REP correspondiente vía Facturama, y responderle por correo con el UUID resultante + XML/PDF adjuntos (la tool lo hace por ti si le pasas receptor_email).
 
-${NALA.promptPersonalidad}
+${NEKA.promptPersonalidad}
 
 DATOS FISCALES DE CENTINELIA (siempre usa estos como emisor):
 - RFC: ${cfg.rfc}
@@ -397,10 +401,10 @@ CUÁNDO NO REDACTAR RESPUESTA:
 - Si el correo no es una solicitud clara de factura o REP, NO ejecutes tools y NO redactes respuesta.`;
 }
 
-export async function processNalaEmail(
-  input: NalaEmailInput,
+export async function processNekaEmail(
+  input: NekaEmailInput,
   opts: { sendReply?: boolean; sender?: ReplySender } = {},
-): Promise<NalaProcessResult> {
+): Promise<NekaProcessResult> {
   const classifyResult = classifyFiscalEmail(input);
 
   if (!classifyResult.fiscal) {
@@ -427,10 +431,10 @@ export async function processNalaEmail(
     { role: 'user', content: 'Procesa el correo entrante. Ejecuta las tools necesarias y termina con el texto de respuesta que se le enviará al remitente.' },
   ];
 
-  const events: NalaProcessResult['events'] = [];
+  const events: NekaProcessResult['events'] = [];
   let finalReply = '';
   let toolsExecuted = 0;
-  let onlyReportedBug = true;  // se vuelve false si Nala llama alguna tool que NO sea reportar_bug_a_nash
+  let onlyReportedBug = true;  // se vuelve false si Neka llama alguna tool que NO sea reportar_bug_a_nash
 
   for (let iter = 0; iter < MAX_ITERATIONS; iter++) {
     let resp: Anthropic.Message;
@@ -439,7 +443,7 @@ export async function processNalaEmail(
         model: MODEL,
         max_tokens: 2048,
         system: systemPrompt,
-        tools: NALA_EMAIL_TOOLS,
+        tools: NEKA_EMAIL_TOOLS,
         messages: transcript,
       });
     } catch (e) {
@@ -467,9 +471,9 @@ export async function processNalaEmail(
       let result: unknown;
       try {
         result = await executeAgentTool(tu.name, tu.input as Record<string, unknown>, {
-          agentId:      'nala-email',
+          agentId:      'neka-email',
           portalEmail:  'centinelia-internal',
-          agentName:    'Nala',
+          agentName:    'Neka',
           businessName: 'Centinelia',
           portalToken:  '',
           agent:        {},
@@ -494,24 +498,24 @@ export async function processNalaEmail(
     transcript.push({ role: 'user', content: toolResults });
   }
 
-  // Guardarraíl 1: si Nala NO ejecutó ninguna tool → el correo no es una
+  // Guardarraíl 1: si Neka NO ejecutó ninguna tool → el correo no es una
   // solicitud de emisión ni pide datos ni reporta bug. Queda unread para Nazre.
   if (opts.sendReply && toolsExecuted === 0) {
     events!.push({
       kind: 'error',
-      error: 'Nala no ejecutó ninguna tool — el correo no es una solicitud de emisión. Queda unread.',
+      error: 'Neka no ejecutó ninguna tool — el correo no es una solicitud de emisión. Queda unread.',
     });
     return { fiscal: true, skipped: true, events, replyText: finalReply, replySent: false, classifyResult };
   }
 
-  // Guardarraíl 2: si Nala SOLO reportó un bug a Nash (sin emitir, sin pedir
+  // Guardarraíl 2: si Neka SOLO reportó un bug a Nash (sin emitir, sin pedir
   // datos), NO se envía respuesta al cliente. El correo queda unread y Nash
   // procesa el bug en su próxima corrida. Nazre lo verá ambos: el correo
   // unread + el incidente en su panel Nash.
   if (opts.sendReply && onlyReportedBug) {
     events!.push({
       kind: 'error',
-      error: 'Nala solo reportó bug a Nash — no se envía respuesta al cliente. Correo unread para revisión de Nazre.',
+      error: 'Neka solo reportó bug a Nash — no se envía respuesta al cliente. Correo unread para revisión de Nazre.',
     });
     return { fiscal: true, skipped: true, events, replyText: finalReply, replySent: false, classifyResult };
   }
@@ -533,14 +537,14 @@ export async function processNalaEmail(
   let replySent = false;
   if (opts.sendReply && finalReply.trim()) {
     const subject = input.subject.toLowerCase().startsWith('re:') ? input.subject : `Re: ${input.subject}`;
-    // Nala responde en markdown natural. Convertimos a HTML para que se
+    // Neka responde en markdown natural. Convertimos a HTML para que se
     // renderice correctamente en clientes de correo (Gmail, Outlook, etc).
     const { marked } = await import('marked');
     marked.setOptions({ breaks: true, gfm: true });
     const rendered = await marked.parse(finalReply);
     // Firma consistente reutilizada del helper (avatar + info).
-    const { nalaEmailHtml } = await import('./nala-cfdi-sender');
-    const html = nalaEmailHtml(rendered);
+    const { nekaEmailHtml } = await import('./neka-cfdi-sender');
+    const html = nekaEmailHtml(rendered);
 
     if (opts.sender) {
       // Sender custom (típicamente Titan SMTP desde cron)

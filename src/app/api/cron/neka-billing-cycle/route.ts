@@ -34,7 +34,7 @@ import {
 } from '@/lib/invoicing/facturama/centinelia-preset';
 import type { CfdiInput } from '@/lib/invoicing/provider';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { nalaCfdiSender, nalaCfdiBodyDefault, nalaEmailHtml } from '@/lib/ops/nala-cfdi-sender';
+import { nekaCfdiSender } from '@/lib/ops/neka-cfdi-sender';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -94,9 +94,11 @@ export async function GET(req: NextRequest) {
 
   // Kill switch (auditoría R2): agendado en vercel.json pero NO corre en prod
   // hasta que se pague plan Facturama API (memoria: handoff-nala-reactivar-
-  // al-pagar-facturama-prod). Flip cuando esté todo listo.
-  if (process.env.NALA_BILLING_CYCLE_ENABLED !== 'true') {
-    return NextResponse.json({ skipped: 'disabled', reason: 'NALA_BILLING_CYCLE_ENABLED != true' });
+  // al-pagar-facturama-prod). Flip cuando esté todo listo. Env legacy
+  // NALA_BILLING_CYCLE_ENABLED sigue funcionando como fallback.
+  const enabled = process.env.NEKA_BILLING_CYCLE_ENABLED === 'true' || process.env.NALA_BILLING_CYCLE_ENABLED === 'true';
+  if (!enabled) {
+    return NextResponse.json({ skipped: 'disabled', reason: 'NEKA_BILLING_CYCLE_ENABLED != true' });
   }
 
   const supabase = createAdminClient();
@@ -164,7 +166,7 @@ export async function GET(req: NextRequest) {
       timeoutMs:   60000,
       sendToEmail: cliente.correo_facturacion,
       emailSubject: `Factura ${cliente.razon_social} - ${ciclo}`,
-      sender:      nalaCfdiSender,
+      sender:      nekaCfdiSender,
     });
 
     if (!result.ok) {

@@ -76,7 +76,7 @@ export async function recordBillingEvent(
 
 /**
  * Verifica si ya se emitió CFDI o REP para (cliente, ciclo). Se usa desde
- * el cron nala-billing-cycle ANTES de intentar timbrar, para saltarse
+ * el cron neka-billing-cycle ANTES de intentar timbrar, para saltarse
  * clientes ya facturados este ciclo.
  */
 export async function yaFacturadoEsteCiclo(

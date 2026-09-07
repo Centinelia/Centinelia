@@ -3,7 +3,7 @@
 // Diferencia clave vs SF/CONTPAQi: Facturama guarda el CSD server-side (subido
 // vía web UI o API `POST /csd`). Nuestro campo `csd` en CfdiInput/PagoInput se
 // IGNORA porque Facturama firma con el CSD tied to the account. Si en el futuro
-// Nala necesita cargar CSD nuevo, se hace vía Facturama web o llamada aparte.
+// Neka necesita cargar CSD nuevo, se hace vía Facturama web o llamada aparte.
 //
 // Auth: usuario API (nombre corto tipo "centinelia", NO email ni RFC) +
 // contraseña API. Confirmado por Facturama soporte 2026-09-02.

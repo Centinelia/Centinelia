@@ -1,9 +1,9 @@
 /**
  * Data layer para el catálogo de clientes recurrentes de Centinelia
  * (tabla centinelia_clientes). Se usa desde:
- *   - Cron nala-billing-cycle (para saber qué facturar hoy)
- *   - UI /admin/staff/nala/clientes (CRUD)
- *   - Tools de Nala (buscar cliente por RFC al procesar SPEI)
+ *   - Cron neka-billing-cycle (para saber qué facturar hoy)
+ *   - UI /admin/staff/neka/clientes (CRUD)
+ *   - Tools de Neka (buscar cliente por RFC al procesar SPEI)
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -91,7 +91,7 @@ export async function getClienteByRfc(rfc: string, supabase: SupabaseClient = cr
 
 /**
  * Clientes activos con fecha_proxima_facturacion <= fechaCorte.
- * Usado por el cron nala-billing-cycle para saber qué facturar hoy.
+ * Usado por el cron neka-billing-cycle para saber qué facturar hoy.
  */
 export async function getClientesPorFacturar(
   fechaCorte: string,

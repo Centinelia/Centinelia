@@ -2072,7 +2072,7 @@ async function executeAgentToolInner(
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // emitir_cfdi_centinelia — CFDI Ingreso a nombre de Centinelia (Nala interna)
+  // emitir_cfdi_centinelia — CFDI Ingreso a nombre de Centinelia (Neka interna)
   // Timbra vía Facturama con datos fiscales hardcoded de Nazre (RFC AAMN951208I25).
   // ─────────────────────────────────────────────────────────────────────────
   if (toolName === 'emitir_cfdi_centinelia') {
@@ -2156,7 +2156,7 @@ async function executeAgentToolInner(
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // solicitar_complemento_pago — REP para CFDI PPD ya timbrado (Nala interna)
+  // solicitar_complemento_pago — REP para CFDI PPD ya timbrado (Neka interna)
   // ─────────────────────────────────────────────────────────────────────────
   if (toolName === 'solicitar_complemento_pago') {
     try {
@@ -2239,7 +2239,7 @@ async function executeAgentToolInner(
       if (!result.ok) return { ok: false, error: `[${result.code}] ${result.message}` };
 
       // Registra pago_recibido + rep_emitido en centinelia_billing para que el
-      // cron nala-payment-reminders sepa que ya se pagó este ciclo y deje de
+      // cron neka-payment-reminders sepa que ya se pagó este ciclo y deje de
       // mandar recordatorios. Best effort — si falla el insert, el timbrado
       // ya está hecho y ese fue lo importante.
       try {
@@ -2294,7 +2294,7 @@ async function executeAgentToolInner(
   // ─────────────────────────────────────────────────────────────────────────
   // registrar_pago_pendiente_verificacion — human-in-the-loop con auto-approve
   //
-  // Nala llama esto (en vez de solicitar_complemento_pago directo) cuando llega
+  // Neka llama esto (en vez de solicitar_complemento_pago directo) cuando llega
   // comprobante SPEI de un cliente. Se evalúan reglas:
   //   - CFDI original existe en centinelia_billing
   //   - Cliente asociado activo
@@ -2379,11 +2379,11 @@ async function executeAgentToolInner(
         };
 
         const emailDestino = emailReceptor ?? cliente.correo_facturacion;
-        const { nalaCfdiSender } = await import('@/lib/ops/nala-cfdi-sender');
+        const { nekaCfdiSender } = await import('@/lib/ops/neka-cfdi-sender');
         const result = await emitirPagoFacturama(pago, {
           testMode, timeoutMs: 60000,
           sendToEmail: emailDestino,
-          sender: nalaCfdiSender,
+          sender: nekaCfdiSender,
         });
 
         if (!result.ok) {
@@ -2462,7 +2462,7 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
 </p>
 <p><strong>Motivos por los que NO se auto-aprobó:</strong></p>
 <ul>${motivosHtml}</ul>
-<p><strong>Acción:</strong> revisa en <a href="https://www.centinelia.mx/admin/staff/nala/pagos-pendientes">Pagos pendientes</a> y aprueba (o rechaza) desde el admin.</p>`,
+<p><strong>Acción:</strong> revisa en <a href="https://www.centinelia.mx/admin/staff/neka/pagos-pendientes">Pagos pendientes</a> y aprueba (o rechaza) desde el admin.</p>`,
       }).catch(() => { /* best effort */ });
 
       return {
@@ -2478,10 +2478,10 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // pedir_datos_faltantes — Nala marca que necesita más datos del cliente
+  // pedir_datos_faltantes — Neka marca que necesita más datos del cliente
   // (RFC, CP, UUID original, monto, etc). Es un no-op técnico: solo señala
   // al runner que sí debe enviar la respuesta al cliente aunque no haya
-  // timbrado. El texto real de la petición lo redacta Nala en su reply final.
+  // timbrado. El texto real de la petición lo redacta Neka en su reply final.
   // ─────────────────────────────────────────────────────────────────────────
   if (toolName === 'pedir_datos_faltantes') {
     const campos = (toolInput.campos_faltantes as string[] | undefined) ?? [];
@@ -2494,10 +2494,10 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // reportar_bug_a_nash — Nala reporta un bug/limitación del sistema a Nash
+  // reportar_bug_a_nash — Neka reporta un bug/limitación del sistema a Nash
   // insertando fila en platform_incidents (source='manual'). Nash lo procesa
   // en su siguiente corrida del cron nash-monitor. NO se envía respuesta al
-  // cliente cuando Nala solo llama esta tool (guardarraíl en nala-email-runner).
+  // cliente cuando Neka solo llama esta tool (guardarraíl en neka-email-runner).
   // ─────────────────────────────────────────────────────────────────────────
   if (toolName === 'reportar_bug_a_nash') {
     const title       = String(toolInput.title       ?? '').trim();
@@ -2531,12 +2531,12 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       .from('platform_incidents')
       .insert({
         title,
-        description: `[Reportado por Nala desde correo entrante]\n\n${description}`,
+        description: `[Reportado por Neka desde correo entrante]\n\n${description}`,
         priority,
         source:    'manual',
         source_id: sourceIdIn,
         status:    'open',
-        reporter:  'nala',
+        reporter:  'neka',
       })
       .select('id')
       .single();

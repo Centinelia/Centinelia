@@ -27,7 +27,7 @@ const PERIODICIDAD_LABEL: Record<Cliente['periodicidad'], string> = {
   monthly: 'Mensual', biweekly: 'Quincenal', weekly: 'Semanal', annual: 'Anual',
 };
 
-export default function ClientesNalaPage() {
+export default function ClientesNekaPage() {
   const [clientes, setClientes]   = useState<Cliente[]>([]);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState<string | null>(null);
@@ -37,7 +37,7 @@ export default function ClientesNalaPage() {
   const refresh = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/staff/nala/clientes');
+      const res = await fetch('/api/admin/staff/neka/clientes');
       const data = await res.json();
       if (data.error) setError(data.error);
       else setClientes(data.clientes ?? []);
@@ -49,7 +49,7 @@ export default function ClientesNalaPage() {
   useEffect(() => { refresh(); }, []);
 
   const togglePause = async (c: Cliente) => {
-    await fetch(`/api/admin/staff/nala/clientes/${c.id}`, {
+    await fetch(`/api/admin/staff/neka/clientes/${c.id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ activo: !c.activo }),
     });
@@ -63,7 +63,7 @@ export default function ClientesNalaPage() {
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <Link
-        href="/admin/staff/nala"
+        href="/admin/staff/neka"
         className="inline-flex items-center gap-1.5 text-xs mb-4 hover:opacity-70 transition-opacity"
         style={{ color: 'var(--c-text-3)' }}
       >
@@ -77,7 +77,7 @@ export default function ClientesNalaPage() {
             Clientes de Centinelia
           </h1>
           <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
-            Catálogo que Nala usa para facturar proactivamente. Cada cliente activo se factura automáticamente en su fecha próxima.
+            Catálogo que Neka usa para facturar proactivamente. Cada cliente activo se factura automáticamente en su fecha próxima.
           </p>
         </div>
         <button
@@ -268,7 +268,7 @@ function ClienteForm({ initial, onClose, onSaved }: { initial: Cliente | null; o
             con_iva:        c.con_iva,
           })),
       };
-      const url = initial ? `/api/admin/staff/nala/clientes/${initial.id}` : '/api/admin/staff/nala/clientes';
+      const url = initial ? `/api/admin/staff/neka/clientes/${initial.id}` : '/api/admin/staff/neka/clientes';
       const res = await fetch(url, {
         method: initial ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
