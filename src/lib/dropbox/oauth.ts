@@ -15,7 +15,9 @@ const DROPBOX_ACCOUNT_URL = 'https://api.dropboxapi.com/2/users/get_current_acco
 
 export const DROPBOX_SCOPES = [
   'files.content.read',
+  'files.content.write',   // Nala escribe XML a Importables_CONTPAQi/pendientes/
   'files.metadata.read',
+  'files.metadata.write',  // mover archivos entre pendientes/timbrados/errores/
   'account_info.read',
 ].join(' ');
 
