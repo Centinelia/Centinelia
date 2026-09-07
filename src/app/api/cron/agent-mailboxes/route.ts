@@ -241,6 +241,32 @@ async function routeFacturacion(
 
   if (insertErr || !row) return { ok: false, error: `insert: ${insertErr?.message}` };
 
+  // Sube los bytes de attachments a Supabase Storage (bucket billing-attachments).
+  // Sin esto, BillingEmployee LLM no tiene bytes reales y hallucina base64.
+  // Actualiza attachments_meta con storageKey por cada uno. Ver dry run FASE 4.
+  if (email.attachments.length > 0) {
+    try {
+      const { uploadBillingAttachments } = await import('@/lib/billing/storage/attachments');
+      const stored = await uploadBillingAttachments(row.id as string, email.attachments);
+      // Merge storageKey en attachments_meta por índice.
+      const enrichedMeta = attachmentsMeta.map((meta, i) => ({
+        ...meta,
+        storageKey: stored[i]?.storageKey,
+        index:      i,
+      }));
+      const { error: updErr } = await supabase
+        .from('billing_incoming_emails')
+        .update({ attachments_meta: enrichedMeta })
+        .eq('id', row.id as string);
+      if (updErr) {
+        console.warn(`[agent-mailboxes] enrich attachments_meta failed for ${row.id}: ${updErr.message}`);
+      }
+    } catch (e) {
+      console.error(`[agent-mailboxes] upload attachments failed for ${row.id}: ${(e as Error).message}`);
+      // No fallar el enqueue — el LLM al menos tiene metadata; escalará si no ve bytes.
+    }
+  }
+
   const kind = email.attachments.length > 0 ? 'process_notes' : 'reply_missing_attachments';
   try {
     await enqueueBillingEmail({

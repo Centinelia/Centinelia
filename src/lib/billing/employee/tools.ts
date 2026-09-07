@@ -114,27 +114,25 @@ export function buildEmployeeTools(toolsCtx: ToolsContext): EmployeeTool[] {
       input_schema: {
         type: 'object',
         properties: {
-          image_base64: {
-            type: 'string',
-            description: 'Contenido de la imagen en base64.',
-          },
-          mime_type: {
-            type: 'string',
-            description: 'MIME type de la imagen. Ej: image/jpeg, image/png.',
+          image_index: {
+            type: 'integer',
+            description: 'Índice (0-based) del adjunto de imagen tal como aparece en el mensaje inicial (0 = primer adjunto).',
           },
         },
-        required: ['image_base64', 'mime_type'],
+        required: ['image_index'],
       },
-      handler: async (input: { image_base64: string; mime_type: string }) => {
-        const buffer = Buffer.from(input.image_base64, 'base64');
-        // Cargamos el catálogo del adapter para que el vision LLM coteje
-        // nombres/precios contra la realidad del negocio en vez de adivinar.
+      handler: async (input: { image_index: number }) => {
+        const bank = (ctx as unknown as { imageBank?: Array<{ index: number; buffer: Buffer; mimeType: string }> }).imageBank ?? [];
+        const found = bank.find(b => b.index === input.image_index);
+        if (!found) {
+          return { ok: false, error: `image_index=${input.image_index} no disponible. Adjuntos: [${bank.map(b => b.index).join(',')}]` };
+        }
         const visionCtx = await buildVisionContextFromAdapter({
           adapter,
           supabase,
           integrationId: ctx.integrationId,
         });
-        return extractNoteFromImage(buffer, input.mime_type, visionCtx);
+        return extractNoteFromImage(found.buffer, found.mimeType, visionCtx);
       },
     },
 
@@ -152,25 +150,25 @@ export function buildEmployeeTools(toolsCtx: ToolsContext): EmployeeTool[] {
       input_schema: {
         type: 'object',
         properties: {
-          image_base64: {
-            type: 'string',
-            description: 'Contenido de la imagen en base64.',
-          },
-          mime_type: {
-            type: 'string',
-            description: 'MIME type de la imagen. Ej: image/jpeg, image/png.',
+          image_index: {
+            type: 'integer',
+            description: 'Índice (0-based) del adjunto de imagen tal como aparece en el mensaje inicial (0 = primer adjunto).',
           },
         },
-        required: ['image_base64', 'mime_type'],
+        required: ['image_index'],
       },
-      handler: async (input: { image_base64: string; mime_type: string }) => {
-        const buffer = Buffer.from(input.image_base64, 'base64');
+      handler: async (input: { image_index: number }) => {
+        const bank = (ctx as unknown as { imageBank?: Array<{ index: number; buffer: Buffer; mimeType: string }> }).imageBank ?? [];
+        const found = bank.find(b => b.index === input.image_index);
+        if (!found) {
+          return { ok: false, error: `image_index=${input.image_index} no disponible. Adjuntos: [${bank.map(b => b.index).join(',')}]` };
+        }
         const visionCtx = await buildVisionContextFromAdapter({
           adapter,
           supabase,
           integrationId: ctx.integrationId,
         });
-        return extractRemisionesFromImage(buffer, input.mime_type, visionCtx);
+        return extractRemisionesFromImage(found.buffer, found.mimeType, visionCtx);
       },
     },
 

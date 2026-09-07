@@ -236,6 +236,57 @@ export class BillingEmployee {
       `Aplica el procedimiento estandar para cada notita de venta que encuentres.`;
 
     // -------------------------------------------------------------------------
+    // 5b. Cargar bytes de imagen desde Storage y normalizarlos
+    // -------------------------------------------------------------------------
+    // Los tools extract_note_from_image / extract_remisiones_from_image esperan
+    // image_base64 pero el LLM no puede pasarlo si no ve la imagen. Solución:
+    // cargar los buffers desde Storage (subidos por el cron IMAP), normalizar
+    // a JPEG 1568×1568, y (a) inyectarlos como multimodal blocks para que
+    // Claude los vea; (b) exponerlos al handler de tools vía imageBank para
+    // que la tool los recupere por index sin depender del LLM. Dry run FASE 4.
+    const imageBank: Array<{ index: number; filename: string; mimeType: 'image/jpeg'; buffer: Buffer; base64: string }> = [];
+    const initialContent: Anthropic.ContentBlockParam[] = [{ type: 'text', text: userMessage }];
+    try {
+      const metasRaw = Array.isArray(emailRow.attachments_meta) ? emailRow.attachments_meta : [];
+      const withKeys = metasRaw
+        .map((m, i) => (m as { storageKey?: string; index?: number; filename?: string; contentType?: string }))
+        .filter((m): m is { storageKey: string; index?: number; filename?: string; contentType?: string } => !!m?.storageKey)
+        .map((m, i) => ({
+          storageKey:  m.storageKey,
+          index:       m.index ?? i,
+          filename:    m.filename ?? `attachment-${i}`,
+          contentType: m.contentType ?? 'application/octet-stream',
+        }));
+      if (withKeys.length > 0) {
+        const { loadBillingAttachments } = await import('../storage/attachments');
+        const { normalizeImageForVision } = await import('../vision/image-normalize');
+        const loaded = await loadBillingAttachments(withKeys);
+        for (let i = 0; i < loaded.length; i++) {
+          const raw = loaded[i];
+          if (!/^image\//i.test(raw.contentType)) continue;
+          try {
+            const norm = await normalizeImageForVision({ buffer: raw.buffer, mimeType: raw.contentType });
+            const b64 = norm.buffer.toString('base64');
+            imageBank.push({ index: i, filename: raw.filename, mimeType: 'image/jpeg', buffer: norm.buffer, base64: b64 });
+            initialContent.push({
+              type: 'image',
+              source: { type: 'base64', media_type: 'image/jpeg', data: b64 },
+            });
+            initialContent.push({ type: 'text', text: `(Adjunto ${i}: ${raw.filename})` });
+          } catch (normErr) {
+            const msg = normErr instanceof Error ? normErr.message : String(normErr);
+            initialContent.push({ type: 'text', text: `(Adjunto ${i}: ${raw.filename} — no se pudo normalizar: ${msg})` });
+          }
+        }
+      }
+    } catch (loadErr) {
+      const msg = loadErr instanceof Error ? loadErr.message : String(loadErr);
+      result.errors.push(`Warn: no se pudieron cargar bytes de adjuntos: ${msg}`);
+    }
+    // Expone el bank al context de tools para que extract_*_from_image lo consulte por index.
+    (this.ctx as unknown as { imageBank?: typeof imageBank }).imageBank = imageBank;
+
+    // -------------------------------------------------------------------------
     // 6. Loop LLM
     // -------------------------------------------------------------------------
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -243,7 +294,7 @@ export class BillingEmployee {
 
     type MessageParam = { role: 'user' | 'assistant'; content: Anthropic.MessageParam['content'] };
     const messages: MessageParam[] = [
-      { role: 'user', content: userMessage },
+      { role: 'user', content: initialContent },
     ];
 
     let iterationsExecuted = 0;

@@ -47,7 +47,7 @@ Herramientas disponibles: ver descripciones de cada tool adjunta.
 
 Procedimiento estandar por notita:
 
-1. Extraer datos con extract_note_from_image (si hay imagen adjunta) o leer el texto del correo.
+1. Extraer datos con extract_note_from_image (una remision) o extract_remisiones_from_image (varias apiladas). El adjunto se pasa por image_index - el mensaje inicial te dice el indice de cada imagen "(Adjunto N: filename.jpg)". Si NO hay adjuntos, leer el texto del correo.
 2. Resolver cliente con match_client.
    - decision auto o auto_with_flag: continuar.
    - decision consult: responder el correo con reply_email pidiendo confirmacion de cliente y esperar.
