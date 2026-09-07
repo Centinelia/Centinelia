@@ -38,7 +38,14 @@ const nextConfig: NextConfig = {
   // el linking del `.so`. Externalizar hace que se cargue con require() en
   // runtime desde node_modules. Fix del dry run FASE 4 (2026-09-07):
   // ERR_DLOPEN_FAILED libvips-cpp.so.8.18.6 en Vercel.
-  serverExternalPackages: ['sharp'],
+  serverExternalPackages: ['sharp', '@img/sharp-linux-x64', '@img/sharp-libvips-linux-x64'],
+  // Vercel/Next tracing no descubre los binarios de sharp (lazy require).
+  // Forzamos incluir los .so y bindings en el bundle de las routes que usan
+  // vision (cron/agent-mailboxes + billing/worker que corre BillingEmployee).
+  outputFileTracingIncludes: {
+    '/api/cron/agent-mailboxes': ['./node_modules/@img/**/*'],
+    '/api/billing/worker':       ['./node_modules/@img/**/*'],
+  },
   images: {
     deviceSizes: [640, 828, 1080, 1200, 1920, 2560, 3840],
     formats: ['image/avif', 'image/webp'],
