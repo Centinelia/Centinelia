@@ -48,6 +48,8 @@ const CARD_SCALE: Partial<Record<MeerkatRoleId, number>> = {
   nia:   1.08,
   nelia: 0.965,
   niva:  0.985,
+  nalu:  1.08,
+  nami:  1.08,
 };
 
 function MeerkatCardImage({ role }: { role: MeerkatRole }) {
