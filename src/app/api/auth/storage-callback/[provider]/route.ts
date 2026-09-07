@@ -49,7 +49,9 @@ export async function GET(req: NextRequest, { params }: Params) {
     return NextResponse.redirect(genericError);
   }
 
-  const backTo = `${appUrl}/portal/${token}/configurar/${agentId}?storage=error`;
+  // Ruta correcta: /configurar acepta ?empleado_id=X como query param, no path
+  // segment. El path `/configurar/[agentId]` no existe → 404.
+  const backTo = `${appUrl}/portal/${token}/configurar?empleado_id=${agentId}&storage=error`;
 
   try {
     const resolved = await resolveOrgFromToken(token);
@@ -58,7 +60,7 @@ export async function GET(req: NextRequest, { params }: Params) {
     const cookie  = req.cookies.get(PORTAL_COOKIE)?.value ?? '';
     const session = await verifySession(cookie);
     if (!session || session.portalEmail !== resolved.portalEmail) {
-      return NextResponse.redirect(`${appUrl}/portal/${token}/configurar/${agentId}?storage=csrf`);
+      return NextResponse.redirect(`${appUrl}/portal/${token}/configurar?empleado_id=${agentId}&storage=csrf`);
     }
 
     const supabase = createAdminClient();
@@ -80,7 +82,10 @@ export async function GET(req: NextRequest, { params }: Params) {
     const encryptedRefresh = tokens.refresh_token ? encrypt(tokens.refresh_token) : null;
     const capability = `storage_${provider}`;
 
-    await supabase.from('integration_accounts').upsert({
+    // Depende del partial unique index `integration_accounts_agent_provider_capability_key`
+    // (agent_id, provider, capability) WHERE agent_id IS NOT NULL. Ver migración
+    // 2026-09-07 `integration_accounts_per_agent_unique`.
+    const { error: upsertErr } = await supabase.from('integration_accounts').upsert({
       agent_id:      agentId,
       portal_email:  resolved.portalEmail,
       provider,
@@ -92,9 +97,13 @@ export async function GET(req: NextRequest, { params }: Params) {
       status:        'active',
       metadata:      {},
     }, { onConflict: 'agent_id,provider,capability' });
+    if (upsertErr) {
+      console.error('[storage-callback] upsert failed:', upsertErr);
+      return NextResponse.redirect(backTo);
+    }
 
     const successRes = NextResponse.redirect(
-      `${appUrl}/portal/${token}/configurar/${agentId}?storage=connected&provider=${provider}`
+      `${appUrl}/portal/${token}/configurar?empleado_id=${agentId}&storage=connected&provider=${provider}`
     );
     clearOAuthState(successRes);
     return successRes;
