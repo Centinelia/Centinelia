@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Calendar, Mail, MessageSquare, ShoppingCart, ChevronDown, Check, Users, DollarSign, Plug, Sparkles, FileText } from 'lucide-react';
+import { Calendar, Mail, MessageSquare, ShoppingCart, ChevronDown, Check, Users, DollarSign, Plug, Sparkles, FileText, AlertTriangle } from 'lucide-react';
 import type { Plan } from '@/types/agent';
 
 import IntegrationsSection       from './IntegrationsSection';
@@ -17,7 +17,7 @@ import FacturacionSection        from './oficina/integraciones/facturacion/Factu
 
 /* ── types ─────────────────────────────────────────────────────────────── */
 
-interface CalStatus    { calendar_type: string | null }
+interface CalStatus    { calendar_type: string | null; per_agent_calendar_count?: number }
 interface NotionStatus { connected: boolean }
 interface EmailStatus  { provider: 'gmail' | 'outlook'; email?: string }
 interface MLStatus     { connected: boolean; nickname: string | null }
@@ -637,6 +637,18 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
             token={token}
             text="Google Calendar y Outlook Calendar se configuran individualmente en la ficha de cada empleado."
           />
+          {(status.cal?.calendar_type === 'cal_com' || status.cal?.calendar_type === 'calendly') &&
+            (status.cal?.per_agent_calendar_count ?? 0) > 0 && (
+              <div
+                className="flex items-start gap-2 rounded-lg px-3 py-2.5 text-xs leading-snug"
+                style={{ background: 'rgba(245,158,11,0.08)', color: '#92400e', border: '1px solid rgba(245,158,11,0.22)' }}
+              >
+                <AlertTriangle size={13} style={{ flexShrink: 0, marginTop: 1, color: '#f59e0b' }} />
+                <span>
+                  Tienes <b>{status.cal.calendar_type === 'cal_com' ? 'Cal.com' : 'Calendly'}</b> conectado a nivel organización y {status.cal.per_agent_calendar_count} {status.cal.per_agent_calendar_count === 1 ? 'empleado tiene su propio' : 'empleados tienen su propio'} Google/Outlook Calendar. Los empleados con calendario personal <b>usarán el suyo</b>, no este.
+                </span>
+              </div>
+            )}
           <IntegrationsSection token={token} plan={plan} />
         </div>
       ),

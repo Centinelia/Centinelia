@@ -125,6 +125,11 @@ export default function AgentAccountsSection({
   const [error,         setError]         = useState(false);
   const [disconnecting, setDisconnecting] = useState<Provider | null>(null);
   const [justConnected, setJustConnected] = useState<string | null>(null);
+  // Calendario org-level (Cal.com / Calendly) — solo para el warning de coexistencia
+  // en kind='calendar'. Cuando el empleado tiene Google/Outlook Calendar personal
+  // y el org tiene Cal.com/Calendly, el sistema resuelve al personal (per-agent
+  // gana), y el usuario debe saber por qué.
+  const [orgCalendarType, setOrgCalendarType] = useState<string | null>(null);
 
   // Detecta callback exitoso al montar (?cal=connected&provider=google | ?storage=connected&provider=microsoft)
   useEffect(() => {
@@ -153,6 +158,23 @@ export default function AgentAccountsSection({
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
+
+  // Solo para calendar: descubrir si el org tiene Cal.com/Calendly configurado
+  // (para advertir cuando el empleado tiene su propio Google/Outlook Calendar).
+  useEffect(() => {
+    if (kind !== 'calendar') return;
+    let cancelled = false;
+    fetch(`/api/portal/${token}/integrations`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (!cancelled) setOrgCalendarType(data?.calendar_type ?? null); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [token, kind]);
+
+  const hasOwnCalendar     = accounts.some(a => !a.needs_reauth);
+  const orgUsesExternalCal = orgCalendarType === 'cal_com' || orgCalendarType === 'calendly';
+  const showOrgConflict    = kind === 'calendar' && hasOwnCalendar && orgUsesExternalCal;
+  const orgCalLabel        = orgCalendarType === 'cal_com' ? 'Cal.com' : orgCalendarType === 'calendly' ? 'Calendly' : '';
 
   async function disconnect(provider: Provider) {
     const label = meta.providers.find(p => p.id === provider)?.label ?? provider;
@@ -208,6 +230,18 @@ export default function AgentAccountsSection({
         >
           <CheckCircle size={13} />
           Cuenta conectada correctamente.
+        </div>
+      )}
+
+      {showOrgConflict && (
+        <div
+          className="flex items-start gap-2 px-3 py-2.5 rounded-lg text-xs leading-snug"
+          style={{ background: 'rgba(245,158,11,0.08)', color: '#92400e', border: '1px solid rgba(245,158,11,0.22)' }}
+        >
+          <AlertTriangle size={13} style={{ flexShrink: 0, marginTop: 1, color: '#f59e0b' }} />
+          <span>
+            La organización también tiene <b>{orgCalLabel}</b> configurado como calendario. Este empleado usará <b>su calendario personal</b> para agendar y consultar, no el de la organización.
+          </span>
         </div>
       )}
 

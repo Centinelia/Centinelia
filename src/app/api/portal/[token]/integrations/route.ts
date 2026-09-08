@@ -34,12 +34,28 @@ export async function GET(_req: NextRequest, { params }: Params) {
         .maybeSingle()
     : { data: null };
 
+  // Cuenta empleados distintos con Google/Outlook Calendar conectado personalmente.
+  // Se expone para que la UI pueda avisar cuando coexiste con Cal.com/Calendly
+  // org-level: la fuente de verdad para bookings es el calendario per-empleado,
+  // no el org-level (ver `getFileConnector` en agent-connector.ts).
+  let per_agent_calendar_count = 0;
+  if (agent?.portal_email) {
+    const { data: rows } = await supabase
+      .from('integration_accounts')
+      .select('agent_id, voice_agents!inner(portal_email)')
+      .in('capability', ['calendar_google', 'calendar_microsoft'])
+      .neq('status', 'disconnected')
+      .eq('voice_agents.portal_email', agent.portal_email);
+    per_agent_calendar_count = new Set((rows ?? []).map(r => r.agent_id)).size;
+  }
+
   return NextResponse.json({
     calendar_type:            org?.calendar_type           ?? null,
     calendar_event_type_id:   org?.calendar_event_type_id  ?? '',
     calendar_link:            org?.calendar_link           ?? '',
     cal_api_configured:       !!(org?.calendar_api_key),
     google_review_url:        org?.google_review_url       ?? '',
+    per_agent_calendar_count,
   });
 }
 
