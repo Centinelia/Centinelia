@@ -45,14 +45,16 @@ export async function GET(req: NextRequest, { params }: Params) {
   const { data, error } = await supabase
     .from('billing_pending_review')
     .select(`
-      id, email_id, image_index, reason, extracted, candidates, status,
+      id, email_id, image_index, remision_index, reason, extracted, candidates, status,
+      folio, cliente_texto, rfc_matched, total, fecha, productos,
       corrections, resolved_at, resolved_by, created_at,
       email:billing_incoming_emails ( from_address, subject, received_at, attachments_meta )
     `)
     .eq('portal_email', g.resolved.portalEmail)
     .eq('status', statusFilter)
     .order('created_at', { ascending: false })
-    .limit(50);
+    .order('remision_index', { ascending: true })
+    .limit(100);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

@@ -788,30 +788,59 @@ export function buildEmployeeTools(toolsCtx: ToolsContext): EmployeeTool[] {
         urgency: 'high' | 'critical';
         context?: Record<string, unknown>;
       }) => {
-        // Persistir en billing_pending_review para que aparezca en la página
-        // /portal/[token]/oficina/facturacion-emision/pendientes con card
-        // estructurada (imagen + extracción + edit + botones aprobar/rechazar).
-        // El correo escalation ya no lleva wall-of-text — solo link a la card.
+        // Persistir en billing_pending_review — 1 row por remisión.
+        // Nala puede escalar un email con varias remisiones; cada una es una
+        // card independiente con su propio cliente/productos/total.
+        // Si el context tiene `remisiones` array, inserta 1 row por elemento.
+        // Si no, cae al modo legacy (1 row por escalate). Dry run FASE 4 v2.
         try {
           const ctxObj = (input.context ?? {}) as Record<string, unknown>;
-          const imageIdx = typeof ctxObj['image_index'] === 'number'
+          const remisiones = Array.isArray(ctxObj['remisiones'])
+            ? ctxObj['remisiones'] as Array<Record<string, unknown>>
+            : null;
+          const baseImageIdx = typeof ctxObj['image_index'] === 'number'
             ? ctxObj['image_index'] as number
             : null;
-          const candidates = ctxObj['top_candidate'] || ctxObj['segundo_candidato']
-            ? {
-                top:      ctxObj['top_candidate'] ?? null,
-                segundo:  ctxObj['segundo_candidato'] ?? null,
-              }
-            : null;
-          await supabase.from('billing_pending_review').insert({
-            portal_email:  ctx.portalEmail,
-            email_id:      emailId,
-            image_index:   imageIdx,
-            reason:        input.topic.slice(0, 200),
-            extracted:     ctxObj,
-            candidates,
-            status:        'pending',
-          });
+
+          if (remisiones && remisiones.length > 0) {
+            const rows = remisiones.map((r, i) => {
+              const rProductos = Array.isArray(r['productos'])
+                ? r['productos']
+                : null;
+              return {
+                portal_email:   ctx.portalEmail,
+                email_id:       emailId,
+                image_index:    typeof r['image_index'] === 'number' ? r['image_index'] as number : baseImageIdx,
+                remision_index: i,
+                folio:          typeof r['folio'] === 'string' ? r['folio'] as string : (r['folio_remision'] as string | undefined) ?? null,
+                cliente_texto:  typeof r['cliente_texto'] === 'string' ? r['cliente_texto'] as string : (typeof r['cliente_texto_raw'] === 'string' ? r['cliente_texto_raw'] as string : null),
+                rfc_matched:    typeof r['rfc'] === 'string' ? r['rfc'] as string : null,
+                total:          typeof r['total'] === 'number' ? r['total'] as number : null,
+                fecha:          typeof r['fecha'] === 'string' ? r['fecha'] as string : (typeof r['fecha_venta'] === 'string' ? r['fecha_venta'] as string : null),
+                productos:      rProductos,
+                reason:         (typeof r['problema'] === 'string' ? r['problema'] as string : input.topic).slice(0, 300),
+                extracted:      r,
+                candidates:     r['top_candidate'] || r['segundo_candidato']
+                                  ? { top: r['top_candidate'] ?? null, segundo: r['segundo_candidato'] ?? null }
+                                  : null,
+                status:         'pending' as const,
+              };
+            });
+            await supabase.from('billing_pending_review').insert(rows);
+          } else {
+            // Fallback legacy: 1 row para toda la escalation.
+            await supabase.from('billing_pending_review').insert({
+              portal_email:  ctx.portalEmail,
+              email_id:      emailId,
+              image_index:   baseImageIdx,
+              reason:        input.topic.slice(0, 300),
+              extracted:     ctxObj,
+              candidates:    ctxObj['top_candidate'] || ctxObj['segundo_candidato']
+                               ? { top: ctxObj['top_candidate'] ?? null, segundo: ctxObj['segundo_candidato'] ?? null }
+                               : null,
+              status:        'pending',
+            });
+          }
         } catch (persistErr) {
           console.error('[tools/escalate] pending review insert failed:', persistErr);
           // No bloquear el flow — el correo sigue siendo el fallback.
