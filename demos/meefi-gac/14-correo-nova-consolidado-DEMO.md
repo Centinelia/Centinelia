@@ -5,8 +5,8 @@ Este correo se manda **manualmente desde una cuenta que aparente ser Nova** (nov
 ## Datos técnicos del envío
 
 - **De**: `nova@meefi-demo.centinelia.mx` (o el alias que uses)
-- **Para**: `gerardo@meefi.io` (o el que confirme Gerardo)
-- **CC**: `daniel@meefi.io`
+- **Para**: `gera@meefi.io` (Gerardo, o el que confirme)
+- **CC**: `alan@meefi.io`, `emilio@meefi.io` (los otros 2 directivos)
 - **Hora envío**: 7:30 AM el 15-sept
 - **Adjunto**: `Consolidado_diario_14sept2026.xlsx` (armar aparte con la tabla de ops del día)
 

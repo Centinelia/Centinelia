@@ -46,7 +46,9 @@ Mostrar en vivo el cuerpo estructurado (titular, breakdown por corredor top 5, t
 
 ### M3 — Niva procesa KYB en 60 seg (chat, 6 min)
 
-**Pitch:** "El bottleneck #1 en su promesa comercial 'activo en 24h': el KYB. Miren."
+**Pitch actualizado 2026-09-05**: Gerardo autoreportó que **el proceso más manual y repetitivo de Meefi hoy es el onboarding de clientes nuevos** (recolectar + validar docs + seguimiento a lo que falta + capturar en varios lugares). M3 pasa a ser el hero de Meefi por eso. Guion detallado en `13a-guion-detallado-15-sept.md` incluye beat adicional M3.2b de chase automático de docs faltantes (dentro del mismo escenario) para cubrir "seguimiento a lo que falta". Y post-piloto beat de sync a HubSpot/Drive para cubrir "capturar en varios lugares". Ver también [[project-meefi-intel-discovery-2026-09-05]] en memoria.
+
+**Pitch:** "Gera, tú me pusiste por correo el jueves que el proceso más manual y repetitivo que tienen hoy es el onboarding. Esto ataca justo esa parte. Miren."
 
 **Ejecución:** en el chat de Oficina de Niva (con Gerardo y Miguel viendo la pantalla), subir un ZIP con 4-5 PDFs ficticios (acta constitutiva, RFC, comprobante domicilio, opinión 32-D, poder legal) y escribir:
 > "Niva, procesa el KYB de este nuevo lead. 'Comercializadora del Bajío SA de CV', importadora de refacciones de EEUU."
