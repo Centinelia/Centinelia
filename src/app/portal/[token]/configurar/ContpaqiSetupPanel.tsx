@@ -198,11 +198,14 @@ export default function ContpaqiSetupPanel({ token, onConfigured }: { token: str
               {USOS_CFDI.map(u => <option key={u.code} value={u.code}>{u.label}</option>)}
             </select>
           </FormField>
-          <FormField label="Clave SAT default producto">
+          <FormField label="Clave SAT de respaldo">
             <input value={claveSat} onChange={e => setClaveSat(e.target.value.replace(/\D/g, '').slice(0, 10))}
                    inputMode="numeric" placeholder="50161509"
                    className="w-full px-2 py-1.5 rounded font-mono"
                    style={{ background: '#fff', border: '1px solid var(--c-border)' }} />
+            <p className="text-[10px] mt-1" style={{ color: 'var(--c-text-3)' }}>
+              Se usa solo cuando un producto no trae clave SAT capturada en CONTPAQi. Lo normal es que cada producto traiga la suya. Ejemplo tortillería: 50161509 (tortillas/masa).
+            </p>
           </FormField>
           <FormField label="Carpeta base en Dropbox" wide>
             <input value={basePath} onChange={e => setBasePath(e.target.value)}
@@ -248,23 +251,23 @@ export default function ContpaqiSetupPanel({ token, onConfigured }: { token: str
           {/* Instrucciones — steps con círculos numerados */}
           <div className="mt-6">
             <h4 className="text-[10px] uppercase tracking-widest font-bold mb-3" style={{ color: 'var(--c-text-4)' }}>
-              Cómo instalarlo (5 min)
+              Cómo instalarlo (10 min)
             </h4>
             <ol className="space-y-3">
               <SetupStep n={1} title="Descarga y descomprime">
                 Guarda el ZIP en la PC donde vive CONTPAQi y descomprímelo en una carpeta fácil de encontrar (ej. <code>C:\Centinelia\Writer</code>).
               </SetupStep>
-              <SetupStep n={2} title="Ejecuta el programa">
-                Doble click en <code>BillingContpaqiWriter.exe</code>. Windows puede pedir permiso — acéptalo.
+              <SetupStep n={2} title="Abre una consola en esa carpeta">
+                Shift + click derecho en la carpeta → &quot;Abrir ventana de PowerShell aquí&quot; (o cmd).
               </SetupStep>
-              <SetupStep n={3} title="Configuración automática">
-                El programa lee el archivo <code>centinelia-config.json</code> que viene incluido y arranca ya conectado a tu cuenta. No tienes que teclear nada.
+              <SetupStep n={3} title="Corre una vez para configurar">
+                Escribe: <code>BillingContpaqiWriter.exe --mode service</code>. La primera vez detecta que faltan datos y te pregunta en consola: ruta de tu empresa CONTPAQi, usuario/password SUPERVISOR, concepto FACT, password del CSD y la conexión SQL. Los tokens de Dropbox ya vienen preconfigurados.
               </SetupStep>
-              <SetupStep n={4} title="Elige tu empresa en CONTPAQi">
-                La primera vez te pide seleccionar la empresa/base de datos de CONTPAQi con la que trabajas.
+              <SetupStep n={4} title="Deja que arranque">
+                Ya con la config guardada empieza a sincronizar. Los siguientes arranques leen <code>appsettings.local.json</code> y no vuelven a preguntar.
               </SetupStep>
-              <SetupStep n={5} title="Autoriza Dropbox">
-                Si te lo pide, autoriza acceso a tu Dropbox (mismo que ya conectaste desde el portal).
+              <SetupStep n={5} title="(Opcional) Registra como servicio Windows">
+                Para que arranque solo con la PC: <code>sc create &quot;Centinelia.BillingWriter&quot; binPath= &quot;C:\Centinelia\Writer\BillingContpaqiWriter.exe --mode service&quot; start= auto</code>, luego <code>sc start &quot;Centinelia.BillingWriter&quot;</code>.
               </SetupStep>
             </ol>
           </div>
@@ -375,7 +378,7 @@ function DownloadInstallerButton({ token }: { token: string }) {
         {busy ? <><Loader2 size={14} className="animate-spin" /> Preparando (~10s)…</> : <><Download size={14} /> Descargar Writer para Windows (.zip)</>}
       </button>
       <p className="text-[10px] mt-1.5" style={{ color: 'var(--c-text-3)' }}>
-        Zip pre-configurado con tus credenciales — el writer arranca sin pedirte nada.
+        Zip pre-configurado con tu token y ruta de Dropbox. Al primer arranque te pide en consola los datos locales (empresa CONTPAQi, SUPERVISOR, CSD, SQL). Instrucciones dentro del LEEME.txt.
       </p>
       {err && <p className="mt-2 text-xs" style={{ color: '#b91c1c' }}>{err}</p>}
     </div>
