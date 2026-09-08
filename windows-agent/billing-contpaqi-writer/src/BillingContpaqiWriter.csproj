@@ -25,9 +25,16 @@
     <Company>Centinelia</Company>
     <Description>Puente entre CONTPAQi Comercial Pro y Centinelia — sincroniza catálogos y timbra CFDIs generados por Nala.</Description>
     <Copyright>© 2026 Centinelia</Copyright>
-    <Version>0.10.4</Version>
-    <AssemblyVersion>0.10.4.0</AssemblyVersion>
-    <FileVersion>0.10.4.0</FileVersion>
+    <Version>0.10.5</Version>
+    <AssemblyVersion>0.10.5.0</AssemblyVersion>
+    <FileVersion>0.10.5.0</FileVersion>
+    <!--
+      Cambios 0.10.5 (2026-09-08):
+      - Wizard interactivo de primer arranque (FirstRunWizard).
+      - Loader de centinelia-config.json que inyecta el zip.
+      - DropboxTokenFetcher: canjea api_token por access_token via API.
+      - Branding en metadata + icono Centinelia.
+    -->
   </PropertyGroup>
 
   <ItemGroup>

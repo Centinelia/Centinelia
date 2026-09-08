@@ -134,7 +134,13 @@ public static class FirstRunWizard
             allowEmpty: false);
 
         // -- Storage backend + config ------------------------------------
-        var backendDefault = string.IsNullOrWhiteSpace(opts.Storage.Backend) ? "dropbox" : opts.Storage.Backend;
+        //   Preferimos dropbox cuando vino centinelia-config.json (caso normal
+        //   de instalación via portal). "local" solo tiene sentido para dev
+        //   sin conectividad. Ignoramos el default del appsettings.json base
+        //   porque ese ships con "local" pero no aplica en producción.
+        var backendDefault = centineliaConfig is not null
+            ? "dropbox"
+            : (string.IsNullOrWhiteSpace(opts.Storage.Backend) ? "local" : opts.Storage.Backend);
         opts.Storage.Backend = PromptWithDefault(
             "Backend de storage (dropbox | local)",
             backendDefault);
@@ -188,7 +194,16 @@ public static class FirstRunWizard
             Console.Write(string.IsNullOrEmpty(defaultValue)
                 ? $"  {prompt}: "
                 : $"  {prompt} [{defaultValue}]: ");
-            var input = Console.ReadLine()?.Trim() ?? string.Empty;
+            var raw = Console.ReadLine();
+            // ReadLine devuelve null cuando stdin llegó a EOF (pipe cerrado).
+            // Abortamos con un mensaje claro en vez de entrar en loop infinito.
+            if (raw is null)
+            {
+                throw new InvalidOperationException(
+                    "stdin cerrado inesperadamente — el wizard requiere una terminal interactiva. " +
+                    "Corre el EXE directo desde una consola, no piped.");
+            }
+            var input = raw.Trim();
             if (input.Length == 0) input = defaultValue ?? string.Empty;
             if (!allowEmpty && string.IsNullOrEmpty(input))
             {
