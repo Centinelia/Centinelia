@@ -233,38 +233,61 @@ export default function ContpaqiSetupPanel({ token, onConfigured }: { token: str
 
       {(state?.configured || saved) && state?.writer_api_token && (
         <div className="rounded-2xl p-5"
-             style={{ background: 'rgba(108,59,255,0.05)', border: '1px solid rgba(108,59,255,0.2)' }}>
-          <h3 className="text-sm font-semibold mb-1 flex items-center gap-1.5" style={{ color: '#6C3BFF' }}>
-            <KeyRound size={14} /> Writer para Windows
-          </h3>
+             style={{ background: '#ffffff', border: '1px solid var(--c-border)' }}>
+          <div className="flex items-center gap-2 mb-1">
+            <KeyRound size={14} style={{ color: '#6C3BFF' }} />
+            <h3 className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>
+              Writer para Windows
+            </h3>
+          </div>
           <p className="text-xs mb-4" style={{ color: 'var(--c-text-3)' }}>
-            Instala este pequeño programa en la máquina de la oficina donde vive CONTPAQi. Se conecta a tu CONTPAQi y a tu Dropbox para mantener el catálogo sincronizado y timbrar las facturas que Nala genere.
+            Instálalo en la máquina de la oficina donde vive CONTPAQi. Se conecta a CONTPAQi + Dropbox para mantener catálogo sincronizado y timbrar lo que Nala genere.
           </p>
           <DownloadInstallerButton token={token} />
 
-          <div className="mt-5 text-xs space-y-1" style={{ color: 'var(--c-text-2)' }}>
-            <p className="font-semibold" style={{ color: 'var(--c-text)' }}>Pasos rápidos:</p>
-            <ol className="list-decimal pl-5 space-y-0.5">
-              <li>Descarga el ZIP y descomprímelo en la máquina de la oficina.</li>
-              <li>Ejecuta <code>BillingContpaqiWriter.exe</code>.</li>
-              <li>Al primer arranque toma la configuración automáticamente (<code>centinelia-config.json</code>).</li>
-              <li>Te va a pedir elegir empresa/BD de CONTPAQi.</li>
-              <li>Autoriza Dropbox si te lo pide de nuevo.</li>
+          {/* Instrucciones — steps con círculos numerados */}
+          <div className="mt-6">
+            <h4 className="text-[10px] uppercase tracking-widest font-bold mb-3" style={{ color: 'var(--c-text-4)' }}>
+              Cómo instalarlo (5 min)
+            </h4>
+            <ol className="space-y-3">
+              <SetupStep n={1} title="Descarga y descomprime">
+                Guarda el ZIP en la PC donde vive CONTPAQi y descomprímelo en una carpeta fácil de encontrar (ej. <code>C:\Centinelia\Writer</code>).
+              </SetupStep>
+              <SetupStep n={2} title="Ejecuta el programa">
+                Doble click en <code>BillingContpaqiWriter.exe</code>. Windows puede pedir permiso — acéptalo.
+              </SetupStep>
+              <SetupStep n={3} title="Configuración automática">
+                El programa lee el archivo <code>centinelia-config.json</code> que viene incluido y arranca ya conectado a tu cuenta. No tienes que teclear nada.
+              </SetupStep>
+              <SetupStep n={4} title="Elige tu empresa en CONTPAQi">
+                La primera vez te pide seleccionar la empresa/base de datos de CONTPAQi con la que trabajas.
+              </SetupStep>
+              <SetupStep n={5} title="Autoriza Dropbox">
+                Si te lo pide, autoriza acceso a tu Dropbox (mismo que ya conectaste desde el portal).
+              </SetupStep>
             </ol>
-            <p className="pt-2 flex items-start gap-1.5">
-              <Info size={11} className="mt-0.5 flex-shrink-0" style={{ color: '#6C3BFF' }} />
-              <span>
-                El Writer corre en background. Verás en unos minutos <code>contpaqi_clientes.csv</code> y <code>contpaqi_productos.csv</code> en tu Dropbox dentro de <code>{state.config?.dropbox_base_path ?? '/Facturacion'}/Config/</code>. Cuando aparezcan, ya está funcionando.
-              </span>
-            </p>
           </div>
 
-          {/* Config visible por si quieren copiarla manualmente (backup si el zip pre-configurado falla) */}
-          <details className="mt-4">
-            <summary className="text-[10px] uppercase tracking-widest font-bold cursor-pointer" style={{ color: 'var(--c-text-4)' }}>
-              Configuración manual (si el auto-setup falla)
+          {/* Confirmación de éxito */}
+          <div className="mt-5 rounded-lg p-3 flex items-start gap-2 text-xs"
+               style={{ background: '#F8F5FF', border: '1px solid #EAE0FF', color: 'var(--c-text-2)' }}>
+            <Info size={12} className="mt-0.5 flex-shrink-0" style={{ color: '#6C3BFF' }} />
+            <span>
+              El Writer corre en background y sincroniza cada 60 min. Sabrás que está funcionando cuando veas <code>contpaqi_clientes.csv</code> y <code>contpaqi_productos.csv</code> en tu Dropbox dentro de <code>{state.config?.dropbox_base_path ?? '/Facturacion'}/Config/</code>.
+            </span>
+          </div>
+
+          {/* Config manual como opción de rescate */}
+          <details className="mt-4 rounded-lg" style={{ border: '1px solid var(--c-border)' }}>
+            <summary className="text-xs cursor-pointer px-3 py-2 select-none"
+                     style={{ color: 'var(--c-text-2)' }}>
+              ¿No se auto-configuró? Copia la config manualmente
             </summary>
-            <div className="mt-2">
+            <div className="p-3 pt-0">
+              <p className="text-[11px] mb-2" style={{ color: 'var(--c-text-3)' }}>
+                Si el Writer no encuentra el archivo, ábrelo y pega estos valores cuando te los pida:
+              </p>
               <CopyableConfig
                 values={{
                   endpoint:          state.endpoint_base,
@@ -277,6 +300,27 @@ export default function ContpaqiSetupPanel({ token, onConfigured }: { token: str
         </div>
       )}
     </div>
+  );
+}
+
+function SetupStep({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
+  return (
+    <li className="flex items-start gap-3">
+      <span
+        className="flex-shrink-0 flex items-center justify-center rounded-full text-xs font-bold"
+        style={{
+          width: 24, height: 24,
+          background: '#6C3BFF',
+          color:      '#fff',
+        }}
+      >
+        {n}
+      </span>
+      <div className="flex-1 pt-0.5">
+        <p className="text-xs font-semibold" style={{ color: 'var(--c-text)' }}>{title}</p>
+        <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-2)' }}>{children}</p>
+      </div>
+    </li>
   );
 }
 
