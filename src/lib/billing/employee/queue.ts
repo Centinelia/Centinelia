@@ -197,21 +197,21 @@ async function handleProcessNotes(job: BillingJobRow): Promise<void> {
   // outbound sin depender de Resend (dry run FASE 4).
   const { data: nalaByRoleId } = await supabase
     .from('voice_agents')
-    .select('id, features')
+    .select('id, features, client_email')
     .eq('portal_email', job.portal_email)
     .eq('features->>meerkat_role_id', 'nala')
     .eq('active', true)
     .maybeSingle();
   const { data: nalaAgent } = nalaByRoleId
-    ? { data: nalaByRoleId as { id: string; features: Record<string, unknown> | null } }
+    ? { data: nalaByRoleId as { id: string; features: Record<string, unknown> | null; client_email: string | null } }
     : await supabase
         .from('voice_agents')
-        .select('id, features')
+        .select('id, features, client_email')
         .eq('portal_email', job.portal_email)
         .ilike('agent_name', '%nala%')
         .eq('active', true)
         .limit(1)
-        .maybeSingle() as unknown as { data: { id: string; features: Record<string, unknown> | null } | null };
+        .maybeSingle() as unknown as { data: { id: string; features: Record<string, unknown> | null; client_email: string | null } | null };
   const nalaAgentId = (nalaAgent?.id as string | null) ?? undefined;
 
   // Extraer SMTP config del agente y desencriptar el password para pasarlo
@@ -242,7 +242,14 @@ async function handleProcessNotes(job: BillingJobRow): Promise<void> {
     integrationId: job.integration_id,
     dropboxToken: process.env.BILLING_DROPBOX_TOKEN ?? '',
     dropboxBasePath: process.env.BILLING_DROPBOX_BASE_PATH ?? '/Facturacion',
-    escalationEmail: process.env.BILLING_ESCALATION_EMAIL ?? job.portal_email,
+    // Prioridad: env BILLING_ESCALATION_EMAIL → voice_agent.client_email (correo
+    // real del dueño, ej Beatriz) → portal_email como último fallback. Antes
+    // caía directo a portal_email que suele ser correo interno Centinelia
+    // (ej piloto-estrella@centinelia.mx), inservible para el humano dueño.
+    // Dry run FASE 4 (2026-09-07).
+    escalationEmail:
+      process.env.BILLING_ESCALATION_EMAIL ??
+      (nalaAgent?.client_email ?? job.portal_email),
     orgName: job.portal_email,
     ...(nalaAgentId ? { agentId: nalaAgentId } : {}),
     ...(smtpOverride ? { smtp: smtpOverride } : {}),

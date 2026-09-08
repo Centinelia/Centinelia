@@ -59,6 +59,12 @@ const nextConfig: NextConfig = {
       // URLs comunes que 404 — redirect a la más cercana en intención.
       { source: '/precios',       destination: '/#pricing',    permanent: false },
       { source: '/como-funciona', destination: '/empleados',   permanent: false },
+      // Escalation emails viejos apuntaban a facturacion-emision/pendientes.
+      // Renombré a facturas/pendientes 2026-09-07. Redirect para no romper
+      // links stale en correos ya enviados.
+      { source: '/portal/:token/oficina/facturacion-emision/pendientes',
+        destination: '/portal/:token/oficina/facturas/pendientes',
+        permanent: true },
     ];
   },
   async headers() {
