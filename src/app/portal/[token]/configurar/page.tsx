@@ -12,6 +12,7 @@ import { ThemeProvider } from '@/components/ThemeProvider';
 import PortalLogout              from '../PortalLogout';
 import PortalVoiceSelector       from '../PortalVoiceSelector';
 import NotificationsToggle       from '../NotificationsToggle';
+import ClientEmailEditor         from './ClientEmailEditor';
 import AgentCustomization        from '../AgentCustomization';
 import AgentNameEditor           from '../AgentNameEditor';
 import ResyncButton              from '../ResyncButton';
@@ -806,9 +807,17 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
                     <SectionHeader
                       as="h2"
                       title="Notificaciones"
-                      tooltip="Elige cómo quieres recibir la información de cada llamada atendida por este empleado."
+                      tooltip="Elige cómo quieres recibir la información de cada llamada atendida por este empleado, y a qué correo llegan las escalaciones cuando el empleado necesita tu ayuda."
                       className="mb-4"
                     />
+                    <div className="mb-5">
+                      <ClientEmailEditor
+                        token={token}
+                        agentId={agent.id as string}
+                        initEmail={(agent as any).client_email ?? null}
+                        agentName={agent.agent_name as string | undefined}
+                      />
+                    </div>
                     <NotificationsToggle
                       token={token}
                       agentId={agent.id as string}
