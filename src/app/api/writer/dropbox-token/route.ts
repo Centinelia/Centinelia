@@ -26,6 +26,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 export async function GET(req: NextRequest) {
+  try {
+    return await handle(req);
+  } catch (e) {
+    // Log a Vercel + devolver mensaje explícito para que el Writer .NET pueda
+    // reportar la causa sin verlo como HTTP 500 mudo.
+    console.error('[writer/dropbox-token] crash:', e);
+    return NextResponse.json(
+      { error: `Error interno: ${(e as Error).message}` },
+      { status: 500 });
+  }
+}
+
+async function handle(req: NextRequest): Promise<NextResponse> {
   const auth = req.headers.get('authorization') ?? '';
   const match = /^Bearer\s+([\w\-\.=+/]+)$/i.exec(auth);
   if (!match) {
@@ -80,8 +93,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Dropbox no conectado para Nala' }, { status: 404 });
   }
 
-  const { decrypt } = await import('@/lib/crypto');
-  let accessToken = acct.access_token ? decrypt(acct.access_token) : '';
+  // Tokens en integration_accounts pueden estar en plaintext (rows legacy o
+  // provisioning manual) o encriptados con aes-256-gcm. decryptOrPassthrough
+  // maneja ambos casos sin tronar.
+  const { decryptOrPassthrough } = await import('@/lib/crypto');
+  let accessToken = acct.access_token ? decryptOrPassthrough(acct.access_token).value : '';
   let expiresAt = acct.expires_at ? new Date(acct.expires_at) : null;
 
   const needsRefresh = !expiresAt || expiresAt.getTime() - Date.now() < 5 * 60 * 1000;
@@ -90,7 +106,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Token expirado y sin refresh_token' }, { status: 500 });
     }
     try {
-      const plainRefresh = decrypt(acct.refresh_token);
+      const plainRefresh = decryptOrPassthrough(acct.refresh_token).value;
       const { dropboxRefreshToken } = await import('@/lib/dropbox/oauth');
       const refreshed = await dropboxRefreshToken(plainRefresh);
       accessToken = refreshed.access_token;
