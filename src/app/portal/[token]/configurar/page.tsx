@@ -13,7 +13,6 @@ import PortalLogout              from '../PortalLogout';
 import PortalVoiceSelector       from '../PortalVoiceSelector';
 import NotificationsToggle       from '../NotificationsToggle';
 import ClientEmailEditor         from './ClientEmailEditor';
-import ContpaqiAdapterCard       from './ContpaqiAdapterCard';
 import AgentCustomization        from '../AgentCustomization';
 import AgentNameEditor           from '../AgentNameEditor';
 import ResyncButton              from '../ResyncButton';
@@ -607,26 +606,12 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
               )}
 
               {meerkatId === 'nala' && (
-                <div id="adaptador-facturacion" style={SCROLL_STYLE}>
-                  <Card border elevated={false} padding="sm">
-                    <SectionHeader
-                      as="h2"
-                      title="Adaptador de facturación"
-                      tooltip="El adaptador es el puente entre Nala y el sistema donde vive tu catálogo de clientes/productos y donde se timbran las facturas. Hoy soportamos CONTPAQi Comercial Pro."
-                      className="mb-4"
-                    />
-                    <ContpaqiAdapterCard token={token} />
-                  </Card>
-                </div>
-              )}
-
-              {meerkatId === 'nala' && (
                 <div id="facturacion-cfdi" style={SCROLL_STYLE}>
                   <Card border elevated={false} padding="sm">
                     <SectionHeader
                       as="h2"
                       title="Facturación CFDI"
-                      tooltip="Conecta el PAC autorizado por el SAT para que Nala emita CFDI 4.0. Solo se muestra en la ficha de Nala porque ella es la única que factura. Storage sigue siendo 1 RFC + 1 CSD por organización."
+                      tooltip="Elige cómo va a timbrar Nala tus CFDIs. Puedes usar tu ERP (CONTPAQi Comercial Pro) o conectar un PAC directo si no usas ERP. Solo se muestra en la ficha de Nala porque ella es la única que factura."
                       className="mb-4"
                     />
                     <FacturacionSection token={token} />

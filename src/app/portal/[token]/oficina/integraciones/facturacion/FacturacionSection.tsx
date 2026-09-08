@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import { CheckCircle, AlertTriangle, Loader2, FileText, Settings, Trash2, Upload, ArrowLeft } from 'lucide-react';
+import ContpaqiSetupPanel from '@/app/portal/[token]/configurar/ContpaqiSetupPanel';
 
 interface Org {
   invoicing_provider?: string | null;
@@ -51,12 +52,11 @@ const PAC_CATALOG: PacDef[] = [
     enabled: true,
   },
   {
-    id: 'contpaqi_timbra',
-    label: 'CONTPAQi Timbra',
-    tagline: 'PAC autorizado SAT · Timbrado CFDI 4.0 (REST/JSON)',
+    id: 'contpaqi_erp',
+    label: 'CONTPAQi Comercial Pro (con adaptador)',
+    tagline: 'Usa tu catálogo y el PAC que ya tienes contratado en CONTPAQi. Instalamos un pequeño Writer local.',
     logoColor: '#E85D2F',
-    enabled: false,
-    note: 'En integración',
+    enabled: true,
   },
   {
     id: 'facturama',
@@ -235,6 +235,34 @@ export default function FacturacionSection({ token }: { token: string }) {
                 )}
               </button>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Adapter CONTPAQi (usa componente reutilizable ContpaqiSetupPanel) */}
+      {selectedPac === 'contpaqi_erp' && (
+        <div className="rounded-xl overflow-hidden"
+          style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)' }}>
+          <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: '1px solid var(--c-border)' }}>
+            <button
+              type="button"
+              onClick={() => setSelectedPac(null)}
+              className="flex items-center gap-1 text-xs font-medium transition-colors hover:opacity-70"
+              style={{ color: 'var(--c-text-3)' }}
+            >
+              <ArrowLeft size={12} /> Cambiar opción
+            </button>
+            <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>·</span>
+            <PacLogo color="#E85D2F" />
+            <div className="flex flex-col">
+              <h2 className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>CONTPAQi Comercial Pro</h2>
+              <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+                Datos fiscales + descarga del Writer para tu máquina Windows.
+              </p>
+            </div>
+          </div>
+          <div className="p-4">
+            <ContpaqiSetupPanel token={token} />
           </div>
         </div>
       )}
