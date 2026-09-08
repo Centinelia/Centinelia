@@ -37,21 +37,55 @@ public sealed class WriterBackgroundService : BackgroundService
     private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<WriterBackgroundService> _logger;
     private readonly IHostApplicationLifetime _lifetime;
+    private readonly CentineliaConfig _centineliaConfig;
 
     public WriterBackgroundService(
         IOptions<WriterServiceOptions> opts,
         ILoggerFactory loggerFactory,
         ILogger<WriterBackgroundService> logger,
-        IHostApplicationLifetime lifetime)
+        IHostApplicationLifetime lifetime,
+        CentineliaConfig centineliaConfig)
     {
-        _opts          = opts.Value;
-        _loggerFactory = loggerFactory;
-        _logger        = logger;
-        _lifetime      = lifetime;
+        _opts             = opts.Value;
+        _loggerFactory    = loggerFactory;
+        _logger           = logger;
+        _lifetime         = lifetime;
+        _centineliaConfig = centineliaConfig;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        // Fetch de token Dropbox via API Centinelia ANTES de Validate para que
+        // Storage.DropboxToken quede poblado y no truene la validación. Si
+        // falta el centinelia-config.json, se asume que el token viene en
+        // appsettings (backwards compat con instalaciones manuales).
+        if (_opts.Storage.Backend.Equals("dropbox", StringComparison.OrdinalIgnoreCase)
+            && string.IsNullOrWhiteSpace(_opts.Storage.DropboxToken)
+            && !_centineliaConfig.IsEmpty)
+        {
+            try
+            {
+                using var fetcher = new DropboxTokenFetcher(
+                    _centineliaConfig.Endpoint,
+                    _centineliaConfig.ApiToken,
+                    _loggerFactory.CreateLogger<DropboxTokenFetcher>());
+                var tok = await fetcher.FetchAsync(stoppingToken);
+                _opts.Storage.DropboxToken = tok.access_token;
+                if (string.IsNullOrWhiteSpace(_opts.Storage.DropboxRoot))
+                    _opts.Storage.DropboxRoot = tok.dropbox_base_path;
+                _logger.LogInformation("[service] token Dropbox obtenido via API, expira {expires}", tok.expires_at);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogCritical(ex,
+                    "[service] no se pudo obtener token Dropbox de Centinelia. " +
+                    "Verifica que api_token esté vigente en el portal y que haya conectividad. Saliendo con exit 1.");
+                Environment.ExitCode = 1;
+                _lifetime.StopApplication();
+                return;
+            }
+        }
+
         _opts.Validate();
         _logger.LogInformation("[service] arrancando writer contra empresa {empresa} concepto={concepto} storage={backend}",
             _opts.EmpresaPath, _opts.Concepto, _opts.Storage.Backend);

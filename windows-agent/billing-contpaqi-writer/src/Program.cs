@@ -254,7 +254,47 @@ public static class Program
             .SetBasePath(exeDir)
             .AddJsonFile("appsettings.json", optional: false)
             .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
+            // appsettings.local.json es escrito por FirstRunWizard con los datos
+            // que Beatriz teclea (empresa, SUPERVISOR, SQL, etc.). Va al final
+            // de la cadena para que sobreescriba defaults sin bloquear env vars.
+            .AddJsonFile(FirstRunWizard.LocalSettingsFileName, optional: true, reloadOnChange: false)
             .AddEnvironmentVariables(prefix: "CENTINELIA_");
+
+        // centinelia-config.json del zip aporta endpoint + api_token + portal_email
+        // + dropbox_base_path. Lo cargamos para el wizard y para el DropboxTokenFetcher.
+        var centineliaConfig = CentineliaConfig.TryLoad(exeDir);
+
+        // Wizard interactivo de primer arranque. Si detectamos que la config
+        // está incompleta y estamos en modo consola (no bajo SCM), preguntamos
+        // a Beatriz y escribimos appsettings.local.json.
+        //
+        // Bajo SCM (Environment.UserInteractive == false), NO podemos prompt.
+        // Fallamos ruidoso con un mensaje claro pidiendo correr el EXE manual.
+        var preOpts = new WriterServiceOptions();
+        builder.Configuration.GetSection(WriterServiceOptions.SectionName).Bind(preOpts);
+        // Poblar defaults desde centinelia-config.json si el usuario no puso nada.
+        if (centineliaConfig is not null && string.IsNullOrWhiteSpace(preOpts.Storage.DropboxRoot))
+            preOpts.Storage.DropboxRoot = centineliaConfig.DropboxBasePath;
+
+        if (!FirstRunWizard.IsComplete(preOpts))
+        {
+            if (!Environment.UserInteractive || WindowsServiceHelpers.IsWindowsService())
+            {
+                Console.Error.WriteLine(
+                    "[writer] Configuración incompleta y no hay consola interactiva. " +
+                    "Corre el EXE UNA vez manual desde consola (doble-click o `BillingContpaqiWriter.exe --mode service`) " +
+                    "para terminar el setup. Después el Windows Service arrancará solo.");
+                return 3;
+            }
+            FirstRunWizard.Run(preOpts, centineliaConfig, exeDir);
+            // Re-cargar la config después de que el wizard escribió appsettings.local.json.
+            builder.Configuration
+                .SetBasePath(exeDir)
+                .AddJsonFile("appsettings.json", optional: false)
+                .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
+                .AddJsonFile(FirstRunWizard.LocalSettingsFileName, optional: true, reloadOnChange: false)
+                .AddEnvironmentVariables(prefix: "CENTINELIA_");
+        }
 
         // Serilog leyendo del "Serilog" section de appsettings.json (sinks,
         // niveles, rutas rolling).
@@ -275,6 +315,12 @@ public static class Program
         builder.Services
             .AddOptions<WriterServiceOptions>()
             .Bind(builder.Configuration.GetSection(WriterServiceOptions.SectionName));
+        // CentineliaConfig como singleton para que el BackgroundService pueda
+        // decidir si pide token Dropbox por API. Cuando no vino el zip pre-
+        // configurado usamos una instancia sentinel vacía (Endpoint vacío
+        // significa "no fetch via API"). Evitamos el warning de nullability
+        // en AddSingleton<T> con restricción class.
+        builder.Services.AddSingleton(centineliaConfig ?? CentineliaConfig.Empty);
         builder.Services.AddHostedService<WriterBackgroundService>();
 
         try
