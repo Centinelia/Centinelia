@@ -7,6 +7,7 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 const DEFAULT_MODEL = 'claude-sonnet-4-6';
 
@@ -95,20 +96,41 @@ export async function extractCotizacionFromFile(
         },
       };
 
-  const response = await client.messages.create({
-    model,
-    max_tokens: 2048,
-    system:    SYSTEM,
-    messages: [
-      {
-        role: 'user',
-        content: [
-          content,
-          { type: 'text', text: USER },
-        ],
-      },
-    ],
-  });
+  const __t = Date.now();
+  let response;
+  try {
+    response = await client.messages.create({
+      model,
+      max_tokens: 2048,
+      system:    SYSTEM,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            content,
+            { type: 'text', text: USER },
+          ],
+        },
+      ],
+    });
+    void logLlmCall({
+      source:    'ciclo_oc_extract_cotizacion',
+      model,
+      usage:     response.usage,
+      latencyMs: Date.now() - __t,
+      meta:      { mimeType, isPdf, isImage },
+    });
+  } catch (err) {
+    void logLlmCall({
+      source:    'ciclo_oc_extract_cotizacion',
+      model,
+      usage:     { input_tokens: 0, output_tokens: 0 },
+      latencyMs: Date.now() - __t,
+      error:     err instanceof Error ? err.message : String(err),
+      meta:      { mimeType, isPdf, isImage },
+    });
+    throw err;
+  }
 
   const textBlock = response.content.find(b => b.type === 'text');
   const raw = textBlock?.type === 'text' ? textBlock.text.trim() : '';

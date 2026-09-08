@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { Workbook } from 'exceljs';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 /**
  * Campos canónicos del IncidentRow que Claude puede mapear a columnas del
@@ -174,11 +175,31 @@ Responde SOLO con JSON válido en este shape (nada más, sin markdown). Los camp
   "notes": "opcional, si detectaste ambigüedad"
 }`;
 
-  const response = await client.messages.create({
-    model:      'claude-sonnet-4-6',
-    max_tokens: 1536,
-    messages: [{ role: 'user', content: prompt }],
-  });
+  const __model = 'claude-sonnet-4-6';
+  const __t = Date.now();
+  let response;
+  try {
+    response = await client.messages.create({
+      model:      __model,
+      max_tokens: 1536,
+      messages: [{ role: 'user', content: prompt }],
+    });
+    void logLlmCall({
+      source:    'bitacora_template_analyzer',
+      model:     __model,
+      usage:     response.usage,
+      latencyMs: Date.now() - __t,
+    });
+  } catch (err) {
+    void logLlmCall({
+      source:    'bitacora_template_analyzer',
+      model:     __model,
+      usage:     { input_tokens: 0, output_tokens: 0 },
+      latencyMs: Date.now() - __t,
+      error:     err instanceof Error ? err.message : String(err),
+    });
+    throw err;
+  }
 
   const textBlock = response.content.find(b => b.type === 'text');
   const raw = textBlock?.type === 'text' ? textBlock.text.trim() : '';

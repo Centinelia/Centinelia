@@ -23,6 +23,7 @@ import { executeAgentTool } from '@/lib/tools/executor';
 import { MEERKAT_ROLES } from '@/lib/portal/meerkat-roles';
 import { getCentineliaFiscalConfig, isFacturamaSandbox } from '@/lib/invoicing/facturama/centinelia-preset';
 import { sendEmail } from '@/lib/email/send';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 const NEKA = MEERKAT_ROLES.find(r => r.id === 'neka')!;
 const MODEL = 'claude-sonnet-4-5';
@@ -438,6 +439,7 @@ export async function processNekaEmail(
 
   for (let iter = 0; iter < MAX_ITERATIONS; iter++) {
     let resp: Anthropic.Message;
+    const __t = Date.now();
     try {
       resp = await anthropic.messages.create({
         model: MODEL,
@@ -446,7 +448,24 @@ export async function processNekaEmail(
         tools: NEKA_EMAIL_TOOLS,
         messages: transcript,
       });
+      void logLlmCall({
+        source:      'neka_email_runner',
+        model:       MODEL,
+        usage:       resp.usage,
+        portalEmail: 'centinelia-internal',
+        latencyMs:   Date.now() - __t,
+        meta:        { iter, from: input.from, subject: input.subject.slice(0, 80) },
+      });
     } catch (e) {
+      void logLlmCall({
+        source:      'neka_email_runner',
+        model:       MODEL,
+        usage:       { input_tokens: 0, output_tokens: 0 },
+        portalEmail: 'centinelia-internal',
+        latencyMs:   Date.now() - __t,
+        error:       e instanceof Error ? e.message : String(e),
+        meta:        { iter, from: input.from },
+      });
       events!.push({ kind: 'error', error: `Anthropic: ${(e as Error).message}` });
       break;
     }

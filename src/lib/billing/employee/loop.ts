@@ -28,6 +28,7 @@ import { buildEmployeeTools, toAnthropicTools } from './tools';
 import type { BillingAdapter } from '../adapter';
 import type { OrgCtx } from '../matching/client';
 import { chargePool } from '../pool-charge';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 // ---------------------------------------------------------------------------
 // Tipos publicos
@@ -309,6 +310,7 @@ export class BillingEmployee {
     let iterationsExecuted = 0;
     for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
       let response: Anthropic.Message;
+      const __t = Date.now();
       try {
         response = await client.messages.create({
           model,
@@ -318,7 +320,26 @@ export class BillingEmployee {
           messages: messages as Anthropic.MessageParam[],
         });
         iterationsExecuted++;
+        void logLlmCall({
+          source:      'billing_employee_loop',
+          model,
+          usage:       response.usage,
+          agentId:     this.config.agentId ?? null,
+          portalEmail: this.config.portalEmail ?? null,
+          latencyMs:   Date.now() - __t,
+          meta:        { emailId, iteration },
+        });
       } catch (llmErr) {
+        void logLlmCall({
+          source:      'billing_employee_loop',
+          model,
+          usage:       { input_tokens: 0, output_tokens: 0 },
+          agentId:     this.config.agentId ?? null,
+          portalEmail: this.config.portalEmail ?? null,
+          latencyMs:   Date.now() - __t,
+          error:       llmErr instanceof Error ? llmErr.message : String(llmErr),
+          meta:        { emailId, iteration },
+        });
         const msg = llmErr instanceof Error ? llmErr.message : String(llmErr);
         result.errors.push(`LLM call failed at iteration ${iteration}: ${msg}`);
         break;

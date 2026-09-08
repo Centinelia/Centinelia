@@ -21,6 +21,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { EXTRACT_NOTE_SYSTEM, EXTRACT_NOTE_USER, buildContextBlock } from './prompt';
 import { withBatchedPoolCharge } from '../pool-charge';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 const DEFAULT_MODEL = 'claude-sonnet-4-6';
 
@@ -153,30 +154,53 @@ export async function extractRemisionesFromImage(
     // Retry con backoff exponencial para 429 rate limit y 529 overloaded.
     // Sin esto, Beatriz subiendo 20 fotos a la vez podía perder 1-2 por
     // rate limit sin causa útil visible. Auditoría 2026-09-04.
-    const response = await callAnthropicWithRetry(() => client.messages.create({
-      model,
-      max_tokens: maxTokens,
-      system: EXTRACT_NOTE_SYSTEM,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'image',
-              source: {
-                type: 'base64',
-                media_type: normalized.mimeType,
-                data: normalized.buffer.toString('base64'),
+    const __t = Date.now();
+    let response;
+    try {
+      response = await callAnthropicWithRetry(() => client.messages.create({
+        model,
+        max_tokens: maxTokens,
+        system: EXTRACT_NOTE_SYSTEM,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image',
+                source: {
+                  type: 'base64',
+                  media_type: normalized.mimeType,
+                  data: normalized.buffer.toString('base64'),
+                },
               },
-            },
-            {
-              type: 'text',
-              text: userText,
-            },
-          ],
-        },
-      ],
-    }));
+              {
+                type: 'text',
+                text: userText,
+              },
+            ],
+          },
+        ],
+      }));
+      void logLlmCall({
+        source:      'nala_vision_extract',
+        model,
+        usage:       response.usage,
+        agentId:     billing?.agentId ?? null,
+        latencyMs:   Date.now() - __t,
+        meta:        { referenceId: billing?.referenceId, hasContext: !!context },
+      });
+    } catch (err) {
+      void logLlmCall({
+        source:      'nala_vision_extract',
+        model,
+        usage:       { input_tokens: 0, output_tokens: 0 },
+        agentId:     billing?.agentId ?? null,
+        latencyMs:   Date.now() - __t,
+        error:       err instanceof Error ? err.message : String(err),
+        meta:        { referenceId: billing?.referenceId, hasContext: !!context },
+      });
+      throw err;
+    }
 
     const textBlock = response.content.find((b) => b.type === 'text');
     const raw = textBlock?.type === 'text' ? textBlock.text.trim() : '';

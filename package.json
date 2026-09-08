@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint && node scripts/check-llm-logging.mjs",
+    "check:llm-logging": "node scripts/check-llm-logging.mjs",
     "test": "vitest run",
     "test:integration": "vitest run tests/integration --config=vitest.integration.config.ts"
   },

@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { MEERKAT_ROLES } from '@/lib/portal/meerkat-roles';
 import { executeAgentTool } from '@/lib/tools/executor';
 import { getCentineliaFiscalConfig, isFacturamaSandbox } from '@/lib/invoicing/facturama/centinelia-preset';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
@@ -139,6 +140,7 @@ export async function POST(req: NextRequest) {
 
   for (let iter = 0; iter < MAX_ITERATIONS; iter++) {
     let resp: Anthropic.Message;
+    const __t = Date.now();
     try {
       resp = await anthropic.messages.create({
         model: MODEL,
@@ -147,7 +149,24 @@ export async function POST(req: NextRequest) {
         tools: NEKA_TOOLS,
         messages: transcript,
       });
+      void logLlmCall({
+        source:      'neka_admin_chat',
+        model:       MODEL,
+        usage:       resp.usage,
+        portalEmail: 'centinelia-internal',
+        latencyMs:   Date.now() - __t,
+        meta:        { iter },
+      });
     } catch (e) {
+      void logLlmCall({
+        source:      'neka_admin_chat',
+        model:       MODEL,
+        usage:       { input_tokens: 0, output_tokens: 0 },
+        portalEmail: 'centinelia-internal',
+        latencyMs:   Date.now() - __t,
+        error:       e instanceof Error ? e.message : String(e),
+        meta:        { iter },
+      });
       events.push({ kind: 'error', error: `Anthropic API: ${(e as Error).message}` });
       break;
     }
