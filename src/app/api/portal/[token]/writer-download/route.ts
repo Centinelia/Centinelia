@@ -1,15 +1,21 @@
 /**
  * GET /api/portal/[token]/writer-download
- * Devuelve signed URL (10min TTL) del installer del writer .NET desde el bucket
- * privado `writer-installers`. Query `?version=<v>` optional; sin él, usa el
- * contenido de `latest.txt` para tomar la versión vigente.
+ * Descarga el zip del writer .NET **pre-configurado** con `centinelia-config.json`
+ * inyectado (endpoint + api_token + dropbox_base_path + portal_email del cliente).
+ * Al arrancar el writer lee este archivo y auto-configura sin que Beatriz teclee nada.
+ *
+ * Requiere que `organization_integrations type='contpaqi'` con `writer_api_token`
+ * exista para el portal — si no, retorna 409 pidiendo terminar setup primero.
  *
  * Auth: portal session + org ownership.
+ * Wizard Setup CONTPAQi fase 2 (2026-09-07 noche).
  */
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import JSZip from 'jszip';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { resolveOrgFromToken } from '@/lib/portal/org-token';
@@ -17,6 +23,7 @@ import { resolveOrgFromToken } from '@/lib/portal/org-token';
 interface Params { params: Promise<{ token: string }> }
 
 const BUCKET = 'writer-installers';
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
 
 export async function GET(req: NextRequest, { params }: Params) {
   const { token } = await params;
@@ -30,11 +37,28 @@ export async function GET(req: NextRequest, { params }: Params) {
   }
 
   const supabase = createAdminClient();
+
+  // 1. Sacar config del cliente (endpoint, api_token, dropbox_base_path).
+  const { data: integ, error: integErr } = await supabase
+    .from('organization_integrations')
+    .select('config')
+    .eq('portal_email', resolved.portalEmail)
+    .eq('type', 'contpaqi')
+    .maybeSingle<{ config: Record<string, unknown> }>();
+  if (integErr) return NextResponse.json({ error: integErr.message }, { status: 500 });
+  const cfg = integ?.config;
+  const apiToken = cfg?.['writer_api_token'] as string | undefined;
+  if (!cfg || !apiToken) {
+    return NextResponse.json({
+      error: 'Termina el Setup CONTPAQi primero (falta writer_api_token). Vuelve al wizard, revisa los datos y da Guardar.',
+    }, { status: 409 });
+  }
+  const basePath = (cfg['dropbox_base_path'] as string | undefined) ?? '/Facturacion';
+
+  // 2. Determinar versión (de latest.txt) y descargar el zip base del bucket.
   const url = new URL(req.url);
   let version = url.searchParams.get('version');
-
   if (!version) {
-    // Lee la versión vigente desde latest.txt.
     const { data: latest, error: latestErr } = await supabase.storage.from(BUCKET).download('writer/latest.txt');
     if (latestErr || !latest) {
       return NextResponse.json({ error: 'No hay installer disponible aún. Contacta a Centinelia.' }, { status: 503 });
@@ -42,19 +66,63 @@ export async function GET(req: NextRequest, { params }: Params) {
     version = (await latest.text()).trim();
   }
 
-  const key = `writer/centinelia-writer-v${version}.zip`;
-  const { data: signed, error: signErr } = await supabase.storage
-    .from(BUCKET)
-    .createSignedUrl(key, 600); // 10 min
-
-  if (signErr || !signed?.signedUrl) {
-    return NextResponse.json({ error: `installer v${version} no encontrado` }, { status: 404 });
+  const zipKey = `writer/centinelia-writer-v${version}.zip`;
+  const { data: zipBlob, error: zipErr } = await supabase.storage.from(BUCKET).download(zipKey);
+  if (zipErr || !zipBlob) {
+    return NextResponse.json({ error: `installer v${version} no encontrado en storage` }, { status: 404 });
   }
+  const zipBuf = Buffer.from(await zipBlob.arrayBuffer());
 
-  return NextResponse.json({
+  // 3. Cargar zip, inyectar centinelia-config.json + LEEME, re-generar.
+  const zip = await JSZip.loadAsync(zipBuf);
+  const config = {
+    endpoint:            APP_URL,
+    api_token:           apiToken,
+    portal_email:        resolved.portalEmail,
+    dropbox_base_path:   basePath,
+    generated_at:        new Date().toISOString(),
     version,
-    filename: `centinelia-writer-v${version}.zip`,
-    url:      signed.signedUrl,
-    expires_in_sec: 600,
+  };
+  zip.file('centinelia-config.json', JSON.stringify(config, null, 2));
+
+  const readme = [
+    'Centinelia Writer for CONTPAQi',
+    '==============================',
+    '',
+    `Version: ${version}`,
+    `Cliente: ${resolved.portalEmail}`,
+    `Generado: ${new Date().toISOString()}`,
+    '',
+    'Como usar:',
+    '',
+    '1. Descomprime esta carpeta en tu PC (donde vive CONTPAQi).',
+    '2. Doble click en BillingContpaqiWriter.exe',
+    '3. El programa arranca ya configurado con tus datos (centinelia-config.json).',
+    '4. Al primer arranque te va a pedir la empresa/BD de CONTPAQi.',
+    '5. Autoriza acceso a Dropbox si te lo pide.',
+    '6. Listo. Se ejecuta en background y sincroniza cada 60 minutos.',
+    '',
+    'Soporte: hola@centinelia.mx',
+  ].join('\n');
+  zip.file('LEEME.txt', readme);
+
+  const outBuf = await zip.generateAsync({
+    type: 'nodebuffer',
+    compression: 'DEFLATE',
+    compressionOptions: { level: 6 },
+  });
+
+  const safeEmail = resolved.portalEmail.replace(/[^a-z0-9]/gi, '_');
+  const filename = `centinelia-writer-${safeEmail}-v${version}.zip`;
+
+  return new NextResponse(new Uint8Array(outBuf), {
+    status: 200,
+    headers: {
+      'Content-Type':        'application/zip',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Length':      String(outBuf.length),
+      'Cache-Control':       'no-store',
+      'X-Writer-Version':    version,
+    },
   });
 }

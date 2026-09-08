@@ -13,6 +13,7 @@ import PortalLogout              from '../PortalLogout';
 import PortalVoiceSelector       from '../PortalVoiceSelector';
 import NotificationsToggle       from '../NotificationsToggle';
 import ClientEmailEditor         from './ClientEmailEditor';
+import ContpaqiAdapterCard       from './ContpaqiAdapterCard';
 import AgentCustomization        from '../AgentCustomization';
 import AgentNameEditor           from '../AgentNameEditor';
 import ResyncButton              from '../ResyncButton';
@@ -601,6 +602,20 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
                       className="mb-4"
                     />
                     <AgentAccountsSection token={token} agentId={agent.id as string} kind="storage" />
+                  </Card>
+                </div>
+              )}
+
+              {meerkatId === 'nala' && (
+                <div id="adaptador-facturacion" style={SCROLL_STYLE}>
+                  <Card border elevated={false} padding="sm">
+                    <SectionHeader
+                      as="h2"
+                      title="Adaptador de facturación"
+                      tooltip="El adaptador es el puente entre Nala y el sistema donde vive tu catálogo de clientes/productos y donde se timbran las facturas. Hoy soportamos CONTPAQi Comercial Pro."
+                      className="mb-4"
+                    />
+                    <ContpaqiAdapterCard token={token} />
                   </Card>
                 </div>
               )}
