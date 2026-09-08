@@ -12,6 +12,22 @@
       MUST be 32-bit. Do NOT set PlatformTarget=AnyCPU or x64 — BadImageFormatException
       will occur at load time when the runtime tries to LoadLibrary the SDK.
     -->
+
+    <!--
+      Branding: metadata visible en Task Manager, Explorer (Propiedades → Detalles),
+      SCM y el installer Inno Setup. La versión aquí debe matchear
+      installer/BillingWriter.iss AppVersion.
+    -->
+    <ApplicationIcon>centinelia.ico</ApplicationIcon>
+    <Product>Centinelia Writer</Product>
+    <AssemblyTitle>Centinelia Writer for CONTPAQi</AssemblyTitle>
+    <AssemblyName>BillingContpaqiWriter</AssemblyName>
+    <Company>Centinelia</Company>
+    <Description>Puente entre CONTPAQi Comercial Pro y Centinelia — sincroniza catálogos y timbra CFDIs generados por Nala.</Description>
+    <Copyright>© 2026 Centinelia</Copyright>
+    <Version>0.10.4</Version>
+    <AssemblyVersion>0.10.4.0</AssemblyVersion>
+    <FileVersion>0.10.4.0</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>
