@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { decideIncidentAutoRetry, MAX_VERIFICATION_ATTEMPTS, VERIFICATION_RETRY_DAYS } from '../auto-retry';
+import { decideIncidentAutoRetry, MAX_VERIFICATION_ATTEMPTS } from '../auto-retry';
 
 function mockSupabase(incidentAttempts: Array<{ result: string }> | null) {
   const supabase: any = {
@@ -52,7 +52,7 @@ describe('decideIncidentAutoRetry', () => {
     expect(decision?.toStatus).toBe('completed');
   });
 
-  it('pending con scheduled_at +2d cuando último fue sin_respuesta', async () => {
+  it('pending con scheduled_at día siguiente 3pm MTY cuando último fue sin_respuesta', async () => {
     const supabase = mockSupabase([{ result: 'sin_respuesta' }]);
     const decision = await decideIncidentAutoRetry(supabase, {
       external_source: 'client_incident', external_id: 'inc-1',
@@ -60,10 +60,10 @@ describe('decideIncidentAutoRetry', () => {
     expect(decision?.toStatus).toBe('pending');
     expect(decision?.reason).toBe('incident_retry_after_sin_respuesta');
     expect(decision?.scheduledAt).toBeDefined();
+    // Ventana: día siguiente a las 15:00 MTY = entre ~10h y ~40h desde ahora.
     const diffMs = new Date(decision!.scheduledAt!).getTime() - Date.now();
-    const diffDays = diffMs / (24 * 60 * 60 * 1000);
-    expect(diffDays).toBeGreaterThan(VERIFICATION_RETRY_DAYS - 0.01);
-    expect(diffDays).toBeLessThan(VERIFICATION_RETRY_DAYS + 0.01);
+    expect(diffMs).toBeGreaterThan(10 * 3600 * 1000);
+    expect(diffMs).toBeLessThan(40 * 3600 * 1000);
   });
 
   it('pending cuando último fue no_visitado y hay margen', async () => {

@@ -2,13 +2,35 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
  * Máximo total de intentos de verificación antes de escalar a humano.
- * Cuenta el intento actual + reintentos. Ej: MAX=4 significa que si el 4to
+ * Cuenta el intento actual + reintentos. Ej: MAX=3 significa que si el 3er
  * intento no fue 'ok', el contacto pasa a 'failed' en vez de reagendar.
+ * Nelia manda correo tarjeta con el resultado en CADA intento (incluido el
+ * 3° final), así que el encargado siempre queda enterado antes del cierre.
  */
-export const MAX_VERIFICATION_ATTEMPTS = 4;
+export const MAX_VERIFICATION_ATTEMPTS = 3;
 
-/** Días entre reintentos cuando el resultado no fue 'ok'. */
-export const VERIFICATION_RETRY_DAYS = 2;
+/**
+ * Reintento agendado al DÍA SIGUIENTE a las 15:00 America/Monterrey (UTC-6 sin
+ * DST). Cambio pedido por Tortillería Estrella 2026-09-07: antes eran +2d,
+ * pero para pedidos que no llegaron esperar 2 días adicionales es demasiado —
+ * el cliente ya se enojó y compró en otro lado. Al día siguiente en la tarde
+ * el vendedor ya pasó (o debió pasar) y se verifica en caliente.
+ *
+ * Se conserva la constante `VERIFICATION_RETRY_DAYS` solo para el test que la
+ * importa; para la lógica real usar `nextDayAt3pmMty` abajo.
+ */
+export const VERIFICATION_RETRY_DAYS = 1;
+
+const MTY_UTC_OFFSET_HOURS = 6;
+const VERIFICATION_HOUR_MTY = 15;
+
+function nextDayAt3pmMty(now: Date): string {
+  const mtyShifted = new Date(now.getTime() - MTY_UTC_OFFSET_HOURS * 3600 * 1000);
+  const y = mtyShifted.getUTCFullYear();
+  const m = mtyShifted.getUTCMonth();
+  const d = mtyShifted.getUTCDate();
+  return new Date(Date.UTC(y, m, d + 1, VERIFICATION_HOUR_MTY + MTY_UTC_OFFSET_HOURS, 0, 0)).toISOString();
+}
 
 export interface AutoRetryDecision {
   /** Estado destino del outbound_contact tras esta llamada. */
@@ -57,10 +79,9 @@ export async function decideIncidentAutoRetry(
     return { toStatus: 'failed', reason: `incident_max_attempts_${MAX_VERIFICATION_ATTEMPTS}` };
   }
 
-  const retryAt = new Date(Date.now() + VERIFICATION_RETRY_DAYS * 24 * 60 * 60 * 1000);
   return {
     toStatus:    'pending',
-    scheduledAt: retryAt.toISOString(),
+    scheduledAt: nextDayAt3pmMty(new Date()),
     reason:      `incident_retry_after_${last.result}`,
   };
 }
