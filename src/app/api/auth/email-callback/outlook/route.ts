@@ -11,8 +11,16 @@ export async function GET(req: NextRequest) {
   const code     = req.nextUrl.searchParams.get('code');
   const rawState = req.nextUrl.searchParams.get('state') ?? '';
 
-  const isAgentScope = rawState.endsWith('__agent');
-  const state        = isAgentScope ? rawState.replace(/__agent$/, '') : rawState;
+  // State format (A-D3 nonce): `${baseToken}.${nonce}` — donde baseToken puede
+  // incluir el sufijo __agent si el flow inició con scope=agent. Antes del
+  // nonce esto era solo `${baseToken}` y el callback hacía endsWith('__agent')
+  // sobre rawState, lo cual dejó de funcionar al agregar `.${nonce}` (el string
+  // ya no termina en __agent, termina en el nonce). Corrección: partir por el
+  // primer '.' PRIMERO, luego evaluar el marker sobre la parte del token.
+  const dotIdx      = rawState.indexOf('.');
+  const tokenPart   = dotIdx >= 0 ? rawState.slice(0, dotIdx) : rawState;
+  const isAgentScope = tokenPart.endsWith('__agent');
+  const state        = isAgentScope ? tokenPart.replace(/__agent$/, '') : tokenPart;
 
   const errorUrl = state
     ? `${appUrl}/portal/${state}?tab=organizacion&email=error#integraciones`
