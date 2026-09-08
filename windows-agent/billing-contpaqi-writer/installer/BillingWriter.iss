@@ -17,7 +17,7 @@
 ;   - Al desinstalar, para y remueve el service.
 
 #define AppName        "Centinelia Billing Writer"
-#define AppVersion     "0.10.5"
+#define AppVersion     "0.10.6"
 #define AppPublisher   "Centinelia"
 #define ServiceName    "Centinelia.BillingWriter"
 #define ExeName        "BillingContpaqiWriter.exe"

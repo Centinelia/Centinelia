@@ -14,6 +14,37 @@
     -->
 
     <!--
+      Single-file self-contained publish (0.10.6): en vez de un directorio con
+      200+ archivos (DLLs de runtime .NET + deps de NuGet + native libs), el
+      publish produce UN solo EXE + appsettings.json. Beatriz descomprime el
+      zip y ve 3-4 archivos en vez de una selva.
+        - SelfContained: incluye el runtime .NET 8; no requiere instalar .NET
+          en la PC del cliente.
+        - IncludeAllContentForSelfExtract: garantiza que Serilog (que carga
+          sinks por reflection) encuentre sus DLLs al arranque.
+        - EnableCompressionInSingleFile: baja el EXE de ~90 MB a ~40 MB.
+    -->
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>win-x86</RuntimeIdentifier>
+    <!--
+      IncludeNativeLibrariesForSelfExtract (no IncludeAllContent): bundleamos
+      DLLs managed + native (SqlClient SNI) dentro del EXE, pero DEJAMOS
+      appsettings.json como archivo suelto para que un admin lo pueda editar
+      sin recompilar. La config builder lee appsettings.json y appsettings.local.json
+      desde exeDir, ambos sueltos.
+    -->
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <DebugType>embedded</DebugType>
+    <!--
+      Trimming está apagado a propósito: Serilog.Settings.Configuration usa
+      reflection para materializar sinks desde el JSON; el trimmer los podaría.
+      Si se quiere reducir más el tamaño, migrar a Serilog fluent API primero.
+    -->
+    <PublishTrimmed>false</PublishTrimmed>
+
+    <!--
       Branding: metadata visible en Task Manager, Explorer (Propiedades → Detalles),
       SCM y el installer Inno Setup. La versión aquí debe matchear
       installer/BillingWriter.iss AppVersion.
@@ -25,10 +56,23 @@
     <Company>Centinelia</Company>
     <Description>Puente entre CONTPAQi Comercial Pro y Centinelia — sincroniza catálogos y timbra CFDIs generados por Nala.</Description>
     <Copyright>© 2026 Centinelia</Copyright>
-    <Version>0.10.5</Version>
-    <AssemblyVersion>0.10.5.0</AssemblyVersion>
-    <FileVersion>0.10.5.0</FileVersion>
+    <Version>0.10.6</Version>
+    <AssemblyVersion>0.10.6.0</AssemblyVersion>
+    <FileVersion>0.10.6.0</FileVersion>
     <!--
+      Cambios 0.10.6 (2026-09-08):
+      * Default mode "service" (antes "session"): doble-click al EXE dispara
+        el FirstRunWizard sin necesidad de abrir PowerShell ni pasar flags.
+        Los modos smoke (session/find/create/stamp/watch) siguen disponibles
+        con mode explícito.
+      * Publish single-file self-contained: el zip pasa de ~200 archivos a
+        3-4 (EXE + appsettings + LEEME + centinelia-config). Sin fricción
+        visual al descomprimir.
+      * Auto-install como Windows Service al final del wizard (relaunch con
+        UAC + sc create + sc start). Cero comandos manuales para Beatriz.
+      * Pausa "presiona una tecla" cuando el wizard o el host fallan en modo
+        interactivo. Antes la ventana se cerraba sin dejar leer el error.
+
       Cambios 0.10.5 (2026-09-08):
       - Wizard interactivo de primer arranque (FirstRunWizard).
       - Loader de centinelia-config.json que inyecta el zip.
@@ -69,14 +113,22 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!--
+      appsettings.json (defaults base) y appsettings.Production.json (overrides
+      prod) van sueltos junto al EXE en publish. appsettings.Development.json
+      es solo local, no lo publicamos.
+    -->
     <None Update="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="appsettings.Development.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </None>
     <None Update="appsettings.Production.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+    <None Update="appsettings.Development.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Never</CopyToPublishDirectory>
     </None>
   </ItemGroup>
 

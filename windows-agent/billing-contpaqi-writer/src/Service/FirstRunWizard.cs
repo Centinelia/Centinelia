@@ -52,8 +52,10 @@ public static class FirstRunWizard
     /// Ejecuta el wizard interactivo y escribe el resultado en <c>appsettings.local.json</c>
     /// junto al EXE. Actualiza también las propiedades de <paramref name="opts"/>
     /// en memoria (el caller decide si rebindear o reiniciar el Host).
+    /// Retorna <c>true</c> si Beatriz eligió registrar el writer como Windows
+    /// Service (para que arranque solo con la PC).
     /// </summary>
-    public static void Run(
+    public static bool Run(
         WriterServiceOptions opts,
         CentineliaConfig? centineliaConfig,
         string baseDir)
@@ -181,6 +183,42 @@ public static class FirstRunWizard
         Console.WriteLine("    Los próximos arranques leen esto y no vuelven a preguntar.");
         Console.WriteLine("    Si necesitas cambiar algo, borra ese archivo y vuelve a correr el EXE.");
         Console.WriteLine();
+
+        // Último paso: registrarlo como Windows Service para que arranque solo
+        // sin depender de que alguien abra el EXE cada vez. Default = sí.
+        var installService = PromptYesNo(
+            "¿Quieres que el writer arranque solo cuando prendas la PC (recomendado)?",
+            defaultYes: true);
+
+        if (installService)
+        {
+            Console.WriteLine();
+            Console.WriteLine("  Windows va a pedir permiso para instalar el servicio (prompt UAC).");
+            Console.WriteLine("  Dale \"Sí\" cuando aparezca — es Centinelia registrándose para arrancar solo.");
+        }
+
+        return installService;
+    }
+
+    /// <summary>Prompt Sí/No. Enter usa el default. Acepta S, N, s, n y variaciones.</summary>
+    private static bool PromptYesNo(string prompt, bool defaultYes)
+    {
+        var hint = defaultYes ? "[S/n]" : "[s/N]";
+        while (true)
+        {
+            Console.Write($"  {prompt} {hint}: ");
+            var raw = Console.ReadLine();
+            if (raw is null)
+            {
+                // stdin cerrado; usar default.
+                return defaultYes;
+            }
+            var input = raw.Trim().ToLowerInvariant();
+            if (input.Length == 0) return defaultYes;
+            if (input == "s" || input == "si" || input == "sí" || input == "y" || input == "yes") return true;
+            if (input == "n" || input == "no") return false;
+            Console.WriteLine("    Responde S o N.");
+        }
     }
 
     // -----------------------------------------------------------------------

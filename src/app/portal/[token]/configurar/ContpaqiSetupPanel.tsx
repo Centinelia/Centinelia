@@ -251,23 +251,20 @@ export default function ContpaqiSetupPanel({ token, onConfigured }: { token: str
           {/* Instrucciones — steps con círculos numerados */}
           <div className="mt-6">
             <h4 className="text-[10px] uppercase tracking-widest font-bold mb-3" style={{ color: 'var(--c-text-4)' }}>
-              Cómo instalarlo (10 min)
+              Cómo instalarlo (5 min)
             </h4>
             <ol className="space-y-3">
               <SetupStep n={1} title="Descarga y descomprime">
                 Guarda el ZIP en la PC donde vive CONTPAQi y descomprímelo en una carpeta fácil de encontrar (ej. <code>C:\Centinelia\Writer</code>).
               </SetupStep>
-              <SetupStep n={2} title="Abre una consola en esa carpeta">
-                Shift + click derecho en la carpeta → &quot;Abrir ventana de PowerShell aquí&quot; (o cmd).
+              <SetupStep n={2} title="Doble-click en BillingContpaqiWriter.exe">
+                Se abre una ventana negra con unas preguntas: ruta de tu empresa CONTPAQi, usuario/password SUPERVISOR, concepto FACT, password del CSD y la conexión SQL. Los tokens de Dropbox ya vienen preconfigurados. Contesta cada pregunta y dale Enter.
               </SetupStep>
-              <SetupStep n={3} title="Corre una vez para configurar">
-                Escribe: <code>BillingContpaqiWriter.exe --mode service</code>. La primera vez detecta que faltan datos y te pregunta en consola: ruta de tu empresa CONTPAQi, usuario/password SUPERVISOR, concepto FACT, password del CSD y la conexión SQL. Los tokens de Dropbox ya vienen preconfigurados.
+              <SetupStep n={3} title="Deja la ventana abierta">
+                Al terminar las preguntas el writer arranca y empieza a sincronizar. Mientras la ventana esté abierta, el writer está trabajando. Los siguientes arranques leen <code>appsettings.local.json</code> y no vuelven a preguntar.
               </SetupStep>
-              <SetupStep n={4} title="Deja que arranque">
-                Ya con la config guardada empieza a sincronizar. Los siguientes arranques leen <code>appsettings.local.json</code> y no vuelven a preguntar.
-              </SetupStep>
-              <SetupStep n={5} title="(Opcional) Registra como servicio Windows">
-                Para que arranque solo con la PC: <code>sc create &quot;Centinelia.BillingWriter&quot; binPath= &quot;C:\Centinelia\Writer\BillingContpaqiWriter.exe --mode service&quot; start= auto</code>, luego <code>sc start &quot;Centinelia.BillingWriter&quot;</code>.
+              <SetupStep n={4} title="(Opcional) Registra como servicio Windows">
+                Para que arranque solo con la PC sin depender de la ventana: abre PowerShell como administrador y corre <code>sc create &quot;Centinelia.BillingWriter&quot; binPath= &quot;C:\Centinelia\Writer\BillingContpaqiWriter.exe&quot; start= auto</code>, luego <code>sc start &quot;Centinelia.BillingWriter&quot;</code>.
               </SetupStep>
             </ol>
           </div>
@@ -378,7 +375,7 @@ function DownloadInstallerButton({ token }: { token: string }) {
         {busy ? <><Loader2 size={14} className="animate-spin" /> Preparando (~10s)…</> : <><Download size={14} /> Descargar Writer para Windows (.zip)</>}
       </button>
       <p className="text-[10px] mt-1.5" style={{ color: 'var(--c-text-3)' }}>
-        Zip pre-configurado con tu token y ruta de Dropbox. Al primer arranque te pide en consola los datos locales (empresa CONTPAQi, SUPERVISOR, CSD, SQL). Instrucciones dentro del LEEME.txt.
+        Zip pre-configurado con tu token y ruta de Dropbox. Doble-click al EXE y contesta las preguntas que aparecen en la ventana. Instrucciones dentro del LEEME.txt.
       </p>
       {err && <p className="mt-2 text-xs" style={{ color: '#b91c1c' }}>{err}</p>}
     </div>

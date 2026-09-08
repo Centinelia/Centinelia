@@ -47,6 +47,14 @@ public static class Program
 {
     public static int Main(string[] args)
     {
+        // Special flag: cuando el wizard eligió registrar como Windows Service,
+        // se relanza a sí mismo elevado con este flag. Entra por aquí ANTES de
+        // ParseArgs porque no acepta otros parámetros.
+        if (args.Length >= 1 && args[0] == "--install-service")
+        {
+            return ServiceInstaller.InstallAndStart();
+        }
+
         var opts = ParseArgs(args);
         if (opts is null) return 2;
 
@@ -282,11 +290,52 @@ public static class Program
             {
                 Console.Error.WriteLine(
                     "[writer] Configuración incompleta y no hay consola interactiva. " +
-                    "Corre el EXE UNA vez manual desde consola (doble-click o `BillingContpaqiWriter.exe --mode service`) " +
-                    "para terminar el setup. Después el Windows Service arrancará solo.");
+                    "Haz doble-click al EXE una vez para terminar el setup. " +
+                    "Después el Windows Service arrancará solo.");
                 return 3;
             }
-            FirstRunWizard.Run(preOpts, centineliaConfig, exeDir);
+            bool installAsService;
+            try
+            {
+                installAsService = FirstRunWizard.Run(preOpts, centineliaConfig, exeDir);
+            }
+            catch (Exception wizardEx)
+            {
+                Console.Error.WriteLine();
+                Console.Error.WriteLine($"[writer] Wizard falló: {wizardEx.Message}");
+                Console.Error.WriteLine("[writer] Presiona cualquier tecla para cerrar esta ventana...");
+                try { Console.ReadKey(intercept: true); } catch { }
+                return 2;
+            }
+
+            // Si Beatriz eligió arrancar-con-Windows, relanzamos elevado para
+            // que sc create + sc start corran con permisos de admin. Al terminar,
+            // el servicio ya está corriendo en background y podemos cerrar esta
+            // ventana (no queremos Host.Run() aquí porque competiría con la
+            // instancia del servicio).
+            if (installAsService)
+            {
+                var exePath = Environment.ProcessPath ?? string.Empty;
+                var ok      = ServiceInstaller.RelaunchElevated(exePath);
+                if (ok)
+                {
+                    Console.WriteLine();
+                    Console.WriteLine("  ✓ Servicio instalado y arrancado. Ya puedes cerrar esta ventana —");
+                    Console.WriteLine("    el writer sigue trabajando en segundo plano y arrancará solo");
+                    Console.WriteLine("    la próxima vez que prendas la PC.");
+                    Console.WriteLine();
+                    Console.WriteLine("    (Presiona cualquier tecla para cerrar)");
+                    try { Console.ReadKey(intercept: true); } catch { }
+                    return 0;
+                }
+                Console.Error.WriteLine();
+                Console.Error.WriteLine("  ! No se pudo registrar como servicio (¿UAC denegado?).");
+                Console.Error.WriteLine("    Arranco en modo consola por ahora — mientras esta ventana");
+                Console.Error.WriteLine("    esté abierta el writer trabaja. Puedes volver a intentar");
+                Console.Error.WriteLine("    lo del servicio ejecutando el EXE otra vez.");
+                Console.Error.WriteLine();
+                // Fall-through a Host.Run() abajo.
+            }
             // Re-cargar la config después de que el wizard escribió appsettings.local.json.
             builder.Configuration
                 .SetBasePath(exeDir)
@@ -323,6 +372,7 @@ public static class Program
         builder.Services.AddSingleton(centineliaConfig ?? CentineliaConfig.Empty);
         builder.Services.AddHostedService<WriterBackgroundService>();
 
+        var interactive = Environment.UserInteractive && !WindowsServiceHelpers.IsWindowsService();
         try
         {
             var host = builder.Build();
@@ -332,6 +382,15 @@ public static class Program
         catch (Exception ex)
         {
             Log.Fatal(ex, "[service] Host terminó con error");
+            // Doble-click: la ventana se cerraría antes de que Beatriz alcance
+            // a leer el error. Pausa hasta que presione una tecla.
+            if (interactive)
+            {
+                Console.Error.WriteLine();
+                Console.Error.WriteLine($"[writer] ERROR: {ex.GetType().Name} — {ex.Message}");
+                Console.Error.WriteLine("[writer] Presiona cualquier tecla para cerrar esta ventana...");
+                try { Console.ReadKey(intercept: true); } catch { /* stdin cerrado, ni modo */ }
+            }
             return 1;
         }
         finally
@@ -417,7 +476,10 @@ public static class Program
         string empresa  = @"C:\Compac\Empresas\adTortillasEstrella_PILOTO_DEV";
         string usuario  = "SUPERVISOR";
         string password = "";
-        string mode     = "session";
+        // Default "service" para que doble-click en el EXE dispare el wizard
+        // interactivo. Los modos smoke (session/find/create/stamp/...) se
+        // invocan con `--mode <modo>` explícito desde consola.
+        string mode     = "service";
         string? concepto = null, serie = null, cliente = null, producto = null;
         double cantidad = 1, precio = 0;
         string almacen = "1";   // "Almacen Uno" es el default estándar en CONTPAQi Comercial.
