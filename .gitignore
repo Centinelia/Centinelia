@@ -70,3 +70,9 @@ next-env.d.ts
 # Dev-only fixtures: real client data extracted from CONTPAQi BD.
 # Contains RFC/emails; never commit.
 dev-fixtures/
+
+# One-shot debug scripts (SMTP passwords, client RFCs, ad-hoc dropbox pokes).
+# Convención: nombrar `scripts/debug-*.ts` o `scripts/send-*-preview.ts`.
+# Ver postmortem 2026-09-08 (debug-verdantis-smtp.ts casi comiteado con pass en claro).
+scripts/debug-*.ts
+scripts/send-*-preview.ts
