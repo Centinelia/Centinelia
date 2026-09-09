@@ -318,14 +318,14 @@ export default function ContpaqiSetupPanel({ token, onConfigured }: { token: str
                    className="w-full px-2 py-1.5 rounded"
                    style={{ background: '#fff', border: '1px solid var(--c-border)' }} />
           </FormField>
-          <FormField label="Conexión SQL Server" wide>
+          <FormField label="Conexión SQL Server (opcional)" wide>
             <input value={sqlConn}
                    onChange={e => setSqlConn(e.target.value)}
-                   placeholder="Server=.\COMPAC;Database=adMiEmpresa;Integrated Security=true;TrustServerCertificate=true"
+                   placeholder="Déjalo vacío — el writer auto-detecta el SQL local"
                    className="w-full px-2 py-1.5 rounded font-mono"
                    style={{ background: '#fff', border: '1px solid var(--c-border)' }} />
             <p className="text-[10px] mt-1" style={{ color: 'var(--c-text-3)' }}>
-              Déjalo así si tu SQL Server local usa la instancia estándar de CONTPAQi (COMPAC). Solo cambia el <code>Database=</code> por el nombre real de tu empresa (mismo que la carpeta arriba). Si tu SQL requiere usuario/password, edítalo entero.
+              <strong>Recomendado dejarlo vacío.</strong> El writer prueba automáticamente las instancias SQL comunes (COMPAC, SQLEXPRESS, default) al arrancar. Solo llénalo si tu SQL Server está en una instancia con nombre custom o requiere usuario/password.
             </p>
           </FormField>
           <FormField label="Ruta del SDK CONTPAQi (avanzado)" wide>

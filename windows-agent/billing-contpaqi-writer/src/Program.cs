@@ -291,6 +291,43 @@ public static class Program
         // fields (ej. zip generado por 0.10.x, o portal no llenó todo), caemos
         // al FirstRunWizard viejo como fallback.
         var interactive = Environment.UserInteractive && !WindowsServiceHelpers.IsWindowsService();
+        // 0.11.2: SQL puede venir vacío del portal (opcional). Auto-detectamos
+        // antes del check para no pedirle a Beatriz que arme el connection string.
+        // Requiere que empresa_path esté presente porque de ahí sale el nombre
+        // de la BD.
+        if (centineliaConfig is not null &&
+            string.IsNullOrWhiteSpace(centineliaConfig.Windows.SqlConnection) &&
+            !string.IsNullOrWhiteSpace(centineliaConfig.Windows.EmpresaPath) &&
+            interactive)
+        {
+            Console.WriteLine();
+            Console.Write("  Auto-detectando SQL Server... ");
+            var detected = SqlAutodetect.TryDetect(
+                centineliaConfig.Windows.EmpresaPath,
+                TimeSpan.FromSeconds(3),
+                progress: _ => { /* silencioso */ });
+            if (detected is not null)
+            {
+                Console.WriteLine($"OK ({detected.ServerTried})");
+                centineliaConfig = centineliaConfig with
+                {
+                    Windows = centineliaConfig.Windows with { SqlConnection = detected.ConnectionString },
+                };
+            }
+            else
+            {
+                Console.WriteLine("no encontrada");
+                Console.WriteLine();
+                Console.WriteLine("  No pude conectar a ninguna instancia SQL local con los defaults comunes.");
+                Console.WriteLine("  Ve al portal → CONTPAQi → 'Conexión SQL Server' y ponlo manualmente.");
+                Console.WriteLine("  Después descarga el zip de nuevo y vuelve a doble-clickear el EXE.");
+                Console.WriteLine();
+                Console.WriteLine("  (Presiona cualquier tecla para cerrar esta ventana)");
+                try { Console.ReadKey(intercept: true); } catch { }
+                return 5;
+            }
+        }
+
         if (centineliaConfig?.Windows.IsMinimalComplete == true &&
             !FirstRunWizard.IsComplete(preOpts))
         {

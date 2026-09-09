@@ -27,10 +27,15 @@ public sealed record CentineliaWindowsConfig(
         Password:      string.Empty,
         CsdPassword:   string.Empty);
 
-    /// <summary>True si hay al menos empresa + sql cargados (mínimo para arrancar sin wizard).</summary>
+    /// <summary>
+    /// True si hay al menos empresa cargada (mínimo para arrancar sin wizard).
+    /// SQL puede venir vacío — el auto-detect en Program.cs lo llena antes de
+    /// entrar al bloque de auto-apply. Password + CSD pueden venir vacíos
+    /// también en instalaciones default de CONTPAQi (SUPERVISOR sin password
+    /// es común).
+    /// </summary>
     public bool IsMinimalComplete =>
-        !string.IsNullOrWhiteSpace(EmpresaPath) &&
-        !string.IsNullOrWhiteSpace(SqlConnection);
+        !string.IsNullOrWhiteSpace(EmpresaPath);
 }
 
 /// <summary>
