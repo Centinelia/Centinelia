@@ -186,6 +186,10 @@ export class BillingEmployee {
               codigoPostalEmisor: fiscal['codigo_postal_emisor'] ?? '',
             },
             supabase,
+            // Pasar el adapter para cerrar el ciclo cuando Beatriz apruebe cards
+            // y el email se re-encole: el fast-path sale early por idempotencia
+            // pero primero empuja los XMLs pendientes a Dropbox.
+            adapter: this.adapter,
           });
 
           if (excelResult.processed) {

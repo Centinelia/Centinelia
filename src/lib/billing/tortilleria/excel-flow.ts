@@ -15,8 +15,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { parseTortilleriaBatchXlsx } from '../parsers/tortilleria-batch';
 import { buildInvoicesFromBlocks } from './pipeline';
-import type { BillingInvoice } from '../adapter';
+import type { BillingAdapter, BillingInvoice } from '../adapter';
 import { getTortilleriaMapping } from './mapping-store';
+import { submitApprovedForEmail, type SubmittedPending } from './submit-approved';
 import type { TortilleriaPipelineConfig, PipelineWarning, PipelineError, SkipReport } from './types';
 
 /** Metadata de un adjunto ya cargado (bytes en Buffer). */
@@ -34,6 +35,13 @@ export interface ExcelFlowInput {
   attachments: AttachmentBlob[];
   config:      TortilleriaPipelineConfig;
   supabase:    SupabaseClient;
+  /**
+   * Adapter para cerrar el ciclo approval→XML. Cuando llega, las pendings de
+   * este email en `approved`/`edited_approved` sin XML se envían al adapter
+   * y se marcan con `extracted.xml_path`. Sin adapter, solo se hace el
+   * parseo/insert normal (útil para tests o dev que no quieren tocar Dropbox).
+   */
+  adapter?: BillingAdapter;
 }
 
 export interface ExcelFlowResult {
@@ -45,6 +53,8 @@ export interface ExcelFlowResult {
   warnings:     PipelineWarning[];
   errors:       PipelineError[];
   skipped:      SkipReport[];
+  /** Pendings efectivamente convertidas en XML+Dropbox en esta corrida. */
+  submitted:    SubmittedPending[];
 }
 
 /** True si el content type o el filename indican Excel. */
@@ -71,6 +81,7 @@ export async function runExcelFlow(input: ExcelFlowInput): Promise<ExcelFlowResu
     warnings:     [],
     errors:       [],
     skipped:      [],
+    submitted:    [],
   };
 
   const excelAttachments = input.attachments.filter(isExcelAttachment);
@@ -86,7 +97,10 @@ export async function runExcelFlow(input: ExcelFlowInput): Promise<ExcelFlowResu
     };
   }
 
-  // Idempotencia: si ya existen rows para este email + fuente Excel, no duplicar.
+  // Idempotencia + cierre approval→XML: si ya existen rows para este email,
+  // no re-parseamos el Excel; pero SÍ intentamos cerrar el ciclo emitiendo el
+  // XML para pendings que Beatriz haya aprobado desde el portal. Sin este
+  // paso el fast-path sale early y el XML nunca llega a Dropbox.
   const { data: existing } = await input.supabase
     .from('billing_pending_review')
     .select('id')
@@ -94,7 +108,38 @@ export async function runExcelFlow(input: ExcelFlowInput): Promise<ExcelFlowResu
     .eq('portal_email', input.portalEmail)
     .limit(1);
   if (existing && existing.length > 0) {
-    return { ...empty, processed: true };
+    const submitted: SubmittedPending[] = [];
+    const submitErrors: PipelineError[] = [];
+    if (input.adapter) {
+      const r = await submitApprovedForEmail({
+        portalEmail: input.portalEmail,
+        emailId:     input.emailId,
+        adapter:     input.adapter,
+        supabase:    input.supabase,
+      });
+      submitted.push(...r.submitted);
+      for (const e of r.errors) {
+        submitErrors.push({ tituloBloque: '(submit-approved)', reason: e.reason });
+      }
+      for (const s of r.skipped) {
+        submitErrors.push({ tituloBloque: `(pending ${s.pendingId})`, reason: `skip: ${s.reason}` });
+      }
+      console.log('[tortilleria/excel-flow] approvals resueltas', JSON.stringify({
+        portal_email:    input.portalEmail,
+        email_id:        input.emailId,
+        candidate_count: r.candidateCount,
+        submitted:       r.submitted.length,
+        skipped:         r.skipped.length,
+        errors:          r.errors.length,
+      }));
+    }
+    return {
+      ...empty,
+      processed:  true,
+      submitted,
+      errors:     submitErrors,
+      errorCount: submitErrors.length,
+    };
   }
 
   const allInvoices: BillingInvoice[] = [];
@@ -196,5 +241,6 @@ export async function runExcelFlow(input: ExcelFlowInput): Promise<ExcelFlowResu
     warnings:     allWarnings,
     errors:       allErrors,
     skipped:      allSkipped,
+    submitted:    [],
   };
 }
