@@ -18,6 +18,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import { CheckCircle2, AlertCircle, Loader2, Download, Copy, KeyRound, Info } from 'lucide-react';
 
+interface WindowsConfig {
+  sdk_path:         string;
+  empresa_path:     string;
+  usuario:          string;
+  concepto:         string;
+  sql_connection:   string;
+  password_set:     boolean;
+  csd_password_set: boolean;
+}
+
 interface Config {
   rfc_emisor:                 string;
   regimen_fiscal:             string;
@@ -26,7 +36,10 @@ interface Config {
   uso_cfdi_default:           string;
   clave_sat_default_producto: string;
   dropbox_base_path:          string;
+  windows?:                   WindowsConfig;
 }
+
+const PASSWORD_UNCHANGED = '__unchanged__';
 
 interface StateResp {
   dropbox_connected: boolean;
@@ -72,6 +85,19 @@ export default function ContpaqiSetupPanel({ token, onConfigured }: { token: str
   const [claveSat, setClaveSat] = useState('50161509');
   const [basePath, setBasePath] = useState('/Facturacion');
 
+  // Windows-locales — capturados aquí para que el writer NO tenga que preguntarlos
+  // en la máquina de la clienta. Passwords enviadas como PASSWORD_UNCHANGED si el
+  // input queda vacío y ya había una guardada; se sobrescriben si el usuario teclea.
+  const [sdkPath,      setSdkPath]      = useState('C:\\Program Files (x86)\\Compac\\COMERCIAL');
+  const [empresaPath,  setEmpresaPath]  = useState('');
+  const [usuario,      setUsuario]      = useState('SUPERVISOR');
+  const [concepto,     setConcepto]     = useState('440');
+  const [sqlConn,      setSqlConn]      = useState('');
+  const [password,     setPassword]     = useState('');
+  const [csdPassword,  setCsdPassword]  = useState('');
+  const [passwordSet,     setPasswordSet]     = useState(false);
+  const [csdPasswordSet,  setCsdPasswordSet]  = useState(false);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -87,6 +113,16 @@ export default function ContpaqiSetupPanel({ token, onConfigured }: { token: str
         setUsoCFDI(data.config.uso_cfdi_default);
         setClaveSat(data.config.clave_sat_default_producto);
         setBasePath(data.config.dropbox_base_path);
+        const w = data.config.windows;
+        if (w) {
+          setSdkPath(w.sdk_path);
+          setEmpresaPath(w.empresa_path);
+          setUsuario(w.usuario || 'SUPERVISOR');
+          setConcepto(w.concepto || '440');
+          setSqlConn(w.sql_connection);
+          setPasswordSet(w.password_set);
+          setCsdPasswordSet(w.csd_password_set);
+        }
       }
       setErr(null);
     } catch (e) {
@@ -114,6 +150,18 @@ export default function ContpaqiSetupPanel({ token, onConfigured }: { token: str
           uso_cfdi_default:           usoCFDI,
           clave_sat_default_producto: claveSat.trim(),
           dropbox_base_path:          basePath.trim() || '/Facturacion',
+          windows: {
+            sdk_path:       sdkPath.trim(),
+            empresa_path:   empresaPath.trim(),
+            usuario:        usuario.trim() || 'SUPERVISOR',
+            concepto:       concepto.trim() || '440',
+            sql_connection: sqlConn.trim(),
+            // Si passwordSet=true y el input queda vacío → no la tocamos.
+            // Si escribió algo → se guarda ese valor.
+            // Si passwordSet=false y vacío → queda vacío (default seguro CONTPAQi).
+            password:       password.length > 0 ? password : (passwordSet     ? PASSWORD_UNCHANGED : ''),
+            csd_password:   csdPassword.length > 0 ? csdPassword : (csdPasswordSet ? PASSWORD_UNCHANGED : ''),
+          },
         }),
       });
       const data = await res.json();
@@ -214,6 +262,80 @@ export default function ContpaqiSetupPanel({ token, onConfigured }: { token: str
                    style={{ background: '#fff', border: '1px solid var(--c-border)' }} />
             <p className="text-[10px] mt-1" style={{ color: 'var(--c-text-3)' }}>
               Debe existir en tu Dropbox. El Writer creará dentro: Config/, Importables_CONTPAQi/pendientes/, timbrados/, errores/.
+            </p>
+          </FormField>
+        </div>
+
+        {/* Sección Windows-locales: capturamos aquí lo que antes preguntaba el wizard
+            CLI en la PC de facturación, para que el writer se instale sin fricción. */}
+        <div className="mt-6 mb-3">
+          <h3 className="text-[11px] uppercase tracking-widest font-bold" style={{ color: 'var(--c-text-4)' }}>
+            Datos de tu PC de facturación
+          </h3>
+          <p className="text-[11px] mt-1" style={{ color: 'var(--c-text-3)' }}>
+            Info que vive en la PC donde tienes CONTPAQi Comercial instalado. Con esto el Writer se auto-configura al arrancar y no te pide nada en consola.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-3 text-xs mb-3">
+          <FormField label="Ruta de la empresa CONTPAQi" required wide>
+            <input value={empresaPath}
+                   onChange={e => setEmpresaPath(e.target.value)}
+                   required placeholder="C:\Compac\Empresas\adMiEmpresa"
+                   className="w-full px-2 py-1.5 rounded font-mono"
+                   style={{ background: '#fff', border: '1px solid var(--c-border)' }} />
+            <p className="text-[10px] mt-1" style={{ color: 'var(--c-text-3)' }}>
+              Carpeta donde CONTPAQi guarda la BD de la empresa. Empieza con letra de unidad (C:, D:, etc.) y suele empezar con &quot;ad&quot;. Ábrelo desde CONTPAQi → Empresa → Redefinir para verlo.
+            </p>
+          </FormField>
+          <FormField label="Usuario CONTPAQi">
+            <input value={usuario}
+                   onChange={e => setUsuario(e.target.value)}
+                   placeholder="SUPERVISOR"
+                   className="w-full px-2 py-1.5 rounded font-mono"
+                   style={{ background: '#fff', border: '1px solid var(--c-border)' }} />
+          </FormField>
+          <FormField label={`Password CONTPAQi ${passwordSet ? '(guardada)' : ''}`.trim()}>
+            <input value={password} onChange={e => setPassword(e.target.value)}
+                   type="password" autoComplete="new-password"
+                   placeholder={passwordSet ? '(deja vacío para conservar)' : 'Vacío si SUPERVISOR no tiene'}
+                   className="w-full px-2 py-1.5 rounded"
+                   style={{ background: '#fff', border: '1px solid var(--c-border)' }} />
+          </FormField>
+          <FormField label="Concepto FACT (código CONTPAQi)">
+            <input value={concepto}
+                   onChange={e => setConcepto(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                   inputMode="numeric" placeholder="440"
+                   className="w-full px-2 py-1.5 rounded font-mono"
+                   style={{ background: '#fff', border: '1px solid var(--c-border)' }} />
+            <p className="text-[10px] mt-1" style={{ color: 'var(--c-text-3)' }}>
+              440 es el default en CONTPAQi Comercial Pro. Solo cambia si tu instalación lo tiene distinto.
+            </p>
+          </FormField>
+          <FormField label={`Password del CSD ${csdPasswordSet ? '(guardada)' : ''}`.trim()}>
+            <input value={csdPassword} onChange={e => setCsdPassword(e.target.value)}
+                   type="password" autoComplete="new-password"
+                   placeholder={csdPasswordSet ? '(deja vacío para conservar)' : 'Vacío si el CSD no la tiene'}
+                   className="w-full px-2 py-1.5 rounded"
+                   style={{ background: '#fff', border: '1px solid var(--c-border)' }} />
+          </FormField>
+          <FormField label="Conexión SQL Server" wide>
+            <input value={sqlConn}
+                   onChange={e => setSqlConn(e.target.value)}
+                   placeholder="Server=.\COMPAC;Database=adMiEmpresa;Integrated Security=true;TrustServerCertificate=true"
+                   className="w-full px-2 py-1.5 rounded font-mono"
+                   style={{ background: '#fff', border: '1px solid var(--c-border)' }} />
+            <p className="text-[10px] mt-1" style={{ color: 'var(--c-text-3)' }}>
+              Déjalo así si tu SQL Server local usa la instancia estándar de CONTPAQi (COMPAC). Solo cambia el <code>Database=</code> por el nombre real de tu empresa (mismo que la carpeta arriba). Si tu SQL requiere usuario/password, edítalo entero.
+            </p>
+          </FormField>
+          <FormField label="Ruta del SDK CONTPAQi (avanzado)" wide>
+            <input value={sdkPath}
+                   onChange={e => setSdkPath(e.target.value)}
+                   placeholder="C:\Program Files (x86)\Compac\COMERCIAL"
+                   className="w-full px-2 py-1.5 rounded font-mono"
+                   style={{ background: '#fff', border: '1px solid var(--c-border)' }} />
+            <p className="text-[10px] mt-1" style={{ color: 'var(--c-text-3)' }}>
+              Carpeta donde vive <code>MGWServicios.dll</code>. La ruta default de arriba es la correcta en 99% de instalaciones — solo cámbiala si sabes que tu CONTPAQi está en otra ruta.
             </p>
           </FormField>
         </div>

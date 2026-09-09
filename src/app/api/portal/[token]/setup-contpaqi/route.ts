@@ -25,8 +25,22 @@ import { randomBytes } from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { resolveOrgFromToken } from '@/lib/portal/org-token';
+import { encrypt } from '@/lib/crypto';
 
 interface Params { params: Promise<{ token: string }> }
+
+interface WindowsFields {
+  sdk_path?:       string;
+  empresa_path?:   string;
+  usuario?:        string;
+  concepto?:       string;
+  sql_connection?: string;
+  // Passwords: envías el nuevo valor para escribir; envías '' o omites para
+  // conservar el guardado; envías el sentinel '__unchanged__' explícito para
+  // mayor claridad si el UI muestra `••••••` sin borrar.
+  password?:       string;
+  csd_password?:   string;
+}
 
 interface SetupBody {
   rfc_emisor:                 string;
@@ -36,6 +50,28 @@ interface SetupBody {
   uso_cfdi_default?:          string;
   clave_sat_default_producto?: string;
   dropbox_base_path?:         string;
+  windows?:                   WindowsFields;
+}
+
+const PASSWORD_UNCHANGED = '__unchanged__';
+
+// Fields Windows-locales que Beatriz llena en el portal para que Nazre / ella
+// no tenga que teclearlos en el wizard CLI del writer. Se guardan bajo
+// config.windows. Passwords cifrados con encrypt() en reposo, descifrados
+// on-demand por writer-download al momento del zip (single-shot auth).
+type StoredWindowsConfig = {
+  sdk_path:                  string;
+  empresa_path:              string;
+  usuario:                   string;
+  concepto:                  string;
+  sql_connection:            string;
+  password_encrypted:        string;
+  csd_password_encrypted:    string;
+};
+
+function normalizePath(input: string | undefined | null): string {
+  if (!input) return '';
+  return input.trim().replace(/\//g, '\\');
 }
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
@@ -78,6 +114,7 @@ export async function GET(req: NextRequest, { params }: Params) {
   const config = integ?.config as Record<string, unknown> | undefined;
   const fiscal = (config?.['fiscal'] as Record<string, unknown> | undefined) ?? {};
   const scheduled = (config?.['scheduled_task'] as Record<string, unknown> | undefined) ?? {};
+  const windows = (config?.['windows'] as Partial<StoredWindowsConfig> | undefined) ?? {};
 
   return NextResponse.json({
     dropbox_connected: !!dbx,
@@ -96,6 +133,16 @@ export async function GET(req: NextRequest, { params }: Params) {
       clave_sat_default_producto: fiscal['clave_sat_default_producto'] ?? '50161509',
       dropbox_base_path:          (config?.['dropbox_base_path'] as string | undefined) ?? '/Facturacion',
       expected_sync_interval_minutes: scheduled['expected_sync_interval_minutes'] ?? 60,
+      windows: {
+        sdk_path:       windows.sdk_path       ?? 'C:\\Program Files (x86)\\Compac\\COMERCIAL',
+        empresa_path:   windows.empresa_path   ?? '',
+        usuario:        windows.usuario        ?? 'SUPERVISOR',
+        concepto:       windows.concepto       ?? '440',
+        sql_connection: windows.sql_connection ?? '',
+        // Nunca regresamos las passwords; solo si YA hay algo guardado indicamos con "set".
+        password_set:     !!windows.password_encrypted,
+        csd_password_set: !!windows.csd_password_encrypted,
+      },
     } : null,
     writer_api_token: config?.['writer_api_token'] ?? null,
     endpoint_base:    APP_URL,
@@ -144,6 +191,45 @@ export async function POST(req: NextRequest, { params }: Params) {
   const existingToken = existing?.config?.['writer_api_token'] as string | undefined;
   const writerApiToken = existingToken ?? randomBytes(24).toString('base64url');
 
+  // Windows: merge con lo existente para preservar passwords si el UI no las
+  // reenvió (por ejemplo cuando venían masked como `••••••` en el form).
+  const existingWindows = (existing?.config?.['windows'] as Partial<StoredWindowsConfig> | undefined) ?? {};
+  const w                = body.windows ?? {};
+
+  // Validaciones básicas — path debe empezar con drive letter, no URL.
+  const empresa = normalizePath(w.empresa_path);
+  if (empresa && !/^[a-z]:\\/i.test(empresa)) {
+    return NextResponse.json({ error: 'Ruta de empresa CONTPAQi inválida. Debe empezar con una letra de unidad, ej. C:\\Compac\\Empresas\\adTuEmpresa' }, { status: 400 });
+  }
+  const sdk = normalizePath(w.sdk_path);
+  if (sdk && !/^[a-z]:\\/i.test(sdk)) {
+    return NextResponse.json({ error: 'Ruta del SDK CONTPAQi inválida. Debe empezar con una letra de unidad.' }, { status: 400 });
+  }
+
+  const newPasswordEncrypted =
+    w.password === undefined || w.password === PASSWORD_UNCHANGED
+      ? (existingWindows.password_encrypted ?? '')
+      : w.password === ''
+        ? ''
+        : encrypt(w.password);
+
+  const newCsdPasswordEncrypted =
+    w.csd_password === undefined || w.csd_password === PASSWORD_UNCHANGED
+      ? (existingWindows.csd_password_encrypted ?? '')
+      : w.csd_password === ''
+        ? ''
+        : encrypt(w.csd_password);
+
+  const windowsConfig: StoredWindowsConfig = {
+    sdk_path:                  sdk || 'C:\\Program Files (x86)\\Compac\\COMERCIAL',
+    empresa_path:              empresa,
+    usuario:                   (w.usuario ?? '').trim() || 'SUPERVISOR',
+    concepto:                  (w.concepto ?? '').trim() || '440',
+    sql_connection:            (w.sql_connection ?? '').trim(),
+    password_encrypted:        newPasswordEncrypted,
+    csd_password_encrypted:    newCsdPasswordEncrypted,
+  };
+
   const newConfig: Record<string, unknown> = {
     type:               'contpaqi',
     dropbox_token:      (existing?.config?.['dropbox_token'] as string | undefined) ?? '',
@@ -158,6 +244,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       uso_cfdi_default:           body.uso_cfdi_default?.trim() || 'G03',
       clave_sat_default_producto: body.clave_sat_default_producto?.trim() || '50161509',
     },
+    windows: windowsConfig,
     scheduled_task: {
       expected_sync_interval_minutes: 60,
       stale_warning_minutes:          120,

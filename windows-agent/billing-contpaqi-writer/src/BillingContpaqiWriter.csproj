@@ -14,7 +14,7 @@
     -->
 
     <!--
-      Single-file self-contained publish (0.10.6): en vez de un directorio con
+      Single-file self-contained publish (0.11.0): en vez de un directorio con
       200+ archivos (DLLs de runtime .NET + deps de NuGet + native libs), el
       publish produce UN solo EXE + appsettings.json. Beatriz descomprime el
       zip y ve 3-4 archivos en vez de una selva.
@@ -56,10 +56,20 @@
     <Company>Centinelia</Company>
     <Description>Puente entre CONTPAQi Comercial Pro y Centinelia — sincroniza catálogos y timbra CFDIs generados por Nala.</Description>
     <Copyright>© 2026 Centinelia</Copyright>
-    <Version>0.10.6</Version>
-    <AssemblyVersion>0.10.6.0</AssemblyVersion>
-    <FileVersion>0.10.6.0</FileVersion>
+    <Version>0.11.0</Version>
+    <AssemblyVersion>0.11.0.0</AssemblyVersion>
+    <FileVersion>0.11.0.0</FileVersion>
     <!--
+      Cambios 0.11.0 (2026-09-08):
+      * Zero-fricción real: el portal captura empresa CONTPAQi, SQL, SUPERVISOR,
+        CSD, concepto y SDK path (setup-contpaqi). El zip trae todo cifrado y
+        el writer se auto-configura al arrancar. Doble-click al EXE → resumen
+        + prompt "arrancar con Windows" + UAC. Tres Enters/clicks totales.
+      * FirstRunWizard CLI queda como fallback si el portal no llenó los
+        campos (o zip generado por versiones anteriores).
+      * Config passwords vienen descifradas del endpoint autenticado, se
+        persisten en appsettings.local.json local (protegido por ACLs).
+
       Cambios 0.10.6 (2026-09-08):
       * Default mode "service" (antes "session"): doble-click al EXE dispara
         el FirstRunWizard sin necesidad de abrir PowerShell ni pasar flags.

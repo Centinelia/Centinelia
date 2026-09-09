@@ -284,6 +284,54 @@ public static class Program
         if (centineliaConfig is not null && string.IsNullOrWhiteSpace(preOpts.Storage.DropboxRoot))
             preOpts.Storage.DropboxRoot = centineliaConfig.DropboxBasePath;
 
+        // 0.11.0 zero-fricción: si el portal ya nos pasó los datos Windows-locales
+        // (empresa, SQL, SUPERVISOR, CSD, etc.), aplicamos directo sin preguntar
+        // y saltamos el wizard CLI. La clienta solo ve un resumen + prompt de
+        // "¿arrancar con Windows?". Si por alguna razón el zip no trae esos
+        // fields (ej. zip generado por 0.10.x, o portal no llenó todo), caemos
+        // al FirstRunWizard viejo como fallback.
+        var interactive = Environment.UserInteractive && !WindowsServiceHelpers.IsWindowsService();
+        if (centineliaConfig?.Windows.IsMinimalComplete == true &&
+            !FirstRunWizard.IsComplete(preOpts))
+        {
+            ApplyPortalWindowsConfig(preOpts, centineliaConfig.Windows);
+            PersistLocalSettings(preOpts, exeDir);
+            builder.Configuration
+                .SetBasePath(exeDir)
+                .AddJsonFile("appsettings.json", optional: false)
+                .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
+                .AddJsonFile(FirstRunWizard.LocalSettingsFileName, optional: true, reloadOnChange: false)
+                .AddEnvironmentVariables(prefix: "CENTINELIA_");
+
+            if (interactive)
+            {
+                PrintAutoAppliedSummary(centineliaConfig, preOpts);
+                var installAsService = PromptInstallService();
+                if (installAsService)
+                {
+                    var exePathForSvc = Environment.ProcessPath ?? string.Empty;
+                    var ok            = ServiceInstaller.RelaunchElevated(exePathForSvc);
+                    if (ok)
+                    {
+                        Console.WriteLine();
+                        Console.WriteLine("  ✓ Servicio instalado y arrancado. Ya puedes cerrar esta ventana —");
+                        Console.WriteLine("    el writer sigue trabajando en segundo plano y arrancará solo");
+                        Console.WriteLine("    la próxima vez que prendas la PC.");
+                        Console.WriteLine();
+                        Console.WriteLine("    (Presiona cualquier tecla para cerrar)");
+                        try { Console.ReadKey(intercept: true); } catch { }
+                        return 0;
+                    }
+                    Console.Error.WriteLine();
+                    Console.Error.WriteLine("  ! No se pudo registrar como servicio (¿UAC denegado?).");
+                    Console.Error.WriteLine("    Arranco en modo consola por ahora — mientras esta ventana esté");
+                    Console.Error.WriteLine("    abierta el writer trabaja. Corre el EXE otra vez para reintentar.");
+                    Console.Error.WriteLine();
+                }
+                // Si dijo N o falló el UAC, seguimos a Host.Run() en foreground.
+            }
+        }
+
         if (!FirstRunWizard.IsComplete(preOpts))
         {
             if (!Environment.UserInteractive || WindowsServiceHelpers.IsWindowsService())
@@ -372,7 +420,6 @@ public static class Program
         builder.Services.AddSingleton(centineliaConfig ?? CentineliaConfig.Empty);
         builder.Services.AddHostedService<WriterBackgroundService>();
 
-        var interactive = Environment.UserInteractive && !WindowsServiceHelpers.IsWindowsService();
         try
         {
             var host = builder.Build();
@@ -396,6 +443,106 @@ public static class Program
         finally
         {
             Log.CloseAndFlush();
+        }
+    }
+
+    // ------------------------------------------------------------------------
+    // 0.11.0 zero-fricción: auto-apply desde centinelia-config.json
+    // ------------------------------------------------------------------------
+
+    /// <summary>
+    /// Copia los fields del portal a <see cref="WriterServiceOptions"/> respetando
+    /// lo que ya venía cargado (env vars, appsettings.local.json de un run previo).
+    /// Los valores del portal ganan cuando el field local está vacío.
+    /// </summary>
+    private static void ApplyPortalWindowsConfig(WriterServiceOptions opts, CentineliaWindowsConfig w)
+    {
+        if (string.IsNullOrWhiteSpace(opts.SdkPath))             opts.SdkPath             = w.SdkPath;
+        if (string.IsNullOrWhiteSpace(opts.EmpresaPath))         opts.EmpresaPath         = w.EmpresaPath;
+        if (string.IsNullOrWhiteSpace(opts.Usuario))             opts.Usuario             = w.Usuario;
+        if (string.IsNullOrWhiteSpace(opts.Password))            opts.Password            = w.Password;
+        if (string.IsNullOrWhiteSpace(opts.Concepto))            opts.Concepto            = w.Concepto;
+        if (string.IsNullOrWhiteSpace(opts.CsdPassword))         opts.CsdPassword         = w.CsdPassword;
+        if (string.IsNullOrWhiteSpace(opts.SqlConnectionString)) opts.SqlConnectionString = w.SqlConnection;
+        // Storage default = dropbox cuando venimos del portal (evita la pregunta
+        // que causó el bug de 0.10.6 donde alguien pegó un URL en el prompt).
+        if (string.IsNullOrWhiteSpace(opts.Storage.Backend))     opts.Storage.Backend     = "dropbox";
+    }
+
+    /// <summary>
+    /// Escribe appsettings.local.json con la config auto-aplicada. Mismo formato
+    /// que <see cref="FirstRunWizard"/> para que los siguientes arranques lo lean.
+    /// </summary>
+    private static void PersistLocalSettings(WriterServiceOptions opts, string baseDir)
+    {
+        var path = Path.Combine(baseDir, FirstRunWizard.LocalSettingsFileName);
+        var payload = new
+        {
+            Writer = new
+            {
+                opts.SdkPath,
+                opts.EmpresaPath,
+                opts.Usuario,
+                opts.Password,
+                opts.Concepto,
+                opts.CsdPassword,
+                opts.SqlConnectionString,
+                opts.PollSeconds,
+                Storage = new
+                {
+                    opts.Storage.Backend,
+                    opts.Storage.InboxPath,
+                    opts.Storage.OutboxPath,
+                    opts.Storage.DropboxToken,
+                    opts.Storage.DropboxRoot,
+                },
+            },
+        };
+        var json = System.Text.Json.JsonSerializer.Serialize(payload,
+            new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        File.WriteAllText(path, json);
+    }
+
+    /// <summary>
+    /// Resumen visible en consola cuando doble-click auto-configuró todo desde
+    /// el portal. Muestra los datos aplicados con las passwords ocultas.
+    /// </summary>
+    private static void PrintAutoAppliedSummary(CentineliaConfig cfg, WriterServiceOptions opts)
+    {
+        try { Console.OutputEncoding = System.Text.Encoding.UTF8; } catch { }
+        Console.WriteLine();
+        Console.WriteLine("=========================================================");
+        Console.WriteLine("  Centinelia Writer — Auto-configurado desde el portal");
+        Console.WriteLine("=========================================================");
+        Console.WriteLine();
+        Console.WriteLine($"  Cliente:    {cfg.PortalEmail}");
+        Console.WriteLine($"  Empresa:    {opts.EmpresaPath}");
+        Console.WriteLine($"  Usuario:    {opts.Usuario}");
+        Console.WriteLine($"  Concepto:   {opts.Concepto}");
+        Console.WriteLine($"  SQL:        {opts.SqlConnectionString}");
+        Console.WriteLine($"  SDK:        {opts.SdkPath}");
+        Console.WriteLine($"  Dropbox:    {opts.Storage.DropboxRoot}");
+        Console.WriteLine($"  Password:   {(string.IsNullOrEmpty(opts.Password)    ? "(vacío)" : "••••••")}");
+        Console.WriteLine($"  CSD:        {(string.IsNullOrEmpty(opts.CsdPassword) ? "(vacío)" : "••••••")}");
+        Console.WriteLine();
+        Console.WriteLine("  Config guardada en appsettings.local.json.");
+        Console.WriteLine("  Si algo no cuadra: edita los campos en el portal y descarga el zip de nuevo.");
+        Console.WriteLine();
+    }
+
+    /// <summary>Prompt Sí/No al final del auto-apply. Enter = Sí.</summary>
+    private static bool PromptInstallService()
+    {
+        while (true)
+        {
+            Console.Write("  ¿Quieres que el writer arranque solo cuando prendas la PC (recomendado)? [S/n]: ");
+            var raw = Console.ReadLine();
+            if (raw is null) return true;   // stdin cerrado → default sí
+            var input = raw.Trim().ToLowerInvariant();
+            if (input.Length == 0) return true;
+            if (input == "s" || input == "si" || input == "sí" || input == "y" || input == "yes") return true;
+            if (input == "n" || input == "no") return false;
+            Console.WriteLine("    Responde S o N.");
         }
     }
 

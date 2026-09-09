@@ -19,6 +19,7 @@ import JSZip from 'jszip';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { resolveOrgFromToken } from '@/lib/portal/org-token';
+import { decrypt } from '@/lib/crypto';
 
 interface Params { params: Promise<{ token: string }> }
 
@@ -74,6 +75,24 @@ export async function GET(req: NextRequest, { params }: Params) {
   const zipBuf = Buffer.from(await zipBlob.arrayBuffer());
 
   // 3. Cargar zip, inyectar centinelia-config.json + LEEME, re-generar.
+  //
+  // Windows-locales: capturados por la clienta en el portal (setup-contpaqi).
+  // Passwords cifradas en DB con encrypt(); las desciframos SOLO aquí para
+  // embeberlas en el config.json que el writer lee al arranque. El zip queda
+  // con las passwords en plaintext dentro del archivo — pero es descarga
+  // single-shot autenticada por sesión + ownership, y el writer al terminar
+  // el bootstrap las persiste en appsettings.local.json local (protegido por
+  // ACLs SYSTEM+Admin). Modelo de amenaza mismo que ya vivía en el wizard CLI.
+  const w = (cfg['windows'] as Record<string, string> | undefined) ?? {};
+  const tryDecrypt = (v: string | undefined): string => {
+    if (!v) return '';
+    try { return decrypt(v); }
+    catch (e) {
+      console.warn('[writer-download] decrypt failed for password field, sending empty:', (e as Error).message);
+      return '';
+    }
+  };
+
   const zip = await JSZip.loadAsync(zipBuf);
   const config = {
     endpoint:            APP_URL,
@@ -82,6 +101,15 @@ export async function GET(req: NextRequest, { params }: Params) {
     dropbox_base_path:   basePath,
     generated_at:        new Date().toISOString(),
     version,
+    windows: {
+      sdk_path:       w.sdk_path       ?? 'C:\\Program Files (x86)\\Compac\\COMERCIAL',
+      empresa_path:   w.empresa_path   ?? '',
+      usuario:        w.usuario        ?? 'SUPERVISOR',
+      concepto:       w.concepto       ?? '440',
+      sql_connection: w.sql_connection ?? '',
+      password:       tryDecrypt(w.password_encrypted),
+      csd_password:   tryDecrypt(w.csd_password_encrypted),
+    },
   };
   zip.file('centinelia-config.json', JSON.stringify(config, null, 2));
 
@@ -97,24 +125,15 @@ export async function GET(req: NextRequest, { params }: Params) {
     '',
     '1. Descomprime esta carpeta en tu PC (donde vive CONTPAQi).',
     '2. Doble-click en BillingContpaqiWriter.exe.',
-    '   Se abre una ventana negra que te pregunta unos datos:',
-    '     - Ruta del SDK CONTPAQi (default: C:\\Program Files (x86)\\Compac\\COMERCIAL)',
-    '     - Ruta de tu empresa CONTPAQi (ej. C:\\Compac\\Empresas\\adMiEmpresa)',
-    '     - Usuario CONTPAQi (default SUPERVISOR) y su password',
-    '     - Concepto FACT (código interno CONTPAQi, ej. 440)',
-    '     - Password del CSD',
-    '     - Conexión SQL Server (te sugiere una razonable, revisa antes de aceptar)',
-    '   Los tokens de Dropbox y la ruta base ya están precargados en centinelia-config.json',
-    '   — no necesitas teclearlos. Contesta y dale Enter en cada pregunta.',
+    '3. Sale un resumen y pregunta "¿arrancar con Windows?". Dale Enter.',
+    '4. Windows va a pedir permiso para instalar el servicio. Dale "Sí".',
+    '5. Listo. Se cierra la ventana y el writer queda corriendo en background,',
+    '   y arranca solo cada vez que prendas la PC.',
     '',
-    '3. Al terminar, guarda las respuestas en appsettings.local.json junto al EXE',
-    '   y el writer arranca. Deja esa ventana abierta — mientras esté abierta,',
-    '   el writer está corriendo.',
-    '',
-    '4. (Opcional) Registra el servicio para que arranque solo con Windows,',
-    '   sin depender de la ventana negra. Abre PowerShell como administrador y corre:',
-    '     sc create "Centinelia.BillingWriter" binPath= "C:\\ruta\\a\\BillingContpaqiWriter.exe" start= auto',
-    '     sc start  "Centinelia.BillingWriter"',
+    'Si te falta info: si alguno de los datos (empresa CONTPAQi, SUPERVISOR, CSD,',
+    'SQL, etc.) no lo llenaste en el portal, el EXE te lo pregunta en consola',
+    'antes de continuar. Para evitar preguntas: entra al portal, completa todos',
+    'los campos de "Datos de tu PC de facturación" y descarga el zip de nuevo.',
     '',
     'Notas:',
     '  - Si necesitas cambiar algún dato después, borra appsettings.local.json y vuelve al paso 3.',
