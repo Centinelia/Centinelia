@@ -127,6 +127,82 @@ export class BillingEmployee {
     }
 
     // -------------------------------------------------------------------------
+    // 1b. Fast-path para Excel (Tortillería piloto)
+    // -------------------------------------------------------------------------
+    // Si el correo trae adjuntos .xlsx/.xls y el agente tiene mapping guardado
+    // de tortillería, se procesan con el pipeline determinístico (sin LLM):
+    // parser + mapping + reglas → billing_pending_review. Skip del loop LLM
+    // porque el output del parser es 100% determinístico contra el formato
+    // que Beatriz envía cada lunes.
+    try {
+      const metasFast = Array.isArray(emailRow.attachments_meta)
+        ? emailRow.attachments_meta as Array<{ storageKey?: string; filename?: string; contentType?: string; index?: number }>
+        : [];
+      const excelMetas = metasFast.filter((m) => {
+        const ct = (m.contentType ?? '').toLowerCase();
+        const fn = (m.filename ?? '').toLowerCase();
+        return ct.includes('spreadsheetml') || ct.includes('ms-excel') || fn.endsWith('.xlsx') || fn.endsWith('.xls');
+      });
+      if (excelMetas.length > 0 && this.config.agentId) {
+        const { getTortilleriaMapping } = await import('../tortilleria/mapping-store');
+        const mapping = await getTortilleriaMapping(this.config.agentId, supabase);
+        if (mapping) {
+          const { loadBillingAttachments } = await import('../storage/attachments');
+          const withKeys = excelMetas
+            .filter((m): m is { storageKey: string; filename: string; contentType?: string; index?: number } => !!m.storageKey && !!m.filename);
+          const loaded = await loadBillingAttachments(withKeys.map((m, i) => ({
+            storageKey:  m.storageKey,
+            index:       m.index ?? i,
+            filename:    m.filename,
+            contentType: m.contentType ?? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          })));
+
+          // Config fiscal desde organization_integrations.
+          const { data: integRow } = await supabase
+            .from('organization_integrations')
+            .select('config')
+            .eq('portal_email', this.config.portalEmail)
+            .eq('type', 'contpaqi')
+            .maybeSingle<{ config: Record<string, unknown> }>();
+          const fiscal = (integRow?.config?.['fiscal'] as Record<string, string> | undefined) ?? {};
+
+          const { runExcelFlow } = await import('../tortilleria/excel-flow');
+          const excelResult = await runExcelFlow({
+            portalEmail: this.config.portalEmail,
+            emailId,
+            agentId:     this.config.agentId,
+            attachments: loaded.map((l, i) => ({
+              filename:    l.filename,
+              contentType: l.contentType,
+              buffer:      l.buffer,
+              index:       i,
+            })),
+            config: {
+              rfcEmisor:          fiscal['rfc_emisor'] ?? '',
+              serieDefault:       fiscal['serie_default'] ?? 'T',
+              usoCFDIDefault:     fiscal['uso_cfdi_default'] ?? 'G03',
+              claveSATDefault:    fiscal['clave_sat_default_producto'] ?? '50161509',
+              regimenFiscal:      fiscal['regimen_fiscal'] ?? '601',
+              codigoPostalEmisor: fiscal['codigo_postal_emisor'] ?? '',
+            },
+            supabase,
+          });
+
+          if (excelResult.processed) {
+            result.processed = excelResult.invoiceCount;
+            result.escalated = excelResult.cardCount;
+            for (const e of excelResult.errors) result.errors.push(`excel: ${e.tituloBloque}: ${e.reason}`);
+            return result;
+          }
+        }
+      }
+    } catch (excelFlowErr) {
+      const msg = excelFlowErr instanceof Error ? excelFlowErr.message : String(excelFlowErr);
+      result.errors.push(`Excel fast-path fallo: ${msg}. Continuando con flow LLM.`);
+      // Continuamos al flow normal (LLM vision) como fallback.
+    }
+
+    // -------------------------------------------------------------------------
     // 2. Verificar frescura del adaptador
     // -------------------------------------------------------------------------
     let freshnessSummary = 'estado desconocido';
