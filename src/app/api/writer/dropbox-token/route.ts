@@ -63,6 +63,22 @@ async function handle(req: NextRequest): Promise<NextResponse> {
 
   const dropboxBasePath = (integ.config['dropbox_base_path'] as string | undefined) ?? '/Facturacion';
 
+  // Heartbeat: cada hit del writer al portal (arranque + poll cada 60min) actualiza
+  // writer_last_ping_at. La UI usa este timestamp para mostrar "Conectado",
+  // "Sin señal reciente" o "Aún no ha arrancado" en el panel CONTPAQi. Best-effort:
+  // si falla el UPDATE no tumbamos la respuesta principal.
+  try {
+    const nowIso = new Date().toISOString();
+    const nextConfig = { ...integ.config, writer_last_ping_at: nowIso };
+    await supabase
+      .from('organization_integrations')
+      .update({ config: nextConfig })
+      .eq('type', 'contpaqi')
+      .eq('portal_email', integ.portal_email);
+  } catch (e) {
+    console.warn('[writer/dropbox-token] heartbeat update failed:', (e as Error).message);
+  }
+
   // 2. Encontrar Nala activa de la org.
   const { data: nala } = await supabase
     .from('voice_agents')

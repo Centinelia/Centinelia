@@ -116,6 +116,21 @@ export async function GET(req: NextRequest, { params }: Params) {
   const scheduled = (config?.['scheduled_task'] as Record<string, unknown> | undefined) ?? {};
   const windows = (config?.['windows'] as Partial<StoredWindowsConfig> | undefined) ?? {};
 
+  // Estado del writer basado en heartbeat (writer_last_ping_at, actualizado por
+  // /api/writer/dropbox-token cada arranque + cada 60min).
+  //   never      → nunca ha respondido (recién guardado, PC apagada, etc.)
+  //   healthy    → ping en los últimos 90 min (rango normal, poll cada 60min + slack)
+  //   stale      → última ping entre 90 min y 24 h
+  //   dead       → última ping > 24 h
+  const lastPingRaw = config?.['writer_last_ping_at'] as string | undefined;
+  const lastPingAt  = lastPingRaw ? new Date(lastPingRaw) : null;
+  const ageMs       = lastPingAt ? Date.now() - lastPingAt.getTime() : null;
+  const writerStatus: 'never' | 'healthy' | 'stale' | 'dead' =
+    !lastPingAt        ? 'never'   :
+    ageMs! < 90 * 60_000              ? 'healthy' :
+    ageMs! < 24 * 60 * 60_000         ? 'stale'   :
+                                        'dead';
+
   return NextResponse.json({
     dropbox_connected: !!dbx,
     dropbox: dbx ? {
@@ -124,6 +139,8 @@ export async function GET(req: NextRequest, { params }: Params) {
     } : null,
     configured: !!integ,
     updated_at: integ?.updated_at ?? null,
+    writer_status:       writerStatus,
+    writer_last_ping_at: lastPingRaw ?? null,
     config: integ ? {
       rfc_emisor:                 fiscal['rfc_emisor'] ?? '',
       regimen_fiscal:             fiscal['regimen_fiscal'] ?? '',

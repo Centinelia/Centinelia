@@ -41,6 +41,8 @@ interface Config {
 
 const PASSWORD_UNCHANGED = '__unchanged__';
 
+type WriterStatus = 'never' | 'healthy' | 'stale' | 'dead';
+
 interface StateResp {
   dropbox_connected: boolean;
   dropbox: { account_label: string; expires_at: string } | null;
@@ -48,6 +50,8 @@ interface StateResp {
   updated_at: string | null;
   config: Config | null;
   writer_api_token: string | null;
+  writer_status: WriterStatus;
+  writer_last_ping_at: string | null;
   endpoint_base: string;
 }
 
@@ -389,11 +393,12 @@ export default function ContpaqiSetupPanel({ token, onConfigured }: { token: str
       {(state?.configured || saved) && state?.writer_api_token && (
         <div className="rounded-2xl p-5"
              style={{ background: '#ffffff', border: '1px solid var(--c-border)' }}>
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
             <KeyRound size={14} style={{ color: '#6C3BFF' }} />
             <h3 className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>
               Writer para Windows
             </h3>
+            <WriterStatusBadge status={state.writer_status} lastPingAt={state.writer_last_ping_at} />
           </div>
           <p className="text-xs mb-4" style={{ color: 'var(--c-text-3)' }}>
             Instálalo en la máquina de la oficina donde vive CONTPAQi. Se conecta a CONTPAQi + Dropbox para mantener catálogo sincronizado y timbrar lo que Nala genere.
@@ -403,20 +408,20 @@ export default function ContpaqiSetupPanel({ token, onConfigured }: { token: str
           {/* Instrucciones — steps con círculos numerados */}
           <div className="mt-6">
             <h4 className="text-[10px] uppercase tracking-widest font-bold mb-3" style={{ color: 'var(--c-text-4)' }}>
-              Cómo instalarlo (5 min)
+              Cómo instalarlo (3 min)
             </h4>
             <ol className="space-y-3">
               <SetupStep n={1} title="Descarga y descomprime">
                 Guarda el ZIP en la PC donde vive CONTPAQi y descomprímelo en una carpeta fácil de encontrar (ej. <code>C:\Centinelia\Writer</code>).
               </SetupStep>
               <SetupStep n={2} title="Doble-click en BillingContpaqiWriter.exe">
-                Se abre una ventana negra con unas preguntas: ruta de tu empresa CONTPAQi, usuario/password SUPERVISOR, concepto FACT, password del CSD y la conexión SQL. Los tokens de Dropbox ya vienen preconfigurados. Contesta cada pregunta y dale Enter.
+                Se abre una ventana negra que muestra qué auto-detectó (empresa, SQL, etc.) y verifica que todo conecte. Al final pregunta <b>¿Arrancar con Windows?</b> — dale Enter.
               </SetupStep>
-              <SetupStep n={3} title="Deja la ventana abierta">
-                Al terminar las preguntas el writer arranca y empieza a sincronizar. Mientras la ventana esté abierta, el writer está trabajando. Los siguientes arranques leen <code>appsettings.local.json</code> y no vuelven a preguntar.
+              <SetupStep n={3} title="Acepta el permiso de Windows">
+                Aparece un cuadro de Windows (UAC) preguntando si permites hacer cambios. Dale <b>Sí</b>. La ventana negra se cierra sola y el writer queda registrado como servicio, arrancando solo cada vez que enciendas la PC.
               </SetupStep>
-              <SetupStep n={4} title="(Opcional) Registra como servicio Windows">
-                Para que arranque solo con la PC sin depender de la ventana: abre PowerShell como administrador y corre <code>sc create &quot;Centinelia.BillingWriter&quot; binPath= &quot;C:\Centinelia\Writer\BillingContpaqiWriter.exe&quot; start= auto</code>, luego <code>sc start &quot;Centinelia.BillingWriter&quot;</code>.
+              <SetupStep n={4} title="Estado del writer aquí en el portal">
+                Regresa a esta página y espera 1-2 minutos. Verás el badge de arriba pasar a <b style={{ color: '#15803d' }}>Conectado</b> cuando el writer haga su primer contacto. A partir de ahí sincroniza catálogos y timbra automáticamente lo que Nala genere.
               </SetupStep>
             </ol>
           </div>
@@ -454,6 +459,30 @@ export default function ContpaqiSetupPanel({ token, onConfigured }: { token: str
     </div>
   );
 }
+
+function WriterStatusBadge({ status, lastPingAt }: { status: WriterStatus; lastPingAt: string | null }) {
+  const style = STATUS_STYLES[status];
+  const tooltip = lastPingAt
+    ? `Última señal: ${new Date(lastPingAt).toLocaleString('es-MX')}`
+    : 'El writer aún no ha respondido desde el portal.';
+  return (
+    <span
+      title={tooltip}
+      className="inline-flex items-center gap-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+      style={{ background: style.bg, color: style.fg, border: `1px solid ${style.border}` }}
+    >
+      <span className="inline-block rounded-full" style={{ width: 6, height: 6, background: style.dot }} />
+      {style.label}
+    </span>
+  );
+}
+
+const STATUS_STYLES: Record<WriterStatus, { label: string; bg: string; fg: string; border: string; dot: string }> = {
+  healthy: { label: 'Conectado',           bg: 'rgba(34,197,94,0.10)',  fg: '#15803d', border: 'rgba(34,197,94,0.30)',  dot: '#22c55e' },
+  stale:   { label: 'Sin señal reciente',  bg: 'rgba(245,158,11,0.10)', fg: '#b45309', border: 'rgba(245,158,11,0.30)', dot: '#f59e0b' },
+  dead:    { label: 'Desconectado',        bg: 'rgba(239,68,68,0.10)',  fg: '#991b1b', border: 'rgba(239,68,68,0.30)',  dot: '#ef4444' },
+  never:   { label: 'Aún no ha arrancado', bg: 'rgba(120,120,140,0.10)',fg: '#4b5563', border: 'rgba(120,120,140,0.25)',dot: '#94a3b8' },
+};
 
 function SetupStep({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
   return (
