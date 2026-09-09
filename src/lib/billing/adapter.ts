@@ -80,6 +80,13 @@ export interface BillingInvoice {
   paymentMethod: PaymentMethod;
   /** Clave de uso CFDI. */
   usoCFDI: string;
+  /**
+   * Método de pago CFDI (catalogo SAT c_MetodoPago).
+   * - PUE = Pago en Una Exhibicion (default).
+   * - PPD = Pago en Parcialidades o Diferido (para ventas a credito).
+   * Si se omite se asume PUE.
+   */
+  metodoPago?: 'PUE' | 'PPD';
   /** Serie del comprobante (opcional). */
   serie?: string;
   /** Observaciones adicionales (no aparecen en el XML). */

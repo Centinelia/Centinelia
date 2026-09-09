@@ -15,6 +15,7 @@ import {
   XML_NAMESPACE,
   CONCEPTO_FACTURA,
   METODO_PAGO_PUE,
+  METODO_PAGO_PPD,
   FORMA_PAGO_MAP,
   FORMA_PAGO_DEFAULT,
 } from './xml-import-templates';
@@ -124,6 +125,7 @@ function buildDocumento(invoice: BillingInvoice, config: XmlImportConfig): strin
   const serie = escapeXml(invoice.serie ?? config.serie);
   const usoCFDI = escapeXml(invoice.usoCFDI || config.usoCFDIDefault);
   const formaPago = FORMA_PAGO_MAP[invoice.paymentMethod] ?? FORMA_PAGO_DEFAULT;
+  const metodoPago = invoice.metodoPago === 'PPD' ? METODO_PAGO_PPD : METODO_PAGO_PUE;
 
   // Calcular subtotal (suma de importes sin IVA) y total (subtotal + IVA acumulado).
   // Cada linea puede tener su propia tasa, incluyendo tasa 0 (exento).
@@ -144,7 +146,7 @@ function buildDocumento(invoice: BillingInvoice, config: XmlImportConfig): strin
     `      <RfcEmisor>${escapeXml(config.rfcEmisor)}</RfcEmisor>`,
     `      <RfcReceptor>${escapeXml(invoice.clientRFC)}</RfcReceptor>`,
     `      <UsoCFDI>${usoCFDI}</UsoCFDI>`,
-    `      <MetodoPago>${escapeXml(METODO_PAGO_PUE)}</MetodoPago>`,
+    `      <MetodoPago>${escapeXml(metodoPago)}</MetodoPago>`,
     `      <FormaPago>${escapeXml(formaPago)}</FormaPago>`,
     '      <Moneda>MXN</Moneda>',
     `      <LugarExpedicion>${escapeXml(config.lugarExpedicion)}</LugarExpedicion>`,

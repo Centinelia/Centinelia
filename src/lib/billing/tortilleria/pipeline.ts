@@ -43,14 +43,8 @@ interface ConsolidatedGroup {
   consolidationReason: string | null;
 }
 
-/** BillingInvoice extendido con metodoPago CFDI (PUE/PPD). El adapter debe respetarlo. */
-export interface BillingInvoiceExt extends BillingInvoice {
-  /** MetodoPago CFDI (PUE = una exhibición, PPD = parcialidades/diferido). */
-  metodoPago?: 'PUE' | 'PPD';
-}
-
 export interface PipelineResult {
-  invoices: BillingInvoiceExt[];
+  invoices: BillingInvoice[];
   skipped: SkipReport[];
   errors: PipelineError[];
   warnings: PipelineWarning[];
@@ -286,7 +280,7 @@ export function buildInvoicesFromBlocks(
   const groups = applyConsolidation(kept, mapping);
 
   // 3-5) Por cada grupo, resolver cliente + productos + armar invoice
-  const invoices: BillingInvoiceExt[] = [];
+  const invoices: BillingInvoice[] = [];
   for (const g of groups) {
     const { codigo, rfc } = resolveGroupClient(g, mapping);
 
@@ -313,7 +307,7 @@ export function buildInvoicesFromBlocks(
       continue;
     }
 
-    const invoice: BillingInvoiceExt = {
+    const invoice: BillingInvoice = {
       // El adapter va a hacer el getClientByRFC / buscar por código; ponemos
       // el código como identificador si el RFC no vino en el mapping.
       clientRFC:     rfc ?? codigo,

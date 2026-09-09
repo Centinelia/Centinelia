@@ -13,6 +13,8 @@ export const CONCEPTO_FACTURA = 'FACT';
 
 /** Metodo de pago SAT: Pago en una sola exhibicion. */
 export const METODO_PAGO_PUE = 'PUE';
+/** Metodo de pago SAT: Pago en parcialidades o diferido (para ventas a credito). */
+export const METODO_PAGO_PPD = 'PPD';
 
 /**
  * Mapa de formas de pago del dominio interno a clave SAT de 2 digitos.

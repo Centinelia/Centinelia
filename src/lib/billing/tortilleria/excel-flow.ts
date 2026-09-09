@@ -14,7 +14,8 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { parseTortilleriaBatchXlsx } from '../parsers/tortilleria-batch';
-import { buildInvoicesFromBlocks, type BillingInvoiceExt } from './pipeline';
+import { buildInvoicesFromBlocks } from './pipeline';
+import type { BillingInvoice } from '../adapter';
 import { getTortilleriaMapping } from './mapping-store';
 import type { TortilleriaPipelineConfig, PipelineWarning, PipelineError, SkipReport } from './types';
 
@@ -96,7 +97,7 @@ export async function runExcelFlow(input: ExcelFlowInput): Promise<ExcelFlowResu
     return { ...empty, processed: true };
   }
 
-  const allInvoices: BillingInvoiceExt[] = [];
+  const allInvoices: BillingInvoice[] = [];
   const allWarnings: PipelineWarning[] = [];
   const allErrors:   PipelineError[]   = [];
   const allSkipped:  SkipReport[]      = [];
@@ -169,6 +170,22 @@ export async function runExcelFlow(input: ExcelFlowInput): Promise<ExcelFlowResu
       });
     }
   }
+
+  // Observabilidad: el Excel flow no cobra pool (parser+DB son locales, sin
+  // costo externo real). Los correos de vuelta al cliente cuando Beatriz
+  // aprueba los cards SÍ cobran vía chargePool en sendMeerkatHtmlEmail.
+  // Aquí solo dejamos un log estructurado para tracking del volumen procesado.
+  console.log('[tortilleria/excel-flow] procesado', JSON.stringify({
+    portal_email:  input.portalEmail,
+    email_id:      input.emailId,
+    agent_id:      input.agentId,
+    xlsx_count:    excelAttachments.length,
+    invoice_count: allInvoices.length,
+    card_count:    rows.length,
+    skipped_count: allSkipped.length,
+    error_count:   allErrors.length,
+    warning_count: allWarnings.length,
+  }));
 
   return {
     processed:    true,
