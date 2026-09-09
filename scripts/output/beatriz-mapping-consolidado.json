@@ -288,7 +288,8 @@
     "rfc": "ALI240212J35",
     "skip": false,
     "pending": false,
-    "pending_reason": null
+    "pending_reason": null,
+    "notas_internas": "Beatriz confirma que usa ALICASA (no 671). Ambos codigos apuntan al mismo RFC en CONTPAQi."
   },
   {
     "archivo": "varios.xlsx",
