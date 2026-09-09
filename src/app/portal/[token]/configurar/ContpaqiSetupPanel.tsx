@@ -277,14 +277,14 @@ export default function ContpaqiSetupPanel({ token, onConfigured }: { token: str
           </p>
         </div>
         <div className="grid grid-cols-2 gap-3 text-xs mb-3">
-          <FormField label="Ruta de la empresa CONTPAQi" required wide>
+          <FormField label="Ruta de la empresa CONTPAQi (opcional)" wide>
             <input value={empresaPath}
                    onChange={e => setEmpresaPath(e.target.value)}
-                   required placeholder="C:\Compac\Empresas\adMiEmpresa"
+                   placeholder="Déjalo vacío — el writer auto-detecta desde C:\Compac\Empresas"
                    className="w-full px-2 py-1.5 rounded font-mono"
                    style={{ background: '#fff', border: '1px solid var(--c-border)' }} />
             <p className="text-[10px] mt-1" style={{ color: 'var(--c-text-3)' }}>
-              Carpeta donde CONTPAQi guarda la BD de la empresa. Empieza con letra de unidad (C:, D:, etc.) y suele empezar con &quot;ad&quot;. Ábrelo desde CONTPAQi → Empresa → Redefinir para verlo.
+              <strong>Recomendado dejarlo vacío.</strong> El writer escanea las rutas típicas (C:\Compac\Empresas, D:\...) y auto-selecciona la única empresa que encuentre. Solo llénalo si tienes varias empresas en la misma PC y quieres forzar una específica.
             </p>
           </FormField>
           <FormField label="Usuario CONTPAQi">

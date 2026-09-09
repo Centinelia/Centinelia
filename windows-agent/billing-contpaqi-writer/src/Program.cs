@@ -291,6 +291,58 @@ public static class Program
         // fields (ej. zip generado por 0.10.x, o portal no llenó todo), caemos
         // al FirstRunWizard viejo como fallback.
         var interactive = Environment.UserInteractive && !WindowsServiceHelpers.IsWindowsService();
+        // 0.11.3: empresa CONTPAQi también puede venir vacía del portal (opcional).
+        // Escaneamos C:\Compac\Empresas\ad* y variantes. Si hay 1 → auto-uso.
+        // Si hay múltiples → listamos y abortamos (la clienta elige en el portal).
+        // Si 0 → abortamos con mensaje claro.
+        if (centineliaConfig is not null &&
+            string.IsNullOrWhiteSpace(centineliaConfig.Windows.EmpresaPath) &&
+            interactive)
+        {
+            Console.WriteLine();
+            Console.Write("  Auto-detectando empresa CONTPAQi... ");
+            var found = EmpresaAutodetect.Detect();
+            if (found.Count == 1)
+            {
+                Console.WriteLine($"OK ({found[0]})");
+                centineliaConfig = centineliaConfig with
+                {
+                    Windows = centineliaConfig.Windows with { EmpresaPath = found[0] },
+                };
+            }
+            else if (found.Count == 0)
+            {
+                Console.WriteLine("no encontrada");
+                Console.WriteLine();
+                Console.WriteLine("  No encontré ninguna carpeta de empresa CONTPAQi en las rutas típicas");
+                Console.WriteLine("  (C:\\Compac\\Empresas, D:\\Compac\\Empresas). Verifica que CONTPAQi");
+                Console.WriteLine("  Comercial tenga una empresa creada y ábrela una vez desde CONTPAQi UI.");
+                Console.WriteLine("  Después edita el campo 'Ruta de la empresa CONTPAQi' en el portal con");
+                Console.WriteLine("  la ruta exacta y descarga el zip de nuevo.");
+                Console.WriteLine();
+                Console.WriteLine("  (Presiona cualquier tecla para cerrar esta ventana)");
+                try { Console.ReadKey(intercept: true); } catch { }
+                return 6;
+            }
+            else
+            {
+                Console.WriteLine($"encontré {found.Count}");
+                Console.WriteLine();
+                Console.WriteLine("  Encontré varias empresas CONTPAQi en esta PC. No sé cuál usar:");
+                for (var idx = 0; idx < found.Count; idx++)
+                {
+                    Console.WriteLine($"    {idx + 1}. {found[idx]}");
+                }
+                Console.WriteLine();
+                Console.WriteLine("  Ve al portal → CONTPAQi → 'Ruta de la empresa CONTPAQi' y pon la ruta");
+                Console.WriteLine("  exacta de la que quieres usar. Después descarga el zip de nuevo.");
+                Console.WriteLine();
+                Console.WriteLine("  (Presiona cualquier tecla para cerrar esta ventana)");
+                try { Console.ReadKey(intercept: true); } catch { }
+                return 7;
+            }
+        }
+
         // 0.11.2: SQL puede venir vacío del portal (opcional). Auto-detectamos
         // antes del check para no pedirle a Beatriz que arme el connection string.
         // Requiere que empresa_path esté presente porque de ahí sale el nombre

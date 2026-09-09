@@ -14,7 +14,7 @@
     -->
 
     <!--
-      Single-file self-contained publish (0.11.2): en vez de un directorio con
+      Single-file self-contained publish (0.11.3): en vez de un directorio con
       200+ archivos (DLLs de runtime .NET + deps de NuGet + native libs), el
       publish produce UN solo EXE + appsettings.json. Beatriz descomprime el
       zip y ve 3-4 archivos en vez de una selva.
@@ -56,10 +56,18 @@
     <Company>Centinelia</Company>
     <Description>Puente entre CONTPAQi Comercial Pro y Centinelia — sincroniza catálogos y timbra CFDIs generados por Nala.</Description>
     <Copyright>© 2026 Centinelia</Copyright>
-    <Version>0.11.2</Version>
-    <AssemblyVersion>0.11.2.0</AssemblyVersion>
-    <FileVersion>0.11.2.0</FileVersion>
+    <Version>0.11.3</Version>
+    <AssemblyVersion>0.11.3.0</AssemblyVersion>
+    <FileVersion>0.11.3.0</FileVersion>
     <!--
+      Cambios 0.11.3 (2026-09-08):
+      * Auto-detect empresa CONTPAQi: si el portal deja vacío "Ruta de la empresa",
+        el writer escanea C:\Compac\Empresas y D:\Compac\Empresas por folders
+        que empiecen con "ad". Si hay 1 → auto-uso. Si hay N → lista y aborta
+        (Beatriz escoge en el portal). Si 0 → aborta con mensaje.
+      * En el 99% de instalaciones, el portal ahora solo requiere passwords
+        (opcionales). Todo lo demás se auto-detecta o tiene default correcto.
+
       Cambios 0.11.2 (2026-09-08):
       * Auto-detect SQL Server: si el portal deja vacío el campo "Conexión SQL",
         el writer prueba automáticamente instancias comunes (COMPAC, SQLEXPRESS,

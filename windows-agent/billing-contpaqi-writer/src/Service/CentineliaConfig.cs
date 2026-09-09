@@ -28,14 +28,13 @@ public sealed record CentineliaWindowsConfig(
         CsdPassword:   string.Empty);
 
     /// <summary>
-    /// True si hay al menos empresa cargada (mínimo para arrancar sin wizard).
-    /// SQL puede venir vacío — el auto-detect en Program.cs lo llena antes de
-    /// entrar al bloque de auto-apply. Password + CSD pueden venir vacíos
-    /// también en instalaciones default de CONTPAQi (SUPERVISOR sin password
-    /// es común).
+    /// True siempre — con 0.11.3 tanto EmpresaPath como SqlConnection pueden
+    /// venir vacíos porque Program.cs los auto-detecta antes de aplicar la
+    /// config al writer. Password + CSD siempre son opcionales (SUPERVISOR
+    /// sin password es común). Basta con que exista centinelia-config.json
+    /// (endpoint + api_token + portal_email) para saltarnos el FirstRunWizard.
     /// </summary>
-    public bool IsMinimalComplete =>
-        !string.IsNullOrWhiteSpace(EmpresaPath);
+    public bool IsMinimalComplete => true;
 }
 
 /// <summary>
