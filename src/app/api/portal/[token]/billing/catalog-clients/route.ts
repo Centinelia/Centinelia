@@ -68,7 +68,15 @@ export async function GET(req: NextRequest, { params }: Params) {
       })),
     });
   } catch (e) {
-    console.error('[catalog-clients] failed:', e);
-    return NextResponse.json({ clients: [], error: (e as Error).message }, { status: 500 });
+    // Fallo suave: sin catálogo sincronizado en Dropbox, retornamos array
+    // vacío con 200 para que la UI no muestre error roto. Beatriz puede
+    // escribir el cliente libre en el input. El Writer eventualmente sube
+    // el catálogo y el autocomplete arranca a funcionar sin cambios en UI.
+    const errMsg = (e as Error).message;
+    console.warn('[catalog-clients] catálogo no disponible, devolviendo lista vacía:', errMsg);
+    return NextResponse.json({
+      clients: [],
+      warning: 'Catálogo no sincronizado desde CONTPAQi. Puedes escribir el cliente manualmente.',
+    });
   }
 }
