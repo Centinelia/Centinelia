@@ -107,10 +107,17 @@ function buildMovimiento(line: BillingLineItem): string {
   // silencioso). Auditoría 2026-09-04.
   const qtyStr = Number(line.qty.toFixed(6)).toString();
 
+  // Descripción opcional — si viene del mapping o de edición humana, incluirla
+  // como <Descripcion>. CONTPAQi acepta este campo y lo copia al CFDI final.
+  // Sin descripción, la línea usa solo el SKU (comportamiento legacy).
+  const descTag = line.description && line.description.trim().length > 0
+    ? `        <Descripcion>${escapeXml(line.description.trim())}</Descripcion>\n`
+    : '';
+
   return [
     '      <Movimiento>',
     `        <CodigoProducto>${escapeXml(line.sku)}</CodigoProducto>`,
-    `        <Cantidad>${qtyStr}</Cantidad>`,
+    descTag + `        <Cantidad>${qtyStr}</Cantidad>`,
     `        <PrecioUnitario>${fmt(line.unitPrice)}</PrecioUnitario>`,
     `        <Importe>${fmt(importe)}</Importe>`,
     `        <IvaTasa>${ivaTasaStr}</IvaTasa>`,

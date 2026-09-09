@@ -93,10 +93,15 @@ function applyConsolidation(
 
   for (const rule of mapping.consolidationRules) {
     const prefix = rule.matchPrefix.toUpperCase();
+    // Regex con word-boundary para evitar que "DCA" matche "DCARNES", "DCA-NUEVO"
+    // no listado como consolidable, "DCASA", etc. La regla es: el prefix es
+    // seguido de un caracter no-alfanumérico (espacio, paréntesis, guion, punto)
+    // o final de string.
+    const prefixRe = new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![A-Z0-9])`, 'i');
     const members: ParsedBlock[] = [];
     for (let i = 0; i < blocks.length; i++) {
       if (consumed.has(i)) continue;
-      if (blocks[i].tituloBloque.toUpperCase().trimStart().startsWith(prefix)) {
+      if (prefixRe.test(blocks[i].tituloBloque.trimStart())) {
         members.push(blocks[i]);
         consumed.add(i);
       }
@@ -213,6 +218,8 @@ function aggregateLines(
       if (entry) {
         sku = entry.sku;
         description = entry.nombreContpaqi ?? producto.columnaNombre;
+        // Si el mapping tiene ivaTasa, usarlo. Default 0 (tortillas SAT tasa 0).
+        if (typeof entry.ivaTasa === 'number') ivaTasa = entry.ivaTasa;
       } else {
         // Fallback: usar clave SAT default. Mapping incompleto → warning.
         sku = producto.columnaNombre.trim().toUpperCase();
@@ -224,7 +231,10 @@ function aggregateLines(
         });
       }
 
-      const key = `${sku}|${producto.precioUnit}`;
+      // Redondeo a 4 decimales para evitar drift float (ej. 22.1 vs 22.10000001
+      // creando 2 líneas del mismo SKU en consolidados DCA multi-sucursal).
+      const precioNormalizado = Math.round(producto.precioUnit * 10000) / 10000;
+      const key = `${sku}|${precioNormalizado}`;
       const existing = buckets.get(key);
       if (existing) {
         existing.qty += producto.cantidadTotal;
@@ -232,7 +242,7 @@ function aggregateLines(
         buckets.set(key, {
           sku,
           qty:       producto.cantidadTotal,
-          unitPrice: producto.precioUnit,
+          unitPrice: precioNormalizado,
           ivaTasa,
           description,
         });

@@ -52,6 +52,8 @@ export interface ExcelFlowInput {
   clientEmail?: string;
   /** Portal token para construir el link al portal en la notif. */
   portalToken?: string;
+  /** Nombre del negocio para el subject de la notif (ej. "Tortillería Estrella"). */
+  businessName?: string;
 }
 
 export interface ExcelFlowResult {
@@ -286,9 +288,27 @@ export async function runExcelFlow(input: ExcelFlowInput): Promise<ExcelFlowResu
 
   const pendingCount = rows.length - autoApprovedCount;
 
-  // Notificar a Beatriz si algo cayó a revisión. Sin este mail Beatriz no sabe
-  // cuándo entrar al portal. Fire-and-forget: fallo del correo no rompe el flow.
-  if (pendingCount > 0 && input.clientEmail) {
+  // Detectar auto-aprobadas que no lograron generar XML (adapter falló). Estas
+  // NO aparecen en el portal (status=approved) pero tampoco tienen XML — el
+  // usuario nunca sabría. Levantamos alerta al humano.
+  const autoApprovedFailed = autoApprovedCount - submitted.length;
+
+  // Idempotencia: no mandar la notif dos veces para el mismo email. Marcamos
+  // en billing_incoming_emails cuando se envió. Si el retry cron vuelve a
+  // procesar el mismo email_id, salta esta notif.
+  let alreadyNotified = false;
+  {
+    const { data: emailFlag } = await input.supabase
+      .from('billing_incoming_emails')
+      .select('raw_payload')
+      .eq('id', input.emailId)
+      .maybeSingle<{ raw_payload: Record<string, unknown> | null }>();
+    if (emailFlag?.raw_payload?.['notif_sent_at']) alreadyNotified = true;
+  }
+
+  // Notificar a Beatriz si algo cayó a revisión O si auto-aprobadas fallaron
+  // submit. Fire-and-forget: fallo del correo no rompe el flow.
+  if ((pendingCount > 0 || autoApprovedFailed > 0) && input.clientEmail && !alreadyNotified) {
     try {
       const { sendMeerkatHtmlEmail } = await import('@/lib/email/send-as-agent');
       const pendingRows = rows
@@ -307,15 +327,36 @@ export async function runExcelFlow(input: ExcelFlowInput): Promise<ExcelFlowResu
         pendingRows,
         portalUrl,
         submittedCount: submitted.length,
+        autoApprovedFailed,
       });
+      const prefix = input.businessName ? `[${input.businessName}] ` : '';
+      let subject: string;
+      if (autoApprovedFailed > 0 && pendingCount === 0) {
+        subject = `${prefix}${autoApprovedFailed} factura(s) aprobadas pero no se pudieron enviar`;
+      } else if (autoApprovedFailed > 0 && pendingCount > 0) {
+        subject = `${prefix}${pendingCount + autoApprovedFailed} facturas necesitan atención`;
+      } else {
+        subject = pendingCount === 1
+          ? `${prefix}1 factura necesita tu revisión`
+          : `${prefix}${pendingCount} facturas necesitan tu revisión`;
+      }
       await sendMeerkatHtmlEmail({
         agentId: input.agentId,
         to:      input.clientEmail,
-        subject: pendingCount === 1
-          ? `1 factura necesita tu revisión`
-          : `${pendingCount} facturas necesitan tu revisión`,
+        subject,
         html,
       }, input.supabase);
+      // Marcar como notificado dentro del jsonb raw_payload (sin migración).
+      const { data: existingRaw } = await input.supabase
+        .from('billing_incoming_emails')
+        .select('raw_payload')
+        .eq('id', input.emailId)
+        .maybeSingle<{ raw_payload: Record<string, unknown> | null }>();
+      const nextRaw = { ...(existingRaw?.raw_payload ?? {}), notif_sent_at: new Date().toISOString() };
+      await input.supabase
+        .from('billing_incoming_emails')
+        .update({ raw_payload: nextRaw })
+        .eq('id', input.emailId);
     } catch (notifErr) {
       console.warn('[tortilleria/excel-flow] notif Beatriz falló (no fatal):', (notifErr as Error).message);
     }
@@ -362,8 +403,14 @@ function buildPendingNotifHtml(args: {
   pendingRows:       Array<{ cliente: string; total: number; reason: string }>;
   portalUrl:         string | null;
   submittedCount:    number;
+  autoApprovedFailed?: number;
 }): string {
-  const { autoApprovedCount, pendingCount, pendingRows, portalUrl, submittedCount } = args;
+  const { autoApprovedCount, pendingCount, pendingRows, portalUrl, submittedCount, autoApprovedFailed = 0 } = args;
+  const failedBanner = autoApprovedFailed > 0
+    ? `<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:12px 16px;margin:16px 0;font-size:13px;color:#92400e;">
+        <strong>Aviso:</strong> ${autoApprovedFailed} factura(s) que Nala había aprobado no se pudieron enviar al sistema (probablemente Dropbox o CONTPAQi está caído). Van a reintentarse automáticamente, pero si sigue fallando revisa la conexión.
+      </div>`
+    : '';
   const lista = pendingRows.slice(0, 20).map(r => `
     <tr>
       <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;">${escapeHtml(r.cliente).slice(0, 80)}</td>
@@ -379,11 +426,12 @@ function buildPendingNotifHtml(args: {
     ? `Del Excel de esta semana, <strong>${autoApprovedCount}</strong> factura${autoApprovedCount === 1 ? '' : 's'} ya se timbr${autoApprovedCount === 1 ? 'ó' : 'aron'} automáticamente${submittedCount > 0 ? ` (${submittedCount} XML${submittedCount === 1 ? '' : 's'} en Dropbox)` : ''}. `
     : '';
   return `
-<!DOCTYPE html><html><body style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;margin:0;padding:24px;">
+<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;margin:0;padding:24px;">
   <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:12px;padding:32px;">
     <p style="margin:0 0 16px;font-size:14px;color:#1A0A3B;">Hola Beatriz,</p>
+    ${failedBanner}
     <p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:#1A0A3B;">
-      ${resumenLine}Necesito tu ojo en <strong>${pendingCount}</strong> factura${pendingCount === 1 ? '' : 's'} que dejé pendiente${pendingCount === 1 ? '' : 's'} porque encontré algo raro:
+      ${resumenLine}${pendingCount > 0 ? `Necesito tu ojo en <strong>${pendingCount}</strong> factura${pendingCount === 1 ? '' : 's'} que dejé pendiente${pendingCount === 1 ? '' : 's'} porque detecté datos que no me cuadran:` : ''}
     </p>
     <table style="width:100%;border-collapse:collapse;margin:16px 0;">
       <thead>

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { ArrowLeft, Check, X, Loader2, AlertCircle, Image as ImageIcon, CheckCircle2, ZoomIn, Search, Plus, Trash2 } from 'lucide-react';
 
 interface Producto {
+  sku?:              string;
   descripcion?:      string;
   nombre?:           string;
   cantidad?:         number;
@@ -39,6 +40,8 @@ interface PendingItem {
     subject:      string | null;
     received_at:  string | null;
   } | null;
+  /** Archivos fuente (xlsx) para el excel_pipeline path. Signed URLs (60min). */
+  source_files?: Array<{ filename: string; url: string }>;
 }
 
 interface CatalogClient {
@@ -178,11 +181,30 @@ function PendingCard({
   const [rfc,      setRfc]      = useState<string>(item.rfc_matched ?? '');
   const [cliente,  setCliente]  = useState<string>(item.cliente_texto ?? '');
   const [total,    setTotal]    = useState<string>(item.total != null ? String(item.total) : '');
+  // Marca si el usuario editó el total manualmente. Si no, el total se sincroniza
+  // con la suma de productos (recalcula automático al editar cantidad/precio).
+  const [totalManuallyEdited, setTotalManuallyEdited] = useState<boolean>(false);
   const [productos, setProductos] = useState<Producto[]>(
     Array.isArray(item.productos) && item.productos.length > 0
       ? item.productos
       : []
   );
+
+  // Auto-recalc del total desde suma de subtotales cuando cambian productos,
+  // salvo que el usuario haya editado el total a mano (respetar override).
+  const productosSum = useMemo(() => {
+    return productos.reduce((s, p) => {
+      const q = Number(p.cantidad ?? p.cant ?? 0);
+      const price = Number(p.precio_unitario ?? p.p_unit ?? p.precio ?? 0);
+      return s + (Number.isFinite(q) && Number.isFinite(price) ? q * price : 0);
+    }, 0);
+  }, [productos]);
+  useEffect(() => {
+    if (!totalManuallyEdited) {
+      const rounded = Math.round(productosSum * 100) / 100;
+      setTotal(rounded > 0 ? String(rounded) : '');
+    }
+  }, [productosSum, totalManuallyEdited]);
 
   const isResolved = item.status !== 'pending';
   const statusPill =
@@ -214,6 +236,35 @@ function PendingCard({
 
   function handleApprove() {
     if (isResolved) return;
+    // Validaciones frontend: bloquear approve con datos que el backend rechazaría
+    // igualmente pero con menos claridad. Beatriz obtiene feedback inmediato.
+    const rfcClean = rfc.trim();
+    if (!rfcClean) {
+      alert('Falta el RFC del cliente. Búscalo en el catálogo o escríbelo antes de aprobar.');
+      return;
+    }
+    if (!/^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$/i.test(rfcClean)) {
+      alert(`El RFC "${rfcClean}" no tiene formato válido (12-13 caracteres SAT, ej. CAL051103F36). Corrígelo antes de aprobar.`);
+      return;
+    }
+    if (!cliente.trim()) {
+      alert('Falta el nombre del cliente. Selecciónalo del catálogo antes de aprobar.');
+      return;
+    }
+    if (productos.length === 0) {
+      alert('No hay productos en esta factura. Agrega al menos uno antes de aprobar.');
+      return;
+    }
+    const productoSinSku = productos.find(p => !(p.sku ?? '').toString().trim());
+    if (productoSinSku) {
+      alert(`Un producto no tiene código SKU (${productoSinSku.descripcion ?? productoSinSku.nombre ?? 'sin descripción'}). Corrígelo antes de aprobar.`);
+      return;
+    }
+    const totalNum = total ? Number(total) : 0;
+    if (!Number.isFinite(totalNum) || totalNum <= 0) {
+      alert(`Total inválido (${total}). Debe ser mayor a 0.`);
+      return;
+    }
     const patch = buildPatch();
     const msg = wasEdited
       ? '¿Guardar cambios y timbrar? Nala procesará con estos datos.'
@@ -225,7 +276,7 @@ function PendingCard({
 
   function handleReject() {
     if (isResolved) return;
-    if (!confirm('¿Rechazar esta remisión? No se timbrará.')) return;
+    if (!confirm('¿Rechazar esta factura permanentemente? No se timbrará y no vuelve a aparecer. Si dudas, cierra este mensaje y déjala pendiente.')) return;
     onReject();
   }
 
@@ -297,6 +348,25 @@ function PendingCard({
                   Folios: <span style={{ color: 'var(--c-text)' }}>{item.folio}</span>
                 </p>
               )}
+              {item.source_files && item.source_files.length > 0 && (
+                <div className="flex flex-col gap-1 pt-1" style={{ borderTop: '1px solid var(--c-border)' }}>
+                  <p className="text-[9px] uppercase tracking-wider font-semibold pt-1" style={{ color: 'var(--c-text-4)' }}>
+                    Archivo original
+                  </p>
+                  {item.source_files.map((f, i) => (
+                    <a
+                      key={i}
+                      href={f.url}
+                      download={f.filename}
+                      className="text-[10px] hover:underline truncate"
+                      style={{ color: '#6C3BFF' }}
+                      title={f.filename}
+                    >
+                      ↓ {f.filename}
+                    </a>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -319,7 +389,12 @@ function PendingCard({
           <div className="grid grid-cols-3 gap-2 mb-3">
             <InputField label="Folio" value={folio} onChange={setFolio} disabled={isResolved} />
             <InputField label="Fecha" type="date" value={fecha} onChange={setFecha} disabled={isResolved} />
-            <CurrencyField label="Total" value={total} onChange={setTotal} disabled={isResolved} />
+            <CurrencyField
+              label="Total"
+              value={total}
+              onChange={v => { setTotal(v); setTotalManuallyEdited(true); }}
+              disabled={isResolved}
+            />
           </div>
 
           {/* Cliente: autocomplete contra catálogo */}
@@ -632,7 +707,22 @@ function CurrencyInput({
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
       onChange={e => {
-        const raw = e.target.value.replace(/[$,\s]/g, '');
+        // Normaliza input español ("8.972,60"), miles-con-punto ("8,972.60"),
+        // o mixto. Regla: si hay ambos . y , el último caracter decide cuál es
+        // el decimal; el otro es separador de miles y se quita. Si solo hay
+        // uno, es decimal (se convierte a punto para JS Number).
+        let raw = e.target.value.replace(/[$\s]/g, '');
+        const lastDot   = raw.lastIndexOf('.');
+        const lastComma = raw.lastIndexOf(',');
+        if (lastDot !== -1 && lastComma !== -1) {
+          if (lastComma > lastDot) {
+            raw = raw.replace(/\./g, '').replace(',', '.');
+          } else {
+            raw = raw.replace(/,/g, '');
+          }
+        } else if (lastComma !== -1) {
+          raw = raw.replace(',', '.');
+        }
         if (raw === '' || /^\d*\.?\d*$/.test(raw)) onChange(raw);
       }}
       disabled={disabled}

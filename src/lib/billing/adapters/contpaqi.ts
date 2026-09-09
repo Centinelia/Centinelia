@@ -232,7 +232,10 @@ export class CONTPAQiAdapter implements BillingAdapter {
       return this.productsCache.data;
     }
     const buf = await this.dropbox.readFile(`${this.basePath}/Config/contpaqi_productos.csv`);
-    const products = parseProductsCsv(buf.toString('utf-8'));
+    // CONTPAQi exporta CSV en Windows-1252 (Latin-1). Sin decodeCsvBuffer,
+    // productos con ñ/acentos aparecen como � y el fuzzy match falla.
+    // Mismo fix que loadClients (auditoría 2026-09-09 ronda pre-Beatriz).
+    const products = parseProductsCsv(decodeCsvBuffer(buf));
     this.productsCache = { data: products, expiresAt: Date.now() + this.cacheTtlMs };
     return products;
   }
@@ -284,6 +287,30 @@ export class CONTPAQiAdapter implements BillingAdapter {
   // ---------------------------------------------------------------------------
 
   async submitInvoiceBatch(invoices: BillingInvoice[]): Promise<BillingBatchResult> {
+    // Guard: XML vacío o con documentos sin líneas genera algo que CONTPAQi
+    // rechaza al importar ("Documento sin partidas"). Falla loud aquí es mejor
+    // que archivo silencioso en pendientes que nunca importa.
+    if (invoices.length === 0) {
+      return {
+        mode:   'file',
+        ref:    '',
+        errors: [{ invoiceIndex: -1, reason: 'submitInvoiceBatch invocado con array vacío de invoices.' }],
+      };
+    }
+    const emptyLineInvoices = invoices
+      .map((inv, i) => ({ inv, i }))
+      .filter(({ inv }) => !inv.lines || inv.lines.length === 0);
+    if (emptyLineInvoices.length > 0) {
+      return {
+        mode:   'file',
+        ref:    '',
+        errors: emptyLineInvoices.map(({ i }) => ({
+          invoiceIndex: i,
+          reason:       'Invoice sin líneas: CONTPAQi rechazaría el XML como "Documento sin partidas".',
+        })),
+      };
+    }
+
     const xmlString = buildImportXml(invoices, this.xmlConfig);
     const buffer = Buffer.from(xmlString, 'utf-8');
 

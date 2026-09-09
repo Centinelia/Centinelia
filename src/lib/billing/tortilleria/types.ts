@@ -56,6 +56,12 @@ export interface ProductMappingEntry {
   claveSat: string;
   /** Unidad SAT (ej. "KGM", "H87"). */
   unidadSat: string;
+  /**
+   * Tasa de IVA (0.16 = 16%, 0 = exento/tasa cero). Default 0 si no viene.
+   * Tortillas típicamente son tasa 0; salsas/subproductos pueden ser 16%.
+   * Confirmar con Beatriz cuando se agreguen SKUs de otras categorías.
+   */
+  ivaTasa?: number;
   /** Notas internas. */
   notes?: string;
 }

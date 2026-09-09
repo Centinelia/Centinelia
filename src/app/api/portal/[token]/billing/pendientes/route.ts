@@ -58,24 +58,46 @@ export async function GET(req: NextRequest, { params }: Params) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Enriquecer con signed URLs de las imágenes desde Storage (60min).
+  // Enriquecer con signed URLs de los adjuntos desde Storage (60min).
+  // Para vision path: image_url + image_filename (foto de la nota).
+  // Para excel path: source_url + source_filename (xlsx que Beatriz mandó).
   const items = await Promise.all((data ?? []).map(async (row) => {
-    const emailRow = row.email as { attachments_meta?: Array<{ storageKey?: string; filename?: string; index?: number }> } | null;
+    const emailRow = row.email as { attachments_meta?: Array<{ storageKey?: string; filename?: string; index?: number; contentType?: string }> } | null;
     const metas = Array.isArray(emailRow?.attachments_meta) ? emailRow.attachments_meta : [];
-    const targetMeta = row.image_index !== null && row.image_index !== undefined
-      ? metas.find(m => m.index === row.image_index) ?? metas[0]
-      : metas[0];
-    let signedUrl: string | null = null;
-    if (targetMeta?.storageKey) {
+
+    // Foto de la nota (vision path): image_index apunta a la remisión específica.
+    const imageMeta = row.image_index !== null && row.image_index !== undefined
+      ? metas.find(m => m.index === row.image_index) ?? null
+      : null;
+    let imageUrl: string | null = null;
+    if (imageMeta?.storageKey) {
       const { data: sig } = await supabase.storage
         .from('billing-attachments')
-        .createSignedUrl(targetMeta.storageKey, 60 * 60);
-      signedUrl = sig?.signedUrl ?? null;
+        .createSignedUrl(imageMeta.storageKey, 60 * 60);
+      imageUrl = sig?.signedUrl ?? null;
     }
+
+    // Excel path: cualquier xlsx/xls en el correo (puede haber varios).
+    const isExcel = (m: { filename?: string; contentType?: string }) =>
+      (m.contentType ?? '').toLowerCase().includes('spreadsheet') ||
+      (m.contentType ?? '').toLowerCase().includes('ms-excel') ||
+      (m.filename ?? '').toLowerCase().endsWith('.xlsx') ||
+      (m.filename ?? '').toLowerCase().endsWith('.xls');
+    const excelMetas = metas.filter(isExcel);
+    const excelSources = await Promise.all(excelMetas.map(async (m) => {
+      if (!m.storageKey) return null;
+      const { data: sig } = await supabase.storage
+        .from('billing-attachments')
+        .createSignedUrl(m.storageKey, 60 * 60);
+      if (!sig?.signedUrl) return null;
+      return { filename: m.filename ?? 'archivo.xlsx', url: sig.signedUrl };
+    }));
+
     return {
       ...row,
-      image_url:      signedUrl,
-      image_filename: targetMeta?.filename ?? null,
+      image_url:      imageUrl,
+      image_filename: imageMeta?.filename ?? null,
+      source_files:   excelSources.filter((s): s is { filename: string; url: string } => s !== null),
     };
   }));
 

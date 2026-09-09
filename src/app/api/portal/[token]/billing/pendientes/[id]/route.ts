@@ -48,6 +48,41 @@ export async function POST(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'edit requiere corrections' }, { status: 400 });
   }
 
+  // Validaciones mínimas para approve/edit — evita que Beatriz apruebe una card
+  // con RFC vacío, total NaN o cliente vacío que luego truena silente en el
+  // adapter. Reject no valida porque no se timbra.
+  if (body.action !== 'reject' && body.corrections) {
+    const c = body.corrections as Record<string, unknown>;
+    const rfc = typeof c['rfc'] === 'string' ? c['rfc'].trim() : '';
+    if (rfc && !/^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$/i.test(rfc)) {
+      return NextResponse.json({
+        error: `RFC "${rfc}" no tiene el formato válido (ej. CAL051103F36). Corrige antes de aprobar.`,
+      }, { status: 400 });
+    }
+    if ('total' in c) {
+      const total = Number(c['total']);
+      if (!Number.isFinite(total) || total <= 0) {
+        return NextResponse.json({
+          error: `Total inválido (${c['total']}). Debe ser un número mayor a 0.`,
+        }, { status: 400 });
+      }
+    }
+    if (Array.isArray(c['productos'])) {
+      const productos = c['productos'] as Array<Record<string, unknown>>;
+      if (productos.length === 0) {
+        return NextResponse.json({
+          error: 'No hay productos. Agrega al menos uno antes de aprobar.',
+        }, { status: 400 });
+      }
+      const sinSku = productos.find(p => !p['sku'] || String(p['sku']).trim() === '');
+      if (sinSku) {
+        return NextResponse.json({
+          error: `Un producto no tiene código SKU. Corrígelo o quítalo antes de aprobar.`,
+        }, { status: 400 });
+      }
+    }
+  }
+
   const supabase = createAdminClient();
 
   // Verificar que el pending pertenece al portal.

@@ -78,28 +78,43 @@ function isProductoArray(v: unknown): v is Array<Record<string, unknown>> {
  * BillingLineItem[]. Tolerante a llaves alternativas por si vienen de
  * corrections con nombres humanos ("cantidad" en vez de "qty", etc).
  */
-function productsToLines(raw: unknown): BillingLineItem[] {
-  if (!isProductoArray(raw)) return [];
+interface ProductRejected { sku: string; reason: string; }
+
+function productsToLines(raw: unknown): { lines: BillingLineItem[]; rejected: ProductRejected[] } {
+  const rejected: ProductRejected[] = [];
+  if (!isProductoArray(raw)) return { lines: [], rejected };
   const lines: BillingLineItem[] = [];
   for (const p of raw) {
     const sku = String(p['sku'] ?? p['SKU'] ?? '').trim();
-    if (!sku) continue;
+    const desc = String(p['description'] ?? p['descripcion'] ?? p['nombre'] ?? '').trim();
+    if (!sku) {
+      // Sin SKU no podemos timbrar. Falla loud (no silent skip como antes).
+      rejected.push({ sku: '(sin sku)', reason: `Producto "${desc || 'sin descripción'}" no tiene SKU. Agrégalo o quítalo antes de aprobar.` });
+      continue;
+    }
     const qty = Number(p['qty'] ?? p['cantidad'] ?? p['cant'] ?? 0);
     const unitPrice = Number(
       p['unitPrice'] ?? p['precio'] ?? p['precio_unitario'] ?? p['p_unit'] ?? 0,
     );
-    if (!Number.isFinite(qty) || qty <= 0) continue;
-    if (!Number.isFinite(unitPrice) || unitPrice <= 0) continue;
+    if (!Number.isFinite(qty) || qty <= 0) {
+      rejected.push({ sku, reason: `SKU ${sku}: cantidad inválida (${qty}).` });
+      continue;
+    }
+    if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
+      rejected.push({ sku, reason: `SKU ${sku}: precio inválido (${unitPrice}).` });
+      continue;
+    }
     const ivaRaw = p['ivaTasa'] ?? p['iva_tasa'] ?? 0;
     const ivaTasa = Number(ivaRaw);
     lines.push({
       sku,
       qty,
       unitPrice,
-      ivaTasa: Number.isFinite(ivaTasa) ? ivaTasa : 0,
+      ivaTasa:     Number.isFinite(ivaTasa) ? ivaTasa : 0,
+      ...(desc ? { description: desc } : {}),
     });
   }
-  return lines;
+  return { lines, rejected };
 }
 
 const VALID_PAYMENT_METHODS = new Set<PaymentMethod>([
@@ -127,18 +142,37 @@ function buildInvoice(row: PendingRow): { invoice: BillingInvoice | null; reason
 
   // Productos: corrections gana si trae array válido, si no usa productos base.
   const productosSrc = 'productos' in corrections ? corrections['productos'] : row.productos;
-  const lines = productsToLines(productosSrc);
+  const { lines, rejected } = productsToLines(productosSrc);
   if (lines.length === 0) {
-    return { invoice: null, reason: 'sin líneas facturables (productos vacío o inválido)' };
+    const detail = rejected.length > 0 ? ` — ${rejected[0].reason}` : '';
+    return { invoice: null, reason: `sin líneas facturables (productos vacío o inválido)${detail}` };
+  }
+  // Si algunas líneas se rechazaron pero otras pasaron, reportamos el problema
+  // sin bloquear. El caller decidirá con base en la reason.
+  if (rejected.length > 0) {
+    return {
+      invoice: null,
+      reason:  `Hay ${rejected.length} producto(s) con problema: ${rejected.map(r => r.reason).join('; ').slice(0, 300)}. Corrige antes de aprobar.`,
+    };
   }
 
-  // RFC: corrections.rfc_matched > row.rfc_matched. Sin RFC no timbramos.
+  // RFC: corrections.rfc_matched (o alias rfc) > row.rfc_matched. Sin RFC no timbramos.
   const rfc =
     (typeof corrections['rfc_matched'] === 'string' && corrections['rfc_matched'].trim()) ||
+    (typeof corrections['rfc'] === 'string' && (corrections['rfc'] as string).trim()) ||
     (typeof row.rfc_matched === 'string' && row.rfc_matched.trim()) ||
     '';
   if (!rfc) {
-    return { invoice: null, reason: 'falta rfc_matched' };
+    return { invoice: null, reason: 'falta RFC del cliente' };
+  }
+  // Guard: no timbrar con "RFC" que en realidad es un código de cliente. Esto
+  // pasaría si Beatriz aprueba una card en revisión sin corregir el RFC — el
+  // adapter lo rechazaría o (peor) generaría un CFDI inválido.
+  if (!/^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$/i.test(rfc)) {
+    return {
+      invoice: null,
+      reason:  `RFC "${rfc}" no tiene formato válido (12-13 caracteres SAT). Actualiza el RFC en la card antes de aprobar.`,
+    };
   }
 
   // Fecha: corrections.fecha > row.fecha > hoy. Se preserva YYYY-MM-DD.

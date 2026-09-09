@@ -192,15 +192,23 @@ export class BillingEmployee {
             adapter: this.adapter,
             // Correo humano para notificar cuando algo cae a revisión.
             clientEmail: this.config.escalationEmail,
+            // Nombre del negocio para el subject de la notif.
+            businessName: this.config.orgName,
             // Portal token opcional para armar el link en el correo. Se resuelve
             // desde organizations en runtime (best-effort, sin bloquear el flow).
             ...(await (async () => {
               const { data: org } = await supabase
                 .from('organizations')
-                .select('portal_token')
+                .select('portal_token, name')
                 .eq('portal_email', this.config.portalEmail)
-                .maybeSingle<{ portal_token: string }>();
-              return org?.portal_token ? { portalToken: org.portal_token } : {};
+                .maybeSingle<{ portal_token: string; name: string | null }>();
+              const extras: { portalToken?: string; businessName?: string } = {};
+              if (org?.portal_token) extras.portalToken = org.portal_token;
+              // Preferir organizations.name si el orgName de la config es fallback al portal_email.
+              if (org?.name && (!this.config.orgName || this.config.orgName === this.config.portalEmail)) {
+                extras.businessName = org.name;
+              }
+              return extras;
             })()),
           });
 
