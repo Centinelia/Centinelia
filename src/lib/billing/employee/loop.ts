@@ -194,20 +194,22 @@ export class BillingEmployee {
             clientEmail: this.config.escalationEmail,
             // Nombre del negocio para el subject de la notif.
             businessName: this.config.orgName,
-            // Portal token opcional para armar el link en el correo. Se resuelve
-            // desde organizations en runtime (best-effort, sin bloquear el flow).
+            // Portal token, business_name y contact_name desde BD (best-effort).
             ...(await (async () => {
-              const { data: org } = await supabase
-                .from('organizations')
-                .select('portal_token, name')
-                .eq('portal_email', this.config.portalEmail)
-                .maybeSingle<{ portal_token: string; name: string | null }>();
-              const extras: { portalToken?: string; businessName?: string } = {};
-              if (org?.portal_token) extras.portalToken = org.portal_token;
-              // Preferir organizations.name si el orgName de la config es fallback al portal_email.
-              if (org?.name && (!this.config.orgName || this.config.orgName === this.config.portalEmail)) {
-                extras.businessName = org.name;
+              const [orgRes, agentRes] = await Promise.all([
+                supabase.from('organizations').select('portal_token, name')
+                  .eq('portal_email', this.config.portalEmail)
+                  .maybeSingle<{ portal_token: string; name: string | null }>(),
+                supabase.from('voice_agents').select('client_name')
+                  .eq('id', this.config.agentId ?? '')
+                  .maybeSingle<{ client_name: string | null }>(),
+              ]);
+              const extras: { portalToken?: string; businessName?: string; contactName?: string } = {};
+              if (orgRes.data?.portal_token) extras.portalToken = orgRes.data.portal_token;
+              if (orgRes.data?.name && (!this.config.orgName || this.config.orgName === this.config.portalEmail)) {
+                extras.businessName = orgRes.data.name;
               }
+              if (agentRes.data?.client_name?.trim()) extras.contactName = agentRes.data.client_name.trim();
               return extras;
             })()),
           });

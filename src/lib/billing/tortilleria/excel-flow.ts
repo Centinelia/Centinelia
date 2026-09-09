@@ -54,6 +54,8 @@ export interface ExcelFlowInput {
   portalToken?: string;
   /** Nombre del negocio para el subject de la notif (ej. "Tortillería Estrella"). */
   businessName?: string;
+  /** Nombre del contacto humano para saludo del correo (ej. "Beatriz"). */
+  contactName?: string;
 }
 
 export interface ExcelFlowResult {
@@ -328,6 +330,7 @@ export async function runExcelFlow(input: ExcelFlowInput): Promise<ExcelFlowResu
         portalUrl,
         submittedCount: submitted.length,
         autoApprovedFailed,
+        contactName: input.contactName,
       });
       const prefix = input.businessName ? `[${input.businessName}] ` : '';
       let subject: string;
@@ -404,8 +407,10 @@ function buildPendingNotifHtml(args: {
   portalUrl:         string | null;
   submittedCount:    number;
   autoApprovedFailed?: number;
+  contactName?:      string;
 }): string {
-  const { autoApprovedCount, pendingCount, pendingRows, portalUrl, submittedCount, autoApprovedFailed = 0 } = args;
+  const { autoApprovedCount, pendingCount, pendingRows, portalUrl, submittedCount, autoApprovedFailed = 0, contactName } = args;
+  const saludo = contactName?.trim() ? `Hola ${escapeHtml(contactName.trim())},` : 'Hola,';
   const failedBanner = autoApprovedFailed > 0
     ? `<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:12px 16px;margin:16px 0;font-size:13px;color:#92400e;">
         <strong>Aviso:</strong> ${autoApprovedFailed} factura(s) que Nala había aprobado no se pudieron enviar al sistema (probablemente Dropbox o CONTPAQi está caído). Van a reintentarse automáticamente, pero si sigue fallando revisa la conexión.
@@ -428,7 +433,7 @@ function buildPendingNotifHtml(args: {
   return `
 <!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;margin:0;padding:24px;">
   <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:12px;padding:32px;">
-    <p style="margin:0 0 16px;font-size:14px;color:#1A0A3B;">Hola Beatriz,</p>
+    <p style="margin:0 0 16px;font-size:14px;color:#1A0A3B;">${saludo}</p>
     ${failedBanner}
     <p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:#1A0A3B;">
       ${resumenLine}${pendingCount > 0 ? `Necesito tu ojo en <strong>${pendingCount}</strong> factura${pendingCount === 1 ? '' : 's'} que dejé pendiente${pendingCount === 1 ? '' : 's'} porque detecté datos que no me cuadran:` : ''}
