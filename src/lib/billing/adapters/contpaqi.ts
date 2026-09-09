@@ -314,10 +314,11 @@ export class CONTPAQiAdapter implements BillingAdapter {
     const xmlString = buildImportXml(invoices, this.xmlConfig);
     const buffer = Buffer.from(xmlString, 'utf-8');
 
-    // Prefer the date embedded in the first invoice so the filename reflects
-    // the content period, not the processing wall-clock time (which may differ
-    // after midnight or during retries).
+    // Prefer the date embedded in the first invoice so el filename refleje
+    // el periodo del contenido, no el wall-clock del proceso.
     const date = invoices[0]?.date ?? new Date().toISOString().slice(0, 10);
+    const yyyy = date.slice(0, 4);
+    const mm   = date.slice(5, 7);
 
     // Deterministic 8-char hash of the XML content:
     //  - Same content => same hash => same path (idempotent on retry).
@@ -325,7 +326,10 @@ export class CONTPAQiAdapter implements BillingAdapter {
     const contentHash = createHash('sha256').update(xmlString).digest('hex').slice(0, 8);
 
     const filename = `facturas_${date}_${contentHash}.xml`;
-    const destPath = `${this.basePath}/Importables_CONTPAQi/pendientes/${filename}`;
+    // Organizado por año/mes para que humanos puedan auditar/buscar en Dropbox
+    // sin ver un folder plano con cientos de archivos. Writer debe escanear
+    // recursivo /pendientes/**/*.xml. Si no lo hace, ver docs Writer.
+    const destPath = `${this.basePath}/Importables_CONTPAQi/pendientes/${yyyy}/${mm}/${filename}`;
 
     const writtenPath = await this.dropbox.writeFile(destPath, buffer);
 

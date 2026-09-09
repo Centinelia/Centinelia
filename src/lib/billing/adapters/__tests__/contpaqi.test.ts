@@ -329,9 +329,9 @@ describe('CONTPAQiAdapter', () => {
     // writeFile called once
     expect(writeFileMock).toHaveBeenCalledTimes(1);
 
-    // Path must be inside basePath/Importables_CONTPAQi/pendientes/
+    // Path must be inside basePath/Importables_CONTPAQi/pendientes/YYYY/MM/
     const writtenPath = writeFileMock.mock.calls[0][0] as string;
-    expect(writtenPath).toMatch(/\/org\/contpaqi\/Importables_CONTPAQi\/pendientes\/facturas_/);
+    expect(writtenPath).toMatch(/\/org\/contpaqi\/Importables_CONTPAQi\/pendientes\/\d{4}\/\d{2}\/facturas_/);
     expect(writtenPath).toMatch(/\.xml$/);
 
     // ref matches the path returned by writeFile
