@@ -123,13 +123,14 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
 
   const agentName    = agent.agent_name?.trim() || 'Centinelia';
   const features     = (agent.features ?? {}) as Record<string, unknown>;
-  const agentRole    = (agent as any).role?.trim() ?? '';
   const meerkatId      = (features.meerkat_role_id as string | null) ?? null;
-  const meerkatDef     = meerkatId ? (MEERKAT_MAP as Record<string, { color?: string; imagen?: string | null }>)[meerkatId] : null;
-  // Fallback ladder para color y avatar. Ver bug fix 2026-08-19: sin este ladder,
-  // los meerkats canónicos (Nox/Nala) que no tenían features.role_color caían al
-  // morado default sin usar su color de rol.
-  const roleColor    = (features.role_color as string) || meerkatDef?.color || '#6C3BFF';
+  const meerkatDef     = meerkatId ? (MEERKAT_MAP as Record<string, { color?: string; imagen?: string | null; rol?: string }>)[meerkatId] : null;
+  // MEERKAT_MAP es la fuente de verdad cuando el meerkat está asignado: el editor
+  // ya bloquea la edición (roleLocked=true), pero el display debe reforzar la
+  // invariante — si el DB.role drift del canónico (legacy, edición manual), la
+  // UI muestra siempre el canonical. Sin meerkat asignado, cae al DB.
+  const agentRole    = meerkatDef?.rol ?? ((agent as any).role?.trim() ?? '');
+  const roleColor    = meerkatDef?.color || (features.role_color as string) || '#6C3BFF';
   const colorLocked    = !!meerkatId;
   const isCoordinator  = !!meerkatId && (COORDINATOR_ROLE_IDS as readonly string[]).includes(meerkatId);
   const jornadaType    = ((agent as any).jornada_type as string) ?? 'combinada';
@@ -242,12 +243,16 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
               <EmpleadoPickerChips
                 token={token}
                 activeId={agent.id as string}
-                agents={orgAgents.map(a => ({
-                  id:    a.id,
-                  name:  a.agent_name?.trim() || 'Empleado',
-                  role:  a.role?.trim() ?? null,
-                  color: ((a.features as any)?.role_color as string | null) ?? null,
-                }))}
+                agents={orgAgents.map(a => {
+                  const mrid = (a.features as any)?.meerkat_role_id as string | null;
+                  const def  = mrid ? (MEERKAT_MAP as Record<string, { color?: string; rol?: string }>)[mrid] : null;
+                  return {
+                    id:    a.id,
+                    name:  a.agent_name?.trim() || 'Empleado',
+                    role:  def?.rol ?? (a.role?.trim() ?? null),
+                    color: def?.color ?? ((a.features as any)?.role_color as string | null) ?? null,
+                  };
+                })}
               />
             </div>
           </div>
@@ -419,8 +424,8 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
                   <AgentKnowledgeBaseEditor
                     token={token}
                     agentId={agent.id as string}
-                    initialRole={(agent as any).role ?? ''}
-                    initialRoleColor={((agent as any).features as any)?.role_color ?? ''}
+                    initialRole={agentRole}
+                    initialRoleColor={roleColor}
                     initialRoleKb={(agent as any).role_knowledge_base ?? ''}
                     initialLearnings={(agent as any).role_learnings ?? ''}
                     websiteSynced={!!((agent as any).website_knowledge)}

@@ -63,11 +63,11 @@ type Message = { role: 'user' | 'assistant'; content: string };
 
 const WELCOME: Message = {
   role:    'assistant',
-  content: '¡Hola! Soy Noah, empleado de ventas de Centinelia.\n\nCuéntame de tu negocio y te digo si nuestros empleados digitales te sirven: cuánto ahorras, qué haría cada uno por ti, si el pricing te encaja. ¿Qué haces?',
+  content: '¡Hola! Soy Noah, empleado de ventas de Centinelia.\n\nCuéntame de tu negocio y te digo si nuestros empleados digitales te sirven: cuánto ahorras, qué haría cada uno por ti, y cuánto te costaría al mes. ¿Qué haces?',
 };
 
 const QUICK_QUESTIONS = [
-  '¿Cuánto cuesta el plan Estándar?',
+  '¿Cuáles son los precios?',
   '¿En cuánto tiempo se activa el empleado?',
   '¿Cómo se usan los minutos?',
 ];

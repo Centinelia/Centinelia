@@ -147,7 +147,7 @@ const AGENT_PLANS: AgentPlanDef[] = [
     id: 'empresarial', label: 'Centinelia Empresarial', setupFee: 0, color: '#f59e0b', custom: true,
     description: 'Múltiples empleados y sucursales, integraciones POS/CRM y SLA dedicado.',
     features: [
-      { label: 'Todo lo del Empleado Centinelia', desc: 'Todas las capacidades del plan estándar, más las siguientes.' },
+      { label: 'Todo lo del Empleado Centinelia', desc: 'Todas las capacidades del Empleado Centinelia, más las siguientes.' },
       { label: 'Integración con tu sistema', desc: 'Conectamos el agente con tu POS, CRM o calendario en tiempo real.' },
       { label: 'Múltiples empleados y sucursales', desc: 'Un empleado independiente por sucursal con su propio portal.' },
       { label: 'SLA y soporte dedicado', desc: 'Tiempo de respuesta garantizado y línea directa con el equipo técnico.' },
