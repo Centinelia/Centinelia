@@ -66,6 +66,11 @@ export interface BillingLineItem {
    * Opcional para backwards compat: si no se indica, se asume 0 (sin IVA).
    */
   ivaTasa?: number;
+  /**
+   * Descripción legible del producto (nombre en CONTPAQi o del catálogo del mapping).
+   * Metadato para UI; los adapters no lo requieren para timbrar (usan sku).
+   */
+  description?: string;
 }
 
 /** Datos de una factura a generar. */
@@ -91,6 +96,11 @@ export interface BillingInvoice {
   serie?: string;
   /** Observaciones adicionales (no aparecen en el XML). */
   notes?: string;
+  /**
+   * Folios de las remisiones/notas que originaron esta factura. Metadato para
+   * trazabilidad (UI, DB). Los adapters no lo usan para el XML.
+   */
+  sourceFolios?: string[];
 }
 
 /**

@@ -287,7 +287,7 @@ export function parseTortilleriaBatchXlsx(buffer: Buffer): ParseResult {
   }
 
   if (blocks.length === 0) {
-    warnings.push('No se encontró ningún bloque de cliente en el archivo. Revisa que los headers tengan "CTE.NNN" o "CTE:NNN".');
+    warnings.push('No encontré ningún bloque de cliente en el archivo. Cada bloque debe empezar con el nombre del cliente y su código, por ejemplo "CARDENAS ALIMENTOS (CTE. 045)".');
   }
 
   return { blocks, warnings };
@@ -302,7 +302,7 @@ function parseBlock(rows: Row[], headerIdx: number, header: { text: string; codi
     if (isColumnHeader(rows[j] ?? [])) { colHeaderIdx = j; break; }
   }
   if (colHeaderIdx === -1) {
-    warnings.push('No se encontró fila de header de columnas (Fecha | Folio) después del header del bloque.');
+    warnings.push(`No encontré la fila de columnas "Fecha | Folio | ..." después del header "${header.text.slice(0, 60)}". Revisa que el bloque tenga esa fila justo debajo del nombre del cliente.`);
     return {
       codigoCliente:         header.codigo,
       tituloBloque:          header.text,
@@ -339,7 +339,7 @@ function parseBlock(rows: Row[], headerIdx: number, header: { text: string; codi
     const precioUnit    = typeof precioRaw === 'number' ? precioRaw : null;
 
     if (typeof nombreRaw === 'number') {
-      warnings.push(`Columna ${c}: header es un número (${nombreRaw}), probablemente header truncado. Se conservará el valor pero requiere mapping manual.`);
+      warnings.push(`En el bloque hay una columna sin nombre de producto (celda con "${nombreRaw}" en lugar de texto). Puede ser una columna oculta o el nombre se borró al copiar. Revísala en tu Excel.`);
     }
     productos.push({
       columnaNombre,
@@ -403,7 +403,7 @@ function parseBlock(rows: Row[], headerIdx: number, header: { text: string; codi
   for (const prod of productos) {
     if (prod.cantidadTotal > 0) {
       if (prod.precioUnit == null) {
-        warnings.push(`Producto "${prod.columnaNombre}" (col ${prod.columnaIdx}) tiene ${prod.cantidadTotal} kg sin precio. No se puede calcular subtotal.`);
+        warnings.push(`El producto "${prod.columnaNombre}" tiene ${prod.cantidadTotal} kg pero le falta precio en tu Excel. Agrega el precio o la línea saldrá sin subtotal.`);
       } else {
         prod.subtotalCalculado = Math.round(prod.cantidadTotal * prod.precioUnit * 100) / 100;
         totalGeneralCalculado += prod.subtotalCalculado;
@@ -416,10 +416,10 @@ function parseBlock(rows: Row[], headerIdx: number, header: { text: string; codi
   if (totalGeneralExcel != null) {
     const diff = Math.abs(totalGeneralCalculado - totalGeneralExcel);
     if (diff > 1) {
-      warnings.push(`Total calculado ${totalGeneralCalculado} difiere del TOTAL GENERAL del Excel ${totalGeneralExcel} por $${diff.toFixed(2)}. Revisar.`);
+      warnings.push(`El total no cuadra: calculé $${totalGeneralCalculado.toFixed(2)} pero tu Excel dice $${totalGeneralExcel.toFixed(2)} (diferencia $${diff.toFixed(2)}). Revisa las cantidades o precios del bloque.`);
     }
   } else {
-    warnings.push('No se encontró TOTAL GENERAL en el bloque; no se puede validar consistencia.');
+    warnings.push('Este bloque no trae TOTAL GENERAL en tu Excel, no pude validar que el total esté bien.');
   }
 
   return {

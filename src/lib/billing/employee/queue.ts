@@ -185,6 +185,40 @@ async function handleProcessNotes(job: BillingJobRow): Promise<void> {
     );
   }
 
+  // Hidratar refresh_token de integration_accounts para que DropboxClient
+  // pueda auto-refrescar access tokens expirados. Sin esto, cada 4h el
+  // access_token vence y todo submit falla con 401 hasta reconectar manual.
+  try {
+    const { data: dbxAcct } = await supabase
+      .from('integration_accounts')
+      .select('refresh_token, access_token, capability')
+      .eq('portal_email', job.portal_email)
+      .eq('provider', 'dropbox')
+      .in('capability', ['files', 'storage_dropbox'])
+      .limit(1)
+      .maybeSingle<{ refresh_token: string | null; access_token: string | null; capability: string }>();
+    if (dbxAcct?.refresh_token) {
+      const cfg = integration.config as unknown as Record<string, unknown>;
+      cfg['dropbox_refresh_token'] = dbxAcct.refresh_token;
+      // Callback: cuando DropboxClient refresque, persistir el nuevo access_token
+      // en integration_accounts para futuras invocaciones (best-effort).
+      cfg['on_dropbox_refresh'] = async (newAccess: string) => {
+        try {
+          await supabase
+            .from('integration_accounts')
+            .update({ access_token: newAccess })
+            .eq('portal_email', job.portal_email)
+            .eq('provider', 'dropbox')
+            .eq('capability', dbxAcct.capability);
+        } catch (persistErr) {
+          console.warn('[billing/queue] persist refreshed dropbox access_token failed:', (persistErr as Error).message);
+        }
+      };
+    }
+  } catch (hydrateErr) {
+    console.warn('[billing/queue] hydrate dropbox refresh_token failed:', (hydrateErr as Error).message);
+  }
+
   const adapter = buildAdapter(integration.config);
 
   // Resolver el voice_agent de Nala para cobrar el loop LLM al pool. Si no

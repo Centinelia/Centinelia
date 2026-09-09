@@ -100,7 +100,7 @@ describe('parseTortilleriaBatchXlsx — Ortiz (razones sociales distintas)', () 
   it('bloque 595 tolera header roto (columna con número 4 en vez de "ESTRELLA 1KG")', () => {
     const b = result.blocks[2];
     // Debe haber warning por header numérico y NO tronar.
-    expect(b.warnings.some(w => /header es un número/i.test(w))).toBe(true);
+    expect(b.warnings.some(w => /columna sin nombre de producto/i.test(w))).toBe(true);
   });
 
   it('todos los bloques tienen razón social capturable en el título', () => {

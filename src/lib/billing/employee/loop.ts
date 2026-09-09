@@ -190,6 +190,18 @@ export class BillingEmployee {
             // y el email se re-encole: el fast-path sale early por idempotencia
             // pero primero empuja los XMLs pendientes a Dropbox.
             adapter: this.adapter,
+            // Correo humano para notificar cuando algo cae a revisión.
+            clientEmail: this.config.escalationEmail,
+            // Portal token opcional para armar el link en el correo. Se resuelve
+            // desde organizations en runtime (best-effort, sin bloquear el flow).
+            ...(await (async () => {
+              const { data: org } = await supabase
+                .from('organizations')
+                .select('portal_token')
+                .eq('portal_email', this.config.portalEmail)
+                .maybeSingle<{ portal_token: string }>();
+              return org?.portal_token ? { portalToken: org.portal_token } : {};
+            })()),
           });
 
           if (excelResult.processed) {

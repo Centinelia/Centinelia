@@ -43,8 +43,17 @@ interface ConsolidatedGroup {
   consolidationReason: string | null;
 }
 
+export interface InvoiceMeta {
+  /** Bloques originales del Excel que produjeron este invoice. */
+  sourceBlocks: ParsedBlock[];
+  /** Warnings acumulados durante el build de este invoice específico. */
+  blockWarnings: string[];
+}
+
 export interface PipelineResult {
   invoices: BillingInvoice[];
+  /** Metadata paralela a `invoices` (mismo índice). Para confidence check + trazabilidad. */
+  invoiceMeta: InvoiceMeta[];
   skipped: SkipReport[];
   errors: PipelineError[];
   warnings: PipelineWarning[];
@@ -187,6 +196,7 @@ function aggregateLines(
     qty: number;
     unitPrice: number;
     ivaTasa: number;
+    description: string;
   }
   const buckets = new Map<string, Bucket>();
   const unmapped = new Set<string>();
@@ -198,16 +208,19 @@ function aggregateLines(
 
       const entry = findProductEntry(mapping, producto.columnaNombre, producto.precioUnit);
       let sku: string;
+      let description: string;
       let ivaTasa = 0;
       if (entry) {
         sku = entry.sku;
+        description = entry.nombreContpaqi ?? producto.columnaNombre;
       } else {
         // Fallback: usar clave SAT default. Mapping incompleto → warning.
         sku = producto.columnaNombre.trim().toUpperCase();
+        description = producto.columnaNombre;
         unmapped.add(`${producto.columnaNombre} @ $${producto.precioUnit.toFixed(2)}`);
         warnings.push({
           tituloBloque: block.tituloBloque,
-          message: `Producto "${producto.columnaNombre}" @ $${producto.precioUnit.toFixed(2)} sin mapping guardado. Se usa el nombre del Excel como SKU fallback.`,
+          message: `El producto "${producto.columnaNombre}" a $${producto.precioUnit.toFixed(2)} no está en tu catálogo de códigos. Agrégalo o dime a qué SKU corresponde.`,
         });
       }
 
@@ -221,18 +234,18 @@ function aggregateLines(
           qty:       producto.cantidadTotal,
           unitPrice: producto.precioUnit,
           ivaTasa,
+          description,
         });
       }
     }
   }
 
-  // También conservamos claveSAT/nombreContpaqi/unidad en el warning/mapping
-  // pero como BillingLineItem no los expone, solo van al output final del adapter.
   const lines: BillingLineItem[] = Array.from(buckets.values()).map(b => ({
-    sku:       b.sku,
-    qty:       b.qty,
-    unitPrice: b.unitPrice,
-    ivaTasa:   b.ivaTasa,
+    sku:         b.sku,
+    qty:         b.qty,
+    unitPrice:   b.unitPrice,
+    ivaTasa:     b.ivaTasa,
+    description: b.description,
   }));
 
   return { lines, unmappedColumns: unmapped };
@@ -281,6 +294,7 @@ export function buildInvoicesFromBlocks(
 
   // 3-5) Por cada grupo, resolver cliente + productos + armar invoice
   const invoices: BillingInvoice[] = [];
+  const invoiceMeta: InvoiceMeta[] = [];
   for (const g of groups) {
     const { codigo, rfc } = resolveGroupClient(g, mapping);
 
@@ -298,7 +312,10 @@ export function buildInvoicesFromBlocks(
       });
     }
 
-    const { lines } = aggregateLines(g, mapping, config, warnings);
+    // Warnings acumulados solo para este grupo (para confidence check).
+    const groupWarnings: PipelineWarning[] = [];
+    const { lines } = aggregateLines(g, mapping, config, groupWarnings);
+    warnings.push(...groupWarnings);
     if (lines.length === 0) {
       warnings.push({
         tituloBloque: g.tituloRep,
@@ -316,14 +333,22 @@ export function buildInvoicesFromBlocks(
       paymentMethod: 'transferencia',
       usoCFDI:       config.usoCFDIDefault,
       serie:         config.serieDefault,
-      notes:         g.consolidationReason
-        ? `Consolidado: ${g.consolidationReason}. Bloques: ${g.sourceBlocks.map(b => b.tituloBloque).join(' | ').slice(0, 300)}`
-        : `Bloque Excel: ${g.tituloRep.slice(0, 200)}`,
+      notes:         g.forcedCodigo
+        ? `Consolidado: ${g.forcedCodigo}`
+        : g.sourceBlocks[0].tituloBloque.trim().slice(0, 200),
       metodoPago:    pickMetodoPago(codigo, mapping),
+      // Folios de las remisiones del bloque (para trazabilidad en UI/DB).
+      sourceFolios:  g.sourceBlocks.flatMap(b => b.remisiones.map(r => r.folio).filter(f => f && f.length > 0)),
     };
 
     invoices.push(invoice);
+    // Bloque parser warnings + pipeline warnings del grupo, para el confidence check.
+    const parserWarnings = g.sourceBlocks.flatMap(b => b.warnings);
+    invoiceMeta.push({
+      sourceBlocks:  g.sourceBlocks,
+      blockWarnings: [...parserWarnings, ...groupWarnings.map(w => w.message)],
+    });
   }
 
-  return { invoices, skipped, errors, warnings };
+  return { invoices, invoiceMeta, skipped, errors, warnings };
 }

@@ -190,6 +190,31 @@ async function main() {
   const { BillingEmployee } = await import('../src/lib/billing/employee/loop');
   const { buildAdapter, decryptDropboxToken: _keep } = await import('../src/lib/billing/adapters');
   void _keep; // keep-import for tree-shake safety in tsx
+
+  // Hidratar refresh_token de Dropbox si existe (mismo patrón que queue.ts).
+  const { data: dbxAcct } = await supabase
+    .from('integration_accounts')
+    .select('refresh_token, capability')
+    .eq('portal_email', portalEmail)
+    .eq('provider', 'dropbox')
+    .in('capability', ['files', 'storage_dropbox'])
+    .limit(1)
+    .maybeSingle<{ refresh_token: string | null; capability: string }>();
+  if (dbxAcct?.refresh_token) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (integRow.config as any).dropbox_refresh_token = dbxAcct.refresh_token;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (integRow.config as any).on_dropbox_refresh = async (newAccess: string) => {
+      await supabase
+        .from('integration_accounts')
+        .update({ access_token: newAccess })
+        .eq('portal_email', portalEmail)
+        .eq('provider', 'dropbox')
+        .eq('capability', dbxAcct.capability);
+      console.log(`  ↻ dropbox access_token refrescado`);
+    };
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const adapter = buildAdapter(integRow.config as any);
   const employee = new BillingEmployee(adapter, {

@@ -152,7 +152,19 @@ export function buildAdapter(config: OrganizationIntegrationConfig): BillingAdap
             'CONTPAQi adapter with storage_backend=dropbox requires dropbox_token + dropbox_base_path'
           );
         }
-        storage = new DropboxClient(decryptDropboxToken(config.dropbox_token)!);
+        // Refresh opcional: si viene refresh_token en la config (hidratado por
+        // el caller desde integration_accounts), DropboxClient auto-refresca
+        // access tokens expirados. Sin refresh, 401 → error.
+        const refreshRaw = (config as unknown as Record<string, unknown>)['dropbox_refresh_token'] as string | undefined;
+        const onRefreshCb = (config as unknown as Record<string, unknown>)['on_dropbox_refresh'] as
+          ((newAccess: string) => void | Promise<void>) | undefined;
+        const refresh = refreshRaw
+          ? {
+              refreshToken: decryptDropboxToken(refreshRaw)!,
+              onRefresh:    onRefreshCb,
+            }
+          : undefined;
+        storage = new DropboxClient(decryptDropboxToken(config.dropbox_token)!, refresh);
         basePath = config.dropbox_base_path;
       }
 

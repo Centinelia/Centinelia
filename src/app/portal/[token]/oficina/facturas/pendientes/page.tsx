@@ -245,39 +245,59 @@ function PendingCard({
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-0">
-        {/* Imagen (click para zoom) */}
+        {/* Origen: foto (vision path) o Excel (excel_pipeline) */}
         <div className="p-3" style={{ background: 'rgba(0,0,0,0.02)', borderRight: '1px solid var(--c-border)' }}>
           {item.image_url ? (
-            <button
-              type="button"
-              onClick={() => setShowLightbox(true)}
-              className="group relative block w-full rounded-lg overflow-hidden cursor-zoom-in"
-              title="Click para ver en grande y hacer zoom"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={item.image_url} alt={item.image_filename ?? 'notita'}
-                   className="w-full object-contain group-hover:opacity-95 transition-opacity"
-                   style={{ maxHeight: 320 }} />
-              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                   style={{ background: 'rgba(26,10,59,0.35)' }}>
-                <div className="rounded-full p-2" style={{ background: 'rgba(255,255,255,0.95)' }}>
-                  <ZoomIn size={20} style={{ color: '#1A0A3B' }} />
+            <>
+              <button
+                type="button"
+                onClick={() => setShowLightbox(true)}
+                className="group relative block w-full rounded-lg overflow-hidden cursor-zoom-in"
+                title="Click para ver en grande y hacer zoom"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={item.image_url} alt={item.image_filename ?? 'notita'}
+                     className="w-full object-contain group-hover:opacity-95 transition-opacity"
+                     style={{ maxHeight: 320 }} />
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                     style={{ background: 'rgba(26,10,59,0.35)' }}>
+                  <div className="rounded-full p-2" style={{ background: 'rgba(255,255,255,0.95)' }}>
+                    <ZoomIn size={20} style={{ color: '#1A0A3B' }} />
+                  </div>
+                </div>
+              </button>
+              <p className="text-[10px] mt-2 truncate" style={{ color: 'var(--c-text-4)' }}>
+                {item.image_filename ?? '(sin nombre)'} · click para zoom
+              </p>
+              {item.remision_index !== null && item.remision_index !== undefined && (
+                <p className="text-[10px] mt-1" style={{ color: 'var(--c-text-3)' }}>
+                  Remisión <strong>{(item.remision_index ?? 0) + 1}</strong> de la foto
+                </p>
+              )}
+            </>
+          ) : (
+            /* Excel path — sin foto, mostrar metadata del bloque */
+            <div className="flex flex-col gap-2 text-[11px]" style={{ color: 'var(--c-text-3)' }}>
+              <div className="rounded-lg p-3 flex items-center gap-2" style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.15)' }}>
+                <div className="rounded-full p-1.5" style={{ background: 'rgba(108,59,255,0.15)' }}>
+                  <ImageIcon size={14} style={{ color: '#6C3BFF' }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#6C3BFF' }}>Excel</p>
+                  <p className="text-xs truncate" style={{ color: 'var(--c-text)' }}>{item.email?.subject ?? 'Correo semanal'}</p>
                 </div>
               </div>
-            </button>
-          ) : (
-            <div className="w-full h-40 rounded-lg flex items-center justify-center"
-                 style={{ background: 'rgba(0,0,0,0.04)', color: '#6B6480' }}>
-              <ImageIcon size={24} />
+              {item.remision_index !== null && item.remision_index !== undefined && (
+                <p className="text-[10px]">
+                  Bloque <strong>{(item.remision_index ?? 0) + 1}</strong> del Excel
+                </p>
+              )}
+              {item.folio && (
+                <p className="text-[10px]">
+                  Folios: <span style={{ color: 'var(--c-text)' }}>{item.folio}</span>
+                </p>
+              )}
             </div>
-          )}
-          <p className="text-[10px] mt-2 truncate" style={{ color: 'var(--c-text-4)' }}>
-            {item.image_filename ?? '(sin nombre)'} · click para zoom
-          </p>
-          {item.remision_index !== null && item.remision_index !== undefined && (
-            <p className="text-[10px] mt-1" style={{ color: 'var(--c-text-3)' }}>
-              Remisión <strong>{(item.remision_index ?? 0) + 1}</strong> de la foto
-            </p>
           )}
         </div>
 
@@ -287,7 +307,7 @@ function PendingCard({
             <span className="text-[10px] uppercase tracking-widest font-bold" style={{ color: '#f59e0b' }}>
               Requiere revisión
             </span>
-            <p className="text-sm mt-0.5" style={{ color: 'var(--c-text)' }}>
+            <p className="text-sm mt-0.5 whitespace-pre-line" style={{ color: 'var(--c-text)' }}>
               {item.reason}
             </p>
             <p className="text-[10px] mt-1" style={{ color: 'var(--c-text-3)' }}>
@@ -299,7 +319,7 @@ function PendingCard({
           <div className="grid grid-cols-3 gap-2 mb-3">
             <InputField label="Folio" value={folio} onChange={setFolio} disabled={isResolved} />
             <InputField label="Fecha" type="date" value={fecha} onChange={setFecha} disabled={isResolved} />
-            <InputField label="Total ($)" type="number" step="0.01" value={total} onChange={setTotal} disabled={isResolved} />
+            <CurrencyField label="Total" value={total} onChange={setTotal} disabled={isResolved} />
           </div>
 
           {/* Cliente: autocomplete contra catálogo */}
@@ -319,36 +339,46 @@ function PendingCard({
 
           {/* Productos editables */}
           <div className="mt-4">
-            <div className="flex items-center justify-between mb-1">
+            <div className="mb-1.5">
               <span className="text-[10px] uppercase tracking-widest font-bold" style={{ color: 'var(--c-text-4)' }}>
                 Productos ({productos.length})
               </span>
-              {!isResolved && (
-                <button
-                  onClick={() => setProductos(prev => [...prev, { descripcion: '', cantidad: 1, precio_unitario: 0 }])}
-                  className="text-[10px] font-semibold inline-flex items-center gap-1 hover:opacity-80"
-                  style={{ color: '#6C3BFF' }}
-                >
-                  <Plus size={10} /> Agregar
-                </button>
-              )}
             </div>
             {productos.length === 0 ? (
               <p className="text-xs italic" style={{ color: 'var(--c-text-3)' }}>
                 Nala no extrajo productos. Si vas a timbrar, agrega al menos uno.
               </p>
             ) : (
-              <div className="space-y-1">
-                {productos.map((p, i) => (
-                  <ProductRow
-                    key={i}
-                    producto={p}
-                    disabled={isResolved}
-                    onChange={(next) => setProductos(prev => prev.map((x, j) => i === j ? next : x))}
-                    onRemove={() => setProductos(prev => prev.filter((_, j) => j !== i))}
-                  />
-                ))}
-              </div>
+              <>
+                {/* Header row: mismos anchos que ProductRow */}
+                <div className="grid grid-cols-[1fr_70px_90px_80px_30px] gap-1 items-center mb-1 px-1">
+                  <span className="text-[9px] uppercase tracking-wider font-semibold" style={{ color: 'var(--c-text-4)' }}>Descripción</span>
+                  <span className="text-[9px] uppercase tracking-wider font-semibold text-right" style={{ color: 'var(--c-text-4)' }}>Cantidad</span>
+                  <span className="text-[9px] uppercase tracking-wider font-semibold text-right" style={{ color: 'var(--c-text-4)' }}>Precio</span>
+                  <span className="text-[9px] uppercase tracking-wider font-semibold text-right pr-1" style={{ color: 'var(--c-text-4)' }}>Total</span>
+                  <span />
+                </div>
+                <div className="space-y-1">
+                  {productos.map((p, i) => (
+                    <ProductRow
+                      key={i}
+                      producto={p}
+                      disabled={isResolved}
+                      onChange={(next) => setProductos(prev => prev.map((x, j) => i === j ? next : x))}
+                      onRemove={() => setProductos(prev => prev.filter((_, j) => j !== i))}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+            {!isResolved && (
+              <button
+                onClick={() => setProductos(prev => [...prev, { descripcion: '', cantidad: 1, precio_unitario: 0 }])}
+                className="mt-2 text-[10px] font-semibold inline-flex items-center gap-1 hover:opacity-80"
+                style={{ color: '#6C3BFF' }}
+              >
+                <Plus size={10} /> Agregar producto
+              </button>
             )}
           </div>
 
@@ -532,16 +562,14 @@ function ProductRow({
         className="px-2 py-1 rounded text-xs text-right"
         style={{ background: '#fff', border: '1px solid var(--c-border)' }}
       />
-      <input
-        type="number" step="0.01" min="0"
+      <CurrencyInput
         value={price}
-        onChange={e => onChange({ ...producto, precio_unitario: Number(e.target.value) })}
+        onChange={v => onChange({ ...producto, precio_unitario: Number(v) })}
         disabled={disabled}
         className="px-2 py-1 rounded text-xs text-right"
-        style={{ background: '#fff', border: '1px solid var(--c-border)' }}
       />
       <span className="text-xs text-right pr-1" style={{ color: 'var(--c-text-3)' }}>
-        ${subtotal.toFixed(2)}
+        {formatMxn(subtotal)}
       </span>
       {!disabled && (
         <button onClick={onRemove} className="p-1 rounded hover:bg-[#FEE2E2]" title="Eliminar">
@@ -576,6 +604,63 @@ function InputField({
       />
     </label>
   );
+}
+
+/**
+ * Input de moneda MXN sin label: al focus muestra dígitos+punto para editar
+ * libremente; al blur formatea a "$1,234.56" con separadores. Guarda el valor
+ * plano (sin $ ni comas) en el state para no romper el submit al backend.
+ */
+function CurrencyInput({
+  value, onChange, disabled, className,
+}: {
+  value: string | number; onChange: (v: string) => void; disabled?: boolean; className?: string;
+}) {
+  const [focused, setFocused] = useState(false);
+  const strValue = String(value ?? '');
+  const parsed = Number(strValue);
+  const display = focused
+    ? strValue
+    : (strValue === '' || !Number.isFinite(parsed))
+      ? ''
+      : `$${parsed.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      value={display}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      onChange={e => {
+        const raw = e.target.value.replace(/[$,\s]/g, '');
+        if (raw === '' || /^\d*\.?\d*$/.test(raw)) onChange(raw);
+      }}
+      disabled={disabled}
+      className={className ?? 'w-full px-2 py-1.5 rounded text-xs text-right'}
+      style={{ background: '#fff', border: '1px solid var(--c-border)' }}
+    />
+  );
+}
+
+function CurrencyField({
+  label, value, onChange, disabled,
+}: {
+  label: string; value: string; onChange: (v: string) => void; disabled?: boolean;
+}) {
+  return (
+    <label className="block">
+      <span className="block text-[10px] uppercase tracking-widest font-bold mb-0.5" style={{ color: 'var(--c-text-4)' }}>
+        {label}
+      </span>
+      <CurrencyInput value={value} onChange={onChange} disabled={disabled} />
+    </label>
+  );
+}
+
+/** Formatea un número como "$1,234.56" MXN. Para spans/texto (no inputs). */
+function formatMxn(n: number): string {
+  if (!Number.isFinite(n)) return '$0.00';
+  return `$${n.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 // ─── Lightbox ────────────────────────────────────────────────────────────────
