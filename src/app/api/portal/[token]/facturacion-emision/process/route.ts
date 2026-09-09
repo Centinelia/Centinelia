@@ -16,6 +16,7 @@ import { resolveOrgFromToken } from '@/lib/portal/org-token';
 import { extractNoteFromImage } from '@/lib/billing/vision/extract';
 import { buildVisionContextFromAdapter } from '@/lib/billing/vision/build-context';
 import { buildAdapter, type OrganizationIntegrationConfig } from '@/lib/billing/adapters';
+import { hydrateDropboxRefresh } from '@/lib/billing/adapters/hydrate-refresh';
 import { buildImportXml } from '@/lib/billing/contpaqi/xml-import';
 import type {
   BillingInvoice,
@@ -79,6 +80,11 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   let adapter;
   try {
+    await hydrateDropboxRefresh(
+      integration.config as unknown as Record<string, unknown>,
+      resolved.portalEmail,
+      supabase,
+    );
     adapter = buildAdapter(integration.config);
   } catch (err) {
     return NextResponse.json(

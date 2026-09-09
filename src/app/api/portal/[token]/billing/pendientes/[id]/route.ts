@@ -118,29 +118,69 @@ export async function POST(req: NextRequest, { params }: Params) {
     .eq('id', id);
   if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 });
 
-  // Re-encolar el email para que Nala reintente con override si edit/approve.
-  // Reject NO re-encola.
+  // Approve/edit: además de re-encolar (fallback), intentamos disparar el
+  // submit inmediato para que el XML llegue a Dropbox en segundos, no minutos
+  // (default del cron: hasta 10 min). Beatriz refresca y ya ve XML sellado.
+  // El re-encolado sirve como red de seguridad si el submit inmediato falla.
+  let inlineXmlPath: string | null = null;
+  let inlineError:   string | null = null;
   if (body.action !== 'reject') {
-    try {
-      // Obtenemos el integration_id del email row.
-      const { data: emailRow } = await supabase
-        .from('billing_incoming_emails')
-        .select('integration_id')
-        .eq('id', pending.email_id)
-        .maybeSingle<{ integration_id: string }>();
-      if (emailRow?.integration_id) {
+    const { data: emailRow } = await supabase
+      .from('billing_incoming_emails')
+      .select('integration_id')
+      .eq('id', pending.email_id)
+      .maybeSingle<{ integration_id: string }>();
+
+    // Fire-and-forget encola de todos modos.
+    if (emailRow?.integration_id) {
+      try {
         await enqueueBillingEmail({
           emailId:       pending.email_id,
           kind:          'process_notes',
           portalEmail:   resolved.portalEmail,
           integrationId: emailRow.integration_id,
         });
+      } catch (e) {
+        console.error('[pendientes POST] re-enqueue failed:', (e as Error).message);
+      }
+    }
+
+    // Submit inmediato — sincrono, para que la UI vea el resultado real.
+    try {
+      const { data: integ } = await supabase
+        .from('organization_integrations')
+        .select('config')
+        .eq('id', emailRow?.integration_id ?? '')
+        .maybeSingle<{ config: Record<string, unknown> }>();
+      if (integ?.config) {
+        const { hydrateDropboxRefresh } = await import('@/lib/billing/adapters/hydrate-refresh');
+        const { buildAdapter } = await import('@/lib/billing/adapters');
+        const { submitApprovedForEmail } = await import('@/lib/billing/tortilleria/submit-approved');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const cfg = integ.config as any;
+        await hydrateDropboxRefresh(cfg, resolved.portalEmail, supabase);
+        const adapter = buildAdapter(cfg);
+        const submitResult = await submitApprovedForEmail({
+          portalEmail: resolved.portalEmail,
+          emailId:     pending.email_id,
+          adapter,
+          supabase,
+        });
+        const mine = submitResult.submitted.find(s => s.pendingId === id);
+        if (mine) inlineXmlPath = mine.xmlPath;
+        const mineErr = submitResult.errors.find(e => e.pendingId === id);
+        if (mineErr) inlineError = mineErr.reason;
       }
     } catch (e) {
-      console.error('[pendientes POST] re-enqueue failed:', (e as Error).message);
-      // No fallar la respuesta — el pending ya se actualizó.
+      inlineError = (e as Error).message;
+      console.warn('[pendientes POST] submit inmediato falló (cron reintentará):', inlineError);
     }
   }
 
-  return NextResponse.json({ ok: true, status: nextStatus });
+  return NextResponse.json({
+    ok: true,
+    status: nextStatus,
+    ...(inlineXmlPath ? { xml_path: inlineXmlPath } : {}),
+    ...(inlineError   ? { submit_warning: inlineError } : {}),
+  });
 }

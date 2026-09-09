@@ -15,6 +15,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { resolveOrgFromToken } from '@/lib/portal/org-token';
 import { buildAdapter, type OrganizationIntegrationConfig } from '@/lib/billing/adapters';
+import { hydrateDropboxRefresh } from '@/lib/billing/adapters/hydrate-refresh';
 
 interface Params { params: Promise<{ token: string }> }
 
@@ -43,6 +44,13 @@ export async function GET(req: NextRequest, { params }: Params) {
   if (!row) return NextResponse.json({ clients: [] });
 
   try {
+    // Hidratar refresh_token de Dropbox para que el adapter pueda renovar
+    // access tokens expirados en el propio request.
+    await hydrateDropboxRefresh(
+      row.config as unknown as Record<string, unknown>,
+      resolved.portalEmail,
+      supabase,
+    );
     const adapter = buildAdapter(row.config);
     const all = await (adapter as unknown as { listAllClients: () => Promise<Array<{ rfc: string; razonSocial: string; usoCFDI?: string; regimen?: string; codigoPostal?: string }>> }).listAllClients();
     const filtered = q
