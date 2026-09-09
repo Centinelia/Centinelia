@@ -16,7 +16,7 @@ Contexto y estrategia consolidada: `handoff_prospecto_gerardo_guajardo_2026-09-0
 | 01 | `meefi-01-clientes.md` | 7 empresas importadoras cliente ficticias con datos coherentes |
 | 02 | `meefi-02-kb-nara.md` | KB de Nara — recepción y soporte 24/7 |
 | 03 | `meefi-03-kb-niva.md` | KB de Niva — KYB, compliance UIF, análisis |
-| 04 | `meefi-04-kb-nova.md` | KB de Nova — consolidación, reporting diario, ingesta correo |
+| 04 | `meefi-04-kb-nalu.md` | KB de Nalú — Analista de Tesorería (consolidación, reporting diario, ingesta correo) |
 | 05 | `meefi-05-escenarios.md` | 6 escenarios wow para la cita + estimación de valor + pitch |
 | 06 | `meefi-06-statement-jpmc-02sept2026.csv` | Statement bancario ficticio JPMC (32 movimientos, 3 breaks deliberados para escenario 5) |
 | 07 | `meefi-07-ledger-interno-02sept2026.csv` | Ledger interno Meefi mismo día (para reconciliar contra statement) |
@@ -38,7 +38,7 @@ Contexto y estrategia consolidada: `handoff_prospecto_gerardo_guajardo_2026-09-0
 
 ## Combos de empleados por ambiente
 
-**Meefi:** Nara + Niva + Nova (Nico en fase 2 cuando escalen volumen para cobros)
+**Meefi:** Nara + Nalú + Niva (Nico en fase 2 cuando escalen volumen para cobros)
 **GAC:** Nara + Nala + Niva (Nova en fase 2 para ingesta masiva de XMLs)
 
 ## Frames de venta

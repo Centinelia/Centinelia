@@ -17,7 +17,7 @@ Checklist en tablet o teléfono:
 - [ ] Chrome con 6 tabs abiertas en este orden (izq a der):
   1. `https://www.centinelia.mx/portal/5RP13tnLK6XX` (Meefi — Oficina)
   2. `https://www.centinelia.mx/portal/PJ9EALpprDEP` (GAC — Oficina)
-  3. Gmail con la vista del correo Nova consolidado hasta arriba (ya enviado 7:30 AM)
+  3. Gmail con la vista del correo Nalú consolidado hasta arriba (ya enviado 7:30 AM)
   4. Google Drive con el ZIP `kyb-bajio.zip` listo para descargar/subir
   5. Loom fallback (grabado el 12) en pestaña dormida
   6. Este documento (13a) en tab final por si necesitas consultar
@@ -38,11 +38,11 @@ Checklist en tablet o teléfono:
 
 Saludo natural. No arranques con pitch, arranca con calibración.
 
-NAZRE: "Antes de mostrarles nada, dos cosas para calibrar. Gera, del piloto de Meefi — ¿lo vas a operar tú directo, o Alan, o Emilio? Y Miguel, ¿tú vas a operar GAC o va a ser Ricardo o Adriana?"
+NAZRE: "Antes de mostrarles nada, un calibrador rápido. Sé que Alan es CEO, Emilio CTO y tú del lado operativo. Lo que van a ver hoy son empleados digitales que en producción los operan sus equipos día a día — ustedes lo verían como pulso ejecutivo. Quiero que lo lean desde esa perspectiva: no es un tablero para dueños, es infraestructura para su equipo operativo. Y del lado GAC, Miguel, igual: los que interactúan diario son Ricardo o Adriana, tú ves el resumen."
 
-ESPERAR: respuesta directa. Anota mental. Roles exactos de Alan y Emilio siguen sin confirmarse — aprovecha si el momento lo permite para clarificarlos ("¿en qué área está Alan? ¿y Emilio?").
+ESPERAR: asentimiento. No es pregunta, es framing para que no se enganchen con "no me veo yo usando esto todo el día".
 
-MICRO-AJUSTE: si Gera dice "yo veo pero opera Alan/Emilio" → en el pitch de M2 dile "cuando abres tu correo" en vez de "cuando Alan abre el suyo".
+MICRO-AJUSTE: si alguno pregunta "¿pero yo qué hago con esto?" → "Ustedes reciben el pulso y toman decisiones. Su equipo operativo es quien pide slices, sube docs, escala. El sistema les libera del trabajo repetitivo, no les agrega uno nuevo."
 
 ### Beat 0.2 — Framing del bloque (min 1-3)
 
@@ -103,19 +103,19 @@ ESPERAR: número aproximado. Cualquier respuesta > 5/día valida el ROI.
 NAZRE: "Nara cubre esa cobertura sin humano. Sin rotación, sin calibración de nuevo staff cada 6 meses. La misma Nara respondiendo con el mismo tono desde el primer día."
 
 Transición al M2 (30 seg):
-> "OK, eso fue voz — la parte reactiva. Ahora déjame mostrarles la parte proactiva: qué es lo que Nova hace **sin que nadie se lo pida**."
+> "OK, eso fue voz — la parte reactiva. Ahora déjame mostrarles la parte proactiva: qué es lo que Nalú hace **sin que nadie se lo pida**."
 
 ### M2 · Consolidado diario + producción ad-hoc (min 11-17)
 
 #### M2.1 — Parte A · Correo pre-enviado (min 11-14)
 
-ACCIÓN: cambiar de tab a Gmail. El correo Nova consolidado 14-sept está hasta arriba (enviado 7:30 AM).
+ACCIÓN: cambiar de tab a Gmail. El correo Nalú consolidado 14-sept está hasta arriba (enviado 7:30 AM), con CC a Alan y Emilio.
 
-NAZRE: "Esto es lo que Gerardo ya tiene esperándolo cuando prende la laptop cada mañana. Nadie le pidió esto hoy, ni ayer, ni ninguna mañana desde que lo activamos. Nova lo produce cada día a las 7:30 AM sin recordatorios."
+NAZRE: "Esto es lo que ustedes tres tienen en la bandeja cada mañana como pulso ejecutivo, y su equipo operativo lo tiene también para actuar sobre las alertas. Nadie le pidió esto hoy, ni ayer, ni ninguna mañana desde que lo activamos. Nalú lo produce cada día a las 7:30 AM sin recordatorios."
 
 ACCIÓN: abrir el correo. Deja 3 segundos para que lean el subject y el resumen.
 
-NAZRE (mientras lees en voz alta las secciones): "Resumen del día. TPV, operaciones, variación vs promedio 7 días — con contexto de por qué la variación, no solo el número. Breakdown por corredor. Top clientes por volumen. Y aquí" (señala alertas) "es donde Nova gana su costo."
+NAZRE (mientras lees en voz alta las secciones): "Resumen del día. TPV, operaciones, variación vs promedio 7 días — con contexto de por qué la variación, no solo el número. Breakdown por corredor. Top clientes por volumen. Y aquí" (señala alertas) "es donde Nalú gana su costo."
 
 ACCIÓN: bajar hasta la sección ALERTAS. Leer las 3 alertas en voz alta.
 
@@ -127,7 +127,7 @@ BEAT CLAVE (bajar el tono, mirar a Gerardo): "Este es el trabajo del analista jr
 
 #### M2.2 — Parte B · Chat en vivo, request ad-hoc (min 14-17)
 
-ACCIÓN: cambiar de tab a Oficina Meefi, entrar al chat de Nalú (o Nova, según el roster vigente — confirmar en dry run del 12).
+ACCIÓN: cambiar de tab a Oficina Meefi, entrar al chat de Nalú.
 
 NAZRE: "Y este es Nalú a las 11 AM cuando le pides algo distinto que no habías planeado."
 
@@ -136,7 +136,7 @@ ACCIÓN: escribir en el chat en vivo, delante de ellos:
 
 ACCIÓN: enter. Silencio.
 
-ESPERAR (respuesta esperada de Nalú/Nova):
+ESPERAR (respuesta esperada de Nalú):
 1. Mensaje breve tipo "Voy" o "Reviso cartera y armo"
 2. Pausa 10-25 seg mientras invoca tools (lee sheet, filtra, construye XLSX)
 3. Respuesta con tabla estructurada en el chat + link/adjunto a Excel
@@ -150,7 +150,7 @@ MICRO-FALLBACK completo: si la Parte B falla por completo, cortar y decir: "OK, 
 
 #### M2.3 — Cierre del beat (min 17)
 
-NAZRE: "Nalú reemplaza al analista jr que arma el reporte diario, y encima está disponible cuando quieres un slice distinto que no habías pedido. No se enferma, no rota, no toma vacaciones, no dice 'te lo mando al rato'. Costo constante mes a mes."
+NAZRE: "Nalú reemplaza al analista jr que arma el reporte diario en su equipo. Ustedes ven el pulso cada mañana, su equipo operativo le pide slices ad-hoc cuando los necesitan. No se enferma, no rota, no toma vacaciones, no dice 'te lo mando al rato'. Costo constante mes a mes."
 
 Transición al M3 (15 seg):
 > "Y el último de Meefi es el que ataca su bottleneck de activación: el KYB."
@@ -371,7 +371,7 @@ Transición al cierre (30 seg):
 
 ### C.1 — Pitch de cierre (min 45-47)
 
-NAZRE (bajar el tono, mirar a los dos): "Meefi hoy son 6 personas. Con 3 empleados digitales activos ya son 9 de capacidad operativa. Sin gastar en headcount, sin curva de onboarding, sin rotación. Y encima el nuevo Head of Compliance llega con Niva ya operando debajo — no arranca de cero. GAC puede pasar de 65 a 90 clientes sin contratar a nadie más. Mismo problema, misma solución. Empezamos por el que ustedes quieran, o los dos en paralelo."
+NAZRE (bajar el tono, mirar a los dos): "Meefi hoy son 6 personas — Alan como CEO, Emilio en tecnología, tú en operación, más el equipo. Con 3 empleados digitales activos ya son 9 de capacidad operativa. Sin gastar en headcount, sin curva de onboarding, sin rotación. Y encima el nuevo Head of Compliance llega con Niva ya operando debajo — no arranca de cero. GAC puede pasar de 65 a 90 clientes sin contratar a nadie más. Mismo problema, misma solución. Empezamos por el que ustedes quieran, o los dos en paralelo."
 
 ESPERAR: alguno pregunta por precio.
 
@@ -379,7 +379,7 @@ ESPERAR: alguno pregunta por precio.
 
 **Si preguntan por precio**:
 
-NAZRE: "Meefi son $35 a $50 mil pesos al mes por los 3 empleados activos (Nara, Nalú/Nova, Niva), más setup one-time de $50 a $80 mil. GAC son $25 a $35 mil al mes por 3-4 empleados (Nara, Niva, y Nala en fase 2 cuando se justifique adapter Contalink), más setup one-time de $40 a $60 mil."
+NAZRE: "Meefi son $35 a $50 mil pesos al mes por los 3 empleados activos (Nara, Nalú, Niva), más setup one-time de $50 a $80 mil. GAC son $25 a $35 mil al mes por 3-4 empleados (Nara, Niva, y Nala en fase 2 cuando se justifique adapter Contalink), más setup one-time de $40 a $60 mil."
 
 NAZRE (inmediatamente después): "El rango se define en discovery de 2 sesiones. Y les propongo piloto de 30 días con precio de piloto — puedo mandarles la propuesta escrita el 16 con números específicos para cada uno de los dos negocios."
 

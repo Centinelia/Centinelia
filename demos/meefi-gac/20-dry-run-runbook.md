@@ -79,7 +79,7 @@ Ver si Nara reconoce OUR/BEN/SHA como concepto o si se queda en genérico.
 
 ---
 
-## Escenario M2 parte A · Correo Nova pre-enviado (3 min)
+## Escenario M2 parte A · Correo Nalú pre-enviado (3 min)
 
 ### Preparación
 
@@ -87,7 +87,7 @@ Ninguna en el dry run (no vamos a mandar el correo hoy, es para el 15). Este blo
 
 ### Ejecución
 
-1. Abre el asset `demos/meefi-gac/14-correo-nova-consolidado-DEMO.md`.
+1. Abre el asset `demos/meefi-gac/14-correo-nalu-consolidado-DEMO.md`.
 2. Lee de corrido como si fueras Gera abriendo el correo en la mañana.
 
 ### Criterio pass/fail
@@ -106,11 +106,11 @@ Anota los 2-3 campos específicos que enriquecerías. Yo (Claude) los añado al 
 
 ### Preparación
 
-**Prereq crítico**: Sheet con purpose `custom_cartera_master` cargado y accesible al agent_id de Nalú (o al de Nova si Nalú aún no está aprovisionada en Meefi). Sin esto, este escenario se salta.
+**Prereq crítico**: Sheet con purpose `custom_cartera_master` cargado y accesible al agent_id de Nalú (`97c6831e-ff79-44fb-8830-dfcb1f1cc672`). Sin esto, este escenario se salta.
 
 ### Ejecución
 
-1. Portal Meefi → Oficina → chat de Nalú (o Nova si no existe Nalú todavía).
+1. Portal Meefi → Oficina → chat de Nalú.
 2. Escribir textualmente:
    > "Nalú, arma un consolidado solo de operaciones USD mayores a 50 mil dólares de la última semana, ordenado por cliente. Devuelve tabla + Excel."
 

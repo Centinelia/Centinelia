@@ -1,12 +1,12 @@
-# Correo Nova consolidado diario — Asset para escenario M2 del demo 15-sept
+# Correo Nalú consolidado diario — Asset para escenario M2 del demo 15-sept
 
-Este correo se manda **manualmente desde una cuenta que aparente ser Nova** (nova@meefi-demo.centinelia.mx o similar) a Gerardo/Daniel el 15-sept temprano (7:30 AM), antes de la cita. Cuando lleguen a la cita, ya lo tienen en la bandeja y M2 es "abrir el correo en pantalla".
+Este correo se manda **manualmente desde una cuenta que aparente ser Nalú** (nalu@meefi-demo.centinelia.mx o similar) a Gerardo el 15-sept temprano (7:30 AM), antes de la cita. Cuando lleguen a la cita, ya lo tienen en la bandeja y M2 es "abrir el correo en pantalla".
 
 ## Datos técnicos del envío
 
-- **De**: `nova@meefi-demo.centinelia.mx` (o el alias que uses)
+- **De**: `nalu@meefi-demo.centinelia.mx` (o el alias que uses)
 - **Para**: `gera@meefi.io` (Gerardo, o el que confirme)
-- **CC**: `alan@meefi.io`, `emilio@meefi.io` (los otros 2 directivos)
+- **CC**: `alan@meefi.io` (CEO co-founder), `emilio@meefi.io` (CTO co-founder)
 - **Hora envío**: 7:30 AM el 15-sept
 - **Adjunto**: `Consolidado_diario_14sept2026.xlsx` (armar aparte con la tabla de ops del día)
 
@@ -62,8 +62,8 @@ Consultas 24/7 atendidas por Nara:            8 (todas resueltas, 0 escalaciones
 
 Adjunto Excel con detalle completo por operación, sub-ledger por cliente actualizado, y hoja de excepciones para tesorería.
 
-Nova
-Centro de Coordinación · Meefi
+Nalú
+Analista de Tesorería · Meefi
 ```
 
 ## Contenido del Excel adjunto (armar en Google Sheets o Excel manual)
@@ -97,4 +97,4 @@ Cada cliente con: saldo abierto, operaciones del día, comisiones cargadas, sald
 
 ## Nota operativa
 
-Si a la 7:30 AM del 15-sept aún no tienes cuenta de correo "nova@" configurada, envía desde Gmail personal firmado como Nova y menciona en el body "Nota: este correo se envía desde la cuenta de demo mientras se completa la config del dominio". No mata el wow.
+Si a la 7:30 AM del 15-sept aún no tienes cuenta de correo "nalu@" configurada, envía desde Gmail personal firmado como Nalú y menciona en el body "Nota: este correo se envía desde la cuenta de demo mientras se completa la config del dominio". No mata el wow.

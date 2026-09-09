@@ -2,7 +2,7 @@
 
 Estos escenarios se ejecutan en vivo (videollamada compartiendo pantalla o autoservicio en portal). Cada uno de 3-6 min. Total 25-35 min para cubrir los 6.
 
-**Combo de empleados demostrados:** Nara (voz + chat) + Niva (chat) + Nova (chat + email si pipeline #1 cerrado).
+**Combo de empleados demostrados:** Nara (voz + chat) + Niva (chat) + Nalú (chat + email).
 
 **Frame para la cita:**
 > "Ustedes venden a las importadoras 'tesorería global sin contratar treasurer'. Centinelia les vende a ustedes 'escalar operaciones sin escalar payroll'. Los mismos empleados que ya tienen infra propia (dashboard, KYB, tesorería) ahora tienen soporte 24/7, analista de compliance y motor de reporting a costo constante."
@@ -72,29 +72,29 @@ Estos escenarios se ejecutan en vivo (videollamada compartiendo pantalla o autos
 
 ---
 
-## Escenario 4 — Reporte diario matutino automatizado (Nova)
+## Escenario 4 — Reporte diario matutino automatizado (Nalú)
 
-**Objetivo:** mostrar que Nova entrega el consolidado diario sin que nadie se lo pida, listo para el equipo directivo.
+**Objetivo:** mostrar que Nalú entrega el consolidado diario sin que nadie se lo pida, listo para el equipo directivo.
 
-**Setup:** simular que es 8:00 AM del día 3 de septiembre. Nova ya procesó el día anterior.
+**Setup:** simular que es 8:00 AM del día 3 de septiembre. Nalú ya procesó el día anterior.
 
-**Ejecución:** Miguel/Gerardo abre su correo (el correo de demo) y ve un correo de Nova con asunto:
+**Ejecución:** Miguel/Gerardo abre su correo (el correo de demo) y ve un correo de Nalú con asunto:
 > "Meefi — Consolidado diario 2-sept — TPV $1.2M USD, 47 operaciones"
 
 Adentro: cuerpo estructurado con TPV, breakdown por corredor, top 5 clientes, alertas del día, métricas operativas + Excel adjunto con detalle completo.
 
-**Wow:** Daniel + Gerardo abren su bandeja a las 8:15 AM y tienen el pulso diario del negocio sin haber pedido nada. Es el analista jr que no se enferma, no toma vacaciones, no rota.
+**Wow:** Gerardo con Alan y Emilio en copia abren su bandeja a las 8:15 AM y tienen el pulso diario del negocio sin haber pedido nada. Es el analista jr que no se enferma, no toma vacaciones, no rota.
 
 ---
 
-## Escenario 5 — Reconciliación con statement bancario + break detection (Nova, chat)
+## Escenario 5 — Reconciliación con statement bancario + break detection (Nalú, chat)
 
-**Objetivo:** demostrar que Nova detecta discrepancias entre lo que Meefi ordenó y lo que confirma el banco corresponsal.
+**Objetivo:** demostrar que Nalú detecta discrepancias entre lo que Meefi ordenó y lo que confirma el banco corresponsal.
 
-**Setup:** en el chat de Nova, Miguel/Gerardo sube un statement CSV ficticio de un banco corresponsal EEUU con 30 movimientos.
+**Setup:** en el chat de Nalú, Miguel/Gerardo sube un statement CSV ficticio de un banco corresponsal EEUU con 30 movimientos.
 
 **Prompt:**
-> "Nova, procesa este statement de JP Morgan Chase del 2-sept y reconcilia contra el ledger."
+> "Nalú, procesa este statement de JP Morgan Chase del 2-sept y reconcilia contra el ledger."
 
 **Comportamiento esperado:**
 - Extrae los 30 movimientos
@@ -105,11 +105,11 @@ Adentro: cuerpo estructurado con TPV, breakdown por corredor, top 5 clientes, al
   - Diferencia de $XXX en fees corresponsales vs esperado
 - Devolver reporte con reconciliación + breaks flagged + Excel adjunto
 
-**Wow:** este trabajo hoy consume 1-2 h/día de un analista. Nova lo hace en 60 seg y flagea EXACTAMENTE lo que amerita investigación humana.
+**Wow:** este trabajo hoy consume 1-2 h/día de un analista. Nalú lo hace en 60 seg y flagea EXACTAMENTE lo que amerita investigación humana.
 
 ---
 
-## Escenario 6 — Reporte UIF/PLD mensual borrador (Niva + Nova, chat)
+## Escenario 6 — Reporte UIF/PLD mensual borrador (Niva + Nalú, chat)
 
 **Objetivo:** mostrar cómo Niva prepara el borrador del reporte UIF mensual para que el oficial de compliance humano solo revise y firme.
 
@@ -133,10 +133,10 @@ Adentro: cuerpo estructurado con TPV, breakdown por corredor, top 5 clientes, al
 
 **Estimación de valor para Meefi (usar exactamente estas cifras):**
 - Nara evita 2 CSMs jr adicionales durante crecimiento 3x: **~$1.4M MXN/año**
-- Nova reemplaza analista jr: **~$420K MXN/año**
+- Nalú reemplaza analista jr: **~$420K MXN/año**
 - Niva libera 20% del oficial de compliance senior: **~$300K MXN/año**
 - **Total conservador: ~$2M MXN/año en payroll evitado + capacidad 3-5x de clientes sin crecer equipo**
 
-**Precio Meefi objetivo:** Empresarial custom con cotización a la medida. Rango sugerido inicial: $35K-$50K MXN/mes por los 3 empleados activos (Nara + Niva + Nova) + setup $50-80K. ROI < 2 meses.
+**Precio Meefi objetivo:** Empresarial custom con cotización a la medida. Rango sugerido inicial: $35K-$50K MXN/mes por los 3 empleados activos (Nara + Niva + Nalú) + setup $50-80K. ROI < 2 meses.
 
-**Cierre de venta:** piloto 30 días con Nara + Niva activos (Nova opcional en fase 2 si prefieren empezar suave). Medir horas ahorradas y NPS interno del equipo Meefi.
+**Cierre de venta:** piloto 30 días con Nara + Niva activos (Nalú opcional en fase 2 si prefieren empezar suave). Medir horas ahorradas y NPS interno del equipo Meefi.

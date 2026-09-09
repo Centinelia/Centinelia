@@ -13,7 +13,7 @@ Assistant provisionó ambos ambientes en Supabase prod. Este archivo documenta q
   |---|---|---|---|---|---|
   | Nara | Recepcionista Tesorería 24/7 | Sí | combinada | 200 min + 3K tareas | `9Godp7dNohUvXk6qp0gS` |
   | Niva | KYB / Compliance UIF / Análisis | No | tareas | 0 min + 5K tareas | — |
-  | Nova | Consolidación diaria + reporting | Sí (voz secundaria) | combinada | 50 min + 5K tareas | `htFfPSZGJwjBv1CL0aMD` |
+  | Nalú | Analista de Tesorería (consolidación diaria + reporting) | No (chat + email) | tareas | 0 min + 5K tareas | — |
 
 ### GAC Demo
 - **Org**: `gac-demo@centinelia.mx` (name: `GAC`, plan: `pro`, vertical: `negocio`)
@@ -32,7 +32,7 @@ Assistant provisionó ambos ambientes en Supabase prod. Este archivo documenta q
 - `voice_agents.role_knowledge_base` con el prompt específico del rol para cada meerkat.
 - `features.vertical` = `financiero` (Meefi) / `negocio` (GAC) — labels condicionales UI activos.
 - `features.meerkat_role_id`, `avatar`, `role_color` — identifican archetype.
-- `features.is_coordinator` — Niva Meefi/GAC + Nova Meefi.
+- `features.is_coordinator` — Niva Meefi/GAC. (Nota 2026-09-08: Nalú Meefi NO es coordinator, opera como analista de tesorería individual.)
 - `features.billing_pilot` = `meefi-demo` / `gac-demo` — marca para tracking.
 - `pilot_notify_email = nazre20@gmail.com` — cron pilot-monitor envía alertas a tu Gmail cuando detecte self_eval<0.5, unanswered≥3, tool errors o platform_incidents.
 - `demo_paused = false` — org activa. Para pausar rápido si algo se rompe:
@@ -49,7 +49,7 @@ Assistant provisionó ambos ambientes en Supabase prod. Este archivo documenta q
 Decisión Nazre: un solo número Vapi es suficiente. Meerkats sin phone entrante siguen respondiendo por chat/email; Nara delega/consulta con ellos internamente vía `consultar_agente` / `delegar_tarea`.
 
 - **Nara Meefi** (id `94626f07-9f0c-46c0-ad02-15692f396e71`) → `+52 33 2101 4544` (Vapi phoneNumberId `8490124b-0be7-43ce-8ea0-9543cab4ba13`). Aplicado 2026-09-03.
-- Nara GAC + Nova Meefi: sin número entrante. Se demuestran por pantalla (chat/email/reportes).
+- Nara GAC + Nalú Meefi + Niva Meefi/GAC + Nala GAC: sin número entrante. Se demuestran por pantalla (chat/email/reportes).
 
 **Pendiente verificar en Vapi dashboard**: el phoneNumberId `8490124b-...` debe apuntar al assistant/workflow que Centinelia usa para resolver dinámicamente por `phone_number → voice_agents`. Si tus otros pilotos ya funcionan con este binding, no requiere config adicional.
 
@@ -84,14 +84,14 @@ Los 8 CSVs de `demos/meefi-gac/` (4 Meefi + 4 GAC) están listos para subir. Flu
 Antes de mandar acceso a Gerardo/Miguel:
 - Abrir `https://www.centinelia.mx/portal/5RP13tnLK6XX` y `https://www.centinelia.mx/portal/PJ9EALpprDEP` como si fueras ellos.
 - Ejecutar los 6 escenarios de `meefi-05-escenarios.md` y `gac-05-escenarios.md`.
-- Verificar: Nara Meefi habla lenguaje SWIFT/MT103/fx correcto; Nova entrega consolidado; Nala GAC detecta variables de nómina sospechosas; Niva GAC traduce Estado Resultados a lenguaje dueño.
+- Verificar: Nara Meefi habla lenguaje SWIFT/MT103/fx correcto; Nalú entrega consolidado y arma slices ad-hoc; Nala GAC detecta variables de nómina sospechosas; Niva GAC traduce Estado Resultados a lenguaje dueño.
 - Ajustar `role_knowledge_base` in-place si algo suena raro.
 
 ### 4. Definir logística cita 15-sept
 
 Confirmado por Miguel: **1 hora presencial**. Prioriza escenarios wow:
 - 5 min intro + rol Gerardo (¿co-founder / socio operativo / algo más?)
-- 20 min Meefi (2-3 escenarios wow — sugerido: reporte matutino Nova + KYB Niva)
+- 20 min Meefi (2-3 escenarios wow — sugerido: reporte matutino Nalú + KYB Niva)
 - 20 min GAC (2-3 escenarios wow — sugerido: timbrado nómina Nala + reporte traducido Niva)
 - 15 min preguntas y comercial
 

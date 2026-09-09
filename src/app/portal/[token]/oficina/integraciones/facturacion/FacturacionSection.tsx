@@ -43,14 +43,12 @@ interface PacDef {
   enabled: boolean;
   note?: string;
 }
+// Catálogo master — mantenemos todos documentados aquí para el futuro. Solo se
+// renderizan los que tengan `enabled: true`. Para activar otro PAC:
+//   1. Completar la implementación del adapter (ver comentario arriba).
+//   2. Cambiar `enabled: false` → `enabled: true`.
+//   3. Confirmar que hay al menos un cliente en el piloto para testearlo E2E.
 const PAC_CATALOG: PacDef[] = [
-  {
-    id: 'solucion_factible',
-    label: 'Solucion Factible',
-    tagline: 'PAC autorizado SAT · Timbrado CFDI 4.0 + Cancelacion',
-    logoColor: '#1A56DB',
-    enabled: true,
-  },
   {
     id: 'contpaqi_erp',
     label: 'CONTPAQi Comercial Pro (con adaptador)',
@@ -59,12 +57,20 @@ const PAC_CATALOG: PacDef[] = [
     enabled: true,
   },
   {
+    id: 'solucion_factible',
+    label: 'Solucion Factible',
+    tagline: 'PAC autorizado SAT · Timbrado CFDI 4.0 + Cancelacion',
+    logoColor: '#1A56DB',
+    enabled: false,
+    note: 'No disponible',
+  },
+  {
     id: 'facturama',
     label: 'Facturama',
     tagline: 'PAC autorizado SAT · Timbrado CFDI 4.0',
     logoColor: '#0EA5E9',
     enabled: false,
-    note: 'Próximamente',
+    note: 'No disponible',
   },
   {
     id: 'finkok',
@@ -72,7 +78,7 @@ const PAC_CATALOG: PacDef[] = [
     tagline: 'PAC autorizado SAT · Timbrado CFDI 4.0',
     logoColor: '#10B981',
     enabled: false,
-    note: 'Próximamente',
+    note: 'No disponible',
   },
 ];
 
@@ -204,20 +210,21 @@ export default function FacturacionSection({ token }: { token: string }) {
             </p>
           </div>
           <div className="flex flex-col">
-            {PAC_CATALOG.map((p, i) => (
+            {/* Solo renderizamos PACs enabled=true. Los demás siguen en el catálogo
+                arriba documentados pero ocultos hasta que se completen sus adapters
+                y se validen E2E con un cliente. */}
+            {PAC_CATALOG.filter(p => p.enabled).map((p, i, visible) => (
               <button
                 key={p.id}
                 type="button"
-                disabled={!p.enabled}
-                onClick={() => p.enabled && setSelectedPac(p.id)}
+                onClick={() => setSelectedPac(p.id)}
                 className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
                 style={{
-                  borderBottom: i === PAC_CATALOG.length - 1 ? 'none' : '1px solid var(--c-border)',
+                  borderBottom: i === visible.length - 1 ? 'none' : '1px solid var(--c-border)',
                   background:   'transparent',
-                  cursor:       p.enabled ? 'pointer' : 'default',
-                  opacity:      p.enabled ? 1 : 0.55,
+                  cursor:       'pointer',
                 }}
-                onMouseEnter={e => { if (p.enabled) (e.currentTarget as HTMLButtonElement).style.background = 'var(--c-surface)'; }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--c-surface)'; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
               >
                 <PacLogo color={p.logoColor} />
@@ -225,14 +232,7 @@ export default function FacturacionSection({ token }: { token: string }) {
                   <span className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>{p.label}</span>
                   <span className="text-xs truncate" style={{ color: 'var(--c-text-3)' }}>{p.tagline}</span>
                 </div>
-                {p.enabled ? (
-                  <span className="text-xs font-semibold" style={{ color: p.logoColor }}>Conectar →</span>
-                ) : (
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap"
-                    style={{ background: 'var(--c-surface)', color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }}>
-                    {p.note ?? 'Pronto'}
-                  </span>
-                )}
+                <span className="text-xs font-semibold" style={{ color: p.logoColor }}>Conectar →</span>
               </button>
             ))}
           </div>

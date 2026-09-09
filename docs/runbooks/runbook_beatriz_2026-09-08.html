@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc 3.10.1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="Centinelia" />
+  <title>Runbook — Sesión con Beatriz</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: 1.5em;}
+    div.column{flex: auto;}
+    @media screen {
+    div.columns{gap: min(4vw, 1.5em);}
+    div.column{overflow-x: auto;}
+    }
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* CSS for syntax highlighting */
+    html { -webkit-text-size-adjust: 100%; }
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { color: #008000; } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { color: #008000; font-weight: bold; } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+  <link rel="stylesheet" href="/proc/self/fd/0" />
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">Runbook — Sesión con Beatriz</h1>
+<p class="subtitle">Configuración de Nala facturación en Tortillería
+Estrella</p>
+<p class="author">Centinelia</p>
+<p class="date">martes 8 de septiembre 2026, 15:00 hrs.</p>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#objetivo-de-la-sesión"
+id="toc-objetivo-de-la-sesión">Objetivo de la sesión</a></li>
+<li><a href="#estado-verificado-1122-hrs-ya-listo"
+id="toc-estado-verificado-1122-hrs-ya-listo">Estado verificado (11:22
+hrs, ya listo)</a></li>
+<li><a href="#bloque-a-discovery-con-beatriz-1500-a-1515"
+id="toc-bloque-a-discovery-con-beatriz-1500-a-1515">Bloque A — Discovery
+con Beatriz (15:00 a 15:15)</a>
+<ul>
+<li><a href="#a.1-correo-dedicado-para-nala"
+id="toc-a.1-correo-dedicado-para-nala">A.1 Correo dedicado para
+Nala</a></li>
+<li><a href="#a.2-pivot-excel-vs-foto"
+id="toc-a.2-pivot-excel-vs-foto">A.2 Pivot Excel vs foto</a></li>
+<li><a href="#a.3-pac-y-contpaqi" id="toc-a.3-pac-y-contpaqi">A.3 PAC y
+CONTPAQi</a></li>
+<li><a href="#a.4-máquina-windows" id="toc-a.4-máquina-windows">A.4
+Máquina Windows</a></li>
+</ul></li>
+<li><a href="#bloque-b-setup-portal-1515-a-1545"
+id="toc-bloque-b-setup-portal-1515-a-1545">Bloque B — Setup portal
+(15:15 a 15:45)</a>
+<ul>
+<li><a href="#b.1-seleccionar-nala" id="toc-b.1-seleccionar-nala">B.1
+Seleccionar Nala</a></li>
+<li><a href="#b.2-configurar-correo-de-nala"
+id="toc-b.2-configurar-correo-de-nala">B.2 Configurar correo de
+Nala</a></li>
+<li><a href="#b.3-correo-de-escalación-client_email"
+id="toc-b.3-correo-de-escalación-client_email">B.3 Correo de escalación
+(client_email)</a></li>
+<li><a href="#b.4-conectar-dropbox" id="toc-b.4-conectar-dropbox">B.4
+Conectar Dropbox</a></li>
+<li><a href="#b.5-setup-contpaqi" id="toc-b.5-setup-contpaqi">B.5 Setup
+CONTPAQi</a></li>
+</ul></li>
+<li><a
+href="#bloque-c-instalación-writer-en-la-pc-de-beatriz-1545-a-1615"
+id="toc-bloque-c-instalación-writer-en-la-pc-de-beatriz-1545-a-1615">Bloque
+C — Instalación Writer en la PC de Beatriz (15:45 a 16:15)</a>
+<ul>
+<li><a href="#c.1-descargar" id="toc-c.1-descargar">C.1
+Descargar</a></li>
+<li><a href="#c.2-descomprimir" id="toc-c.2-descomprimir">C.2
+Descomprimir</a></li>
+<li><a href="#c.3-abrir-consola-en-esa-carpeta"
+id="toc-c.3-abrir-consola-en-esa-carpeta">C.3 Abrir consola en esa
+carpeta</a></li>
+<li><a href="#c.4-correr-el-wizard-de-primer-arranque"
+id="toc-c.4-correr-el-wizard-de-primer-arranque">C.4 Correr el wizard de
+primer arranque</a></li>
+<li><a href="#c.5-verificar-que-arrancó-bien"
+id="toc-c.5-verificar-que-arrancó-bien">C.5 Verificar que arrancó
+bien</a></li>
+<li><a href="#c.6-opcional-registrar-como-windows-service"
+id="toc-c.6-opcional-registrar-como-windows-service">C.6 (Opcional)
+Registrar como Windows Service</a></li>
+</ul></li>
+<li><a href="#bloque-d-smoke-test-end-to-end-1615-a-1700"
+id="toc-bloque-d-smoke-test-end-to-end-1615-a-1700">Bloque D — Smoke
+test end-to-end (16:15 a 17:00)</a>
+<ul>
+<li><a href="#d.1-verificar-sync-del-catálogo-contpaqi"
+id="toc-d.1-verificar-sync-del-catálogo-contpaqi">D.1 Verificar sync del
+catálogo CONTPAQi</a></li>
+<li><a href="#d.2-beatriz-manda-un-correo-de-prueba"
+id="toc-d.2-beatriz-manda-un-correo-de-prueba">D.2 Beatriz manda un
+correo de prueba</a></li>
+<li><a href="#d.3-verificar-que-la-card-apareció"
+id="toc-d.3-verificar-que-la-card-apareció">D.3 Verificar que la card
+apareció</a></li>
+<li><a href="#d.4-aprobar-la-card" id="toc-d.4-aprobar-la-card">D.4
+Aprobar la card</a></li>
+<li><a href="#d.5-verificar-timbrado"
+id="toc-d.5-verificar-timbrado">D.5 Verificar timbrado</a></li>
+<li><a href="#d.6-verificar-el-correo-de-confirmación"
+id="toc-d.6-verificar-el-correo-de-confirmación">D.6 Verificar el correo
+de confirmación</a></li>
+</ul></li>
+<li><a href="#riesgos-conocidos-y-planes-b"
+id="toc-riesgos-conocidos-y-planes-b">Riesgos conocidos y planes B</a>
+<ul>
+<li><a href="#worker-timeout-con-muchas-fotos"
+id="toc-worker-timeout-con-muchas-fotos">Worker timeout con muchas
+fotos</a></li>
+<li><a href="#vision-quality-baja" id="toc-vision-quality-baja">Vision
+quality baja</a></li>
+<li><a href="#cron-nala-writer-inbox"
+id="toc-cron-nala-writer-inbox">Cron nala-writer-inbox</a></li>
+<li><a href="#contpaqi-ocupada" id="toc-contpaqi-ocupada">CONTPAQi
+ocupada</a></li>
+<li><a href="#serilog-eventlog-securityexception"
+id="toc-serilog-eventlog-securityexception">Serilog EventLog
+SecurityException</a></li>
+<li><a href="#nala-consume-tareas-del-trial"
+id="toc-nala-consume-tareas-del-trial">Nala consume tareas del
+trial</a></li>
+</ul></li>
+<li><a href="#al-cerrar-la-sesión" id="toc-al-cerrar-la-sesión">Al
+cerrar la sesión</a></li>
+</ul>
+</nav>
+<h1 id="objetivo-de-la-sesión">Objetivo de la sesión</h1>
+<p>Configurar a Nala (facturación) en el portal real de Tortillería
+Estrella y hacer un smoke controlado del pipeline completo: correo con
+remisión, extracción, aprobación en portal, timbrado en CONTPAQi vía el
+Writer y respuesta al remitente.</p>
+<p><strong>Portal REAL</strong>:
+<code>servicioalcliente@tortillasestrella.com.mx</code>.</p>
+<p><strong>Token portal (org-level)</strong>: <code>TFoAXXWEpElJ</code>.
+Es el token de la organización, no de Nala. Sirve para entrar al portal
+completo desde donde Beatriz ve a todos sus meerkats (Nelia + Nala).</p>
+<p><strong>URL portal</strong>:
+<code>https://www.centinelia.mx/portal/TFoAXXWEpElJ</code>.</p>
+<p><strong>Trial vigente</strong>: hasta 2026-10-08 (30 días). Cuota:
+100 tareas + 60 minutos voice.</p>
+<hr />
+<h1 id="estado-verificado-1122-hrs-ya-listo">Estado verificado (11:22
+hrs, ya listo)</h1>
+<p>Los checks técnicos de pre-cita ya corrieron. Todo verde:</p>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>Check</th>
+<th>Resultado</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Vercel deploys en producción</td>
+<td>Ready (último hace 29 min)</td>
+</tr>
+<tr>
+<td>Endpoint <code>/api/writer/dropbox-token</code></td>
+<td>HTTP 401 sin bearer (correcto)</td>
+</tr>
+<tr>
+<td>Writer en bucket</td>
+<td><code>latest.txt = 0.10.5</code>, zip existe</td>
+</tr>
+<tr>
+<td>Nala provisionada trial</td>
+<td><code>ai_ops_limit=100</code>, <code>minutes_included=60</code>,
+trial hasta 2026-10-08, active=true</td>
+</tr>
+<tr>
+<td>Nelia intacta</td>
+<td><code>ai_ops_limit=1200</code>, <code>minutes_included=1200</code>,
+active=true</td>
+</tr>
+<tr>
+<td>Cron <code>agent-mailboxes</code></td>
+<td>responde <code>ok:true</code> (enabled)</td>
+</tr>
+<tr>
+<td>Cron <code>nala-writer-inbox</code></td>
+<td>procesó 1 portal en la última corrida (enabled)</td>
+</tr>
+</tbody>
+</table>
+<p>Nada más que verificar del lado técnico antes de las 15:00. Arranca
+directo con el Bloque A cuando llegues.</p>
+<hr />
+<h1 id="bloque-a-discovery-con-beatriz-1500-a-1515">Bloque A — Discovery
+con Beatriz (15:00 a 15:15)</h1>
+<p>Antes de configurar nada, decidir juntos:</p>
+<h2 id="a.1-correo-dedicado-para-nala">A.1 Correo dedicado para
+Nala</h2>
+<p>¿Quiere Beatriz que Nala use un correo dedicado (ej.
+<code>nala@tortillasestrella.com.mx</code> o
+<code>facturacion@tortillasestrella.com.mx</code>) o compartir
+<code>servicioalcliente@tortillasestrella.com.mx</code> con Nelia?</p>
+<p>Recomendación: <strong>correo dedicado</strong>. Motivos:</p>
+<ul>
+<li>Las fotos de remisiones que le mandan a Nala no se mezclan con las
+incidencias de Nelia.</li>
+<li>Nala manda auto-replies con status; separado es más limpio para
+debug.</li>
+<li>Si Beatriz prefiere una sola bandeja, se puede compartir el mismo
+correo pero requiere reglas de filtrado.</li>
+</ul>
+<p>Anotar la decisión y el password del buzón nuevo (si aplica).</p>
+<h2 id="a.2-pivot-excel-vs-foto">A.2 Pivot Excel vs foto</h2>
+<p>Presentar la limitación descubierta en el dry run del 2026-09-07:
+vision LLM en manuscritos reales tiene tasa de error demasiado alta. Aún
+con card perfecta en el portal, Beatriz gastaría tiempo corrigiendo cada
+notita.</p>
+<p><strong>Propuesta alternativa</strong>: el repartidor (o Beatriz)
+captura remisiones en un Excel simple con columnas:</p>
+<div class="line-block">folio | fecha | cliente_codigo | producto_codigo
+| cantidad |</div>
+<p>Nala parsea el Excel con parser determinístico (sin vision), matchea
+por CÓDIGO exacto contra el catálogo, timbra el 90 por ciento sin
+escalación.</p>
+<p>Beatriz decide:</p>
+<ul>
+<li><strong>Hoy con foto</strong>: validamos que el flow completo
+funciona aunque con errores esperados de extracción.</li>
+<li><strong>Migramos a Excel</strong>: unas 2 horas de refactor en
+próxima sesión. Más confiable, menos vistoso.</li>
+</ul>
+<h2 id="a.3-pac-y-contpaqi">A.3 PAC y CONTPAQi</h2>
+<p>Confirmar que el PAC incluido en CONTPAQi está activo. Pedirle a
+Beatriz que muestre un CFDI reciente timbrado para validar que la
+empresa efectivamente timbra hoy.</p>
+<h2 id="a.4-máquina-windows">A.4 Máquina Windows</h2>
+<p>Confirmar:</p>
+<ul>
+<li>La PC donde vive CONTPAQi Comercial Pro va a correr también el
+Writer.</li>
+<li>Beatriz tiene admin en esa máquina o hay que llamar al de
+sistemas.</li>
+<li>Puede cerrar CONTPAQi durante los tests (el Writer necesita abrir la
+empresa vía SDK).</li>
+</ul>
+<hr />
+<h1 id="bloque-b-setup-portal-1515-a-1545">Bloque B — Setup portal
+(15:15 a 15:45)</h1>
+<p>Se hace todo desde el portal en el navegador de Beatriz. Ella teclea,
+tú guías.</p>
+<p><strong>Login</strong>:
+<code>https://www.centinelia.mx/portal/TFoAXXWEpElJ</code></p>
+<h2 id="b.1-seleccionar-nala">B.1 Seleccionar Nala</h2>
+<p>En la vista de meerkats debe aparecer Nala junto a Nelia. Click en
+Nala.</p>
+<h2 id="b.2-configurar-correo-de-nala">B.2 Configurar correo de
+Nala</h2>
+<p>Configurar → Herramientas → Correo → <strong>Otro
+correo</strong>.</p>
+<p>Llenar host, puerto, usuario, password del buzón dedicado
+(Titan/GoDaddy Workspace normalmente).</p>
+<p>Activar checkbox <strong>IMAP inbound</strong>.</p>
+<p>Click “Probar y guardar”. Debe verse un ícono verde de conectado.</p>
+<h2 id="b.3-correo-de-escalación-client_email">B.3 Correo de escalación
+(client_email)</h2>
+<p>Configurar → Autonomía y Avisos → campo “Correo para avisos y
+escalaciones”.</p>
+<p>Poner el correo real de Beatriz donde quiere recibir notificaciones
+cuando Nala escale. Puede ser
+<code>servicioalcliente@tortillasestrella.com.mx</code> o el personal de
+Beatriz.</p>
+<h2 id="b.4-conectar-dropbox">B.4 Conectar Dropbox</h2>
+<p>Configurar → Herramientas → Almacenamiento → Dropbox → Conectar.</p>
+<p>Autorizar OAuth con la cuenta Dropbox de la tortillería (o una
+compartida entre Beatriz y el negocio). Verificar que aparece
+“Conectado” en verde.</p>
+<h2 id="b.5-setup-contpaqi">B.5 Setup CONTPAQi</h2>
+<p>Configurar → Herramientas → Facturación CFDI → click en “CONTPAQi
+Comercial Pro (con adaptador)”. Se expande el panel.</p>
+<p>Llenar todos los campos:</p>
+<ul>
+<li><strong>RFC emisor</strong>: el de la tortillería</li>
+<li><strong>Régimen fiscal</strong>: elegir en el dropdown (usualmente
+601 para persona moral)</li>
+<li><strong>Código postal</strong>: 5 dígitos</li>
+<li><strong>Serie default</strong>: usualmente “T” o “A”</li>
+<li><strong>Uso CFDI default</strong>: G03 (Gastos en general) es lo más
+común</li>
+<li><strong>Clave SAT de respaldo</strong>: 50161509 para tortilla y
+masa (es fallback, cada producto tiene la suya en CONTPAQi)</li>
+<li><strong>Ruta base en Dropbox</strong>: ej. <code>/Facturación</code>
+(debe existir ya en Dropbox, el Writer crea <code>Config/</code>,
+<code>Importables_CONTPAQi/</code>, <code>timbrados/</code> y
+<code>errores/</code> adentro)</li>
+</ul>
+<p>Click Guardar. Aparece el botón “Descargar Writer para Windows”. No
+lo bajes todavía.</p>
+<hr />
+<h1
+id="bloque-c-instalación-writer-en-la-pc-de-beatriz-1545-a-1615">Bloque
+C — Instalación Writer en la PC de Beatriz (15:45 a 16:15)</h1>
+<p>Este paso pasa a la máquina Windows con CONTPAQi.</p>
+<h2 id="c.1-descargar">C.1 Descargar</h2>
+<p>Desde el mismo portal, click en “Descargar Writer para Windows”. Se
+descarga un zip nombrado tipo
+<code>centinelia-writer-servicioalcliente_tortillasestrella_com_mx-v0.10.5.zip</code>
+(34 MB aprox).</p>
+<h2 id="c.2-descomprimir">C.2 Descomprimir</h2>
+<p>En una carpeta fácil de recordar. Recomendado:
+<code>C:\Centinelia\Writer\</code>.</p>
+<p>Descomprimir ahí. Deben quedar 700+ archivos incluyendo
+<code>BillingContpaqiWriter.exe</code>,
+<code>centinelia-config.json</code>, <code>LEEME.txt</code> y muchas
+DLLs.</p>
+<h2 id="c.3-abrir-consola-en-esa-carpeta">C.3 Abrir consola en esa
+carpeta</h2>
+<p>Shift + click derecho en la carpeta → “Abrir ventana de PowerShell
+aquí”. Alternativa: <code>cmd</code> desde el menú.</p>
+<h2 id="c.4-correr-el-wizard-de-primer-arranque">C.4 Correr el wizard de
+primer arranque</h2>
+<p>Ejecutar:</p>
+<pre><code>BillingContpaqiWriter.exe --mode service</code></pre>
+<p>El wizard detecta que faltan datos locales y pregunta
+secuencialmente:</p>
+<ol type="1">
+<li><strong>Ruta del SDK CONTPAQi</strong>: default
+<code>C:\Program Files (x86)\Compac\COMERCIAL</code>. Enter si es
+correcto.</li>
+<li><strong>Ruta de la empresa CONTPAQi</strong>: el folder de la BD
+(usualmente en <code>C:\Compac\Empresas\ad*</code>). El wizard
+auto-detecta empresas y las lista.</li>
+<li><strong>Usuario CONTPAQi</strong>: default SUPERVISOR. Enter para
+aceptar.</li>
+<li><strong>Password SUPERVISOR</strong>: teclearlo (o Enter si está
+vacío).</li>
+<li><strong>Concepto FACT</strong>: código interno de CONTPAQi para “4.0
+CFDI FACTURA”, usualmente <code>440</code>. Beatriz lo puede sacar de
+CONTPAQi mirando la lista de conceptos.</li>
+<li><strong>Password del CSD</strong>: teclearlo (o Enter si no
+tiene).</li>
+<li><strong>Conexión SQL Server</strong>: el wizard sugiere una cadena
+razonable basada en la ruta de la empresa. Revisar antes de
+aceptar.</li>
+</ol>
+<p>Los tokens de Dropbox y la ruta base ya vienen preconfigurados en el
+zip. No pregunta por esos.</p>
+<h2 id="c.5-verificar-que-arrancó-bien">C.5 Verificar que arrancó
+bien</h2>
+<p>Después del wizard, el Writer arranca solo. En la consola deberías
+ver:</p>
+<pre><code>[dropbox-fetcher] pidiendo token a https://www.centinelia.mx
+[dropbox-fetcher] token OK, expira ...
+[service] token Dropbox obtenido via API
+[service] sesión CONTPAQi + empresa abiertas OK
+[service] arrancando writer contra empresa ...</code></pre>
+<p>Si truena en <code>fAbreEmpresa</code>: Beatriz debe cerrar CONTPAQi
+(la app) para que el Writer pueda abrir la empresa vía SDK. Una empresa
+sólo la puede tener abierta un proceso a la vez.</p>
+<h2 id="c.6-opcional-registrar-como-windows-service">C.6 (Opcional)
+Registrar como Windows Service</h2>
+<p>Para que arranque solo con la máquina, en la misma consola:</p>
+<pre><code>sc create &quot;Centinelia.BillingWriter&quot; ^
+   binPath= &quot;C:\Centinelia\Writer\BillingContpaqiWriter.exe --mode service&quot; ^
+   start= auto
+sc start &quot;Centinelia.BillingWriter&quot;</code></pre>
+<p>Requiere consola como administrador. Si Beatriz no tiene admin,
+saltar este paso hoy. Mientras la consola normal siga abierta, el Writer
+sigue vivo.</p>
+<hr />
+<h1 id="bloque-d-smoke-test-end-to-end-1615-a-1700">Bloque D — Smoke
+test end-to-end (16:15 a 17:00)</h1>
+<p>Verifica el pipeline completo antes de dejar a Beatriz sola.</p>
+<h2 id="d.1-verificar-sync-del-catálogo-contpaqi">D.1 Verificar sync del
+catálogo CONTPAQi</h2>
+<p>Esperar 1 a 2 minutos. En Dropbox, dentro de la carpeta base
+configurada (ej. <code>/Facturación</code>), debe aparecer:</p>
+<ul>
+<li><code>Config/contpaqi_clientes.csv</code> con nombres reales de
+clientes</li>
+<li><code>Config/contpaqi_productos.csv</code> con productos reales</li>
+<li><code>Config/last_sync.json</code></li>
+</ul>
+<p>Si NO aparecen, revisar en la consola del Writer los logs. Causas
+comunes:</p>
+<ul>
+<li>SQL connection string mal armada (el wizard sugerido puede no
+matchear la instancia real).</li>
+<li>SUPERVISOR sin permisos de lectura en la BD.</li>
+<li>La ruta de la empresa está mal.</li>
+</ul>
+<h2 id="d.2-beatriz-manda-un-correo-de-prueba">D.2 Beatriz manda un
+correo de prueba</h2>
+<p>Beatriz manda desde su correo personal (o el que quiera) al correo
+dedicado de Nala (el que puso en B.2). Adjunta 1 foto de una remisión
+real. Asunto libre (ej. “Prueba remisión”).</p>
+<h2 id="d.3-verificar-que-la-card-apareció">D.3 Verificar que la card
+apareció</h2>
+<p>Esperar 2 a 3 minutos. En el portal, ir a
+<code>/oficina/facturas/pendientes</code>. Debe aparecer una card
+con:</p>
+<ul>
+<li>Foto clickeable con lightbox y zoom</li>
+<li>Folio, fecha y total (editables)</li>
+<li>Cliente con autocomplete contra el catálogo Dropbox</li>
+<li>Tabla de productos editable</li>
+</ul>
+<p>Si NO aparece:</p>
+<ul>
+<li>Verificar en Vercel que el cron <code>agent-mailboxes</code> corrió
+y encontró la nueva Nala.</li>
+<li>Verificar que el account de correo se marcó como conectado en el
+portal.</li>
+<li>Revisar <code>billing_incoming_emails</code> en Supabase para ver si
+el correo se ingirió.</li>
+</ul>
+<h2 id="d.4-aprobar-la-card">D.4 Aprobar la card</h2>
+<p>Beatriz revisa la extracción. Si algo está mal:</p>
+<ul>
+<li>Cliente incorrecto: teclear código o nombre en el autocomplete y
+elegir el correcto.</li>
+<li>Productos mal parseados: editar cantidades, precios o SKUs directo
+en la tabla.</li>
+</ul>
+<p>Click “Aprobar”. Confirmación. La card queda con status “Aprobada” y
+desaparece de pendientes en unos segundos.</p>
+<h2 id="d.5-verificar-timbrado">D.5 Verificar timbrado</h2>
+<p>Esperar 3 a 5 minutos. En Dropbox:</p>
+<ul>
+<li>El XML de importación aparece en
+<code>Importables_CONTPAQi/pendientes/</code>.</li>
+<li>Cuando el Writer lo procesa se mueve a <code>timbrados/</code> con
+el CFDI timbrado adentro.</li>
+<li>Si falla, aparece en <code>errores/</code> con detalle del PAC.</li>
+</ul>
+<p>En paralelo, en CONTPAQi (mirando desde la máquina de Beatriz):</p>
+<ul>
+<li>Aparece un documento nuevo en el concepto FACT.</li>
+<li>Timbrado exitoso queda con UUID.</li>
+</ul>
+<h2 id="d.6-verificar-el-correo-de-confirmación">D.6 Verificar el correo
+de confirmación</h2>
+<p>El remitente original (Beatriz misma en la prueba) debe recibir un
+correo threaded con:</p>
+<ul>
+<li>CFDI XML adjunto</li>
+<li>PDF de representación gráfica (si el PAC lo generó)</li>
+</ul>
+<p>Si el correo llega, el pipeline completo funciona. Bandera verde.</p>
+<hr />
+<h1 id="riesgos-conocidos-y-planes-b">Riesgos conocidos y planes B</h1>
+<h2 id="worker-timeout-con-muchas-fotos">Worker timeout con muchas
+fotos</h2>
+<p>El worker de Vercel tiene 300 segundos. Con más de 4 fotos por correo
+se puede pasar. <strong>Regla para hoy</strong>: máximo 1 o 2 fotos por
+correo en las pruebas.</p>
+<h2 id="vision-quality-baja">Vision quality baja</h2>
+<p>Si la extracción del OCR sale muy mal en la mayoría de las
+remisiones, es el argumento definitivo para pivotar a Excel. Anotar los
+ejemplos concretos.</p>
+<h2 id="cron-nala-writer-inbox">Cron nala-writer-inbox</h2>
+<p>Si el timbrado se queda “pendiente” en Dropbox y el correo de
+confirmación nunca llega, revisar manualmente:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-H</span> <span class="st">&quot;Authorization: Bearer </span><span class="va">$CRON_SECRET</span><span class="st">&quot;</span> <span class="dt">\</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  https://www.centinelia.mx/api/cron/nala-writer-inbox</span></code></pre></div>
+<h2 id="contpaqi-ocupada">CONTPAQi ocupada</h2>
+<p>Si el Writer no puede abrir la empresa: Beatriz debe cerrar la app
+CONTPAQi durante los tests. Una empresa sólo puede tenerla abierta un
+proceso a la vez.</p>
+<h2 id="serilog-eventlog-securityexception">Serilog EventLog
+SecurityException</h2>
+<p>Si el Writer truena al arranque con “The source was not found” del
+EventLog, es porque no corre como admin. Soluciones:</p>
+<ul>
+<li>Correr consola como administrador (click derecho → Ejecutar como
+administrador).</li>
+<li>O saltar el registro como Windows Service (paso C.6) por hoy.</li>
+</ul>
+<h2 id="nala-consume-tareas-del-trial">Nala consume tareas del
+trial</h2>
+<p>Cada correo procesado consume 1 a 3 tasks del trial (según pipeline).
+Con 100 tasks alcanza para 30 a 100 pruebas. Si se agota antes, es señal
+de que hay que subir la cuota o pivotar a Excel.</p>
+<hr />
+<h1 id="al-cerrar-la-sesión">Al cerrar la sesión</h1>
+<p>Antes de despedirte:</p>
+<ol type="1">
+<li>Confirmar con Beatriz que el trial vence el 2026-10-08.</li>
+<li>Anotar el feedback que dio: pivot Excel sí o no, dolor específico,
+sorpresas.</li>
+<li>Actualizar la memoria del proyecto
+(<code>project_tortilleria_estrella_trial_nala.md</code>) con:
+<ul>
+<li>Correo dedicado final que quedó configurado</li>
+<li>Decisión sobre Excel vs foto</li>
+<li>Cualquier bug o rareza descubierta durante la sesión</li>
+</ul></li>
+<li>Si algo quedó a medias, crear un handoff con el estado exacto para
+retomar.</li>
+</ol>
+<hr />
+<p><em>Runbook generado el 2026-09-08 para la sesión de las 15:00 hrs.
+con Beatriz.</em></p>
+</body>
+</html>

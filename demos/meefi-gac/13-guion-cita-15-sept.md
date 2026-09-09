@@ -33,16 +33,16 @@ Meefi + GAC (Gerardo + Miguel Guajardo). Presencial 1h. Un solo número de voz a
 
 ### M2 — Consolidado diario matutino automático (email, 6 min)
 
-**Pitch:** "Y esto es lo que Daniel y tú abren cada mañana sin haber pedido nada."
+**Pitch:** "Y esto es lo que Alan y tú abren cada mañana sin haber pedido nada."
 
-**Ejecución:** abrir en la pantalla el correo de demo (Gmail / bandeja) donde Nova ya dejó el reporte del día anterior:
+**Ejecución:** abrir en la pantalla el correo de demo (Gmail / bandeja) donde Nalú ya dejó el reporte del día anterior:
 > Asunto: "Meefi — Consolidado diario 2-sept — TPV $1.2M USD, 47 operaciones"
 
 Mostrar en vivo el cuerpo estructurado (titular, breakdown por corredor top 5, top 5 clientes, alertas del día, métricas operativas) + Excel adjunto con detalle.
 
-**Preparación previa:** este correo debe estar ENVIADO antes de la cita. Nova con pipeline correo aún no ship — para el demo hacer el envío manual desde Nazre@ presentando el email como si Nova lo hubiera generado, o usar Loom prerecorded si prefieres.
+**Preparación previa:** este correo debe estar ENVIADO antes de la cita. Nalú con pipeline correo aún no ship — para el demo hacer el envío manual desde Nazre@ presentando el email como si Nalú lo hubiera generado, o usar Loom prerecorded si prefieres.
 
-**Cierre:** "Nova reemplaza el analista jr que arma el reporte diario. No se enferma, no rota, no toma vacaciones. Costo constante."
+**Cierre:** "Nalú reemplaza al analista jr que arma el reporte diario. No se enferma, no rota, no toma vacaciones. Costo constante."
 
 ### M3 — Niva procesa KYB en 60 seg (chat, 6 min)
 
@@ -119,7 +119,7 @@ Generar dashboard con los 6 clasificados, tomar los 🟡, enviar correo personal
 - GAC: $25K-$35K MXN/mes por 3-4 empleados + setup $40-60K
 
 **Piloto 30 días propuesto:**
-- Meefi: Nara + Niva activos. Nova opcional fase 2.
+- Meefi: Nara + Nalú + Niva activos.
 - GAC: Nara + Niva activos (chase + reportes traducidos). Nala fase 2 cuando quede probado el arranque y decidamos si el volumen de nómina justifica adapter Contalink.
 
 **Objeciones esperadas y respuestas:**
@@ -143,11 +143,11 @@ Generar dashboard con los 6 clasificados, tomar los 🟡, enviar correo personal
   - `17-directorio-clientes-gac` → purpose `custom_directorio_clientes`
   - `gac-08-balance-transportes-guerra` → purpose `custom_balance_transportes_guerra`
   - `meefi-08-cartera-master` → purpose `custom_cartera_meefi` (para consulta Nara/Niva)
-- [ ] Sep 5-8: armar Excel adjunto del correo Nova con la tabla de operaciones (contenido en asset `14-*`)
+- [ ] Sep 5-8: armar Excel adjunto del correo Nalú con la tabla de operaciones (contenido en asset `14-*`)
 - [ ] Sep 5-8: crear 6 aliases o filtros en tu Gmail para recibir los correos del chase G1 (`nazre20+veronica@gmail.com`, etc.)
 - [ ] Sep 12 (viernes): dry run completo de los 6 escenarios (M1-M3, G1-G3). Ajustar KBs en vivo si algo suena raro. Grabar Loom fallback de cada escenario mientras estás en el dry run.
 - [ ] Sep 14 (domingo): confirmar cita con Gerardo. Preguntar si él o Miguel prefieren ver Meefi o GAC primero.
-- [ ] Sep 15 · 7:30 AM: enviar manual el correo Nova desde tu Gmail firmando como Nova (contenido en asset `14-*`). Verificar que llegó a la bandeja de Gerardo/Daniel.
+- [ ] Sep 15 · 7:30 AM: enviar manual el correo desde tu Gmail firmando como Nalú (contenido en asset `14-*`). Verificar que llegó a la bandeja de Gerardo con CC a Alan y Emilio.
 - [ ] Sep 15 mañana: llegada 15 min antes. Portable + hotspot + cable HDMI en la maleta. Un impreso de este guion en la carpeta.
 
 ## Contingencias
