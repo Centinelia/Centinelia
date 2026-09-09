@@ -97,6 +97,7 @@ export default function ContpaqiSetupPanel({ token, onConfigured }: { token: str
   const [csdPassword,  setCsdPassword]  = useState('');
   const [passwordSet,     setPasswordSet]     = useState(false);
   const [csdPasswordSet,  setCsdPasswordSet]  = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -122,6 +123,11 @@ export default function ContpaqiSetupPanel({ token, onConfigured }: { token: str
           setSqlConn(w.sql_connection);
           setPasswordSet(w.password_set);
           setCsdPasswordSet(w.csd_password_set);
+          // Auto-abrir avanzada si ya venían valores custom (ni default ni vacíos).
+          const sdkIsDefault = !w.sdk_path || w.sdk_path === 'C:\\Program Files (x86)\\Compac\\COMERCIAL';
+          if (w.empresa_path || w.sql_connection || !sdkIsDefault) {
+            setAdvancedOpen(true);
+          }
         }
       }
       setErr(null);
@@ -277,16 +283,6 @@ export default function ContpaqiSetupPanel({ token, onConfigured }: { token: str
           </p>
         </div>
         <div className="grid grid-cols-2 gap-3 text-xs mb-3">
-          <FormField label="Ruta de la empresa CONTPAQi (opcional)" wide>
-            <input value={empresaPath}
-                   onChange={e => setEmpresaPath(e.target.value)}
-                   placeholder="Déjalo vacío — el writer auto-detecta desde C:\Compac\Empresas"
-                   className="w-full px-2 py-1.5 rounded font-mono"
-                   style={{ background: '#fff', border: '1px solid var(--c-border)' }} />
-            <p className="text-[10px] mt-1" style={{ color: 'var(--c-text-3)' }}>
-              <strong>Recomendado dejarlo vacío.</strong> El writer escanea las rutas típicas (C:\Compac\Empresas, D:\...) y auto-selecciona la única empresa que encuentre. Solo llénalo si tienes varias empresas en la misma PC y quieres forzar una específica.
-            </p>
-          </FormField>
           <FormField label="Usuario CONTPAQi">
             <input value={usuario}
                    onChange={e => setUsuario(e.target.value)}
@@ -318,27 +314,61 @@ export default function ContpaqiSetupPanel({ token, onConfigured }: { token: str
                    className="w-full px-2 py-1.5 rounded"
                    style={{ background: '#fff', border: '1px solid var(--c-border)' }} />
           </FormField>
-          <FormField label="Conexión SQL Server (opcional)" wide>
-            <input value={sqlConn}
-                   onChange={e => setSqlConn(e.target.value)}
-                   placeholder="Déjalo vacío — el writer auto-detecta el SQL local"
-                   className="w-full px-2 py-1.5 rounded font-mono"
-                   style={{ background: '#fff', border: '1px solid var(--c-border)' }} />
-            <p className="text-[10px] mt-1" style={{ color: 'var(--c-text-3)' }}>
-              <strong>Recomendado dejarlo vacío.</strong> El writer prueba automáticamente las instancias SQL comunes (COMPAC, SQLEXPRESS, default) al arrancar. Solo llénalo si tu SQL Server está en una instancia con nombre custom o requiere usuario/password.
-            </p>
-          </FormField>
-          <FormField label="Ruta del SDK CONTPAQi (avanzado)" wide>
-            <input value={sdkPath}
-                   onChange={e => setSdkPath(e.target.value)}
-                   placeholder="C:\Program Files (x86)\Compac\COMERCIAL"
-                   className="w-full px-2 py-1.5 rounded font-mono"
-                   style={{ background: '#fff', border: '1px solid var(--c-border)' }} />
-            <p className="text-[10px] mt-1" style={{ color: 'var(--c-text-3)' }}>
-              Carpeta donde vive <code>MGWServicios.dll</code>. La ruta default de arriba es la correcta en 99% de instalaciones — solo cámbiala si sabes que tu CONTPAQi está en otra ruta.
-            </p>
-          </FormField>
         </div>
+
+        {/* Colapsable: rutas que el writer auto-detecta. La clienta normal
+            no las necesita ver; solo las despliega si tiene una instalación
+            no-estándar (múltiples empresas, SQL custom, CONTPAQi en otro drive). */}
+        <div className="mb-3">
+          <button
+            type="button"
+            onClick={() => setAdvancedOpen(v => !v)}
+            className="flex items-center gap-1.5 text-xs font-semibold transition-opacity hover:opacity-70"
+            style={{ color: 'var(--c-text-2)' }}
+          >
+            <span className="inline-block transition-transform" style={{ transform: advancedOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}>▸</span>
+            Configuración avanzada (rutas auto-detectadas)
+          </button>
+          <p className="text-[10px] mt-1 ml-4" style={{ color: 'var(--c-text-3)' }}>
+            El writer descubre solo la empresa, el SQL Server y el SDK CONTPAQi. Solo despliega esto si tienes un setup no-estándar.
+          </p>
+        </div>
+
+        {advancedOpen && (
+          <div className="grid grid-cols-2 gap-3 text-xs mb-3 rounded-lg p-3"
+               style={{ background: 'rgba(108,59,255,0.03)', border: '1px dashed rgba(108,59,255,0.2)' }}>
+            <FormField label="Ruta de la empresa CONTPAQi (opcional)" wide>
+              <input value={empresaPath}
+                     onChange={e => setEmpresaPath(e.target.value)}
+                     placeholder="Vacío = auto-detecta desde C:\Compac\Empresas"
+                     className="w-full px-2 py-1.5 rounded font-mono"
+                     style={{ background: '#fff', border: '1px solid var(--c-border)' }} />
+              <p className="text-[10px] mt-1" style={{ color: 'var(--c-text-3)' }}>
+                Solo llénalo si tienes varias empresas en la misma PC y quieres forzar una específica.
+              </p>
+            </FormField>
+            <FormField label="Conexión SQL Server (opcional)" wide>
+              <input value={sqlConn}
+                     onChange={e => setSqlConn(e.target.value)}
+                     placeholder="Vacío = auto-detecta instancia local"
+                     className="w-full px-2 py-1.5 rounded font-mono"
+                     style={{ background: '#fff', border: '1px solid var(--c-border)' }} />
+              <p className="text-[10px] mt-1" style={{ color: 'var(--c-text-3)' }}>
+                Solo llénalo si tu SQL Server está en una instancia con nombre custom o requiere usuario/password.
+              </p>
+            </FormField>
+            <FormField label="Ruta del SDK CONTPAQi (opcional)" wide>
+              <input value={sdkPath}
+                     onChange={e => setSdkPath(e.target.value)}
+                     placeholder="C:\Program Files (x86)\Compac\COMERCIAL"
+                     className="w-full px-2 py-1.5 rounded font-mono"
+                     style={{ background: '#fff', border: '1px solid var(--c-border)' }} />
+              <p className="text-[10px] mt-1" style={{ color: 'var(--c-text-3)' }}>
+                Carpeta donde vive <code>MGWServicios.dll</code>. El default de arriba es correcto en 99% de instalaciones.
+              </p>
+            </FormField>
+          </div>
+        )}
 
         <div className="flex items-center gap-2 pt-2">
           <button type="submit" disabled={saving}
