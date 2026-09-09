@@ -20,37 +20,38 @@ public sealed class LocalInboxStorage : IInboxStorage
 
     public Task<IReadOnlyList<string>> ListInboxAsync(CancellationToken ct)
     {
-        // Sync bajo Task para cumplir el contrato async sin overhead innecesario;
-        // el filesystem local no tiene nada asíncrono real que aprovechar aquí.
-        IReadOnlyList<string> files = Directory.GetFiles(_inbox, "*.xml")
+        // SearchOption.AllDirectories para soportar layouts YYYY/MM (paridad con
+        // DropboxInboxStorage). Retorna paths relativos al inbox, con '/' como
+        // separador para simetría con Dropbox (WatchLoop no distingue OS-slash).
+        var basePath = Path.GetFullPath(_inbox);
+        IReadOnlyList<string> files = Directory.GetFiles(_inbox, "*.xml", SearchOption.AllDirectories)
             .OrderBy(f => File.GetCreationTimeUtc(f))
-            .Select(Path.GetFileName)
-            .Where(name => name is not null)
-            .Select(name => name!)
+            .Select(full => Path.GetRelativePath(basePath, full).Replace(Path.DirectorySeparatorChar, '/'))
             .ToList();
         return Task.FromResult(files);
     }
 
-    public async Task<string> ReadInboxTextAsync(string filename, CancellationToken ct)
+    public async Task<string> ReadInboxTextAsync(string relativePath, CancellationToken ct)
     {
-        var full = Path.Combine(_inbox, filename);
+        var full = Path.Combine(_inbox, relativePath.Replace('/', Path.DirectorySeparatorChar));
         return await File.ReadAllTextAsync(full, ct);
     }
 
     public async Task WriteOutboxTextAsync(string outboxSubdir, string filename, string content, CancellationToken ct)
     {
         var dir = Path.Combine(_outbox, outboxSubdir);
-        Directory.CreateDirectory(dir);
-        var full = Path.Combine(dir, filename);
+        var full = Path.Combine(dir, filename.Replace('/', Path.DirectorySeparatorChar));
+        Directory.CreateDirectory(Path.GetDirectoryName(full)!);
         await File.WriteAllTextAsync(full, content, ct);
     }
 
-    public Task MoveToOutboxAsync(string outboxSubdir, string filename, CancellationToken ct)
+    public Task MoveToOutboxAsync(string outboxSubdir, string relativePath, CancellationToken ct)
     {
-        var src  = Path.Combine(_inbox, filename);
-        var dir  = Path.Combine(_outbox, outboxSubdir);
-        Directory.CreateDirectory(dir);
-        var dest = Path.Combine(dir, filename);
+        // Preserva subestructura YYYY/MM.
+        var normalized = relativePath.Replace('/', Path.DirectorySeparatorChar);
+        var src  = Path.Combine(_inbox, normalized);
+        var dest = Path.Combine(_outbox, outboxSubdir, normalized);
+        Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
         if (File.Exists(dest)) File.Delete(dest);
         File.Move(src, dest);
         return Task.CompletedTask;

@@ -16,19 +16,32 @@ namespace Centinelia.BillingContpaqi.Writer.Watch.Storage;
 /// </summary>
 public interface IInboxStorage
 {
-    /// <summary>Nombres de los archivos .xml pendientes en el inbox, ordenados por creación asc.</summary>
+    /// <summary>
+    /// Retorna las rutas de los archivos .xml pendientes en el inbox, ordenadas
+    /// por fecha de creación asc. La ruta es RELATIVA al pendientes root y
+    /// puede incluir subdirectorios (ej. <c>"2026/09/facturas_x.xml"</c>) si
+    /// Nala organiza los XMLs por año/mes, o solo el filename si está aplanado.
+    /// El caller trata este string como opaque handle: se lo pasa de vuelta a
+    /// <see cref="ReadInboxTextAsync"/> y <see cref="MoveToOutboxAsync"/>.
+    /// </summary>
     Task<IReadOnlyList<string>> ListInboxAsync(CancellationToken ct);
 
-    /// <summary>Lee el contenido de un archivo del inbox como texto UTF-8.</summary>
-    Task<string> ReadInboxTextAsync(string filename, CancellationToken ct);
+    /// <summary>
+    /// Lee el contenido de un archivo del inbox como texto UTF-8.
+    /// <paramref name="relativePath"/> es el string que retornó
+    /// <see cref="ListInboxAsync"/> (puede incluir subdirs).
+    /// </summary>
+    Task<string> ReadInboxTextAsync(string relativePath, CancellationToken ct);
 
     /// <summary>Escribe un archivo nuevo bajo <paramref name="outboxSubdir"/> del outbox (crea el subdir si no existe).</summary>
     Task WriteOutboxTextAsync(string outboxSubdir, string filename, string content, CancellationToken ct);
 
     /// <summary>
-    /// Mueve un archivo del inbox al subdir indicado del outbox. Sobrescribe
+    /// Mueve un archivo del inbox al subdir indicado del outbox. Preserva la
+    /// subestructura de directorios del inbox (ej. inbox <c>2026/09/foo.xml</c>
+    /// termina en outbox <c>{subdir}/2026/09/foo.xml</c>). Sobrescribe
     /// silenciosamente si ya existía uno con el mismo nombre en el destino
     /// (idempotencia por content-hash está del lado de Nala).
     /// </summary>
-    Task MoveToOutboxAsync(string outboxSubdir, string filename, CancellationToken ct);
+    Task MoveToOutboxAsync(string outboxSubdir, string relativePath, CancellationToken ct);
 }

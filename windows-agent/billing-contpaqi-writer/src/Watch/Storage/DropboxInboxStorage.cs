@@ -41,11 +41,20 @@ public sealed class DropboxInboxStorage : IInboxStorage, IDisposable
     {
         try
         {
-            var list = await WithRetry(() => _client.Files.ListFolderAsync(_pendientesPath), ct);
+            // recursive: true para soportar layouts con subdirs YYYY/MM que
+            // introduce Nala para archivar por fecha. Sin esto los XMLs
+            // organizados quedaban huérfanos y NUNCA se procesaban (auditoría
+            // 2026-09-09 durante ensayo pre-Beatriz).
+            var list = await WithRetry(() => _client.Files.ListFolderAsync(_pendientesPath, recursive: true), ct);
+            var prefix = _pendientesPath + "/";
             return list.Entries
                 .Where(e => e.IsFile && e.Name.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))
                 .OrderBy(e => e.AsFile.ServerModified)
-                .Select(e => e.Name)
+                // Path relativo al pendientes root. Ej: "2026/09/facturas_x.xml"
+                // (con YYYY/MM) o "facturas_x.xml" (aplanado, backwards compat).
+                .Select(e => e.PathDisplay.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+                    ? e.PathDisplay.Substring(prefix.Length)
+                    : e.Name)
                 .ToList();
         }
         catch (ApiException<ListFolderError> ex) when (ex.ErrorResponse.IsPath && ex.ErrorResponse.AsPath.Value.IsNotFound)
@@ -55,9 +64,9 @@ public sealed class DropboxInboxStorage : IInboxStorage, IDisposable
         }
     }
 
-    public async Task<string> ReadInboxTextAsync(string filename, CancellationToken ct)
+    public async Task<string> ReadInboxTextAsync(string relativePath, CancellationToken ct)
     {
-        var path = $"{_pendientesPath}/{filename}";
+        var path = $"{_pendientesPath}/{relativePath}";
         using var response = await WithRetry(() => _client.Files.DownloadAsync(path), ct);
         return await response.GetContentAsStringAsync();
     }
@@ -74,10 +83,14 @@ public sealed class DropboxInboxStorage : IInboxStorage, IDisposable
         }, ct);
     }
 
-    public async Task MoveToOutboxAsync(string outboxSubdir, string filename, CancellationToken ct)
+    public async Task MoveToOutboxAsync(string outboxSubdir, string relativePath, CancellationToken ct)
     {
-        var from = $"{_pendientesPath}/{filename}";
-        var to   = $"{_rootPath}/{outboxSubdir}/{filename}";
+        // Preserva la subestructura YYYY/MM del inbox en el outbox. Ej:
+        //   inbox  /pendientes/2026/09/foo.xml
+        //   outbox /procesados/2026/09/foo.xml
+        // Dropbox filesMoveV2 crea directorios intermedios automáticamente.
+        var from = $"{_pendientesPath}/{relativePath}";
+        var to   = $"{_rootPath}/{outboxSubdir}/{relativePath}";
         try
         {
             await WithRetry(() => _client.Files.MoveV2Async(from, to, allowOwnershipTransfer: false, autorename: false), ct);
