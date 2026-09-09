@@ -295,6 +295,21 @@ public static class Program
             !FirstRunWizard.IsComplete(preOpts))
         {
             ApplyPortalWindowsConfig(preOpts, centineliaConfig.Windows);
+
+            if (interactive)
+            {
+                PrintAutoAppliedSummary(centineliaConfig, preOpts);
+
+                // Dry-run ANTES de persistir + registrar servicio. Si algo falla,
+                // no dejamos residuos (nada en appsettings.local.json, ningún
+                // servicio registrado). Beatriz edita en el portal, descarga
+                // zip nuevo, reintenta limpio.
+                if (!ConfigVerifier.Verify(preOpts))
+                {
+                    return 4;
+                }
+            }
+
             PersistLocalSettings(preOpts, exeDir);
             builder.Configuration
                 .SetBasePath(exeDir)
@@ -305,7 +320,6 @@ public static class Program
 
             if (interactive)
             {
-                PrintAutoAppliedSummary(centineliaConfig, preOpts);
                 var installAsService = PromptInstallService();
                 if (installAsService)
                 {

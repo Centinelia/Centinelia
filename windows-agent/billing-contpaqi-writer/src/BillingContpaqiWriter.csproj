@@ -14,7 +14,7 @@
     -->
 
     <!--
-      Single-file self-contained publish (0.11.0): en vez de un directorio con
+      Single-file self-contained publish (0.11.1): en vez de un directorio con
       200+ archivos (DLLs de runtime .NET + deps de NuGet + native libs), el
       publish produce UN solo EXE + appsettings.json. Beatriz descomprime el
       zip y ve 3-4 archivos en vez de una selva.
@@ -56,10 +56,17 @@
     <Company>Centinelia</Company>
     <Description>Puente entre CONTPAQi Comercial Pro y Centinelia — sincroniza catálogos y timbra CFDIs generados por Nala.</Description>
     <Copyright>© 2026 Centinelia</Copyright>
-    <Version>0.11.0</Version>
-    <AssemblyVersion>0.11.0.0</AssemblyVersion>
-    <FileVersion>0.11.0.0</FileVersion>
+    <Version>0.11.1</Version>
+    <AssemblyVersion>0.11.1.0</AssemblyVersion>
+    <FileVersion>0.11.1.0</FileVersion>
     <!--
+      Cambios 0.11.1 (2026-09-08):
+      * Dry-run antes de instalar: al doble-click el writer verifica MGWServicios.dll,
+        carpeta de empresa, SQL Server, y usuario+password+empresa CONTPAQi.
+        Si algo falla, muestra qué campo está mal y qué corregir en el portal.
+        NO persiste appsettings.local.json ni registra servicio si falla —
+        Beatriz reintenta limpio hasta que todo pase.
+
       Cambios 0.11.0 (2026-09-08):
       * Zero-fricción real: el portal captura empresa CONTPAQi, SQL, SUPERVISOR,
         CSD, concepto y SDK path (setup-contpaqi). El zip trae todo cifrado y
