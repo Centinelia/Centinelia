@@ -1529,7 +1529,7 @@ CATEGORÍAS:
       });
       tools.push({
         name: 'escalar_al_owner',
-        description: 'Uso exclusivo de Nash. Notifica al owner por WhatsApp (env OWNER_WHATSAPP) con fallback email hola@. Solo para lo crítico.',
+        description: 'Uso exclusivo de Nash. Notifica al owner por email a INTERNAL_ALERT_EMAIL (default hola@centinelia.mx). Solo para lo crítico.',
         input_schema: {
           type: 'object' as const,
           properties: {

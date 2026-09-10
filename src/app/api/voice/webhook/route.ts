@@ -832,12 +832,13 @@ export async function POST(req: NextRequest) {
           }).catch(err => console.error('[webhook] notion addCallEntry failed:', err));
         }
 
-        // N. Initiative — detect recurring patterns across voice calls
-        if (agent?.transfer_whatsapp && outcome !== 'unanswered') {
+        // N. Initiative — detect recurring patterns across voice calls.
+        // 2026-09-10: gate por transfer_whatsapp eliminado — el canal ahora es
+        // email (client_email). Sí seguimos gateando por outcome válido.
+        if (agent && outcome !== 'unanswered') {
           await checkVoiceInitiative(
             resolvedAgentId,
             agent.agent_name ?? agent.business_name ?? 'tu empleado',
-            agent.transfer_whatsapp,
           ).catch(err => console.error('[webhook] initiative check failed:', err));
         }
 

@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail } from '@/lib/email/send';
-import { sendWhatsApp } from '@/lib/whatsapp/send';
 
 export const dynamic = 'force-dynamic';
 
 // Notificaciones: Nazre / equipo Centinelia.
-const OWNER_EMAIL    = process.env.OWNER_EMAIL    ?? 'hola@centinelia.mx';
-const OWNER_WHATSAPP = process.env.OWNER_WHATSAPP ?? '';
+// 2026-09-10: canal WhatsApp eliminado. El sandbox de Twilio rechazaba
+// freeform fuera de ventana 24h (error 63015) y ninguna notificación
+// llegaba. El email a OWNER_EMAIL sí funciona.
+const OWNER_EMAIL = process.env.OWNER_EMAIL ?? 'hola@centinelia.mx';
 
 interface Body {
   business_name?:        string;
@@ -84,27 +85,13 @@ export async function POST(req: NextRequest) {
     </div>
   `.trim();
 
-  // Notificaciones (no await — no bloqueamos la respuesta al usuario)
+  // Notificación (no await — no bloqueamos la respuesta al usuario)
   void sendEmail({
     to:      OWNER_EMAIL,
     subject: `Nuevo rol pedido: ${rol_imaginado} — ${business_name}`,
     html:    emailHtml,
     replyTo: contact_email,
   });
-
-  if (OWNER_WHATSAPP) {
-    const waBody = [
-      'Nuevo rol pedido:',
-      `> ${rol_imaginado}`,
-      '',
-      `De: ${contact_name} (${business_name})`,
-      `Email: ${contact_email}`,
-      contact_whatsapp ? `WA: ${contact_whatsapp}` : null,
-      '',
-      `Funciones: ${funciones_esperadas.slice(0, 220)}${funciones_esperadas.length > 220 ? '...' : ''}`,
-    ].filter(Boolean).join('\n');
-    void sendWhatsApp(OWNER_WHATSAPP, waBody);
-  }
 
   return NextResponse.json({ ok: true, id: requestId });
 }
