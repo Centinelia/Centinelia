@@ -197,7 +197,7 @@ export class BillingEmployee {
             codigoPostal:  rlConfig.codigoPostal ?? '',
             serie:         rlConfig.serie ?? 'RL',
             usoCFDI:       rlConfig.usoCFDI ?? 'G01',
-            formaPago:     rlConfig.formaPago ?? '03',
+            formaPago:     rlConfig.formaPago ?? '01',  // efectivo default (retail público general)
             sku:           rlConfig.sku ?? 'VT',
             descripcion:   rlConfig.descripcion ?? 'Venta de Tortilla',
             ivaTasa:       rlConfig.ivaTasa ?? 0,

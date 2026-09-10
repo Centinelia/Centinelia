@@ -9,9 +9,20 @@
  * Si ella redondeó 14507.75 → 14507, respetamos su criterio.
  */
 
-import type { BillingInvoice } from '../adapter';
+import type { BillingInvoice, PaymentMethod } from '../adapter';
 import type { ParsedWeekBlock } from '../parsers/ramon-leang-weekly';
 import type { RamonLeangConfig, PipelineErrorRL, PipelineWarningRL } from './types';
+
+/** Mapea código SAT c_FormaPago al string interno del BillingAdapter. */
+function formaPagoSatToMethod(code: string): PaymentMethod {
+  switch (code) {
+    case '01': return 'efectivo';
+    case '02': return 'cheque';
+    case '03': return 'transferencia';
+    case '04': return 'tarjeta';
+    default:   return 'efectivo';
+  }
+}
 
 export interface PipelineResultRL {
   invoices:    BillingInvoice[];
@@ -99,7 +110,7 @@ function buildOneInvoice(
       ivaTasa:     config.ivaTasa,
       description: config.descripcion,
     }],
-    paymentMethod: 'transferencia',
+    paymentMethod: formaPagoSatToMethod(config.formaPago),
     usoCFDI:       config.usoCFDI,
     serie:         config.serie,
     metodoPago:    'PUE',

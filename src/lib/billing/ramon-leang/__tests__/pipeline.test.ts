@@ -13,7 +13,7 @@ const CONFIG: RamonLeangConfig = {
   codigoPostal:  '66470',
   serie:         'RL',
   usoCFDI:       'G01',
-  formaPago:     '03',
+  formaPago:     '01',  // efectivo (venta al público general en Ramón Leang)
   sku:           'VT',
   descripcion:   'Venta de Tortilla',
   ivaTasa:       0,
@@ -78,12 +78,22 @@ describe('buildInvoicesFromWeek — happy path', () => {
     }
   });
 
-  it('todos con serie RL, uso G01, forma pago transferencia, PUE', () => {
+  it('todos con serie RL, uso G01, forma pago efectivo, PUE', () => {
     for (const inv of r.invoices) {
       expect(inv.serie).toBe('RL');
       expect(inv.usoCFDI).toBe('G01');
-      expect(inv.paymentMethod).toBe('transferencia');
+      expect(inv.paymentMethod).toBe('efectivo');
       expect(inv.metodoPago).toBe('PUE');
+    }
+  });
+
+  it('paymentMethod se deriva del formaPago SAT del config', () => {
+    // Ya cubierto por el test previo (formaPago 01 → efectivo). Este verifica
+    // que el pipeline SÍ mira el config y no está hardcoded.
+    const configTransfer = { ...CONFIG, formaPago: '03' };
+    const r2 = buildInvoicesFromWeek(baseBlock(), configTransfer);
+    for (const inv of r2.invoices) {
+      expect(inv.paymentMethod).toBe('transferencia');
     }
   });
 

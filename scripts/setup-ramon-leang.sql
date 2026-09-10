@@ -38,7 +38,7 @@ INSERT INTO voice_agents (
       'codigoPostal',  '66470',
       'serie',         'RL',
       'usoCFDI',       'G01',
-      'formaPago',     '03',
+      'formaPago',     '01',   -- efectivo (venta al público general)
       'sku',           'VT',
       'descripcion',   'Venta de Tortilla',
       'ivaTasa',       0,
