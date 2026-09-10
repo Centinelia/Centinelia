@@ -30,6 +30,7 @@ const baseBlock = (o: Partial<ParsedWeekBlock> = {}): ParsedWeekBlock => ({
   diasHabiles:      [1, 2, 3, 4, 7],
   diasHabilesRaw:   '1, 2, 3, 4, 7',
   detalleDepositos: [18553.5, 6844, 13849, 18212.5, 11961.5, 17626],
+  observaciones:    null,
   headerRowIndex:   0,
   colIndex:         3,
   warnings:         [],
@@ -105,6 +106,28 @@ describe('buildInvoicesFromWeek — happy path', () => {
   it('meta identifica cuál es el ajuste', () => {
     expect(r.meta[0].isAjuste).toBe(false);
     expect(r.meta[5].isAjuste).toBe(true);
+  });
+
+  it('sin observaciones: usa notes default', () => {
+    for (const inv of r.invoices) {
+      expect(inv.notes).toBe('Ramón Leang - Venta al público general');
+    }
+  });
+
+  it('con observaciones: se copian verbatim a notes de todos los CFDIs de la semana', () => {
+    const b = baseBlock({ observaciones: 'Semana con feriado 16-sep, cliente confirma pago en efectivo' });
+    const rc = buildInvoicesFromWeek(b, CONFIG);
+    for (const inv of rc.invoices) {
+      expect(inv.notes).toBe('Semana con feriado 16-sep, cliente confirma pago en efectivo');
+    }
+  });
+
+  it('observaciones vacías (whitespace only): cae al default', () => {
+    const b = baseBlock({ observaciones: '   ' });
+    const rc = buildInvoicesFromWeek(b, CONFIG);
+    for (const inv of rc.invoices) {
+      expect(inv.notes).toBe('Ramón Leang - Venta al público general');
+    }
   });
 });
 

@@ -11,7 +11,7 @@
 import { mkdirSync } from 'node:fs';
 import ExcelJS from 'exceljs';
 
-const OUT = 'scripts/output/PLANTILLA_Ramon_Leang.xlsx';
+const OUT = process.env.PLANTILLA_OUT || 'scripts/output/PLANTILLA_Ramon_Leang.xlsx';
 
 // -- Paleta Centinelia -------------------------------------------------------
 const MORADO       = 'FF6C3BFF';
@@ -42,20 +42,26 @@ async function main() {
   // Orden: MARTES a LUNES (la semana operativa de Ramón Leang empieza martes
   // y termina el lunes siguiente. Cada martes Beatriz PV cierra la semana
   // pasada y llena una fila nueva).
+  // Ciclo martes-a-martes según regla de Beatriz PV ("SE HACE CORTE DE MARTES
+  // A MARTES NO SAB NI DOM, NI FERIADOS"). Solo 6 columnas de depósito, una
+  // por día que sí genera factura: 5 laborables + 1 martes siguiente (ajuste
+  // centavos). Ella deja vacío si es feriado o no hubo venta.
   ws.columns = [
-    { key: 'semana',  width: 20 },
-    { key: 'dep_mar', width: 14 },
-    { key: 'dep_mie', width: 14 },
-    { key: 'dep_jue', width: 14 },
-    { key: 'dep_vie', width: 14 },
-    { key: 'dep_sab', width: 14 },
-    { key: 'dep_dom', width: 14 },
-    { key: 'dep_lun', width: 14 },
-    { key: 'nota',    width: 36 },
+    { key: 'semana',       width: 20 },
+    { key: 'dep_mar',      width: 14 },
+    { key: 'dep_mie',      width: 14 },
+    { key: 'dep_jue',      width: 14 },
+    { key: 'dep_vie',      width: 14 },
+    { key: 'dep_lun',      width: 14 },
+    { key: 'dep_ajuste',   width: 16 },
+    { key: 'total',        width: 16 },
+    { key: 'por_factura',  width: 16 },
+    { key: 'ajuste_calc',  width: 16 },
+    { key: 'observaciones', width: 30 },
   ];
 
   // -- Row 1: título brand --
-  ws.mergeCells('A1:I1');
+  ws.mergeCells('A1:K1');
   const titulo = ws.getCell('A1');
   titulo.value = 'Plantilla de ventas semanales — Ramón Leang';
   titulo.font  = { name: 'Calibri', size: 18, bold: true, color: { argb: BLANCO } };
@@ -64,7 +70,7 @@ async function main() {
   ws.getRow(1).height = 44;
 
   // -- Row 2: subtítulo --
-  ws.mergeCells('A2:I2');
+  ws.mergeCells('A2:K2');
   const subt = ws.getCell('A2');
   subt.value = 'Cada martes llena una fila nueva con los depósitos de la semana pasada (martes a lunes). Nala hace el resto.';
   subt.font  = { name: 'Calibri', size: 11, italic: true, color: { argb: GRIS_TX } };
@@ -75,7 +81,15 @@ async function main() {
   ws.getRow(3).height = 8;
 
   // -- Row 4: headers --
-  const headers = ['Semana (martes)', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo', 'Lunes', 'Nota (opcional)'];
+  const headers = [
+    'Semana (martes)',
+    'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Lunes',
+    'Ajuste (mar sig)',
+    'Total depositado',
+    'Por factura (× 5)',
+    'Ajuste calculado',
+    'Observaciones',
+  ];
   const headerRow = ws.getRow(4);
   headers.forEach((h, i) => {
     const cell = headerRow.getCell(i + 1);
@@ -94,26 +108,26 @@ async function main() {
 
   // -- Rows 5-7: 3 semanas de ejemplo (datos reales del fixture Ramón Leang) --
   // Mapeados desde el Excel actual de Beatriz PV para que ella los reconozca.
-  // Cada ejemplo: semana MARTES-LUNES (7 días). Orden columnas: MAR, MIE, JUE, VIE, SAB, DOM, LUN.
-  // Datos reales del Excel actual de Beatriz PV (fixture Ramón Leang parseado).
+  // Orden columnas de dato: MAR, MIE, JUE, VIE, LUN, AJUSTE (mar siguiente).
+  // Datos de septiembre 2026 replicando el Excel actual de Beatriz PV.
   const ejemplos: Array<{ semana: Date; deps: (number | null)[]; nota: string }> = [
     {
-      // Semana martes 05/08 al lunes 11/08 — 6 días con ventas (mar-dom), lunes cerrado
-      semana: new Date('2026-08-05'),
-      deps:   [14914.00, 15673.50, 5676.00, 13338.50, 14288.00, 17606.00, null],
-      nota:   'Semana de ejemplo 1 (borrar cuando empieces)',
+      // Semana martes 01/09 al martes 08/09 (ajuste) — datos reales
+      semana: new Date('2026-09-01'),
+      deps:   [18553.50, 6844.00, 13849.00, 18212.50, 11961.50, 17626.00],
+      nota:   'Ejemplo (borrar cuando empieces)',
     },
     {
-      // Semana martes 12/08 al lunes 18/08 — 6 días con ventas mar-dom
-      semana: new Date('2026-08-12'),
-      deps:   [16123.00, 11810.50, 8601.00, 11120.00, 21290.50, 12661.00, null],
-      nota:   'Semana de ejemplo 2 (borrar cuando empieces)',
+      // Semana martes 08/09 al martes 15/09 (ajuste)
+      semana: new Date('2026-09-08'),
+      deps:   [15200.00, 14100.50, 16800.00, 13500.00, 17800.00, 15300.50],
+      nota:   'Ejemplo (borrar cuando empieces)',
     },
     {
-      // Semana martes 26/08 al lunes 01/09 — semana corta: solo mar/mie/jue
-      semana: new Date('2026-08-26'),
-      deps:   [8573.50, 13486.50, 14007.50, null, null, null, null],
-      nota:   'Semana corta: 3 días con ventas, resto sin depósito',
+      // Semana martes 15/09 al martes 22/09 — miércoles 16 feriado (Independencia)
+      semana: new Date('2026-09-15'),
+      deps:   [12500.00, null, 15300.00, 17200.00, 14100.00, 12900.50],
+      nota:   'Miércoles 16 feriado (Independencia). Se deja vacío.',
     },
   ];
 
@@ -129,7 +143,7 @@ async function main() {
     c1.font = { name: 'Calibri', size: 11, color: { argb: NEGRO_TX } };
     c1.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: AMARILLO } };
     c1.border = borderThin();
-    // Cols 2-8: depósitos por día
+    // Cols 2-7: depósitos (MAR, MIE, JUE, VIE, LUN, AJUSTE mar sig)
     ej.deps.forEach((dep, i) => {
       const cell = row.getCell(i + 2);
       if (dep != null) cell.value = dep;
@@ -139,26 +153,55 @@ async function main() {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: AMARILLO } };
       cell.border = borderThin();
     });
-    // Col 9: nota
-    const c9 = row.getCell(9);
-    c9.value = ej.nota;
-    c9.font = { name: 'Calibri', size: 10, italic: true, color: { argb: GRIS_TX } };
-    c9.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
-    c9.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: AMARILLO } };
-    c9.border = borderThin();
+    // Col 8: Total (fórmula SUM depósitos)
+    const cTotal = row.getCell(8);
+    cTotal.value = { formula: `SUM(B${rowNum}:G${rowNum})` };
+    cTotal.numFmt = '"$"#,##0.00;[Red]-"$"#,##0.00';
+    cTotal.alignment = { vertical: 'middle', horizontal: 'right' };
+    cTotal.font = { name: 'Calibri', size: 11, bold: true, color: { argb: MORADO_OSC } };
+    cTotal.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: MORADO_CLARO } };
+    cTotal.border = borderThin();
+    // Col 9: Por factura (INT(total/N) — trunca a peso entero como Beatriz)
+    const cPorFac = row.getCell(9);
+    const nDias = ej.deps.filter(d => d != null).length;
+    cPorFac.value = { formula: `IF(H${rowNum}=0,0,INT(H${rowNum}/${nDias}))` };
+    cPorFac.numFmt = '"$"#,##0.00;[Red]-"$"#,##0.00';
+    cPorFac.alignment = { vertical: 'middle', horizontal: 'right' };
+    cPorFac.font = { name: 'Calibri', size: 11, bold: true, color: { argb: MORADO_OSC } };
+    cPorFac.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: MORADO_CLARO } };
+    cPorFac.border = borderThin();
+    // Col 10: Ajuste calculado (total - por_factura × (N-1))
+    const cAjuste = row.getCell(10);
+    cAjuste.value = { formula: `IF(H${rowNum}=0,0,ROUND(H${rowNum}-I${rowNum}*${nDias - 1},2))` };
+    cAjuste.numFmt = '"$"#,##0.00;[Red]-"$"#,##0.00';
+    cAjuste.alignment = { vertical: 'middle', horizontal: 'right' };
+    cAjuste.font = { name: 'Calibri', size: 11, bold: true, color: { argb: MORADO_OSC } };
+    cAjuste.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: MORADO_CLARO } };
+    cAjuste.border = borderThin();
+    // Col 11: Observaciones
+    const cObs = row.getCell(11);
+    cObs.value = ej.nota;
+    cObs.font = { name: 'Calibri', size: 10, italic: true, color: { argb: GRIS_TX } };
+    cObs.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+    cObs.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: AMARILLO } };
+    cObs.border = borderThin();
   });
+
+  // Ahora 11 columnas totales (1 semana + 6 depósitos + 3 preview + 1 obs).
+  const NCOL = 11;
+  const COL_OBS = 11;
 
   // -- Row 8: fila vacía destacada como "AQUÍ ESCRIBES" --
   const rowGuia = ws.getRow(8);
   rowGuia.height = 30;
-  for (let c = 1; c <= 9; c++) {
+  for (let c = 1; c <= NCOL; c++) {
     const cell = rowGuia.getCell(c);
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: ROSA_SUAVE } };
     cell.border = {
       top:    { style: 'medium', color: { argb: 'FFDB2777' } },
       bottom: { style: 'medium', color: { argb: 'FFDB2777' } },
-      left:   { style: c === 1 ? 'medium' : 'thin', color: { argb: c === 1 ? 'FFDB2777' : 'FFDB2777' } },
-      right:  { style: c === 9 ? 'medium' : 'thin', color: { argb: c === 9 ? 'FFDB2777' : 'FFDB2777' } },
+      left:   { style: c === 1 ? 'medium' : 'thin', color: { argb: 'FFDB2777' } },
+      right:  { style: c === NCOL ? 'medium' : 'thin', color: { argb: 'FFDB2777' } },
     };
     if (c === 1) {
       cell.value = '⬅ Aquí escribes';
@@ -166,8 +209,8 @@ async function main() {
       cell.alignment = { vertical: 'middle', horizontal: 'center' };
     } else {
       cell.font = { name: 'Calibri', size: 11, color: { argb: NEGRO_TX } };
-      cell.alignment = { vertical: 'middle', horizontal: c === 9 ? 'left' : 'right' };
-      if (c >= 2 && c <= 8) cell.numFmt = '"$"#,##0.00;[Red]-"$"#,##0.00';
+      cell.alignment = { vertical: 'middle', horizontal: c === COL_OBS ? 'left' : 'right' };
+      if (c >= 2 && c <= COL_OBS - 1) cell.numFmt = '"$"#,##0.00;[Red]-"$"#,##0.00';
     }
   }
 
@@ -175,15 +218,29 @@ async function main() {
   for (let r = 9; r <= 30; r++) {
     const row = ws.getRow(r);
     row.height = 22;
-    for (let c = 1; c <= 9; c++) {
+    for (let c = 1; c <= NCOL; c++) {
       const cell = row.getCell(c);
-      cell.alignment = { vertical: 'middle', horizontal: c === 1 ? 'center' : c === 9 ? 'left' : 'right' };
+      cell.alignment = { vertical: 'middle', horizontal: c === 1 ? 'center' : c === COL_OBS ? 'left' : 'right' };
       cell.font = { name: 'Calibri', size: 11, color: { argb: NEGRO_TX } };
       cell.border = borderVerySoft();
       if (r % 2 === 1) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFAFBFF' } };
       if (c === 1) cell.numFmt = 'dd/mm/yyyy';
-      if (c >= 2 && c <= 8) cell.numFmt = '"$"#,##0.00;[Red]-"$"#,##0.00';
+      if (c >= 2 && c <= COL_OBS - 1) cell.numFmt = '"$"#,##0.00;[Red]-"$"#,##0.00';
     }
+    // Preview con fórmulas — se activan cuando Beatriz llena depósitos.
+    // Cuenta cuántos depósitos hay (COUNT ignora vacías), divide y ajusta.
+    const cTotal = row.getCell(8);
+    cTotal.value = { formula: `IF(COUNT(B${r}:G${r})=0,"",SUM(B${r}:G${r}))` };
+    cTotal.font  = { name: 'Calibri', size: 11, bold: true, color: { argb: MORADO_OSC } };
+    cTotal.fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: MORADO_CLARO } };
+    const cPor = row.getCell(9);
+    cPor.value = { formula: `IF(COUNT(B${r}:G${r})=0,"",INT(SUM(B${r}:G${r})/COUNT(B${r}:G${r})))` };
+    cPor.font  = { name: 'Calibri', size: 11, bold: true, color: { argb: MORADO_OSC } };
+    cPor.fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: MORADO_CLARO } };
+    const cAj = row.getCell(10);
+    cAj.value = { formula: `IF(COUNT(B${r}:G${r})=0,"",ROUND(SUM(B${r}:G${r})-I${r}*(COUNT(B${r}:G${r})-1),2))` };
+    cAj.font  = { name: 'Calibri', size: 11, bold: true, color: { argb: MORADO_OSC } };
+    cAj.fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: MORADO_CLARO } };
   }
 
   // ==========================================================================
@@ -256,8 +313,11 @@ async function main() {
   // Sección: cada semana
   addTitle('Cada martes, en 3 pasos');
   addStep('1', 'Ve al final de la hoja "Semanas" y agrega una fila nueva (puedes copiar la última llenada para conservar el formato).');
-  addStep('2', 'Escribe la fecha del martes que abre la semana en la columna "Semana (martes)". Ejemplo: 05/08/2026.');
-  addStep('3', 'Pon los depósitos bancarios en las columnas del día que corresponda (martes a lunes). Los días sin ventas los dejas vacíos.');
+  addStep('2', 'Escribe la fecha del martes que abre la semana en la columna "Semana (martes)". Ejemplo: 01/09/2026.');
+  addStep('3', 'Pon los depósitos bancarios: uno por cada día laborable (mar, mie, jue, vie, lun) más el ajuste en el martes siguiente. Si algún día fue feriado, déjalo vacío.');
+  addSpace(4);
+  addPlain('En cuanto escribas los depósitos, las columnas moradas se llenan solas:', { italic: true, color: GRIS_TX });
+  addPlain('  Total depositado, Por factura (× 5) y Ajuste calculado. Así ves el detalle antes de mandarlo.');
   addSpace();
   addStep('✓', 'Guarda el archivo y mándalo el mismo martes a info@grupoestrella.mx. Nala hace el resto.', VERDE);
   addSpace(16);
@@ -287,27 +347,30 @@ async function main() {
 
   // Sección: ejemplo
   addTitle('Ejemplo con datos reales');
-  addPlain('Semana del martes 05/08/2026 al lunes 11/08/2026 (fila 1 de la hoja "Semanas"):', { italic: true, color: GRIS_TX });
-  addPlain('  Martes $14,914.00 · Miércoles $15,673.50 · Jueves $5,676.00');
-  addPlain('  Viernes $13,338.50 · Sábado $14,288.00 · Domingo $17,606.00 · Lunes (cerrado)');
-  addPlain('  Total depositado: $81,496.00', { color: MORADO_OSC });
+  addPlain('Semana del martes 01/09/2026 (fila 1 de la hoja "Semanas"):', { italic: true, color: GRIS_TX });
+  addPlain('  Martes $18,553.50 · Miércoles $6,844.00 · Jueves $13,849.00');
+  addPlain('  Viernes $18,212.50 · Lunes $11,961.50 · Ajuste (martes 08/09) $17,626.00');
+  addPlain('  Total depositado: $87,046.50', { color: MORADO_OSC });
   addSpace(4);
   addPlain('Nala calcula automáticamente:', { italic: true, color: GRIS_TX });
-  addPlain('  6 facturas de $13,582.00 c/u (una por día con venta)');
-  addPlain('  1 factura de $13,586.00 (última con ajuste de centavos)');
-  addPlain('  Total facturado: $81,496.00  ✓ cuadra con tus depósitos', { color: VERDE });
+  addPlain('  5 facturas de $14,507.00 c/u (una por cada día laborable)');
+  addPlain('  1 factura de $14,511.50 el martes 08/09 (ajuste de centavos)');
+  addPlain('  Total facturado: $87,046.50  ✓ cuadra con tus depósitos', { color: VERDE });
   addSpace(16);
 
   // Sección: ¿y si...?
   addTitle('¿Y si…?');
-  addPlain('… un día no hubo ventas (feriado, cerrado, sin ventas):', { italic: true, color: GRIS_TX });
-  addPlain('  Deja la celda de ese día vacía. Nala lo omite.');
+  addPlain('… hay un feriado en día laborable (ej. miércoles 16 de septiembre):', { italic: true, color: GRIS_TX });
+  addPlain('  Deja vacía la celda de ese día. Nala emite una factura menos y ajusta el reparto.');
   addSpace(4);
-  addPlain('… todos los montos deberían dar exacto sin centavos:', { italic: true, color: GRIS_TX });
-  addPlain('  Nala no genera factura de ajuste. Solo las facturas base.');
+  addPlain('… la suma da exacto sin centavos:', { italic: true, color: GRIS_TX });
+  addPlain('  Deja vacía la celda "Ajuste (mar sig)". Solo se emiten las facturas base.');
   addSpace(4);
   addPlain('… te equivocaste al capturar un depósito:', { italic: true, color: GRIS_TX });
   addPlain('  Corrige la celda antes de mandar el archivo. Si ya lo mandaste, escríbenos.');
+  addSpace(4);
+  addPlain('… hubo depósito el sábado o domingo:', { italic: true, color: GRIS_TX });
+  addPlain('  Súmalo a los depósitos de los días laborables (SAT no permite facturar ese día).');
   addSpace(16);
 
   // Contacto

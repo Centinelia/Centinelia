@@ -144,6 +144,13 @@ function buildDocumento(invoice: BillingInvoice, config: XmlImportConfig): strin
 
   const movimientos = invoice.lines.map(buildMovimiento).join('\n');
 
+  // Observaciones: texto libre del emisor que se copia al CFDI. Beatriz lo
+  // escribe en la columna "Observaciones" del Excel y llega hasta aquí vía
+  // BillingInvoice.notes. Solo emitimos el tag si viene con contenido.
+  const observacionesTag = invoice.notes && invoice.notes.trim().length > 0
+    ? `      <Observaciones>${escapeXml(invoice.notes.trim())}</Observaciones>\n`
+    : '';
+
   return [
     '  <Documento>',
     '    <Encabezado>',
@@ -159,7 +166,7 @@ function buildDocumento(invoice: BillingInvoice, config: XmlImportConfig): strin
     `      <LugarExpedicion>${escapeXml(config.lugarExpedicion)}</LugarExpedicion>`,
     `      <Subtotal>${subtotalStr}</Subtotal>`,
     `      <Total>${totalStr}</Total>`,
-    '    </Encabezado>',
+    observacionesTag + '    </Encabezado>',
     '    <Movimientos>',
     movimientos,
     '    </Movimientos>',

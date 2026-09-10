@@ -73,17 +73,21 @@ export function buildInvoicesFromWeek(
   const invoices: BillingInvoice[] = [];
   const meta:     InvoiceMetaRL[]  = [];
 
+  // Observaciones: lo que Beatriz escribió en la columna "Observaciones" del
+  // Excel se copia verbatim al CFDI. Si viene vacío, usamos el default.
+  const notas = block.observaciones?.trim() || 'Ramón Leang - Venta al público general';
+
   // 1 CFDI por cada día hábil, monto = cfdiBase.
   for (const diaOfMonth of block.diasHabiles) {
     const fecha = dayOfMonthToIsoDate(block.weekStart, diaOfMonth);
-    invoices.push(buildOneInvoice(fecha, block.cfdiBase, config));
+    invoices.push(buildOneInvoice(fecha, block.cfdiBase, config, notas));
     meta.push({ sourceBlock: block, isAjuste: false });
   }
 
   // 1 CFDI adicional (ajuste centavos) SOLO si viene declarado en el Excel.
   // Si Beatriz no lo puso, asumimos que la división dio exacta y no hay ajuste.
   if (block.ajusteFecha && block.ajusteMonto != null && block.ajusteMonto > 0) {
-    invoices.push(buildOneInvoice(block.ajusteFecha, block.ajusteMonto, config));
+    invoices.push(buildOneInvoice(block.ajusteFecha, block.ajusteMonto, config, notas));
     meta.push({ sourceBlock: block, isAjuste: true });
   }
 
@@ -99,6 +103,7 @@ function buildOneInvoice(
   fecha: string,
   monto: number,
   config: RamonLeangConfig,
+  notes: string,
 ): BillingInvoice {
   return {
     clientRFC:     'XAXX010101000',
@@ -114,7 +119,7 @@ function buildOneInvoice(
     usoCFDI:       config.usoCFDI,
     serie:         config.serie,
     metodoPago:    'PUE',
-    notes:         `Ramón Leang - Venta al público general`,
+    notes,
   };
 }
 

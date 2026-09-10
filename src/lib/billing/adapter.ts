@@ -94,7 +94,10 @@ export interface BillingInvoice {
   metodoPago?: 'PUE' | 'PPD';
   /** Serie del comprobante (opcional). */
   serie?: string;
-  /** Observaciones adicionales (no aparecen en el XML). */
+  /**
+   * Observaciones. Se emiten como `<Observaciones>` dentro del <Encabezado>
+   * del XML CONTPAQi (visibles en la factura final). Texto libre del emisor.
+   */
   notes?: string;
   /**
    * Folios de las remisiones/notas que originaron esta factura. Metadato para

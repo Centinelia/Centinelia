@@ -54,6 +54,12 @@ export interface ParsedWeekBlock {
   diasHabilesRaw:   string;
   /** Depósitos individuales bajo el header (col DEP). Info operativa, no factura. */
   detalleDepositos: number[];
+  /**
+   * Observaciones libres que Beatriz escribió en la fila de la semana. Se
+   * copian verbatim al campo `<Observaciones>` del CFDI generado. Null si
+   * la fila no trae observaciones.
+   */
+  observaciones:    string | null;
   /** Row index del header, para debug. */
   headerRowIndex:   number;
   /** Column index del header (col DEP). Col FAC = colIndex + 1. */
@@ -245,6 +251,11 @@ function parseBlock(rows: Row[], headerRow: number, colDep: number, weekStart: s
     }
   }
 
+  // Observaciones: en el layout legacy no existe columna dedicada. Cuando
+  // Beatriz adopte la plantilla nueva (columna K "Observaciones") habrá que
+  // extenderlo. Por ahora null — el pipeline usa fallback.
+  const observaciones: string | null = null;
+
   return {
     weekStart,
     totalDepositos,
@@ -254,6 +265,7 @@ function parseBlock(rows: Row[], headerRow: number, colDep: number, weekStart: s
     diasHabiles,
     diasHabilesRaw,
     detalleDepositos,
+    observaciones,
     headerRowIndex: headerRow,
     colIndex:       colDep,
     warnings,

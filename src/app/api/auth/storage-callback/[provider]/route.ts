@@ -32,21 +32,36 @@ export async function GET(req: NextRequest, { params }: Params) {
   const rawState = req.nextUrl.searchParams.get('state') ?? '';
   const oauthErr = req.nextUrl.searchParams.get('error');
 
-  const genericError = `${appUrl}/portal/?tab=organizacion&storage=error#integraciones`;
+  // Extrae token + agentId del rawState antes de verificar, así los redirects
+  // de error apuntan al portal correcto y no a /portal/ (que es 404).
+  // Formato esperado: `${token}::agent-storage::${agentId}.${nonce}`.
+  const stateNoNonce = rawState.includes('.') ? rawState.split('.')[0] : rawState;
+  const [tokenFromState, markerFromState, agentIdFromState] = stateNoNonce.split('::');
+  const backToPortal = (params: string) =>
+    tokenFromState
+      ? `${appUrl}/portal/${tokenFromState}?${params}#integraciones`
+      : `${appUrl}/portal/login?${params}`;
+
   if (!provider || oauthErr || !code || !rawState) {
-    return NextResponse.redirect(genericError);
+    console.warn('[storage-callback] missing params', { provider, hasCode: !!code, hasState: !!rawState, oauthErr });
+    return NextResponse.redirect(backToPortal('tab=organizacion&storage=error'));
   }
 
   const stateCheck = verifyOAuthState(req, NONCE_TAG[provider], rawState);
   if (!stateCheck.ok || !stateCheck.portalToken) {
-    console.warn('[storage-callback] nonce mismatch:', stateCheck.reason);
-    return NextResponse.redirect(`${appUrl}/portal/?tab=organizacion&storage=csrf_nonce#integraciones`);
+    console.warn('[storage-callback] nonce mismatch:', {
+      reason:      stateCheck.reason,
+      provider,
+      expectedTag: NONCE_TAG[provider],
+      hasCookie:   !!req.cookies.get('oauth_state')?.value,
+    });
+    return NextResponse.redirect(backToPortal('tab=organizacion&storage=csrf_nonce'));
   }
 
   const [token, marker, agentId] = stateCheck.portalToken.split('::');
   if (!token || marker !== 'agent-storage' || !agentId) {
     console.warn('[storage-callback] state malformed:', stateCheck.portalToken);
-    return NextResponse.redirect(genericError);
+    return NextResponse.redirect(backToPortal('tab=organizacion&storage=error'));
   }
 
   // Ruta correcta: /configurar acepta ?empleado_id=X como query param, no path

@@ -14,14 +14,25 @@ export async function GET(req: NextRequest) {
   const rawState = req.nextUrl.searchParams.get('state') ?? '';
   const error = req.nextUrl.searchParams.get('error');
 
+  // Extrae token del rawState antes de verificar, para no redirigir a /portal/ (404).
+  const tokenFromRaw = rawState.includes('.') ? rawState.split('.')[0] : rawState;
+  const backToPortal = (params: string) =>
+    tokenFromRaw
+      ? `${appUrl}/portal/${tokenFromRaw}?${params}#integraciones`
+      : `${appUrl}/portal/login?${params}`;
+
   if (error || !code || !rawState) {
-    return NextResponse.redirect(`${appUrl}/portal/?tab=organizacion&dropbox=error#integraciones`);
+    console.warn('[dropbox-callback] missing params', { hasCode: !!code, hasState: !!rawState, error });
+    return NextResponse.redirect(backToPortal('tab=organizacion&dropbox=error'));
   }
 
   const stateCheck = verifyOAuthState(req, 'dropbox', rawState);
   if (!stateCheck.ok || !stateCheck.portalToken) {
-    console.warn('[dropbox-callback] OAuth state nonce mismatch:', stateCheck.reason);
-    return NextResponse.redirect(`${appUrl}/portal/?tab=organizacion&dropbox=csrf_nonce#integraciones`);
+    console.warn('[dropbox-callback] OAuth state nonce mismatch:', {
+      reason:    stateCheck.reason,
+      hasCookie: !!req.cookies.get('oauth_state')?.value,
+    });
+    return NextResponse.redirect(backToPortal('tab=organizacion&dropbox=csrf_nonce'));
   }
   const state = stateCheck.portalToken;
 
