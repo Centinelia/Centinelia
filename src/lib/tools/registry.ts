@@ -201,6 +201,18 @@ const TOOL_REGISTRY_BASE: Omit<ToolEntry, 'pack'>[] = [
   { name: 'buscar_en_padron_externo',   description: 'Voice-only: busca ciudadano en padrón municipal',            channels: ['voice'], category: 'tramites', destructive: false, gatedByRole: ['nara'], gatedByFeature: 'external_tramites', capability: null, policy: DEFAULT_POLICY },
   { name: 'enviar_tramite_externo',     description: 'Voice-only: envía trámite al backend municipal (destructivo)', channels: ['voice'], category: 'tramites', destructive: true,  gatedByRole: ['nara'], gatedByFeature: 'external_tramites', capability: null, policy: DEFAULT_POLICY },
 
+  // Meefi demo — Nelia Soporte (piloto Meefi 15-sept).
+  // El gate org-específico vive en el executor (features.meefi_demo = true).
+  // gatedByFeature=null aquí porque no pertenecen a un SkillPack del catálogo
+  // (el test registry↔packs requiere que todo gatedByFeature tenga pack).
+  { name: 'meefi_lookup_user_account',      description: 'Busca cuenta de usuario Meefi por correo (flags: reset bloqueado, 2FA, KYC)',       channels: A, category: 'meefi', destructive: false, gatedByRole: ['nelia'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
+  { name: 'meefi_send_password_reset_link', description: 'Envía link de restablecimiento de contraseña al usuario Meefi',                      channels: A, category: 'meefi', destructive: true,  gatedByRole: ['nelia'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
+  { name: 'meefi_check_transfer_status',    description: 'Consulta estado de transferencia por monto/fecha o transfer_id',                     channels: A, category: 'meefi', destructive: false, gatedByRole: ['nelia'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
+  { name: 'meefi_initiate_2fa_recovery',    description: 'Arranca recuperación de segundo factor: regresa ticket y checklist de evidencia',    channels: A, category: 'meefi', destructive: false, gatedByRole: ['nelia'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
+  { name: 'meefi_capture_bug_report',       description: 'Registra bug técnico del usuario con contexto (navegador, URL, pasos)',              channels: A, category: 'meefi', destructive: false, gatedByRole: ['nelia'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
+  { name: 'meefi_escalate_to_human',        description: 'Escala al responsable Meefi correcto según topic y envía correo con resumen',        channels: A, category: 'meefi', destructive: true,  gatedByRole: ['nelia'], gatedByFeature: null, capability: 'email', policy: DEFAULT_POLICY },
+  { name: 'meefi_search_help_center',       description: 'Busca artículos en el centro de ayuda de meefi.io y regresa top 3 con snippet',      channels: A, category: 'meefi', destructive: false, gatedByRole: ['nelia'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
+
   // pack inventory_excel — Nami (inventarios). Piloto AC Proyectos.
   // Opera Excel del cliente en SharePoint/OneDrive vía Microsoft Graph.
   // Read-only tools (buscar/snapshot) + write tools (agregar/actualizar/transferir).

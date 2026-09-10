@@ -5685,5 +5685,56 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // Meefi demo — Nelia Soporte (piloto 15-sept)
+  // Feature gate: solo se ejecutan si el meerkat es de la org Meefi
+  // (features.meefi_demo = true). Para otras orgs el executor retorna
+  // tool_not_available para que el agente informe que la herramienta no está
+  // habilitada en su organización.
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName.startsWith('meefi_')) {
+    const features = (agent.features as Record<string, unknown> | null) ?? {};
+    if (!features.meefi_demo) {
+      return { ok: false, error: `${toolName} no está disponible en esta organización.` };
+    }
+
+    if (toolName === 'meefi_lookup_user_account') {
+      const { executeMeefiLookupUserAccount } = await import('@/lib/tools/executors/meefi-lookup-user-account');
+      return executeMeefiLookupUserAccount(ctx, toolInput as { email: string });
+    }
+
+    if (toolName === 'meefi_check_transfer_status') {
+      const { executeMeefiCheckTransferStatus } = await import('@/lib/tools/executors/meefi-check-transfer-status');
+      return executeMeefiCheckTransferStatus(ctx, toolInput as { amount?: number; date_approx?: string; transfer_id?: string });
+    }
+
+    if (toolName === 'meefi_search_help_center') {
+      const { executeMeefiSearchHelpCenter } = await import('@/lib/tools/executors/meefi-search-help-center');
+      return executeMeefiSearchHelpCenter(ctx, toolInput as { query: string });
+    }
+
+    if (toolName === 'meefi_send_password_reset_link') {
+      const { executeMeefiSendPasswordResetLink } = await import('@/lib/tools/executors/meefi-send-password-reset-link');
+      return executeMeefiSendPasswordResetLink(ctx, toolInput as { user_id: string });
+    }
+
+    if (toolName === 'meefi_initiate_2fa_recovery') {
+      const { executeMeefiInitiate2faRecovery } = await import('@/lib/tools/executors/meefi-initiate-2fa-recovery');
+      return executeMeefiInitiate2faRecovery(ctx, toolInput as { user_id: string });
+    }
+
+    if (toolName === 'meefi_capture_bug_report') {
+      const { executeMeefiCaptureBugReport } = await import('@/lib/tools/executors/meefi-capture-bug-report');
+      return executeMeefiCaptureBugReport(ctx, toolInput as { user_id: string; description: string; technical_context?: Record<string, unknown> });
+    }
+
+    if (toolName === 'meefi_escalate_to_human') {
+      const { executeMeefiEscalateToHuman } = await import('@/lib/tools/executors/meefi-escalate-to-human');
+      return executeMeefiEscalateToHuman(ctx, toolInput as unknown as Parameters<typeof executeMeefiEscalateToHuman>[1]);
+    }
+
+    return { ok: false, error: `Tool meefi_ desconocida: ${toolName}` };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   return { ok: false, error: `Herramienta desconocida: ${toolName}` };
 }
