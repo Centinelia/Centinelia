@@ -31,7 +31,7 @@
     <g>
       <rect x="350" y="110" width="390" height="80" fill="#0057FF" rx="18" ry="18"/>
       <text x="370" y="135" font-family="system-ui, sans-serif" font-size="14" fill="white" word-spacing="0" line-height="1.4">
-        <tspan x="370" dy="0">Transfori 50 mil pesos hace</tspan>
+        <tspan x="370" dy="0">Transferí 50 mil pesos hace</tspan>
         <tspan x="370" dy="18">2 horas y no aparecen</tspan>
       </text>
     </g>
@@ -53,6 +53,6 @@
 
     <!-- Send icon (simple arrow) -->
     <circle cx="755" cy="505" r="12" fill="#0057FF"/>
-    <text x="750" y="512" font-family="system-ui, sans-serif" font-size="16" fill="white">⊳</text>
+    <text x="750" y="512" font-family="system-ui, sans-serif" font-size="16" fill="white">&gt;</text>
   </g>
 </svg>

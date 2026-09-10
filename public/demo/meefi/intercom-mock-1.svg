@@ -55,6 +55,6 @@
 
     <!-- Send icon (simple arrow) -->
     <circle cx="755" cy="505" r="12" fill="#0057FF"/>
-    <text x="750" y="512" font-family="system-ui, sans-serif" font-size="16" fill="white">⊳</text>
+    <text x="750" y="512" font-family="system-ui, sans-serif" font-size="16" fill="white">&gt;</text>
   </g>
 </svg>
