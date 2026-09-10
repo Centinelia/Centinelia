@@ -1,0 +1,10 @@
+# URLs del Help Center meefi.io a ingerir.
+# Formato: una URL por linea, lineas con # son comentarios.
+# Pendiente: Gera confirma URLs base + secciones a ingerir.
+#
+# Ejemplos esperados:
+# https://help.meefi.io/tiempos-spei
+# https://help.meefi.io/comisiones
+# https://help.meefi.io/cambiar-password
+# https://help.meefi.io/recuperar-2fa
+# https://help.meefi.io/agregar-beneficiario
