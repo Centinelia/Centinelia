@@ -127,13 +127,12 @@ export class BillingEmployee {
     }
 
     // -------------------------------------------------------------------------
-    // 1b. Fast-path para Excel (Tortillería piloto)
+    // 1b. Fast-path para Excel (pilotos deterministicos)
     // -------------------------------------------------------------------------
-    // Si el correo trae adjuntos .xlsx/.xls y el agente tiene mapping guardado
-    // de tortillería, se procesan con el pipeline determinístico (sin LLM):
-    // parser + mapping + reglas → billing_pending_review. Skip del loop LLM
-    // porque el output del parser es 100% determinístico contra el formato
-    // que Beatriz envía cada lunes.
+    // Ruteo por features del agente:
+    //   - features.ramon_leang_config → runRamonLeangFlow (retail Público Gral)
+    //   - features.tortilleria_mapping → runExcelFlow tortillería (Beatriz)
+    // Skip del loop LLM porque el output es 100% determinístico.
     try {
       const metasFast = Array.isArray(emailRow.attachments_meta)
         ? emailRow.attachments_meta as Array<{ storageKey?: string; filename?: string; contentType?: string; index?: number }>
@@ -143,7 +142,103 @@ export class BillingEmployee {
         const fn = (m.filename ?? '').toLowerCase();
         return ct.includes('spreadsheetml') || ct.includes('ms-excel') || fn.endsWith('.xlsx') || fn.endsWith('.xls');
       });
+
+      // Pre-cargar features del agente 1 sola vez para decidir routing.
+      let agentFeatures: Record<string, unknown> | null = null;
       if (excelMetas.length > 0 && this.config.agentId) {
+        const { data: agentRow } = await supabase
+          .from('voice_agents')
+          .select('features')
+          .eq('id', this.config.agentId)
+          .maybeSingle<{ features: Record<string, unknown> | null }>();
+        agentFeatures = agentRow?.features ?? null;
+      }
+
+      // Ramón Leang fast-path (retail, Público General, 1 producto).
+      const ramonConfigRaw = agentFeatures?.['ramon_leang_config'] as Record<string, unknown> | undefined;
+      if (excelMetas.length > 0 && this.config.agentId && ramonConfigRaw && typeof ramonConfigRaw === 'object') {
+        const { loadBillingAttachments } = await import('../storage/attachments');
+        const withKeys = excelMetas
+          .filter((m): m is { storageKey: string; filename: string; contentType?: string; index?: number } => !!m.storageKey && !!m.filename);
+        const loaded = await loadBillingAttachments(withKeys.map((m, i) => ({
+          storageKey:  m.storageKey,
+          index:       m.index ?? i,
+          filename:    m.filename,
+          contentType: m.contentType ?? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        })));
+
+        // Calcular rango semana anterior (lun-dom pasado) para no reprocesar
+        // semanas viejas del Excel maestro. Cron martes = semana pasada.
+        const hoy = new Date();
+        const diaSemana = hoy.getUTCDay(); // 0=dom, 1=lun...
+        const lunPasado = new Date(hoy);
+        lunPasado.setUTCDate(hoy.getUTCDate() - diaSemana - 6);
+        const domPasado = new Date(lunPasado);
+        domPasado.setUTCDate(lunPasado.getUTCDate() + 6);
+        const iso = (d: Date) => d.toISOString().slice(0, 10);
+
+        const { runRamonLeangFlow } = await import('../ramon-leang/excel-flow');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const rlConfig = ramonConfigRaw as any;
+        const rlResult = await runRamonLeangFlow({
+          portalEmail: this.config.portalEmail,
+          emailId,
+          agentId:     this.config.agentId,
+          attachments: loaded.map((l, i) => ({
+            filename:    l.filename,
+            contentType: l.contentType,
+            buffer:      l.buffer,
+            index:       i,
+          })),
+          config: {
+            rfcEmisor:     rlConfig.rfcEmisor ?? '',
+            razonSocial:   rlConfig.razonSocial ?? '',
+            regimenFiscal: rlConfig.regimenFiscal ?? '612',
+            codigoPostal:  rlConfig.codigoPostal ?? '',
+            serie:         rlConfig.serie ?? 'RL',
+            usoCFDI:       rlConfig.usoCFDI ?? 'G01',
+            formaPago:     rlConfig.formaPago ?? '03',
+            sku:           rlConfig.sku ?? 'VT',
+            descripcion:   rlConfig.descripcion ?? 'Venta de Tortilla',
+            ivaTasa:       rlConfig.ivaTasa ?? 0,
+            claveSAT:      rlConfig.claveSAT ?? '50161509',
+            unidadSAT:     rlConfig.unidadSAT ?? 'KGM',
+          },
+          supabase,
+          adapter:      this.adapter,
+          clientEmail:  this.config.escalationEmail,
+          businessName: this.config.orgName,
+          weekRange:    { from: iso(lunPasado), to: iso(domPasado) },
+          ...(await (async () => {
+            const [orgRes, agentRes] = await Promise.all([
+              supabase.from('organizations').select('portal_token, name')
+                .eq('portal_email', this.config.portalEmail)
+                .maybeSingle<{ portal_token: string; name: string | null }>(),
+              supabase.from('voice_agents').select('client_name')
+                .eq('id', this.config.agentId ?? '')
+                .maybeSingle<{ client_name: string | null }>(),
+            ]);
+            const extras: { portalToken?: string; businessName?: string; contactName?: string } = {};
+            if (orgRes.data?.portal_token) extras.portalToken = orgRes.data.portal_token;
+            if (orgRes.data?.name && (!this.config.orgName || this.config.orgName === this.config.portalEmail)) {
+              extras.businessName = orgRes.data.name;
+            }
+            if (agentRes.data?.client_name?.trim()) extras.contactName = agentRes.data.client_name.trim();
+            return extras;
+          })()),
+        });
+
+        if (rlResult.processed) {
+          result.processed = rlResult.invoiceCount;
+          result.escalated = rlResult.cardCount;
+          for (const e of rlResult.errors) result.errors.push(`ramon-leang: ${e.weekStart}: ${e.reason}`);
+          return result;
+        }
+      }
+
+      // Tortillería fast-path (Beatriz OG, multiples clientes con RFC).
+      const tortMapping = agentFeatures?.['tortilleria_mapping'];
+      if (excelMetas.length > 0 && this.config.agentId && tortMapping) {
         const { getTortilleriaMapping } = await import('../tortilleria/mapping-store');
         const mapping = await getTortilleriaMapping(this.config.agentId, supabase);
         if (mapping) {
