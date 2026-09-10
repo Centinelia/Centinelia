@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
-import { sendWhatsApp } from '@/lib/whatsapp/send';
+import { sendEmail, shell, badge, heading, infoCard, sectionLabel } from '@/lib/email/send';
 
 // How many hours must pass before sending the same pattern again (per agent)
 const COOLDOWN_HOURS = 8;
@@ -25,17 +25,71 @@ async function hasRecentLog(
   return (count ?? 0) > 0;
 }
 
+// 2026-09-10: canal migrado de WhatsApp (transfer_whatsapp) a email
+// (client_email). El sandbox de Twilio rechazaba freeform fuera de ventana
+// 24h → ninguna iniciativa de Noah llegaba desde meses atrás (ver CSV
+// twilio 239 fallos con error 63015, y regla [[feedback-no-whatsapp]]).
+async function resolveNotifyEmail(
+  agentId: string,
+  supabase: ReturnType<typeof createAdminClient>,
+): Promise<string | null> {
+  const { data: agent } = await supabase
+    .from('voice_agents')
+    .select('client_email, portal_email, notify_email')
+    .eq('id', agentId)
+    .maybeSingle();
+  if (!agent) return null;
+  if (agent.notify_email === false) return null;
+  const email = (agent.client_email as string | null)?.trim()
+    || (agent.portal_email as string | null)?.trim()
+    || null;
+  return email;
+}
+
+function initiativeEmailHtml(agentName: string, pattern: Pattern, message: string, cta?: string): string {
+  const patternLabels: Record<Pattern, string> = {
+    repeated_caller: 'Cliente recurrente',
+    faq_bottleneck:  'Preguntas frecuentes',
+    repeated_doc:    'Documento recurrente',
+    email_flood:     'Correos acumulados',
+  };
+  // Convierte markdown-lite del mensaje original (*bold*, saltos de línea) a HTML.
+  const rendered = message
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\*([^*]+)\*/g, '<strong style="color:#F1EEFF">$1</strong>')
+    .replace(/\n/g, '<br>');
+  const ctaBlock = cta ? `<p style="color:#C8BEE8;font-size:14px;line-height:1.7;margin:16px 0 0">${cta}</p>` : '';
+  return shell(`
+    ${badge(`Iniciativa · ${patternLabels[pattern]}`, '#9B6DFF')}
+    ${heading(agentName, 'Detecté un patrón que puede ayudarte')}
+    ${infoCard(`
+      ${sectionLabel('Lo que noté')}
+      <p style="color:#F1EEFF;font-size:14px;line-height:1.7;margin:0">${rendered}</p>
+      ${ctaBlock}
+    `, true)}
+    <p style="color:#8C7FB8;font-size:12px;line-height:1.6;margin:16px 0 0;text-align:center">
+      Responde a este correo si quieres que actúe con base en esta iniciativa.
+    </p>
+  `);
+}
+
 async function notify(
   agentId: string,
+  agentName: string,
   pattern: Pattern,
   message: string,
-  transferWhatsapp: string,
   supabase: ReturnType<typeof createAdminClient>,
 ): Promise<void> {
   await supabase
     .from('initiative_logs')
     .insert({ agent_id: agentId, pattern, message });
-  await sendWhatsApp(transferWhatsapp, message).catch(console.error);
+
+  const to = await resolveNotifyEmail(agentId, supabase);
+  if (!to) return;
+
+  const subject = `Iniciativa de ${agentName}`;
+  await sendEmail({ to, subject, html: initiativeEmailHtml(agentName, pattern, message) })
+    .catch(err => console.error('[initiative] email send failed', err));
 }
 
 /**
@@ -45,10 +99,7 @@ async function notify(
 export async function checkVoiceInitiative(
   agentId: string,
   agentName: string,
-  transferWhatsapp: string | null | undefined,
 ): Promise<void> {
-  if (!transferWhatsapp) return;
-
   const supabase = createAdminClient();
   const since24h = new Date(Date.now() - 86_400_000).toISOString();
 
@@ -70,8 +121,8 @@ export async function checkVoiceInitiative(
       const repeated = Object.entries(counts).filter(([, n]) => n >= 2);
       if (repeated.length > 0) {
         const [number, count] = repeated.sort(([, a], [, b]) => b - a)[0];
-        const msg = `🔁 *Iniciativa — ${agentName}*\n\nEl número ${number} llamó *${count} veces hoy* sin llegar a lead, cita ni pedido. Puede que tenga una duda que no está en mi base de conocimiento. ¿Quieres que le contacte por WhatsApp?`;
-        await notify(agentId, 'repeated_caller', msg, transferWhatsapp, supabase);
+        const msg = `El número ${number} llamó *${count} veces hoy* sin llegar a lead, cita ni pedido. Puede que tenga una duda que no está en mi base de conocimiento. ¿Quieres que le contacte?`;
+        await notify(agentId, agentName, 'repeated_caller', msg, supabase);
         return;
       }
     }
@@ -87,8 +138,8 @@ export async function checkVoiceInitiative(
       .gte('created_at', since24h);
 
     if ((count ?? 0) >= 5) {
-      const msg = `📚 *Iniciativa — ${agentName}*\n\nTuve *${count} llamadas puramente informativas* hoy. Parece que hay preguntas frecuentes que respondo repetidamente. ¿Quieres que revise las transcripciones y te sugiera qué agregar a mi base de conocimiento?`;
-      await notify(agentId, 'faq_bottleneck', msg, transferWhatsapp, supabase);
+      const msg = `Tuve *${count} llamadas puramente informativas* hoy. Parece que hay preguntas frecuentes que respondo repetidamente. ¿Quieres que revise las transcripciones y te sugiera qué agregar a mi base de conocimiento?`;
+      await notify(agentId, agentName, 'faq_bottleneck', msg, supabase);
     }
   }
 }
@@ -100,10 +151,7 @@ export async function checkVoiceInitiative(
 export async function checkOfficeInitiative(
   agentId: string,
   agentName: string,
-  transferWhatsapp: string | null | undefined,
 ): Promise<void> {
-  if (!transferWhatsapp) return;
-
   const supabase = createAdminClient();
   const since7d  = new Date(Date.now() - 7 * 86_400_000).toISOString();
   const since24h = new Date(Date.now() - 86_400_000).toISOString();
@@ -138,8 +186,8 @@ export async function checkOfficeInitiative(
       if (repeated.length > 0) {
         const [type, count] = repeated[0];
         const label = TYPE_LABELS[type] ?? `documentos tipo "${type}"`;
-        const msg = `📄 *Iniciativa — ${agentName}*\n\nEsta semana generé *${count} ${label}*. Si es algo que necesitas regularmente, puedo configurar un reporte automático para que se genere solo, sin que me lo pidas cada vez. ¿Te interesa?`;
-        await notify(agentId, 'repeated_doc', msg, transferWhatsapp, supabase);
+        const msg = `Esta semana generé *${count} ${label}*. Si es algo que necesitas regularmente, puedo configurar un reporte automático para que se genere solo, sin que me lo pidas cada vez. ¿Te interesa?`;
+        await notify(agentId, agentName, 'repeated_doc', msg, supabase);
         return;
       }
     }
@@ -155,8 +203,8 @@ export async function checkOfficeInitiative(
       .gte('created_at', since24h);
 
     if ((count ?? 0) >= 3) {
-      const msg = `📬 *Iniciativa — ${agentName}*\n\nTengo *${count} correos pendientes de revisar* que llegaron hoy. ¿Quieres que los procese ahora y te proponga respuestas para aprobar?`;
-      await notify(agentId, 'email_flood', msg, transferWhatsapp, supabase);
+      const msg = `Tengo *${count} correos pendientes de revisar* que llegaron hoy. ¿Quieres que los procese ahora y te proponga respuestas para aprobar?`;
+      await notify(agentId, agentName, 'email_flood', msg, supabase);
     }
   }
 }

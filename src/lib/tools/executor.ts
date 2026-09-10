@@ -1564,12 +1564,20 @@ async function executeAgentToolInner(
       } = await import('@/lib/ops/report-intent-lock');
       // 'critical' bypasa el dedupe: el owner debe enterarse sí o sí, aunque
       // suene repetido. Todo lo demás pasa por el lock.
+      // 2026-09-10: canal migrado 100% a email. Antes intentaba WhatsApp
+      // primero y caía a email, pero sendWhatsApp devolvía true al submit
+      // aunque Twilio async marcara "failed" (error 63015, sandbox fuera de
+      // ventana 24h). Resultado: cero escaladas de Nash llegaron desde jun-
+      // 26 hasta 10-sep-26. Ahora email siempre (canal confiable y auditable).
+      const alertEmail = process.env.INTERNAL_ALERT_EMAIL
+        ?? process.env.NEXT_PUBLIC_SUPPORT_EMAIL
+        ?? 'hola@centinelia.mx';
       const claimOwner = urgencia === 'critical'
         ? { claimed: true, lockId: null, intentHash: '', alreadyClaimedBy: null }
         : await tryClaim2({
             portalEmail,
             kind:      'monitor_alert',
-            target:    process.env.OWNER_WHATSAPP || (process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? 'hola@centinelia.mx'),
+            target:    alertEmail,
             subject:   `[Nash escalation] ${urgencia} :: ${incidentId ?? 'no-incident'}`,
             agentId,
             agentName: agentName || 'Nash',
@@ -1586,29 +1594,18 @@ async function executeAgentToolInner(
         };
       }
       const flag     = urgencia === 'critical' ? '[CRITICO]' : urgencia === 'high' ? '[URGENTE]' : '[INFO]';
-      const linkNote = incidentId ? `\n\nVer /admin/soporte (id ${incidentId.slice(0, 8)}...)` : '';
-      const body     = `${flag} Nash escala (${urgencia}):\n\n${razon}${linkNote}`;
-      const owner = process.env.OWNER_WHATSAPP;
-      let deliveredVia: 'whatsapp' | 'email_fallback' = 'email_fallback';
-      if (owner) {
-        const { sendWhatsApp } = await import('@/lib/whatsapp/send');
-        const okWa = await sendWhatsApp(owner, body);
-        if (okWa) deliveredVia = 'whatsapp';
-      }
-      if (deliveredVia !== 'whatsapp') {
-        const to = process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? 'hola@centinelia.mx';
-        try {
-          await sendEmail({
-            to,
-            subject: `${flag} Nash escala (${urgencia})`,
-            html:    `<p style="font-family:system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.6">${razon.replace(/\n/g, '<br>')}</p>${incidentId ? `<p style="font-family:system-ui,-apple-system,sans-serif;font-size:12px;color:#6b7280">Incidente <code>${incidentId}</code></p>` : ''}`,
-            // Ver comentario en responder_cliente_afectado sobre NASH_EMAIL_FROM.
-            from:    process.env.NASH_EMAIL_FROM,
-          });
-        } catch (e) {
-          await release2(claimOwner.lockId);
-          throw e;
-        }
+      const deliveredVia: 'email' = 'email';
+      try {
+        await sendEmail({
+          to:      alertEmail,
+          subject: `${flag} Nash escala (${urgencia})`,
+          html:    `<p style="font-family:system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.6">${razon.replace(/\n/g, '<br>')}</p>${incidentId ? `<p style="font-family:system-ui,-apple-system,sans-serif;font-size:12px;color:#6b7280">Incidente <code>${incidentId}</code> · <a href="https://www.centinelia.mx/admin/soporte">/admin/soporte</a></p>` : ''}`,
+          // Ver comentario en responder_cliente_afectado sobre NASH_EMAIL_FROM.
+          from:    process.env.NASH_EMAIL_FROM,
+        });
+      } catch (e) {
+        await release2(claimOwner.lockId);
+        throw e;
       }
       await commit2(claimOwner.lockId);
       if (incidentId) {
@@ -5685,6 +5682,51 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
     }
 
     return { ok: false, error: `Tool inv_ desconocida: ${toolName}` };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Meefi demo — Nelia Soporte (piloto 15-sept)
+  // Sin gate org-específico: cualquier meerkat con role='nelia' puede ejecutar
+  // estas tools. Hoy solo Meefi tiene una Nelia con el preset correspondiente.
+  // Si en el futuro múltiples orgs tienen Nelias, la solución es SkillPack.
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName.startsWith('meefi_')) {
+    if (toolName === 'meefi_lookup_user_account') {
+      const { executeMeefiLookupUserAccount } = await import('@/lib/tools/executors/meefi-lookup-user-account');
+      return executeMeefiLookupUserAccount(ctx, toolInput as { email: string });
+    }
+
+    if (toolName === 'meefi_check_transfer_status') {
+      const { executeMeefiCheckTransferStatus } = await import('@/lib/tools/executors/meefi-check-transfer-status');
+      return executeMeefiCheckTransferStatus(ctx, toolInput as { amount?: number; date_approx?: string; transfer_id?: string });
+    }
+
+    if (toolName === 'meefi_search_help_center') {
+      const { executeMeefiSearchHelpCenter } = await import('@/lib/tools/executors/meefi-search-help-center');
+      return executeMeefiSearchHelpCenter(ctx, toolInput as { query: string });
+    }
+
+    if (toolName === 'meefi_send_password_reset_link') {
+      const { executeMeefiSendPasswordResetLink } = await import('@/lib/tools/executors/meefi-send-password-reset-link');
+      return executeMeefiSendPasswordResetLink(ctx, toolInput as { user_id: string });
+    }
+
+    if (toolName === 'meefi_initiate_2fa_recovery') {
+      const { executeMeefiInitiate2faRecovery } = await import('@/lib/tools/executors/meefi-initiate-2fa-recovery');
+      return executeMeefiInitiate2faRecovery(ctx, toolInput as { user_id: string });
+    }
+
+    if (toolName === 'meefi_capture_bug_report') {
+      const { executeMeefiCaptureBugReport } = await import('@/lib/tools/executors/meefi-capture-bug-report');
+      return executeMeefiCaptureBugReport(ctx, toolInput as { user_id: string; description: string; technical_context?: Record<string, unknown> });
+    }
+
+    if (toolName === 'meefi_escalate_to_human') {
+      const { executeMeefiEscalateToHuman } = await import('@/lib/tools/executors/meefi-escalate-to-human');
+      return executeMeefiEscalateToHuman(ctx, toolInput as unknown as Parameters<typeof executeMeefiEscalateToHuman>[1]);
+    }
+
+    return { ok: false, error: `Tool meefi_ desconocida: ${toolName}` };
   }
 
   // ─────────────────────────────────────────────────────────────────────────

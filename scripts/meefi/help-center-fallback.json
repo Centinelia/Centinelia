@@ -1,0 +1,27 @@
+[
+  {
+    "title": "Tiempos de transferencia SPEI",
+    "body": "Las transferencias SPEI a otros bancos usualmente reflejan en menos de 4 horas hábiles cuando el destino es un banco con ventana amplia (BBVA, Santander, Banorte). Bancos como HSBC tienen ventanas de reflejo cada hora en punto. Si tu transferencia lleva más de 4 horas sin reflejar, contáctanos y escalamos.",
+    "source_url": "https://help.meefi.io/tiempos-spei"
+  },
+  {
+    "title": "Comisiones por transferencia",
+    "body": "Meefi cobra comisión fija de 25 pesos por transferencia SPEI local. Para wires internacionales el spread es variable según el par de divisas y el banco corresponsal. Consulta tu contrato para detalle exacto.",
+    "source_url": "https://help.meefi.io/comisiones"
+  },
+  {
+    "title": "Cómo cambiar tu contraseña",
+    "body": "Desde el dashboard entra a Configuración, sección Seguridad, y haz clic en Cambiar contraseña. Si no puedes acceder, solicita un enlace de restablecimiento desde la pantalla de login. El enlace tiene vigencia de 60 minutos.",
+    "source_url": "https://help.meefi.io/cambiar-password"
+  },
+  {
+    "title": "Recuperar 2FA cuando pierdes el dispositivo",
+    "body": "Si perdiste el dispositivo con tu app de autenticación, solicita recuperación de 2FA desde la pantalla de login. Necesitas: INE frente y reverso, selfie con INE, últimos 4 dígitos de la cuenta bancaria registrada. Proceso toma 4 horas hábiles.",
+    "source_url": "https://help.meefi.io/recuperar-2fa"
+  },
+  {
+    "title": "Cómo agregar un beneficiario internacional",
+    "body": "Desde el dashboard entra a Beneficiarios, Agregar nuevo. Necesitas: nombre legal completo, país, SWIFT/BIC, IBAN si aplica, moneda de la cuenta, dirección. La validación toma 30 a 60 minutos. Países sensibles requieren revisión manual adicional.",
+    "source_url": "https://help.meefi.io/beneficiarios-internacionales"
+  }
+]

@@ -25,6 +25,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
+import { errorMessage } from '@/lib/cron/alert-partial-failure';
 import { DropboxClient } from '@/lib/billing/storage/dropbox';
 import { SnapshotStorage } from '@/lib/billing/storage/snapshot';
 import { ExcelWorkbook } from '@/lib/billing/excel/workbook';
@@ -280,7 +281,7 @@ export async function GET(req: Request) {
       const result = await processPeriodicCutForClient(rule);
       results.push({ rfc: rule.rfc, ...result });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg = errorMessage(err);
       console.error('[billing-periodic-cuts] error for RFC', rule.rfc, ':', msg);
       results.push({ rfc: rule.rfc, error: msg });
     }

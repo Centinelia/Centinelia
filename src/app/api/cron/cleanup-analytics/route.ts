@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
-import { alertCronPartialFailure } from '@/lib/cron/alert-partial-failure';
+import { alertCronPartialFailure, errorMessage } from '@/lib/cron/alert-partial-failure';
 
 export const dynamic = 'force-dynamic';
 
@@ -86,7 +86,7 @@ export async function GET(req: Request) {
       }
       results.push({ table: rule.table, deleted: totalDeleted });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg = errorMessage(err);
       results.push({ table: rule.table, deleted: 0, error: msg });
       errors.push(`${rule.table}: ${msg}`);
     }

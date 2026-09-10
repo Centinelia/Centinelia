@@ -130,6 +130,15 @@ export const TOOL_LABELS: Record<string, string> = {
   actualizar_publicacion_ml:    'Actualizar publicación en MercadoLibre',
   ver_metricas_ml:              'Ver métricas de MercadoLibre',
 
+  // Meefi demo — Nelia Soporte
+  meefi_lookup_user_account:       'Buscar cuenta de usuario',
+  meefi_send_password_reset_link:  'Enviar link de restablecimiento',
+  meefi_check_transfer_status:     'Consultar estado de transferencia',
+  meefi_initiate_2fa_recovery:     'Iniciar recuperación de segundo factor',
+  meefi_capture_bug_report:        'Registrar reporte de falla',
+  meefi_escalate_to_human:         'Escalar a persona del equipo',
+  meefi_search_help_center:        'Buscar en centro de ayuda',
+
   // RRHH
   registrar_falta:              'Registrar falta',
   consultar_vacaciones:         'Consultar vacaciones',

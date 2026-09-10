@@ -20,6 +20,7 @@
  */
 import { NextResponse } from 'next/server';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
+import { errorMessage } from '@/lib/cron/alert-partial-failure';
 import { syncAllActiveTokens } from '@/lib/dropbox/token-sync';
 
 export const dynamic     = 'force-dynamic';
@@ -44,7 +45,7 @@ export async function GET(req: Request) {
       })),
     });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+    const msg = errorMessage(err);
     console.error('[sync-dropbox-tokens] fatal:', msg);
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }

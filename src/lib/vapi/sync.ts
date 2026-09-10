@@ -250,7 +250,9 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
   nico:  ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'enviar_correo', 'crear_documento', 'enviar_documento_oficina', 'solicitar_factura', 'consultar_factura', 'generar_correo_estructurado'],
   // Nelia — servicio al cliente + contenido postventa. Owner de extraer_voz
   // (insights de cliente) + generar_one_pager (contenido postventa).
-  nelia: ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'registrar_encuesta', 'enviar_correo', 'buscar_archivo', 'buscar_documento_oficina', 'buscar_correo_enviado', 'enviar_documento_oficina', 'extraer_voz_del_cliente', 'generar_one_pager', 'generar_correo_estructurado', 'generar_reporte_metricas_excel', 'registrar_incidencia', 'registrar_cliente_nuevo', 'verificar_recepcion_incidencia'],
+  // meefi_* tools están en el preset de cualquier Nelia (role='nelia');
+  // el executor las despacha sin gate org-específico. Hoy solo Meefi tiene Nelia.
+  nelia: ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'registrar_encuesta', 'enviar_correo', 'buscar_archivo', 'buscar_documento_oficina', 'buscar_correo_enviado', 'enviar_documento_oficina', 'extraer_voz_del_cliente', 'generar_one_pager', 'generar_correo_estructurado', 'generar_reporte_metricas_excel', 'registrar_incidencia', 'registrar_cliente_nuevo', 'verificar_recepcion_incidencia', 'meefi_lookup_user_account', 'meefi_send_password_reset_link', 'meefi_check_transfer_status', 'meefi_initiate_2fa_recovery', 'meefi_capture_bug_report', 'meefi_escalate_to_human', 'meefi_search_help_center'],
   // Neo — helpdesk IT. `llamar_a` para escalar responsable (Scope A A1 CRITICAL #1).
   neo:   ['crear_ticket', 'consultar_incidentes', 'buscar_directorio', 'buscar_archivo', 'leer_archivo', 'llamar_a'],
   // Nara — municipal (civic reports + trámites externos si feature activa).

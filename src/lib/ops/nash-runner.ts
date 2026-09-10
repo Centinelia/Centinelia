@@ -109,7 +109,7 @@ const NASH_TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'escalar_al_owner',
-    description: 'Notifica al owner (Nazre) por WhatsApp (OWNER_WHATSAPP) con fallback email hola@. Marca assigned_to=owner. Solo para lo crítico.',
+    description: 'Notifica al owner (Nazre) por email a INTERNAL_ALERT_EMAIL (default hola@centinelia.mx). Marca assigned_to=owner. Solo para lo crítico.',
     input_schema: {
       type: 'object' as const,
       properties: {

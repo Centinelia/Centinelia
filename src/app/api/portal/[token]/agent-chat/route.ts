@@ -777,7 +777,7 @@ const ENVIAR_A_CLAUDE_CODE_TOOL: Anthropic.Tool = {
 
 const ESCALAR_AL_OWNER_TOOL: Anthropic.Tool = {
   name: 'escalar_al_owner',
-  description: 'Uso exclusivo de Nash. Notifica al owner (Nazre) por WhatsApp (env OWNER_WHATSAPP) con fallback a email hola@centinelia.mx. Marca el incidente como assigned_to=owner. Úsala SOLO para lo crítico donde Nash no puede decidir solo: acciones destructivas sin precedente, cobro mal aplicado, datos de cliente en riesgo, o cuando el mismo incidente ha regresado 3+ veces.',
+  description: 'Uso exclusivo de Nash. Notifica al owner (Nazre) por email a INTERNAL_ALERT_EMAIL (default hola@centinelia.mx). Marca el incidente como assigned_to=owner. Úsala SOLO para lo crítico donde Nash no puede decidir solo: acciones destructivas sin precedente, cobro mal aplicado, datos de cliente en riesgo, o cuando el mismo incidente ha regresado 3+ veces.',
   input_schema: {
     type: 'object' as const,
     properties: {
@@ -2473,13 +2473,11 @@ ${context}`;
         const _agentId    = agent.id as string;
         const _agentName  = (agent.agent_name as string | null)?.trim() || (agent.business_name as string) || 'tu empleado';
         const _agentRole  = (agent.role as string | null)?.trim() || '';
-        const _transferWa = (agent.transfer_whatsapp as string | null) ?? null;
         const _portalEmail = (agent.portal_email as string | null) ?? null;
-        if (_transferWa) {
-          checkOfficeInitiative(_agentId, _agentName, _transferWa).catch(
-            err => console.error('[agent-chat] initiative check failed:', err),
-          );
-        }
+        // 2026-09-10: gate por transfer_whatsapp eliminado — canal ahora es email.
+        checkOfficeInitiative(_agentId, _agentName).catch(
+          err => console.error('[agent-chat] initiative check failed:', err),
+        );
         extractChatLearnings({
           agentId:     _agentId,
           portalEmail: _portalEmail,

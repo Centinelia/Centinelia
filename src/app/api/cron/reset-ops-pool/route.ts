@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
-import { alertCronPartialFailure } from '@/lib/cron/alert-partial-failure';
+import { alertCronPartialFailure, errorMessage } from '@/lib/cron/alert-partial-failure';
 import { todayInMexico } from '@/lib/billing/tz';
 
 export const dynamic = 'force-dynamic';
@@ -31,6 +31,11 @@ export async function GET(req: Request) {
   let annualGrants = 0;
   let stripeSafetyNets = 0;
   let legacyResets = 0;
+  // Skipped no-op (idempotency guard hit o org sin plan/agentes activos).
+  // NO es error — el pool_reset_date se avanza igual y el estado final es el
+  // deseado. Ver root cause 2026-09-10: sin este contador la alerta reportaba
+  // 0/N y disparaba incidentes críticos falsos noche tras noche.
+  let skippedNoops = 0;
   const errors: string[] = [];
 
   for (const org of due ?? []) {
@@ -68,6 +73,7 @@ export async function GET(req: Request) {
           await supabase.from('organizations')
             .update({ pool_reset_date: nextResetIso })
             .eq('portal_email', email);
+          skippedNoops++;
           continue;
         }
 
@@ -96,6 +102,11 @@ export async function GET(req: Request) {
             p_description:  `Renovación (safety-net cron): ${totalOps} tareas`,
           });
           stripeSafetyNets++;
+        } else {
+          // Org ledger-enabled pero sin plan activo (totalOps=0) o sin agentes
+          // activos. No hay ledger que insertar — el pool_reset_date se avanza
+          // más abajo y basta con eso. Contar como skipped, no error.
+          skippedNoops++;
         }
       } else {
         // LEGACY path (flag off): comportamiento actual sin cambios
@@ -113,11 +124,11 @@ export async function GET(req: Request) {
         .eq('portal_email', email);
 
     } catch (err) {
-      errors.push(`${email}: ${err instanceof Error ? err.message : String(err)}`);
+      errors.push(`${email}: ${errorMessage(err)}`);
     }
   }
 
-  const totalProcessed = annualGrants + stripeSafetyNets + legacyResets;
+  const totalProcessed = annualGrants + stripeSafetyNets + legacyResets + skippedNoops;
   await alertCronPartialFailure(supabase, {
     cronName:  'reset-ops-pool',
     expected:  due?.length ?? 0,
@@ -131,6 +142,7 @@ export async function GET(req: Request) {
     annualGrants,
     stripeSafetyNets,
     legacyResets,
+    skippedNoops,
     errors:          errors.length ? errors : undefined,
   });
 }

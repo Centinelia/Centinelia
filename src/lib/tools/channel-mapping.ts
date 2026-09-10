@@ -97,6 +97,15 @@ export const VOICE_TO_CHAT: Record<string, string | null> = {
   pedir_a_humano:            'pedir_a_humano',
   catalogo_buscar_codigo:    'catalogo_buscar_codigo',
 
+  // Meefi demo — Nelia Soporte. Mismo nombre en los 3 canales.
+  meefi_lookup_user_account:       'meefi_lookup_user_account',
+  meefi_send_password_reset_link:  'meefi_send_password_reset_link',
+  meefi_check_transfer_status:     'meefi_check_transfer_status',
+  meefi_initiate_2fa_recovery:     'meefi_initiate_2fa_recovery',
+  meefi_capture_bug_report:        'meefi_capture_bug_report',
+  meefi_escalate_to_human:         'meefi_escalate_to_human',
+  meefi_search_help_center:        'meefi_search_help_center',
+
   // Nami — pack inventory_excel. Mismo nombre en los 3 canales.
   inv_buscar_por_serie:      'inv_buscar_por_serie',
   inv_buscar_por_modelo:     'inv_buscar_por_modelo',

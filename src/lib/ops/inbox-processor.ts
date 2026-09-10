@@ -831,7 +831,8 @@ export const MEERKAT_EMAIL_DISTRIBUTION: Record<string, string[]> = {
   nia:   ['crear_lead', 'crear_contacto_saliente', 'agendar_cita', 'registrar_pedido', 'buscar_cliente', 'buscar_correo_enviado', 'agregar_tag_contacto', 'registrar_encuesta', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano', 'reportar_falla'],
   noah:  ['crear_lead', 'crear_contacto_saliente', 'agregar_tag_contacto', 'buscar_cliente', 'buscar_correo_enviado', 'buscar_producto', 'catalogo_buscar_codigo', 'list_calendar_events', 'create_calendar_event', 'generar_propuesta_comercial', 'generar_cotizacion', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
   nico:  ['buscar_cliente', 'buscar_correo_enviado', 'buscar_documento_oficina', 'solicitar_factura', 'consultar_factura', 'solicitar_cancelacion_factura', 'qb_consultar_facturas', 'qb_buscar_cliente', 'qb_registrar_pago', 'qb_crear_factura', 'qb_reporte_ingresos', 'enviar_documento_oficina', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
-  nelia: ['buscar_cliente', 'buscar_correo_enviado', 'buscar_documento_oficina', 'buscar_archivo', 'enviar_documento_oficina', 'generar_one_pager', 'generar_correo_estructurado', 'generar_reporte_metricas_excel', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'create_document', 'create_file', 'save_to_drive', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
+  // meefi_* tools gatadas por feature 'meefi_demo'; orgs sin esa feature no las ejecutan.
+  nelia: ['buscar_cliente', 'buscar_correo_enviado', 'buscar_documento_oficina', 'buscar_archivo', 'enviar_documento_oficina', 'generar_one_pager', 'generar_correo_estructurado', 'generar_reporte_metricas_excel', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'create_document', 'create_file', 'save_to_drive', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano', 'meefi_lookup_user_account', 'meefi_send_password_reset_link', 'meefi_check_transfer_status', 'meefi_initiate_2fa_recovery', 'meefi_capture_bug_report', 'meefi_escalate_to_human', 'meefi_search_help_center'],
   neo:   ['crear_ticket', 'consultar_incidentes', 'buscar_directorio', 'buscar_archivo', 'leer_archivo', 'buscar_correo_enviado', 'buscar_documento_oficina', 'enviar_documento_oficina', 'buscar_cliente', 'reportar_falla', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
   nara:  ['crear_reporte_civico', 'consultar_reporte_civico', 'actualizar_reporte_civico', 'consultar_catalogo_externo', 'buscar_en_padron_externo', 'enviar_tramite_externo', 'buscar_cliente', 'buscar_correo_enviado', 'generar_reporte_metricas_excel', 'buscar_archivo', 'leer_archivo', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
   naia:  ['iniciar_onboarding', 'agendar_cita', 'list_calendar_events', 'create_calendar_event', 'delete_calendar_event', 'buscar_cliente', 'buscar_correo_enviado', 'buscar_documento_oficina', 'buscar_archivo', 'leer_archivo', 'registrar_falta', 'consultar_vacaciones', 'solicitar_permiso', 'verificar_incidencia', 'generar_correo_estructurado', 'create_document', 'save_to_drive', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
@@ -1529,7 +1530,7 @@ CATEGORÍAS:
       });
       tools.push({
         name: 'escalar_al_owner',
-        description: 'Uso exclusivo de Nash. Notifica al owner por WhatsApp (env OWNER_WHATSAPP) con fallback email hola@. Solo para lo crítico.',
+        description: 'Uso exclusivo de Nash. Notifica al owner por email a INTERNAL_ALERT_EMAIL (default hola@centinelia.mx). Solo para lo crítico.',
         input_schema: {
           type: 'object' as const,
           properties: {

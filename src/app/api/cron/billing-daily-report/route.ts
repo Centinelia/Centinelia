@@ -16,6 +16,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
+import { errorMessage } from '@/lib/cron/alert-partial-failure';
 import { buildDailyReport, sendDailyReport } from '@/lib/billing/reports/daily';
 import { decryptDropboxToken } from '@/lib/billing/adapters';
 
@@ -111,7 +112,7 @@ export async function GET(req: Request) {
 
       results.push({ portal_email: integ.portal_email, sent: true, messageId });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg = errorMessage(err);
       console.error('[billing-daily-report] error for', integ.portal_email, ':', msg);
       results.push({ portal_email: integ.portal_email, error: msg });
     }

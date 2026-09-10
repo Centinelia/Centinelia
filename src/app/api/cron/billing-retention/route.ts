@@ -24,6 +24,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
+import { errorMessage } from '@/lib/cron/alert-partial-failure';
 import { DropboxClient } from '@/lib/billing/storage/dropbox';
 import { SnapshotStorage } from '@/lib/billing/storage/snapshot';
 import { sendBillingMail } from '@/lib/billing/mail/send';
@@ -237,7 +238,7 @@ export async function GET(req: Request) {
       const result = await applyRetentionForIntegration(integ, nowMonth);
       results.push(result);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg = errorMessage(err);
       console.error('[billing-retention] error for', integ.portal_email, ':', msg);
       results.push({ portal_email: integ.portal_email, error: msg });
     }
