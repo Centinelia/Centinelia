@@ -202,8 +202,8 @@ const TOOL_REGISTRY_BASE: Omit<ToolEntry, 'pack'>[] = [
   { name: 'enviar_tramite_externo',     description: 'Voice-only: envía trámite al backend municipal (destructivo)', channels: ['voice'], category: 'tramites', destructive: true,  gatedByRole: ['nara'], gatedByFeature: 'external_tramites', capability: null, policy: DEFAULT_POLICY },
 
   // Meefi demo — Nelia Soporte (piloto Meefi 15-sept).
-  // El gate org-específico vive en el executor (features.meefi_demo = true).
-  // gatedByFeature=null aquí porque no pertenecen a un SkillPack del catálogo
+  // Sin gate org-específico: executor despacha sin condicional features.meefi_demo.
+  // gatedByFeature=null porque no pertenecen a un SkillPack del catálogo
   // (el test registry↔packs requiere que todo gatedByFeature tenga pack).
   { name: 'meefi_lookup_user_account',      description: 'Busca cuenta de usuario Meefi por correo (flags: reset bloqueado, 2FA, KYC)',       channels: A, category: 'meefi', destructive: false, gatedByRole: ['nelia'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },
   { name: 'meefi_send_password_reset_link', description: 'Envía link de restablecimiento de contraseña al usuario Meefi',                      channels: A, category: 'meefi', destructive: true,  gatedByRole: ['nelia'], gatedByFeature: null, capability: null, policy: DEFAULT_POLICY },

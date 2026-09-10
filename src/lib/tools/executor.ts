@@ -5686,17 +5686,11 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
 
   // ─────────────────────────────────────────────────────────────────────────
   // Meefi demo — Nelia Soporte (piloto 15-sept)
-  // Feature gate: solo se ejecutan si el meerkat es de la org Meefi
-  // (features.meefi_demo = true). Para otras orgs el executor retorna
-  // tool_not_available para que el agente informe que la herramienta no está
-  // habilitada en su organización.
+  // Sin gate org-específico: cualquier meerkat con role='nelia' puede ejecutar
+  // estas tools. Hoy solo Meefi tiene una Nelia con el preset correspondiente.
+  // Si en el futuro múltiples orgs tienen Nelias, la solución es SkillPack.
   // ─────────────────────────────────────────────────────────────────────────
   if (toolName.startsWith('meefi_')) {
-    const features = (agent.features as Record<string, unknown> | null) ?? {};
-    if (!features.meefi_demo) {
-      return { ok: false, error: `${toolName} no está disponible en esta organización.` };
-    }
-
     if (toolName === 'meefi_lookup_user_account') {
       const { executeMeefiLookupUserAccount } = await import('@/lib/tools/executors/meefi-lookup-user-account');
       return executeMeefiLookupUserAccount(ctx, toolInput as { email: string });

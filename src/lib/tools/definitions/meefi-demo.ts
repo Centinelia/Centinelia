@@ -11,9 +11,11 @@
  * Canal: voice + chat + email (regla [[feedback-tool-3-canales]]).
  * Meerkat: Nelia (meerkat_role_id = 'nelia') en org Meefi.
  *
- * Nota org-específica: las definiciones están gatadas por `gatedByFeature: 'meefi_demo'`
- * en registry.ts. Orgs sin esa feature no reciben estas tools en el executor aunque
- * Nelia las tenga en su preset. Ver task-7-report.md decisión D1.
+ * Exposición org-específica: estas tools se exponen vía el preset de Nelia en
+ * `MEERKAT_VOICE_DISTRIBUTION` y `MEERKAT_EMAIL_DISTRIBUTION` (sync.ts +
+ * inbox-processor.ts). En registry.ts tienen `gatedByFeature: null` (no SkillPack).
+ * El executor las ejecuta sin gate adicional — cualquier Nelia con el preset puede
+ * usarlas. Hoy solo la Nelia Meefi tiene este preset. Ver task-7-report.md D1.
  */
 
 export type MeefiToolDef = {
