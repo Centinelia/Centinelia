@@ -1,18 +1,23 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
-import { alertCronPartialFailure } from '@/lib/cron/alert-partial-failure';
+import { alertCronPartialFailure, errorMessage } from '@/lib/cron/alert-partial-failure';
 
 export const dynamic = 'force-dynamic';
 
 // Reconciliación semanal ledger vs cache (fix M3 audit 2026-08-10) +
-// pool-vs-sum-per-agente drift (fix read-path fidelity 2026-08-11).
+// pool-vs-cap-real drift (fix read-path fidelity 2026-08-11, revisado 2026-09-10).
 //
 // Check 1 (M3): SUM(minutes_ledger.amount) por portal_email == account_minutes.minutes_balance
-// Check 2 (nuevo): account_minutes.minutes_included == SUM(voice_agents.minutes_included WHERE active=true)
+// Check 2: account_minutes.minutes_included == get_pool_cap(portal_email)
 //   → cierra blindspot: cliente veía "Jornada sin minutos" en portal porque
-//     cache tenía 0 pero agents individuales tenían minutos. Ver
-//     [[feedback-audit-read-path-fidelity]].
+//     cache tenía 0 pero cap real > 0. Ver [[feedback-audit-read-path-fidelity]].
+//
+// 2026-09-10: la versión anterior comparaba cache vs SUM(voice_agents.minutes_included)
+// que es un campo aspiracional (no refleja el plan Stripe realmente contratado).
+// Generaba falsos positivos en dev/test/internos (agents sin plan Stripe pero con
+// minutes_included seteado). Ahora comparamos contra get_pool_cap que es el mismo
+// RPC que usa refresh_pool_cache — si divergen, hay algo raro de verdad.
 //
 // Ejecuta domingos 4am (después del cleanup-cancelled dominical 3am, para
 // dar chance a que el archivo/purge ocurra primero y evitar false positives).
@@ -42,18 +47,6 @@ export async function GET(req: Request) {
     (accounts ?? []).map(a => [a.portal_email as string, a])
   );
 
-  // Pre-fetch todos los voice_agents activos con minutos por email
-  const { data: allAgents } = await supabase
-    .from('voice_agents')
-    .select('portal_email, minutes_included, active')
-    .in('portal_email', orgEmails.length > 0 ? orgEmails : ['__none__']);
-  const sumByEmail = new Map<string, number>();
-  for (const a of (allAgents ?? [])) {
-    if (a.active === false) continue;
-    const em = a.portal_email as string;
-    sumByEmail.set(em, (sumByEmail.get(em) ?? 0) + ((a.minutes_included as number) ?? 0));
-  }
-
   const drifts: Array<{
     portal_email: string;
     ledger_sum:   number;
@@ -63,7 +56,7 @@ export async function GET(req: Request) {
   const poolIncludedDrifts: Array<{
     portal_email: string;
     cache_included: number;
-    agents_sum:     number;
+    real_cap:       number;
     delta:          number;
   }> = [];
   const errors: string[] = [];
@@ -91,22 +84,26 @@ export async function GET(req: Request) {
         });
       }
 
-      // ── Check 2 (NUEVO): pool.minutes_included vs SUM(agents.minutes_included WHERE active) ──
-      // Cliente veía "Jornada sin minutos" en portal aunque agents individuales tuvieran minutos:
-      // cache included=0 mientras sum-per-agente > 0. Alertar cuando divergen.
-      const agentsSum = sumByEmail.get(email) ?? 0;
+      // ── Check 2: pool.minutes_included vs get_pool_cap real ──
+      // Cache debe reflejar el resultado de get_pool_cap (plan Stripe realmente
+      // contratado + rollover). Si divergen, el cache no fue refrescado tras un
+      // cambio de agent/plan/renewal. Antes se comparaba contra
+      // SUM(voice_agents.minutes_included) que es aspiracional → falsos positivos
+      // en dev/test/orgs internas sin plan Stripe activo.
+      const { data: realCapData } = await supabase.rpc('get_pool_cap', { p_portal_email: email });
+      const realCap = (realCapData as number | null) ?? 0;
       const cacheIncluded = (acct?.minutes_included as number) ?? 0;
-      const poolDelta = cacheIncluded - agentsSum;
-      if (Math.abs(poolDelta) > POOL_INCLUDED_THRESHOLD && (cacheIncluded === 0 || agentsSum === 0 || Math.abs(poolDelta) > cacheIncluded * 0.1)) {
+      const poolDelta = cacheIncluded - realCap;
+      if (Math.abs(poolDelta) > POOL_INCLUDED_THRESHOLD) {
         poolIncludedDrifts.push({
           portal_email:    email,
           cache_included:  cacheIncluded,
-          agents_sum:      agentsSum,
+          real_cap:        realCap,
           delta:           poolDelta,
         });
       }
     } catch (err) {
-      errors.push(`${email}: ${err instanceof Error ? err.message : String(err)}`);
+      errors.push(`${email}: ${errorMessage(err)}`);
     }
   }
 
@@ -137,23 +134,23 @@ export async function GET(req: Request) {
     });
   }
 
-  // 2b. Alerta pool-vs-agents drift (NUEVO)
+  // 2b. Alerta pool-vs-cap-real drift
   if (poolIncludedDrifts.length > 0) {
     const summary = poolIncludedDrifts.slice(0, 10).map(d =>
-      `${d.portal_email}: cache.included=${d.cache_included} agents.sum=${d.agents_sum} Δ=${d.delta > 0 ? '+' : ''}${d.delta}`
+      `${d.portal_email}: cache.included=${d.cache_included} real_cap=${d.real_cap} Δ=${d.delta > 0 ? '+' : ''}${d.delta}`
     ).join('\n');
     await supabase.from('platform_incidents').insert({
-      title:       `Pool included drift: ${poolIncludedDrifts.length} orgs con account_minutes.minutes_included ≠ SUM(agents.minutes_included)`,
+      title:       `Pool included drift: ${poolIncludedDrifts.length} orgs con account_minutes.minutes_included ≠ get_pool_cap`,
       description: [
-        `Detectado ${poolIncludedDrifts.length} orgs con cap del pool cache divergiendo de suma de agents activos.`,
-        `Este blindspot ocultó bugs en portal cliente (mostraba "Jornada sin minutos" con cache=0 aunque agents tuvieran minutos individuales).`,
+        `Detectado ${poolIncludedDrifts.length} orgs con cap del pool cache divergiendo de get_pool_cap.`,
+        `Este blindspot puede ocultar "Jornada sin minutos" en portal cliente cuando cache=0 pero cap real > 0.`,
         ``,
         `Primeras ${Math.min(10, poolIncludedDrifts.length)}:`,
         summary,
         ``,
         `Acción:`,
         `- Correr refresh_pool_cache(portal_email) para sincronizar cache`,
-        `- Si persiste, revisar RPCs setup_new_agent / renewal / plan_change que deben actualizar cache post-agent-change`,
+        `- Si persiste, revisar RPCs setup_new_agent / apply_ops_ledger_entry / plan change que deben llamar refresh_pool_cache post-cambio`,
       ].join('\n'),
       priority:    poolIncludedDrifts.length > checked / 5 ? 'high' : 'med',
       source:      'error_log',

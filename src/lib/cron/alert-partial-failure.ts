@@ -23,6 +23,30 @@ interface AlertArgs {
   errors?:    string[];   // mensajes de error acumulados (opcional)
 }
 
+/**
+ * Extrae un mensaje humano-legible de cualquier error.
+ *
+ * `err instanceof Error ? err.message : String(err)` era el patrón usado en
+ * todos los crons. Falla con Supabase PostgrestError (POJO con `.message`,
+ * `.code`, `.details`) porque NO es instance de Error → cae a `String(err)`
+ * que devuelve "[object Object]". Fix 2026-09-10: leer `.message` /
+ * `.details` / `.code` cuando existan; caer a JSON.stringify si no.
+ */
+export function errorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (err && typeof err === 'object') {
+    const obj = err as Record<string, unknown>;
+    const msg = typeof obj.message === 'string' ? obj.message : null;
+    const details = typeof obj.details === 'string' ? obj.details : null;
+    const code = typeof obj.code === 'string' ? obj.code : null;
+    if (msg || details || code) {
+      return [msg, details, code ? `[${code}]` : null].filter(Boolean).join(' · ');
+    }
+    try { return JSON.stringify(err); } catch { return '[unserializable error]'; }
+  }
+  return String(err);
+}
+
 const INTERNAL_ALERT_EMAIL = process.env.INTERNAL_ALERT_EMAIL
   ?? process.env.NEXT_PUBLIC_SUPPORT_EMAIL
   ?? 'hola@centinelia.mx';

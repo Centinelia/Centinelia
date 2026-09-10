@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
-import { alertCronPartialFailure } from '@/lib/cron/alert-partial-failure';
+import { alertCronPartialFailure, errorMessage } from '@/lib/cron/alert-partial-failure';
 
 // Purges all client data for accounts cancelled 30+ days ago.
 // Deletes: voice_calls, leads_voice, agent_learnings, agent_messages, then the agent record.
@@ -144,7 +144,7 @@ export async function GET(req: NextRequest) {
 
       archivedAgentIds.push(agentId);
     } catch (err) {
-      errors.push(`agent ${agentId} archive: ${err instanceof Error ? err.message : String(err)}`);
+      errors.push(`agent ${agentId} archive: ${errorMessage(err)}`);
     }
   }
 

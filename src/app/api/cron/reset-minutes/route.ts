@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
-import { alertCronPartialFailure } from '@/lib/cron/alert-partial-failure';
+import { alertCronPartialFailure, errorMessage } from '@/lib/cron/alert-partial-failure';
 import { todayInMexico, nextResetDateInMexico } from '@/lib/billing/tz';
 
 export const dynamic = 'force-dynamic';
@@ -116,7 +116,7 @@ export async function GET(req: Request) {
         .eq('portal_email', email)
         .not('fallback_notified_at', 'is', null);
     } catch (err) {
-      errors.push(`${acct.portal_email}: ${err instanceof Error ? err.message : String(err)}`);
+      errors.push(`${acct.portal_email}: ${errorMessage(err)}`);
     }
   }
 

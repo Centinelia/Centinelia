@@ -30,6 +30,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
+import { errorMessage } from '@/lib/cron/alert-partial-failure';
 import { DropboxClient } from '@/lib/billing/storage/dropbox';
 import { decryptDropboxToken } from '@/lib/billing/adapters';
 import { sendBillingMail, replyToInboundEmail } from '@/lib/billing/mail/send';
@@ -109,7 +110,7 @@ export async function GET(req: Request) {
       const one = await processIntegration(integ, supabase);
       results.push(one);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg = errorMessage(err);
       console.error('[nala-writer-inbox] error for', integ.portal_email, ':', msg);
       results.push({ portal_email: integ.portal_email, error: msg });
     }
@@ -356,7 +357,7 @@ async function processIntegration(
           });
         } catch (err) {
           log('warn', 'chargePool PAC timbre falló (audit gap)', {
-            basename, err: err instanceof Error ? err.message : String(err),
+            basename, err: errorMessage(err),
           });
         }
       }

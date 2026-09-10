@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
 import { claimCronRun, releaseCronRun } from '@/lib/cron/lock';
+import { errorMessage } from '@/lib/cron/alert-partial-failure';
 import { processHandoffReply, type HandoffAttachment } from '@/lib/human-handoff/inbound';
 import { sendEmail, shell } from '@/lib/email/send';
 
@@ -118,7 +119,7 @@ export async function GET(req: NextRequest) {
         .eq('id', row.id);
       results.resolved++;
     } catch (err) {
-      const errMsg = err instanceof Error ? err.message : String(err);
+      const errMsg = errorMessage(err);
       const nextCount = row.retry_count + 1;
 
       if (nextCount >= MAX_RETRIES) {
