@@ -291,7 +291,13 @@ ESPERAR: Niva genera un memo estructurado con:
 - Alertas: BCF con participacion > 25% activa flag de revision enhanced
 - Recomendacion: NO aprobar automaticamente por presencia de BCF con criterio de revision enhanced sobre el 65%. Escalar a Sofia con expediente pre-empacado.
 
-NAZRE cuando Niva presente el memo: "Esta es la parte que le va a importar al Head of Compliance. Niva no aprobo sola. Detecto que Ana Sanchez, que controla el 65%, activa el threshold de revision enhanced. Un analista jr sin experiencia hubiera pasado por alto ese threshold porque son mexicanos ambos y sin flags OFAC."
+NAZRE cuando Niva presente el memo — anclarse en 3 puntos verbatim:
+
+1. "Niva no aprobo sola. Detecto que Ana Sanchez con 65% activa revision enhanced. Un analista jr sin experiencia hubiera pasado por alto ese threshold porque son mexicanos ambos y sin flags OFAC."
+
+2. "Y noten esto que va a apreciar tu Head of Compliance. Niva es honesta sobre sus limites. Aqui dice, cito literal: 'la busqueda web publica no equivale a la API OFAC directa'. En produccion real esto se conecta a WorldCheck o LexisNexis y Niva lo declara. No pretende ser algo que no es."
+
+3. "Y le dio a Sofia 7 documentos concretos que le faltan al expediente. Sofia no tiene que preguntar 'que me falta'. Ya lo tiene priorizado. Y le dio condiciones operativas de monitoreo desde el mes 1 con baseline 3-sigma. Eso lo aprende de tus casos, no de mi."
 
 NAZRE: "Y esto queda en expediente auditable. El Head of Compliance llega y ya tiene historial de los casos procesados, los criterios que se aplicaron, los escalamientos. Puede calibrar los thresholds si quiere."
 

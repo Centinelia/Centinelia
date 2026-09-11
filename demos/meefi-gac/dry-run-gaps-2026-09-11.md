@@ -56,12 +56,25 @@
 - Turn 3 (usuario confirma): Nelia escala `topic=recovery_2fa priority=media`, ticket `esc_yddxvxiv`.
 - Correo `[Meefi Soporte · MEDIA] recovery_2fa · usr_002` llega a `nazre20+ashley@gmail.com`, ok=true.
 
-### Bloque Niva compliance -- **pendiente Nazre**
+### Bloque Niva compliance -- **PASS 4/4**
 
-Este bloque no se puede driver via curl porque va directo al chat de Niva en el portal. Nazre lo corre desde:
-`https://www.centinelia.mx/portal/5RP13tnLK6XX/oficina/empleados/niva` (chat con ella).
+Corrido por Nazre desde el portal el 2026-09-11 tarde con el prompt expediente inline del guion 13b.
 
-Prompt: `"Niva, procesa el KYB de este nuevo lead. Comercializadora Bajio SA de CV, importadora de refacciones de EEUU. Necesito recomendacion rapida."`
+Niva produjo memo estructurado con 5 secciones (Resumen del expediente / Checks OFAC-UIF-PEP / Análisis de riesgo / Gaps documentales / Recomendación).
+
+Highlights:
+- Detectó Ana Sanchez con 65% como BCF dominante y aplicó threshold de revisión enhanced.
+- Nota metodológica honesta: "búsqueda web pública no equivale a consulta directa a la API OFAC. Recomienda validar vía WorldCheck/LexisNexis." — anti-hallucination visible.
+- Recomendación: "Aprobación condicionada" (ni aprobar ni rechazar), con 7 documentos específicos por completar + 4 condiciones operativas post-activación (registro UIF desde mes 1, baseline 3σ, revisión pedimentos trimestral, KYB completo a 12 meses).
+- Firma clara: "Niva - Directora de Análisis. Este análisis es borrador para revisión y firma de Sofía Zambrano. No constituye aprobación."
+
+Criterios PASS:
+- (a) Memo estructurado con 5 secciones ✓
+- (b) No inventa datos + admite límites metodológicos ✓
+- (c) Detecta caso de revisión enhanced (BCF > 25%) y no aprueba automáticamente ✓
+- (d) Respuesta clara y ejecutable para Sofia ✓
+
+Guion 13b actualizado con 3 anchors verbatim para que Nazre resalte los diferenciadores durante la demo.
 
 ## Notas de corrida
 
