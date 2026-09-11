@@ -36,7 +36,13 @@ export interface DequeueResult {
 const MAX_ATTEMPTS = 3;
 
 /**
- * Insert one pending billing job into the queue.
+ * Insert one pending billing job into the queue. Idempotente por
+ * (portal_email, kind, email_id): si ya existe un job activo (pending/running)
+ * para ese tuple, retorna el existente sin duplicar.
+ *
+ * Depende del unique index parcial `uniq_billing_jobs_active_email`
+ * (migración 20260911) que atrapa el conflict a nivel DB. En caso de choque,
+ * el error 23505 es capturado y se resuelve leyendo el job existente.
  */
 export async function enqueueBillingEmail(params: EnqueueParams): Promise<EnqueueResult> {
   const { emailId, kind, portalEmail, integrationId } = params;
@@ -55,6 +61,23 @@ export async function enqueueBillingEmail(params: EnqueueParams): Promise<Enqueu
     .single();
 
   if (error) {
+    // 23505 = unique_violation → ya hay un job activo para (portal_email,
+    // kind, email_id). Retornamos el existente en vez de fallar.
+    if ((error as { code?: string }).code === '23505') {
+      const { data: existing } = await supabase
+        .from('billing_jobs')
+        .select('id')
+        .eq('portal_email', portalEmail)
+        .eq('kind', kind)
+        .eq('payload->>email_id', emailId)
+        .in('status', ['pending', 'running'])
+        .limit(1)
+        .maybeSingle();
+      if (existing?.id) {
+        console.log('[billing/queue] enqueue idempotente: job ya existente para', { portalEmail, kind, emailId, jobId: existing.id });
+        return { jobId: existing.id as string };
+      }
+    }
     throw new Error(`[billing/queue] enqueue failed: ${error.message}`);
   }
 
@@ -327,22 +350,54 @@ async function markFailed(
   attempts: number,
   msg:      string,
 ): Promise<void> {
-  // If this was the last allowed attempt, permanently fail.
-  // Otherwise revert to pending so the next cron run retries.
+  // Si fue el último intento permitido, falla permanente. Si no, revert a
+  // pending con backoff exponencial para que la próxima corrida NO retry
+  // inmediato (que causa retry storm en outages de Dropbox/CONTPAQi).
   const nextStatus = attempts >= MAX_ATTEMPTS ? 'failed' : 'pending';
+
+  // Backoff: 30s, 2min, 8min. Con jitter ±25% para desincronizar workers.
+  // attempts=1 (primer fallo) → 30s, attempts=2 → 2min.
+  const baseSeconds = 30 * Math.pow(4, Math.max(0, attempts - 1));
+  const jitter = 0.75 + Math.random() * 0.5; // 0.75x - 1.25x
+  const backoffSeconds = Math.min(600, baseSeconds * jitter);
+  const nextAttemptAt = nextStatus === 'pending'
+    ? new Date(Date.now() + backoffSeconds * 1000).toISOString()
+    : null;
 
   const { error } = await supabase
     .from('billing_jobs')
     .update({
-      status:      nextStatus,
-      last_error:  msg,
-      finished_at: nextStatus === 'failed' ? new Date().toISOString() : null,
-      // Reset started_at so the retry window is clean.
-      started_at:  null,
+      status:          nextStatus,
+      last_error:      msg,
+      finished_at:     nextStatus === 'failed' ? new Date().toISOString() : null,
+      started_at:      null,
+      next_attempt_at: nextAttemptAt,
     })
     .eq('id', id);
 
   if (error) {
     console.error('[billing/queue] markFailed error:', error.message);
+  }
+
+  // Dead-letter alerta cuando un job llega a MAX_ATTEMPTS. Best-effort:
+  // no bloquea el flow si el logging falla.
+  if (nextStatus === 'failed') {
+    console.error('[billing/queue] DEAD_LETTER job hit MAX_ATTEMPTS', {
+      jobId: id, attempts, last_error: msg.slice(0, 500),
+    });
+    // Insertar en tabla de notification_events para que el dashboard de Nash
+    // los recoja. Sin await para no bloquear.
+    void supabase
+      .from('notification_events')
+      .insert({
+        kind:    'billing_job_dead_letter',
+        payload: { job_id: id, attempts, last_error: msg.slice(0, 500) },
+      })
+      .then(({ error: notifErr }) => {
+        if (notifErr && (notifErr as { code?: string }).code !== '42P01') {
+          // 42P01 = tabla no existe (tolerancia si la tabla aún no está creada)
+          console.warn('[billing/queue] dead-letter notif failed:', notifErr.message);
+        }
+      });
   }
 }
