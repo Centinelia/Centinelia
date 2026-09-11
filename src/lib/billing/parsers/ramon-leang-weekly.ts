@@ -236,15 +236,20 @@ function parseBlock(rows: Row[], headerRow: number, colDep: number, weekStart: s
   }
 
   // Sanity check: si tenemos todo, verificar que suma cuadre con total declarado.
+  // Aritmética fixed-point en centavos (evita drift IEEE-754 en multiplicaciones).
   if (
     totalDepositos != null &&
     cfdiBase != null &&
     ajusteMonto != null &&
     diasHabiles.length > 0
   ) {
-    const sumaEsperada = cfdiBase * diasHabiles.length + ajusteMonto;
-    const diff = Math.abs(sumaEsperada - totalDepositos);
-    if (diff > 1) {
+    const centsBase   = Math.round(cfdiBase * 100) * diasHabiles.length;
+    const centsAjuste = Math.round(ajusteMonto * 100);
+    const centsTotal  = Math.round(totalDepositos * 100);
+    const diffCents   = Math.abs(centsBase + centsAjuste - centsTotal);
+    if (diffCents > 100) {
+      const sumaEsperada = (centsBase + centsAjuste) / 100;
+      const diff = diffCents / 100;
       warnings.push(
         `Suma de facturas ($${sumaEsperada.toFixed(2)}) no cuadra con total depósitos ($${totalDepositos.toFixed(2)}). Diferencia $${diff.toFixed(2)}. Revisa cuentas.`,
       );

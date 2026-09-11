@@ -107,27 +107,25 @@ async function main() {
   headerRow.height = 34;
 
   // -- Rows 5-7: 3 semanas de ejemplo (datos reales del fixture Ramón Leang) --
-  // Mapeados desde el Excel actual de Beatriz PV para que ella los reconozca.
-  // Orden columnas de dato: MAR, MIE, JUE, VIE, LUN, AJUSTE (mar siguiente).
-  // Datos de septiembre 2026 replicando el Excel actual de Beatriz PV.
+  // Fechas dinámicas: siguientes 3 martes desde HOY (así la plantilla no rota
+  // aunque se regenere meses después). Datos monetarios calcados del Excel
+  // actual de Beatriz PV para que ella los reconozca.
+  const primerMartes = nextTuesday(new Date());
   const ejemplos: Array<{ semana: Date; deps: (number | null)[]; nota: string }> = [
     {
-      // Semana martes 01/09 al martes 08/09 (ajuste) — datos reales
-      semana: new Date('2026-09-01'),
+      semana: primerMartes,
       deps:   [18553.50, 6844.00, 13849.00, 18212.50, 11961.50, 17626.00],
       nota:   'Ejemplo (borrar cuando empieces)',
     },
     {
-      // Semana martes 08/09 al martes 15/09 (ajuste)
-      semana: new Date('2026-09-08'),
+      semana: addDays(primerMartes, 7),
       deps:   [15200.00, 14100.50, 16800.00, 13500.00, 17800.00, 15300.50],
       nota:   'Ejemplo (borrar cuando empieces)',
     },
     {
-      // Semana martes 15/09 al martes 22/09 — miércoles 16 feriado (Independencia)
-      semana: new Date('2026-09-15'),
+      semana: addDays(primerMartes, 14),
       deps:   [12500.00, null, 15300.00, 17200.00, 14100.00, 12900.50],
-      nota:   'Miércoles 16 feriado (Independencia). Se deja vacío.',
+      nota:   'Si un día es feriado déjalo vacío (ejemplo del miércoles).',
     },
   ];
 
@@ -161,10 +159,11 @@ async function main() {
     cTotal.font = { name: 'Calibri', size: 11, bold: true, color: { argb: MORADO_OSC } };
     cTotal.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: MORADO_CLARO } };
     cTotal.border = borderThin();
-    // Col 9: Por factura (INT(total/N) — trunca a peso entero como Beatriz)
+    // Col 9: Por factura (INT(total/N) — trunca a peso entero como Beatriz).
+    // Usa COUNT dinámico (no hardcodea nDias) para que si Beatriz edita las
+    // celdas de ejemplo la fórmula siga funcionando.
     const cPorFac = row.getCell(9);
-    const nDias = ej.deps.filter(d => d != null).length;
-    cPorFac.value = { formula: `IF(H${rowNum}=0,0,INT(H${rowNum}/${nDias}))` };
+    cPorFac.value = { formula: `IF(COUNT(B${rowNum}:G${rowNum})=0,0,INT(H${rowNum}/COUNT(B${rowNum}:G${rowNum})))` };
     cPorFac.numFmt = '"$"#,##0.00;[Red]-"$"#,##0.00';
     cPorFac.alignment = { vertical: 'middle', horizontal: 'right' };
     cPorFac.font = { name: 'Calibri', size: 11, bold: true, color: { argb: MORADO_OSC } };
@@ -172,7 +171,7 @@ async function main() {
     cPorFac.border = borderThin();
     // Col 10: Ajuste calculado (total - por_factura × (N-1))
     const cAjuste = row.getCell(10);
-    cAjuste.value = { formula: `IF(H${rowNum}=0,0,ROUND(H${rowNum}-I${rowNum}*${nDias - 1},2))` };
+    cAjuste.value = { formula: `IF(COUNT(B${rowNum}:G${rowNum})=0,0,ROUND(H${rowNum}-I${rowNum}*(COUNT(B${rowNum}:G${rowNum})-1),2))` };
     cAjuste.numFmt = '"$"#,##0.00;[Red]-"$"#,##0.00';
     cAjuste.alignment = { vertical: 'middle', horizontal: 'right' };
     cAjuste.font = { name: 'Calibri', size: 11, bold: true, color: { argb: MORADO_OSC } };
@@ -313,7 +312,7 @@ async function main() {
   // Sección: cada semana
   addTitle('Cada martes, en 3 pasos');
   addStep('1', 'Ve al final de la hoja "Semanas" y agrega una fila nueva (puedes copiar la última llenada para conservar el formato).');
-  addStep('2', 'Escribe la fecha del martes que abre la semana en la columna "Semana (martes)". Ejemplo: 01/09/2026.');
+  addStep('2', `Escribe la fecha del martes que abre la semana en la columna "Semana (martes)". Ejemplo: ${formatShort(ejemplos[0].semana)}.`);
   addStep('3', 'Pon los depósitos bancarios: uno por cada día laborable (mar, mie, jue, vie, lun) más el ajuste en el martes siguiente. Si algún día fue feriado, déjalo vacío.');
   addSpace(4);
   addPlain('En cuanto escribas los depósitos, las columnas moradas se llenan solas:', { italic: true, color: GRIS_TX });
@@ -345,16 +344,18 @@ async function main() {
   }
   addSpace(16);
 
-  // Sección: ejemplo
+  // Sección: ejemplo (fechas dinámicas alineadas a la fila 1 de la hoja Semanas)
+  const ej1 = ejemplos[0].semana;
+  const ejAjuste = addDays(ej1, 7);
   addTitle('Ejemplo con datos reales');
-  addPlain('Semana del martes 01/09/2026 (fila 1 de la hoja "Semanas"):', { italic: true, color: GRIS_TX });
+  addPlain(`Semana del martes ${formatShort(ej1)} (fila 1 de la hoja "Semanas"):`, { italic: true, color: GRIS_TX });
   addPlain('  Martes $18,553.50 · Miércoles $6,844.00 · Jueves $13,849.00');
-  addPlain('  Viernes $18,212.50 · Lunes $11,961.50 · Ajuste (martes 08/09) $17,626.00');
+  addPlain(`  Viernes $18,212.50 · Lunes $11,961.50 · Ajuste (martes ${formatShort(ejAjuste)}) $17,626.00`);
   addPlain('  Total depositado: $87,046.50', { color: MORADO_OSC });
   addSpace(4);
   addPlain('Nala calcula automáticamente:', { italic: true, color: GRIS_TX });
   addPlain('  5 facturas de $14,507.00 c/u (una por cada día laborable)');
-  addPlain('  1 factura de $14,511.50 el martes 08/09 (ajuste de centavos)');
+  addPlain(`  1 factura de $14,511.50 el martes ${formatShort(ejAjuste)} (ajuste de centavos)`);
   addPlain('  Total facturado: $87,046.50  ✓ cuadra con tus depósitos', { color: VERDE });
   addSpace(16);
 
@@ -384,6 +385,30 @@ async function main() {
   mkdirSync('scripts/output', { recursive: true });
   await wb.xlsx.writeFile(OUT);
   console.log(`✓ Plantilla generada: ${OUT}`);
+}
+
+/** Retorna el próximo martes >= la fecha dada (si hoy es martes, retorna hoy). */
+function nextTuesday(from: Date): Date {
+  const d = new Date(from);
+  d.setHours(0, 0, 0, 0);
+  const daysUntilTue = (2 - d.getDay() + 7) % 7; // 2 = Tuesday
+  d.setDate(d.getDate() + daysUntilTue);
+  return d;
+}
+
+/** Suma `n` días a la fecha (nueva instancia). */
+function addDays(d: Date, n: number): Date {
+  const r = new Date(d);
+  r.setDate(r.getDate() + n);
+  return r;
+}
+
+/** Formato corto español: 01/09/2026. */
+function formatShort(d: Date): string {
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yy = d.getFullYear();
+  return `${dd}/${mm}/${yy}`;
 }
 
 function borderThin() {

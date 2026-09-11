@@ -139,6 +139,38 @@ describe('buildInvoicesFromWeek — edge cases', () => {
     expect(r.meta.every(m => !m.isAjuste)).toBe(true);
   });
 
+  it('semana cruza fin de mes: días 1-3 caen en mes siguiente', () => {
+    // Martes 2026-09-29: semana martes-lunes = 29 sep, 30 sep, 1 oct, 2 oct,
+    // 3 oct, 4 oct, 5 oct. Días hábiles [29, 30, 1, 2, 5] deberían mapear a
+    // 29/09, 30/09, 01/10, 02/10, 05/10 (NO 01/09, 02/09, 05/09).
+    const b = baseBlock({
+      weekStart:   '2026-09-29',
+      diasHabiles: [29, 30, 1, 2, 5],
+      ajusteFecha: '2026-10-03',
+    });
+    const r = buildInvoicesFromWeek(b, CONFIG);
+    expect(r.invoices[0].date).toBe('2026-09-29');
+    expect(r.invoices[1].date).toBe('2026-09-30');
+    expect(r.invoices[2].date).toBe('2026-10-01');
+    expect(r.invoices[3].date).toBe('2026-10-02');
+    expect(r.invoices[4].date).toBe('2026-10-05');
+    expect(r.invoices[5].date).toBe('2026-10-03');
+  });
+
+  it('semana cruza fin de año: días 30, 31, 1, 2 mapean a dic 30-31 + ene 1-2', () => {
+    const b = baseBlock({
+      weekStart:   '2026-12-29',
+      diasHabiles: [30, 31, 1, 2],
+      ajusteFecha: '2027-01-04',
+    });
+    const r = buildInvoicesFromWeek(b, CONFIG);
+    expect(r.invoices[0].date).toBe('2026-12-30');
+    expect(r.invoices[1].date).toBe('2026-12-31');
+    expect(r.invoices[2].date).toBe('2027-01-01');
+    expect(r.invoices[3].date).toBe('2027-01-02');
+    expect(r.invoices[4].date).toBe('2027-01-04');
+  });
+
   it('sin cfdiBase: error explicito, sin invoices', () => {
     const b = baseBlock({ cfdiBase: null });
     const r = buildInvoicesFromWeek(b, CONFIG);

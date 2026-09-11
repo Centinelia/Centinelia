@@ -13,8 +13,31 @@ import type { BillingInvoice, PaymentMethod } from '../adapter';
 import type { ParsedWeekBlock } from '../parsers/ramon-leang-weekly';
 import type { RamonLeangConfig, PipelineErrorRL, PipelineWarningRL } from './types';
 
-/** Mapea código SAT c_FormaPago al string interno del BillingAdapter. */
+/**
+ * Set de códigos SAT c_FormaPago válidos según catálogo oficial (subset usado
+ * en México). Cualquier código fuera de este set indica config corrupta.
+ */
+const SAT_FORMA_PAGO_VALIDOS = new Set([
+  '01', '02', '03', '04', '05', '06', '08', '12', '13', '14', '15', '17',
+  '23', '24', '25', '26', '27', '28', '29', '30', '31', '99',
+]);
+
+/** True si el string es un código SAT c_FormaPago válido. */
+export function isValidFormaPagoSat(code: unknown): code is string {
+  return typeof code === 'string' && SAT_FORMA_PAGO_VALIDOS.has(code);
+}
+
+/**
+ * Mapea código SAT c_FormaPago al string interno del BillingAdapter. Solo
+ * mapeamos los 4 métodos que nuestro adapter conoce. El resto (monedero
+ * electrónico, vales, dación en pago, etc.) cae a 'efectivo' por defecto,
+ * con warning si el código no es siquiera un SAT válido.
+ */
 function formaPagoSatToMethod(code: string): PaymentMethod {
+  if (!isValidFormaPagoSat(code)) {
+    console.warn('[ramon-leang/pipeline] formaPago no es código SAT válido, cayendo a efectivo:', code);
+    return 'efectivo';
+  }
   switch (code) {
     case '01': return 'efectivo';
     case '02': return 'cheque';
@@ -42,10 +65,23 @@ export interface InvoiceMetaRL {
 /**
  * Construye la fecha ISO YYYY-MM-DD a partir de weekStart + día del mes.
  * Ej. weekStart="2026-09-04" + dia=1 → "2026-09-01".
- * Si el día está antes del weekStart (mes anterior), asume mismo mes.
- * Si el día es mayor y sobrepasa fin de mes, va al siguiente mes.
+ *
+ * Correcto en semanas que cruzan mes: si weekStart="2026-09-29" y el día
+ * hábil es 3, retorna "2026-10-03" (no "2026-09-03"). Busca el offset 0-6
+ * cuyo día-del-mes calendárico calza con dayOfMonth.
  */
-function dayOfMonthToIsoDate(weekStart: string, dayOfMonth: number): string {
+export function dayOfMonthToIsoDate(weekStart: string, dayOfMonth: number): string {
+  const start = new Date(`${weekStart}T00:00:00Z`);
+  for (let offset = 0; offset < 7; offset++) {
+    const d = new Date(start);
+    d.setUTCDate(start.getUTCDate() + offset);
+    if (d.getUTCDate() === dayOfMonth) {
+      return d.toISOString().slice(0, 10);
+    }
+  }
+  // Fallback (día fuera de la semana): interpreta same-month best-effort.
+  // No debería pasar si diasHabiles viene bien validado, pero preservamos
+  // comportamiento antiguo para no perder facturas silenciosamente.
   const [y, m] = weekStart.split('-').map(Number);
   const dd = String(dayOfMonth).padStart(2, '0');
   const mm = String(m).padStart(2, '0');

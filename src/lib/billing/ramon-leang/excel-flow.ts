@@ -16,6 +16,7 @@ import { checkConfidence } from './confidence';
 import type { BillingAdapter, BillingInvoice } from '../adapter';
 import { submitApprovedForEmail, type SubmittedPending } from '../tortilleria/submit-approved';
 import type { RamonLeangConfig, PipelineErrorRL, PipelineWarningRL } from './types';
+import { chargePool } from '../pool-charge';
 
 export interface AttachmentBlobRL {
   filename:    string;
@@ -215,9 +216,16 @@ export async function runRamonLeangFlow(input: RamonLeangFlowInput): Promise<Ram
   }
 
   if (rows.length > 0) {
+    // Upsert con ignoreDuplicates: si otro worker ya insertó rows del mismo
+    // slot (portal_email + email_id + image_index + remision_index), Postgres
+    // descarta el duplicado silenciosamente. Requiere unique index
+    // uniq_billing_pending_review_email_slot (migración 20260911).
     const { error: insErr } = await input.supabase
       .from('billing_pending_review')
-      .insert(rows);
+      .upsert(rows, {
+        onConflict:       'portal_email,email_id,image_index,remision_index',
+        ignoreDuplicates: true,
+      });
     if (insErr) {
       allErrors.push({ weekStart: '(insert)', reason: `Fallo al insertar billing_pending_review: ${insErr.message}` });
     }
@@ -241,8 +249,34 @@ export async function runRamonLeangFlow(input: RamonLeangFlowInput): Promise<Ram
   const pendingCount = rows.length - autoApprovedCount;
   const autoApprovedFailed = autoApprovedCount - submitted.length;
 
-  // Notif Beatriz PV si hay pendings o auto-approved fallidos.
-  if ((pendingCount > 0 || autoApprovedFailed > 0) && input.clientEmail) {
+  // Cobro al pool (batched-consume): 1 op por CFDI efectivamente sometido +
+  // 1 op por card creada para revisión humana. Sin submit ni pending = 0
+  // (no side-effect externo → no cargo). Kill switch en pool-charge decide
+  // si se ejecuta. Ver [[feedback-batched-consume-multi-io]].
+  const opsCount = submitted.length + pendingCount;
+  if (opsCount > 0) {
+    try {
+      await chargePool({
+        agentId:      input.agentId,
+        source:       'nala_ramon_leang_flow',
+        reference_id: input.emailId,
+        label:        `Facturación Ramón Leang (${submitted.length} timbradas, ${pendingCount} en revisión)`,
+        context:      `Semana ${blocksToProcess[0]?.weekStart ?? '?'}. Total bloques: ${blocksToProcess.length}. XMLs Dropbox: ${submitted.length}.`,
+      }, opsCount);
+    } catch (chargeErr) {
+      console.error('[ramon-leang/excel-flow] chargePool falló:',
+        chargeErr instanceof Error ? chargeErr.message : String(chargeErr));
+    }
+  }
+
+  // Notif Beatriz PV. Se dispara si:
+  //  - hay pendings a revisar, o
+  //  - hay auto-approved que fallaron submit (Dropbox/CONTPAQi down), o
+  //  - hubo errores de parse/build que dejaron semanas fuera (para que no
+  //    se entere hasta el día siguiente por silencio total).
+  const shouldNotify = (pendingCount > 0 || autoApprovedFailed > 0 || allErrors.length > 0)
+    && !!input.clientEmail;
+  if (shouldNotify) {
     try {
       const { sendMeerkatHtmlEmail } = await import('@/lib/email/send-as-agent');
       const html = buildNotifHtml({
@@ -258,22 +292,43 @@ export async function runRamonLeangFlow(input: RamonLeangFlowInput): Promise<Ram
             total:  Number(r['total']),
             reason: r['reason'] as string,
           })),
+        errors: allErrors.map(e => ({ weekStart: e.weekStart, reason: e.reason })),
         portalUrl: input.portalToken
           ? `https://www.centinelia.mx/portal/${input.portalToken}/oficina/facturas/pendientes`
           : null,
       });
       const prefix = input.businessName ? `[${input.businessName}] ` : '';
-      const subject = pendingCount === 1
-        ? `${prefix}1 factura de la semana necesita tu revisión`
-        : `${prefix}${pendingCount} facturas de la semana necesitan tu revisión`;
-      await sendMeerkatHtmlEmail({
-        agentId: input.agentId,
-        to:      input.clientEmail,
-        subject,
-        html,
-      }, input.supabase);
+      const subject = pendingCount > 0
+        ? (pendingCount === 1
+            ? `${prefix}1 factura de la semana necesita tu revisión`
+            : `${prefix}${pendingCount} facturas de la semana necesitan tu revisión`)
+        : allErrors.length > 0
+          ? `${prefix}Nala tuvo problemas procesando tu Excel semanal`
+          : `${prefix}Facturación semanal con reintentos pendientes`;
+
+      // Retry con backoff: 3 intentos (0, 2s, 6s). Provider caído momentáneo
+      // no debería dejar a Beatriz sin notif por completo.
+      let lastErr: unknown = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          if (attempt > 0) await new Promise(r => setTimeout(r, attempt * attempt * 2000));
+          await sendMeerkatHtmlEmail({
+            agentId: input.agentId,
+            to:      input.clientEmail!,
+            subject,
+            html,
+          }, input.supabase);
+          lastErr = null;
+          break;
+        } catch (e) {
+          lastErr = e;
+        }
+      }
+      if (lastErr) {
+        throw lastErr;
+      }
     } catch (notifErr) {
-      console.warn('[ramon-leang/excel-flow] notif Beatriz PV falló (no fatal):', (notifErr as Error).message);
+      console.warn('[ramon-leang/excel-flow] notif Beatriz PV falló (no fatal, 3 intentos):', (notifErr as Error).message);
     }
   }
 
@@ -318,9 +373,10 @@ function buildNotifHtml(args: {
   submittedCount: number;
   autoApprovedFailed: number;
   pendingRows: Array<{ fecha: string; total: number; reason: string }>;
+  errors?: Array<{ weekStart: string; reason: string }>;
   portalUrl: string | null;
 }): string {
-  const { contactName, autoApprovedCount, pendingCount, submittedCount, autoApprovedFailed, pendingRows, portalUrl } = args;
+  const { contactName, autoApprovedCount, pendingCount, submittedCount, autoApprovedFailed, pendingRows, errors, portalUrl } = args;
   const saludo = contactName?.trim() ? `Hola ${escapeHtml(contactName.trim())},` : 'Hola,';
   const filas = pendingRows.slice(0, 20).map(r => `
     <tr>
@@ -338,21 +394,33 @@ function buildNotifHtml(args: {
   const failBanner = autoApprovedFailed > 0
     ? `<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:12px 16px;margin:16px 0;font-size:13px;color:#92400e;"><strong>Aviso:</strong> ${autoApprovedFailed} factura(s) aprobadas no se pudieron enviar (Dropbox/CONTPAQi). Se reintentan.</div>`
     : '';
+  const errorsBanner = errors && errors.length > 0
+    ? `<div style="background:#fee2e2;border:1px solid #dc2626;border-radius:8px;padding:12px 16px;margin:16px 0;font-size:13px;color:#991b1b;">
+        <strong>Nala tuvo ${errors.length} problema${errors.length === 1 ? '' : 's'} procesando esta semana:</strong>
+        <ul style="margin:8px 0 0;padding-left:20px;">
+          ${errors.slice(0, 10).map(e => `<li>${escapeHtml(e.weekStart)}: ${escapeHtml(e.reason).slice(0, 200)}</li>`).join('')}
+        </ul>
+      </div>`
+    : '';
+  const pendingTable = pendingRows.length > 0
+    ? `<table style="width:100%;border-collapse:collapse;margin:16px 0;">
+        <thead><tr>
+        <th style="padding:8px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:#7a6e99;border-bottom:2px solid #6C3BFF;">Fecha</th>
+        <th style="padding:8px 12px;text-align:right;font-size:11px;text-transform:uppercase;color:#7a6e99;border-bottom:2px solid #6C3BFF;">Total</th>
+        <th style="padding:8px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:#7a6e99;border-bottom:2px solid #6C3BFF;">Qué revisar</th>
+        </tr></thead>
+        <tbody>${filas}</tbody>
+      </table>`
+    : '';
   return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;margin:0;padding:24px;">
 <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:12px;padding:32px;">
 <p style="margin:0 0 16px;font-size:14px;color:#1A0A3B;">${saludo}</p>
+${errorsBanner}
 ${failBanner}
 <p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:#1A0A3B;">
 ${okLine}${pendingCount > 0 ? `Necesito tu ojo en <strong>${pendingCount}</strong> factura${pendingCount === 1 ? '' : 's'} que dejé pendiente${pendingCount === 1 ? '' : 's'} porque encontré algo raro:` : ''}
 </p>
-<table style="width:100%;border-collapse:collapse;margin:16px 0;">
-<thead><tr>
-<th style="padding:8px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:#7a6e99;border-bottom:2px solid #6C3BFF;">Fecha</th>
-<th style="padding:8px 12px;text-align:right;font-size:11px;text-transform:uppercase;color:#7a6e99;border-bottom:2px solid #6C3BFF;">Total</th>
-<th style="padding:8px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:#7a6e99;border-bottom:2px solid #6C3BFF;">Qué revisar</th>
-</tr></thead>
-<tbody>${filas}</tbody>
-</table>
+${pendingTable}
 ${cta}
 <p style="margin:24px 0 0;font-size:12px;color:#7a6e99;line-height:1.5;">Si algo no cuadra o quieres que ignore algo, contéstame este correo.</p>
 <p style="margin:16px 0 0;font-size:13px;color:#1A0A3B;">Nala</p>
