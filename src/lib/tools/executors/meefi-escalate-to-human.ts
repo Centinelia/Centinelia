@@ -104,12 +104,20 @@ export async function executeMeefiEscalateToHuman(
   const agentId: string =
     ctx?.agent?.id ?? ctx?.agent_id ?? process.env.MEEFI_NELIA_AGENT_ID ?? '';
 
+  // From branding Meefi: aunque el dominio remitente sea centinelia.mx (Resend
+  // sin dominio verificado meefi.io), el sender name lee "Nelia · Meefi Soporte"
+  // en la bandeja del destinatario. Evita el default "Nelia Centinelia" que
+  // rompe la narrativa de la demo.
+  const fromAddress = process.env.EMAIL_FROM_ADDRESS ?? 'notificaciones@centinelia.mx';
+  const brandedFrom = `Nelia · Meefi Soporte <${fromAddress}>`;
+
   const sendResult = await sendMeerkatHtmlEmail(
     {
       agentId,
       to,
       subject,
       html,
+      from: brandedFrom,
       agent,
     },
     supabase,
@@ -141,6 +149,23 @@ interface RenderArgs {
   timestamp:      string;
 }
 
+// Formatea timestamp UTC a hora local Ciudad de México (America/Mexico_City).
+// Ejemplo: "2026-09-11 13:03 CDT".
+function formatTimestampMx(iso: string): string {
+  const d = new Date(iso);
+  const fmt = new Intl.DateTimeFormat('es-MX', {
+    timeZone: 'America/Mexico_City',
+    year:   'numeric',
+    month:  '2-digit',
+    day:    '2-digit',
+    hour:   '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZoneName: 'short',
+  });
+  return fmt.format(d);
+}
+
 function renderEscalationHtml(args: RenderArgs): string {
   const metaRows = [
     ['Ticket',       args.ticketId],
@@ -148,7 +173,7 @@ function renderEscalationHtml(args: RenderArgs): string {
     ['Tema',         args.topic],
     ['Responsable',  args.humanName],
     ['Usuario',      args.userId],
-    ['Fecha y hora', args.timestamp],
+    ['Fecha y hora', formatTimestampMx(args.timestamp)],
   ]
     .map(
       ([k, v]) =>
@@ -166,6 +191,17 @@ function renderEscalationHtml(args: RenderArgs): string {
         .join('')}</ul>`
     : '';
 
+  // CTA para que Emilio/Ashley/Jaime abran la conversación en el portal Meefi.
+  // En producción apuntaría a una vista de detalle del ticket; para la demo apunta
+  // al portal de empleados donde ven la actividad de Nelia.
+  const portalUrl = 'https://www.centinelia.mx/portal/5RP13tnLK6XX/empleados';
+  const ctaBlock =
+    `<div style="text-align:center;margin:24px 0 8px">` +
+    `<a href="${portalUrl}" style="display:inline-block;background:#6C3BFF;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">` +
+    `Abrir conversacion en Meefi` +
+    `</a>` +
+    `</div>`;
+
   return `
 <!DOCTYPE html>
 <html lang="es">
@@ -173,8 +209,8 @@ function renderEscalationHtml(args: RenderArgs): string {
 <body style="margin:0;padding:0;background:#f4f4f8;font-family:Inter,system-ui,sans-serif">
   <div style="max-width:640px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08)">
     <div style="background:#6C3BFF;padding:24px 32px">
-      <p style="margin:0;color:#fff;font-size:13px;opacity:.8">Centinelia · Escalamiento</p>
-      <h1 style="margin:4px 0 0;color:#fff;font-size:22px;font-weight:700">Escalamiento de Nelia</h1>
+      <p style="margin:0;color:#fff;font-size:13px;opacity:.8">Meefi Soporte · Escalamiento</p>
+      <h1 style="margin:4px 0 0;color:#fff;font-size:22px;font-weight:700">Nelia te delega un caso</h1>
     </div>
     <div style="padding:28px 32px">
       <table style="border-collapse:collapse;width:100%;margin-bottom:24px;background:#f7f5ff;border-radius:8px">
@@ -206,9 +242,11 @@ function renderEscalationHtml(args: RenderArgs): string {
             `<p style="margin:0 0 20px;color:#333;line-height:1.6">${escapeHtml(args.nextAction)}</p>`
           : ''
       }
+
+      ${ctaBlock}
     </div>
     <div style="background:#f7f5ff;padding:16px 32px;text-align:center">
-      <p style="margin:0;font-size:12px;color:#999">Nelia · Centinelia</p>
+      <p style="margin:0;font-size:12px;color:#999">Nelia · Meefi Soporte</p>
     </div>
   </div>
 </body>
