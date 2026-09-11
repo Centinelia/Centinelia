@@ -131,8 +131,6 @@ export async function POST(req: NextRequest) {
     ? `\n\n## Escenario de demo\nEsta es una conversacion del escenario ${scenario} de la demo de Meefi.`
     : '';
 
-  const systemPrompt = NELIA_BASE_SYSTEM + userContextBlock + scenarioBlock + roleKbBlock;
-
   // ── Cargar agent row para el executor context ────────────────────────────────
   // executeAgentTool necesita ctx.agent, ctx.supabase, etc.
   // Si falla la carga, seguimos con un ctx minimal (los meefi_ tools no necesitan
@@ -162,6 +160,8 @@ export async function POST(req: NextRequest) {
   const roleKbBlock = agentRow?.role_knowledge_base
     ? `\n\n## Guias operativas y reglas de escalamiento\n\n${agentRow.role_knowledge_base}`
     : '';
+
+  const systemPrompt = NELIA_BASE_SYSTEM + userContextBlock + scenarioBlock + roleKbBlock;
 
   // ── Streaming SSE ────────────────────────────────────────────────────────────
 
