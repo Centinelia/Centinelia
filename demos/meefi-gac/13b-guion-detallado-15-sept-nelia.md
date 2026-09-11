@@ -279,20 +279,23 @@ NAZRE: "El que llega no va a arrancar de cero. Niva ya esta operando debajo."
 
 ACCION: abrir la bandeja de Niva en el portal `centinelia.mx/portal/5RP13tnLK6XX/oficina/empleados`, entrar al chat de Niva.
 
-ACCION: escribir:
-> "Niva, procesa el KYB de este nuevo lead. Comercializadora Bajio SA de CV, importadora de refacciones de EEUU. Necesito recomendacion rapida."
+ACCION: escribir el prompt completo con el expediente inline. Niva necesita datos concretos para producir memo estructurado; si le mandas solo el nombre, va a pedir expediente (comportamiento defensivo correcto pero no genera el "wow output"). Alimentala con los datos y ella corre los checks:
 
-ACCION: silencio. Nelia procesa.
+> "Niva, tengo el expediente de Comercializadora Bajio SA de CV, importadora de refacciones de EEUU. Datos: representante legal Juan Perez Ramirez, INE vigente. RFC CBA850101ABC, opinion 32-D positiva al 2026-08-15, domicilio Monterrey NL vigente. BCF: Ana Sanchez Romero (65%, mexicana, residente MX) y Luis Ramirez Torres (35%, mexicano, residente MX). Volumen mensual estimado 300 mil USD, corredor USD-MXN, bancos origen BBVA-Banorte. Frecuencia semanal. Corre checks OFAC, UIF, PLD y screening PEP, dame el analisis con recomendacion para Sofia."
+
+ACCION: silencio. Niva procesa.
 
 ESPERAR: Niva genera un memo estructurado con:
-- Datos extraidos (razon social, RFC, giro, capital, accionistas)
-- Consistencia entre documentos
-- Checks de lista negra, PEP, OFAC
-- Recomendacion: NO aprobar automaticamente por presencia de beneficiario controlador con criterio de revision enhanced
+- Sintesis del caso
+- Checks: OFAC (limpio esperado), UIF/PLD (revision estandar), PEP screening (limpio en BCF con menos del 25% no aplica, pero Ana Sanchez con 65% sí)
+- Alertas: BCF con participacion > 25% activa flag de revision enhanced
+- Recomendacion: NO aprobar automaticamente por presencia de BCF con criterio de revision enhanced sobre el 65%. Escalar a Sofia con expediente pre-empacado.
 
-NAZRE cuando Niva presente el memo: "Esta es la parte que le va a importar al Head of Compliance. Niva no aprobo sola. Detecto el caso que requiere criterio humano y lo escalo con el contexto completo. El analista jr sin experiencia hubiera pasado por alto el threshold."
+NAZRE cuando Niva presente el memo: "Esta es la parte que le va a importar al Head of Compliance. Niva no aprobo sola. Detecto que Ana Sanchez, que controla el 65%, activa el threshold de revision enhanced. Un analista jr sin experiencia hubiera pasado por alto ese threshold porque son mexicanos ambos y sin flags OFAC."
 
-NAZRE: "Y esto queda en expediente auditable. El Head of Compliance llega y ya tiene historial de los casos procesados, los criterios que se aplicaron, los escalamientos."
+NAZRE: "Y esto queda en expediente auditable. El Head of Compliance llega y ya tiene historial de los casos procesados, los criterios que se aplicaron, los escalamientos. Puede calibrar los thresholds si quiere."
+
+**Nota Nazre**: si Niva pide mas info antes de decidir en vez de producir el memo, es comportamiento defensivo valido. En ese caso di verbatim: "Esta bien, mira lo que hace. Antes de decidir, te pide el expediente completo. Este es el opuesto del chatbot generico que aprueba cualquier cosa sin datos. Ahora se lo doy y proces." — y le pegas el expediente inline arriba en un segundo mensaje.
 
 ### Beat N.2 — Cierre del bloque (min 42-43)
 
