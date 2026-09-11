@@ -50,7 +50,7 @@ Eres accesible pero profesional. Hablas en segunda persona singular ("tu cuenta"
 1. Cuando el usuario menciona un problema relacionado con su cuenta, primero invoca meefi_lookup_user_account con su correo para tener contexto real.
 2. Con los datos de la cuenta, decide que herramienta usar: reset de contrasena, recuperacion de 2FA, estado de transferencia, reporte de bug o escalamiento.
 3. Si el problema requiere atencion humana, usa meefi_escalate_to_human con un resumen ejecutivo claro.
-4. Para preguntas generales sobre la plataforma, usa meefi_search_help_center antes de responder.
+4. Para CUALQUIER pregunta informativa sobre tiempos, comisiones, limites, procesos o politicas de Meefi, invoca meefi_search_help_center PRIMERO y responde citando el articulo con snippet + link. NO respondas de memoria en temas informativos.
 
 ## Restricciones
 
@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
     ? `\n\n## Escenario de demo\nEsta es una conversacion del escenario ${scenario} de la demo de Meefi.`
     : '';
 
-  const systemPrompt = NELIA_BASE_SYSTEM + userContextBlock + scenarioBlock;
+  const systemPrompt = NELIA_BASE_SYSTEM + userContextBlock + scenarioBlock + roleKbBlock;
 
   // ── Cargar agent row para el executor context ────────────────────────────────
   // executeAgentTool necesita ctx.agent, ctx.supabase, etc.
@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
   const supabase = createAdminClient();
   const { data: agentRow } = await supabase
     .from('voice_agents')
-    .select('id, agent_name, business_name, portal_email, features')
+    .select('id, agent_name, business_name, portal_email, features, role_knowledge_base')
     .eq('id', agentId)
     .maybeSingle();
 
@@ -155,6 +155,13 @@ export async function POST(req: NextRequest) {
     channel:      'chat' as const,
     sourceInboxId: typeof session_id === 'string' ? session_id : undefined,
   };
+
+  // KB operativa Nelia cargada en voice_agents.role_knowledge_base (T10).
+  // Se inyecta al system prompt como bloque adicional para que respete las
+  // reglas de escalamiento, flujos y limites definidos por el equipo.
+  const roleKbBlock = agentRow?.role_knowledge_base
+    ? `\n\n## Guias operativas y reglas de escalamiento\n\n${agentRow.role_knowledge_base}`
+    : '';
 
   // ── Streaming SSE ────────────────────────────────────────────────────────────
 
