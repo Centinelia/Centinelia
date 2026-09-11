@@ -31,6 +31,23 @@ const VALID_ACTIONS = new Set(['approve', 'reject', 'edit']);
 export async function POST(req: NextRequest, { params }: Params) {
   const { token, id } = await params;
 
+  // CSRF: validar Origin header contra el app URL configurado. Sin esto un
+  // sitio malicioso puede triggerear POST desde el navegador de Beatriz
+  // aprovechando la cookie de sesión (SameSite=Lax no protege POST cross-site
+  // en formularios simples). Toleramos requests sin Origin (curl, tests)
+  // solo si NODE_ENV !== 'production'.
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
+  const origin = req.headers.get('origin');
+  if (origin) {
+    const originHost = (() => { try { return new URL(origin).host; } catch { return null; } })();
+    const appHost = new URL(appUrl).host;
+    if (originHost !== appHost && !(originHost?.endsWith('.centinelia.mx'))) {
+      return NextResponse.json({ error: 'CSRF: origin no permitido' }, { status: 403 });
+    }
+  } else if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'CSRF: falta origin' }, { status: 403 });
+  }
+
   const cookieStore = await cookies();
   const session = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -46,6 +63,22 @@ export async function POST(req: NextRequest, { params }: Params) {
   }
   if (body.action === 'edit' && (!body.corrections || typeof body.corrections !== 'object')) {
     return NextResponse.json({ error: 'edit requiere corrections' }, { status: 400 });
+  }
+
+  // Schema estricto para corrections: solo llaves conocidas. Cualquier key
+  // extra se descarta silenciosamente (mejor UX que rechazar todo el request
+  // por un typo). Previene inyección de campos arbitrarios en el jsonb.
+  if (body.corrections) {
+    const ALLOWED = new Set([
+      'rfc', 'rfc_matched', 'total', 'productos', 'fecha',
+      'metodo_pago', 'forma_pago', 'uso_cfdi', 'serie',
+      'cliente_texto', 'notes', 'customer_notes',
+    ]);
+    const filtered: Record<string, unknown> = {};
+    for (const key of Object.keys(body.corrections)) {
+      if (ALLOWED.has(key)) filtered[key] = body.corrections[key];
+    }
+    body.corrections = filtered;
   }
 
   // Validaciones mínimas para approve/edit — evita que Beatriz apruebe una card
@@ -112,11 +145,25 @@ export async function POST(req: NextRequest, { params }: Params) {
   };
   if (body.action === 'edit') patch.corrections = body.corrections;
 
-  const { error: updErr } = await supabase
+  // Update atómico con guard de status='pending'. Si Beatriz clickea 2 veces
+  // rápido (o en 2 tabs), la segunda request no matchea (status ya cambió)
+  // y retornamos 409 sin duplicar el re-encolamiento. Sin este guard, ambas
+  // requests pasan el check de líneas 99-101 (SELECT concurrente) y ambas
+  // hacen el UPDATE + enqueue → doble XML.
+  const { data: updated, error: updErr } = await supabase
     .from('billing_pending_review')
     .update(patch)
-    .eq('id', id);
+    .eq('id', id)
+    .eq('status', 'pending')
+    .select('id');
   if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 });
+  if (!updated || updated.length === 0) {
+    // Race: otro request cambió el status entre el SELECT y el UPDATE.
+    return NextResponse.json(
+      { error: 'La card ya cambió de estado (probable doble clic). Refresca la página.' },
+      { status: 409 },
+    );
+  }
 
   // Approve/edit: además de re-encolar (fallback), intentamos disparar el
   // submit inmediato para que el XML llegue a Dropbox en segundos, no minutos
