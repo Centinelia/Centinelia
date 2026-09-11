@@ -45,6 +45,15 @@ function keyFor(emailId: string, index: number, filename: string): string {
  * Sube los N buffers de attachments para un email. Idempotente por email_id +
  * index (upsert). Retorna las keys guardadas para almacenar en attachments_meta.
  */
+/**
+ * Máximo por attachment: 50MB. Un cliente mandando un video de 100MB
+ * hacía upload silencioso, después el LLM OOM al intentar procesarlo o
+ * el pipeline quedaba con storage full. Cap explícito con marker
+ * `skipped=true` en attachments_meta para que downstream sepa que existió
+ * pero no está disponible.
+ */
+export const MAX_ATTACHMENT_BYTES = 50 * 1024 * 1024;
+
 export async function uploadBillingAttachments(
   emailId: string,
   attachments: Array<{ filename: string; contentType: string; content: Buffer; size: number }>,
@@ -53,6 +62,26 @@ export async function uploadBillingAttachments(
   const out: StoredAttachment[] = [];
   for (let i = 0; i < attachments.length; i++) {
     const att = attachments[i];
+    // Cap de tamaño ANTES de upload. No subimos ni cobramos storage por algo
+    // que downstream no puede procesar. Marker skipped=true en el meta para
+    // que el LLM sepa que el adjunto existió (contexto para responder al
+    // cliente "muy grande, mándalo por partes") sin intentar cargarlo.
+    if (att.size > MAX_ATTACHMENT_BYTES) {
+      console.warn('[uploadBillingAttachments] adjunto excede 50MB, skip:', {
+        emailId, index: i, filename: att.filename, size: att.size,
+      });
+      out.push({
+        index:       i,
+        filename:    att.filename,
+        contentType: att.contentType,
+        size:        att.size,
+        storageKey:  '',      // vacío = no está en storage
+        skipped:     true,
+        skipReason:  `Attachment excede el límite de ${MAX_ATTACHMENT_BYTES} bytes (${att.size} recibidos).`,
+      } as StoredAttachment & { skipped: boolean; skipReason: string });
+      continue;
+    }
+
     const key = keyFor(emailId, i, att.filename);
     const { error } = await supabase.storage.from(BUCKET).upload(key, att.content, {
       contentType: att.contentType,

@@ -57,8 +57,36 @@ export class DropboxClient {
       return await op();
     } catch (err) {
       const status = (err as { status?: number })?.status;
+
+      // 429 rate limit: backoff con jitter (Retry-After viene en el header a
+      // veces, pero no es fiable en el SDK; usamos 2-5s aleatorio).
+      if (status === 429) {
+        const waitMs = 2000 + Math.random() * 3000;
+        console.warn(`[DropboxClient] 429 rate limit, backoff ${Math.round(waitMs)}ms`);
+        await new Promise(r => setTimeout(r, waitMs));
+        return await op();
+      }
+
       if (status !== 401 || !this.refresh) throw err;
-      const fresh = await dropboxRefreshToken(this.refresh.refreshToken);
+
+      // Refresh access_token con refresh_token.
+      let fresh;
+      try {
+        fresh = await dropboxRefreshToken(this.refresh.refreshToken);
+      } catch (refreshErr) {
+        // Refresh también falló → refresh_token revocado o expirado. NO retry
+        // — el retry va a fallar igual y agrava el problema. Escalamos con
+        // error CRITICAL claro para que Nash / ops vean el issue.
+        console.error('[DropboxClient] CRITICAL: refresh_token invalidado. Reconecta Dropbox en portal.', {
+          message: (refreshErr as Error).message,
+        });
+        const wrapped = new Error(
+          `Dropbox refresh_token revocado o expirado. Reconecta la integración desde /portal/oficina/integraciones. (${(refreshErr as Error).message})`,
+        );
+        (wrapped as unknown as { permanent?: boolean }).permanent = true;
+        throw wrapped;
+      }
+
       this.accessToken = fresh.access_token;
       this.dbx = new Dropbox({ accessToken: fresh.access_token, fetch });
       // Persist best-effort; no bloquear al caller si la persistencia falla.

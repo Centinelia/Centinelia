@@ -152,6 +152,17 @@ export function buildAdapter(config: OrganizationIntegrationConfig): BillingAdap
             'CONTPAQi adapter with storage_backend=dropbox requires dropbox_token + dropbox_base_path'
           );
         }
+        // Path traversal guard: dropbox_base_path viene del portal, y aunque
+        // el schema del setup UI restringe a strings normales, prevenimos
+        // que un valor con `..` o path absoluto raro rompa el aislamiento
+        // entre orgs si en el futuro se comparte un mismo Dropbox app.
+        if (config.dropbox_base_path.includes('..') ||
+            !config.dropbox_base_path.startsWith('/') ||
+            config.dropbox_base_path.includes('\0')) {
+          throw new Error(
+            `dropbox_base_path inválido: "${config.dropbox_base_path}". Debe iniciar con "/" y no contener "..".`
+          );
+        }
         // Refresh opcional: si viene refresh_token en la config (hidratado por
         // el caller desde integration_accounts), DropboxClient auto-refresca
         // access tokens expirados. Sin refresh, 401 → error.

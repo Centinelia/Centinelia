@@ -131,10 +131,19 @@ export async function sendBillingMail(
 
   let ok = false;
   let provider: 'resend' | 'agent_smtp' = 'resend';
+  let permanentBounce = false;
+  let relayMessageId: string | null = null;
   if (opts.smtp) {
     // Path per-agent SMTP: nodemailer directo. No Resend, no dominio verificado
     // — sale desde el correo real del empleado (features.smtp_config).
     provider = 'agent_smtp';
+    // Audit log de tlsInsecure para tener trace si algún día lo activaron sin
+    // intención y credenciales quedaron expuestas.
+    if (opts.smtp.tlsInsecure) {
+      console.warn('[billing/mail] SMTP con tls.rejectUnauthorized=false para', {
+        host: opts.smtp.host, user: opts.smtp.username,
+      });
+    }
     try {
       const nodemailer = (await import('nodemailer')).default;
       const transporter = nodemailer.createTransport({
@@ -148,7 +157,7 @@ export async function sendBillingMail(
         ? `${opts.smtp.fromDisplay} <${opts.smtp.username}>`
         : opts.smtp.username;
       try {
-        await transporter.sendMail({
+        const info = await transporter.sendMail({
           from,
           to:      opts.to,
           subject: opts.subject,
@@ -158,7 +167,23 @@ export async function sendBillingMail(
             attachments: attachments.map(a => ({ filename: a.filename, content: a.content, encoding: 'base64' })),
           } : {}),
         });
-        ok = true;
+        // Parsear info.rejected: nodemailer marca destinatarios permanentemente
+        // rechazados (5xx SMTP) sin arrojar. Si el destinatario está en rejected,
+        // el correo NO llegó y no debemos retry — es una dirección inválida.
+        const rejected = Array.isArray(info?.rejected) ? info.rejected : [];
+        if (rejected.length > 0 && rejected.includes(opts.to)) {
+          permanentBounce = true;
+          console.error('[billing/mail] SMTP permanent bounce:', {
+            to: opts.to, rejected, response: info?.response,
+          });
+        } else {
+          ok = true;
+          // Preferir el messageId asignado por el relay SMTP (canónico) sobre
+          // uno generado local — clientes de correo agrupan hilos por ese.
+          if (typeof info?.messageId === 'string' && info.messageId.length > 0) {
+            relayMessageId = info.messageId;
+          }
+        }
       } finally {
         transporter.close();
       }
@@ -179,12 +204,22 @@ export async function sendBillingMail(
   }
 
   if (!ok) {
-    throw new Error(
-      `sendBillingMail: delivery failed for ${opts.to} / "${opts.subject}" (via ${provider})`,
+    // Distinguimos bounce permanente vs fallo transitorio. El caller (queue.ts
+    // markFailed) puede reaccionar distinto: bounce permanente → dead-letter
+    // sin retry; fallo transitorio → retry con backoff. Marcamos con una
+    // property no-enumerable para no romper la firma del error.
+    const err = new Error(
+      permanentBounce
+        ? `sendBillingMail: permanent bounce for ${opts.to} / "${opts.subject}" (via ${provider})`
+        : `sendBillingMail: delivery failed for ${opts.to} / "${opts.subject}" (via ${provider})`,
     );
+    (err as unknown as { permanent?: boolean }).permanent = permanentBounce;
+    throw err;
   }
 
-  const messageId = `<billing-${randomUUID()}@centinelia.internal>`;
+  // Preferir messageId del relay SMTP sobre uno generado local. Si no hay,
+  // caemos al UUID interno (Resend no expone su messageId a este layer).
+  const messageId = relayMessageId ?? `<billing-${randomUUID()}@centinelia.internal>`;
 
   // Ledger + audit: cobrar al pool y escribir a outbound_emails para que el
   // drift detector Nash tenga trazabilidad. Fire-and-await con log-only si
