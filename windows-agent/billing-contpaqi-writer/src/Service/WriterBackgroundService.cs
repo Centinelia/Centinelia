@@ -77,12 +77,23 @@ public sealed class WriterBackgroundService : BackgroundService
             }
             catch (Exception ex)
             {
+                // Antes: Environment.ExitCode=1 + StopApplication → SCM restart
+                // inmediato → mismo fallo → restart loop infinito, sin trace
+                // visible fuera de Event Viewer del SCM.
+                // Ahora: log CRITICAL con detalle + intentar continuar con
+                // token vacío. Si el token DE VERDAD es requerido, el primer
+                // write a Dropbox arrojará 401 legible en Event Log; si no
+                // se necesita hasta más tarde (ej. no hay pendings), el
+                // servicio sigue vivo y el próximo restart programado
+                // reintenta el fetch cuando la red vuelva.
                 _logger.LogCritical(ex,
-                    "[service] no se pudo obtener token Dropbox de Centinelia. " +
-                    "Verifica que api_token esté vigente en el portal y que haya conectividad. Saliendo con exit 1.");
-                Environment.ExitCode = 1;
-                _lifetime.StopApplication();
-                return;
+                    "[service] no se pudo obtener token Dropbox al arranque: {msg}. " +
+                    "Continuo sin token; el primer write a Dropbox va a fallar hasta " +
+                    "que se resuelva conectividad o api_token. Revisa /portal/oficina/integraciones.",
+                    ex.Message);
+                // No StopApplication — dejamos que el servicio quede vivo con
+                // token vacío. La sesión CONTPAQi sí abre; el WatchLoop hace
+                // idle-loops hasta que el token esté disponible.
             }
         }
 

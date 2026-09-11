@@ -33,6 +33,7 @@ public static class ConfigVerifier
             ("Carpeta de la empresa CONTPAQi",    () => CheckEmpresaPath(opts.EmpresaPath)),
             ("SQL Server conecta",                () => CheckSqlConnection(opts.SqlConnectionString)),
             ("Usuario/password + empresa abren",  () => CheckContpaqiSession(opts)),
+            ("Concepto FACT existe en la BD",     () => CheckConcepto(opts)),
         };
 
         var i = 0;
@@ -86,6 +87,31 @@ public static class ConfigVerifier
         if (!Directory.Exists(empresaPath))
             return new("empresa", false,
                 $"La carpeta '{empresaPath}' no existe en esta PC. Verifica en CONTPAQi → Empresa → Redefinir cuál es la ruta correcta.");
+
+        // Validar que la carpeta contiene metadata CONTPAQi. CONTPAQi Comercial
+        // deposita archivos con extensión .cfx (config) o .cfa (aliases) o .adf
+        // (data). Si no hay ninguno, probablemente la clienta apuntó a un
+        // folder vacío/equivocado y el CONTPAQi Session se colgaría o
+        // devolvería datos vacíos silenciosamente.
+        try
+        {
+            var hasCompacFiles = Directory.EnumerateFiles(empresaPath)
+                .Any(f =>
+                {
+                    var ext = Path.GetExtension(f).ToLowerInvariant();
+                    return ext is ".cfx" or ".cfa" or ".adf" or ".dbf" or ".ddf";
+                });
+            if (!hasCompacFiles)
+            {
+                return new("empresa", false,
+                    $"La carpeta '{empresaPath}' existe pero no contiene archivos CONTPAQi (.cfx/.cfa/.adf). ¿Es la ruta correcta de una empresa activa?");
+            }
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return new("empresa", false,
+                $"No tengo permisos para leer '{empresaPath}'. Corre el instalador como Administrador o dale permisos de lectura al usuario Windows.");
+        }
         return new("empresa", true, null);
     }
 
@@ -133,6 +159,57 @@ public static class ConfigVerifier
         catch (Exception ex)
         {
             return new("session", false, $"{ex.GetType().Name}: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Verifica que el concepto FACT declarado en la config existe en la BD de
+    /// CONTPAQi. Sin esto, escribir "999" (o cualquier código válido pero
+    /// inexistente en la empresa específica) pasaba silente el dry-run y
+    /// crasheaba al escribir el primer XML. Query directa a admConceptos
+    /// (tabla estándar de CONTPAQi Comercial Pro).
+    /// </summary>
+    private static CheckResult CheckConcepto(WriterServiceOptions opts)
+    {
+        if (string.IsNullOrWhiteSpace(opts.Concepto))
+            return new("concepto", false, "El código de concepto FACT está vacío.");
+        if (string.IsNullOrWhiteSpace(opts.SqlConnectionString))
+            return new("concepto", false, "SQL vacío (chequeo previo debió atrapar esto).");
+
+        try
+        {
+            var builder = new SqlConnectionStringBuilder(opts.SqlConnectionString) { ConnectTimeout = 5 };
+            using var conn = new SqlConnection(builder.ToString());
+            conn.Open();
+            // admConceptos.CCODIGOCONCEPTO en CONTPAQi Comercial. Case-sensitive
+            // por default en algunas instalaciones (usar UPPER para tolerar).
+            using var cmd = new SqlCommand(
+                "SELECT COUNT(*) FROM admConceptos WHERE UPPER(CCODIGOCONCEPTO) = UPPER(@codigo)",
+                conn);
+            cmd.Parameters.AddWithValue("@codigo", opts.Concepto);
+            var count = Convert.ToInt32(cmd.ExecuteScalar());
+            if (count == 0)
+            {
+                return new("concepto", false,
+                    $"El concepto '{opts.Concepto}' no existe en admConceptos. Abre CONTPAQi → Configuración → Conceptos y verifica el código correcto (típicamente '440' para factura CFDI).");
+            }
+            return new("concepto", true, null);
+        }
+        catch (SqlException ex)
+        {
+            // Si admConceptos no existe (BD no es CONTPAQi Comercial o versión rara),
+            // no bloqueamos — solo warning y seguimos. El error real saldrá al primer
+            // intento de escritura y el usuario verá qué es.
+            if (ex.Message.Contains("Invalid object name", StringComparison.OrdinalIgnoreCase))
+            {
+                Console.WriteLine("(warning: admConceptos no encontrada — skip check)");
+                return new("concepto", true, null);
+            }
+            return new("concepto", false, $"No pude verificar el concepto: {ex.Message.Split('\n')[0]}");
+        }
+        catch (Exception ex)
+        {
+            return new("concepto", false, $"{ex.GetType().Name}: {ex.Message}");
         }
     }
 

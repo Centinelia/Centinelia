@@ -322,6 +322,7 @@ public static class Program
                 Console.WriteLine();
                 Console.WriteLine("  (Presiona cualquier tecla para cerrar esta ventana)");
                 try { Console.ReadKey(intercept: true); } catch { }
+                LogExitCode(exeDir, 6, "empresa autodetect: 0 encontradas");
                 return 6;
             }
             else
@@ -339,44 +340,78 @@ public static class Program
                 Console.WriteLine();
                 Console.WriteLine("  (Presiona cualquier tecla para cerrar esta ventana)");
                 try { Console.ReadKey(intercept: true); } catch { }
+                LogExitCode(exeDir, 7, "empresa autodetect: múltiples encontradas");
                 return 7;
             }
         }
 
-        // 0.11.2: SQL puede venir vacío del portal (opcional). Auto-detectamos
-        // antes del check para no pedirle a Beatriz que arme el connection string.
+        // 0.11.2 → 0.11.5: SQL puede venir vacío (autodetect) O con string viejo
+        // que ya no funciona (probe + fallback autodetect + fallback interactivo).
         // Requiere que empresa_path esté presente porque de ahí sale el nombre
         // de la BD.
+        //
+        // Cambio post-incidente Ramón Leang 2026-09-10:
+        //   Antes: autodetect solo si campo vacío. Si portal traía un string
+        //   viejo con password roto, autodetect ni corría → error 5 → sesión
+        //   bloqueada 4h buscando el password. Ahora:
+        //     1. Probe explícito del string existente (si trae algo).
+        //     2. Si probe falla o está vacío → autodetect (Windows Auth + sa
+        //        con passwords conocidos).
+        //     3. Si autodetect falla → prompt interactivo pidiendo credenciales
+        //        (server, user, password).
+        //     4. Solo si TODO falla → error 5 con instrucciones claras.
         if (centineliaConfig is not null &&
-            string.IsNullOrWhiteSpace(centineliaConfig.Windows.SqlConnection) &&
             !string.IsNullOrWhiteSpace(centineliaConfig.Windows.EmpresaPath) &&
             interactive)
         {
-            Console.WriteLine();
-            Console.Write("  Auto-detectando SQL Server... ");
-            var detected = SqlAutodetect.TryDetect(
-                centineliaConfig.Windows.EmpresaPath,
-                TimeSpan.FromSeconds(3),
-                progress: _ => { /* silencioso */ });
-            if (detected is not null)
+            var currentSql = centineliaConfig.Windows.SqlConnection;
+            var currentSqlWorks = !string.IsNullOrWhiteSpace(currentSql)
+                && SqlAutodetect.Probe(currentSql!, TimeSpan.FromSeconds(3));
+
+            if (!currentSqlWorks)
             {
-                Console.WriteLine($"OK ({detected.ServerTried})");
+                if (!string.IsNullOrWhiteSpace(currentSql))
+                {
+                    Console.WriteLine();
+                    Console.WriteLine("  Aviso: la conexión SQL guardada en el portal no responde.");
+                    Console.WriteLine("  Intento auto-detectar la BD directamente en esta PC...");
+                }
+
+                Console.WriteLine();
+                Console.Write("  Auto-detectando SQL Server (Windows Auth + sa defaults)... ");
+                var detected = SqlAutodetect.TryDetect(
+                    centineliaConfig.Windows.EmpresaPath,
+                    TimeSpan.FromSeconds(3),
+                    progress: _ => { /* silencioso */ });
+
+                if (detected is null)
+                {
+                    Console.WriteLine("no encontrada");
+                    Console.WriteLine();
+                    Console.WriteLine("  No encontré una combinación conocida. Te pido las credenciales SQL");
+                    Console.WriteLine("  directamente. (Si no las sabes, pregunta al distribuidor CONTPAQi.)");
+                    Console.WriteLine();
+                    detected = PromptSqlCredentialsInteractive(centineliaConfig.Windows.EmpresaPath);
+                }
+
+                if (detected is null)
+                {
+                    Console.WriteLine();
+                    Console.WriteLine("  No pude conectar a la BD CONTPAQi con las credenciales dadas.");
+                    Console.WriteLine("  Ve al portal → CONTPAQi → 'Conexión SQL Server' y ponlo manualmente,");
+                    Console.WriteLine("  o pregunta al distribuidor CONTPAQi el usuario/password del SQL.");
+                    Console.WriteLine();
+                    Console.WriteLine("  (Presiona cualquier tecla para cerrar esta ventana)");
+                    try { Console.ReadKey(intercept: true); } catch { }
+                    LogExitCode(exeDir, 5, "SQL autodetect + prompt interactivo agotaron opciones");
+                    return 5;
+                }
+
+                Console.WriteLine($"  ✓ Conectado ({detected.ServerTried} vía {detected.AuthMode})");
                 centineliaConfig = centineliaConfig with
                 {
                     Windows = centineliaConfig.Windows with { SqlConnection = detected.ConnectionString },
                 };
-            }
-            else
-            {
-                Console.WriteLine("no encontrada");
-                Console.WriteLine();
-                Console.WriteLine("  No pude conectar a ninguna instancia SQL local con los defaults comunes.");
-                Console.WriteLine("  Ve al portal → CONTPAQi → 'Conexión SQL Server' y ponlo manualmente.");
-                Console.WriteLine("  Después descarga el zip de nuevo y vuelve a doble-clickear el EXE.");
-                Console.WriteLine();
-                Console.WriteLine("  (Presiona cualquier tecla para cerrar esta ventana)");
-                try { Console.ReadKey(intercept: true); } catch { }
-                return 5;
             }
         }
 
@@ -646,6 +681,80 @@ public static class Program
             if (input == "s" || input == "si" || input == "sí" || input == "y" || input == "yes") return true;
             if (input == "n" || input == "no") return false;
             Console.WriteLine("    Responde S o N.");
+        }
+    }
+
+    /// <summary>
+    /// Prompt interactivo cuando SqlAutodetect no encuentra combinación conocida.
+    /// Pide server, user y password. Ofrece defaults sensatos (`.\COMPAC`, `sa`).
+    /// Hasta 3 intentos antes de rendirse (evita loop infinito si Beatriz no
+    /// conoce las credenciales).
+    /// </summary>
+    private static SqlAutodetect.DetectedConnection? PromptSqlCredentialsInteractive(string empresaPath)
+    {
+        for (var attempt = 1; attempt <= 3; attempt++)
+        {
+            Console.WriteLine($"  Intento {attempt}/3:");
+            Console.Write(@"    Instancia SQL Server [.\COMPAC]: ");
+            var server = (Console.ReadLine() ?? string.Empty).Trim();
+            if (string.IsNullOrEmpty(server)) server = @".\COMPAC";
+
+            Console.Write("    Usuario SQL [sa]: ");
+            var user = (Console.ReadLine() ?? string.Empty).Trim();
+            if (string.IsNullOrEmpty(user)) user = "sa";
+
+            Console.Write("    Password: ");
+            var password = ReadPasswordMasked();
+
+            Console.Write($"    Conectando a {server} como {user}... ");
+            var detected = SqlAutodetect.TryWithCredentials(empresaPath, server, user, password, TimeSpan.FromSeconds(5));
+            if (detected is not null)
+            {
+                Console.WriteLine("OK");
+                return detected;
+            }
+            Console.WriteLine("falló");
+            Console.WriteLine("    (server no responde, usuario/password inválido, o BD inexistente)");
+            Console.WriteLine();
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Escribe una entrada al log de exit-codes (writer-exits.log) junto al EXE
+    /// antes de retornar códigos 4-7. Sin este trace, la clienta ve "el
+    /// EXE se cerró" y no queda evidencia. El log se rotará solo (append
+    /// mode, tamaño natural). En Production existe EventLog vía Serilog,
+    /// pero solo si el Host arranca — para los exit codes tempranos (autodetect
+    /// fallido, empresa ambiguous, wizard incompleto) necesitamos este fallback.
+    /// </summary>
+    private static void LogExitCode(string exeDir, int code, string reason)
+    {
+        try
+        {
+            var path = Path.Combine(exeDir, "writer-exits.log");
+            var line = $"[{DateTime.UtcNow:yyyy-MM-ddTHH:mm:ssZ}] exit={code} reason=\"{reason}\"" +
+                       $" user={Environment.UserName} machine={Environment.MachineName}" +
+                       Environment.NewLine;
+            File.AppendAllText(path, line);
+        }
+        catch { /* logging must never crash the shutdown path */ }
+    }
+
+    /// <summary>Lee password con caracteres enmascarados. Fallback a ReadLine si stdin redirigido.</summary>
+    private static string ReadPasswordMasked()
+    {
+        if (Console.IsInputRedirected)
+        {
+            return Console.ReadLine() ?? string.Empty;
+        }
+        var sb = new System.Text.StringBuilder();
+        while (true)
+        {
+            var key = Console.ReadKey(intercept: true);
+            if (key.Key == ConsoleKey.Enter) { Console.WriteLine(); return sb.ToString(); }
+            if (key.Key == ConsoleKey.Backspace) { if (sb.Length > 0) sb.Length--; continue; }
+            if (!char.IsControl(key.KeyChar)) sb.Append(key.KeyChar);
         }
     }
 
