@@ -159,7 +159,11 @@ export function buildEmployeeTools(toolsCtx: ToolsContext): EmployeeTool[] {
           supabase,
           integrationId: ctx.integrationId,
         });
-        return extractNoteFromImage(found.buffer, found.mimeType, visionCtx);
+        // Pasar billing para que la llamada Anthropic quede loggeada en
+        // llm_call_log + se cobre al pool. Sin esto, cada foto vía tool
+        // no generaba trace (spike de vision 07-sep repetible).
+        return extractNoteFromImage(found.buffer, found.mimeType, visionCtx,
+          agentId ? { agentId, referenceId: emailId, labelPrefix: 'Vision extract (single)' } : undefined);
       },
     },
 
@@ -195,7 +199,8 @@ export function buildEmployeeTools(toolsCtx: ToolsContext): EmployeeTool[] {
           supabase,
           integrationId: ctx.integrationId,
         });
-        return extractRemisionesFromImage(found.buffer, found.mimeType, visionCtx);
+        return extractRemisionesFromImage(found.buffer, found.mimeType, visionCtx,
+          agentId ? { agentId, referenceId: emailId, labelPrefix: 'Vision extract (multi)' } : undefined);
       },
     },
 

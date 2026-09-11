@@ -22,6 +22,26 @@ vi.mock('@anthropic-ai/sdk', () => {
   return { default: MockAnthropic };
 });
 
+// --- Mock de normalizeImageForVision ---
+// Sharp con failOn:'error' (endurecido 2026-09-11) rechaza los buffers
+// dummy que usaban los tests (Buffer.from('fake-image')). Mockeamos el
+// normalize para que devuelva un buffer válido sin ejercer Sharp real.
+vi.mock('../image-normalize', () => ({
+  normalizeImageForVision: vi.fn(async (input: { buffer: Buffer; mimeType: string }) => ({
+    // Passthrough del mimeType para que los tests que aseveran preservación
+    // del mime original sigan funcionando. La normalización real siempre
+    // sale como image/jpeg, pero para tests el LLM ni ejecuta.
+    mimeType: input.mimeType,
+    buffer:   input.buffer,
+    original: { mimeType: input.mimeType, bytes: input.buffer.length, width: null, height: null, orientation: null },
+    normalized: { width: 800, height: 600 },
+    outputBytes: input.buffer.length,
+  })),
+  ImageNormalizeError: class extends Error {
+    constructor(msg: string, public code: string) { super(msg); }
+  },
+}));
+
 // Importar despues del mock
 import { extractNoteFromImage, extractRemisionesFromImage } from '../extract';
 
@@ -84,7 +104,9 @@ describe('extractRemisionesFromImage (multi)', () => {
   });
 
   it('rechaza JSON sin remisiones[]', async () => {
-    mockCreate.mockResolvedValueOnce(makeResponse('{"foo": "bar"}'));
+    // Cover retry: mockResolvedValue (no Once) para que la 2ª pasada con Opus
+    // también reciba el mismo mal JSON — así el error final sigue matcheando.
+    mockCreate.mockResolvedValue(makeResponse('{"foo": "bar"}'));
     const buf = Buffer.from('fake-image');
     await expect(extractRemisionesFromImage(buf, 'image/jpeg')).rejects.toThrow(
       /missing remisiones/,
@@ -92,7 +114,9 @@ describe('extractRemisionesFromImage (multi)', () => {
   });
 
   it('rechaza texto no-JSON', async () => {
-    mockCreate.mockResolvedValueOnce(makeResponse('Lo siento, no puedo leer.'));
+    // Cover retry: mockResolvedValue (no Once) — retry con Opus también recibe
+    // el mismo prose y el segundo intento también falla con el mismo motivo.
+    mockCreate.mockResolvedValue(makeResponse('Lo siento, no puedo leer.'));
     const buf = Buffer.from('fake-image');
     await expect(extractRemisionesFromImage(buf, 'image/jpeg')).rejects.toThrow(
       /non-JSON or missing remisiones/,

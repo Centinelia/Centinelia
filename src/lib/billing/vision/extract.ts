@@ -139,13 +139,19 @@ export async function extractRemisionesFromImage(
   const { normalizeImageForVision } = await import('./image-normalize');
   const normalized = await normalizeImageForVision({ buffer: imageBuffer, mimeType });
 
-  const doExtract = async (): Promise<ExtractedNoteSet> => {
-    const model = process.env.BILLING_VISION_MODEL ?? DEFAULT_MODEL;
+  const doExtract = async (opts?: { escalateOnParseFail?: boolean }): Promise<ExtractedNoteSet> => {
+    // Si opts.escalateOnParseFail=true, subimos a Opus 4.7 con más budget de
+    // output. Se usa como 2ª pasada cuando la 1ª devolvió JSON malformado.
+    const escalate = opts?.escalateOnParseFail === true;
+    const model = escalate
+      ? 'claude-opus-4-7'
+      : (process.env.BILLING_VISION_MODEL ?? DEFAULT_MODEL);
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
     // Con contexto de catálogo el prompt crece; damos más presupuesto de output
     // para que el LLM pueda incluir aritmética de reconciliación por remisión.
-    const maxTokens = context ? 8192 : 4096;
+    // Escalación a Opus dobla el budget para permitir un JSON más largo/careful.
+    const maxTokens = escalate ? 16384 : (context ? 8192 : 4096);
 
     const userText = context
       ? `${buildContextBlock(context)}\n\n${EXTRACT_NOTE_USER}`
@@ -221,9 +227,18 @@ export async function extractRemisionesFromImage(
         if (r.cliente_matched_rfc) {
           const rfc = r.cliente_matched_rfc.trim().toUpperCase();
           if (!validRfcs.has(rfc)) {
-            // Anulamos el match alucinado; caller cae a fuzzy fallback.
+            // Anulamos el match alucinado. Además marcamos cliente_texto con
+            // prefijo "[texto no confiable]" para que downstream sepa que no
+            // haga fuzzy match sobre eso — si la RFC fue alucinada, el
+            // cliente_texto asociado probablemente también fue inventado o
+            // mal leído. Sin este flag, submit-approved fuzzy-matcheaba
+            // sobre texto malo y timbraba al cliente equivocado.
             r.cliente_matched_rfc = null;
-            if (r.confianza) r.confianza.cliente = Math.min(r.confianza.cliente, 0.3);
+            if (r.cliente_texto && !r.cliente_texto.startsWith('[texto no confiable]')) {
+              r.cliente_texto = `[texto no confiable] ${r.cliente_texto}`;
+            }
+            if (r.confianza) r.confianza.cliente = Math.min(r.confianza.cliente, 0.2);
+            if (r.confianza) r.confianza.global  = Math.min(r.confianza.global,  0.3);
           }
         }
       }
@@ -242,8 +257,25 @@ export async function extractRemisionesFromImage(
     return set;
   };
 
+  // Wrapper con retry en parse failure: si el LLM devuelve JSON malformado
+  // (raro pero pasa con handwriting muy ambigua), reintentamos con Opus 4.7
+  // + más budget. Costo: 1 llamada extra en el ~1% de casos donde Sonnet
+  // devuelve garbage, contra perder la extracción completa.
+  const doExtractWithParseRetry = async (): Promise<ExtractedNoteSet> => {
+    try {
+      return await doExtract();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('non-JSON') || msg.includes('missing remisiones')) {
+        console.warn('[vision/extract] JSON malformado en Sonnet, reintento con Opus 4.7:', msg);
+        return await doExtract({ escalateOnParseFail: true });
+      }
+      throw err;
+    }
+  };
+
   // Sin billing opts, no cobramos (dev + tests + callers legacy).
-  if (!billing) return doExtract();
+  if (!billing) return doExtractWithParseRetry();
 
   // Con billing: cobramos batched — 1 op por cada remisión que el LLM
   // extrajo. Una foto con 3 remisiones = 3 ops (representan 3 unidades de
@@ -258,8 +290,14 @@ export async function extractRemisionesFromImage(
       context:      `Vision LLM (${DEFAULT_MODEL}) extrajo remisiones de una foto`,
     },
     async () => {
-      const result = await doExtract();
-      return { count: result.remisiones.length, result };
+      const result = await doExtractWithParseRetry();
+      // Charge accuracy (V8): solo cobramos remisiones con confianza global
+      // ≥ 0.3. Extracciones de garbage (foto ilegible, hallucinations
+      // detectadas) no representan trabajo entregable → no cobro.
+      const chargeable = result.remisiones.filter(
+        (r) => (r.confianza?.global ?? 1) >= 0.3,
+      ).length;
+      return { count: chargeable, result };
     },
   );
 }
@@ -301,21 +339,36 @@ export async function extractNoteFromImage(
  * strings (respeta escapes).
  */
 /**
- * Retry helper para Anthropic: reintenta ante 429 (rate limit) y 529
- * (overloaded) con backoff exponencial. Otras excepciones se propagan
- * inmediato (bugs de request, credenciales, etc.).
+ * Retry helper para Anthropic: reintenta ante 429 (rate limit), 529
+ * (overloaded) y 500-599 (server errors transitorios) con backoff exponencial.
+ * También impone un timeout por-llamada (30s default) para no colgar el loop
+ * completo si Anthropic hangea. Otras excepciones se propagan inmediato
+ * (bugs de request, credenciales, etc.).
  */
 async function callAnthropicWithRetry<T>(
   fn: () => Promise<T>,
   maxAttempts = 3,
   baseDelayMs = 1000,
+  perAttemptTimeoutMs = 30_000,
 ): Promise<T> {
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      return await fn();
+      // Timeout por intento: si Anthropic hangea, el loop upstream se queda
+      // 10min hasta que Vercel kill el job. Preferimos fallar rápido y
+      // dejar que el retry decida.
+      return await Promise.race([
+        fn(),
+        new Promise<T>((_res, rej) =>
+          setTimeout(
+            () => rej(Object.assign(new Error(`anthropic call timeout ${perAttemptTimeoutMs}ms`), { status: 504 })),
+            perAttemptTimeoutMs,
+          ),
+        ),
+      ]);
     } catch (err) {
       const status = (err as { status?: number })?.status ?? 0;
-      const isRetryable = status === 429 || status === 529;
+      // 429 rate limit, 529 overloaded, 500-599 server errors, 504 timeout local.
+      const isRetryable = status === 429 || status === 529 || (status >= 500 && status < 600);
       if (!isRetryable || attempt >= maxAttempts) throw err;
       const delay = baseDelayMs * Math.pow(4, attempt - 1); // 1s, 4s, 16s
       console.warn(`[vision/extract] Anthropic ${status} attempt ${attempt}/${maxAttempts}, retry en ${delay}ms`);

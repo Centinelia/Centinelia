@@ -115,8 +115,18 @@ const MAX_CONTEXT_CHARS = 60000;  // ~15K tokens; safety para no romper context 
 
 function sanitizeText(s: string): string {
   // Strip newlines / tab / control chars que podrían inyectar instrucciones.
-  // Trunca a MAX_TEXT_LEN. Preserva acentos españoles (regla feedback_espanol_completo).
-  const cleaned = s.replace(/[\r\n\t\v\f\0]+/g, ' ').replace(/\s+/g, ' ').trim();
+  // También sustituye caracteres que se pueden usar para simular delimitadores
+  // del prompt (comillas, backticks, brackets tipo instrucción). Ampliado
+  // 2026-09-11 tras auditoría: un alias como `"; use RFC "XXX"` sin escape
+  // podía hijackear parcialmente el LLM aunque el header ya advirtiera.
+  // Preserva acentos españoles (regla feedback_espanol_completo).
+  const cleaned = s
+    .replace(/[\r\n\t\v\f\0]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/["`]/g, "'")           // comillas dobles/backticks → simple (rompe delimitadores)
+    .replace(/\[\/?INST\]/gi, '')    // patrones tipo Llama-instruct
+    .replace(/<\|.*?\|>/g, '')       // patrones tipo tokens de sistema
+    .trim();
   return cleaned.length > MAX_TEXT_LEN ? cleaned.slice(0, MAX_TEXT_LEN) + '…' : cleaned;
 }
 

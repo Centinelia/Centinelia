@@ -76,10 +76,26 @@ export async function normalizeImageForVision(
     );
   }
 
+  // Guard de tamaño ANTES de decodificar: 50MB max input. Sin este cap una
+  // imagen corrupta gigante puede OOM en Sharp antes de arrojar.
+  const MAX_INPUT_BYTES = 50 * 1024 * 1024;
+  if (attachment.buffer.length > MAX_INPUT_BYTES) {
+    throw new ImageNormalizeError(
+      `image too large (${attachment.buffer.length} bytes > ${MAX_INPUT_BYTES}). Cliente debe reducir resolución o mandar por partes.`,
+      'unsupported_mime',
+    );
+  }
+
   let img: Sharp;
   let originalMeta: Metadata;
   try {
-    img = sharp(attachment.buffer, { failOn: 'none' });
+    // failOn: 'error' (default en versiones nuevas de Sharp) — rechaza
+    // imágenes corruptas/truncadas en vez de decodificar a garbage. Antes
+    // usábamos 'none' para tolerar HEIC de iPhone con warnings de EXIF,
+    // pero eso ocultaba decoders fallidos que llegaban a Anthropic como
+    // buffer negro (costo real, cero utilidad). Ahora si Sharp no puede
+    // decodificar, arrojamos con detalle y el caller escala.
+    img = sharp(attachment.buffer, { failOn: 'error' });
     originalMeta = await img.metadata();
   } catch (err) {
     throw new ImageNormalizeError(
