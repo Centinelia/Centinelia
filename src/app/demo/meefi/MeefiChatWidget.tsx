@@ -21,6 +21,12 @@ export function MeefiChatWidget({ scenario }: { scenario: Scenario }) {
   async function send(text: string) {
     if (!text.trim() || loading) return;
     const userMsg: Msg = { role: 'user', content: text };
+    // Historial acumulado + nuevo mensaje del usuario. Nelia necesita el
+    // contexto multi-turn para bloques como transferencia urgente (turn 2
+    // depende del status revelado en turn 1) y 2FA recovery (checklist
+    // presentado en turn 1, evidencia recibida en turn 2, escalamiento
+    // en turn 3).
+    const history: Msg[] = [...messages.filter(m => m.content.trim() !== ''), userMsg];
     setMessages(m => [...m, userMsg, { role: 'assistant', content: '' }]);
     setInput('');
     setLoading(true);
@@ -30,7 +36,7 @@ export function MeefiChatWidget({ scenario }: { scenario: Scenario }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: text,
+          messages: history,
           scenario: scenario.id,
           user_email: scenario.user_email,
           session_id: sessionId.current,
