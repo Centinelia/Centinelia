@@ -14,16 +14,16 @@ export async function GET(req: NextRequest) {
   const rawState = req.nextUrl.searchParams.get('state') ?? '';
   const error = req.nextUrl.searchParams.get('error');
 
-  // Extrae token del rawState antes de verificar, para no redirigir a /portal/ (404).
-  const tokenFromRaw = rawState.includes('.') ? rawState.split('.')[0] : rawState;
-  const backToPortal = (params: string) =>
-    tokenFromRaw
-      ? `${appUrl}/portal/${tokenFromRaw}?${params}#integraciones`
-      : `${appUrl}/portal/login?${params}`;
+  // Pre-verify redirects: /portal/login SIEMPRE (nunca usar rawState.token
+  // porque es untrusted URL param). Solo después de verifyOAuthState podemos
+  // confiar en el token que trae el state — antes de eso, un atacante puede
+  // meter cualquier token y hacer que el usuario aterrice en un portal ajeno
+  // o que se logueen tokens ajenos.
+  const loginRedirect = (params: string) => `${appUrl}/portal/login?${params}`;
 
   if (error || !code || !rawState) {
     console.warn('[dropbox-callback] missing params', { hasCode: !!code, hasState: !!rawState, error });
-    return NextResponse.redirect(backToPortal('tab=organizacion&dropbox=error'));
+    return NextResponse.redirect(loginRedirect('dropbox=error'));
   }
 
   const stateCheck = verifyOAuthState(req, 'dropbox', rawState);
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
       reason:    stateCheck.reason,
       hasCookie: !!req.cookies.get('oauth_state')?.value,
     });
-    return NextResponse.redirect(backToPortal('tab=organizacion&dropbox=csrf_nonce'));
+    return NextResponse.redirect(loginRedirect('dropbox=csrf_nonce'));
   }
   const state = stateCheck.portalToken;
 
@@ -81,7 +81,11 @@ export async function GET(req: NextRequest) {
     clearOAuthState(successRes);
     return successRes;
   } catch (err) {
-    console.error('[dropbox-callback] error:', err);
+    // Sanitizar: NO loggear el objeto completo (puede contener tokens de la
+    // respuesta de Dropbox). Solo mensaje y code.
+    const msg  = err instanceof Error ? err.message : String(err);
+    const code = (err as { code?: string })?.code;
+    console.error('[dropbox-callback] error:', { message: msg, code });
     return NextResponse.redirect(`${appUrl}/portal/${state}?tab=organizacion&dropbox=error#integraciones`);
   }
 }

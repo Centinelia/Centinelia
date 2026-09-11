@@ -32,19 +32,16 @@ export async function GET(req: NextRequest, { params }: Params) {
   const rawState = req.nextUrl.searchParams.get('state') ?? '';
   const oauthErr = req.nextUrl.searchParams.get('error');
 
-  // Extrae token + agentId del rawState antes de verificar, así los redirects
-  // de error apuntan al portal correcto y no a /portal/ (que es 404).
-  // Formato esperado: `${token}::agent-storage::${agentId}.${nonce}`.
-  const stateNoNonce = rawState.includes('.') ? rawState.split('.')[0] : rawState;
-  const [tokenFromState, markerFromState, agentIdFromState] = stateNoNonce.split('::');
-  const backToPortal = (params: string) =>
-    tokenFromState
-      ? `${appUrl}/portal/${tokenFromState}?${params}#integraciones`
-      : `${appUrl}/portal/login?${params}`;
+  // Pre-verify redirects: /portal/login SIEMPRE (nunca usar rawState porque
+  // es untrusted URL param). Un atacante puede meter cualquier token/agentId
+  // en el state y hacer que el usuario aterrice en un portal ajeno o que se
+  // loguee un token ajeno. Solo confiamos en stateCheck.portalToken DESPUÉS
+  // de verifyOAuthState.
+  const loginRedirect = (params: string) => `${appUrl}/portal/login?${params}`;
 
   if (!provider || oauthErr || !code || !rawState) {
     console.warn('[storage-callback] missing params', { provider, hasCode: !!code, hasState: !!rawState, oauthErr });
-    return NextResponse.redirect(backToPortal('tab=organizacion&storage=error'));
+    return NextResponse.redirect(loginRedirect('storage=error'));
   }
 
   const stateCheck = verifyOAuthState(req, NONCE_TAG[provider], rawState);
@@ -55,13 +52,16 @@ export async function GET(req: NextRequest, { params }: Params) {
       expectedTag: NONCE_TAG[provider],
       hasCookie:   !!req.cookies.get('oauth_state')?.value,
     });
-    return NextResponse.redirect(backToPortal('tab=organizacion&storage=csrf_nonce'));
+    return NextResponse.redirect(loginRedirect('storage=csrf_nonce'));
   }
 
   const [token, marker, agentId] = stateCheck.portalToken.split('::');
   if (!token || marker !== 'agent-storage' || !agentId) {
-    console.warn('[storage-callback] state malformed:', stateCheck.portalToken);
-    return NextResponse.redirect(backToPortal('tab=organizacion&storage=error'));
+    // El state pasó verifyOAuthState (nonce válido) pero el formato interno
+    // es inesperado. NO loggear el state completo — puede contener el token
+    // del portal como credencial.
+    console.warn('[storage-callback] state malformed');
+    return NextResponse.redirect(loginRedirect('storage=error'));
   }
 
   // Ruta correcta: /configurar acepta ?empleado_id=X como query param, no path
@@ -113,7 +113,7 @@ export async function GET(req: NextRequest, { params }: Params) {
       metadata:      {},
     }, { onConflict: 'agent_id,provider,capability' });
     if (upsertErr) {
-      console.error('[storage-callback] upsert failed:', upsertErr);
+      console.error('[storage-callback] upsert failed:', { message: upsertErr.message, code: upsertErr.code });
       return NextResponse.redirect(backTo);
     }
 
@@ -123,7 +123,11 @@ export async function GET(req: NextRequest, { params }: Params) {
     clearOAuthState(successRes);
     return successRes;
   } catch (err) {
-    console.error('[storage-callback] error:', err);
+    // Sanitizar: NO loggear el objeto completo (puede contener tokens de la
+    // respuesta del provider). Solo mensaje y code.
+    const msg  = err instanceof Error ? err.message : String(err);
+    const code = (err as { code?: string })?.code;
+    console.error('[storage-callback] error:', { message: msg, code });
     return NextResponse.redirect(backTo);
   }
 }

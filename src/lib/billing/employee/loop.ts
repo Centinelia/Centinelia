@@ -156,6 +156,22 @@ export class BillingEmployee {
 
       // Ramón Leang fast-path (retail, Público General, 1 producto).
       const ramonConfigRaw = agentFeatures?.['ramon_leang_config'] as Record<string, unknown> | undefined;
+      const tortMappingRaw = agentFeatures?.['tortilleria_mapping'];
+
+      // Guard: los flows son mutuamente excluyentes. Un agente NO puede ser
+      // Nala Tortillería y Nala Ramón Leang al mismo tiempo (razones distintas
+      // de negocio y config fiscal distinta). Si ambos están set, ramon-leang
+      // gana por historia del código (bug pre-2026-09-11), pero logueamos un
+      // warning fuerte para que el operador lo apague en el features.
+      if (excelMetas.length > 0 && ramonConfigRaw && tortMappingRaw) {
+        console.error('[billing.loop] FEATURE_CONFLICT: agent tiene ramon_leang_config Y tortilleria_mapping. Prevalece ramon_leang. Deshabilita uno en voice_agents.features.', {
+          agent_id:     this.config.agentId,
+          portal_email: this.config.portalEmail,
+          email_id:     emailId,
+        });
+        result.errors.push('feature_conflict: agent tiene ramon_leang_config + tortilleria_mapping activos. Solo se ejecutó ramon-leang.');
+      }
+
       if (excelMetas.length > 0 && this.config.agentId && ramonConfigRaw && typeof ramonConfigRaw === 'object') {
         const { loadBillingAttachments } = await import('../storage/attachments');
         const withKeys = excelMetas
@@ -168,9 +184,15 @@ export class BillingEmployee {
         })));
 
         // Calcular rango semana anterior (lun-dom pasado) para no reprocesar
-        // semanas viejas del Excel maestro. Cron martes = semana pasada.
-        const hoy = new Date();
-        const diaSemana = hoy.getUTCDay(); // 0=dom, 1=lun...
+        // semanas viejas del Excel maestro. Cron martes MX = semana pasada.
+        //
+        // Ojo timezone: el cron corre en UTC (Vercel), pero el negocio opera
+        // en México (UTC-6, sin DST desde 2022 para Monterrey/Nuevo León).
+        // Si calculamos en UTC, un cron que fire antes de las 06:00 UTC del
+        // martes ve martes UTC pero México todavía está en lunes → semana
+        // anterior queda 2 días off. Convertimos a hora MX antes de calcular.
+        const hoy = new Date(Date.now() - 6 * 60 * 60 * 1000);
+        const diaSemana = hoy.getUTCDay(); // 0=dom, 1=lun... (ya en hora MX)
         const lunPasado = new Date(hoy);
         lunPasado.setUTCDate(hoy.getUTCDate() - diaSemana - 6);
         const domPasado = new Date(lunPasado);
@@ -178,8 +200,23 @@ export class BillingEmployee {
         const iso = (d: Date) => d.toISOString().slice(0, 10);
 
         const { runRamonLeangFlow } = await import('../ramon-leang/excel-flow');
+        const { isValidFormaPagoSat } = await import('../ramon-leang/pipeline');
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const rlConfig = ramonConfigRaw as any;
+        // Normaliza formaPago: si viene inválido en config (typo, campo vacío,
+        // valor no-SAT), cae a '01' efectivo con warning. Sin este guard, un
+        // 'transferencia' en vez de '03' se colaba silencioso al pipeline y
+        // el CFDI salía con formaPago default.
+        const formaPagoRaw = rlConfig.formaPago;
+        const formaPagoSafe = isValidFormaPagoSat(formaPagoRaw) ? formaPagoRaw : '01';
+        if (formaPagoRaw && !isValidFormaPagoSat(formaPagoRaw)) {
+          console.warn('[billing.loop] ramon_leang_config.formaPago inválido, usando 01 efectivo:', {
+            agent_id: this.config.agentId,
+            formaPago_recibido: formaPagoRaw,
+          });
+          result.errors.push(`config: formaPago="${formaPagoRaw}" no es código SAT válido, usé 01 efectivo`);
+        }
+
         const rlResult = await runRamonLeangFlow({
           portalEmail: this.config.portalEmail,
           emailId,
@@ -197,7 +234,7 @@ export class BillingEmployee {
             codigoPostal:  rlConfig.codigoPostal ?? '',
             serie:         rlConfig.serie ?? 'RL',
             usoCFDI:       rlConfig.usoCFDI ?? 'G01',
-            formaPago:     rlConfig.formaPago ?? '01',  // efectivo default (retail público general)
+            formaPago:     formaPagoSafe,
             sku:           rlConfig.sku ?? 'VT',
             descripcion:   rlConfig.descripcion ?? 'Venta de Tortilla',
             ivaTasa:       rlConfig.ivaTasa ?? 0,
@@ -237,7 +274,7 @@ export class BillingEmployee {
       }
 
       // Tortillería fast-path (Beatriz OG, multiples clientes con RFC).
-      const tortMapping = agentFeatures?.['tortilleria_mapping'];
+      const tortMapping = tortMappingRaw;
       if (excelMetas.length > 0 && this.config.agentId && tortMapping) {
         const { getTortilleriaMapping } = await import('../tortilleria/mapping-store');
         const mapping = await getTortilleriaMapping(this.config.agentId, supabase);

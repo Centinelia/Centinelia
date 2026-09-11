@@ -4,9 +4,41 @@
 --
 -- Prerequisitos:
 --   1. La organización servicioalcliente@tortillasestrella.com.mx ya existe.
---   2. El Dropbox de la organización está conectado con refresh_token válido.
+--   2. El Dropbox de la organización está conectado con refresh_token válido
+--      en organization_integrations (type='contpaqi', legacy) O en
+--      integration_accounts per-agent. Este script prefiere legacy; si se
+--      migró todo a per-agent, hay que ajustar la subquery del Paso 2.
 --   3. Hay un CONTPAQi ya abierto en la máquina de Beatriz PV (AD2022_RAMONLEANG).
 --   4. Beatriz PV instaló el Writer v0.11.4 en su PC apuntando a AD2022_RAMONLEANG.
+--
+-- ADVERTENCIA sobre dropbox_base_path:
+--   No hay UNIQUE constraint en (portal_email, dropbox_base_path). Si accidentalmente
+--   otra integration usa '/RamonLeang' se pierde la separación de flujos.
+--   El operador debe verificar manualmente antes de correr esto.
+--
+-- Toda la operación va en 1 transacción — si el Paso 2 falla, el Paso 1 rollback.
+
+BEGIN;
+
+-- ---------------------------------------------------------------------------
+-- Paso 0: guard hard — validar que el dropbox_token existe antes de proceder.
+-- Sin esto, el Paso 2 insertaría NULL silenciosamente y el pipeline crashea
+-- en runtime al intentar subir XMLs.
+-- ---------------------------------------------------------------------------
+DO $$
+DECLARE
+  dropbox_token_val text;
+BEGIN
+  SELECT config->>'dropbox_token' INTO dropbox_token_val
+  FROM organization_integrations
+  WHERE portal_email = 'servicioalcliente@tortillasestrella.com.mx'
+    AND type = 'contpaqi'
+  LIMIT 1;
+
+  IF dropbox_token_val IS NULL OR length(dropbox_token_val) < 10 THEN
+    RAISE EXCEPTION 'setup-ramon-leang: no encontré dropbox_token en organization_integrations type=contpaqi para servicioalcliente@tortillasestrella.com.mx. Conecta Dropbox primero desde el portal o pega el token manualmente en la subquery del Paso 2.';
+  END IF;
+END$$;
 
 -- ---------------------------------------------------------------------------
 -- Paso 1: crear Nala Ramón (nuevo voice_agent con role 'facturacion' y
@@ -50,13 +82,10 @@ INSERT INTO voice_agents (
 RETURNING id, agent_name, client_email;
 
 -- ---------------------------------------------------------------------------
--- Paso 2: crear organization_integrations type='contpaqi' para Ramón Leang.
--- ADVERTENCIA: ya existe una para Tortillería Estrella con el mismo portal_email.
--- Necesitamos permitir 2 rows contpaqi por org, o usar un subtype distinto.
--- Aquí uso type='contpaqi_ramonleang' como workaround.
+-- Paso 2: crear organization_integrations type='contpaqi_ramonleang'.
+-- ADVERTENCIA: ya existe una type='contpaqi' para Tortillería Estrella
+-- con el mismo portal_email. Usamos un type distinto para separar los flujos.
 -- ---------------------------------------------------------------------------
--- OPCIÓN A (recomendada): distinto type. Requiere adaptar buildAdapter si lee
--- por type='contpaqi' estricto.
 INSERT INTO organization_integrations (
   id,
   portal_email,
@@ -90,8 +119,10 @@ ON CONFLICT (portal_email, type) DO UPDATE
 SET config = EXCLUDED.config
 RETURNING id, type;
 
+COMMIT;
+
 -- ---------------------------------------------------------------------------
--- Paso 3: verificaciones post-insert
+-- Paso 3: verificaciones post-insert (fuera de la transacción, solo lectura)
 -- ---------------------------------------------------------------------------
 SELECT
   'Nala Ramón' as check,
@@ -106,7 +137,8 @@ SELECT
   'Integration Ramón' as check,
   id, type,
   config->>'dropbox_base_path' as base_path,
-  config->'fiscal'->>'rfc_emisor' as rfc
+  config->'fiscal'->>'rfc_emisor' as rfc,
+  length(config->>'dropbox_token') > 10 as dropbox_token_ok
 FROM organization_integrations
 WHERE portal_email = 'servicioalcliente@tortillasestrella.com.mx'
   AND type = 'contpaqi_ramonleang';
