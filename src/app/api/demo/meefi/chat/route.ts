@@ -65,7 +65,18 @@ ${NELIA_TOOLS.map(t => `- ${t.name}: ${t.description}`).join('\n')}
 
 Invoca las herramientas cuando las necesites. No narres lo que vas a hacer sin invocarlas.
 
-Responde en espanol mexicano. Se concisa: 2-4 oraciones salvo que el detalle lo requiera. Sin em-dashes.`;
+Responde en espanol mexicano. Se concisa: 2-4 oraciones salvo que el detalle lo requiera. Sin em-dashes.
+
+## Formato de tus respuestas
+
+NO uses sintaxis Markdown. El chat renderiza texto plano, cualquier caracter especial se ve literal. Sigue estas reglas siempre:
+
+- No uses ** para negrita. No uses * para italica. No uses # para titulos. No uses \` para codigo inline.
+- Cuando quieras resaltar algo, usa MAYUSCULAS moderadas o simplemente pon la idea en su propia frase.
+- Cuando enumeres pasos usa "1." "2." "3." al inicio de linea, seguido de un espacio. NO agregues negritas al numero ni al texto.
+- Para separar ideas usa lineas en blanco (dos saltos de linea seguidos).
+- No uses viñetas con - ni con *. Si necesitas listar sin orden, usa punto y coma o frases independientes.
+- No uses backticks. Los ticket IDs y correos los das como texto normal ("Ticket esc_9k2p8f4x queda con Emilio").`;
 
 // ── Route ──────────────────────────────────────────────────────────────────────
 
@@ -169,12 +180,21 @@ export async function POST(req: NextRequest) {
 
   // Post-filter: elimina em/en-dashes que el modelo emite pese a las instrucciones
   const stripEmDashes = (t: string): string => t.replace(/[‒–—―−⸺⸻]/g, ', ');
+  // Post-filter: elimina sintaxis Markdown que el widget muestra literal.
+  // - **negrita** → negrita
+  // - *cursiva*  → cursiva (evita * pegados a letras)
+  // - `codigo`   → codigo
+  const stripMarkdown = (t: string): string => t
+    .replace(/\*\*([^*\n]+)\*\*/g, '$1')
+    .replace(/(?<!\*)\*(?!\*)([^*\n]+?)(?<!\*)\*(?!\*)/g, '$1')
+    .replace(/`([^`\n]+)`/g, '$1');
+  const sanitize = (t: string): string => stripMarkdown(stripEmDashes(t));
 
   const readable = new ReadableStream({
     async start(controller) {
       const enc  = new TextEncoder();
       const send = (text: string) =>
-        controller.enqueue(enc.encode(`data: ${JSON.stringify({ text: stripEmDashes(text) })}\n\n`));
+        controller.enqueue(enc.encode(`data: ${JSON.stringify({ text: sanitize(text) })}\n\n`));
 
       type AssistantBlock =
         | { type: 'text'; text: string }
@@ -189,6 +209,12 @@ export async function POST(req: NextRequest) {
 
         const MAX_CALLS = 5;
         let callCount   = 0;
+        // Flag para insertar separador visual entre bloques de texto.
+        // Al inicio de cada wave post-tool, la respuesta llega pegada al texto
+        // anterior ("Reviso tu caso.Carlos, el reset..."). Cuando se emita el
+        // primer text_delta de una nueva wave, precedemos con "\n\n".
+        let hasEmittedTextEver = false;
+        let needsSeparatorBeforeNextText = false;
 
         while (callCount < MAX_CALLS) {
           callCount++;
@@ -256,6 +282,14 @@ export async function POST(req: NextRequest) {
               if (chunk.delta.type === 'text_delta') {
                 const blk = assistantBlocks[blockIndex];
                 if (blk?.type === 'text') {
+                  // Si venimos de una wave anterior con texto emitido y hubo
+                  // tool_use en el medio, insertar salto de línea antes del
+                  // primer chunk de texto de esta nueva wave.
+                  if (needsSeparatorBeforeNextText && hasEmittedTextEver) {
+                    send('\n\n');
+                    needsSeparatorBeforeNextText = false;
+                  }
+                  hasEmittedTextEver = true;
                   blk.text += chunk.delta.text;
                   send(chunk.delta.text);
                 }
@@ -286,6 +320,11 @@ export async function POST(req: NextRequest) {
           }[];
 
           if (!toolUseBlocks.length) break;
+
+          // Marca para que la próxima wave inserte "\n\n" antes de su primer
+          // text_delta, si ya emitimos texto en waves anteriores. Evita
+          // que "Reviso tu caso." quede pegado a "Carlos, el reset...".
+          needsSeparatorBeforeNextText = true;
 
           // Agregar mensaje del asistente con todos sus bloques
           msgs = [
