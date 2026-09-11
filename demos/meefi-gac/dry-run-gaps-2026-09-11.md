@@ -74,10 +74,26 @@ Prompt: `"Niva, procesa el KYB de este nuevo lead. Comercializadora Bajio SA de 
 Ver query: `SELECT COALESCE(SUM(amount), 0) FROM ops_ledger WHERE portal_email='meefi-demo@centinelia.mx'`.
 Endpoint no consume pool (demo gratuita per T8). Solo cuentan los correos escalados (2 en este dry run).
 
+## Ronda "arregla todo" post dry run 1 (sesión completa)
+
+Fixes adicionales shipped después de la corrida inicial:
+
+| # | Gap | Fix | Commit |
+|---|---|---|---|
+| G7-R1 | Sender/footer decían "Nelia Centinelia" | `from` explícito "Nelia · Meefi Soporte" + header + footer + h1 rebrandeado | `425cd565` |
+| G7-R2 | Timestamp UTC ISO | `formatTimestampMx` con Intl.DateTimeFormat + `America/Mexico_City` | `425cd565` |
+| G7-R3 | Sin CTA para abrir el caso | Botón "Abrir conversacion en Meefi" apunta al portal | `425cd565` |
+| G7-R4 | Provider=Resend cuando OAuth conectado | Root cause: token bindeado a Nara (primary), no a Nelia. Fix: OAuth callback bindea al `agent_id` codificado en state. Row existente reasignada via UPDATE | `ecd19693` |
+| G8 | Widget perdía historial al refresh | `sessionStorage` keyed por scenario.id, hidratación post-mount | `fdf6a024` |
+| G9 | Nash alertaba errores de tools falsos | Executors mock retornan `ok=true` con `outcome` distinto para respuestas semánticas negativas. `ok=false` reservado a errores técnicos | `fdf6a024` |
+| G-Niva | Niva pedía expediente antes de decidir | Guion 13b actualizado con expediente inline (opción B) | `6251ed7f` |
+
+Post-fix: nueva escalación de prueba (subject `esc_` a las 20:19 UTC) sale con `provider=gmail`. La bandeja Sent de `centinelia.dev@gmail.com` debería tener copia.
+
 ## Recomendaciones para dry run 2 (sábado 13)
 
-1. Confirmar Gmail OAuth: si sigue Resend, arreglar el helper `sendMeerkatHtmlEmail` para preferir gmail_oauth cuando esté disponible.
-2. Correr Bloque Niva completo desde portal, validar salida vs criterios.
+1. ~~Confirmar Gmail OAuth~~ ✓ fixed en G7-R4.
+2. Correr Bloque Niva completo desde portal con el expediente inline del guion 13b.
 3. Si tiempo, agregar 5-10 artículos más al Help Center (actualmente 15).
 4. Regla de corte martes ya no aplica: bloques 1+2+3+4 corren end-to-end verde.
 
