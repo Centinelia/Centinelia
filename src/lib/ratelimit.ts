@@ -40,6 +40,12 @@ export const limiters = {
   // Public civic-report attachments: 10 per 10 min per IP
   // (Ciudadano sube 3-5 fotos por reporte, cap por folio = 5 se hace en app.)
   civicUpload: makeRatelimit(Ratelimit.slidingWindow(10, '10 m'), 'rl:civic-upload'),
+
+  // Nala outbound tools (escalate, reply_email, enviar_correo): 15 requests
+  // per 5 min per portal_email. Protege contra prompt-injection que fuerza
+  // al LLM a mandar spam. Un correo con 8 remisiones normalmente escalates
+  // 8 veces = OK. Loop patológico > 15 en 5 min = bloqueado.
+  nalaOutbound: makeRatelimit(Ratelimit.slidingWindow(15, '5 m'), 'rl:nala-outbound'),
 };
 
 function getIp(req: NextRequest): string {

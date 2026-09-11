@@ -443,13 +443,21 @@ function findTotalColumn(colHeader: Row): number {
   return -1;
 }
 
-/** Encuentra la columna "FOLIO" (case-insensitive). Debería estar en col 1 casi siempre. */
+/**
+ * Encuentra la columna "FOLIO" (case-insensitive). Debería estar en col 1
+ * casi siempre. Si no se encuentra, retorna 1 con log de warning — sin esto
+ * un layout no estándar seguía silente con col 1 (probablemente fecha), y los
+ * folios de remisiones se leían del campo equivocado.
+ */
 function findFolioColumn(colHeader: Row): number {
   for (let c = 0; c < colHeader.length; c++) {
     const v = colHeader[c];
     if (typeof v === 'string' && v.trim().toUpperCase() === 'FOLIO') return c;
   }
-  return 1; // fallback razonable
+  const headerLabels = colHeader.slice(0, 8).map(v => typeof v === 'string' ? v.trim() : String(v ?? ''));
+  console.warn('[tortilleria-batch] findFolioColumn fallback a col=1 — no encontré "FOLIO" en primeros 8 headers:',
+    JSON.stringify(headerLabels));
+  return 1;
 }
 
 /** Encuentra la columna "SUC" o "SUCURSAL". Retorna -1 si no existe (Melendez). */

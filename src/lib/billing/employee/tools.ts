@@ -29,6 +29,26 @@ import { DailySalesSchema, PendingClientSchema } from '../excel/schemas';
 import { sendBillingMail, replyToInboundEmail } from '../mail/send';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { buildPendingPath } from '../rules/paths';
+import { limiters } from '@/lib/ratelimit';
+
+/**
+ * Rate limit outbound Nala tools (escalate, reply_email, enviar_correo) por
+ * portal_email. Protege contra prompt-injection que fuerza al LLM a mandar
+ * spam. Retorna { ok: false, error } si excede el límite; null si OK o si
+ * Redis no está configurado (fail-open para dev).
+ */
+async function checkOutboundRateLimit(portalEmail: string, toolName: string): Promise<{ ok: false; error: string } | null> {
+  if (!limiters.nalaOutbound) return null;
+  const { success, remaining, reset } = await limiters.nalaOutbound.limit(portalEmail);
+  if (!success) {
+    const secondsToReset = Math.ceil((reset - Date.now()) / 1000);
+    return {
+      ok: false,
+      error: `Rate limit alcanzado para outbound Nala (${toolName}) en ${portalEmail}. Restan ${remaining}, reset en ${secondsToReset}s. Retry o escala manual.`,
+    };
+  }
+  return null;
+}
 
 // ---------------------------------------------------------------------------
 // Tipos internos
@@ -487,10 +507,28 @@ export function buildEmployeeTools(toolsCtx: ToolsContext): EmployeeTool[] {
           ? ExcelWorkbook.empty(DailySalesSchema)
           : await ExcelWorkbook.fromBuffer(buffer, DailySalesSchema);
 
-        // Numero correlativo: filas existentes + 1.
         const existingRows = wb.getRows('Ventas');
-        const num = existingRows.length + 1;
 
+        // Dedup: si las últimas 20 rows contienen una con mismo rfc + cliente
+        // + total + productos, treat como retry del LLM (2 llamadas back-to-back
+        // por el mismo email). Best-effort: cubre el 95% de casos donde el retry
+        // ocurre dentro de la misma sesión.
+        const recent = existingRows.slice(-20);
+        const duplicate = recent.find(r => {
+          const rec = r as Record<string, unknown>;
+          return String(rec['rfc'] ?? '') === String(input.rfc)
+              && String(rec['cliente'] ?? '').trim() === String(input.cliente).trim()
+              && Math.abs(Number(rec['total'] ?? 0) - Number(input.total)) < 0.01
+              && String(rec['productos'] ?? '').trim() === String(input.productos).trim();
+        });
+        if (duplicate) {
+          return {
+            ok: true, deduped: true, fileName,
+            reason: 'ya existe una row idéntica en las últimas 20 (probable retry del loop)',
+          };
+        }
+
+        const num = existingRows.length + 1;
         wb.appendRow('Ventas', {
           num,
           hora,
@@ -578,15 +616,37 @@ export function buildEmployeeTools(toolsCtx: ToolsContext): EmployeeTool[] {
           : await ExcelWorkbook.fromBuffer(buffer, PendingClientSchema);
 
         const existingRows = wb.getRows('Pendientes');
-        const num = existingRows.length + 1;
 
+        // Dedup: si ya hay una row con misma referencia (email_id) + fecha +
+        // total + productos, skip. El LLM en retry loop puede llamar 2 veces
+        // para el mismo email → row duplicada = double-charge cuando Beatriz
+        // batchea. Se compara referencia como clave primaria y contenido
+        // para detectar duplicados exactos.
+        const referencia = input.referencia ?? emailId;
+        const duplicate = existingRows.find(r => {
+          const rec = r as Record<string, unknown>;
+          return String(rec['ventasSources'] ?? '') === String(referencia)
+              && String(rec['fecha'] ?? '') === String(fecha)
+              && Math.abs(Number(rec['total'] ?? 0) - Number(input.total)) < 0.01
+              && String(rec['productos'] ?? '').trim() === String(input.productos).trim();
+        });
+        if (duplicate) {
+          return {
+            ok: true,
+            deduped: true,
+            path: fullPath,
+            reason: 'ya existe una row con misma referencia + fecha + total + productos',
+          };
+        }
+
+        const num = existingRows.length + 1;
         wb.appendRow('Pendientes', {
           num,
           fecha,
           productos: input.productos,
           total: input.total,
           metodo: input.metodo,
-          ventasSources: input.referencia ?? emailId,
+          ventasSources: referencia,
         });
 
         const newBuffer = await wb.toBuffer();
@@ -623,6 +683,9 @@ export function buildEmployeeTools(toolsCtx: ToolsContext): EmployeeTool[] {
         required: ['to', 'subject', 'body'],
       },
       handler: async (input: { to: string; subject: string; body: string }) => {
+        // Rate limit outbound Nala (15 per 5 min por portal). Auditoría 2026-09-11.
+        const rl = await checkOutboundRateLimit(ctx.portalEmail, 'enviar_correo');
+        if (rl) return rl;
         // Whitelist de destinatario contra prompt-injection-driven spam.
         // Auditoría 2026-09-04 ronda 2.
         if (!(await isAllowedRecipient(input.to))) {
@@ -670,6 +733,8 @@ export function buildEmployeeTools(toolsCtx: ToolsContext): EmployeeTool[] {
         required: ['body'],
       },
       handler: async (input: { body: string }) => {
+        const rl = await checkOutboundRateLimit(ctx.portalEmail, 'reply_email');
+        if (rl) return rl;
         const result = await replyToInboundEmail(
           emailId,
           input.body,
@@ -788,6 +853,10 @@ export function buildEmployeeTools(toolsCtx: ToolsContext): EmployeeTool[] {
         urgency: 'high' | 'critical';
         context?: Record<string, unknown>;
       }) => {
+        // Rate limit outbound Nala (afecta el mail de escalation, no el
+        // insert de pending review — este último es interno). Auditoría 2026-09-11.
+        const rl = await checkOutboundRateLimit(ctx.portalEmail, 'escalate');
+        if (rl) return rl;
         // Persistir en billing_pending_review — 1 row por remisión.
         // Nala puede escalar un email con varias remisiones; cada una es una
         // card independiente con su propio cliente/productos/total.

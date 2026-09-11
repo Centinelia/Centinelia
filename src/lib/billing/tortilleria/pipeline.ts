@@ -143,9 +143,15 @@ function findClientEntry(
 ): ClientMappingEntry | null {
   const titulo = normalizeTitle(block.tituloBloque);
   // Match por titlePattern (case-insensitive, substring, whitespace-tolerant).
-  for (const c of mapping.clients) {
-    if (!c.titlePattern) continue;
-    if (titulo.includes(normalizeTitle(c.titlePattern))) return c;
+  // Ordenamos por longitud descendente para preferir el match MÁS ESPECÍFICO
+  // cuando dos patterns comparten prefijo (ej. "CARNES" vs "CARNES ORTIZ" —
+  // sin ordenar, "CARNES" ganaría por venir antes en el array y devolvería
+  // el código equivocado para "CARNES ORTIZ CTE 593").
+  const candidates = mapping.clients
+    .filter(c => c.titlePattern)
+    .sort((a, b) => (b.titlePattern?.length ?? 0) - (a.titlePattern?.length ?? 0));
+  for (const c of candidates) {
+    if (titulo.includes(normalizeTitle(c.titlePattern!))) return c;
   }
   return null;
 }
@@ -343,8 +349,12 @@ export function buildInvoicesFromBlocks(
       paymentMethod: 'transferencia',
       usoCFDI:       config.usoCFDIDefault,
       serie:         config.serieDefault,
+      // notes queda con trazabilidad para logs/UI (NO llega al CFDI: submit-approved
+      // filtra por origin, ver 405cd421). Si es consolidado, incluye todos los
+      // títulos originales para diagnóstico (antes solo decía "Consolidado: DCA"
+      // perdiendo cuáles sucursales).
       notes:         g.forcedCodigo
-        ? `Consolidado: ${g.forcedCodigo}`
+        ? `Consolidado: ${g.forcedCodigo} (${g.sourceBlocks.map(b => b.tituloBloque.trim()).join(' | ')})`.slice(0, 500)
         : g.sourceBlocks[0].tituloBloque.trim().slice(0, 200),
       metodoPago:    pickMetodoPago(codigo, mapping),
       // Folios de las remisiones del bloque (para trazabilidad en UI/DB).

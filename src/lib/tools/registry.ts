@@ -41,7 +41,7 @@ const TOOL_REGISTRY_BASE: Omit<ToolEntry, 'pack'>[] = [
   { name: 'leer_archivo',             description: 'Lee contenido de archivo del Drive',                    channels: A, category: 'drive',     destructive: false, gatedByRole: ['neo','nox'], gatedByFeature: null, capability: 'files', policy: policyFor('leer_archivo') },
 
   // destructive
-  { name: 'enviar_correo',            description: 'Envía correo directo (verifier antes de send)',         channels: A, category: 'comms',     destructive: true,  gatedByRole: ['nico','nelia','naia','nox','niva','noah'], gatedByFeature: null, capability: 'email', policy: policyFor('enviar_correo') },
+  { name: 'enviar_correo',            description: 'Envía correo directo (verifier antes de send)',         channels: A, category: 'comms',     destructive: true,  gatedByRole: ['nico','nelia','naia','nox','niva','noah','nala'], gatedByFeature: null, capability: 'email', policy: policyFor('enviar_correo') },
   { name: 'trigger_outbound_call',    description: 'Dispara llamada saliente (verifier antes)',             channels: A, category: 'comms',     destructive: true,  gatedByRole: ['noah'], gatedByFeature: 'outbound_calls', capability: 'phone', policy: policyFor('trigger_outbound_call') },
 
   // documents
