@@ -181,6 +181,20 @@ function buildInvoice(row: PendingRow): { invoice: BillingInvoice | null; reason
     row.fecha ||
     new Date().toISOString().slice(0, 10);
 
+  // notes → <Observaciones> del CFDI (visible al cliente). Ramón Leang lo
+  // usa (Beatriz PV escribe en la columna Observaciones del Excel y llega
+  // verbatim). Tortillería OG lo llenaba con trazabilidad interna
+  // ("Consolidado: DCA" / tituloBloque) que ahora se filtraría. Distinguimos
+  // por origin: ramon_leang_pipeline confía en extracted.notes; el resto solo
+  // emite si hay un extracted.customer_notes explícito.
+  const origin = typeof extracted['origin'] === 'string' ? extracted['origin'] : undefined;
+  const rawNotes = typeof extracted['notes'] === 'string' ? extracted['notes'] : undefined;
+  const explicitCustomer = typeof extracted['customer_notes'] === 'string'
+    ? extracted['customer_notes']
+    : undefined;
+  const invoiceNotes = explicitCustomer
+    ?? (origin === 'ramon_leang_pipeline' ? rawNotes : undefined);
+
   const invoice: BillingInvoice = {
     clientRFC:     rfc,
     date:          fechaRaw.slice(0, 10),
@@ -189,7 +203,7 @@ function buildInvoice(row: PendingRow): { invoice: BillingInvoice | null; reason
     usoCFDI:       String(corrections['uso_cfdi'] ?? extracted['uso_cfdi'] ?? 'G03'),
     serie:         String(corrections['serie'] ?? extracted['serie'] ?? 'T'),
     metodoPago:    coerceMetodoPago(corrections['metodo_pago'] ?? extracted['metodo_pago']),
-    notes:         typeof extracted['notes'] === 'string' ? extracted['notes'] : undefined,
+    notes:         invoiceNotes,
   };
   return { invoice };
 }

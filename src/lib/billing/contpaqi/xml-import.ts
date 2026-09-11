@@ -56,7 +56,23 @@ function escapeXml(value: string): string {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replace(/"/g, '&quot;')
+    // Apostrophe: safe en element content pero requerido en atributos per XML 1.0.
+    // Lo incluimos por defensa — un futuro cambio que use este helper en un
+    // atributo (ej. <Foo bar="x'y"/>) romperá si no está escapado.
+    .replace(/'/g, '&apos;');
+}
+
+/**
+ * Trunca notes al máximo permitido por CONTPAQi para <Observaciones>. El
+ * campo típicamente admite ~500 chars (varía por versión); truncamos con un
+ * sufijo visible para que Beatriz sepa que no cortó a media palabra por
+ * accidente y se dé cuenta que el texto era demasiado largo.
+ */
+const OBSERVACIONES_MAX_CHARS = 500;
+function clampObservaciones(raw: string): string {
+  if (raw.length <= OBSERVACIONES_MAX_CHARS) return raw;
+  return raw.slice(0, OBSERVACIONES_MAX_CHARS - 12).trimEnd() + '… (truncado)';
 }
 
 /**
@@ -147,8 +163,10 @@ function buildDocumento(invoice: BillingInvoice, config: XmlImportConfig): strin
   // Observaciones: texto libre del emisor que se copia al CFDI. Beatriz lo
   // escribe en la columna "Observaciones" del Excel y llega hasta aquí vía
   // BillingInvoice.notes. Solo emitimos el tag si viene con contenido.
+  // Truncamos al máximo del campo CONTPAQi para evitar rechazo silencioso
+  // del batch entero cuando alguien pega un texto largo.
   const observacionesTag = invoice.notes && invoice.notes.trim().length > 0
-    ? `      <Observaciones>${escapeXml(invoice.notes.trim())}</Observaciones>\n`
+    ? `      <Observaciones>${escapeXml(clampObservaciones(invoice.notes.trim()))}</Observaciones>\n`
     : '';
 
   return [

@@ -261,9 +261,15 @@ export async function runExcelFlow(input: ExcelFlowInput): Promise<ExcelFlowResu
   });
 
   if (rows.length > 0) {
+    // Upsert con ignoreDuplicates: cierra race condition entre 2 workers
+    // concurrentes procesando el mismo emailId. Requiere unique index
+    // uniq_billing_pending_review_email_slot (migración 20260911).
     const { error: insErr } = await input.supabase
       .from('billing_pending_review')
-      .insert(rows);
+      .upsert(rows, {
+        onConflict:       'portal_email,email_id,image_index,remision_index',
+        ignoreDuplicates: true,
+      });
     if (insErr) {
       allErrors.push({
         tituloBloque: '(insert)',

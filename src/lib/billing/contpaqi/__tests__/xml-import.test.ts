@@ -201,4 +201,52 @@ describe('buildImportXml', () => {
     const xml = buildImportXml([invoice], BASE_CONFIG);
     expect(xml).toContain('<UsoCFDI>P01</UsoCFDI>');
   });
+
+  describe('Observaciones (notes)', () => {
+    it('emite <Observaciones> escapado cuando notes tiene contenido', () => {
+      const invoice: BillingInvoice = {
+        ...SINGLE_INVOICE,
+        notes: 'Venta con descuento & promoción <especial>',
+      };
+      const xml = buildImportXml([invoice], BASE_CONFIG);
+      expect(xml).toContain('<Observaciones>Venta con descuento &amp; promoción &lt;especial&gt;</Observaciones>');
+    });
+
+    it('escapa apóstrofe en Observaciones', () => {
+      const invoice: BillingInvoice = { ...SINGLE_INVOICE, notes: "Nala's note" };
+      const xml = buildImportXml([invoice], BASE_CONFIG);
+      expect(xml).toContain('<Observaciones>Nala&apos;s note</Observaciones>');
+    });
+
+    it('NO emite <Observaciones> cuando notes viene vacío', () => {
+      const xml = buildImportXml([SINGLE_INVOICE], BASE_CONFIG);
+      expect(xml).not.toContain('<Observaciones>');
+    });
+
+    it('NO emite <Observaciones> cuando notes es solo whitespace', () => {
+      const invoice: BillingInvoice = { ...SINGLE_INVOICE, notes: '   \n\t  ' };
+      const xml = buildImportXml([invoice], BASE_CONFIG);
+      expect(xml).not.toContain('<Observaciones>');
+    });
+
+    it('trunca notes > 500 chars con sufijo visible', () => {
+      const longNote = 'A'.repeat(600);
+      const invoice: BillingInvoice = { ...SINGLE_INVOICE, notes: longNote };
+      const xml = buildImportXml([invoice], BASE_CONFIG);
+      const match = xml.match(/<Observaciones>([\s\S]*?)<\/Observaciones>/);
+      expect(match).not.toBeNull();
+      const content = match![1];
+      expect(content.length).toBeLessThanOrEqual(500);
+      expect(content).toMatch(/… \(truncado\)$/);
+    });
+
+    it('Observaciones va dentro de <Encabezado>', () => {
+      const invoice: BillingInvoice = { ...SINGLE_INVOICE, notes: 'test' };
+      const xml = buildImportXml([invoice], BASE_CONFIG);
+      // El tag Observaciones debe aparecer antes de </Encabezado>
+      const encabezadoBlock = xml.match(/<Encabezado>[\s\S]*?<\/Encabezado>/);
+      expect(encabezadoBlock).not.toBeNull();
+      expect(encabezadoBlock![0]).toContain('<Observaciones>test</Observaciones>');
+    });
+  });
 });

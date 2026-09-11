@@ -115,6 +115,14 @@ function makeSupabase(state: DbState) {
           }
           return Promise.resolve({ error: null });
         },
+        // upsert con ignoreDuplicates: en el mock tratamos igual que insert
+        // (los tests no ejercen colisiones reales; la unicidad se prueba en DB).
+        upsert(rows: Array<Record<string, unknown>>, _opts?: { onConflict?: string; ignoreDuplicates?: boolean }) {
+          if (table === 'billing_pending_review') {
+            state.pendingRows.push(...rows.map(r => ({ ...r, id: `pend-${state.pendingRows.length + rows.indexOf(r)}` })));
+          }
+          return Promise.resolve({ error: null });
+        },
         update(patch: Record<string, unknown>) {
           return {
             eq: (col: string, val: unknown) => {
