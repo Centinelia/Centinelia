@@ -255,7 +255,7 @@ export default function AgentEmailSection({ token, agentId, agentName }: { token
                     <>
                       {conn.needs_reauth && (
                         <a
-                          href={`/api/portal/${token}/email-oauth/connect?provider=${provider.id}&scope=agent`}
+                          href={`/api/portal/${token}/email-oauth/connect?provider=${provider.id}&scope=agent&agent_id=${encodeURIComponent(agentId)}`}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
                           style={{ background: '#f59e0b', color: '#000', textDecoration: 'none' }}
                         >
@@ -277,7 +277,7 @@ export default function AgentEmailSection({ token, agentId, agentName }: { token
                     </>
                   ) : (
                     <a
-                      href={`/api/portal/${token}/email-oauth/connect?provider=${provider.id}&scope=agent`}
+                      href={`/api/portal/${token}/email-oauth/connect?provider=${provider.id}&scope=agent&agent_id=${encodeURIComponent(agentId)}`}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
                       style={{ background: provider.color, color: '#fff', textDecoration: 'none' }}
                     >

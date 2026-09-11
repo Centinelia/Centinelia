@@ -30,8 +30,14 @@ export async function GET(req: NextRequest) {
     console.warn('[email-callback] OAuth state legacy format (rollout in progress)');
   }
   const portalTokenFromState = stateCheck.portalToken;
-  const isAgentScope         = portalTokenFromState.endsWith('__agent');
-  const state                = isAgentScope ? portalTokenFromState.replace(/__agent$/, '') : portalTokenFromState;
+  // Formatos soportados en el sufijo:
+  //   `<token>__agent`                  → per-agent scope sin hint (usa primary)
+  //   `<token>__agent:<uuid>`           → per-agent scope con agent_id explícito
+  //   `<token>`                         → org-level (deprecated 2026-09-04)
+  const agentScopeMatch = portalTokenFromState.match(/^(.+?)__agent(?::([0-9a-f-]{36}))?$/i);
+  const isAgentScope    = !!agentScopeMatch;
+  const state           = agentScopeMatch ? agentScopeMatch[1] : portalTokenFromState;
+  const agentIdFromState = agentScopeMatch?.[2] ?? null;
 
   try {
     const tokens = provider === 'gmail'
@@ -40,9 +46,34 @@ export async function GET(req: NextRequest) {
 
     const supabase = createAdminClient();
 
-    const agent = await getPrimaryAgentFromToken<{ id: string; portal_email: string | null }>(
-      state, 'id, portal_email', supabase,
-    );
+    // Si el state incluye agent_id explícito, usar ese agente directamente.
+    // Fallback a getPrimaryAgentFromToken (comportamiento legacy) si no viene.
+    let agent: { id: string; portal_email: string | null } | null = null;
+    if (agentIdFromState) {
+      const { data } = await supabase
+        .from('voice_agents')
+        .select('id, portal_email')
+        .eq('id', agentIdFromState)
+        .maybeSingle();
+      agent = data as { id: string; portal_email: string | null } | null;
+      // Verificar que el agente pertenece al portal token del state (defensa
+      // contra manipulación de state para bindear a un agente de otro org).
+      if (agent) {
+        const { resolveOrgFromToken } = await import('@/lib/portal/org-token');
+        const org = await resolveOrgFromToken(state);
+        if (!org || agent.portal_email !== org.portalEmail) {
+          console.warn('[email-callback] agent_id en state no matchea el org del token', {
+            agentId: agentIdFromState, orgFromToken: org?.portalEmail, agentPortal: agent.portal_email,
+          });
+          agent = null;
+        }
+      }
+    }
+    if (!agent) {
+      agent = await getPrimaryAgentFromToken<{ id: string; portal_email: string | null }>(
+        state, 'id, portal_email', supabase,
+      );
+    }
 
     if (!agent) {
       return NextResponse.redirect(`${appUrl}/portal/${state}?tab=organizacion&email=error#integraciones`);

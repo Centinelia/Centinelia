@@ -49,8 +49,19 @@ export async function GET(req: NextRequest, { params }: Params) {
 
   // scope=agent → per-agent connect from configurar page; encodes in state.
   // A-D3: nonce en cookie httpOnly. Formato: `${baseToken}${scopeSuffix}.${nonce}`
-  const scope     = req.nextUrl.searchParams.get('scope');
-  const baseToken = scope === 'agent' ? `${token}__agent` : token;
+  //
+  // Cuando scope=agent + agent_id explícito, se codifica en el sufijo como
+  // `__agent:${agent_id}` para que el callback bind el token a ese agente
+  // específico en lugar de al primary del org (Bug detectado 2026-09-11:
+  // sin agent_id explícito, el callback usaba getPrimaryAgentFromToken
+  // que retornaba el primer agent creado, no el que inició el flow).
+  const scope       = req.nextUrl.searchParams.get('scope');
+  const agentIdHint = req.nextUrl.searchParams.get('agent_id');
+  const isValidAgentId = agentIdHint && /^[0-9a-f-]{36}$/i.test(agentIdHint);
+  const scopeSuffix = scope === 'agent'
+    ? (isValidAgentId ? `__agent:${agentIdHint}` : '__agent')
+    : '';
+  const baseToken = `${token}${scopeSuffix}`;
   const oauth     = issueOAuthState(provider, baseToken);
   const url = provider === 'gmail'
     ? gmailAuthUrl(oauth.state)
