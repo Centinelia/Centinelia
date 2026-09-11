@@ -4,18 +4,19 @@ import { executeMeefiInitiate2faRecovery } from '../meefi-initiate-2fa-recovery'
 import { executeMeefiCaptureBugReport } from '../meefi-capture-bug-report';
 
 describe('meefi-send-password-reset-link', () => {
-  it('bloquea si password_reset_locked=true', async () => {
+  it('outcome=account_not_verified si password_reset_locked=true', async () => {
     const r = await executeMeefiSendPasswordResetLink({} as any, { user_id: 'usr_001' });
-    expect(r.ok).toBe(false);
-    if (r.ok) return;
-    expect(r.reason).toBe('account_not_verified');
+    expect(r.ok).toBe(true);
+    expect(r.outcome).toBe('account_not_verified');
+    if (r.outcome !== 'account_not_verified') return;
     expect(r.suggestion).toContain('verify_email');
   });
 
-  it('envía link si cuenta verificada', async () => {
+  it('outcome=sent + link entregado si cuenta verificada', async () => {
     const r = await executeMeefiSendPasswordResetLink({} as any, { user_id: 'usr_002' });
     expect(r.ok).toBe(true);
-    if (!r.ok) return;
+    expect(r.outcome).toBe('sent');
+    if (r.outcome !== 'sent') return;
     expect(r.delivered_to).toBe('demo2@meefi.io');
   });
 });

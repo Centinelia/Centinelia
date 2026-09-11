@@ -4,13 +4,75 @@ import type { Scenario } from './scenarios';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
 
+// Persistencia: guardamos el estado del chat (mensajes + open + sessionId) en
+// sessionStorage por scenario. Sobrevive refresh de página y navegación,
+// pero se limpia al cerrar la pestaña. Cada scenario tiene su propia sesión
+// para no contaminar los casos entre demos.
+type PersistedState = {
+  messages: Msg[];
+  open:     boolean;
+  sessionId: string;
+};
+
+function storageKey(scenarioId: number): string {
+  return `meefi_demo_chat_scenario_${scenarioId}`;
+}
+
+function loadPersisted(scenarioId: number): PersistedState | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.sessionStorage.getItem(storageKey(scenarioId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PersistedState;
+    // Sanidad: si los mensajes no son array o el sessionId no es string, ignorar.
+    if (!Array.isArray(parsed.messages) || typeof parsed.sessionId !== 'string') return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function savePersisted(scenarioId: number, state: PersistedState): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.setItem(storageKey(scenarioId), JSON.stringify(state));
+  } catch {
+    // sessionStorage lleno o desactivado por privacy mode — no bloquea.
+  }
+}
+
 export function MeefiChatWidget({ scenario }: { scenario: Scenario }) {
+  // Cargar estado persistido al montar. Se hace en useState initializer para
+  // evitar hydration mismatch: al servidor lo carga como default, al cliente
+  // lo sobreescribe con lo persistido si aplica.
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const sessionId = useRef(`demo_${Date.now()}`);
+  const sessionId = useRef<string>(`demo_${Date.now()}`);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const hydrated = useRef(false);
+
+  // Hidratar desde sessionStorage post-mount para evitar mismatch.
+  useEffect(() => {
+    const persisted = loadPersisted(scenario.id);
+    if (persisted) {
+      setMessages(persisted.messages);
+      setOpen(persisted.open);
+      sessionId.current = persisted.sessionId;
+    }
+    hydrated.current = true;
+  }, [scenario.id]);
+
+  // Persistir cambios relevantes.
+  useEffect(() => {
+    if (!hydrated.current) return;
+    savePersisted(scenario.id, {
+      messages,
+      open,
+      sessionId: sessionId.current,
+    });
+  }, [messages, open, scenario.id]);
 
   useEffect(() => {
     if (scrollRef.current) {

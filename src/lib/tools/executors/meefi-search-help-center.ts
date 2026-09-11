@@ -1,5 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 
+// Convención de ok/outcome en executors mock:
+// - ok=true, outcome='found' | 'no_results' | 'account_not_verified' | 'transfer_not_found' etc.
+//   Respuestas semánticas legítimas — la tool corrió bien, el resultado es una
+//   señal para que el LLM decida qué hacer.
+// - ok=false: reservado para errores técnicos reales (RPC crash, DB down, tool
+//   no encontrada). Estos SÍ deben disparar alertas en Nash / pilot-monitor.
 export async function executeMeefiSearchHelpCenter(
   _ctx: any,
   input: { query: string },
@@ -13,6 +19,6 @@ export async function executeMeefiSearchHelpCenter(
     top_k: 3,
   });
   if (error) return { ok: false as const, reason: 'search_failed', message: error.message };
-  if (!data || data.length === 0) return { ok: false as const, reason: 'no_results' };
-  return { ok: true as const, articles: data as unknown[] };
+  if (!data || data.length === 0) return { ok: true as const, outcome: 'no_results' as const, articles: [] };
+  return { ok: true as const, outcome: 'found' as const, articles: data as unknown[] };
 }
