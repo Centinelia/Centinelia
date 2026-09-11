@@ -135,12 +135,25 @@ function coerceMetodoPago(v: unknown): 'PUE' | 'PPD' {
 /**
  * Aplica overrides de corrections sobre los campos base de la pending.
  * `corrections` es opt-in y parcial: solo las llaves presentes se aplican.
+ *
+ * Regla de precedencia unificada: `corrections` gana SIEMPRE si la llave está
+ * presente (incluso con valor null/vacío). Si la llave falta, cae al valor
+ * base (`extracted` o columna directa). Esto evita ambigüedad entre "Beatriz
+ * borró intencionalmente" vs "Beatriz no tocó el campo".
  */
 function buildInvoice(row: PendingRow): { invoice: BillingInvoice | null; reason?: string } {
   const extracted = row.extracted ?? {};
   const corrections = row.corrections ?? {};
 
-  // Productos: corrections gana si trae array válido, si no usa productos base.
+  // Merge unificado: extracted + corrections (corrections gana por presencia
+  // de llave, no por truthiness).
+  const merged: Record<string, unknown> = { ...extracted };
+  for (const key of Object.keys(corrections)) {
+    merged[key] = corrections[key];
+  }
+
+  // Productos: corrections gana si la llave está presente. Si no, usa el
+  // productos de columna directa (row.productos) que es el fallback legacy.
   const productosSrc = 'productos' in corrections ? corrections['productos'] : row.productos;
   const { lines, rejected } = productsToLines(productosSrc);
   if (lines.length === 0) {
@@ -156,12 +169,11 @@ function buildInvoice(row: PendingRow): { invoice: BillingInvoice | null; reason
     };
   }
 
-  // RFC: corrections.rfc_matched (o alias rfc) > row.rfc_matched. Sin RFC no timbramos.
-  const rfc =
-    (typeof corrections['rfc_matched'] === 'string' && corrections['rfc_matched'].trim()) ||
-    (typeof corrections['rfc'] === 'string' && (corrections['rfc'] as string).trim()) ||
-    (typeof row.rfc_matched === 'string' && row.rfc_matched.trim()) ||
-    '';
+  // RFC: usa el merged (corrections gana), luego fallback a columna directa.
+  const rfcFromMerged =
+    (typeof merged['rfc_matched'] === 'string' && (merged['rfc_matched'] as string).trim()) ||
+    (typeof merged['rfc'] === 'string' && (merged['rfc'] as string).trim()) || '';
+  const rfc = rfcFromMerged || (typeof row.rfc_matched === 'string' && row.rfc_matched.trim()) || '';
   if (!rfc) {
     return { invoice: null, reason: 'falta RFC del cliente' };
   }
@@ -175,9 +187,9 @@ function buildInvoice(row: PendingRow): { invoice: BillingInvoice | null; reason
     };
   }
 
-  // Fecha: corrections.fecha > row.fecha > hoy. Se preserva YYYY-MM-DD.
+  // Fecha: merged (corrections gana) > row.fecha > hoy. Preserva YYYY-MM-DD.
   const fechaRaw =
-    (typeof corrections['fecha'] === 'string' && corrections['fecha']) ||
+    (typeof merged['fecha'] === 'string' && (merged['fecha'] as string)) ||
     row.fecha ||
     new Date().toISOString().slice(0, 10);
 
@@ -199,10 +211,10 @@ function buildInvoice(row: PendingRow): { invoice: BillingInvoice | null; reason
     clientRFC:     rfc,
     date:          fechaRaw.slice(0, 10),
     lines,
-    paymentMethod: coercePaymentMethod(corrections['forma_pago'] ?? extracted['forma_pago']),
-    usoCFDI:       String(corrections['uso_cfdi'] ?? extracted['uso_cfdi'] ?? 'G03'),
-    serie:         String(corrections['serie'] ?? extracted['serie'] ?? 'T'),
-    metodoPago:    coerceMetodoPago(corrections['metodo_pago'] ?? extracted['metodo_pago']),
+    paymentMethod: coercePaymentMethod(merged['forma_pago']),
+    usoCFDI:       String(merged['uso_cfdi'] ?? 'G03'),
+    serie:         String(merged['serie'] ?? 'T'),
+    metodoPago:    coerceMetodoPago(merged['metodo_pago']),
     notes:         invoiceNotes,
   };
   return { invoice };
@@ -254,30 +266,54 @@ export async function submitApprovedForEmail(
       continue;
     }
 
+    // Claim atómico: marca extracted.submit_started_at si no hay claim vigente
+    // ni xml_path. Si retorna vacío, otro worker ya la reclamó o ya terminó
+    // (race window entre el SELECT arriba y este UPDATE). p_stale_seconds=300
+    // (5 min) trata como zombie a claims que llevan más de eso (worker killed
+    // mid-run por Vercel timeout).
+    const { data: claimed, error: claimErr } = await input.supabase
+      .rpc('claim_pending_for_submit', { p_id: row.id, p_stale_seconds: 300 }) as
+        { data: Array<{ id: string; extracted: Record<string, unknown> }> | null; error: { message: string } | null };
+    if (claimErr) {
+      result.errors.push({ pendingId: row.id, reason: `claim_pending_for_submit: ${claimErr.message}` });
+      continue;
+    }
+    if (!claimed || claimed.length === 0) {
+      // Otro worker ya la tiene o la row cambió entre el SELECT y el claim.
+      result.skipped.push({ pendingId: row.id, reason: 'ya reclamada por otro worker o ya sometida' });
+      continue;
+    }
+    const claimedExtracted = claimed[0].extracted ?? {};
+
     let batchResult;
     try {
       batchResult = await input.adapter.submitInvoiceBatch([invoice]);
     } catch (submitErr) {
       const msg = submitErr instanceof Error ? submitErr.message : String(submitErr);
       result.errors.push({ pendingId: row.id, reason: `adapter.submitInvoiceBatch: ${msg}` });
+      // Best-effort: liberar el claim para que el retry no espere 5 min por el
+      // TTL de zombie. Si falla, el TTL lo maneja.
+      await releaseClaim(input.supabase, row.id, claimedExtracted).catch(() => {});
       continue;
     }
 
     if (batchResult.errors.length > 0) {
       const msg = batchResult.errors.map((e) => e.reason).join('; ');
       result.errors.push({ pendingId: row.id, reason: `adapter reported errors: ${msg}` });
+      await releaseClaim(input.supabase, row.id, claimedExtracted).catch(() => {});
       continue;
     }
 
     const xmlPath = Array.isArray(batchResult.ref) ? batchResult.ref[0] : batchResult.ref;
     if (!xmlPath) {
       result.errors.push({ pendingId: row.id, reason: 'adapter no retornó path del XML' });
+      await releaseClaim(input.supabase, row.id, claimedExtracted).catch(() => {});
       continue;
     }
 
     const total = invoice.lines.reduce((s, l) => s + l.qty * l.unitPrice, 0);
     const nextExtracted = {
-      ...(row.extracted ?? {}),
+      ...claimedExtracted,
       xml_path:         xmlPath,
       xml_submitted_at: new Date().toISOString(),
     };
@@ -286,12 +322,14 @@ export async function submitApprovedForEmail(
       .update({ extracted: nextExtracted })
       .eq('id', row.id);
     if (updErr) {
-      // El XML ya está en Dropbox — pero no pudimos marcar la row. Reportamos
-      // como error para que el próximo run intente de nuevo (será idempotente
-      // en el adapter: mismo contenido = mismo hash = mismo path).
+      // El XML ya está en Dropbox — pero no pudimos marcar la row. En el próximo
+      // run, la RPC de claim detectará que xml_path sigue null y submit_started_at
+      // es reciente (< 5 min), y devolverá empty → NO se re-submitea inmediato.
+      // Cuando el TTL expire (5 min), el retry va (adapter idempotente por hash
+      // devuelve el mismo path, la UPDATE persiste esta vez).
       result.errors.push({
         pendingId: row.id,
-        reason:    `XML escrito a ${xmlPath} pero update DB falló: ${updErr.message}`,
+        reason:    `XML escrito a ${xmlPath} pero update DB falló: ${updErr.message}. Retry en ~5min.`,
       });
       continue;
     }
@@ -305,4 +343,23 @@ export async function submitApprovedForEmail(
   }
 
   return result;
+}
+
+/**
+ * Libera el claim (borra extracted.submit_started_at) para permitir retry
+ * inmediato en la próxima corrida sin esperar el TTL de 5 min. Se llama
+ * cuando el submit falló ANTES de escribir el XML — no hay side-effect
+ * externo que preservar.
+ */
+async function releaseClaim(
+  supabase: SupabaseClient,
+  rowId: string,
+  extracted: Record<string, unknown>,
+): Promise<void> {
+  const next = { ...extracted };
+  delete next['submit_started_at'];
+  await supabase
+    .from('billing_pending_review')
+    .update({ extracted: next })
+    .eq('id', rowId);
 }

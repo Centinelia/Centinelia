@@ -88,6 +88,18 @@ function makeSupabase(rows: PendingRow[]) {
         update: (patch: Record<string, unknown>) => updateBuilder(patch),
       };
     },
+    // Mock de la RPC claim_pending_for_submit: siempre concede el claim
+    // (los tests no ejercen concurrencia). Preserva `extracted` de la row.
+    rpc: async (fn: string, args: { p_id: string; p_stale_seconds?: number }) => {
+      if (fn !== 'claim_pending_for_submit') return { data: null, error: null };
+      const row = rows.find(r => r.id === args.p_id);
+      if (!row) return { data: [], error: null };
+      const extractedWithClaim = {
+        ...(row.extracted ?? {}),
+        submit_started_at: new Date().toISOString(),
+      };
+      return { data: [{ id: row.id, extracted: extractedWithClaim }], error: null };
+    },
   };
 
   return { supabase: supabase as unknown as Parameters<typeof submitApprovedForEmail>[0]['supabase'], updates };
@@ -222,7 +234,8 @@ describe('submitApprovedForEmail', () => {
     expect(r.submitted).toEqual([]);
     expect(r.errors).toHaveLength(1);
     expect(r.errors[0].reason).toMatch(/dropbox 500/);
-    expect(updates).toHaveLength(0);
+    // Ninguna update debe setear xml_path (puede haber release del claim).
+    expect(updates.some(u => (u.patch['extracted'] as Record<string, unknown>)?.['xml_path'])).toBe(false);
   });
 
   it('adapter reporta errors → surfaced sin marcar row', async () => {
@@ -238,7 +251,8 @@ describe('submitApprovedForEmail', () => {
     const r = await submitApprovedForEmail({ ...INPUT, supabase, adapter });
     expect(r.errors).toHaveLength(1);
     expect(r.errors[0].reason).toMatch(/RFC inválido/);
-    expect(updates).toHaveLength(0);
+    // Ninguna update debe setear xml_path (puede haber release del claim).
+    expect(updates.some(u => (u.patch['extracted'] as Record<string, unknown>)?.['xml_path'])).toBe(false);
   });
 
   it('metodoPago default PUE si extracted no lo tiene', async () => {

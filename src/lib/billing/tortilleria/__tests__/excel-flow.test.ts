@@ -144,6 +144,18 @@ function makeSupabase(state: DbState) {
         },
       };
     },
+    // Mock claim_pending_for_submit: concede el claim si la row existe y no
+    // tiene xml_path. Los tests no ejercen concurrencia real.
+    rpc(fn: string, args: { p_id?: string }) {
+      if (fn !== 'claim_pending_for_submit') return Promise.resolve({ data: null, error: null });
+      const row = state.pendingRows.find(r => r['id'] === args?.p_id);
+      if (!row) return Promise.resolve({ data: [], error: null });
+      const extractedWithClaim = {
+        ...((row['extracted'] as Record<string, unknown> | undefined) ?? {}),
+        submit_started_at: new Date().toISOString(),
+      };
+      return Promise.resolve({ data: [{ id: row['id'], extracted: extractedWithClaim }], error: null });
+    },
   };
   return { supabase: supabase as unknown as Parameters<typeof runExcelFlow>[0]['supabase'], state };
 }

@@ -201,8 +201,21 @@ export interface BillingAdapter {
 
   /**
    * Envia un lote de facturas al sistema contable.
+   *
+   * CONTRATO DE IDEMPOTENCIA (obligatorio para todas las implementaciones):
+   * Si se llama dos veces con el mismo conjunto de invoices (mismo contenido
+   * lógico: RFCs, líneas, fechas, series, notes), la segunda llamada DEBE
+   * retornar el mismo `ref` y NO crear un artefacto duplicado en el destino
+   * (Dropbox, PAC, API, etc.). Implementación típica: hash SHA256 del
+   * contenido normalizado como nombre del archivo o clave del PAC.
+   *
+   * Motivación: submit-approved.ts puede reintentar la misma pending si el
+   * UPDATE post-write falla (network blip). Sin idempotencia, cada retry
+   * generaría un CFDI duplicado. Ver [[project-centinelia-audit-backlog]].
+   *
    * @param invoices Lista de facturas a generar.
-   * @returns Resultado del lote con modo, referencia y errores por factura.
+   * @returns Resultado del lote con modo, referencia (determinística por
+   *          contenido) y errores por factura.
    */
   submitInvoiceBatch(invoices: BillingInvoice[]): Promise<BillingBatchResult>;
 
