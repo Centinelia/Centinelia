@@ -23,5 +23,55 @@
     "title": "Cómo agregar un beneficiario internacional",
     "body": "Desde el dashboard entra a Beneficiarios, Agregar nuevo. Necesitas: nombre legal completo, país, SWIFT/BIC, IBAN si aplica, moneda de la cuenta, dirección. La validación toma 30 a 60 minutos. Países sensibles requieren revisión manual adicional.",
     "source_url": "https://help.meefi.io/beneficiarios-internacionales"
+  },
+  {
+    "title": "Horarios operativos SPEI",
+    "body": "El sistema SPEI opera 24/7, incluidos fines de semana y días festivos. Las ventanas de liquidación varían por banco destino: BBVA y Santander liquidan cada 15 minutos en horario hábil; Banorte cada 30 minutos; HSBC en la hora en punto. Fuera de horario hábil bancario los reflejos pueden retrasarse hasta el siguiente día hábil según la política interna del banco receptor.",
+    "source_url": "https://help.meefi.io/horarios-spei"
+  },
+  {
+    "title": "Límites de transferencia por usuario",
+    "body": "El límite diario estándar es de 500 mil pesos por cuenta personal y 5 millones por cuenta empresarial verificada. Cuentas con KYC básico tienen un tope reducido de 50 mil pesos diarios. Para operaciones mayores contacta a tu ejecutivo asignado para solicitar aumento temporal o permanente; el trámite toma 24 a 48 horas hábiles con documentación soporte.",
+    "source_url": "https://help.meefi.io/limites-transferencia"
+  },
+  {
+    "title": "Cuenta suspendida o bloqueada",
+    "body": "Las cuentas se pueden bloquear por: intentos fallidos de login (más de 5 en 10 minutos), operaciones sospechosas detectadas por el sistema antifraude, documentación de KYC vencida, o solicitud del propio usuario. Para reactivar contacta al equipo de cuentas con tu correo registrado; validaremos identidad y liberamos en menos de 4 horas hábiles si no hay bandera de compliance activa.",
+    "source_url": "https://help.meefi.io/cuenta-bloqueada"
+  },
+  {
+    "title": "Cambiar datos de contacto",
+    "body": "Para cambiar correo, teléfono o dirección física entra a Configuración, sección Perfil. Cambios de correo requieren confirmar el nuevo correo con un enlace. Cambios de teléfono envían código SMS al número anterior y al nuevo. Cambio de dirección física puede requerir comprobante de domicilio no mayor a 3 meses si es cuenta empresarial.",
+    "source_url": "https://help.meefi.io/cambiar-datos"
+  },
+  {
+    "title": "Wire internacional rechazado",
+    "body": "Un wire puede ser rechazado por: SWIFT/BIC inválido, IBAN mal formateado, banco corresponsal sin ruta hacia el destino, país sancionado, o compliance del banco receptor. Los fondos regresan a tu cuenta Meefi en 24 a 72 horas hábiles con la nota de rechazo del corresponsal. Si el motivo no es claro, escala a operaciones para investigación con el MT103 original.",
+    "source_url": "https://help.meefi.io/wire-rechazado"
+  },
+  {
+    "title": "Descargar comprobantes y estados de cuenta",
+    "body": "Desde Movimientos puedes descargar el comprobante individual de cada operación en PDF. Para estados de cuenta mensuales entra a Reportes, Estado de cuenta, selecciona el periodo. Los comprobantes SPEI incluyen el sello digital del SPEI y son válidos ante el SAT. Estados de cuenta generados antes de 2024 pueden requerir solicitud manual a soporte.",
+    "source_url": "https://help.meefi.io/comprobantes"
+  },
+  {
+    "title": "Diferencias en monto recibido por wire",
+    "body": "Cuando un wire internacional pasa por bancos corresponsales, cada uno puede cobrar fee propio (típicamente 15 a 45 USD por hop). Meefi te informa el fee de origen antes de la operación, pero fees de corresponsales intermedios pueden variar. Si la diferencia excede el 3 por ciento del monto original, escala a operaciones y solicitamos el detalle completo del MT103 con desglose por banco.",
+    "source_url": "https://help.meefi.io/diferencias-monto"
+  },
+  {
+    "title": "Cómo funciona el spread cambiario en Meefi",
+    "body": "El spread es la diferencia entre el tipo de cambio interbancario y el que Meefi te aplica al operar. El spread cubre el riesgo cambiario del intervalo hasta la liquidación y el margen operativo. Consulta tu contrato para el spread pactado según volumen mensual. Operaciones grandes (más de 500 mil USD) pueden tener spread negociado por tu ejecutivo asignado.",
+    "source_url": "https://help.meefi.io/spread-fx"
+  },
+  {
+    "title": "Cambios en información fiscal (RFC, razón social)",
+    "body": "Para cambiar RFC, razón social u otros datos fiscales de una cuenta empresarial necesitas: constancia de situación fiscal reciente del SAT, acta constitutiva actualizada si aplica, poder notarial vigente del representante legal. Envía la documentación a cuentas y el cambio se procesa en 5 a 7 días hábiles con revisión de compliance.",
+    "source_url": "https://help.meefi.io/cambios-fiscales"
+  },
+  {
+    "title": "Reportar fraude o suplantación de identidad",
+    "body": "Si detectas movimientos que no reconoces, un correo de phishing con logo de Meefi, o sospechas suplantación de tu cuenta, reporta de inmediato al equipo de cumplimiento. Bloquearemos la cuenta preventivamente en menos de 15 minutos y arrancamos investigación. Nunca compartas contraseñas, códigos 2FA o CVV con nadie que se identifique como Meefi por teléfono o correo; nuestro personal nunca te los pide.",
+    "source_url": "https://help.meefi.io/reportar-fraude"
   }
 ]
