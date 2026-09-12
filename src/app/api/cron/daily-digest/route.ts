@@ -277,8 +277,8 @@ function formatTime(date: Date, tz: string): string {
 // alerta directa al owner por email (bypass de notification_events para
 // evitar depender de la misma tubería que podría estar rota).
 
-const NASH_STALE_THRESHOLD_MS = 2 * 60 * 60_000;   // 2h sin correr = alerta
-const NASH_HEALTH_DEDUP_MS    = 6 * 60 * 60_000;   // no re-alertar más de cada 6h
+const NASH_STALE_THRESHOLD_MS = 3 * 60 * 60_000;   // 3h sin correr = alerta (subido de 2h el 2026-09-12 por Vercel cron miss-rate ~25%)
+const NASH_HEALTH_DEDUP_MS    = 12 * 60 * 60_000;  // no re-alertar más de cada 12h (subido de 6h por mismo motivo)
 const NASH_HEALTH_ALERT_KEY   = 'nash_health_alert_sent_at';
 const NASH_OWNER_EMAIL        = 'hola@centinelia.mx';
 
