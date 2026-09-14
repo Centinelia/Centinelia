@@ -674,16 +674,16 @@ export function ChecklistMeefiPdf() {
             Automatizaciones adicionales · según necesidad
           </Text>
           <Text style={{ fontSize: 8.5, color: MUTED, marginBottom: 8, lineHeight: 1.5 }}>
-            Costos que aplican solo si Meefi decide activarlas. Cotización específica por módulo después de la reunión de setup.
+            Costos referenciales que aplican solo si Meefi decide activarlas. El número final depende de la complejidad de sus sistemas (número de endpoints, formato de datos, requisitos de seguridad, integración con su SSO, testing en sandbox propio). Cotización específica después de una sesión de discovery técnico con su equipo.
           </Text>
           {[
-            { m: 'Integración API Meefi (webhook + lookup real de cuentas)', cost: 'Setup $3,500 + $800/mes + IVA' },
-            { m: 'Ingesta continua Help Center (sync desde Intercom)', cost: 'Setup $1,500 + $400/mes + IVA' },
-            { m: 'Ruteo inteligente a canal Slack (además del correo)', cost: 'Setup $1,200 + $300/mes + IVA' },
-            { m: 'Dashboard KPIs de escalamiento (evitados vs escalados)', cost: 'Setup $2,000 + $500/mes + IVA' },
-            { m: 'Módulos custom (por decisión Meefi post-piloto)', cost: 'Cotización específica' },
+            { m: 'Integración API Meefi (webhook + lookup real de cuentas, transferencias, KYC)', cost: 'Setup $25,000 a $40,000 + $2,500 a $4,000/mes + IVA' },
+            { m: 'Ingesta continua Help Center (sync automático desde Intercom)', cost: 'Setup $10,000 + $1,500/mes + IVA' },
+            { m: 'Ruteo inteligente a canal Slack (además del correo)', cost: 'Setup $8,000 + $1,200/mes + IVA' },
+            { m: 'Dashboard KPIs custom de escalamiento (evitados vs escalados, tiempos, análisis)', cost: 'Setup $15,000 + $2,000/mes + IVA' },
+            { m: 'Módulos custom (compliance workflows, integraciones a WorldCheck/LexisNexis, otros)', cost: 'Cotización específica post-discovery' },
           ].map((r, i) => (
-            <View key={i} style={{ marginBottom: 4 }}>
+            <View key={i} style={{ marginBottom: 6 }}>
               <Text style={{ fontSize: 9, color: INK, lineHeight: 1.4 }}>{r.m}</Text>
               <Text style={{ fontSize: 8.5, color: ACCENT, marginTop: 1 }}>{r.cost}</Text>
             </View>
