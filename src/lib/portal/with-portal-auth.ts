@@ -39,6 +39,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { resolveOrgFromToken, type ResolvedOrg } from '@/lib/portal/org-token';
 import { limiters, rateLimit } from '@/lib/ratelimit';
+import { refreshSubUserFromDb as refreshSubUserModules } from '@/lib/portal/access';
 
 export interface PortalAuthSession {
   portalEmail: string;
@@ -69,6 +70,15 @@ export interface WithPortalAuthOptions {
   /** Bloquea sub-users con 403. Default false. */
   requireOwner?:    boolean;
 
+  /**
+   * Sub-users deben tener este módulo (o cualquiera de la lista si es array).
+   * Owner bypasses este check. Ej.: 'inbox', 'usuarios', ['ventas', 'admin'].
+   * Automáticamente refresca los modules del sub-user contra la DB (TTL 30s)
+   * para invalidar tokens stale post-cambio de permisos.
+   * Si se especifica junto con requireOwner:true, requireOwner gana.
+   */
+  requireModule?:   string | string[];
+
   /** Nombre del limiter en `limiters`. Si se omite, no aplica rate limit. */
   rateLimit?:       keyof typeof limiters;
 
@@ -97,6 +107,7 @@ export function withPortalAuth<TAgent = Record<string, unknown>>(
   const {
     scoping         = 'token',
     requireOwner    = false,
+    requireModule,
     rateLimit: rlKey,
     rateLimitPrefix = 'portal',
     loadAgent       = false,
@@ -115,19 +126,44 @@ export function withPortalAuth<TAgent = Record<string, unknown>>(
 
       // 1. Session
       const cookie  = req.cookies.get(PORTAL_COOKIE)?.value ?? '';
-      const session = await verifySession(cookie);
-      if (!session) {
+      const rawSession = await verifySession(cookie);
+      if (!rawSession) {
         return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
       }
 
       // 2. Prod-strict
-      if (!session.portalEmail && process.env.NODE_ENV !== 'development') {
+      if (!rawSession.portalEmail && process.env.NODE_ENV !== 'development') {
         return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
       }
 
-      // 3. Rol
-      if (requireOwner && session.isSubUser) {
+      // 3. Rol + Módulo (sub-users solamente)
+      // Owner bypasses todo; sub-user pasa por freshness check contra DB y
+      // verificación de módulo.
+      let session: PortalAuthSession = rawSession;
+      if (requireOwner && rawSession.isSubUser) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+      }
+      if (rawSession.isSubUser && rawSession.userId) {
+        const fresh = await refreshSubUserModules(rawSession.userId, rawSession.portalEmail);
+        if (!fresh.exists) {
+          return NextResponse.json(
+            { error: 'Tu cuenta fue removida del equipo. Contacta al dueño.' },
+            { status: 401 },
+          );
+        }
+        session = { ...rawSession, modules: fresh.modules };
+
+        if (requireModule) {
+          const required = Array.isArray(requireModule) ? requireModule : [requireModule];
+          const mods     = session.modules ?? [];
+          if (!required.some(m => mods.includes(m))) {
+            const nice = required.length === 1 ? `"${required[0]}"` : `[${required.join(', ')}]`;
+            return NextResponse.json(
+              { error: `Sin acceso al módulo ${nice}. Pide al dueño de la cuenta que te habilite el permiso.` },
+              { status: 403 },
+            );
+          }
+        }
       }
 
       // 4. Resolve org

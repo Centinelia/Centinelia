@@ -29,12 +29,14 @@ const {
   mockCreateAdminClient,
   mockRateLimit,
   mockLimiterConfigWrite,
+  mockRefreshSubUser,
 } = vi.hoisted(() => ({
   mockVerifySession:     vi.fn(),
   mockResolveOrg:        vi.fn(),
   mockCreateAdminClient: vi.fn(),
   mockRateLimit:         vi.fn(),
   mockLimiterConfigWrite: {} as unknown,
+  mockRefreshSubUser:    vi.fn(),
 }));
 
 vi.mock('@/lib/portal/auth', () => ({
@@ -55,6 +57,10 @@ vi.mock('@/lib/ratelimit', () => ({
   limiters:  { configWrite: mockLimiterConfigWrite },
 }));
 
+vi.mock('@/lib/portal/access', () => ({
+  refreshSubUserFromDb: mockRefreshSubUser,
+}));
+
 import { withPortalAuth } from '../with-portal-auth';
 
 // Handler dummy que retorna lo que le llegó por ctx (para asserts).
@@ -69,6 +75,8 @@ beforeEach(() => {
   supabase = createSupabaseMock();
   mockCreateAdminClient.mockReturnValue(supabase);
   mockRateLimit.mockResolvedValue(null); // no rate-limit por default
+  // Default freshness: sub-user existe con modules vacíos.
+  mockRefreshSubUser.mockResolvedValue({ exists: true, modules: [], ts: Date.now() });
   vi.stubEnv('NODE_ENV', 'production');
 });
 
@@ -255,6 +263,101 @@ describe('withPortalAuth — rate limit', () => {
     );
     expect(res.status).toBe(401);
     expect(mockRateLimit).not.toHaveBeenCalled();
+  });
+});
+
+describe('withPortalAuth — requireModule (sub-user gating)', () => {
+  beforeEach(() => {
+    mockResolveOrg.mockResolvedValue(fixtureResolvedOrg());
+  });
+
+  it('owner pasa aunque el módulo no matchee (owner bypass)', async () => {
+    mockVerifySession.mockResolvedValueOnce(fixtureOwnerSession());
+    const handler = withPortalAuth(echoHandler, { requireModule: 'inbox' });
+    const res = await handler(
+      makeJsonRequest({}),
+      { params: makeParams({ token: TEST_ORG_TOKEN }) },
+    );
+    expect(res.status).toBe(200);
+    // Freshness check no se llama para owner
+    expect(mockRefreshSubUser).not.toHaveBeenCalled();
+  });
+
+  it('sub-user CON el módulo pasa', async () => {
+    mockVerifySession.mockResolvedValueOnce(fixtureSubUserSession(['inbox']));
+    mockRefreshSubUser.mockResolvedValueOnce({ exists: true, modules: ['inbox'], ts: Date.now() });
+    const handler = withPortalAuth(echoHandler, { requireModule: 'inbox' });
+    const res = await handler(
+      makeJsonRequest({}),
+      { params: makeParams({ token: TEST_ORG_TOKEN }) },
+    );
+    expect(res.status).toBe(200);
+    expect(echoHandler).toHaveBeenCalled();
+  });
+
+  it('sub-user SIN el módulo → 403 con mensaje ES', async () => {
+    mockVerifySession.mockResolvedValueOnce(fixtureSubUserSession(['ventas']));
+    mockRefreshSubUser.mockResolvedValueOnce({ exists: true, modules: ['ventas'], ts: Date.now() });
+    const handler = withPortalAuth(echoHandler, { requireModule: 'inbox' });
+    const res = await handler(
+      makeJsonRequest({}),
+      { params: makeParams({ token: TEST_ORG_TOKEN }) },
+    );
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.error).toContain('"inbox"');
+    expect(echoHandler).not.toHaveBeenCalled();
+  });
+
+  it('requireModule con array: acepta si el sub-user tiene CUALQUIERA (OR)', async () => {
+    mockVerifySession.mockResolvedValueOnce(fixtureSubUserSession(['reportes']));
+    mockRefreshSubUser.mockResolvedValueOnce({ exists: true, modules: ['reportes'], ts: Date.now() });
+    const handler = withPortalAuth(echoHandler, { requireModule: ['inbox', 'reportes'] });
+    const res = await handler(
+      makeJsonRequest({}),
+      { params: makeParams({ token: TEST_ORG_TOKEN }) },
+    );
+    expect(res.status).toBe(200);
+  });
+
+  it('sub-user eliminado (exists=false) → 401 con mensaje ES', async () => {
+    // JWT stale — el sub-user fue removido del equipo pero su cookie sigue viva.
+    mockVerifySession.mockResolvedValueOnce(fixtureSubUserSession(['inbox']));
+    mockRefreshSubUser.mockResolvedValueOnce({ exists: false, modules: [], ts: Date.now() });
+    const handler = withPortalAuth(echoHandler, { requireModule: 'inbox' });
+    const res = await handler(
+      makeJsonRequest({}),
+      { params: makeParams({ token: TEST_ORG_TOKEN }) },
+    );
+    expect(res.status).toBe(401);
+    const body = await res.json();
+    expect(body.error).toContain('removida');
+  });
+
+  it('freshness gana sobre JWT: sub-user perdió el módulo tras último token', async () => {
+    // JWT snapshot dice ['inbox']; DB dice ['ventas'] (owner cambió permisos).
+    mockVerifySession.mockResolvedValueOnce(fixtureSubUserSession(['inbox']));
+    mockRefreshSubUser.mockResolvedValueOnce({ exists: true, modules: ['ventas'], ts: Date.now() });
+    const handler = withPortalAuth(echoHandler, { requireModule: 'inbox' });
+    const res = await handler(
+      makeJsonRequest({}),
+      { params: makeParams({ token: TEST_ORG_TOKEN }) },
+    );
+    expect(res.status).toBe(403);
+  });
+
+  it('requireOwner:true SIEMPRE gana sobre requireModule', async () => {
+    mockVerifySession.mockResolvedValueOnce(fixtureSubUserSession(['inbox']));
+    mockRefreshSubUser.mockResolvedValueOnce({ exists: true, modules: ['inbox'], ts: Date.now() });
+    const handler = withPortalAuth(echoHandler, {
+      requireOwner:  true,
+      requireModule: 'inbox',
+    });
+    const res = await handler(
+      makeJsonRequest({}),
+      { params: makeParams({ token: TEST_ORG_TOKEN }) },
+    );
+    expect(res.status).toBe(403);
   });
 });
 

@@ -39,10 +39,10 @@ export type AccessResult =
 // La entrada guarda modules y exists; si el sub-user desapareció, exists=false
 // y todas sus requests fallan hasta que TTL expire y confirme (defense in depth).
 const SUBUSER_CACHE_TTL_MS = 30_000;
-interface SubUserFreshness { modules: string[]; exists: boolean; ts: number }
+export interface SubUserFreshness { modules: string[]; exists: boolean; ts: number }
 const subUserFreshCache = new Map<string, SubUserFreshness>();
 
-async function refreshSubUserFromDb(userId: string, portalEmail: string): Promise<SubUserFreshness> {
+export async function refreshSubUserFromDb(userId: string, portalEmail: string): Promise<SubUserFreshness> {
   const cached = subUserFreshCache.get(userId);
   const now    = Date.now();
   if (cached && now - cached.ts < SUBUSER_CACHE_TTL_MS) return cached;
