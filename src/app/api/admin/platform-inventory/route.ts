@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isAdmin } from '@/lib/admin/auth';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { JORNADA_CONFIG, NOX_MONTHLY_CONFIG } from '@/lib/billing/plans';
+import { JORNADA_CONFIG, NOX_JORNADA_CONFIG } from '@/lib/billing/plans';
 import type { JornadaType } from '@/types/agent';
 import type { MinutesTier } from '@/lib/billing/plans';
 
@@ -64,7 +64,7 @@ async function computeProjectionAndAtRisk(
 
     let alloc: { minutes: number; aiOps: number } | null = null;
     if (isCoordinator) {
-      const cfg = NOX_MONTHLY_CONFIG[tier];
+      const cfg = NOX_JORNADA_CONFIG[tier];
       if (cfg) alloc = { minutes: cfg.minutes, aiOps: cfg.aiOps };
     } else if (jornada && JORNADA_CONFIG[jornada]?.[tier]) {
       alloc = JORNADA_CONFIG[jornada][tier];

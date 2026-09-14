@@ -216,8 +216,9 @@ export async function resetAiOps(portalEmail: string): Promise<void> {
 }
 
 // Fija la cuota mensual de ops de la cuenta. El argumento aiOpsPerAgent viene
-// de plans.ts (MONTHLY_CONFIG[plan][tier].aiOps) y mantiene semántica per-agente
-// para no cambiar el pricing histórico: la cuenta paga aiOpsPerAgent × N.
+// de plans.ts (JORNADA_CONFIG[jornada][tier].aiOps o resolveTierAllocation) y
+// mantiene semántica per-agente para no cambiar el pricing histórico: la cuenta
+// paga aiOpsPerAgent × N.
 // Escribe en dos lugares:
 //   organizations.monthly_ops_pool  = source of truth del pool compartido
 //   voice_agents.ai_ops_limit       = valor per-agente (fallback + UI legacy)

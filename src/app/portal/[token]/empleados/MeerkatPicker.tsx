@@ -1,10 +1,10 @@
 'use client';
 
-import { useState }                                              from 'react';
+import { useEffect, useState }                                   from 'react';
 import { useRouter }                                             from 'next/navigation';
 import { Plus, X, Check, ArrowLeft, Clock, Zap, Phone }         from 'lucide-react';
 import { PUBLIC_MEERKAT_ROLES, type MeerkatRole, type MeerkatRoleId }  from '@/lib/portal/meerkat-roles';
-import { JORNADA_CONFIG, FEATURE_PLAN_CONFIG, MONTHLY_CONFIG, MINUTES_TIER_CONFIG } from '@/lib/billing/plans';
+import { JORNADA_CONFIG, FEATURE_PLAN_CONFIG, TIER_PRICE_MXN } from '@/lib/billing/plans';
 import type { JornadaType }                                      from '@/types/agent';
 import LadaPicker                                                from '../LadaPicker';
 
@@ -31,12 +31,14 @@ const TIER_HUMAN_LABEL: Record<MinutesTier, string> = {
   scale:   'Alta Demanda',
 };
 
+// Display de minutos y precio para la jornada combinada (default público en el picker).
+// La allocation real por jornada la resuelve el flow de creación con JORNADA_CONFIG[jornada][tier].
 const JORNADAS: Record<Plan, { tier: MinutesTier; label: string; minutes: number; mxn: number }[]> = {
   pro: (['starter', 'growth', 'scale'] as MinutesTier[]).map(tier => ({
     tier,
     label:   TIER_HUMAN_LABEL[tier],
-    minutes: MINUTES_TIER_CONFIG[tier].minutes,
-    mxn:     MONTHLY_CONFIG.pro[tier].mxn,
+    minutes: JORNADA_CONFIG.combinada[tier].minutes,
+    mxn:     TIER_PRICE_MXN[tier],
   })),
 };
 
@@ -175,13 +177,16 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
           ...(includeLada ? { area_code: areaCode } : {}),
         }),
       });
-      const data = await res.json() as { token?: string; agent_id?: string; checkoutUrl?: string; error?: string };
-      if (data.token) {
-        // Preserva URL corto del org + selecciona el empleado recién creado por id.
-        const target = data.agent_id
-          ? `/portal/${token}/configurar?empleado_id=${data.agent_id}`
-          : `/portal/${data.token}/configurar`;
-        router.push(target);
+      const data = await res.json().catch(() => ({} as { error?: string })) as { token?: string; agent_id?: string; checkoutUrl?: string; error?: string };
+      if (!res.ok) {
+        setError(data.error ?? `Error al crear el empleado (${res.status})`);
+        setLoading(false);
+        return;
+      }
+      if (data.agent_id) {
+        // Siempre usa el org token de la URL — data.token puede ser el legacy
+        // per-agent que proxy.ts luego tiene que redirigir.
+        router.push(`/portal/${token}/configurar?empleado_id=${data.agent_id}`);
       } else if (data.checkoutUrl) {
         window.location.href = data.checkoutUrl;
       } else {
@@ -193,6 +198,15 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
       setLoading(false);
     }
   };
+
+  // Cerrar modal con Escape.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') closePicker(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   // Navigation state
   const step         = selected ? 'confirm' : expandedRole ? 'detail' : 'grid';
@@ -236,6 +250,9 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)' }}
           onClick={e => { if (e.target === e.currentTarget) closePicker(); }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="meerkat-picker-title"
         >
           <div
             className="w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl flex flex-col"
@@ -250,12 +267,13 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
                     onClick={handleBack}
                     className="p-1 rounded-lg transition-opacity hover:opacity-70 mr-1"
                     style={{ color: '#6B6480' }}
+                    aria-label="Volver"
                   >
                     <ArrowLeft size={15} />
                   </button>
                 )}
                 <div>
-                  <h2 className="font-bold text-base" style={{ color: '#1A0A3B' }}>
+                  <h2 id="meerkat-picker-title" className="font-bold text-base" style={{ color: '#1A0A3B' }}>
                     {headerTitle}
                   </h2>
                   <p className="text-xs mt-0.5" style={{ color: '#6B6480' }}>
@@ -267,6 +285,7 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
                 onClick={closePicker}
                 className="p-1.5 rounded-lg transition-opacity hover:opacity-70"
                 style={{ color: '#6B6480' }}
+                aria-label="Cerrar"
               >
                 <X size={16} />
               </button>
@@ -369,7 +388,7 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
                           <div className="flex flex-col gap-0.5 pl-3.5">
                             {cat.newTools.map(tool => (
                               <div key={tool} className="flex items-center gap-1.5">
-                                <span className="text-[10px] flex-shrink-0" style={{ color: '#16a34a' }}>✓</span>
+                                <Check size={10} strokeWidth={3} className="flex-shrink-0" style={{ color: '#16a34a' }} />
                                 <span className="text-[11px]" style={{ color: '#1A0A3B' }}>{tool}</span>
                               </div>
                             ))}
@@ -603,7 +622,7 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
                     className="flex items-center gap-1.5 px-5 py-2 rounded-lg text-sm font-semibold transition-opacity hover:opacity-80 disabled:opacity-40"
                     style={{ background: selected.color, color: '#fff', cursor: 'pointer' }}
                   >
-                    {loading ? 'Procesando...' : <><Check size={14} /> Contratar</>}
+                    {loading ? 'Procesando…' : <><Check size={14} /> Contratar</>}
                   </button>
                 </div>
               </div>

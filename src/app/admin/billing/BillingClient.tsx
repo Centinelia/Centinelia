@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Copy, Check, ExternalLink, CreditCard, Clock, AlertCircle, CheckCircle2, XCircle, ChevronDown, Search, X } from 'lucide-react';
-import { FEATURE_PLAN_CONFIG, MONTHLY_CONFIG, MINUTES_TIER_CONFIG } from '@/lib/billing/plans';
+import { FEATURE_PLAN_CONFIG, TIER_PRICE_MXN, TIER_LABELS, JORNADA_CONFIG } from '@/lib/billing/plans';
 import type { Plan } from '@/types/agent';
 import type { MinutesTier } from '@/lib/billing/plans';
 type MinutesPlan = MinutesTier;
@@ -122,8 +122,8 @@ function GenerateLinkButton({ agentId, agentName }: { agentId: string; agentName
   const [copied, setCopied]           = useState(false);
 
   const featureCfg  = FEATURE_PLAN_CONFIG[featurePlan];
-  const monthlyCfg  = MONTHLY_CONFIG[featurePlan]?.[minutesPlan];
-  const totalFirst  = featureCfg.setupFee + (monthlyCfg?.mxn ?? 0);
+  const tierPrice   = TIER_PRICE_MXN[minutesPlan] ?? 0;
+  const totalFirst  = featureCfg.setupFee + tierPrice;
 
   const featureOptions = (Object.entries(FEATURE_PLAN_CONFIG) as [Plan, typeof featureCfg][]).map(([key, cfg]) => ({
     value: key,
@@ -131,11 +131,15 @@ function GenerateLinkButton({ agentId, agentName }: { agentId: string; agentName
     sub:   `Instalación única`,
   }));
 
-  const minutesOptions = (Object.entries(MINUTES_TIER_CONFIG) as [MinutesPlan, { label: string; minutes: number }][]).map(([key, cfg]) => {
-    const mc = MONTHLY_CONFIG[featurePlan]?.[key];
+  // Referencia display: jornada combinada (Beatriz/Nala/Nia default). El picker exacto
+  // por jornada vive en MeerkatPicker; aquí es para el flow admin genérico.
+  const minutesOptions = (Object.keys(TIER_LABELS) as MinutesPlan[]).map(key => {
+    const label = TIER_LABELS[key];
+    const minutes = JORNADA_CONFIG.combinada[key].minutes;
+    const mxn = TIER_PRICE_MXN[key] ?? 0;
     return {
       value: key,
-      label: `${cfg.label} · ${cfg.minutes} min, $${(mc?.mxn ?? 0).toLocaleString('es-MX')}/mes`,
+      label: `${label} · ${minutes} min, $${mxn.toLocaleString('es-MX')}/mes`,
       sub:   `Mensualidad recurrente`,
     };
   });
@@ -193,7 +197,7 @@ function GenerateLinkButton({ agentId, agentName }: { agentId: string; agentName
       <div className="flex items-center justify-between rounded-lg px-3 py-2 text-xs"
         style={{ background: 'rgba(108,59,255,0.07)', border: '1px solid rgba(108,59,255,0.12)' }}>
         <span style={{ color: 'var(--c-text-2)' }}>
-          Primer cobro: ${featureCfg.setupFee.toLocaleString('es-MX')} inst. + ${(monthlyCfg?.mxn ?? 0).toLocaleString('es-MX')} mes
+          Primer cobro: ${featureCfg.setupFee.toLocaleString('es-MX')} inst. + ${tierPrice.toLocaleString('es-MX')} mes
         </span>
         <span className="font-semibold" style={{ color: '#9B6DFF' }}>
           ${totalFirst.toLocaleString('es-MX')} MXN
@@ -254,7 +258,7 @@ export default function BillingClient({ agents }: { agents: Agent[] }) {
 
   const totalMRR    = agents.reduce((sum, a) => {
     if (!a.minutes_plan || a.billing_status !== 'activo') return sum;
-    return sum + (MONTHLY_CONFIG[a.plan as Plan]?.[a.minutes_plan as MinutesTier]?.mxn ?? 0);
+    return sum + (TIER_PRICE_MXN[a.minutes_plan as MinutesTier] ?? 0);
   }, 0);
   const activeCount = agents.filter(a => a.billing_status === 'activo').length;
   const failedCount = agents.filter(a => a.billing_status === 'pago_fallido').length;
@@ -313,7 +317,9 @@ export default function BillingClient({ agents }: { agents: Agent[] }) {
           const pct      = agent.minutes_included > 0 ? Math.min((agent.minutes_used / agent.minutes_included) * 100, 100) : 0;
           const barColor = pct >= 90 ? '#f87171' : pct >= 70 ? '#facc15' : '#6C3BFF';
           const fCfg     = agent.plan         ? FEATURE_PLAN_CONFIG[agent.plan]         : null;
-          const mCfg     = (agent.plan && agent.minutes_plan) ? MONTHLY_CONFIG[agent.plan as Plan]?.[agent.minutes_plan as MinutesTier] : null;
+          const mCfg     = agent.minutes_plan
+            ? { label: TIER_LABELS[agent.minutes_plan as MinutesTier], mxn: TIER_PRICE_MXN[agent.minutes_plan as MinutesTier] ?? 0 }
+            : null;
 
           return (
             <div key={agent.id} className="rounded-xl p-4 space-y-3"

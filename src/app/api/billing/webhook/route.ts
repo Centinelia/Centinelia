@@ -1,7 +1,7 @@
 ﻿import { NextRequest, NextResponse, after } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { FEATURE_PLAN_CONFIG, MONTHLY_CONFIG, monthlyConfigFromPriceId, nextResetDate, JORNADA_CONFIG, NOX_MONTHLY_CONFIG, resolveTierAllocation } from '@/lib/billing/plans';
+import { FEATURE_PLAN_CONFIG, TIER_PRICE_MXN, TIER_LABELS, jornadaConfigFromPriceId, nextResetDate, JORNADA_CONFIG, NOX_JORNADA_CONFIG, resolveTierAllocation } from '@/lib/billing/plans';
 import { resetAiOps, setAiOpsLimit, recomputeOrgOpsPool } from '@/lib/ai/ops-guard';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { sendEmail, paymentFailedHtml, welcomeHtml } from '@/lib/email/send';
@@ -140,26 +140,27 @@ export async function POST(req: NextRequest) {
         const toMinutesPlan = session.metadata?.to_minutes_plan as MinutesTier | undefined;
         if (!agentId || !toPlan || !toMinutesPlan
           || !FEATURE_PLAN_CONFIG[toPlan]
-          || !MONTHLY_CONFIG[toPlan]?.[toMinutesPlan]) break;
+          || !TIER_PRICE_MXN[toMinutesPlan]) break;
 
         const { data: agentData } = await supabase
           .from('voice_agents')
-          .select('stripe_subscription_id')
+          .select('stripe_subscription_id, jornada_type')
           .eq('id', agentId)
           .single();
 
+        const jornadaForUpgrade = ((agentData?.jornada_type as JornadaType | null) ?? 'combinada');
         if (agentData?.stripe_subscription_id) {
           const sub     = await stripe.subscriptions.retrieve(agentData.stripe_subscription_id);
           const subItem = sub.items.data.find(item => item.price.recurring !== null);
           if (subItem) {
             await stripe.subscriptions.update(agentData.stripe_subscription_id, {
-              items:              [{ id: subItem.id, price: MONTHLY_CONFIG[toPlan][toMinutesPlan].priceId() }],
+              items:              [{ id: subItem.id, price: JORNADA_CONFIG[jornadaForUpgrade][toMinutesPlan].priceId() }],
               proration_behavior: 'create_prorations',
             });
           }
         }
 
-        const newMinutesCfg = MONTHLY_CONFIG[toPlan][toMinutesPlan];
+        const newMinutesCfg = { label: TIER_LABELS[toMinutesPlan], mxn: TIER_PRICE_MXN[toMinutesPlan] };
         const { data: prevForUpgrade } = await supabase
           .from('voice_agents')
           .select('minutes_used, minutes_included, minutes_plan, portal_email, jornada_type, features')
@@ -487,7 +488,7 @@ export async function POST(req: NextRequest) {
         const newJornada   = (session.metadata?.jornada_type ?? 'combinada') as JornadaType;
         const isCoord      = !!((pendingAgent as { features?: Record<string, unknown> | null }).features as Record<string, unknown> | null)?.is_coordinator;
         const alloc        = isCoord
-          ? { minutes: 0, aiOps: NOX_MONTHLY_CONFIG[newTier]?.aiOps ?? 500 }
+          ? { minutes: 0, aiOps: NOX_JORNADA_CONFIG[newTier]?.aiOps ?? 500 }
           : (JORNADA_CONFIG[newJornada]?.[newTier] ?? { minutes: 0, aiOps: 0 });
 
         await supabase.from('voice_agents').update({
@@ -561,10 +562,9 @@ export async function POST(req: NextRequest) {
 
       if (!agentId || !featurePlan || !minutesPlan
         || !FEATURE_PLAN_CONFIG[featurePlan]
-        || !MONTHLY_CONFIG[featurePlan]?.[minutesPlan]) break;
+        || !TIER_PRICE_MXN[minutesPlan]) break;
 
-      const minutesCfg = MONTHLY_CONFIG[featurePlan][minutesPlan];
-      const jornadaAlloc = JORNADA_CONFIG[jornadaTypeMeta]?.[minutesPlan] ?? { minutes: minutesCfg.minutes, aiOps: minutesCfg.aiOps };
+      const jornadaAlloc = JORNADA_CONFIG[jornadaTypeMeta]?.[minutesPlan] ?? JORNADA_CONFIG.combinada[minutesPlan];
 
       const { data: agentForActivation } = await supabase
         .from('voice_agents').select('portal_email').eq('id', agentId).single();
@@ -611,8 +611,8 @@ export async function POST(req: NextRequest) {
         // Legacy standalone agent
         await supabase.from('minutes_ledger').insert({
           agent_id:    agentId,
-          amount:      minutesCfg.minutes,
-          description: `Activación plan, ${minutesCfg.minutes} minutos incluidos`,
+          amount:      jornadaAlloc.minutes,
+          description: `Activación plan, ${jornadaAlloc.minutes} minutos incluidos`,
           source:      'activacion',
           kind:        'setup_new_agent',
         });
@@ -737,7 +737,7 @@ export async function POST(req: NextRequest) {
           minutes:      jornadaAlloc.minutes,
           aiOps:        jornadaAlloc.aiOps,
           jornadaLabel: jornadaTypeMeta,
-          tierLabel:    minutesCfg.label,
+          tierLabel:    TIER_LABELS[minutesPlan],
         }).catch(err => console.error('[billing-webhook] topup reminder failed:', err));
       }
       break;
@@ -755,10 +755,10 @@ export async function POST(req: NextRequest) {
       const sub         = await stripe.subscriptions.retrieve(subId);
       const agentId     = sub.metadata?.agent_id;
       const priceId      = sub.items.data[0]?.price.id ?? '';
-      const monthlyMatch = monthlyConfigFromPriceId(priceId);
-      if (!agentId || !monthlyMatch) break;
+      const jornadaMatch = jornadaConfigFromPriceId(priceId);
+      if (!agentId || !jornadaMatch) break;
 
-      const { tier: minutesPlan } = monthlyMatch;
+      const { tier: minutesPlan } = jornadaMatch;
 
       // Fetch completo del agente para resolver la asignación real (jornada + coordinator).
       // ANTES: usábamos minutesCfg.minutes/aiOps de MONTHLY_CONFIG.pro que está STALE

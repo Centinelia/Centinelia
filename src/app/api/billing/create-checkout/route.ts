@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isAdmin } from '@/lib/admin/auth';
 import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { FEATURE_PLAN_CONFIG, MONTHLY_CONFIG } from '@/lib/billing/plans';
+import { FEATURE_PLAN_CONFIG, JORNADA_CONFIG, TIER_PRICE_MXN } from '@/lib/billing/plans';
 import { requireStripeEligible } from '@/lib/billing/require-stripe-eligible';
-import type { Plan } from '@/types/agent';
+import type { Plan, JornadaType } from '@/types/agent';
 import type { MinutesTier } from '@/lib/billing/plans';
 
 
@@ -18,14 +18,14 @@ export async function POST(req: NextRequest) {
 
   if (!agentId || !featurePlan || !minutesPlan
     || !FEATURE_PLAN_CONFIG[featurePlan]
-    || !MONTHLY_CONFIG[featurePlan]?.[minutesPlan]) {
+    || !TIER_PRICE_MXN[minutesPlan]) {
     return NextResponse.json({ error: 'Parámetros inválidos' }, { status: 400 });
   }
 
   const supabase = createAdminClient();
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('id, client_name, business_name, stripe_customer_id, portal_email')
+    .select('id, client_name, business_name, stripe_customer_id, portal_email, jornada_type')
     .eq('id', agentId)
     .single();
 
@@ -37,7 +37,10 @@ export async function POST(req: NextRequest) {
   }
 
   const featureCfg = FEATURE_PLAN_CONFIG[featurePlan];
-  const minutesCfg = MONTHLY_CONFIG[featurePlan][minutesPlan];
+  // Jornada del agente determina QUÉ product Stripe (combinada/minutos/tareas × tier).
+  // Default combinada si el agente no tiene jornada_type (setup inicial pre-empleado).
+  const jornada    = (agent.jornada_type as JornadaType | null) ?? 'combinada';
+  const minutesCfg = JORNADA_CONFIG[jornada][minutesPlan];
 
   let customerId: string = agent.stripe_customer_id ?? '';
   if (!customerId) {

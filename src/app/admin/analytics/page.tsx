@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { Phone, Clock, TrendingUp, Users, Download } from 'lucide-react';
 import Link from 'next/link';
-import { MONTHLY_CONFIG } from '@/lib/billing/plans';
+import { TIER_PRICE_MXN } from '@/lib/billing/plans';
 import type { MinutesTier } from '@/lib/billing/plans';
 import type { Plan } from '@/types/agent';
 import AnalyticsAgentsTable from './AnalyticsAgentsTable';
@@ -151,7 +151,7 @@ export default async function AnalyticsPage({ searchParams }: Props) {
 
   const mrr = allAgents
     .filter(a => a.active && a.minutes_plan)
-    .reduce((sum, a) => sum + (MONTHLY_CONFIG[a.plan as Plan]?.[a.minutes_plan as MinutesTier]?.mxn ?? 0), 0);
+    .reduce((sum, a) => sum + (TIER_PRICE_MXN[a.minutes_plan as MinutesTier] ?? 0), 0);
   const activeAgentsCount = allAgents.filter(a => a.active).length;
 
   const outcomeCounts: Record<string, number> = {};
@@ -187,7 +187,7 @@ export default async function AnalyticsPage({ searchParams }: Props) {
     // NO usar a.minutes_used porque esa columna queda en 0 para cuentas con
     // pool a nivel account_minutes (que es el modelo actual).
     const minutesUsed = Math.round(stats.duration / 60);
-    const mxn    = (a.plan && a.minutes_plan) ? (MONTHLY_CONFIG[a.plan as Plan]?.[a.minutes_plan as MinutesTier]?.mxn ?? 0) : 0;
+    const mxn    = a.minutes_plan ? (TIER_PRICE_MXN[a.minutes_plan as MinutesTier] ?? 0) : 0;
     const meerkatRoleId = ((a as unknown as { features?: Record<string, unknown> }).features?.meerkat_role_id as string | undefined) ?? null;
     return {
       id: a.id,

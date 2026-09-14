@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation';
 import { isAdmin } from '@/lib/admin/auth';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { MONTHLY_CONFIG } from '@/lib/billing/plans';
-import type { Plan, MinutesTier } from '@/lib/billing/plans';
+import { TIER_PRICE_MXN } from '@/lib/billing/plans';
+import type { MinutesTier } from '@/lib/billing/plans';
 import Link from 'next/link';
 import {
   DollarSign, TrendingUp, TrendingDown, AlertTriangle,
@@ -62,10 +62,9 @@ interface LedgerRow {
 }
 
 function computeLedger(agent: AgentRow, daysElapsed: number, daysInMonth: number): LedgerRow {
-  const cfg = agent.plan && agent.minutes_plan
-    ? MONTHLY_CONFIG[agent.plan as Plan]?.[agent.minutes_plan as MinutesTier]
-    : undefined;
-  const revenueMxn = cfg?.mxn ?? 0;
+  const revenueMxn = agent.minutes_plan
+    ? (TIER_PRICE_MXN[agent.minutes_plan as MinutesTier] ?? 0)
+    : 0;
 
   const minutesUsed = agent.minutes_used     ?? 0;
   const minutesInc  = agent.minutes_included ?? 0;

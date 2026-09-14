@@ -5,10 +5,9 @@ import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { stripe } from '@/lib/stripe';
 import { createVapiAssistant } from '@/lib/vapi/sync';
 import { provisionPhoneNumber } from '@/lib/vapi/provision';
-import { JORNADA_CONFIG, MONTHLY_CONFIG } from '@/lib/billing/plans';
+import { JORNADA_CONFIG, TIER_PRICE_MXN } from '@/lib/billing/plans';
 import { PLAN_CONCURRENT_CALLS } from '@/types/agent';
-import type { VoiceAgent } from '@/types/agent';
-import type { Plan } from '@/types/agent';
+import type { VoiceAgent, Plan } from '@/types/agent';
 import type { MinutesTier } from '@/lib/billing/plans';
 
 interface Params { params: Promise<{ token: string }> }
@@ -60,7 +59,6 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const fullAgent = agent as VoiceAgent;
   const tier      = (agent.minutes_plan ?? 'starter') as MinutesTier;
-  const plan      = (agent.plan ?? 'pro') as Plan;
 
   // Sin bypass: crear Stripe Checkout para cambiar suscripcion NOX → combinada.
   // El webhook activa la voz post-pago (metadata type=jornada_change_to_voice).
@@ -69,10 +67,11 @@ export async function POST(req: NextRequest, { params }: Params) {
     if (!agent.stripe_customer_id) {
       return NextResponse.json({ error: 'Cuenta sin suscripcion activa. Escribenos a hola@centinelia.mx.' }, { status: 400 });
     }
-    const monthlyCfg = MONTHLY_CONFIG[plan]?.[tier];
-    if (!monthlyCfg) {
+    // Este flow migra de jornada tareas → combinada. Precio combinada[tier].
+    if (!TIER_PRICE_MXN[tier]) {
       return NextResponse.json({ error: 'Plan invalido para activar voz.' }, { status: 400 });
     }
+    const monthlyCfg = JORNADA_CONFIG.combinada[tier];
     const appUrl = process.env.NEXT_PUBLIC_APP_URL!;
     try {
       const checkout = await stripe.checkout.sessions.create({

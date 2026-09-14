@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { ExternalLink, Info } from 'lucide-react';
-import { JORNADA_CONFIG, NOX_MONTHLY_CONFIG, MINUTES_TIER_CONFIG } from '@/lib/billing/plans';
+import { JORNADA_CONFIG, NOX_JORNADA_CONFIG, TIER_LABELS } from '@/lib/billing/plans';
 import type { JornadaType } from '@/types/agent';
 import type { MinutesTier } from '@/lib/billing/plans';
 
@@ -37,7 +37,7 @@ const TIER_ORDER: MinutesTier[] = ['starter', 'growth', 'scale'];
 
 function allocationFor(spec: AgentSpec): { minutes: number; aiOps: number } {
   if (spec.kind === 'coordinator') {
-    const cfg = NOX_MONTHLY_CONFIG[spec.tier];
+    const cfg = NOX_JORNADA_CONFIG[spec.tier];
     return { minutes: cfg.minutes, aiOps: cfg.aiOps };
   }
   return JORNADA_CONFIG[spec.jornada][spec.tier];
@@ -148,8 +148,8 @@ export function SaldosCalculator() {
                     {TIER_ORDER.map(t => (
                       <option key={t} value={t}>
                         {spec.kind === 'coordinator'
-                          ? `${NOX_MONTHLY_CONFIG[t].label} (${NOX_MONTHLY_CONFIG[t].aiOps} ops)`
-                          : `${MINUTES_TIER_CONFIG[t].label} (${MINUTES_TIER_CONFIG[t].minutes} min)`}
+                          ? `${NOX_JORNADA_CONFIG[t].label} (${NOX_JORNADA_CONFIG[t].aiOps} ops)`
+                          : `${TIER_LABELS[t]} (${JORNADA_CONFIG[spec.jornada][t].minutes} min)`}
                       </option>
                     ))}
                   </select>

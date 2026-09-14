@@ -2,7 +2,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { stripe } from '@/lib/stripe';
 import { PLAN_FEATURES } from '@/types/agent';
-import { FEATURE_PLAN_CONFIG, MONTHLY_CONFIG, NOX_MONTHLY_CONFIG, JORNADA_CONFIG } from '@/lib/billing/plans';
+import { FEATURE_PLAN_CONFIG, JORNADA_CONFIG, NOX_JORNADA_CONFIG } from '@/lib/billing/plans';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { sendEmail, empresarialConfirmationHtml } from '@/lib/email/send';
 import type { Plan, JornadaType } from '@/types/agent';
@@ -175,7 +175,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Teléfono requerido' }, { status: 400 });
 
   const p = plan as Plan;
-  const monthlyConfig = isCoordinator ? NOX_MONTHLY_CONFIG[tier] : MONTHLY_CONFIG[p][tier];
+  const monthlyConfig = isCoordinator ? NOX_JORNADA_CONFIG[tier] : JORNADA_CONFIG[effectiveJornada][tier];
   const allocation    = isCoordinator
     ? { minutes: 0, aiOps: monthlyConfig.aiOps }
     : JORNADA_CONFIG[effectiveJornada][tier];

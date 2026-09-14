@@ -9,7 +9,7 @@ import { MonthReportPicker } from './MonthReportPicker';
 import ConsumoPromedioCard from './ConsumoPromedioCard';
 import type { BusinessHours, Plan } from '@/types/agent';
 import type { VoiceCall } from '@/types/agent';
-import { MINUTES_TIER_CONFIG } from '@/lib/billing/plans';
+import { JORNADA_CONFIG } from '@/lib/billing/plans';
 import type { MinutesTier } from '@/lib/billing/plans';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { cookies } from 'next/headers';
@@ -358,8 +358,12 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   // Fallback a MINUTES_TIER_CONFIG[current] cuando no hay ledger populado.
   const planCreditsSum = ((planCreditsThisCycleRes ?? []) as Array<{ amount: number }>).reduce(
     (s, r) => s + Math.max(0, r.amount ?? 0), 0);
+  // Fallback a JORNADA_CONFIG.combinada[tier] (los minutos base históricos que
+  // display en el portal aunque el ledger esté vacío). Si el agente está en otra
+  // jornada, JORNADA_CONFIG[jornada][tier].minutes es el numero real, pero el
+  // fallback combinada es defensivo y suficiente para display.
   const planBaseFromTier = agent.minutes_plan
-    ? (MINUTES_TIER_CONFIG[agent.minutes_plan as MinutesTier]?.minutes ?? minutesIncluded)
+    ? (JORNADA_CONFIG.combinada[agent.minutes_plan as MinutesTier]?.minutes ?? minutesIncluded)
     : minutesIncluded;
   const planBaseMinutes = planCreditsSum > 0 ? planCreditsSum : planBaseFromTier;
   const rolloverMinutes = Math.max(0, minutesIncluded - planBaseMinutes);

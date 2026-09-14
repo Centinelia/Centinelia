@@ -79,9 +79,10 @@ export async function GET(req: Request) {
 
         // Stripe safety net: si invoice.paid webhook no llegó, insertamos
         // renewal manual. Usamos get_plan_base_ops (mismo cálculo que
-        // get_ops_pool_cap sin rollover) — antes se sumaba
-        // MONTHLY_CONFIG[plan][tier].aiOps que daba 300 para pro-scale cuando
-        // JORNADA_CONFIG dice 520 para jornada combinada.
+        // get_ops_pool_cap sin rollover) — antes se sumaba MONTHLY_CONFIG.pro
+        // que devolvía 300 ops para scale cuando JORNADA_CONFIG.combinada.scale
+        // dice 1200. Post-refactor plans.ts 2026-09-14, JORNADA_CONFIG es la
+        // fuente de verdad y no hay drift posible.
         const { data: agents } = await supabase
           .from('voice_agents')
           .select('id')

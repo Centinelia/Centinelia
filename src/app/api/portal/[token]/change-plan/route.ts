@@ -3,7 +3,8 @@ import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requirePortalAccess } from '@/lib/portal/access';
 import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
-import { FEATURE_PLAN_CONFIG, MONTHLY_CONFIG, resolveTierAllocation } from '@/lib/billing/plans';
+import { FEATURE_PLAN_CONFIG, JORNADA_CONFIG, resolveTierAllocation } from '@/lib/billing/plans';
+import type { JornadaType } from '@/types/agent';
 import { setAiOpsLimit } from '@/lib/ai/ops-guard';
 import { PLAN_FEATURES } from '@/types/agent';
 import type { Plan } from '@/types/agent';
@@ -110,8 +111,10 @@ export async function POST(req: NextRequest, { params }: Params) {
   const subItem = sub.items.data.find(item => item.price.recurring !== null);
   if (!subItem) return NextResponse.json({ error: 'Suscripción sin plan recurrente' }, { status: 400 });
 
+  // Price ID depende de la jornada del agente. Default combinada si no hay jornada_type.
+  const jornadaForPriceId = ((agent.jornada_type as JornadaType | null) ?? 'combinada');
   await stripe.subscriptions.update(agent.stripe_subscription_id, {
-    items:              [{ id: subItem.id, price: MONTHLY_CONFIG[newPlan][newTier].priceId() }],
+    items:              [{ id: subItem.id, price: JORNADA_CONFIG[jornadaForPriceId][newTier].priceId() }],
     proration_behavior: 'none',
   });
 

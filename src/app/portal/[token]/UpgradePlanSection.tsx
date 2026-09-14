@@ -4,14 +4,7 @@ import { useState } from 'react';
 import { Check, ArrowUpCircle, ArrowDownCircle, ChevronDown } from 'lucide-react';
 import type { Plan, JornadaType } from '@/types/agent';
 import type { MinutesTier } from '@/lib/billing/plans';
-import { MONTHLY_CONFIG, resolveTierAllocation } from '@/lib/billing/plans';
-
-const TIER_LABELS: Record<MinutesTier, string> = {
-  starter:    'Esencial',
-  growth:     'Profesional',
-  scale:      'Avanzado',
-  enterprise: 'Empresarial',
-};
+import { TIER_PRICE_MXN, TIER_LABELS, resolveTierAllocation } from '@/lib/billing/plans';
 
 const TIER_ORDER: MinutesTier[] = ['starter', 'growth', 'scale'];
 
@@ -63,13 +56,11 @@ export default function UpgradePlanSection({
       {TIER_ORDER.map((tierKey) => {
         const isCurrent  = tierKey === resolvedTier;
         const isExpanded = expandedTier === tierKey;
-        // Asignación REAL para este cliente según su jornada y si es coordinator.
-        // Antes leía MONTHLY_CONFIG.aiOps (100/200/300) que quedó stale — un
-        // cliente en jornada `tareas` veía "300 min · 100 tareas" cuando en
-        // realidad recibiría 0 min y 500 tareas. Precio (mxn) sí es igual
-        // en todas las jornadas, se sigue leyendo de MONTHLY_CONFIG.
+        // Asignación REAL para este cliente según su jornada y si es coordinator
+        // (resolveTierAllocation lee JORNADA_CONFIG o NOX_JORNADA_CONFIG según role).
+        // Precio es jornada-independiente por tier: TIER_PRICE_MXN.
         const alloc = resolveTierAllocation(jornadaType, meerkatRoleId, tierKey);
-        const price = MONTHLY_CONFIG[currentPlan][tierKey].mxn;
+        const price = TIER_PRICE_MXN[tierKey];
         const label = TIER_LABELS[tierKey];
         const isUpgrade = TIER_ORDER.indexOf(tierKey) > currentTierIdx;
         const allocLine = alloc.minutes > 0 && alloc.aiOps > 0

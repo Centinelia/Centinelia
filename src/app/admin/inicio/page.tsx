@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation';
 import { isAdmin } from '@/lib/admin/auth';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { MONTHLY_CONFIG } from '@/lib/billing/plans';
-import type { Plan, MinutesTier } from '@/lib/billing/plans';
+import { TIER_PRICE_MXN } from '@/lib/billing/plans';
+import type { MinutesTier } from '@/lib/billing/plans';
 import Link from 'next/link';
 import {
   AlertTriangle, ArrowRight, Terminal, PhoneCall,
@@ -128,10 +128,7 @@ export default async function InicioPage() {
   // MRR — only agents with billing_status = 'activo' and a known minutes plan
   const mrr = agentList
     .filter(a => a.billing_status === 'activo' && a.plan && a.minutes_plan && a.minutes_plan !== 'enterprise')
-    .reduce((sum, a) => {
-      const cfg = MONTHLY_CONFIG[a.plan as Plan]?.[a.minutes_plan as MinutesTier];
-      return sum + (cfg?.mxn ?? 0);
-    }, 0);
+    .reduce((sum, a) => sum + (TIER_PRICE_MXN[a.minutes_plan as MinutesTier] ?? 0), 0);
 
   // Infra: Vapi / Twilio balances
   const vapiBalance    = typeof vapiAccount?.balance   === 'number' ? vapiAccount.balance   : null;

@@ -7,10 +7,9 @@ import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { createVapiAssistant, resyncPeerAgents } from '@/lib/vapi/sync';
 import { stripe }                        from '@/lib/stripe';
 import { requireStripeEligible }         from '@/lib/billing/require-stripe-eligible';
-import { FEATURE_PLAN_CONFIG, MONTHLY_CONFIG, NOX_MONTHLY_CONFIG } from '@/lib/billing/plans';
+import { FEATURE_PLAN_CONFIG, JORNADA_CONFIG, NOX_JORNADA_CONFIG } from '@/lib/billing/plans';
 import { randomUUID }                    from 'crypto';
 import type { Plan, JornadaType }        from '@/types/agent';
-import { JORNADA_CONFIG }               from '@/lib/billing/plans';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,7 +59,7 @@ export async function createPortalAgent({
   const effectiveJornada: JornadaType = isCoordinator ? 'tareas' : (jornadaType ?? 'combinada');
   const tier          = (minutesPlan ?? base.minutes_plan ?? 'starter') as import('@/lib/billing/plans').MinutesTier;
   const alloc         = isCoordinator
-    ? { minutes: 0, aiOps: NOX_MONTHLY_CONFIG[tier]?.aiOps ?? 500 }
+    ? { minutes: 0, aiOps: NOX_JORNADA_CONFIG[tier]?.aiOps ?? 500 }
     : JORNADA_CONFIG[effectiveJornada][tier];
   const features      = {
     ...role.features,
@@ -199,7 +198,7 @@ export async function POST(
         const isCoord      = !!(role.features as any)?.is_coordinator;
         const effectiveJor: JornadaType = isCoord ? 'tareas' : (jornada_type ?? 'combinada');
         const alloc        = isCoord
-          ? { minutes: 0, aiOps: NOX_MONTHLY_CONFIG[tierFromBody]?.aiOps ?? 500 }
+          ? { minutes: 0, aiOps: NOX_JORNADA_CONFIG[tierFromBody]?.aiOps ?? 500 }
           : JORNADA_CONFIG[effectiveJor][tierFromBody];
         if (alloc.minutes > 0) {
           await supabase.rpc('apply_ledger_entry', {
@@ -232,10 +231,10 @@ export async function POST(
     const planCfg    = FEATURE_PLAN_CONFIG[plan];
     const tier       = tierFromBody;
     const isCoord2        = !!(role.features as any)?.is_coordinator;
-    const monthlyCfg = isCoord2 ? NOX_MONTHLY_CONFIG[tier] : MONTHLY_CONFIG[plan]?.[tier];
+    const effectiveJornada: JornadaType = isCoord2 ? 'tareas' : ((jornada_type ?? 'combinada') as JornadaType);
+    const monthlyCfg = isCoord2 ? NOX_JORNADA_CONFIG[tier] : JORNADA_CONFIG[effectiveJornada][tier];
     const customerId      = base.stripe_customer_id ?? undefined;
     const appUrl          = process.env.NEXT_PUBLIC_APP_URL!;
-    const effectiveJornada: JornadaType = isCoord2 ? 'tareas' : ((jornada_type ?? 'combinada') as JornadaType);
 
     const checkoutSession = await stripe.checkout.sessions.create({
       ...(customerId ? { customer: customerId, customer_update: { address: 'auto', name: 'auto' } } : {}),
