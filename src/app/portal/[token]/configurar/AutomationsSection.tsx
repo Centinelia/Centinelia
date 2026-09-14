@@ -90,19 +90,20 @@ export default function AutomationsSection({ token, agentId, roleColor }: Props)
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         setError((j as { error?: string }).error ?? 'No se pudo actualizar.');
-      } else {
-        await load();
       }
     } catch {
       setError('No se pudo actualizar.');
     } finally {
+      // Reconciliar siempre con server truth para no dejar UI stale ante
+      // errores o writes concurrentes desde otras pestañas.
+      await load();
       setPending(null);
     }
   }
 
   if (loading) {
     return (
-      <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Cargando automatizaciones...</p>
+      <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Cargando automatizaciones…</p>
     );
   }
 
@@ -178,24 +179,34 @@ export default function AutomationsSection({ token, agentId, roleColor }: Props)
                   </div>
                 </div>
 
-                <button
-                  onClick={() => toggle(name, !isActive)}
-                  disabled={isDisabled}
-                  className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
-                  style={
-                    isActive
-                      ? { background: roleColor, color: '#fff', opacity: isDisabled ? 0.4 : 1, cursor: isDisabled ? 'not-allowed' : 'pointer' }
-                      : {
-                          background: 'var(--c-surface)',
-                          border: '1px solid var(--c-border)',
-                          color: 'var(--c-text-2)',
-                          opacity: isDisabled ? 0.4 : 1,
-                          cursor: isDisabled ? 'not-allowed' : 'pointer',
-                        }
-                  }
-                >
-                  {pending === name ? '...' : isActive ? 'Activo' : 'Activar'}
-                </button>
+                {unavailable ? (
+                  <a
+                    href="?tab=correo"
+                    className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
+                    style={{ background: roleColor, color: '#fff', textDecoration: 'none' }}
+                  >
+                    Conectar correo
+                  </a>
+                ) : (
+                  <button
+                    onClick={() => toggle(name, !isActive)}
+                    disabled={isDisabled}
+                    className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
+                    style={
+                      isActive
+                        ? { background: roleColor, color: '#fff', opacity: isDisabled ? 0.4 : 1, cursor: isDisabled ? 'not-allowed' : 'pointer' }
+                        : {
+                            background: 'var(--c-surface)',
+                            border: '1px solid var(--c-border)',
+                            color: 'var(--c-text-2)',
+                            opacity: isDisabled ? 0.4 : 1,
+                            cursor: isDisabled ? 'not-allowed' : 'pointer',
+                          }
+                    }
+                  >
+                    {pending === name ? '…' : isActive ? 'Activo' : 'Activar'}
+                  </button>
+                )}
               </div>
             </div>
           );

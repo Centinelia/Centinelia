@@ -124,37 +124,53 @@ export class ContpaqiTimbraProvider implements InvoicingProvider {
     _csd: { cerPem: string; keyPem: string; noCertificado: string },
     opts: CancelOpts,
   ): Promise<CancelSubmitResult> {
-    const url = `${opts.testMode ? ENDPOINT.test : ENDPOINT.prod}/cancelar`;
-    const { status, json } = await jsonCall(
-      url, 'POST',
-      baseHeaders(creds.usuario, creds.password),
-      { uuid, motivo, ...(uuidSustituto ? { uuidSustituto } : {}) },
-      opts.timeoutMs ?? 30000,
-    );
-    const r = (json ?? {}) as Record<string, unknown>;
-    const respStatus = Number(r.status ?? status);
-    if (respStatus !== 200) return { status: 'rejected', code: respStatus, message: String(r.mensaje ?? '') };
-    return { status: 'sent_to_sat', message: String(r.mensaje ?? '') };
+    // Contract: nunca throw. Cubre env faltante + errores de red.
+    try {
+      const url = `${opts.testMode ? ENDPOINT.test : ENDPOINT.prod}/cancelar`;
+      const { status, json } = await jsonCall(
+        url, 'POST',
+        baseHeaders(creds.usuario, creds.password),
+        { uuid, motivo, ...(uuidSustituto ? { uuidSustituto } : {}) },
+        opts.timeoutMs ?? 30000,
+      );
+      const r = (json ?? {}) as Record<string, unknown>;
+      const respStatus = Number(r.status ?? status);
+      if (respStatus !== 200) return { status: 'rejected', code: respStatus, message: String(r.mensaje ?? '') };
+      return { status: 'sent_to_sat', message: String(r.mensaje ?? '') };
+    } catch (err) {
+      return {
+        status:  'rejected',
+        code:    502,
+        message: err instanceof Error ? err.message : String(err),
+      };
+    }
   }
 
   async consultarEstatusCancelacion(
     uuid: string, creds: { usuario: string; password: string }, opts: CancelOpts,
   ): Promise<CancelStatus> {
-    const url = `${opts.testMode ? ENDPOINT.test : ENDPOINT.prod}/cancelacion/${encodeURIComponent(uuid)}`;
-    const { json } = await jsonCall(
-      url, 'GET',
-      baseHeaders(creds.usuario, creds.password),
-      undefined,
-      opts.timeoutMs ?? 30000,
-    );
-    const r = (json ?? {}) as Record<string, unknown>;
-    const mensaje = String(r.mensaje ?? '');
-    const acuse = r.acuseXmlBase64 ? Buffer.from(String(r.acuseXmlBase64), 'base64') : undefined;
-    if (/cancel/i.test(mensaje) && !/no cancel/i.test(mensaje)) return { status: 'accepted', acuseXml: acuse, message: mensaje };
-    if (/proceso|pendiente/i.test(mensaje)) return { status: 'pending', message: mensaje };
-    if (/no cancelable|rechaz/i.test(mensaje)) return { status: 'rejected', message: mensaje };
-    if (/plazo|expir/i.test(mensaje)) return { status: 'expired', message: mensaje };
-    return { status: 'pending', message: mensaje };
+    try {
+      const url = `${opts.testMode ? ENDPOINT.test : ENDPOINT.prod}/cancelacion/${encodeURIComponent(uuid)}`;
+      const { json } = await jsonCall(
+        url, 'GET',
+        baseHeaders(creds.usuario, creds.password),
+        undefined,
+        opts.timeoutMs ?? 30000,
+      );
+      const r = (json ?? {}) as Record<string, unknown>;
+      const mensaje = String(r.mensaje ?? '');
+      const acuse = r.acuseXmlBase64 ? Buffer.from(String(r.acuseXmlBase64), 'base64') : undefined;
+      if (/cancel/i.test(mensaje) && !/no cancel/i.test(mensaje)) return { status: 'accepted', acuseXml: acuse, message: mensaje };
+      if (/proceso|pendiente/i.test(mensaje)) return { status: 'pending', message: mensaje };
+      if (/no cancelable|rechaz/i.test(mensaje)) return { status: 'rejected', message: mensaje };
+      if (/plazo|expir/i.test(mensaje)) return { status: 'expired', message: mensaje };
+      return { status: 'pending', message: mensaje };
+    } catch (err) {
+      return {
+        status:  'pending',
+        message: err instanceof Error ? err.message : String(err),
+      };
+    }
   }
 }
 

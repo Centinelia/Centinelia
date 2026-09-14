@@ -27,8 +27,9 @@ export default function EmpleadoPickerChips({ token, agents, activeId }: Props) 
   if (agents.length <= 1) return null;
 
   // Preserva otros query params al cambiar de empleado (ej: tab=knowledge).
+  // searchParams puede ser null bajo Suspense en Next 15 → guardar.
   const buildHref = (id: string) => {
-    const sp = new URLSearchParams(searchParams.toString());
+    const sp = new URLSearchParams(searchParams?.toString() ?? '');
     sp.set('empleado_id', id);
     return `/portal/${token}/configurar?${sp.toString()}`;
   };

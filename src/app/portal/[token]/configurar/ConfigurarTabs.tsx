@@ -80,7 +80,12 @@ export default function ConfigurarTabs({ children }: Props) {
     setTab(v);
     const params = new URLSearchParams(searchParams?.toString() ?? '');
     params.set('tab', v);
-    router.replace(`${pathname}?${params.toString()}${window.location.hash}`, { scroll: false });
+    // Sync window.location primero para que el effect de scroll (que lee
+    // window.location.hash) no salte a un anchor del tab anterior.
+    if (typeof window !== 'undefined' && window.location.hash) {
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
   return (

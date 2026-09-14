@@ -26,7 +26,10 @@ async function resolveOrg(
   if (!agent) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   // IDOR: verify the session's org matches the token's org
-  if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email) {
+  if (
+    auth.portalEmail && agent.portal_email &&
+    auth.portalEmail.toLowerCase() !== agent.portal_email.toLowerCase()
+  ) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 403 });
   }
 
@@ -50,13 +53,15 @@ async function verifyOwnership(
     .from('sheets_mappings')
     .select('id, portal_email')
     .eq('id', mappingId)
-    .single();
+    .maybeSingle();
 
   // Row not found at all
   if (!mapping) return NextResponse.json({ error: 'not_found' }, { status: 404 });
 
   // Row exists but belongs to a different org — still return 404 (no info leak)
-  if (mapping.portal_email !== portalEmail) {
+  // Comparación case-insensitive por si portal_email fue capturado con
+  // diferente case en distintas capas.
+  if (mapping.portal_email.toLowerCase() !== portalEmail.toLowerCase()) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 

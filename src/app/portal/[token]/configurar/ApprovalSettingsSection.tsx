@@ -17,17 +17,25 @@ interface Settings {
  * Ver [[feedback-empleados-inteligentes]].
  */
 export default function ApprovalSettingsSection({ token, agentId, roleColor, hideHeader }: { token: string; agentId?: string; roleColor: string; hideHeader?: boolean }) {
-  const [settings, setSettings] = useState<Settings | null>(null);
-  const [saving,   setSaving]   = useState(false);
-  const [msg,      setMsg]      = useState<string | null>(null);
+  const [settings,  setSettings]  = useState<Settings | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [saving,    setSaving]    = useState(false);
+  const [msg,       setMsg]       = useState<string | null>(null);
 
   const qs = agentId ? `?agent_id=${agentId}` : '';
 
   useEffect(() => {
+    setLoadError(null);
     fetch(`/api/portal/${token}/org-approval-settings${qs}`)
-      .then(r => r.json())
+      .then(async r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then(setSettings)
-      .catch(() => setSettings({ always_approve_delegations: false, auto_approve_task_plans: false }));
+      .catch(err => {
+        console.error('[approval-settings] load failed:', err);
+        setLoadError('No pudimos cargar tu configuración. Recarga la página.');
+      });
   }, [token, qs]);
 
   const alwaysOn = !!settings?.always_approve_delegations;
@@ -70,7 +78,11 @@ export default function ApprovalSettingsSection({ token, agentId, roleColor, hid
         />
       )}
 
-      {!settings && (
+      {loadError && (
+        <p className="text-sm" style={{ color: '#ef4444' }}>{loadError}</p>
+      )}
+
+      {!settings && !loadError && (
         <p className="text-sm" style={{ color: 'var(--c-text-2)' }}>Cargando…</p>
       )}
 

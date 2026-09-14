@@ -46,6 +46,11 @@ export const limiters = {
   // al LLM a mandar spam. Un correo con 8 remisiones normalmente escalates
   // 8 veces = OK. Loop patológico > 15 en 5 min = bloqueado.
   nalaOutbound: makeRatelimit(Ratelimit.slidingWindow(15, '5 m'), 'rl:nala-outbound'),
+
+  // Config writes (pause/resume, automations toggle, tool-overrides): 30 per
+  // minute por portal_email. Cubre toggles rápidos legítimos pero bloquea
+  // scripts que floodean.
+  configWrite: makeRatelimit(Ratelimit.slidingWindow(30, '1 m'), 'rl:config-write'),
 };
 
 function getIp(req: NextRequest): string {

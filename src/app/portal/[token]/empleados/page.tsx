@@ -6,7 +6,7 @@ import { notFound, redirect }           from 'next/navigation';
 import { cookies }                      from 'next/headers';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import Link                             from 'next/link';
-import { Settings2, Bot, Zap, Clock, AlertTriangle, Users, PhoneCall, Sparkles, Layers, Mail } from 'lucide-react';
+import { Settings2, Bot, Zap, Clock, AlertTriangle, Users, PhoneCall, Sparkles, Layers, Mail, Check, Circle, ChevronRight } from 'lucide-react';
 import PauseResumeButton               from '../PauseResumeButton';
 import AgentAvatarPicker               from '../AgentAvatarPicker';
 import MeerkatPicker                   from './MeerkatPicker';
@@ -281,6 +281,11 @@ export default async function AgentesPage({ params }: Props) {
   const cookieStore = await cookies();
   const session     = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
 
+  // Prod-strict: sin sesión, redirigir a login (no confiar solo en middleware).
+  if (!session && process.env.NODE_ENV !== 'development') {
+    redirect('/portal/login');
+  }
+
   const supabase = createAdminClient();
   const baseAgent = await getPrimaryAgentFromToken<{ portal_email: string | null; business_name: string; plan: string | null; minutes_plan: string | null }>(
     token,
@@ -311,7 +316,8 @@ export default async function AgentesPage({ params }: Props) {
   function agentSortKey(a: { features: unknown }): number {
     const mid = ((a.features as any)?.meerkat_role_id as string | null) ?? null;
     if (mid && (COORDINATOR_ROLE_IDS as readonly string[]).includes(mid)) return 0;
-    if ((a.features as any)?.receptionist) return 1;
+    // Nia canonical (meerkat_role_id='nia') o legacy (features.receptionist).
+    if (mid === 'nia' || (a.features as any)?.receptionist) return 1;
     return 2;
   }
 
@@ -337,7 +343,7 @@ export default async function AgentesPage({ params }: Props) {
   }
 
   const { data: orgRow } = baseAgent.portal_email
-    ? await supabase.from('organizations').select('owner_passphrase, billing_model, active_contract_id').eq('portal_email', baseAgent.portal_email).single()
+    ? await supabase.from('organizations').select('owner_passphrase, billing_model, active_contract_id').eq('portal_email', baseAgent.portal_email).maybeSingle()
     : { data: null };
   const hasPassphrase = !!orgRow?.owner_passphrase?.trim();
 
@@ -356,10 +362,13 @@ export default async function AgentesPage({ params }: Props) {
 
   // Empleados con email propio conectado (Gmail/Outlook a nivel agent).
   // Contamos agent_ids distintos con al menos una integración en email_integrations.
-  const { data: emailRows } = agents.length > 0
+  const emailRowsRes = agents.length > 0
     ? await supabase.from('email_integrations').select('agent_id').in('agent_id', agents.map(a => a.id))
-    : { data: [] as { agent_id: string }[] };
-  const agentsWithEmail = new Set((emailRows ?? []).map(r => r.agent_id)).size;
+    : { data: [] as { agent_id: string }[], error: null };
+  if ((emailRowsRes as { error: unknown }).error) {
+    console.error('[empleados] email_integrations query failed:', (emailRowsRes as { error: unknown }).error);
+  }
+  const agentsWithEmail = new Set((emailRowsRes.data ?? []).map(r => r.agent_id)).size;
   const emailPct        = agents.length > 0 ? Math.round((agentsWithEmail / agents.length) * 100) : 0;
   let annualContractInfo: { folio: string; endDate: string; isExpired: boolean } | null = null;
   if (isAnnualOrExpired) {
@@ -819,14 +828,14 @@ export default async function AgentesPage({ params }: Props) {
                   {Math.round((cat.covered / cat.total) * 100)}%
                 </span>
               </div>
-              <span className="text-[10px] flex-shrink-0" style={{ color: '#9B8FB5' }}>▸</span>
+              <ChevronRight size={10} className="flex-shrink-0 details-chevron" style={{ color: '#9B8FB5' }} />
             </summary>
             <div className="ml-3 mt-0.5 mb-1.5 flex flex-col gap-0.5">
               {cat.tools.map(t => (
                 <div key={t.key} className="flex items-center gap-1 py-0.5">
-                  <span className="text-[10px] w-3 text-center flex-shrink-0"
+                  <span className="w-3 flex-shrink-0 inline-flex items-center justify-center"
                     style={{ color: t.covered ? '#16a34a' : '#9B8FB5' }}>
-                    {t.covered ? '✓' : '○'}
+                    {t.covered ? <Check size={10} strokeWidth={3} /> : <Circle size={7} />}
                   </span>
                   <span className="group/cap relative text-[10px] leading-tight cursor-default"
                     style={{ color: t.covered ? '#1A0A3B' : '#9B8FB5' }}>
@@ -873,14 +882,14 @@ export default async function AgentesPage({ params }: Props) {
                 <span className="text-[10px] tabular-nums flex-shrink-0" style={{ color: '#9B8FB5' }}>
                   {cat.covered}/{cat.total}
                 </span>
-                <span className="text-[10px] flex-shrink-0" style={{ color: '#9B8FB5' }}>▸</span>
+                <ChevronRight size={10} className="flex-shrink-0 details-chevron" style={{ color: '#9B8FB5' }} />
               </summary>
               <div className="ml-3 mt-0.5 mb-1.5 flex flex-col gap-0.5">
                 {cat.tools.map(t => (
                   <div key={t.key} className="flex items-center gap-1 py-0.5">
-                    <span className="text-[10px] w-3 text-center flex-shrink-0"
+                    <span className="w-3 flex-shrink-0 inline-flex items-center justify-center"
                       style={{ color: t.covered ? '#16a34a' : '#9B8FB5' }}>
-                      {t.covered ? '✓' : '○'}
+                      {t.covered ? <Check size={10} strokeWidth={3} /> : <Circle size={7} />}
                     </span>
                     <span className="group/cap relative text-[10px] leading-tight cursor-default"
                       style={{ color: t.covered ? '#6B6480' : '#9B8FB5' }}>

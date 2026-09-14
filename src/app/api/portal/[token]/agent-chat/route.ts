@@ -1496,7 +1496,10 @@ const ALL_TOOLS = [
 // (compartidos con inbox-processor para filtrar tools por meerkat en email).
 
 // Chat tool name → Anthropic.Tool object
-const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
+// Exported para el test de completeness (tool-completeness.test.ts).
+// Fuera del test, este record NO se usa desde otros archivos — sigue siendo
+// interno al canal chat.
+export const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
   delegar_tarea:             DELEGAR_TAREA_TOOL,
   consultar_agente:          CONSULTAR_AGENTE_TOOL,
   crear_borrador_contrato:   CREAR_BORRADOR_CONTRATO_TOOL,
@@ -1577,7 +1580,7 @@ const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
 
 // Nash-only tools — nunca en ALL_TOOLS, se agregan condicionalmente cuando
 // getToolsForRole detecta meerkat_role_id === 'nash'.
-const NASH_TOOLS: Anthropic.Tool[] = [
+export const NASH_TOOLS: Anthropic.Tool[] = [
   REVISAR_INCIDENTES_PLATAFORMA_TOOL,
   CREAR_INCIDENTE_TOOL,
   RESPONDER_CLIENTE_AFECTADO_TOOL,

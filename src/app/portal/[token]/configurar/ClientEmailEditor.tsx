@@ -18,9 +18,10 @@ interface Props {
   agentId:    string;
   initEmail:  string | null;
   agentName?: string;
+  isNala?:    boolean;
 }
 
-export default function ClientEmailEditor({ token, agentId, initEmail, agentName }: Props) {
+export default function ClientEmailEditor({ token, agentId, initEmail, agentName, isNala }: Props) {
   const [value, setValue]     = useState(initEmail ?? '');
   const [saving, setSaving]   = useState(false);
   const [feedback, setFeedback] = useState<'ok' | 'err' | null>(null);
@@ -62,7 +63,7 @@ export default function ClientEmailEditor({ token, agentId, initEmail, agentName
           Correo para avisos y escalaciones
         </span>
         <p className="text-xs mb-2" style={{ color: 'var(--c-text-3)' }}>
-          Aquí llegan las alertas cuando {agentName ?? 'este empleado'} necesita tu confirmación o hay algo urgente que revisar. Puede ser tu correo personal o un correo de operaciones. {agentName === 'Nala' && (
+          Aquí llegan las alertas cuando {agentName ?? 'este empleado'} necesita tu confirmación o hay algo urgente que revisar. Puede ser tu correo personal o un correo de operaciones. {isNala && (
             <>Además, cada escalación crea una card en <strong>Facturas → Pendientes</strong> con la foto y campos editables.</>
           )}
         </p>

@@ -31,9 +31,15 @@ export async function GET(req: NextRequest, { params }: Params) {
   const cookieStore = await cookies();
   const session = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!session.portalEmail && process.env.NODE_ENV !== 'development') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   const resolved = await resolveOrgFromToken(token);
   if (!resolved) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  if (session.portalEmail !== resolved.portalEmail) {
+  if (
+    session.portalEmail &&
+    session.portalEmail.toLowerCase() !== resolved.portalEmail.toLowerCase()
+  ) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 

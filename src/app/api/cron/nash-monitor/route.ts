@@ -1,15 +1,31 @@
 export const dynamic     = 'force-dynamic';
 export const maxDuration = 60;
 
-import { NextRequest, NextResponse } from 'next/server';
 import { runNashMonitor } from '@/lib/ops/nash-runner';
-import { verifyCronAuth } from '@/lib/auth/cron-auth';
+import { defineCron } from '@/lib/cron/define-cron';
 
-export async function GET(req: NextRequest) {
-  if (!verifyCronAuth(req)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+export const GET = defineCron({
+  name:        'nash-monitor',
+  maxDuration: 60,
+  // Nash es el detector interno — no queremos que dispare alertCronPartialFailure
+  // sobre sí mismo. Además, "no encontró incidentes" no es failure.
+  silenceAlerts: true,
+  handler: async () => {
+    const result = await runNashMonitor() as {
+      processed?: number;
+      total?:     number;
+      errors?:    string[];
+    } | Record<string, unknown>;
 
-  const result = await runNashMonitor();
-  return NextResponse.json(result);
-}
+    const total     = (result as { total?: number }).total     ?? 0;
+    const processed = (result as { processed?: number }).processed ?? total;
+    const errors    = (result as { errors?: string[] }).errors ?? [];
+
+    return {
+      expected:  total,
+      processed,
+      errors,
+      metadata:  { ...result },
+    };
+  },
+});

@@ -30,21 +30,31 @@ export default function AutonomySection({ token, agentId, agentName, initStage, 
   const [stage,  setStage]  = useState(initStage);
   const [saving, setSaving] = useState(false);
   const [saved,  setSaved]  = useState(false);
+  const [error,  setError]  = useState<string | null>(null);
 
   async function setTrustStage(v: number) {
     if (v === stage) return;
+    const prev = stage;
     setStage(v);
     setSaved(false);
+    setError(null);
     setSaving(true);
     try {
-      await fetch(`/api/portal/${token}/settings`, {
+      const res = await fetch(`/api/portal/${token}/settings`, {
         method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ agentId, trust_stage: v }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
-    } finally { setSaving(false); }
+    } catch (err) {
+      console.error('[autonomy] save failed:', err);
+      setStage(prev);
+      setError('No se pudo guardar. Intenta de nuevo.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   // 3 = Autónomo (default), 2 = Máximo control (Supervisado), 1 = Observador (pruebas).
@@ -141,10 +151,13 @@ export default function AutonomySection({ token, agentId, agentName, initStage, 
 
       <div className="flex items-center justify-end h-4">
         {saving && <span className="text-[11px]" style={{ color: '#6B6480' }}>Guardando…</span>}
-        {saved && (
+        {saved && !saving && (
           <span className="inline-flex items-center gap-1 text-[11px]" style={{ color: '#22c55e' }}>
             <Check size={11} /> Guardado
           </span>
+        )}
+        {error && !saving && (
+          <span className="text-[11px]" style={{ color: '#ef4444' }}>{error}</span>
         )}
       </div>
 

@@ -22,17 +22,25 @@ const OPTIONS: { key: Mode; label: string; desc: string; icon: typeof Zap }[] = 
 ];
 
 export default function InstantProcessingSection({ token, agentId, roleColor, hideHeader }: { token: string; agentId?: string; roleColor: string; hideHeader?: boolean }) {
-  const [enabled, setEnabled] = useState<boolean | null>(null);
-  const [saving,  setSaving]  = useState(false);
-  const [msg,     setMsg]     = useState<string | null>(null);
+  const [enabled,   setEnabled]   = useState<boolean | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [saving,    setSaving]    = useState(false);
+  const [msg,       setMsg]       = useState<string | null>(null);
 
   const qs = agentId ? `?agent_id=${agentId}` : '';
 
   useEffect(() => {
+    setLoadError(null);
     fetch(`/api/portal/${token}/org-approval-settings${qs}`)
-      .then(r => r.json())
+      .then(async r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then(d => setEnabled(typeof d.instant_processing_enabled === 'boolean' ? d.instant_processing_enabled : true))
-      .catch(() => setEnabled(true));
+      .catch(err => {
+        console.error('[instant-processing] load failed:', err);
+        setLoadError('No pudimos cargar tu configuración. Recarga la página.');
+      });
   }, [token, qs]);
 
   const setMode = async (mode: Mode) => {
@@ -75,7 +83,13 @@ export default function InstantProcessingSection({ token, agentId, roleColor, hi
         </>
       )}
 
-      {enabled === null && <p className="text-sm" style={{ color: 'var(--c-text-2)' }}>Cargando…</p>}
+      {loadError && (
+        <p className="text-sm" style={{ color: '#ef4444' }}>{loadError}</p>
+      )}
+
+      {enabled === null && !loadError && (
+        <p className="text-sm" style={{ color: 'var(--c-text-2)' }}>Cargando…</p>
+      )}
 
       {enabled !== null && (
         <div className="space-y-2">

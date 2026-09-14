@@ -18,14 +18,19 @@ export default async function AgentesLayout({
   params,
 }: {
   children: React.ReactNode;
-  params: Promise<any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+  params: Promise<{ token: string }>;
 }) {
-  const { token } = (await params) as { token: string };
+  const { token } = await params;
 
   const cookieStore = await cookies();
   const session     = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
 
-  const isOwner = !session?.isSubUser;
+  // Prod-strict: sin sesión, redirigir a login (no confiar solo en middleware).
+  if (!session && process.env.NODE_ENV !== 'development') {
+    redirect('/portal/login');
+  }
+
+  const isOwner = !!session && !session.isSubUser;
   const modules = session?.isSubUser ? (session.modules ?? []) : undefined;
 
   const supabase = createAdminClient();
@@ -43,11 +48,15 @@ export default async function AgentesLayout({
   // agentes/page.tsx para el detalle del bug.
   const lookupEmail = session?.portalEmail || agent.portal_email || null;
 
+  // Excluye pendiente_pago para alinear con /empleados/page.tsx — sin este
+  // filtro el shell mostraba nav (outbound, ops) para empleados que la lista
+  // principal oculta.
   const { data: clientAgents } = lookupEmail
     ? await supabase
         .from('voice_agents')
         .select('business_name, logo_url, portal_token, role, features')
         .eq('portal_email', lookupEmail)
+        .neq('billing_status', 'pendiente_pago')
     : { data: [] };
 
   const allClientAgents = clientAgents ?? [];
@@ -59,7 +68,12 @@ export default async function AgentesLayout({
   const showOutbound = !!(agent.features as any)?.outbound_calls // eslint-disable-line @typescript-eslint/no-explicit-any
     || allClientAgents.some((a: any) => !!((a.features as any)?.outbound_calls)); // eslint-disable-line @typescript-eslint/no-explicit-any
   const hasStripe    = !!(agent as any).stripe_customer_id;
-  const accountSerial = lookupEmail ? await getOrCreateSerial(lookupEmail).catch(() => null) : null;
+  const accountSerial = lookupEmail
+    ? await getOrCreateSerial(lookupEmail).catch(err => {
+        console.error('[empleados/layout] serial gen failed:', err);
+        return null;
+      })
+    : null;
 
   // Pool status via helper — ver src/lib/portal/pool-status.ts. Cubre el
   // bug de fallback ladder (`??` sobre 0) + falta de check ops_ledger_enabled

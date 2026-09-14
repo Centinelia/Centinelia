@@ -62,6 +62,12 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
   const sessionCookie = cookieStore.get(PORTAL_COOKIE)?.value ?? '';
   const session       = await verifySession(sessionCookie);
 
+  // Auth guard estricto en prod: si no hay session, redirect a login.
+  // Dev bypass: verifySession retorna { portalEmail: '' } en dev, aceptado.
+  if (!session && process.env.NODE_ENV !== 'development') {
+    redirect('/portal/login');
+  }
+
   const supabase = createAdminClient();
 
   // /configurar es per-agent — resolvemos el target agent en este orden:
@@ -74,18 +80,26 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
   if (!resolved) notFound();
 
   if (empleado_id) {
+    // No filtramos por active=true: si el empleado está pausado (billing o
+    // client_paused), el dueño necesita entrar a su config precisamente para
+    // arreglar eso. Sin este cambio caíamos al fallback y mostrábamos OTRO
+    // empleado silenciosamente.
     const { data } = await supabase
       .from('voice_agents').select('*')
       .eq('id', empleado_id)
       .eq('portal_email', resolved.portalEmail)
-      .eq('active', true)
       .maybeSingle() as { data: Record<string, any> | null };
     agent = data;
   }
 
   if (!agent) {
     agent = await getAgentByToken<Record<string, any>>(token, '*', supabase);
-    if (!agent || agent.active !== true) agent = null;
+    // Defense in depth: aunque el token legacy matchee un agente, si su
+    // portal_email no es el del org resuelto → drop (protege contra
+    // colisiones o legacy tokens de otra org).
+    if (!agent || agent.active !== true || agent.portal_email !== resolved.portalEmail) {
+      agent = null;
+    }
   }
 
   if (!agent) {
@@ -116,7 +130,9 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
     redirect('/portal/login');
   }
 
-  const isOwner = !session?.isSubUser;
+  // isOwner requiere una sesión real; sin sesión nunca se considera owner
+  // (evita que un guest reciba secretos como owner_passphrase).
+  const isOwner = !!session && !session.isSubUser;
   if (isOwner && (agent as any).onboarding_completed === false) {
     redirect(`/setup/${token}`);
   }
@@ -134,7 +150,10 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
   const colorLocked    = !!meerkatId;
   const isCoordinator  = !!meerkatId && (COORDINATOR_ROLE_IDS as readonly string[]).includes(meerkatId);
   const jornadaType    = ((agent as any).jornada_type as string) ?? 'combinada';
-  const hasVoice       = !isCoordinator && agent.plan === 'pro' && (!meerkatId || meerkatId === 'custom');
+  // 'custom' meerkat fue eliminado (ver [[feedback-no-custom-meerkat]]) —
+  // hasVoice queda como no-coordinador con plan pro. Antes esta cláusula
+  // ocultaba la card de voz para meerkats legítimos.
+  const hasVoice       = !isCoordinator && agent.plan === 'pro';
   const hasVoiceJornada = !isCoordinator && jornadaType !== 'tareas';
   const initOutbound   = !!(features.outbound_calls);
   const initMissedCall = !!((agent as any).missed_call_recovery);
@@ -154,11 +173,15 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
   // solo por retrocompat con conexiones viejas per-agent.
   let connectedEmail: string | null = null;
   if (agent.portal_email) {
+    // Un org puede tener AMBOS providers (gmail + outlook) — sin order+limit
+    // .maybeSingle() lanzaría 406 y crashearía la página.
     const { data } = await supabase
       .from('integration_accounts')
-      .select('account_label, status')
+      .select('account_label, status, created_at')
       .eq('portal_email', agent.portal_email)
       .in('provider', ['gmail', 'outlook'])
+      .order('created_at', { ascending: false })
+      .limit(1)
       .maybeSingle();
     if (data && (data as any).status !== 'needs_reauth') {
       connectedEmail = ((data as any).account_label as string) ?? null;
@@ -528,7 +551,7 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
                     <SectionHeader
                       as="h2"
                       title="Plantillas de documentos"
-                      tooltip="Sube tu plantilla .docx custom para cada tipo de documento. Tu empleado la usará en lugar del formato por defecto al generar propuestas, cotizaciones o one_pagers."
+                      tooltip="Sube tu plantilla .docx custom para cada tipo de documento. Tu empleado la usará en lugar del formato por defecto al generar propuestas, cotizaciones o one-pagers."
                       className="mb-4"
                     />
                     <BrandTemplateSection
@@ -647,7 +670,7 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
                     <SectionHeader
                       as="h2"
                       title="Número de respaldo cuando se agoten tus minutos"
-                      tooltip="Si no te quedan minutos en tu ciclo, las llamadas entrantes se redirigen a este número en lugar de colgarse. Recibes un aviso por WhatsApp cuando esto ocurra."
+                      tooltip="Si no te quedan minutos en tu ciclo, las llamadas entrantes se redirigen a este número en lugar de colgarse. Recibes un aviso por correo cuando esto ocurra."
                       className="mb-4"
                     />
                     <FallbackNumberSection
@@ -821,6 +844,7 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
                         agentId={agent.id as string}
                         initEmail={(agent as any).client_email ?? null}
                         agentName={agent.agent_name as string | undefined}
+                        isNala={meerkatId === 'nala'}
                       />
                     </div>
                     <NotificationsToggle

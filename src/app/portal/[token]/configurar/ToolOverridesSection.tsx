@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { ChevronDown, ChevronRight, Wrench } from 'lucide-react';
 import { toast } from 'sonner';
+import { computeNextOverrides } from '@/lib/tools/compute-next-overrides';
 
 interface AvailableTool {
   name:               string;
@@ -129,25 +130,7 @@ export default function ToolOverridesSection({ token, agentId, agentName, roleCo
 
   const onToggle = async (tool: AvailableTool, next: boolean) => {
     if (!data || saving) return;
-    const overrides = data.overrides;
-    const nextOv: Overrides = {
-      disabled: [...overrides.disabled],
-      enabled:  [...overrides.enabled],
-    };
-
-    if (!next) {
-      if (tool.enabledByOverride) {
-        nextOv.enabled = nextOv.enabled.filter(n => n !== tool.name);
-      } else if (tool.inPreset) {
-        if (!nextOv.disabled.includes(tool.name)) nextOv.disabled.push(tool.name);
-      }
-    } else {
-      if (tool.disabledByOverride) {
-        nextOv.disabled = nextOv.disabled.filter(n => n !== tool.name);
-      } else if (!tool.inPreset) {
-        if (!nextOv.enabled.includes(tool.name)) nextOv.enabled.push(tool.name);
-      }
-    }
+    const nextOv: Overrides = computeNextOverrides(data.overrides, tool, next);
 
     const nextGroups: ToolGroup[] = data.groups.map(g => ({
       ...g,

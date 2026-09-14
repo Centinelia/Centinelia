@@ -15,8 +15,8 @@
  *
  * Emite `onConfigured()` cuando el usuario guarda con éxito.
  */
-import { useCallback, useEffect, useState } from 'react';
-import { CheckCircle2, AlertCircle, Loader2, Download, Copy, KeyRound, Info } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { CheckCircle2, AlertCircle, Loader2, Download, Copy, KeyRound, Info, Eye, EyeOff, ChevronRight } from 'lucide-react';
 
 interface WindowsConfig {
   sdk_path:         string;
@@ -103,6 +103,11 @@ export default function ContpaqiSetupPanel({ token, onConfigured }: { token: str
   const [csdPasswordSet,  setCsdPasswordSet]  = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
+  // Solo hidratamos los campos del form la PRIMERA vez que carga bien.
+  // Sin este ref, un re-mount (parent toggle) volvía a chupar server truth y
+  // destruía ediciones sin guardar del usuario.
+  const hydratedRef = useRef(false);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -110,7 +115,7 @@ export default function ContpaqiSetupPanel({ token, onConfigured }: { token: str
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data: StateResp = await res.json();
       setState(data);
-      if (data.config) {
+      if (data.config && !hydratedRef.current) {
         setRfc(data.config.rfc_emisor);
         setRegimen(data.config.regimen_fiscal || '601');
         setCp(data.config.codigo_postal_emisor);
@@ -127,12 +132,16 @@ export default function ContpaqiSetupPanel({ token, onConfigured }: { token: str
           setSqlConn(w.sql_connection);
           setPasswordSet(w.password_set);
           setCsdPasswordSet(w.csd_password_set);
-          // Auto-abrir avanzada si ya venían valores custom (ni default ni vacíos).
           const sdkIsDefault = !w.sdk_path || w.sdk_path === 'C:\\Program Files (x86)\\Compac\\COMERCIAL';
           if (w.empresa_path || w.sql_connection || !sdkIsDefault) {
             setAdvancedOpen(true);
           }
         }
+        hydratedRef.current = true;
+      } else if (data.config) {
+        // Refrescar solo los flags "guardado" tras un save — no los inputs.
+        setPasswordSet(data.config.windows?.password_set ?? false);
+        setCsdPasswordSet(data.config.windows?.csd_password_set ?? false);
       }
       setErr(null);
     } catch (e) {
@@ -174,8 +183,8 @@ export default function ContpaqiSetupPanel({ token, onConfigured }: { token: str
           },
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
+      const data = await res.json().catch(() => ({} as { error?: string }));
+      if (!res.ok) throw new Error((data as { error?: string }).error ?? `HTTP ${res.status}`);
       setSaved(true);
       await load();
       onConfigured?.();
@@ -186,10 +195,43 @@ export default function ContpaqiSetupPanel({ token, onConfigured }: { token: str
     }
   }
 
+  // Limpiar "Guardado" tras 3s para que no dé confirmación falsa
+  // cuando el usuario sigue editando.
+  useEffect(() => {
+    if (!saved) return;
+    const t = setTimeout(() => setSaved(false), 3000);
+    return () => clearTimeout(t);
+  }, [saved]);
+
   if (loading) {
     return (
       <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--c-text-3)' }}>
-        <Loader2 size={12} className="animate-spin" /> Cargando estado...
+        <Loader2 size={12} className="animate-spin" /> Cargando estado…
+      </div>
+    );
+  }
+
+  // Distinguir: si el fetch falló y no tenemos state, no confundir con "falta
+  // Dropbox" — pedimos reintentar.
+  if (err && !state) {
+    return (
+      <div className="rounded-2xl p-5"
+           style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.25)' }}>
+        <div className="flex items-start gap-3">
+          <AlertCircle size={16} className="mt-0.5" style={{ color: '#b91c1c' }} />
+          <div className="flex-1">
+            <p className="text-sm font-semibold" style={{ color: '#b91c1c' }}>No pudimos cargar el estado</p>
+            <p className="text-xs mt-1" style={{ color: 'var(--c-text-2)' }}>{err}</p>
+            <button
+              type="button"
+              onClick={() => { void load(); }}
+              className="mt-3 px-3 py-1.5 rounded-lg text-xs font-semibold"
+              style={{ background: '#6C3BFF', color: '#fff' }}
+            >
+              Reintentar
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -330,7 +372,7 @@ export default function ContpaqiSetupPanel({ token, onConfigured }: { token: str
             className="flex items-center gap-1.5 text-xs font-semibold transition-opacity hover:opacity-70"
             style={{ color: 'var(--c-text-2)' }}
           >
-            <span className="inline-block transition-transform" style={{ transform: advancedOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}>▸</span>
+            <ChevronRight size={12} style={{ transform: advancedOpen ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }} />
             Configuración avanzada (rutas auto-detectadas)
           </button>
           <p className="text-[10px] mt-1 ml-4" style={{ color: 'var(--c-text-3)' }}>
@@ -378,9 +420,13 @@ export default function ContpaqiSetupPanel({ token, onConfigured }: { token: str
           <button type="submit" disabled={saving}
                   className="px-4 py-2 rounded-lg text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
                   style={{ background: '#6C3BFF', color: '#fff' }}>
-            {saving ? <><Loader2 size={12} className="inline animate-spin mr-1" /> Guardando...</> : 'Guardar y continuar'}
+            {saving ? <><Loader2 size={12} className="inline animate-spin mr-1" /> Guardando…</> : 'Guardar y continuar'}
           </button>
-          {state?.configured && <span className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>Actualizado {new Date(state.updated_at ?? '').toLocaleString('es-MX')}</span>}
+          {state?.configured && state.updated_at && (
+            <span className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>
+              Actualizado {new Date(state.updated_at).toLocaleString('es-MX')}
+            </span>
+          )}
           {saved && <CheckCircle2 size={14} style={{ color: '#15803d' }} />}
         </div>
         {err && (
@@ -451,6 +497,7 @@ export default function ContpaqiSetupPanel({ token, onConfigured }: { token: str
                   api_token:         state.writer_api_token,
                   dropbox_base_path: state.config?.dropbox_base_path ?? '/Facturacion',
                 }}
+                sensitiveKeys={['api_token']}
               />
             </div>
           </details>
@@ -529,6 +576,12 @@ function DownloadInstallerButton({ token }: { token: string }) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error ?? `HTTP ${res.status}`);
       }
+      // El endpoint puede devolver 200 pero con JSON (server-side bug) —
+      // sin este check el usuario guardaría un .zip corrupto.
+      const ct = res.headers.get('Content-Type') ?? '';
+      if (!ct.includes('zip') && !ct.includes('octet-stream')) {
+        throw new Error('El servidor devolvió una respuesta inesperada.');
+      }
       const blob = await res.blob();
       const cd = res.headers.get('Content-Disposition') ?? '';
       const match = cd.match(/filename="?([^"]+)"?/);
@@ -553,7 +606,7 @@ function DownloadInstallerButton({ token }: { token: string }) {
       <button onClick={download} disabled={busy}
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-40"
               style={{ background: '#22c55e', color: '#fff' }}>
-        {busy ? <><Loader2 size={14} className="animate-spin" /> Preparando (~10s)…</> : <><Download size={14} /> Descargar Writer para Windows (.zip)</>}
+        {busy ? <><Loader2 size={14} className="animate-spin" /> Preparando (~10 s)…</> : <><Download size={14} /> Descargar Writer para Windows (.zip)</>}
       </button>
       <p className="text-[10px] mt-1.5" style={{ color: 'var(--c-text-3)' }}>
         Zip pre-configurado con tu token y ruta de Dropbox. Doble-click al EXE y contesta las preguntas que aparecen en la ventana. Instrucciones dentro del LEEME.txt.
@@ -563,9 +616,10 @@ function DownloadInstallerButton({ token }: { token: string }) {
   );
 }
 
-function CopyableConfig({ values }: { values: Record<string, string> }) {
+function CopyableConfig({ values, sensitiveKeys = [] }: { values: Record<string, string>; sensitiveKeys?: string[] }) {
   const text = Object.entries(values).map(([k, v]) => `${k}=${v}`).join('\n');
-  const [copied, setCopied] = useState(false);
+  const [copied,   setCopied]   = useState(false);
+  const [revealed, setRevealed] = useState(false);
 
   async function copy() {
     try {
@@ -575,15 +629,35 @@ function CopyableConfig({ values }: { values: Record<string, string> }) {
     } catch { /* no-op */ }
   }
 
+  const hasSecrets = sensitiveKeys.length > 0;
+  const displayText = Object.entries(values).map(([k, v]) => {
+    if (sensitiveKeys.includes(k) && !revealed && v.length > 8) {
+      return `${k}=${v.slice(0, 6)}${'•'.repeat(Math.max(8, v.length - 6))}`;
+    }
+    return `${k}=${v}`;
+  }).join('\n');
+
   return (
     <div className="relative rounded-lg p-3 font-mono text-[11px] whitespace-pre-wrap"
          style={{ background: '#0f0a1f', color: '#c9c1e6' }}>
-      <button onClick={copy}
-              className="absolute top-2 right-2 px-2 py-1 rounded text-[10px] inline-flex items-center gap-1"
-              style={{ background: 'rgba(255,255,255,0.1)', color: copied ? '#22c55e' : '#c9c1e6' }}>
-        {copied ? <><CheckCircle2 size={10} /> Copiado</> : <><Copy size={10} /> Copiar</>}
-      </button>
-      {text}
+      <div className="absolute top-2 right-2 flex gap-1">
+        {hasSecrets && (
+          <button
+            onClick={() => setRevealed(v => !v)}
+            className="px-2 py-1 rounded text-[10px] inline-flex items-center gap-1"
+            style={{ background: 'rgba(255,255,255,0.1)', color: '#c9c1e6' }}
+            aria-label={revealed ? 'Ocultar token' : 'Mostrar token'}
+          >
+            {revealed ? <><EyeOff size={10} /> Ocultar</> : <><Eye size={10} /> Mostrar</>}
+          </button>
+        )}
+        <button onClick={copy}
+                className="px-2 py-1 rounded text-[10px] inline-flex items-center gap-1"
+                style={{ background: 'rgba(255,255,255,0.1)', color: copied ? '#22c55e' : '#c9c1e6' }}>
+          {copied ? <><CheckCircle2 size={10} /> Copiado</> : <><Copy size={10} /> Copiar</>}
+        </button>
+      </div>
+      {displayText}
     </div>
   );
 }

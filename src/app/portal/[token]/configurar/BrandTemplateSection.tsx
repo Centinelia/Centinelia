@@ -34,10 +34,17 @@ export function BrandTemplateSection({ availableTipos }: Props) {
   const [error, setError]             = useState<string | null>(null);
 
   async function fetchAll() {
-    const res = await fetch(`/api/portal/${token}/document-templates`);
-    if (res.ok) {
+    if (!token) return;
+    try {
+      const res = await fetch(`/api/portal/${token}/document-templates`);
+      if (!res.ok) {
+        console.error('[brand-templates] fetch failed:', res.status);
+        return;
+      }
       const j = await res.json() as { templates: TemplateRow[] };
       setTemplates(j.templates ?? []);
+    } catch (err) {
+      console.error('[brand-templates] fetch threw:', err);
     }
   }
 
@@ -68,10 +75,18 @@ export function BrandTemplateSection({ availableTipos }: Props) {
   async function remove(tipo: string) {
     setBusy(tipo);
     setError(null);
-    await fetch(
-      `/api/portal/${token}/document-templates?tipo=${tipo}`,
-      { method: 'DELETE' }
-    );
+    try {
+      const res = await fetch(
+        `/api/portal/${token}/document-templates?tipo=${tipo}`,
+        { method: 'DELETE' }
+      );
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({})) as { error?: string };
+        setError(j.error ?? 'No se pudo eliminar la plantilla.');
+      }
+    } catch {
+      setError('No se pudo eliminar la plantilla.');
+    }
     await fetchAll();
     setBusy(null);
   }

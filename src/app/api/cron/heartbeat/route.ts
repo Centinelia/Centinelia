@@ -1,16 +1,13 @@
 export const dynamic = 'force-dynamic';
 // Frecuencia recomendada: "0 * * * *" (cada hora)
-// Agregar a vercel.json cuando se active en producción:
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
 import { sendEmail, shell, heading, infoCard, mdToEmailHtml, agentBrandedFrom } from '@/lib/email/send';
 import { maybeSendQuotaEmail } from '@/lib/ai/quota-email';
 import Anthropic from '@anthropic-ai/sdk';
 import { logLlmCall } from '@/lib/observability/llm-log';
 import { getAgentActivityWindow, renderActivityBlocks, HEARTBEAT_CAPS } from '@/lib/ai/activity-window';
-import { verifyCronAuth } from '@/lib/auth/cron-auth';
+import { defineCron, errorMessage } from '@/lib/cron/define-cron';
 
 const anthropic = new Anthropic();
 
@@ -22,13 +19,10 @@ interface HeartbeatConfig {
   task:        string;
 }
 
-export async function GET(req: NextRequest) {
-  if (!verifyCronAuth(req)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const supabase = createAdminClient();
-  const now      = new Date();
+export const GET = defineCron({
+  name:        'heartbeat',
+  maxDuration: 300,
+  handler: async ({ supabase, now, log }) => {
 
   const { data: agents } = await supabase
     .from('voice_agents')
@@ -36,21 +30,23 @@ export async function GET(req: NextRequest) {
     .eq('active', true)
     .not('heartbeat_config', 'is', null);
 
-  if (!agents?.length) return NextResponse.json({ ok: true, ran: 0 });
+  if (!agents?.length) return { expected: 0, processed: 0 };
 
   let ran = 0;
+  let skipped = 0;
+  const errors: string[] = [];
 
   for (const agent of agents) {
     const cfg = agent.heartbeat_config as HeartbeatConfig | null;
-    if (!cfg?.enabled) continue;
+    if (!cfg?.enabled) { skipped++; continue; }
 
     const tz  = agent.timezone ?? 'America/Monterrey';
     const localNow = new Date(now.toLocaleString('en-US', { timeZone: tz }));
     const localHour = localNow.getHours();
     const localDay  = localNow.getDay();
 
-    if (localHour !== cfg.hour) continue;
-    if (cfg.frequency === 'weekly' && localDay !== cfg.day_of_week) continue;
+    if (localHour !== cfg.hour) { skipped++; continue; }
+    if (cfg.frequency === 'weekly' && localDay !== cfg.day_of_week) { skipped++; continue; }
 
     // Check if already ran in this window (daily = today, weekly = this week)
     const lastRun = agent.heartbeat_last_run_at ? new Date(agent.heartbeat_last_run_at) : null;
@@ -60,10 +56,10 @@ export async function GET(req: NextRequest) {
         const sameDay = lastLocal.getFullYear() === localNow.getFullYear()
           && lastLocal.getMonth() === localNow.getMonth()
           && lastLocal.getDate() === localNow.getDate();
-        if (sameDay) continue;
+        if (sameDay) { skipped++; continue; }
       } else {
         const msAgo = localNow.getTime() - lastLocal.getTime();
-        if (msAgo < 6 * 24 * 60 * 60 * 1000) continue;
+        if (msAgo < 6 * 24 * 60 * 60 * 1000) { skipped++; continue; }
       }
     }
 
@@ -85,6 +81,7 @@ export async function GET(req: NextRequest) {
       await supabase.from('voice_agents')
         .update({ heartbeat_last_run_at: now.toISOString() })
         .eq('id', agent.id);
+      skipped++;
       continue;
     }
 
@@ -92,6 +89,7 @@ export async function GET(req: NextRequest) {
     const opsResult = await consumeAiOp(agent.id, 5, { source: 'heartbeat', reference_id: `${agent.id}:${localNow.toISOString().slice(0, 10)}`, label: 'Check-in automático diario' });
     if (!opsResult.ok) {
       await maybeSendQuotaEmail(agent, 'heartbeat');
+      skipped++;
       continue;
     }
 
@@ -122,12 +120,13 @@ Ejecuta la tarea usando toda la información como base. Sé conciso, directo y e
       void logLlmCall({ source: 'heartbeat', model: __m, usage: response.usage, agentId: agent.id, portalEmail: agent.portal_email ?? null, latencyMs: Date.now() - __t });
       result = response.content[0].type === 'text' ? response.content[0].text.trim() : '';
     } catch (err) {
-      void logLlmCall({ source: 'heartbeat', model: __m, usage: { input_tokens: 0, output_tokens: 0 }, agentId: agent.id, portalEmail: agent.portal_email ?? null, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err) });
-      console.error('Heartbeat AI error:', err);
+      void logLlmCall({ source: 'heartbeat', model: __m, usage: { input_tokens: 0, output_tokens: 0 }, agentId: agent.id, portalEmail: agent.portal_email ?? null, latencyMs: Date.now() - __t, error: errorMessage(err) });
+      log.error(`agent ${agent.id} LLM failed`, { error: errorMessage(err) });
+      errors.push(`${agent.id}: ${errorMessage(err)}`);
       continue;
     }
 
-    if (!result) continue;
+    if (!result) { skipped++; continue; }
 
     // Update last run
     await supabase
@@ -173,5 +172,14 @@ Ejecuta la tarea usando toda la información como base. Sé conciso, directo y e
     ran++;
   }
 
-  return NextResponse.json({ ok: true, ran });
-}
+  // expected = agents con heartbeat_config; processed = corridos + skipped
+  // (todos legítimos porque el skip es por diseño: no era su hora, ya corrieron,
+  // no había actividad, cuota agotada). errors captura fallos LLM reales.
+  return {
+    expected:  agents.length,
+    processed: ran + skipped,
+    errors,
+    metadata:  { ran, skipped, agents_seen: agents.length },
+  };
+  },
+});

@@ -36,7 +36,15 @@ export async function GET(req: NextRequest, { params }: Params) {
     .eq('id', agentId)
     .maybeSingle();
 
-  if (!agent || agent.portal_email !== session.portalEmail) {
+  if (!agent) {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  }
+  // Case-insensitive compare; permitir empty session.portalEmail en dev bypass.
+  if (
+    session.portalEmail &&
+    agent.portal_email &&
+    agent.portal_email.toLowerCase() !== session.portalEmail.toLowerCase()
+  ) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 
@@ -92,7 +100,14 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     .eq('id', agentId)
     .maybeSingle();
 
-  if (!agent || agent.portal_email !== session.portalEmail) {
+  if (!agent) {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  }
+  if (
+    session.portalEmail &&
+    agent.portal_email &&
+    agent.portal_email.toLowerCase() !== session.portalEmail.toLowerCase()
+  ) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 
@@ -102,10 +117,17 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'not_nox' }, { status: 400 });
   }
 
-  await supabase
+  // Defense-in-depth: UPDATE también filtra por portal_email.
+  const { error: updErr } = await supabase
     .from('voice_agents')
     .update({ brief_del_dia_config: config })
-    .eq('id', agentId);
+    .eq('id', agentId)
+    .eq('portal_email', agent.portal_email);
+
+  if (updErr) {
+    console.error('[brief-config] PATCH update failed:', updErr);
+    return NextResponse.json({ error: 'no_pudimos_guardar' }, { status: 500 });
+  }
 
   return NextResponse.json({ ok: true, config });
 }

@@ -801,7 +801,8 @@ const DRIVE_MGMT_EMAIL_TOOLS: Anthropic.Tool[] = [
 ];
 
 // Email tool name → Anthropic.Tool object (para filtrar por preset)
-const EMAIL_TOOL_BY_NAME: Record<string, Anthropic.Tool> = Object.fromEntries(
+// Exported para el test de completeness. Uso interno solo en este archivo.
+export const EMAIL_TOOL_BY_NAME: Record<string, Anthropic.Tool> = Object.fromEntries(
   [
     ...BASE_EMAIL_TOOLS,
     ...QB_EMAIL_TOOLS,

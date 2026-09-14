@@ -22,7 +22,10 @@ export async function GET(req: NextRequest, { params }: Params) {
   // Verify the URL token belongs to the session's org
   const agent = await getPrimaryAgentFromToken<{ portal_email: string | null }>(token, 'portal_email', sb);
   if (!agent) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email) {
+  if (
+    auth.portalEmail && agent.portal_email &&
+    auth.portalEmail.toLowerCase() !== agent.portal_email.toLowerCase()
+  ) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 403 });
   }
 

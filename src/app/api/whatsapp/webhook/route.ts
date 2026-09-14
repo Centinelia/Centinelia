@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import crypto from 'crypto';
 import Anthropic from '@anthropic-ai/sdk';
-import { createAdminClient } from '@/lib/supabase/admin';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { buildWASystemPrompt } from '@/lib/whatsapp/prompt-builder';
 import { checkAccount } from '@/lib/compliance/account-guard';
@@ -9,30 +7,9 @@ import { logLlmCall } from '@/lib/observability/llm-log';
 import type { WAMessage, WACapturedLead } from '@/types/whatsapp-agent';
 import type { VoiceAgent } from '@/types/agent';
 import { consumeAiOp, refundOps } from '@/lib/ai/ops-guard';
+import { withWebhookAuth } from '@/lib/webhooks/with-webhook-auth';
 
 export const dynamic = 'force-dynamic';
-
-function validateTwilioSignature(rawBody: string, signature: string): boolean {
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const appUrl    = process.env.NEXT_PUBLIC_APP_URL ?? '';
-  if (!authToken || !signature || !appUrl) return false;
-
-  const url = `${appUrl}/api/whatsapp/webhook`;
-  const params = new URLSearchParams(rawBody);
-  const sorted = [...params.keys()].sort();
-  const paramStr = sorted.map(k => `${k}${params.get(k)}`).join('');
-
-  const expected = crypto
-    .createHmac('sha1', authToken)
-    .update(url + paramStr)
-    .digest('base64');
-
-  try {
-    return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
-  } catch {
-    return false;
-  }
-}
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -205,21 +182,10 @@ const WA_ROUTE_MAP: Record<string, string> = {
   pedir_a_humano:   'exec/pedir_a_humano',
 };
 
-export async function POST(req: NextRequest) {
-  const text = await req.text();
-
-  const isDev = process.env.NODE_ENV !== 'production';
-  const signature = req.headers.get('x-twilio-signature') ?? '';
-  if (!isDev && !validateTwilioSignature(text, signature)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-  }
-
-  const params = new URLSearchParams(text);
-
-  const fromRaw  = params.get('From') ?? '';  // 'whatsapp:+521234567890'
-  const toRaw    = params.get('To')   ?? '';  // 'whatsapp:+14155238886'
-  const msgBody  = (params.get('Body') ?? '').trim();
-  const messageSid = params.get('MessageSid') ?? params.get('SmsMessageSid') ?? '';
+export const POST = withWebhookAuth('twilio', async (_req: NextRequest, { event, supabase }) => {
+  const fromRaw  = event.From ?? '';   // 'whatsapp:+521234567890'
+  const toRaw    = event.To   ?? '';   // 'whatsapp:+14155238886'
+  const msgBody  = (event.Body ?? '').trim();
 
   if (!fromRaw || !toRaw || !msgBody) {
     return NextResponse.json({ ok: true });
@@ -228,23 +194,8 @@ export async function POST(req: NextRequest) {
   const customerNumber = fromRaw.replace('whatsapp:', '');
   const agentWaNumber  = toRaw.replace('whatsapp:', '');
 
-  const supabase = createAdminClient();
-
-  // Dedupe: Twilio reintenta hasta 11 veces si no recibe 200 en <15s. El
-  // handler hace LLM call (~2-5s) + externos → timeout probable bajo carga.
-  // Sin este gate, retry = 2-N respuestas idénticas al cliente WA, 2-N leads,
-  // 2-N cobros de op, 2-N sendWhatsApp al owner. Ver Scope C3 CRIT-1.
-  if (messageSid) {
-    const { data: inserted } = await supabase
-      .from('webhook_events')
-      .insert({ source: 'twilio_wa', event_id: messageSid, metadata: { from: customerNumber, to: agentWaNumber } })
-      .select('event_id')
-      .maybeSingle();
-    if (!inserted) {
-      // Duplicate (constraint hit) — ya procesado. Retornar 200 para que Twilio no reintente más.
-      return NextResponse.json({ ok: true, deduped: true });
-    }
-  }
+  // Idempotencia (Twilio reintenta hasta 11× si no recibe 200 en <15s) ya
+  // manejada por withWebhookAuth. Sin necesidad de dedupe manual aquí.
 
   // 1. Find the WhatsApp agent by wa_phone_number, joining voice_agents for full feature set
   const { data: agentRow } = await supabase
@@ -321,6 +272,8 @@ export async function POST(req: NextRequest) {
 
   // Fix N6 audit 2026-08-10: cobrar 1 op por respuesta WhatsApp (antes silent).
   // Refund si el LLM falla — el cliente no debe pagar por errores nuestros.
+  // event.MessageSid o SmsMessageSid — reutilizamos el mismo id que withWebhookAuth usó para dedupe.
+  const messageSid = event.MessageSid ?? event.SmsMessageSid ?? '';
   const waOpsCharge = await consumeAiOp(agent.id as string, 1, { source: 'whatsapp_reply', reference_id: messageSid || undefined, label: 'Respuesta WhatsApp' });
 
   try {
@@ -558,4 +511,4 @@ export async function POST(req: NextRequest) {
   await supabase.rpc('increment_wa_messages_used', { p_agent_id: agent.id, p_count: 1 });
 
   return NextResponse.json({ ok: true });
-}
+});

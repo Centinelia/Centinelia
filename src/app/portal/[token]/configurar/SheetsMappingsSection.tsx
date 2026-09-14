@@ -58,6 +58,7 @@ function MappingRow({
   mapping,
   token,
   spreadsheetsMap,
+  onRefresh,
   onDelete,
   isLast,
 }: {
@@ -68,32 +69,51 @@ function MappingRow({
   onDelete: () => void;
   isLast: boolean;
 }) {
-  const [refreshing, setRefreshing] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [refreshing,   setRefreshing]   = useState(false);
+  const [deleting,     setDeleting]     = useState(false);
   const [localHeaders, setLocalHeaders] = useState<string[]>(mapping.headers ?? []);
+  const [rowError,     setRowError]     = useState<string | null>(null);
+
+  // Sync con prop cuando el parent recarga mappings — sin esto, un refresh
+  // externo dejaba la fila con headers stale.
+  useEffect(() => { setLocalHeaders(mapping.headers ?? []); }, [mapping.headers, mapping.id]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
+    setRowError(null);
     try {
       const res = await fetch(
         `/api/portal/${token}/sheets-mappings/${mapping.id}/refresh-headers`,
         { method: 'POST' }
       );
-      if (res.ok) {
-        const d = await res.json();
-        setLocalHeaders(d.headers ?? []);
+      if (!res.ok) {
+        setRowError('No pudimos leer las columnas.');
+        return;
       }
+      const d = await res.json().catch(() => ({} as { headers?: string[] }));
+      setLocalHeaders((d as { headers?: string[] }).headers ?? []);
+      // Sync parent para que headers/spreadsheetsMap queden coherentes.
+      onRefresh();
+    } catch {
+      setRowError('No pudimos leer las columnas.');
     } finally {
       setRefreshing(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!confirm(`Desconectar la hoja de "${purposeLabel(mapping.purpose, mapping.custom_purpose_label)}"?`)) return;
+    if (!confirm(`¿Desconectar la hoja de "${purposeLabel(mapping.purpose, mapping.custom_purpose_label)}"?`)) return;
     setDeleting(true);
+    setRowError(null);
     try {
-      await fetch(`/api/portal/${token}/sheets-mappings/${mapping.id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/portal/${token}/sheets-mappings/${mapping.id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        setRowError('No pudimos eliminar la hoja. Intenta de nuevo.');
+        return;
+      }
       onDelete();
+    } catch {
+      setRowError('No pudimos eliminar la hoja. Intenta de nuevo.');
     } finally {
       setDeleting(false);
     }
@@ -122,12 +142,13 @@ function MappingRow({
             Hoja: {mapping.tab_name}
           </p>
 
-          {/* Headers */}
+          {/* Headers — key incluye idx porque hojas del cliente
+              frecuentemente tienen columnas duplicadas (varias "Fecha"). */}
           {localHeaders.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
-              {localHeaders.map(h => (
+              {localHeaders.map((h, idx) => (
                 <span
-                  key={h}
+                  key={`${idx}-${h}`}
                   className="text-[10px] px-1.5 py-0.5 rounded"
                   style={{ background: '#FAFAFB', color: '#6B6480', border: '1px solid #E8E3F5' }}
                 >
@@ -141,6 +162,9 @@ function MappingRow({
               Aún sin detectar las columnas de tu hoja.
             </p>
           )}
+          {rowError && (
+            <p className="text-[11px] mt-2" style={{ color: '#ef4444' }}>{rowError}</p>
+          )}
         </div>
 
         {/* Actions */}
@@ -149,7 +173,7 @@ function MappingRow({
             type="button"
             onClick={handleRefresh}
             disabled={refreshing}
-            title="Volver a leer las columnas — sólo hace falta si renombraste o agregaste columnas en tu hoja"
+            title="Volver a leer las columnas. Solo hace falta si renombraste o agregaste columnas en tu hoja."
             className="p-1.5 rounded-lg transition-opacity hover:opacity-70"
             style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#6B6480' }}
           >
@@ -204,7 +228,10 @@ function AddMappingForm({
     setSheetsLoading(true);
     setSheetsError(null);
     fetch(`/api/portal/${token}/sheets/spreadsheets`)
-      .then(r => r.json())
+      .then(async r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then(d => {
         if (d.error === 'google_no_conectado') {
           setSheetsError('google_no_conectado');
@@ -216,17 +243,29 @@ function AddMappingForm({
       .finally(() => setSheetsLoading(false));
   }, [token]);
 
-  // Load tabs when spreadsheet changes
+  // Load tabs when spreadsheet changes — con AbortController para prevenir
+  // race condition cuando el usuario cambia rápido de spreadsheet.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!selectedSpreadsheet) { setTabs([]); setSelectedTab(''); return; }
     setTabsLoading(true);
     setSelectedTab('');
-    fetch(`/api/portal/${token}/sheets/spreadsheets/${selectedSpreadsheet}/tabs`)
-      .then(r => r.json())
+    const ctrl = new AbortController();
+    fetch(
+      `/api/portal/${token}/sheets/spreadsheets/${encodeURIComponent(selectedSpreadsheet)}/tabs`,
+      { signal: ctrl.signal },
+    )
+      .then(async r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then(d => setTabs(d.tabs ?? []))
-      .catch(() => setTabs([]))
+      .catch(err => {
+        if ((err as { name?: string }).name === 'AbortError') return;
+        setTabs([]);
+      })
       .finally(() => setTabsLoading(false));
+    return () => ctrl.abort();
   }, [selectedSpreadsheet, token]);
 
   const handleSubmit = async () => {
@@ -247,8 +286,8 @@ function AddMappingForm({
         body: JSON.stringify(body),
       });
       if (!res.ok) {
-        const d = await res.json();
-        setSaveError(d.error ?? 'Error al guardar');
+        const d = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+        setSaveError((d as { error?: string }).error ?? 'Error al guardar');
         return;
       }
       onSaved();
@@ -349,7 +388,7 @@ function AddMappingForm({
         </label>
         {sheetsLoading ? (
           <div className="flex items-center gap-2 text-[12px]" style={{ color: '#6B6480' }}>
-            <Loader2 size={13} className="animate-spin" /> Cargando tus archivos...
+            <Loader2 size={13} className="animate-spin" /> Cargando tus archivos…
           </div>
         ) : (
           <div className="relative">
@@ -377,7 +416,7 @@ function AddMappingForm({
         </label>
         {tabsLoading ? (
           <div className="flex items-center gap-2 text-[12px]" style={{ color: '#6B6480' }}>
-            <Loader2 size={13} className="animate-spin" /> Cargando pestañas...
+            <Loader2 size={13} className="animate-spin" /> Cargando pestañas…
           </div>
         ) : (
           <div className="relative">
@@ -413,7 +452,7 @@ function AddMappingForm({
           <p style={{ color: '#6B6480', lineHeight: 1.6 }}>
             Leeremos la fila 1 de <strong>{selectedTab}</strong> como nombres de columnas.
             Cuando tu empleado guarde datos aquí, mapeará cada dato a su columna por nombre.
-            Si después renombras o agregas columnas en la hoja, el empleado las detecta solo — no tienes que sincronizar a mano.
+            Si después renombras o agregas columnas en la hoja, el empleado las detecta solo. No tienes que sincronizar a mano.
           </p>
         </div>
       )}
@@ -436,7 +475,7 @@ function AddMappingForm({
             boxShadow: '0 1px 2px rgba(108,59,255,0.24)',
           }}
         >
-          {saving ? 'Guardando...' : 'Agregar hoja'}
+          {saving ? 'Guardando…' : 'Agregar hoja'}
         </button>
         <button
           type="button"
@@ -486,7 +525,10 @@ export default function SheetsMappingsSection({ token }: Props) {
   // de que el usuario intente el flow de agregar).
   useEffect(() => {
     fetch(`/api/portal/${token}/sheets/spreadsheets`)
-      .then(r => r.json())
+      .then(async r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then(d => {
         if (d.error === 'google_no_conectado') {
           setGoogleConnected(false);
@@ -580,7 +622,7 @@ export default function SheetsMappingsSection({ token }: Props) {
             style={{ borderTop: '1px solid #F0EDF9', color: '#6B6480' }}
           >
             <Loader2 size={15} className="animate-spin" />
-            Cargando...
+            Cargando…
           </div>
         ) : mappings.length === 0 && !showAddForm ? (
           <div style={{ borderTop: '1px solid #F0EDF9' }}>

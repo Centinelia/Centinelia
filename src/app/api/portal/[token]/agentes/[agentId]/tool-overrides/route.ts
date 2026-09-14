@@ -1,65 +1,95 @@
 export const dynamic = 'force-dynamic';
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
-import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
-import { resolveOrgFromToken } from '@/lib/portal/org-token';
-import { parseToolOverrides } from '@/lib/tools/tool-overrides';
+import { NextResponse } from 'next/server';
+import { parseToolOverrides, type ToolOverrides } from '@/lib/tools/tool-overrides';
+import { TOOL_REGISTRY } from '@/lib/tools/registry';
+import { withPortalAuth } from '@/lib/portal/with-portal-auth';
 
-interface Params { params: Promise<{ token: string; agentId: string }> }
+interface AgentRow {
+  id:             string;
+  portal_email:   string;
+  tool_overrides: unknown;
+}
 
-async function guard(req: NextRequest, token: string, agentId: string) {
-  const cookie  = req.cookies.get(PORTAL_COOKIE)?.value ?? '';
-  const session = await verifySession(cookie);
-  if (!session) return { error: 'Unauthorized', status: 401 as const, agent: null, supabase: null };
+// Set inmutable de todos los names conocidos por el sistema. Cualquier name
+// que caiga fuera es basura (typo, cliente ancient, o intento de bloat).
+const KNOWN_TOOL_NAMES = new Set(TOOL_REGISTRY.map(t => t.name));
 
-  const resolved = await resolveOrgFromToken(token);
-  if (!resolved?.portalEmail) return { error: 'Not found', status: 404 as const, agent: null, supabase: null };
-  if (session.portalEmail && resolved.portalEmail !== session.portalEmail) {
-    return { error: 'Forbidden', status: 403 as const, agent: null, supabase: null };
-  }
+interface FilterResult {
+  overrides: ToolOverrides;
+  dropped:   string[];
+}
 
-  const supabase = createAdminClient();
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('id, portal_email, tool_overrides')
-    .eq('id', agentId)
-    .maybeSingle();
-  if (!agent) return { error: 'Not found', status: 404 as const, agent: null, supabase: null };
-  if (agent.portal_email !== resolved.portalEmail) {
-    return { error: 'Forbidden', status: 403 as const, agent: null, supabase: null };
-  }
-
-  return { error: null, status: 200 as const, agent, supabase };
+// Filtra names desconocidos silenciosamente. El caller decide qué hacer con
+// `dropped` — típicamente incluirlos en `warnings` de la respuesta.
+export function stripUnknownTools(parsed: ToolOverrides): FilterResult {
+  const dropped: string[] = [];
+  const filterList = (names: string[]) =>
+    names.filter(n => {
+      if (KNOWN_TOOL_NAMES.has(n)) return true;
+      dropped.push(n);
+      return false;
+    });
+  return {
+    overrides: {
+      disabled: filterList(parsed.disabled),
+      enabled:  filterList(parsed.enabled),
+    },
+    dropped,
+  };
 }
 
 // GET /api/portal/[token]/agentes/[agentId]/tool-overrides
 // Retorna { overrides: { disabled: string[], enabled: string[] } }
-export async function GET(req: NextRequest, { params }: Params) {
-  const { token, agentId } = await params;
-  const g = await guard(req, token, agentId);
-  if (g.error) return NextResponse.json({ error: g.error }, { status: g.status });
-
-  const overrides = parseToolOverrides(g.agent!.tool_overrides);
-  return NextResponse.json({ overrides });
-}
+export const GET = withPortalAuth<AgentRow>(
+  async (_req, { agent }) => {
+    const overrides = parseToolOverrides(agent!.tool_overrides);
+    return NextResponse.json({ overrides });
+  },
+  {
+    loadAgent:   true,
+    agentSelect: 'id, portal_email, tool_overrides',
+  },
+);
 
 // PATCH /api/portal/[token]/agentes/[agentId]/tool-overrides
-// Body: { disabled?: string[], enabled?: string[] } (replaza el jsonb completo)
+// Body: { disabled?: string[], enabled?: string[] } (reemplaza el jsonb completo)
 // Retorna { ok: true, overrides }
-export async function PATCH(req: NextRequest, { params }: Params) {
-  const { token, agentId } = await params;
-  const g = await guard(req, token, agentId);
-  if (g.error) return NextResponse.json({ error: g.error }, { status: g.status });
+export const PATCH = withPortalAuth<AgentRow>(
+  async (req, { agent, supabase, agentId }) => {
+    // Distinguir body vacío/malformado de body válido con listas vacías.
+    const raw = await req.json().catch(() => null);
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+      return NextResponse.json({ error: 'Body inválido' }, { status: 400 });
+    }
+    const hasDisabled = Array.isArray((raw as { disabled?: unknown }).disabled);
+    const hasEnabled  = Array.isArray((raw as { enabled?: unknown }).enabled);
+    if (!hasDisabled && !hasEnabled) {
+      return NextResponse.json({ error: 'Falta disabled o enabled' }, { status: 400 });
+    }
+    const parsed = parseToolOverrides(raw);
+    const { overrides: cleaned, dropped } = stripUnknownTools(parsed);
 
-  const body = await req.json().catch(() => ({} as unknown));
-  const parsed = parseToolOverrides(body);
+    const { error } = await supabase
+      .from('voice_agents')
+      .update({ tool_overrides: cleaned })
+      .eq('id', agentId!)
+      .eq('portal_email', agent!.portal_email);
 
-  const { error } = await g.supabase!
-    .from('voice_agents')
-    .update({ tool_overrides: parsed })
-    .eq('id', agentId);
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true, overrides: parsed });
-}
+    if (error) {
+      console.error('[tool-overrides] PATCH update failed:', error);
+      return NextResponse.json({ error: 'No pudimos guardar el cambio' }, { status: 500 });
+    }
+    return NextResponse.json({
+      ok:        true,
+      overrides: cleaned,
+      ...(dropped.length > 0 ? { warnings: { unknown_tools: dropped } } : {}),
+    });
+  },
+  {
+    loadAgent:       true,
+    agentSelect:     'id, portal_email, tool_overrides',
+    rateLimit:       'configWrite',
+    rateLimitPrefix: 'tool-overrides',
+  },
+);

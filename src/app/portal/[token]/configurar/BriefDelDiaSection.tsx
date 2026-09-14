@@ -32,23 +32,31 @@ const DEFAULT: BriefConfig = {
 export function BriefDelDiaSection({ agentId }: Props) {
   const { token } = useParams<{ token: string }>();
   const [config,  setConfig]  = useState<BriefConfig>(DEFAULT);
-  const [loaded,  setLoaded]  = useState(false);
-  const [saving,  setSaving]  = useState(false);
-  const [saved,   setSaved]   = useState(false);
-  const [error,   setError]   = useState<string | null>(null);
+  const [loaded,     setLoaded]     = useState(false);
+  const [loadError,  setLoadError]  = useState<string | null>(null);
+  const [saving,     setSaving]     = useState(false);
+  const [saved,      setSaved]      = useState(false);
+  const [error,      setError]      = useState<string | null>(null);
 
   useEffect(() => {
     if (!token || !agentId) return;
     fetch(`/api/portal/${token}/brief-config?agent_id=${agentId}`)
-      .then(r => r.json())
+      .then(async r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then(res => {
         if (res.config) setConfig(res.config);
         setLoaded(true);
       })
-      .catch(() => setLoaded(true));
+      .catch(err => {
+        console.error('[brief-del-dia] load failed:', err);
+        setLoadError('No pudimos cargar tu configuración. Recarga la página.');
+      });
   }, [token, agentId]);
 
   async function save() {
+    if (!loaded) return;
     setSaving(true);
     setSaved(false);
     setError(null);
@@ -71,6 +79,11 @@ export function BriefDelDiaSection({ agentId }: Props) {
     }
   }
 
+  if (loadError) {
+    return (
+      <p className="text-sm" style={{ color: '#ef4444' }}>{loadError}</p>
+    );
+  }
   if (!loaded) return null;
 
   const hourLabel = (h: number) => h.toString().padStart(2, '0') + ':00';

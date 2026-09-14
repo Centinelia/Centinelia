@@ -80,9 +80,17 @@ async function guard(token: string) {
   const cookieStore = await cookies();
   const session = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
   if (!session) return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
+  // Prod-strict.
+  if (!session.portalEmail && process.env.NODE_ENV !== 'development') {
+    return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
+  }
   const resolved = await resolveOrgFromToken(token);
   if (!resolved) return { error: NextResponse.json({ error: 'Not found' }, { status: 404 }) };
-  if (session.portalEmail !== resolved.portalEmail) {
+  // Case-insensitive; permite empty session.portalEmail en dev.
+  if (
+    session.portalEmail &&
+    session.portalEmail.toLowerCase() !== resolved.portalEmail.toLowerCase()
+  ) {
     return { error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) };
   }
   return { session, resolved };

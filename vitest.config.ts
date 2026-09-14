@@ -17,7 +17,15 @@ export default defineConfig({
       '**/dist/**',
       '**/.next/**',
       '**/.git/**',
+      '**/.claude/**',
       'tests/integration/**',
+      'tests/playwright/**',
     ],
+    // Tests que necesitan DOM se marcan con:
+    //   // @vitest-environment jsdom
+    // en la primera línea. El default sigue siendo 'node' para no romper los
+    // ~80 tests unitarios existentes que corren en node y NO tocan DOM.
+    environment: 'node',
+    setupFiles: ['./vitest.setup.ts'],
   },
 });

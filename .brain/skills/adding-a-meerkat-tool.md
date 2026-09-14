@@ -116,6 +116,28 @@ Multiplicar meerkats fragmenta el equipo desde la perspectiva del usuario ("¿a 
 - **Unit test del adapter** (mock del externo) si hay adapter.
 - **Integration test del tool** en al menos 1 de los 3 canales.
 - **E2E obligatorio** si la tool toca dinero / CFDI / factura antes de merge a main.
+- **`tool-completeness.test.ts` corre automáticamente**: si te olvidaste de registrar en algún canal, este test detecta el drift y falla con el nombre exacto de la tool + el canal faltante. Ver `src/lib/tools/__tests__/tool-completeness.test.ts`.
+
+### Cuando la tool NO va a los 3 canales todavía
+
+Si conscientemente decides que la tool arranca solo en 1-2 canales (deuda documentada):
+
+1. Actualiza `TOOL_REGISTRY[t].channels` para reflejarlo (ej. `['chat', 'email']`)
+2. Agrega el name al allowlist correspondiente en `tool-completeness.test.ts` (`KNOWN_DROPS.emailMissingSchema` etc), **con comentario explícito** del motivo
+3. Cuando la deuda se resuelva, quita del allowlist — el test verificará que efectivamente ya cubre los 3 canales
+
+Sin ese allowlist explícito, el test falla — es la barrera de entrada del bug #1 recurrente.
+
+### Test dinámico (opcional pero recomendado para tools críticas)
+
+Para tools que tocan dinero, calendario, o data escritura, usa `runToolInChannel(channel, name, args, ctx)` en `src/lib/tools/__tests__/run-tool-in-channel.ts` para verificar que el executor produce el mismo resultado desde los 3 canales:
+
+```ts
+it.each(['voice', 'chat', 'email'] as const)('%s: mismo resultado', async (channel) => {
+  const result = await runToolInChannel(channel, 'buscar_cliente', { rfc: 'XAX010101000' }, ctx);
+  expect(result.ok).toBe(true);
+});
+```
 
 ---
 
@@ -137,6 +159,7 @@ Antes de asumir bug → verifica el mapa en `src/lib/vapi/sync.ts::MEERKAT_VOICE
 - [ ] Adapter separado si hay externo
 - [ ] `gatedByFeature` con feature declarada, default false
 - [ ] Tests correspondientes (unit + integration + E2E si toca dinero)
+- [ ] **`pnpm test src/lib/tools/__tests__/tool-completeness` pasa** — o allowlist actualizado con motivo
 - [ ] Copy en español respeta reglas (no "IA" en outputs visibles, no em-dashes, no emojis en UI)
 - [ ] Si es "custom", justificación explícita en descripción del PR
 

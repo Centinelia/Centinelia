@@ -83,28 +83,46 @@ export class SolucionFactibleProvider implements InvoicingProvider {
     _csd: { cerPem: string; keyPem: string; noCertificado: string },
     opts: CancelOpts,
   ): Promise<CancelSubmitResult> {
-    const envelope = buildCancelarEnvelope(creds.usuario, creds.password, uuid, motivo, uuidSustituto);
-    const url = opts.testMode ? ENDPOINTS.cancelacion.test : ENDPOINTS.cancelacion.prod;
-    const { xml } = await soapCall(url, 'cancelarAsincrono', envelope, opts.timeoutMs ?? 30000);
-    const { status, mensaje } = extractResultado(xml);
-    if (status !== 200) return { status: 'rejected', code: status, message: mensaje };
-    return { status: 'sent_to_sat', message: mensaje };
+    // Contract: nunca throw. Errores de transporte / respuesta SF inesperada
+    // → { status: 'rejected', code, message }.
+    try {
+      const envelope = buildCancelarEnvelope(creds.usuario, creds.password, uuid, motivo, uuidSustituto);
+      const url = opts.testMode ? ENDPOINTS.cancelacion.test : ENDPOINTS.cancelacion.prod;
+      const { xml } = await soapCall(url, 'cancelarAsincrono', envelope, opts.timeoutMs ?? 30000);
+      const { status, mensaje } = extractResultado(xml);
+      if (status !== 200) return { status: 'rejected', code: status, message: mensaje };
+      return { status: 'sent_to_sat', message: mensaje };
+    } catch (err) {
+      return {
+        status:  'rejected',
+        code:    502,
+        message: err instanceof Error ? err.message : String(err),
+      };
+    }
   }
 
   async consultarEstatusCancelacion(
     uuid: string, creds: { usuario: string; password: string }, opts: CancelOpts,
   ): Promise<CancelStatus> {
-    const envelope = buildConsultarEstatusEnvelope(creds.usuario, creds.password, uuid);
-    const url = opts.testMode ? ENDPOINTS.cancelacion.test : ENDPOINTS.cancelacion.prod;
-    const { xml } = await soapCall(url, 'getStatusCancelacionAsincrona', envelope, opts.timeoutMs ?? 30000);
-    const { status, mensaje, resultado } = extractResultado(xml);
-    // Mapeo: SF devuelve status con mensajes tipo "Cancelado", "En proceso", "No cancelable"
-    const acuse = resultado?.acuseXml ? Buffer.from(String(resultado.acuseXml), 'base64') : undefined;
-    if (status === 200 && /cancel/i.test(mensaje)) return { status: 'accepted', acuseXml: acuse, message: mensaje };
-    if (status === 200 && /proceso/i.test(mensaje)) return { status: 'pending', message: mensaje };
-    if (/no cancelable/i.test(mensaje) || /rechaz/i.test(mensaje)) return { status: 'rejected', message: mensaje };
-    if (/plazo/i.test(mensaje) || /expir/i.test(mensaje)) return { status: 'expired', message: mensaje };
-    return { status: 'pending', message: mensaje };
+    // Contract: nunca throw. Errores de transporte → { status: 'pending', message }
+    // (pending es el estado safe; el caller volverá a preguntar).
+    try {
+      const envelope = buildConsultarEstatusEnvelope(creds.usuario, creds.password, uuid);
+      const url = opts.testMode ? ENDPOINTS.cancelacion.test : ENDPOINTS.cancelacion.prod;
+      const { xml } = await soapCall(url, 'getStatusCancelacionAsincrona', envelope, opts.timeoutMs ?? 30000);
+      const { status, mensaje, resultado } = extractResultado(xml);
+      const acuse = resultado?.acuseXml ? Buffer.from(String(resultado.acuseXml), 'base64') : undefined;
+      if (status === 200 && /cancel/i.test(mensaje)) return { status: 'accepted', acuseXml: acuse, message: mensaje };
+      if (status === 200 && /proceso/i.test(mensaje)) return { status: 'pending', message: mensaje };
+      if (/no cancelable/i.test(mensaje) || /rechaz/i.test(mensaje)) return { status: 'rejected', message: mensaje };
+      if (/plazo/i.test(mensaje) || /expir/i.test(mensaje)) return { status: 'expired', message: mensaje };
+      return { status: 'pending', message: mensaje };
+    } catch (err) {
+      return {
+        status:  'pending',
+        message: err instanceof Error ? err.message : String(err),
+      };
+    }
   }
 }
 
