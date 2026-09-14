@@ -497,11 +497,25 @@ export function ChecklistMeefiPdf() {
           </View>
         </Step>
 
-        <Step n="12" title="Segundo mensaje del usuario · evidencia">
-          <CopyPasteBlock text="Listo, subi las tres fotos (INE frente, reverso y selfie con la INE). Los ultimos 4 digitos son 4872." />
+        <Step n="12" title="Segundo mensaje del usuario · evidencia con archivos" subtitle="Adjuntá 3 archivos + escribí el texto">
+          <Row label="Adjuntar 3 archivos">
+            <BodyText>Clic al icono de clip a la izquierda del input. Selecciona 3 imágenes cualquiera de tu compu (nómbralas como ine-frente.jpg, ine-reverso.jpg, selfie-ine.jpg antes si querés que se vean fieles). Aparecen como pills arriba del input.</BodyText>
+          </Row>
+          <Row label="Escribir">
+            <View />
+          </Row>
+          <CopyPasteBlock text="Aqui van las 3 fotos. Los ultimos 4 digitos son 4872." />
           <View style={{ marginTop: 8 }}>
+            <Row label="Enviar">
+              <BodyText>El mensaje sale con los 3 archivos visibles como tarjetas debajo del texto.</BodyText>
+            </Row>
             <Row label="Esperado">
-              <BodyText>Nelia confirma que tiene los 4 items y escala con esc_XXXXXXXX a Ashley de Cuentas.</BodyText>
+              <BodyText>Nelia confirma que recibió las 3 fotos + últimos 4 y escala con esc_XXXXXXXX a Ashley de Cuentas.</BodyText>
+            </Row>
+            <Row label="Decir">
+              <VerbatimText>
+                Y noten esto: Nelia no solo recibe los datos que le tecleo. Recibe archivos también, los adjunta al escalamiento para que Ashley los valide contra el registro KYC sin abrir 4 correos separados.
+              </VerbatimText>
             </Row>
           </View>
         </Step>
@@ -554,7 +568,7 @@ export function ChecklistMeefiPdf() {
         </Step>
 
         <Step n="16" title="Enviar prompt del expediente" subtitle="Copy-paste largo, un solo bloque">
-          <CopyPasteBlock text="Niva, tengo el expediente de Comercializadora Bajio SA de CV, importadora de refacciones de EEUU. Datos: representante legal Juan Perez Ramirez, INE vigente. RFC CBA850101ABC, opinion 32-D positiva al 2026-08-15, domicilio Monterrey NL vigente. BCF: Ana Sanchez Romero (65%, mexicana, residente MX) y Luis Ramirez Torres (35%, mexicano, residente MX). Volumen mensual estimado 300 mil USD, corredor USD-MXN, bancos origen BBVA-Banorte. Frecuencia semanal. Corre checks OFAC, UIF, PLD y screening PEP, dame el analisis con recomendacion para Sofia." />
+          <CopyPasteBlock text="Niva, tengo el expediente de Comercializadora Bajio SA de CV, importadora de refacciones de EEUU. Datos: representante legal Juan Perez Ramirez, INE vigente. RFC CBA850101ABC, opinion 32-D positiva al 2026-08-15, domicilio Monterrey NL vigente. BCF: Ana Sanchez Romero (65%, mexicana, residente MX) y Luis Ramirez Torres (35%, mexicano, residente MX). Volumen mensual estimado 300 mil USD, corredor USD-MXN, bancos origen BBVA-Banorte. Frecuencia semanal. Corre checks OFAC, UIF, PLD y screening PEP, dame el analisis con recomendacion para el Head of Compliance." />
           <View style={{ marginTop: 8 }}>
             <Row label="Decir mientras procesa (~90 seg)">
               <VerbatimText>
@@ -587,7 +601,7 @@ export function ChecklistMeefiPdf() {
           </Row>
           <Row label="Anchor 3 · en Gaps documentales y Recomendación">
             <VerbatimText>
-              Le dio a Sofía 7 documentos concretos que le faltan. Sofía no tiene que preguntar qué le falta. Ya lo tiene priorizado. Y le dio condiciones operativas: monitoreo desde mes 1 con baseline 3-sigma. Eso lo aprende de los casos de ustedes.
+              Le dio al Head of Compliance 7 documentos concretos que le faltan. No tiene que preguntar qué le falta. Ya lo tiene priorizado. Y le dio condiciones operativas: monitoreo desde mes 1 con baseline 3-sigma. Eso lo aprende de los casos de ustedes.
             </VerbatimText>
           </Row>
           <Row label="Cierre">

@@ -2,7 +2,8 @@
 import { useState, useRef, useEffect } from 'react';
 import type { Scenario } from './scenarios';
 
-type Msg = { role: 'user' | 'assistant'; content: string };
+type Attachment = { name: string; size: number };
+type Msg = { role: 'user' | 'assistant'; content: string; attachments?: Attachment[] };
 
 // Persistencia: guardamos el estado del chat (mensajes + open + sessionId) en
 // sessionStorage por scenario. Sobrevive refresh de página y navegación,
@@ -24,7 +25,6 @@ function loadPersisted(scenarioId: number): PersistedState | null {
     const raw = window.sessionStorage.getItem(storageKey(scenarioId));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as PersistedState;
-    // Sanidad: si los mensajes no son array o el sessionId no es string, ignorar.
     if (!Array.isArray(parsed.messages) || typeof parsed.sessionId !== 'string') return null;
     return parsed;
   } catch {
@@ -41,19 +41,23 @@ function savePersisted(scenarioId: number, state: PersistedState): void {
   }
 }
 
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export function MeefiChatWidget({ scenario }: { scenario: Scenario }) {
-  // Cargar estado persistido al montar. Se hace en useState initializer para
-  // evitar hydration mismatch: al servidor lo carga como default, al cliente
-  // lo sobreescribe con lo persistido si aplica.
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [pendingAttachments, setPendingAttachments] = useState<Attachment[]>([]);
   const sessionId = useRef<string>(`demo_${Date.now()}`);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const hydrated = useRef(false);
 
-  // Hidratar desde sessionStorage post-mount para evitar mismatch.
   useEffect(() => {
     const persisted = loadPersisted(scenario.id);
     if (persisted) {
@@ -64,7 +68,6 @@ export function MeefiChatWidget({ scenario }: { scenario: Scenario }) {
     hydrated.current = true;
   }, [scenario.id]);
 
-  // Persistir cambios relevantes.
   useEffect(() => {
     if (!hydrated.current) return;
     savePersisted(scenario.id, {
@@ -80,17 +83,41 @@ export function MeefiChatWidget({ scenario }: { scenario: Scenario }) {
     }
   }, [messages]);
 
-  async function send(text: string) {
-    if (!text.trim() || loading) return;
-    const userMsg: Msg = { role: 'user', content: text };
-    // Historial acumulado + nuevo mensaje del usuario. Nelia necesita el
-    // contexto multi-turn para bloques como transferencia urgente (turn 2
-    // depende del status revelado en turn 1) y 2FA recovery (checklist
-    // presentado en turn 1, evidencia recibida en turn 2, escalamiento
-    // en turn 3).
-    const history: Msg[] = [...messages.filter(m => m.content.trim() !== ''), userMsg];
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const next: Attachment[] = Array.from(files).map(f => ({
+      name: f.name,
+      size: f.size,
+    }));
+    setPendingAttachments(prev => [...prev, ...next]);
+    // Reset input para permitir re-seleccionar el mismo archivo si el usuario quiere.
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
+  function removeAttachment(idx: number) {
+    setPendingAttachments(prev => prev.filter((_, i) => i !== idx));
+  }
+
+  async function send(text: string, extraAttachments?: Attachment[]) {
+    const attachments = extraAttachments ?? pendingAttachments;
+    const hasContent = text.trim().length > 0 || attachments.length > 0;
+    if (!hasContent || loading) return;
+
+    const userMsg: Msg = {
+      role: 'user',
+      content: text.trim(),
+      attachments: attachments.length > 0 ? attachments : undefined,
+    };
+
+    const history: Msg[] = [
+      ...messages.filter(m => m.content.trim() !== '' || (m.attachments && m.attachments.length > 0)),
+      userMsg,
+    ];
+
     setMessages(m => [...m, userMsg, { role: 'assistant', content: '' }]);
     setInput('');
+    setPendingAttachments([]);
     setLoading(true);
 
     try {
@@ -172,6 +199,8 @@ export function MeefiChatWidget({ scenario }: { scenario: Scenario }) {
     );
   }
 
+  const hasPendingAttachments = pendingAttachments.length > 0;
+
   return (
     <div className="fixed bottom-6 right-6 w-[380px] h-[600px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden">
       <header className="flex items-center gap-3 p-4 bg-[#2E5BFF] text-white">
@@ -200,11 +229,32 @@ export function MeefiChatWidget({ scenario }: { scenario: Scenario }) {
             <div
               className={
                 m.role === 'user'
-                  ? 'inline-block bg-[#2E5BFF] text-white rounded-2xl rounded-tr-sm px-4 py-2 max-w-[85%] text-sm'
-                  : 'inline-block bg-white border border-neutral-200 rounded-2xl rounded-tl-sm px-4 py-2 max-w-[85%] text-sm whitespace-pre-wrap'
+                  ? 'inline-block bg-[#2E5BFF] text-white rounded-2xl rounded-tr-sm px-4 py-2 max-w-[85%] text-sm text-left'
+                  : 'inline-block bg-white border border-neutral-200 rounded-2xl rounded-tl-sm px-4 py-2 max-w-[85%] text-sm whitespace-pre-wrap text-left'
               }
             >
-              {m.content || (loading && i === messages.length - 1 ? '...' : '')}
+              {m.content && <div>{m.content}</div>}
+              {(m.attachments?.length ?? 0) > 0 && (
+                <div className={`mt-${m.content ? '2' : '0'} flex flex-col gap-1`}>
+                  {m.attachments!.map((a, ai) => (
+                    <div
+                      key={ai}
+                      className={
+                        m.role === 'user'
+                          ? 'flex items-center gap-2 bg-white/15 rounded-lg px-2 py-1.5'
+                          : 'flex items-center gap-2 bg-neutral-100 rounded-lg px-2 py-1.5'
+                      }
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                      </svg>
+                      <span className="text-xs font-medium truncate max-w-[180px]">{a.name}</span>
+                      <span className={`text-[10px] ${m.role === 'user' ? 'opacity-70' : 'text-neutral-500'}`}>{formatSize(a.size)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {!m.content && !m.attachments?.length && loading && i === messages.length - 1 ? '...' : null}
             </div>
           </div>
         ))}
@@ -223,13 +273,54 @@ export function MeefiChatWidget({ scenario }: { scenario: Scenario }) {
         ))}
       </div>
 
+      {hasPendingAttachments && (
+        <div className="px-3 pt-2 pb-1 border-t bg-white flex flex-wrap gap-1.5">
+          {pendingAttachments.map((a, i) => (
+            <div key={i} className="flex items-center gap-1.5 bg-neutral-100 rounded-lg pl-2 pr-1 py-1 text-xs">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-neutral-600">
+                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+              </svg>
+              <span className="font-medium truncate max-w-[120px]">{a.name}</span>
+              <button
+                type="button"
+                onClick={() => removeAttachment(i)}
+                aria-label={`Quitar ${a.name}`}
+                className="w-4 h-4 rounded-full hover:bg-neutral-300 flex items-center justify-center text-neutral-600 text-[10px] font-bold"
+              >
+                &times;
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       <form
         onSubmit={e => {
           e.preventDefault();
           send(input);
         }}
-        className="flex gap-2 p-3 border-t bg-white"
+        className="flex gap-2 p-3 border-t bg-white items-center"
       >
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept="image/*,application/pdf"
+          onChange={handleFileSelect}
+          className="hidden"
+          aria-hidden="true"
+        />
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={loading}
+          aria-label="Adjuntar archivos"
+          className="w-9 h-9 rounded-full border border-neutral-300 hover:bg-neutral-50 flex items-center justify-center text-neutral-600 disabled:opacity-50 flex-shrink-0"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+          </svg>
+        </button>
         <input
           value={input}
           onChange={e => setInput(e.target.value)}
@@ -239,7 +330,7 @@ export function MeefiChatWidget({ scenario }: { scenario: Scenario }) {
         />
         <button
           type="submit"
-          disabled={loading || !input.trim()}
+          disabled={loading || (!input.trim() && !hasPendingAttachments)}
           className="px-4 py-2 rounded-full bg-[#2E5BFF] text-white disabled:opacity-50 text-sm"
         >
           Enviar

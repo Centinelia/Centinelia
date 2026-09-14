@@ -110,14 +110,36 @@ export async function POST(req: NextRequest) {
 
   const { message, messages: rawMessages, scenario, user_email, session_id } = body;
 
+  // Attachment shape emitido por el widget: nombres + tamaños de archivos que
+  // el usuario adjuntó. NO se procesan realmente; solo se anexan al texto
+  // del mensaje para que Nelia entienda que el usuario mandó docs.
+  type RawAttachment = { name?: string; size?: number };
+  function attachmentsToNote(atts: RawAttachment[] | undefined): string {
+    if (!atts || atts.length === 0) return '';
+    const clean = atts
+      .filter(a => typeof a?.name === 'string' && a.name.length > 0)
+      .map(a => a.name as string);
+    if (clean.length === 0) return '';
+    return `\n\n[Archivos adjuntos en este mensaje: ${clean.join(', ')}]`;
+  }
+
   // Acepta tanto `message` (string, single-turn) como `messages` (array, multi-turn).
   let conversationMessages: Anthropic.MessageParam[];
 
   if (Array.isArray(rawMessages) && rawMessages.length > 0) {
-    // Multi-turn: valida que cada elemento tenga role+content
-    conversationMessages = (rawMessages as { role: string; content: string }[])
+    // Multi-turn: valida que cada elemento tenga role+content y anexa nombres
+    // de archivos adjuntos si el mensaje del usuario los trae.
+    type IncomingMsg = { role?: string; content?: string; attachments?: RawAttachment[] };
+    conversationMessages = (rawMessages as IncomingMsg[])
       .filter(m => (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
-      .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }))
+      .map(m => {
+        const base = m.content ?? '';
+        const note = m.role === 'user' ? attachmentsToNote(m.attachments) : '';
+        return {
+          role:    m.role as 'user' | 'assistant',
+          content: base + note,
+        };
+      })
       .slice(-20); // max 20 mensajes de historial
   } else if (typeof message === 'string' && message.trim()) {
     conversationMessages = [{ role: 'user', content: message.trim() }];
