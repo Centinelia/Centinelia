@@ -410,7 +410,7 @@ export default async function AnalyticsPage({ searchParams }: Props) {
               <div key={h} className="flex-1 flex flex-col items-center">
                 <div
                   className="w-full rounded-sm"
-                  title={`${h}:00 — ${count} llamada${count !== 1 ? 's' : ''}`}
+                  title={`${h}:00 · ${count} llamada${count !== 1 ? 's' : ''}`}
                   style={{
                     height: `${Math.max((count / maxHourCount) * 88, count > 0 ? 3 : 0)}px`,
                     background: h === peakHour && count > 0 ? '#F59E0B' : count > 0 ? '#8B5CF6' : '#F3F4F6',

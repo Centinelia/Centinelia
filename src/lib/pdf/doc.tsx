@@ -48,7 +48,7 @@ export function BrandedDoc({ brand, docType, subtitle, children, filename }: {
   ].filter(Boolean);
 
   return (
-    <Document title={`${docType} — ${brand.businessName}`} author={brand.businessName}>
+    <Document title={`${docType} · ${brand.businessName}`} author={brand.businessName}>
       <Page size="A4" style={S.page}>
 
         {/* ── Header ── */}

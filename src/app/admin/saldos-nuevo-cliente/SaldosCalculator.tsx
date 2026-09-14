@@ -117,7 +117,7 @@ export function SaldosCalculator() {
                     style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
                   >
                     <option value="voice">Voz + Oficina (Nia/Noah/Sofia/etc)</option>
-                    <option value="coordinator">Coordinador (Nox/Niva — solo ops)</option>
+                    <option value="coordinator">Coordinador (Nox/Niva, solo ops)</option>
                   </select>
                 </label>
 

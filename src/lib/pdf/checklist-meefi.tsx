@@ -204,7 +204,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 export function ChecklistMeefiPdf() {
   return (
-    <Document title="Demo Meefi 15-sept — Checklist" author="Centinelia">
+    <Document title="Demo Meefi 15-sept · Checklist" author="Centinelia">
 
       {/* ═══════════════════════════════════════════════════════════════════════
           PÁGINA 1 · Portada + Overview

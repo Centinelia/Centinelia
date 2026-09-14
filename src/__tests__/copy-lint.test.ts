@@ -47,10 +47,13 @@ const VISIBLE_PROPS = [
 // Cada entrada: path o pattern + motivo explícito. NUEVA entry SIN motivo =
 // PR rechazado. Cuando se resuelve la deuda, remover del allowlist.
 
-/** Files donde el em-dash es legítimo (data enum, dashboard placeholder para
- *  celdas vacías, etc.). */
+/** Files donde el em-dash es legítimo (docs legales, contratos, PDF invoices
+ *  con typografía formal). */
 const EM_DASH_ALLOWLIST: RegExp[] = [
-  // /src\/app\/tests\/example\.tsx$/,  // ejemplo
+  // Legal + contratos: em-dash como separador tipográfico entre nombre del
+  // proveedor y su función es formato estándar de doc legal. No es copy UI.
+  /src[\\/]app[\\/]legal[\\/]/,
+  /src[\\/]lib[\\/]contract[\\/]/,
 ];
 
 /** Files donde algún emoji es legítimo. Zero tolerance por default. */
@@ -188,11 +191,12 @@ function groupByRule(vs: Violation[]): Record<string, number> {
 // test rojo. Cuando se arregla una violación existente, se remueve del snapshot.
 
 const BASELINE_MAX_PER_RULE: Record<keyof typeof RULES, number> = {
-  // Actualizado 2026-09-14 tras limpieza de 14 emojis a Lucide icons.
-  // Cualquier nueva violación = test rojo. Fix decrementa; jamás sube.
-  emDash: 19,
-  emoji:  0,   // limpieza completa 2026-09-14 (todo en Lucide)
-  iaWord: 0,   // legal + contratos allowlisted; el resto debe ir a 0
+  // Actualizado 2026-09-14 tras limpieza completa. Todos en 0 — cualquier
+  // violación nueva = test rojo. Legal + contract allowlisted como
+  // typografía formal permitida.
+  emDash: 0,
+  emoji:  0,
+  iaWord: 0,
 };
 
 // ─── Tests ──────────────────────────────────────────────────────────────────
@@ -243,6 +247,11 @@ describe('copy-lint — reglas de copy visible al usuario', () => {
     // No falla; solo emite el resumen al stdout de vitest para que quien
     // corra el suite pueda actualizar BASELINE_MAX_PER_RULE de una.
     console.log(`[copy-lint] counts: em-dash=${counts.emDash ?? 0}, emoji=${counts.emoji ?? 0}, IA=${counts.iaWord ?? 0}`);
+    if ((counts.emDash ?? 0) > 0) {
+      const em = violations.filter(v => v.rule === 'emDash');
+      console.log('[copy-lint] em-dash hits:');
+      for (const v of em) console.log(`  ${v.file}:${v.line}  ${v.snippet}`);
+    }
     expect(true).toBe(true);
   });
 });

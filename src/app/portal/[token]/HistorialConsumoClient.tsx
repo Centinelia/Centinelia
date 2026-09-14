@@ -472,7 +472,7 @@ function MinutesList({ entries, callerNames }: { entries: MinutesEntry[]; caller
                       <span
                         className="text-[10px] px-1.5 py-0.5 rounded font-semibold"
                         style={{ background: 'rgba(107,114,128,0.12)', color: '#4B5563' }}
-                        title="Llamada del dueño o equipo interno (número reconocido) — no cliente externo"
+                        title="Llamada del dueño o equipo interno (número reconocido). No es cliente externo."
                       >
                         Interno
                       </span>

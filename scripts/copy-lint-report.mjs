@@ -21,11 +21,20 @@ const IA_ALLOWLIST = [
   /src[\\/]app[\\/]\(landing\)[\\/]/,
   /src[\\/]app[\\/]landing[\\/]/,
   /src[\\/]app[\\/]\(marketing\)[\\/]/,
+  /src[\\/]app[\\/]legal[\\/]/,
+  /src[\\/]lib[\\/]contract[\\/]/,
+];
+
+const EM_DASH_ALLOWLIST = [
+  /src[\\/]app[\\/]legal[\\/]/,
+  /src[\\/]lib[\\/]contract[\\/]/,
 ];
 
 function isAllowlisted(file, rule) {
-  if (rule !== 'iaWord') return false;
-  return IA_ALLOWLIST.some(re => re.test(file));
+  const list = rule === 'iaWord' ? IA_ALLOWLIST
+             : rule === 'emDash' ? EM_DASH_ALLOWLIST
+             : [];
+  return list.some(re => re.test(file));
 }
 
 function walkTsx(root) {
@@ -64,7 +73,7 @@ function extract(src) {
     }
     const jsxText = Array.from(line.matchAll(/>([^<>]{2,})</g));
     const props = VISIBLE_PROPS.flatMap(p =>
-      Array.from(line.matchAll(new RegExp(`${p}=(?:"([^"]+)"|'([^']+)')`, 'g')))
+      Array.from(line.matchAll(new RegExp(`${p}=(?:"([^"]+)"|'([^']+)'|\\{[\`']([^\`']+)[\`']\\})`, 'g')))
     );
     const parts = [];
     for (const m of jsxText) parts.push(m[1]);

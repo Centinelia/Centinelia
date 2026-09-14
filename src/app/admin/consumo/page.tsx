@@ -164,7 +164,7 @@ export default async function AdminConsumoGlobalPage({ searchParams }: SearchPar
     <div className="min-h-screen p-6" style={{ background: '#FAFBFF', color: '#1A0A3B' }}>
       <div className="mb-4">
         <Link href="/admin/clientes" className="text-[12px] opacity-70 hover:opacity-100">← Lista de clientes</Link>
-        <h1 className="text-2xl font-bold mt-2">Consumo — todos los clientes</h1>
+        <h1 className="text-2xl font-bold mt-2">Consumo · todos los clientes</h1>
         <p className="text-[13px] opacity-70">
           {rows.length} clientes registrados · {totals.active_orgs} con empleados activos · {totals.ledger_rows} movimientos en el rango
         </p>

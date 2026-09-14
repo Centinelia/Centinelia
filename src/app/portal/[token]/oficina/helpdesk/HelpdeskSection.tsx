@@ -293,7 +293,7 @@ export default function HelpdeskSection({ token, subUserName, employeeName }: { 
               className="w-full px-3 py-2 rounded-lg text-[13px]"
               style={inputStyle} />
             <textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} rows={3}
-              placeholder="Cuenta un poco más — cuándo empezó, a quién afecta, qué ya intentaste (opcional)"
+              placeholder="Cuenta un poco más: cuándo empezó, a quién afecta, qué ya intentaste (opcional)"
               className="w-full px-3 py-2 rounded-lg text-[12px] resize-none"
               style={inputStyle} />
             <div className="flex items-start gap-2 px-3 py-2 rounded-lg text-[11px]"

@@ -55,7 +55,7 @@ export default function JoinForm({ inviteToken, email, name, accountEmail, expir
             ? 'Este link expiró. Pídele al dueño de la cuenta que te envíe una nueva invitación.'
             : used
             ? 'Este link ya se usó. Si eres tú, inicia sesión con tu contraseña.'
-            : <>Te invitaron a colaborar en <b>{accountEmail}</b>. Elige tu contraseña — solo la sabrás tú, ni el dueño puede verla.</>}
+            : <>Te invitaron a colaborar en <b>{accountEmail}</b>. Elige tu contraseña; solo la sabrás tú, ni el dueño puede verla.</>}
         </p>
 
         {!disabled && (

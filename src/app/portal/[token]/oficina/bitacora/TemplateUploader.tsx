@@ -264,7 +264,7 @@ export function TemplateUploader({ token, agentId, current, uploadCost }: Props)
                     className="flex-1 text-xs rounded outline-none disabled:opacity-50"
                     style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B', padding: '2px 4px', cursor: savingTogglesId ? 'wait' : 'pointer' }}
                   >
-                    <option value="">— sin mapear —</option>
+                    <option value="">Sin mapear</option>
                     {availableFields.length > 0 && (
                       <optgroup label="Disponibles">
                         {availableFields.map(([f, label]) => (

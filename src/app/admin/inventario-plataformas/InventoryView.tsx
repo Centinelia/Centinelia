@@ -199,7 +199,7 @@ export function InventoryView() {
                   <td className="px-4 py-2 text-xs" style={{ color: 'var(--c-text-2)' }}>{fmtDate(t.topped_up_at)}</td>
                   <td className="px-4 py-2 text-xs" style={{ color: 'var(--c-text)' }}>{PLATFORM_META[t.platform]?.label ?? t.platform}</td>
                   <td className="px-4 py-2 text-xs text-right font-semibold" style={{ color: 'var(--c-text)' }}>{fmtUsd(Number(t.amount_usd))}</td>
-                  <td className="px-4 py-2 text-xs" style={{ color: 'var(--c-text-3)' }}>{t.notes ?? '—'}</td>
+                  <td className="px-4 py-2 text-xs" style={{ color: 'var(--c-text-3)' }}>{t.notes ?? '·'}</td>
                 </tr>
               ))}
             </tbody>

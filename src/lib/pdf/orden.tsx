@@ -84,7 +84,7 @@ export function OrdenPdf({ brand, orden }: { brand: BrandKit; orden: OrdenData }
         </View>
         <View style={{ flex: 1 }}>
           <View style={{ borderTopWidth: 1, borderTopColor: '#1A0A3B', paddingTop: 6 }}>
-            <Text style={S.muted}>Autorizado por — {brand.businessName}</Text>
+            <Text style={S.muted}>Autorizado por · {brand.businessName}</Text>
           </View>
         </View>
       </View>

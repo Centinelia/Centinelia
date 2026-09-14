@@ -37,7 +37,7 @@ export function VersionHistoryDrawer({ meerkatId, onClose }: { meerkatId: string
           className="p-4 flex items-center justify-between"
           style={{ borderBottom: '1px solid var(--c-border)' }}
         >
-          <h2 className="font-semibold" style={{ color: 'var(--c-text)' }}>Historial — {meerkatId}</h2>
+          <h2 className="font-semibold" style={{ color: 'var(--c-text)' }}>Historial · {meerkatId}</h2>
           <button
             onClick={onClose}
             className="hover:opacity-80 transition-opacity"
@@ -67,7 +67,7 @@ export function VersionHistoryDrawer({ meerkatId, onClose }: { meerkatId: string
                     >
                       <GitBranch className="w-3 h-3" /> v{e.to_version}
                     </span>
-                    {e.reason && <span className="text-xs italic" style={{ color: 'var(--c-text-3)' }}>— {e.reason}</span>}
+                    {e.reason && <span className="text-xs italic" style={{ color: 'var(--c-text-3)' }}>· {e.reason}</span>}
                   </div>
                 </li>
               ))}
