@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Pencil, Trash2, Check, X } from 'lucide-react';
+import { Pencil, Trash2, Check, X, DollarSign, Calendar, Smartphone, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import EditLeadModal from './EditLeadModal';
 
@@ -134,10 +134,26 @@ export default function LeadsSection({ initialLeads }: { initialLeads: Lead[] })
                           <div className="text-xs mt-0.5" style={{ color: '#9B6DFF' }}>{lead.servicio}</div>
                         )}
                         <div className="flex gap-3 mt-1 flex-wrap">
-                          {lead.presupuesto && <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>💰 {lead.presupuesto}</span>}
-                          {lead.timeline    && <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>📅 {lead.timeline}</span>}
-                          {lead.whatsapp    && <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>📱 {lead.whatsapp}</span>}
-                          {lead.email       && <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>📧 {lead.email}</span>}
+                          {lead.presupuesto && (
+                            <span className="text-xs inline-flex items-center gap-1" style={{ color: 'var(--c-text-3)' }}>
+                              <DollarSign size={11} /> {lead.presupuesto}
+                            </span>
+                          )}
+                          {lead.timeline && (
+                            <span className="text-xs inline-flex items-center gap-1" style={{ color: 'var(--c-text-3)' }}>
+                              <Calendar size={11} /> {lead.timeline}
+                            </span>
+                          )}
+                          {lead.whatsapp && (
+                            <span className="text-xs inline-flex items-center gap-1" style={{ color: 'var(--c-text-3)' }}>
+                              <Smartphone size={11} /> {lead.whatsapp}
+                            </span>
+                          )}
+                          {lead.email && (
+                            <span className="text-xs inline-flex items-center gap-1" style={{ color: 'var(--c-text-3)' }}>
+                              <Mail size={11} /> {lead.email}
+                            </span>
+                          )}
                         </div>
                       </div>
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">

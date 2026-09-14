@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { MapPin, Truck } from 'lucide-react';
 
 interface DispatchRow {
   id: string;
@@ -86,10 +87,14 @@ export default function DespachoClient({ token, initial }: { token: string; init
                     <span style={{ fontSize: 12, color: 'var(--c-text-3)' }}>{new Date(row.created_at).toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
                   </div>
                   <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>{row.service_description}</div>
-                  {row.location && <div style={{ fontSize: 13, color: 'var(--c-text-2)' }}>📍 {row.location}</div>}
+                  {row.location && (
+                    <div style={{ fontSize: 13, color: 'var(--c-text-2)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <MapPin size={12} /> {row.location}
+                    </div>
+                  )}
                   {row.unidad_nombre && (
-                    <div style={{ fontSize: 13, color: 'var(--c-text-2)', marginTop: 4 }}>
-                      🚐 {row.unidad_nombre}{row.unidad_telefono ? ` · ${row.unidad_telefono}` : ''}{row.eta_minutes ? ` · ETA ${row.eta_minutes} min` : ''}
+                    <div style={{ fontSize: 13, color: 'var(--c-text-2)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <Truck size={12} /> {row.unidad_nombre}{row.unidad_telefono ? ` · ${row.unidad_telefono}` : ''}{row.eta_minutes ? ` · ETA ${row.eta_minutes} min` : ''}
                     </div>
                   )}
                   {row.requested_by_name && (

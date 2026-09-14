@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Truck, Store, Pencil, X, Check, Loader2 } from 'lucide-react';
+import { Truck, Store, Pencil, X, Check, Loader2, MapPin, StickyNote } from 'lucide-react';
 import { toast } from 'sonner';
 
 type OrderStatus = 'nuevo' | 'en_proceso' | 'listo' | 'entregado' | 'cancelado';
@@ -112,10 +112,14 @@ export default function AdminOrdersSection({ initialOrders, token }: { initialOr
                   </div>
                   <p className="text-sm mt-1 font-medium" style={{ color: 'var(--c-text)' }}>{order.items}</p>
                   {order.direccion && (
-                    <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-2)' }}>📍 {order.direccion}</p>
+                    <p className="text-xs mt-0.5 inline-flex items-center gap-1" style={{ color: 'var(--c-text-2)' }}>
+                      <MapPin size={11} /> {order.direccion}
+                    </p>
                   )}
                   {order.notas && (
-                    <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-2)' }}>📝 {order.notas}</p>
+                    <p className="text-xs mt-0.5 inline-flex items-center gap-1" style={{ color: 'var(--c-text-2)' }}>
+                      <StickyNote size={11} /> {order.notas}
+                    </p>
                   )}
                 </div>
                 <div className="flex items-center gap-1.5 flex-shrink-0">

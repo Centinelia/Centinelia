@@ -188,11 +188,11 @@ function groupByRule(vs: Violation[]): Record<string, number> {
 // test rojo. Cuando se arregla una violación existente, se remueve del snapshot.
 
 const BASELINE_MAX_PER_RULE: Record<keyof typeof RULES, number> = {
-  // Ajustado al count actual (2026-09-14 primera corrida). Cualquier nueva
-  // violación = test rojo. Fix decrementa; jamás sube. Meta: llevar todos a 0.
+  // Actualizado 2026-09-14 tras limpieza de 14 emojis a Lucide icons.
+  // Cualquier nueva violación = test rojo. Fix decrementa; jamás sube.
   emDash: 19,
-  emoji:  14,
-  iaWord: 0,  // legal + contratos allowlisted; el resto debe ir a 0
+  emoji:  0,   // limpieza completa 2026-09-14 (todo en Lucide)
+  iaWord: 0,   // legal + contratos allowlisted; el resto debe ir a 0
 };
 
 // ─── Tests ──────────────────────────────────────────────────────────────────

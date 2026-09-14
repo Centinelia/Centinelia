@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { ShoppingBag, Filter, Truck, Store, Pencil, X, Check, Loader2, Download, FileText } from 'lucide-react';
+import { ShoppingBag, Filter, Truck, Store, Pencil, X, Check, Loader2, Download, FileText, MapPin, StickyNote } from 'lucide-react';
 import ActivityDetailModal, { type ActivityItem } from './ActivityDetailModal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -202,8 +202,16 @@ export default function PortalOrdersSection({ initialOrders, token, isPro }: {
                         </span>
                       </div>
                       <p className="text-sm mt-1.5 font-medium" style={{ color: '#1A0A3B' }}>{order.items}</p>
-                      {order.direccion && <p className="text-xs mt-0.5" style={{ color: '#6B6480' }}>📍 {order.direccion}</p>}
-                      {order.notas    && <p className="text-xs mt-0.5" style={{ color: '#6B6480' }}>📝 {order.notas}</p>}
+                      {order.direccion && (
+                        <p className="text-xs mt-0.5 inline-flex items-center gap-1" style={{ color: '#6B6480' }}>
+                          <MapPin size={11} /> {order.direccion}
+                        </p>
+                      )}
+                      {order.notas && (
+                        <p className="text-xs mt-0.5 inline-flex items-center gap-1" style={{ color: '#6B6480' }}>
+                          <StickyNote size={11} /> {order.notas}
+                        </p>
+                      )}
                     </div>
                     <button onClick={e => { e.stopPropagation(); setEditingOrder(order); setEditForm({ ...order }); }}
                       className="p-1.5 rounded-lg hover:bg-[#FAFAFB] transition-colors flex-shrink-0"

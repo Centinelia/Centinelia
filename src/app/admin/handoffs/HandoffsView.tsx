@@ -200,9 +200,15 @@ export function HandoffsView() {
                       {Object.entries(p.by_tool).map(([t, n]) => `${t}: ${n}`).join(' · ')}
                     </span>
                     <span className="text-[12px] tabular-nums" style={{ color: '#6B7280' }}>
-                      <span style={{ color: '#10B981' }}>{p.success}✓</span>{' '}
-                      <span style={{ color: '#F59E0B' }}>{p.rejected}⊘</span>{' '}
-                      <span style={{ color: '#EF4444' }}>{p.failed}✗</span>
+                      <span className="inline-flex items-center gap-0.5" style={{ color: '#10B981' }}>
+                        {p.success}<Check size={11} strokeWidth={3} />
+                      </span>{' '}
+                      <span className="inline-flex items-center gap-0.5" style={{ color: '#F59E0B' }}>
+                        {p.rejected}<Ban size={11} />
+                      </span>{' '}
+                      <span className="inline-flex items-center gap-0.5" style={{ color: '#EF4444' }}>
+                        {p.failed}<X size={11} strokeWidth={3} />
+                      </span>
                     </span>
                     <span
                       className="text-[13px] font-semibold tabular-nums px-2 py-0.5 rounded-md"

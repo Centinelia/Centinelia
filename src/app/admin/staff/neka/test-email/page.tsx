@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Send, Loader2, CheckCircle2, AlertCircle, Wrench, Filter } from 'lucide-react';
+import { ArrowLeft, Send, Loader2, CheckCircle2, AlertCircle, Wrench, Filter, Check, X } from 'lucide-react';
 import { MEERKAT_ROLES } from '@/lib/portal/meerkat-roles';
 
 const NEKA = MEERKAT_ROLES.find(r => r.id === 'neka')!;
@@ -276,8 +276,16 @@ export default function NekaTestEmailPage() {
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--c-text-4)' }}>
                         Respuesta a {isProcess(result) ? 'remitente' : ''}
-                        {result.replySent && <span className="ml-2 text-[10px]" style={{ color: '#15803d' }}>✓ enviada</span>}
-                        {result.replySent === false && sendReply && <span className="ml-2 text-[10px]" style={{ color: '#b91c1c' }}>✗ falló envío</span>}
+                        {result.replySent && (
+                          <span className="ml-2 text-[10px] inline-flex items-center gap-1" style={{ color: '#15803d' }}>
+                            <Check size={10} strokeWidth={3} /> enviada
+                          </span>
+                        )}
+                        {result.replySent === false && sendReply && (
+                          <span className="ml-2 text-[10px] inline-flex items-center gap-1" style={{ color: '#b91c1c' }}>
+                            <X size={10} strokeWidth={3} /> falló envío
+                          </span>
+                        )}
                       </p>
                       <div
                         className="rounded-lg p-3 text-xs whitespace-pre-wrap"

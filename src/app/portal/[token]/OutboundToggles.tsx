@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Phone, PhoneIncoming, X, Loader2 } from 'lucide-react';
+import { Phone, PhoneIncoming, X, Loader2, Check } from 'lucide-react';
 import { OUTBOUND_CAPABILITIES } from '@/lib/portal/outbound-capabilities';
 import { MEERKAT_ROLES } from '@/lib/portal/meerkat-roles';
 
@@ -423,7 +423,9 @@ export default function OutboundToggles({ token, agentId, initOutbound, initMiss
                   <p style={{ fontSize: 13, fontWeight: 600, color: '#1A0A3B', margin: 0, lineHeight: 1.3 }}>
                     {r.label}
                     {saved === r.field && (
-                      <span style={{ marginLeft: 8, fontSize: 11, color: '#22c55e', fontWeight: 500 }}>Guardado ✓</span>
+                      <span style={{ marginLeft: 8, fontSize: 11, color: '#22c55e', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                        Guardado <Check size={11} strokeWidth={3} />
+                      </span>
                     )}
                   </p>
                   <p style={{ fontSize: 12, color: '#6B6480', margin: '2px 0 0', lineHeight: 1.4 }}>
