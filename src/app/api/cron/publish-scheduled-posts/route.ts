@@ -9,7 +9,6 @@ export const GET = defineCron({
   maxDuration: 300,
   handler: async ({ supabase, now, log }) => {
     // Cargar drafts con status 'scheduled' o 'approved' cuyo scheduled_for ya pasó.
-    // features vive en voice_agents, no en organizations (organizations solo tiene account_status).
     const { data: drafts, error: fetchErr } = await supabase
       .from('content_drafts')
       .select(`
@@ -21,8 +20,7 @@ export const GET = defineCron({
           denylist_words, paused, status, metadata,
           agent_id, portal_email
         ),
-        organizations!inner(account_status),
-        voice_agents!inner(features)
+        organizations!inner(account_status, features)
       `)
       .in('status', ['scheduled', 'approved'])
       .not('scheduled_for', 'is', null)
@@ -41,8 +39,7 @@ export const GET = defineCron({
     const errors: string[] = [];
 
     for (const draft of rows) {
-      const org     = draft.organizations as unknown as { account_status: string };
-      const agent   = draft.voice_agents as unknown as { features: Record<string, unknown> | null };
+      const org     = draft.organizations as unknown as { account_status: string; features: Record<string, unknown> | null };
       const account = draft.social_accounts as unknown as {
         id: string;
         provider: string;
@@ -77,8 +74,7 @@ export const GET = defineCron({
       }
 
       // R62: feature social_publishing no habilitada → skip (no cancelar)
-      // features vive en voice_agents, no en organizations
-      const socialPub = (agent.features as { social_publishing?: { enabled?: boolean } } | null)?.social_publishing;
+      const socialPub = (org.features as { social_publishing?: { enabled?: boolean } } | null)?.social_publishing;
       if (!socialPub?.enabled) {
         log.info(`draft ${draft.id} skipped — social_publishing disabled`);
         skipped++;

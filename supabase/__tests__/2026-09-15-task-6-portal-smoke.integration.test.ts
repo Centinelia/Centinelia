@@ -29,12 +29,10 @@ import { createAdminClient } from '@/lib/supabase/admin';
 const {
   mockVerifySession,
   mockResolveOrg,
-  mockRequireSocialFeature,
   mockCreateAdminClient,
 } = vi.hoisted(() => ({
   mockVerifySession:        vi.fn(),
   mockResolveOrg:           vi.fn(),
-  mockRequireSocialFeature: vi.fn(),
   mockCreateAdminClient:    vi.fn(),
 }));
 
@@ -47,9 +45,8 @@ vi.mock('@/lib/portal/org-token', () => ({
   resolveOrgFromToken: mockResolveOrg,
 }));
 
-vi.mock('@/lib/feature-flags/social-publishing', () => ({
-  requireSocialFeature: mockRequireSocialFeature,
-}));
+// requireSocialFeature NO se mockea — hitea Supabase real para validar el fix
+// de BUG-SCHEMA-FEATURES-ORG (Round 9). Ambas orgs tienen features.social_publishing.enabled=true.
 
 // createAdminClient → devuelve el cliente REAL (no mock)
 vi.mock('@/lib/supabase/admin', () => {
@@ -103,14 +100,16 @@ beforeAll(async () => {
     portal_email: ORG_A_EMAIL,
     name:         'Smoke Portal A',
     portal_token: ORG_A_TOKEN,
+    features:     { social_publishing: { enabled: true } },
   }).select('portal_email').single();
   if (orgA.error) throw new Error(`Org A insert: ${orgA.error.message}`);
 
-  // Crear Org B
+  // Crear Org B (attacker en IDOR test — con features tambien habilitadas, el 403 viene del session mismatch antes)
   const orgB = await sb.from('organizations').insert({
     portal_email: ORG_B_EMAIL,
     name:         'Smoke Portal B',
     portal_token: ORG_B_TOKEN,
+    features:     { social_publishing: { enabled: true } },
   }).select('portal_email').single();
   if (orgB.error) throw new Error(`Org B insert: ${orgB.error.message}`);
 
@@ -203,10 +202,7 @@ function setupGuard(
     orgToken,
     legacy:      false,
   });
-  mockRequireSocialFeature.mockResolvedValue({
-    enabled:    true,
-    agencyMode: false,
-  });
+  // requireSocialFeature ya no se mockea — lee organizations.features real.
 }
 
 function makeJsonRequest(url: string, body: unknown): NextRequest {
@@ -304,7 +300,6 @@ it('PATCH drafts approve IDOR → 403, row no cambia', async () => {
     orgToken:    ORG_B_TOKEN,
     legacy:      false,
   });
-  mockRequireSocialFeature.mockResolvedValue({ enabled: true, agencyMode: false });
 
   const req = makeJsonRequest(
     `http://localhost/api/portal/${ORG_B_TOKEN}/social/drafts/${draftId}`,

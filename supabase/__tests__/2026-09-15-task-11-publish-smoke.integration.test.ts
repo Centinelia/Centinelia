@@ -60,14 +60,16 @@ let draftId:          string;
 // ─── Setup / Teardown ─────────────────────────────────────────────────────────
 
 beforeAll(async () => {
-  // 1. Org (account_status defaults a 'active' — no pasar features, vive en voice_agents)
+  // 1. Org con features.social_publishing.enabled=true (habilita la publicación).
+  //    Post BUG-SCHEMA-FEATURES-ORG fix: features vive en organizations, no en voice_agents.
   const { error: orgErr } = await sb.from('organizations').insert({
     portal_email: PORTAL_EMAIL,
     name:         'Smoke Publish Org',
+    features:     { social_publishing: { enabled: true } },
   });
   if (orgErr) throw new Error(`Org insert: ${orgErr.message}`);
 
-  // 2. Agente navi — features.social_publishing.enabled=true habilita la publicación
+  // 2. Agente navi
   const { data: ag, error: agErr } = await sb.from('voice_agents').insert({
     portal_email:  PORTAL_EMAIL,
     role:          'navi',
@@ -75,7 +77,6 @@ beforeAll(async () => {
     client_name:   'Smoke Client',
     business_name: 'Smoke Business',
     plan:          'pro',
-    features:      { social_publishing: { enabled: true } },
   }).select('id').single();
   if (agErr) throw new Error(`Agent insert: ${agErr.message}`);
   agentId = ag!.id;

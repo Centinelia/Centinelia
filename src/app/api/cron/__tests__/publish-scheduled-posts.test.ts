@@ -82,8 +82,7 @@ function makeDraft(overrides: Partial<Record<string, unknown>> = {}): Record<str
     retry_count:        0,
     social_account_id:  'acct-1',
     social_accounts:    makeSocialAccount(),
-    organizations:      { account_status: 'active' },
-    voice_agents:       { features: { social_publishing: { enabled: true } } },
+    organizations:      { account_status: 'active', features: { social_publishing: { enabled: true } } },
     ...overrides,
   };
 }
@@ -248,8 +247,7 @@ describe('navi-publish-scheduled-posts', () => {
 
   it('(c) cancela draft si org.account_status !== active', async () => {
     const draft = makeDraft({
-      organizations: { account_status: 'suspended' },
-      voice_agents:  { features: { social_publishing: { enabled: true } } },
+      organizations: { account_status: 'suspended', features: { social_publishing: { enabled: true } } },
     });
 
     const updateEqFn = vi.fn().mockResolvedValue({ data: null, error: null });
@@ -285,8 +283,7 @@ describe('navi-publish-scheduled-posts', () => {
 
   it('(d) skip draft si social_publishing.enabled !== true', async () => {
     const draft = makeDraft({
-      organizations: { account_status: 'active' },
-      voice_agents:  { features: { social_publishing: { enabled: false } } },
+      organizations: { account_status: 'active', features: { social_publishing: { enabled: false } } },
     });
 
     const updateFn = vi.fn();
