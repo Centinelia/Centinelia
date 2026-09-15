@@ -11,6 +11,9 @@ importers:
       '@anthropic-ai/sdk':
         specifier: ^0.116.0
         version: 0.116.0(zod@4.6.0)
+      '@daily-co/daily-js':
+        specifier: ^0.87.0
+        version: 0.87.0
       '@notionhq/client':
         specifier: ^5.23.0
         version: 5.26.0
