@@ -260,6 +260,26 @@
     {
       "path": "/api/cron/agent-mailboxes",
       "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/publish-scheduled-posts",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/refresh-social-metrics",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/monitor-social-interactions",
+      "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/refresh-meta-tokens",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/purge-expired-media",
+      "schedule": "0 4 * * *"
     }
   ]
 }
