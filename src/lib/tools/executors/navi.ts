@@ -485,6 +485,27 @@ function buildMetaPublisher(acc: SocialAccount): MetaPublisher {
   return new MetaPublisher(acc);
 }
 
+// ─── Helper: defense-in-depth kill switch por cuenta (R91, R92, R95) ─────────
+//
+// Lanza ACCOUNT_PAUSED si social_accounts.paused === true.
+// Llamado en todos los handlers de acción que causan side-effect real en IG:
+// crearBorradorPost, programarPublicacion, publicarAhora,
+// igResponderComentario, igResponderDm.
+//
+// El cron publish-scheduled-posts YA skipea cuentas pausadas (R62/R95).
+// Esta capa es defense-in-depth para llamadas directas de handler.
+
+function assertNotPaused(acc: SocialAccount | Record<string, unknown>): void {
+  const account = acc as Record<string, unknown>;
+  if (account.paused === true) {
+    const handle = (account.external_username as string | undefined) ?? (account.id as string);
+    throw new NaviToolError(
+      'ACCOUNT_PAUSED',
+      `La cuenta ${handle} está pausada. Reactívala primero en el portal.`,
+    );
+  }
+}
+
 // ─── Handler: canva_listar_plantillas ────────────────────────────────────────
 
 async function handleCanvaListarPlantillas(
@@ -644,6 +665,9 @@ async function handleCrearBorradorPost(
     requireTarget: true,
   });
 
+  // Kill switch: no crear borrador si la cuenta está pausada (R91, R92)
+  assertNotPaused(acc as unknown as Record<string, unknown>);
+
   // Verificar slot si se proporcionó
   // Ownership se verifica a través del editorial_calendar padre (que sí tiene portal_email).
   // editorial_calendar_slots no tiene portal_email ni agent_id por diseño de esquema.
@@ -761,6 +785,13 @@ async function handleProgramarPublicacion(
     );
   }
 
+  // Kill switch: resolver cuenta social y verificar que no esté pausada (R91, R92)
+  const accForPausedCheck = await resolveSocialAccount(sb, agentId, portalEmail, {
+    targetAccountId: draft.social_account_id as string,
+    requireTarget:   false,
+  });
+  assertNotPaused(accForPausedCheck as unknown as Record<string, unknown>);
+
   const { data: updated, error } = await sb
     .from('content_drafts')
     .update({ status: 'scheduled', scheduled_for: scheduledFor })
@@ -811,6 +842,9 @@ async function handlePublicarAhora(
     targetAccountId: draft.social_account_id as string,
     requireTarget: false,
   });
+
+  // Kill switch: no publicar si la cuenta está pausada (R91, R92)
+  assertNotPaused(acc as unknown as Record<string, unknown>);
 
   // Marcar como publicando
   await sb
@@ -897,6 +931,9 @@ async function handleIgResponderComentario(
     requireTarget: true,
   });
 
+  // Kill switch: no responder si la cuenta está pausada (R91, R92)
+  assertNotPaused(acc as unknown as Record<string, unknown>);
+
   const publisher = buildMetaPublisher(acc);
   await publisher.replyToComment(commentId, message);
 
@@ -934,6 +971,9 @@ async function handleIgResponderDm(
     targetAccountId,
     requireTarget: true,
   });
+
+  // Kill switch: no responder si la cuenta está pausada (R91, R92)
+  assertNotPaused(acc as unknown as Record<string, unknown>);
 
   const publisher = buildMetaPublisher(acc);
   await publisher.replyToDm(threadId, message);

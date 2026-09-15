@@ -517,6 +517,10 @@ describe('programar_publicacion', () => {
     enqueue({ data: makeAgentRow('navi') });
     // Borrador aprobado
     enqueue({ data: makeDraft({ status: 'approved' }) });
+    // assertNotPaused: resolveSocialAccount → voice_agents (role)
+    enqueue({ data: makeAgentRow('navi') });
+    // assertNotPaused: resolveSocialAccount → social_accounts (cuenta activa, no pausada)
+    enqueue({ data: makeSocialAccount() });
     // Update resultado
     enqueue({ data: { ...makeDraft({ status: 'scheduled', scheduled_for: '2026-09-20T12:00:00Z' }) } });
 
