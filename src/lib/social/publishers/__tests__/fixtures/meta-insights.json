@@ -1,0 +1,57 @@
+{
+  "data": [
+    {
+      "name": "impressions",
+      "period": "lifetime",
+      "values": [{ "value": 3500 }],
+      "title": "Impressions",
+      "id": "17841405822304914/insights/impressions/lifetime"
+    },
+    {
+      "name": "reach",
+      "period": "lifetime",
+      "values": [{ "value": 2800 }],
+      "title": "Reach",
+      "id": "17841405822304914/insights/reach/lifetime"
+    },
+    {
+      "name": "likes",
+      "period": "lifetime",
+      "values": [{ "value": 142 }],
+      "title": "Likes",
+      "id": "17841405822304914/insights/likes/lifetime"
+    },
+    {
+      "name": "comments",
+      "period": "lifetime",
+      "values": [{ "value": 17 }],
+      "title": "Comments",
+      "id": "17841405822304914/insights/comments/lifetime"
+    },
+    {
+      "name": "shares",
+      "period": "lifetime",
+      "values": [{ "value": 23 }],
+      "title": "Shares",
+      "id": "17841405822304914/insights/shares/lifetime"
+    },
+    {
+      "name": "saved",
+      "period": "lifetime",
+      "values": [{ "value": 55 }],
+      "title": "Saved",
+      "id": "17841405822304914/insights/saved/lifetime"
+    },
+    {
+      "name": "plays",
+      "period": "lifetime",
+      "values": [{ "value": 1200 }],
+      "title": "Plays",
+      "id": "17841405822304914/insights/plays/lifetime"
+    }
+  ],
+  "paging": {
+    "previous": "https://graph.facebook.com/v18.0/17841405822304914/insights?metric=impressions%2Creach%2Clikes%2Ccomments%2Cshares%2Csaved%2Cplays&period=lifetime&since=1726300000&until=1726386400",
+    "next": "https://graph.facebook.com/v18.0/17841405822304914/insights?metric=impressions%2Creach%2Clikes%2Ccomments%2Cshares%2Csaved%2Cplays&period=lifetime&since=1726386400&until=1726472800"
+  }
+}

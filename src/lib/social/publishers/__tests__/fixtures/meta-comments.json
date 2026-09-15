@@ -1,0 +1,22 @@
+{
+  "data": [
+    {
+      "id": "17858893269000001",
+      "text": "Excelente producto!",
+      "username": "usuario_mx",
+      "timestamp": "2026-09-14T10:00:00+0000"
+    },
+    {
+      "id": "17858893269000002",
+      "text": "Cuanto cuesta?",
+      "username": "comprador_norte",
+      "timestamp": "2026-09-14T11:30:00+0000"
+    }
+  ],
+  "paging": {
+    "cursors": {
+      "before": "before_cursor",
+      "after": "after_cursor"
+    }
+  }
+}
