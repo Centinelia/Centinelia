@@ -11,7 +11,7 @@
  * de correr y neka-billing-cycle vuelve al flujo de emitir_ingreso_facturama
  * sin cambios en el resto del cron.
  */
-import { sendEmail } from '@/lib/email/send';
+import { sendViaTitan } from '@/lib/email/titan-smtp';
 import type { CfdiInput } from '@/lib/invoicing/provider';
 import type { CentineliaCliente } from '@/lib/billing/centinelia-clientes';
 
@@ -108,8 +108,12 @@ export async function notifyNazreToInvoice(
 </div>`;
 
   try {
-    const ok = await sendEmail({ to, subject, html });
-    if (!ok) return { ok: false, to, error: 'sendEmail returned false' };
+    const res = await sendViaTitan({
+      to, subject, html,
+      fromDisplay: 'Neka Centinelia',
+      saveToSent:  false,  // notif interna, no ensuciar el Sent de Neka
+    });
+    if (!res.ok) return { ok: false, to, error: res.error ?? 'sendViaTitan failed' };
     return { ok: true, to };
   } catch (e) {
     return { ok: false, to, error: (e as Error).message };

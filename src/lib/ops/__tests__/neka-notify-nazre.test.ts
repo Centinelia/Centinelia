@@ -5,14 +5,14 @@
  *
  * Cubre: composicion HTML (datos criticos presentes), env var precedence
  * (NEKA_NOTIFY_TO > NAZRE_ADMIN_EMAIL > fallback), URL sandbox vs prod,
- * error path (sendEmail false y throw), formato de moneda MXN.
+ * error path (sendViaTitan ok:false y throw), formato de moneda MXN.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-const { mockSendEmail } = vi.hoisted(() => ({ mockSendEmail: vi.fn() }));
+const { mockSendViaTitan } = vi.hoisted(() => ({ mockSendViaTitan: vi.fn() }));
 
-vi.mock('@/lib/email/send', () => ({
-  sendEmail: (...args: unknown[]) => mockSendEmail(...args),
+vi.mock('@/lib/email/titan-smtp', () => ({
+  sendViaTitan: (...args: unknown[]) => mockSendViaTitan(...args),
 }));
 
 import { notifyNazreToInvoice } from '../neka-notify-nazre';
@@ -69,7 +69,7 @@ function makeCfdi(overrides: Partial<CfdiInput> = {}): CfdiInput {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockSendEmail.mockResolvedValue(true);
+  mockSendViaTitan.mockResolvedValue({ ok: true, savedToSent: false });
   delete process.env.NEKA_NOTIFY_TO;
   delete process.env.NAZRE_ADMIN_EMAIL;
   delete process.env.NEXT_PUBLIC_APP_URL;
@@ -81,7 +81,7 @@ afterEach(() => {
 });
 
 describe('notifyNazreToInvoice — happy path', () => {
-  it('regresa ok:true y llama sendEmail una vez', async () => {
+  it('regresa ok:true y llama sendViaTitan una vez', async () => {
     const result = await notifyNazreToInvoice({
       cliente:  makeCliente(),
       cfdi:     makeCfdi(),
@@ -90,7 +90,7 @@ describe('notifyNazreToInvoice — happy path', () => {
     });
 
     expect(result.ok).toBe(true);
-    expect(mockSendEmail).toHaveBeenCalledTimes(1);
+    expect(mockSendViaTitan).toHaveBeenCalledTimes(1);
   });
 
   it('el subject nombra al cliente y al ciclo', async () => {
@@ -101,7 +101,7 @@ describe('notifyNazreToInvoice — happy path', () => {
       testMode: true,
     });
 
-    const arg = mockSendEmail.mock.calls[0][0] as { subject: string };
+    const arg = mockSendViaTitan.mock.calls[0][0] as { subject: string };
     expect(arg.subject).toContain('Tortilleria Estrella');
     expect(arg.subject).toContain('2026-09');
     expect(arg.subject).toContain('[Neka]');
@@ -115,7 +115,7 @@ describe('notifyNazreToInvoice — happy path', () => {
       testMode: true,
     });
 
-    const html = (mockSendEmail.mock.calls[0][0] as { html: string }).html;
+    const html = (mockSendViaTitan.mock.calls[0][0] as { html: string }).html;
     expect(html).toContain('TEN010518AL3');
     expect(html).toContain('Tortilleria Estrella SA de CV');
     expect(html).toContain('G03');
@@ -134,7 +134,7 @@ describe('notifyNazreToInvoice — happy path', () => {
       testMode: true,
     });
 
-    const html = (mockSendEmail.mock.calls[0][0] as { html: string }).html;
+    const html = (mockSendViaTitan.mock.calls[0][0] as { html: string }).html;
     expect(html).toContain('Empleado digital Nia');
     expect(html).toContain('Jornada mensual');
   });
@@ -153,7 +153,7 @@ describe('notifyNazreToInvoice — env var precedence', () => {
     });
 
     expect(result.to).toBe('ops@centinelia.mx');
-    expect((mockSendEmail.mock.calls[0][0] as { to: string }).to).toBe('ops@centinelia.mx');
+    expect((mockSendViaTitan.mock.calls[0][0] as { to: string }).to).toBe('ops@centinelia.mx');
   });
 
   it('cae a NAZRE_ADMIN_EMAIL si NEKA_NOTIFY_TO no esta', async () => {
@@ -190,7 +190,7 @@ describe('notifyNazreToInvoice — URL sandbox vs prod', () => {
       testMode: true,
     });
 
-    const html = (mockSendEmail.mock.calls[0][0] as { html: string }).html;
+    const html = (mockSendViaTitan.mock.calls[0][0] as { html: string }).html;
     expect(html).toContain('apisandbox.facturama.mx');
     expect(html).toContain('SANDBOX');
     expect(html).not.toContain('app.facturama.mx"');
@@ -204,7 +204,7 @@ describe('notifyNazreToInvoice — URL sandbox vs prod', () => {
       testMode: false,
     });
 
-    const html = (mockSendEmail.mock.calls[0][0] as { html: string }).html;
+    const html = (mockSendViaTitan.mock.calls[0][0] as { html: string }).html;
     expect(html).toContain('app.facturama.mx');
     expect(html).toContain('PROD');
     expect(html).not.toContain('apisandbox.facturama.mx');
@@ -212,8 +212,8 @@ describe('notifyNazreToInvoice — URL sandbox vs prod', () => {
 });
 
 describe('notifyNazreToInvoice — error path', () => {
-  it('regresa ok:false cuando sendEmail devuelve false', async () => {
-    mockSendEmail.mockResolvedValueOnce(false);
+  it('regresa ok:false cuando sendViaTitan regresa ok:false', async () => {
+    mockSendViaTitan.mockResolvedValueOnce({ ok: false, savedToSent: false, error: 'SMTP timeout' });
 
     const result = await notifyNazreToInvoice({
       cliente:  makeCliente(),
@@ -223,11 +223,11 @@ describe('notifyNazreToInvoice — error path', () => {
     });
 
     expect(result.ok).toBe(false);
-    expect(result.error).toContain('sendEmail returned false');
+    expect(result.error).toContain('SMTP timeout');
   });
 
-  it('regresa ok:false cuando sendEmail lanza', async () => {
-    mockSendEmail.mockRejectedValueOnce(new Error('Resend 429 rate limit'));
+  it('regresa ok:false cuando sendViaTitan lanza', async () => {
+    mockSendViaTitan.mockRejectedValueOnce(new Error('Resend 429 rate limit'));
 
     const result = await notifyNazreToInvoice({
       cliente:  makeCliente(),
