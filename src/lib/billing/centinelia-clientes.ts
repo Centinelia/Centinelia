@@ -10,12 +10,24 @@ import { createAdminClient } from '@/lib/supabase/admin';
 
 export type Periodicidad = 'monthly' | 'biweekly' | 'weekly' | 'annual';
 export type MetodoPago    = 'PUE' | 'PPD';
+export type DocTipo       = 'csf' | 'contrato' | 'comprobante_pago' | 'poder_notarial' | 'otro';
 
 export interface ConceptoPlan {
   descripcion:    string;
   valor_unitario: number;
   cantidad?:      number;   // default 1
   con_iva?:       boolean;  // default true
+}
+
+export interface ClienteDoc {
+  id:            string;
+  tipo:          DocTipo;
+  label:         string;
+  storage_path:  string;
+  mime_type:     string;
+  size_bytes:    number;
+  uploaded_at:   string;
+  uploaded_by?:  string;
 }
 
 export interface CentineliaCliente {
@@ -36,6 +48,7 @@ export interface CentineliaCliente {
   forma_pago_default:          string;
   stripe_customer_id:          string | null;
   notas:                       string | null;
+  docs:                        ClienteDoc[];
   created_at:                  string;
   updated_at:                  string;
 }
