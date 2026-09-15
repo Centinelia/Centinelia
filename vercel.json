@@ -6,6 +6,10 @@
       "schedule": "0 * * * *"
     },
     {
+      "path": "/api/cron/bitacora-weekly-catchup",
+      "schedule": "0 14,20,2 * * *"
+    },
+    {
       "path": "/api/cron/ops-reports",
       "schedule": "0 8 * * *"
     },
