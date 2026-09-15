@@ -277,4 +277,77 @@ describe('GET /api/cron/neka-billing-cycle', () => {
       expect(evt.tipo).toBe('cfdi_emitido');
     });
   });
+
+  describe('buffer de dias (NEKA_NOTIFY_BUFFER_DAYS)', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      // Fijar hoy = 2026-09-21 UTC
+      vi.setSystemTime(new Date('2026-09-21T12:00:00Z'));
+      mockNotifyNazreToInvoice.mockResolvedValue({ ok: true, to: 'nazre20@gmail.com' });
+    });
+    afterEach(() => { vi.useRealTimers(); });
+
+    it('en notify-only con buffer=10, fechaCorte = hoy + 10 dias', async () => {
+      process.env.NEKA_NOTIFY_ONLY = 'true';
+      process.env.NEKA_NOTIFY_BUFFER_DAYS = '10';
+      mockGetClientesPorFacturar.mockResolvedValue([]);
+
+      const res = await GET(makeRequest());
+      const body = await res.json();
+
+      expect(body.bufferDias).toBe(10);
+      expect(body.fechaHoy).toBe('2026-09-21');
+      expect(body.fechaCorte).toBe('2026-10-01');
+      // getClientesPorFacturar recibio fechaCorte (con buffer), no hoy real
+      expect(mockGetClientesPorFacturar.mock.calls[0][0]).toBe('2026-10-01');
+
+      delete process.env.NEKA_NOTIFY_BUFFER_DAYS;
+    });
+
+    it('en notify-only SIN buffer env, fechaCorte = hoy (buffer=0)', async () => {
+      process.env.NEKA_NOTIFY_ONLY = 'true';
+      delete process.env.NEKA_NOTIFY_BUFFER_DAYS;
+      mockGetClientesPorFacturar.mockResolvedValue([]);
+
+      const res = await GET(makeRequest());
+      const body = await res.json();
+
+      expect(body.bufferDias).toBe(0);
+      expect(body.fechaCorte).toBe('2026-09-21');
+      expect(mockGetClientesPorFacturar.mock.calls[0][0]).toBe('2026-09-21');
+    });
+
+    it('en modo emit clasico, buffer NO aplica aunque env este seteado', async () => {
+      delete process.env.NEKA_NOTIFY_ONLY;
+      process.env.NEKA_NOTIFY_BUFFER_DAYS = '10';
+      mockGetClientesPorFacturar.mockResolvedValue([]);
+
+      const res = await GET(makeRequest());
+      const body = await res.json();
+
+      expect(body.notifyOnly).toBe(false);
+      expect(body.bufferDias).toBe(0);
+      expect(body.fechaCorte).toBe('2026-09-21');
+
+      delete process.env.NEKA_NOTIFY_BUFFER_DAYS;
+    });
+
+    it('con buffer=10 y cliente con fecha=Oct 1, dispara notify hoy Sept 21', async () => {
+      process.env.NEKA_NOTIFY_ONLY = 'true';
+      process.env.NEKA_NOTIFY_BUFFER_DAYS = '10';
+      mockGetClientesPorFacturar.mockResolvedValue([
+        makeCliente({ fecha_proxima_facturacion: '2026-10-01' }),
+      ]);
+
+      const res = await GET(makeRequest());
+      const body = await res.json();
+
+      expect(body.notificados).toBe(1);
+      // ciclo_key sigue calculandose desde fecha_proxima_facturacion (Oct 1 -> 2026-10)
+      const notifyArg = mockNotifyNazreToInvoice.mock.calls[0][0] as { cicloKey: string };
+      expect(notifyArg.cicloKey).toBe('2026-10');
+
+      delete process.env.NEKA_NOTIFY_BUFFER_DAYS;
+    });
+  });
 });

@@ -107,9 +107,25 @@ export async function GET(req: NextRequest) {
   const notifyOnly = process.env.NEKA_NOTIFY_ONLY === 'true';
   const hoy = new Date().toISOString().slice(0, 10);
 
+  // Buffer de dias para adelantar el notify en modo notify-only.
+  // Uso: cliente paga por adelantado -> factura debe llegar ANTES del ciclo de
+  // servicio para que Nazre pueda timbrar y el cliente pague a tiempo.
+  //
+  // Ej: fecha_proxima_facturacion=2026-10-01 representa mes de servicio Oct.
+  // Con NEKA_NOTIFY_BUFFER_DAYS=10, el cron dispara si (Oct 1 - 10d = Sept 21)
+  // <= hoy. Es decir, notifica 10 dias antes del ciclo.
+  //
+  // Solo aplica en notify_only. En emit real la fecha es exacta (default 0).
+  const bufferDias = notifyOnly ? Number(process.env.NEKA_NOTIFY_BUFFER_DAYS ?? 0) : 0;
+  const fechaCorteDate = new Date();
+  fechaCorteDate.setUTCDate(fechaCorteDate.getUTCDate() + bufferDias);
+  const fechaCorte = fechaCorteDate.toISOString().slice(0, 10);
+
   const summary = {
     ranAt:         new Date().toISOString(),
-    fechaCorte:    hoy,
+    fechaCorte,
+    fechaHoy:      hoy,
+    bufferDias,
     testMode,
     notifyOnly,
     totalClientes: 0,
@@ -123,7 +139,7 @@ export async function GET(req: NextRequest) {
 
   let clientes: CentineliaCliente[];
   try {
-    clientes = await getClientesPorFacturar(hoy, supabase);
+    clientes = await getClientesPorFacturar(fechaCorte, supabase);
   } catch (e) {
     return NextResponse.json({ error: `getClientesPorFacturar: ${(e as Error).message}` }, { status: 500 });
   }
