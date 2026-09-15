@@ -80,6 +80,18 @@ const PAC_CATALOG: PacDef[] = [
     enabled: false,
     note: 'No disponible',
   },
+  {
+    // Agregado 2026-09-09 para prospecto IPark Estacionamientos (usa
+    // InvoiceOne para ~35K CFDIs/mes). Adapter en src/lib/invoicing/invoiceone
+    // con modo mock activo. Enabled=false hasta que recibamos credenciales
+    // sandbox reales de InvoiceOne y validemos E2E.
+    id: 'invoiceone',
+    label: 'InvoiceOne (EasyOne)',
+    tagline: 'PAC autorizado SAT · Timbrado CFDI 4.0 vía SOAP',
+    logoColor: '#7C3AED',
+    enabled: false,
+    note: 'No disponible',
+  },
 ];
 
 function PacLogo({ color }: { color: string }) {

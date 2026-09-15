@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nala IPark — Demo</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%;
+    background: #0F0725;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    overflow: hidden;
+    color: #fff;
+  }
+  .stage {
+    width: 100vw; height: 100vh;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: space-between;
+    padding: 32px 48px;
+  }
+  .header {
+    display: flex; justify-content: space-between; align-items: center;
+    width: 100%; max-width: 1600px;
+  }
+  .brand {
+    display: flex; align-items: center; gap: 12px;
+    font-size: 14px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+    color: #A99EBE;
+  }
+  .brand::before {
+    content: ''; width: 10px; height: 10px; border-radius: 50%;
+    background: linear-gradient(135deg, #6C3BFF, #9B6DFF);
+  }
+  .counter { font-size: 13px; color: #A99EBE; letter-spacing: 0.06em; }
+
+  .slide-container {
+    position: relative;
+    width: 100%; max-width: 1600px; flex: 1;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    margin: 20px 0;
+  }
+  .slide {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    opacity: 0; transition: opacity 0.7s ease-in-out;
+    gap: 24px;
+    pointer-events: none;
+  }
+  .slide.active { opacity: 1; pointer-events: auto; }
+
+  .slide-title {
+    font-size: 32px; font-weight: 700; color: #fff;
+    letter-spacing: -0.02em; text-align: center;
+    max-width: 1100px;
+    line-height: 1.15;
+  }
+  .slide-narration {
+    font-size: 17px; font-weight: 400; color: #C7BFDA;
+    text-align: center; max-width: 900px;
+    line-height: 1.5;
+  }
+  .slide-narration strong { color: #B49BFF; font-weight: 600; }
+
+  .screenshot {
+    max-width: 100%; max-height: 62vh;
+    border-radius: 12px;
+    box-shadow: 0 30px 80px rgba(108, 59, 255, 0.25), 0 10px 30px rgba(0,0,0,0.5);
+    border: 1px solid rgba(108, 59, 255, 0.2);
+    object-fit: contain;
+  }
+
+  .footer {
+    display: flex; flex-direction: column; align-items: center; gap: 16px;
+    width: 100%; max-width: 1600px;
+  }
+  .progress {
+    width: 100%; height: 3px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 3px; overflow: hidden;
+  }
+  .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #6C3BFF, #9B6DFF);
+    width: 0%;
+    transition: width 0.1s linear;
+  }
+  .controls {
+    display: flex; gap: 12px; align-items: center;
+  }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff; cursor: pointer;
+    transition: background 0.2s;
+    font-size: 18px;
+  }
+  .btn:hover { background: rgba(255, 255, 255, 0.15); }
+  .btn.play {
+    width: 56px; height: 56px;
+    background: linear-gradient(135deg, #6C3BFF, #9B6DFF);
+    border-color: transparent;
+    font-size: 22px;
+  }
+  .btn.play:hover { transform: scale(1.05); }
+
+  .cover {
+    text-align: center;
+  }
+  .cover-eyebrow {
+    font-size: 12px; letter-spacing: 0.28em; text-transform: uppercase;
+    color: #B49BFF; font-weight: 700;
+    margin-bottom: 20px;
+  }
+  .cover-title {
+    font-size: 68px; font-weight: 800; letter-spacing: -0.03em;
+    line-height: 1.05;
+    background: linear-gradient(135deg, #fff, #C7BFDA);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    margin-bottom: 20px;
+  }
+  .cover-subtitle {
+    font-size: 22px; color: #C7BFDA; font-weight: 400;
+    max-width: 700px; margin: 0 auto;
+    line-height: 1.5;
+  }
+
+  .final {
+    text-align: center;
+    max-width: 800px;
+  }
+  .final-title {
+    font-size: 44px; font-weight: 800; line-height: 1.1;
+    background: linear-gradient(135deg, #fff, #B49BFF);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    margin-bottom: 24px;
+  }
+  .final-body {
+    font-size: 20px; color: #C7BFDA; line-height: 1.55;
+  }
+  .final-body strong { color: #fff; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="header">
+    <div class="brand">Centinelia · Nala IPark</div>
+    <div class="counter"><span id="idx">1</span> / <span id="total">7</span></div>
+  </div>
+
+  <div class="slide-container" id="slides">
+    <!-- Slide 1: Cover -->
+    <div class="slide active" data-duration="6000">
+      <div class="cover">
+        <div class="cover-eyebrow">Demo · IPark Estacionamientos</div>
+        <h1 class="cover-title">Nala facturista,<br>en 3 minutos.</h1>
+        <p class="cover-subtitle">Cómo se ve el inbox de facturación de IPark<br>con una empleada digital que responde por ustedes.</p>
+      </div>
+    </div>
+
+    <!-- Slide 2: Home -->
+    <div class="slide" data-duration="7000">
+      <h2 class="slide-title">Su portal — sin apps, sin instalar nada.</h2>
+      <img class="screenshot" src="01-portal-home.png" alt="Portal IPark">
+      <p class="slide-narration">
+        Un login, sin apps que instalar. Nala trabaja adentro, ustedes ven todo lo que hace desde aquí.
+      </p>
+    </div>
+
+    <!-- Slide 3: Bandeja overview -->
+    <div class="slide" data-duration="9000">
+      <h2 class="slide-title">La bandeja, con Nala ya trabajando.</h2>
+      <img class="screenshot" src="02-bandeja-pendientes.png" alt="Bandeja Pendientes">
+      <p class="slide-narration">
+        10 correos entraron. Nala respondió <strong>3 automáticamente</strong>, escaló <strong>2</strong> que requieren criterio humano,
+        pidió info al cliente en <strong>2</strong> que llegaron incompletos, e ignoró <strong>3</strong> que no eran facturación.
+      </p>
+    </div>
+
+    <!-- Slide 4: Auto respondidos -->
+    <div class="slide" data-duration="10000">
+      <h2 class="slide-title">Los que Nala respondió sin ustedes.</h2>
+      <img class="screenshot" src="03-respondidos-sin-ti.png" alt="Respondidos sin ti">
+      <p class="slide-narration">
+        Laura Morales, Robert Chen (en inglés), y TechMex. Los tres con datos fiscales completos.
+        Nala validó, timbró vía <strong>InvoiceOne</strong>, respondió con XML+PDF adjuntos. Cero intervención.
+      </p>
+    </div>
+
+    <!-- Slide 5: Laura expandida -->
+    <div class="slide" data-duration="10000">
+      <h2 class="slide-title">Cómo se ve una respuesta lista.</h2>
+      <img class="screenshot" src="04-laura-expandido.png" alt="Laura expandida">
+      <p class="slide-narration">
+        Firma <strong>Facturación IPark</strong>, no menciona IA ni Centinelia.
+        Si algo salió mal, ustedes tienen el botón <strong>Reportar mal envío</strong> — Nala aprende de inmediato.
+      </p>
+    </div>
+
+    <!-- Slide 6: Patricia escalada -->
+    <div class="slide" data-duration="11000">
+      <h2 class="slide-title">Cuando Nala no puede: los escala a ustedes.</h2>
+      <img class="screenshot" src="05-patricia-escalada.png" alt="Patricia escalada">
+      <p class="slide-narration">
+        Patricia perdió su boleto y pasaron 6 semanas. Dos condiciones que requieren criterio humano.
+        Nala <strong>ya respondió al cliente</strong> comprometiendo respuesta hoy, y les deja el caso pre-digerido para decidir.
+      </p>
+    </div>
+
+    <!-- Slide 7: Info requested -->
+    <div class="slide" data-duration="10000">
+      <h2 class="slide-title">Cuando falta info: la pide, no timbra a medias.</h2>
+      <img class="screenshot" src="06-pendientes-info-solicitada.png" alt="Pendientes info solicitada">
+      <p class="slide-narration">
+        Héctor no mandó régimen fiscal, uso CFDI, ni CP. Nala pide exactamente lo que falta.
+        M. Fernández escribió mal el RFC — Nala detectó el error y pidió constancia. Sin timbrar mal, sin escalar innecesariamente.
+      </p>
+    </div>
+
+    <!-- Slide 8: Final -->
+    <div class="slide" data-duration="9000">
+      <div class="final">
+        <h2 class="final-title">De <strong>1,000 correos</strong> a <strong>150 auditorías</strong>.</h2>
+        <p class="final-body">
+          Su auxiliar contable pasa de responder a mano a auditar Nala.
+          <br><br>
+          Bilingüe. 24/7. Se conecta a la cuenta de InvoiceOne que ya tienen.
+          <br><br>
+          <strong>Cuando quieran, agendamos el siguiente paso.</strong>
+        </p>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer">
+    <div class="progress"><div class="progress-bar" id="progressBar"></div></div>
+    <div class="controls">
+      <button class="btn" id="prevBtn" title="Anterior">‹</button>
+      <button class="btn play" id="playBtn" title="Play/Pause">▶</button>
+      <button class="btn" id="nextBtn" title="Siguiente">›</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const total = slides.length;
+  document.getElementById('total').textContent = total;
+  let current = 0;
+  let playing = false;
+  let timer = null;
+  let progressTimer = null;
+  let elapsed = 0;
+
+  const playBtn = document.getElementById('playBtn');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const progressBar = document.getElementById('progressBar');
+  const counter = document.getElementById('idx');
+
+  function show(i) {
+    slides.forEach(s => s.classList.remove('active'));
+    slides[i].classList.add('active');
+    counter.textContent = i + 1;
+    elapsed = 0;
+    progressBar.style.width = '0%';
+  }
+
+  function next() {
+    current = (current + 1) % total;
+    show(current);
+    if (playing) startTimer();
+  }
+
+  function prev() {
+    current = (current - 1 + total) % total;
+    show(current);
+    if (playing) startTimer();
+  }
+
+  function startTimer() {
+    clearInterval(timer); clearInterval(progressTimer);
+    const dur = parseInt(slides[current].dataset.duration || 8000, 10);
+    elapsed = 0;
+    progressTimer = setInterval(() => {
+      elapsed += 100;
+      progressBar.style.width = Math.min(100, (elapsed / dur) * 100) + '%';
+    }, 100);
+    timer = setTimeout(() => {
+      if (current === total - 1) {
+        // Loop back to start
+        current = -1;
+      }
+      next();
+    }, dur);
+  }
+
+  function stopTimer() {
+    clearInterval(timer); clearInterval(progressTimer);
+    timer = null; progressTimer = null;
+  }
+
+  function togglePlay() {
+    playing = !playing;
+    if (playing) {
+      playBtn.innerHTML = '❚❚';
+      startTimer();
+    } else {
+      playBtn.innerHTML = '▶';
+      stopTimer();
+    }
+  }
+
+  playBtn.addEventListener('click', togglePlay);
+  nextBtn.addEventListener('click', () => { stopTimer(); next(); if (playing) startTimer(); });
+  prevBtn.addEventListener('click', () => { stopTimer(); prev(); if (playing) startTimer(); });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === ' ' || e.key === 'k') { e.preventDefault(); togglePlay(); }
+    if (e.key === 'ArrowRight' || e.key === 'j') { stopTimer(); next(); if (playing) startTimer(); }
+    if (e.key === 'ArrowLeft' || e.key === 'h') { stopTimer(); prev(); if (playing) startTimer(); }
+  });
+
+  // Auto-play on load
+  window.addEventListener('load', () => {
+    setTimeout(togglePlay, 500);
+  });
+</script>
+</body>
+</html>

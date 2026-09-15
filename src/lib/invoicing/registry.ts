@@ -9,11 +9,13 @@ import type { InvoicingProvider } from './provider';
 import { solucionFactibleProvider } from './solucion-factible';
 import { contpaqiTimbraProvider } from './contpaqi';
 import { facturamaProvider } from './facturama';
+import { invoiceOneProvider } from './invoiceone';
 
 export const PROVIDER_REGISTRY: Record<string, InvoicingProvider> = {
   solucion_factible: solucionFactibleProvider,
   contpaqi_timbra:   contpaqiTimbraProvider,
   facturama:         facturamaProvider,
+  invoiceone:        invoiceOneProvider,
 };
 
 export function getProvider(id: string | null | undefined): InvoicingProvider | null {
