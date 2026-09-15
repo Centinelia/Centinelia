@@ -40,9 +40,11 @@ interface MetricSummary {
 }
 
 interface Props {
-  token:  string;
-  naviId: string;
-  navi:   NaviInfo;
+  token:            string;
+  naviId:           string;
+  navi:             NaviInfo;
+  /** Si se especifica, filtra BandejaAprobacion y KillSwitch a esta cuenta (agencia multi-cuenta). */
+  socialAccountId?: string;
 }
 
 const SUB_PAGES = [
@@ -54,7 +56,7 @@ const SUB_PAGES = [
   { href: 'consumo',       icon: BarChart2,      label: 'Consumo',              description: 'Ops utilizadas' },
 ] as const;
 
-export default function NaviDashboard({ token, naviId, navi }: Props) {
+export default function NaviDashboard({ token, naviId, navi, socialAccountId }: Props) {
   const base = `/portal/${token}/oficina/redes/${naviId}`;
 
   const [metrics, setMetrics] = useState<MetricSummary | null>(null);
@@ -131,7 +133,7 @@ export default function NaviDashboard({ token, naviId, navi }: Props) {
             <BandejaAprobacion
               token={token}
               naviId={naviId}
-              socialAccountId={account?.id}
+              socialAccountId={socialAccountId ?? account?.id}
             />
           </section>
         </div>

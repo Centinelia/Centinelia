@@ -226,10 +226,12 @@ describe('DELETE /api/portal/[token]/social/accounts/[id]', () => {
     const deleteThen    = vi.fn((resolve: (v: unknown) => unknown) => Promise.resolve({ data: null, error: null }).then(resolve));
 
     // Cada from() crea una cadena independiente que soporta todos los métodos
+    // (incluyendo update para soft delete)
     const fromMock = vi.fn(() => ({
       select:      vi.fn(function(this: unknown) { return this; }),
       eq:          vi.fn(function(this: unknown) { return this; }),
       delete:      vi.fn(function(this: unknown) { return this; }),
+      update:      vi.fn(function(this: unknown) { return this; }),
       maybeSingle: maybySingleFn,
       then:        deleteThen as unknown as (...args: unknown[]) => unknown,
       catch:       vi.fn(),

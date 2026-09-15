@@ -1,7 +1,8 @@
 /**
  * DELETE /api/portal/[token]/social/accounts/[id]
  *
- * Elimina una cuenta social verificando que pertenece a la org del portal.
+ * Soft delete de una cuenta social: actualiza status='disconnected', paused=true.
+ * No borra el row — conserva el historial de contenido para auditoría.
  *
  * Seguridad: session + IDOR (guard + verificación del row) + feature flag.
  */
@@ -34,14 +35,19 @@ export async function DELETE(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Cuenta no encontrada o sin acceso' }, { status: 403 });
   }
 
-  const { error: deleteErr } = await supabase
+  // Soft delete: marcar como desconectada, preservar datos históricos
+  const { error: updateErr } = await supabase
     .from('social_accounts')
-    .delete()
+    .update({
+      status:       'disconnected',
+      paused:       true,
+      paused_reason: 'disconnected_by_user',
+    })
     .eq('id', id)
     .eq('portal_email', resolved.portalEmail);
 
-  if (deleteErr) {
-    return NextResponse.json({ error: deleteErr.message }, { status: 500 });
+  if (updateErr) {
+    return NextResponse.json({ error: updateErr.message }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });

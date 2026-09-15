@@ -12,14 +12,14 @@ export const dynamic = 'force-dynamic';
  */
 import { cookies }                      from 'next/headers';
 import { redirect, notFound }           from 'next/navigation';
-import Link                             from 'next/link';
-import { Share2, ArrowRight }           from 'lucide-react';
+import { Share2 }                        from 'lucide-react';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { resolveOrgFromToken }          from '@/lib/portal/org-token';
-import { socialPublishingEnabled }      from '@/lib/feature-flags/social-publishing';
+import { socialPublishingEnabled, agencyModeEnabled } from '@/lib/feature-flags/social-publishing';
 import { createAdminClient }            from '@/lib/supabase/admin';
 import OficinaPageHero                  from '../../OficinaPageHero';
 import NaviDashboard                    from '@/components/portal/redes/NaviDashboard';
+import NaviAgenciaDashboard             from '@/components/portal/redes/NaviAgenciaDashboard';
 
 interface Props { params: Promise<{ token: string; naviId: string }> }
 
@@ -38,32 +38,23 @@ interface SocialAccountRow {
   status:            string;
 }
 
-/** Placeholder visible cuando el agente es navi_agencia (Task 13 lo shippea completo). */
-function AgenciaPlaceholder({ token, naviId, name }: { token: string; naviId: string; name: string | null }) {
+/** Placeholder cuando el agente tiene role='navi_agencia' pero agency_mode no está habilitado. */
+function AgencyModeDisabledPlaceholder({ name }: { name: string | null }) {
   return (
     <div className="flex flex-col gap-6 max-w-lg">
       <OficinaPageHero
         icon={Share2}
-        eyebrow="Gestor de redes Agencia"
-        title={name ?? 'Navi Agencia'}
-        description="Este Navi gestiona múltiples cuentas de Instagram."
+        eyebrow="Gestor de redes"
+        title={name ?? 'Navi'}
+        description="Este Navi es de variante agencia pero el modo agencia no está habilitado en tu plan."
       />
       <div
-        className="rounded-2xl p-6 flex flex-col gap-4"
+        className="rounded-2xl p-5"
         style={{ background: '#F8F7FF', border: '1px solid rgba(108,59,255,0.2)' }}
       >
-        <p className="text-[14px]" style={{ color: '#1A0A3B' }}>
-          El dashboard de Navi Agencia te permite ver y gestionar todas las cuentas
-          de Instagram que este gestor administra en un solo lugar.
+        <p className="text-[13px]" style={{ color: '#6B6480' }}>
+          Contacta a soporte para habilitar el modo agencia y gestionar múltiples cuentas de Instagram.
         </p>
-        <Link
-          href={`/portal/${token}/oficina/redes/${naviId}/agencia`}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-[13px] font-semibold self-start transition-opacity"
-          style={{ background: '#6C3BFF', color: '#fff' }}
-        >
-          Ir al dashboard de agencia
-          <ArrowRight size={14} />
-        </Link>
       </div>
     </div>
   );
@@ -97,6 +88,8 @@ export default async function NaviDashboardPage({ params }: Props) {
     redirect(`/portal/${token}/oficina?tab=redes-disabled`);
   }
 
+  const agencyMode = agencyModeEnabled(org?.features);
+
   // Obtener el agente Navi (IDOR: portal_email debe pertenecer a este org)
   const { data: navi } = await supabase
     .from('voice_agents')
@@ -129,7 +122,26 @@ export default async function NaviDashboardPage({ params }: Props) {
 
   // Variante agencia
   if (navi.role === 'navi_agencia') {
-    return <AgenciaPlaceholder token={token} naviId={naviId} name={navi.agent_name} />;
+    // Feature gate: agency_mode debe estar habilitado en la org
+    if (!agencyMode) {
+      return <AgencyModeDisabledPlaceholder name={navi.agent_name} />;
+    }
+
+    return (
+      <div className="flex flex-col gap-6">
+        <OficinaPageHero
+          icon={Share2}
+          eyebrow="Gestor de redes Agencia"
+          title={navi.agent_name ?? 'Navi Agencia'}
+          description="Portfolio de cuentas de Instagram gestionadas."
+        />
+        <NaviAgenciaDashboard
+          token={token}
+          naviId={naviId}
+          agentName={navi.agent_name}
+        />
+      </div>
+    );
   }
 
   // Variante estándar
