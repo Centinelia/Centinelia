@@ -318,6 +318,15 @@ describe('MetaPublisher.replyToComment', () => {
 describe('MetaPublisher.replyToDm', () => {
   beforeEach(() => { vi.restoreAllMocks(); });
 
+  it('replyToDm throws on 4xx error', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ error: { message: 'Invalid recipient' } }), { status: 400 }),
+    );
+    const p = new MetaPublisher(mockAccount);
+    await expect(p.replyToDm('bad-thread', 'hi')).rejects.toThrow(/Meta DM|400|Invalid/);
+    fetchSpy.mockRestore();
+  });
+
   it('envía POST /me/messages con JSON body: recipient.id + message.text', async () => {
     let capturedUrl = '';
     let capturedInit: RequestInit | undefined;

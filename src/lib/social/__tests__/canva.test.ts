@@ -177,10 +177,13 @@ describe('CanvaProvider rate limit backoff', () => {
 
     const provider = new CanvaProvider(ACCESS_TOKEN, { retryDelayMs: 10 });
 
+    // Set up the rejection assertion BEFORE advancing timers so the rejection
+    // is always handled — avoids PromiseRejectionHandledWarning from vitest.
     const listPromise = provider.listBrandTemplates();
+    const assertion = expect(listPromise).rejects.toThrow(/rate limit|429|RATE_LIMITED/i);
     await vi.runAllTimersAsync();
+    await assertion;
 
-    await expect(listPromise).rejects.toThrow(/rate limit|429|RATE_LIMITED/i);
     // 1 initial attempt + 5 retries = 6 total calls
     expect(fetchSpy).toHaveBeenCalledTimes(6);
   });

@@ -71,3 +71,16 @@ Commit: `2b8326a6` — `feat(navi): register navi + navi_agencia roles with feat
 - **Calidad de codigo: 9/10** — Patron consistente con el resto del roster. Los esquemas de tool son compactos pero completos. El -1 es porque los schemas de voice/email se duplican entre sync.ts e inbox-processor.ts (no hay single source of truth para los schemas de estas tools nuevas; en el futuro podrian moverse a TOOL_SCHEMAS en schemas.ts).
 - **Cobertura de tests: 8/10** — Conteos, exclusividad, mappings y gatedBy verificados. No se prueba el comportamiento de requireSocialFeature (depende de Supabase; mock seria necesario en un test de integracion).
 - **Confianza en que funciona: 9/10** — Los 25 tests standalone pasan con datos identicos al codigo de produccion. La confianza en el E2E (Vapi → tool execution) se verifica en deployment, no en unit tests.
+
+---
+
+### Fix Round 1: Spanish accents restored
+
+Files modified: 3
+Violations fixed: 30 (descriptions + comments in Navi/Navi Agencia sections only)
+- `route.ts`: publicación, diseño, categoría, exportación, según, tipo de publicación, llamada a la acción, número, programación, conversación, período, número de posts por día, diseño (usar_media), adaptación, estándar (comment)
+- `inbox-processor.ts`: publicación, diseño×2, métricas, programación, adaptación, estándar×2 (comments)
+- `sync.ts`: categoría×2, diseño×3, imágenes, exportación, publicación×3, acción, conversación, métricas×2, período, número, óptimos, estándar (comment), adaptación
+
+Tests: 14/14 (social-publishing) + 11/11 (navi-distribution) — both pass
+Self-rating post: 9/10 código, 8/10 tests, 10/10 confianza
