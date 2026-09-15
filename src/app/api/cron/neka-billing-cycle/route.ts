@@ -26,7 +26,7 @@ import {
   type CentineliaCliente,
 } from '@/lib/billing/centinelia-clientes';
 import {
-  recordBillingEvent, yaFacturadoEsteCiclo,
+  recordBillingEvent, yaFacturadoEsteCiclo, yaNotificadoEsteCiclo,
 } from '@/lib/billing/centinelia-billing';
 import { emitirIngresoFacturama } from '@/lib/invoicing/facturama/emitir';
 import {
@@ -35,6 +35,7 @@ import {
 import type { CfdiInput } from '@/lib/invoicing/provider';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { nekaCfdiSender } from '@/lib/ops/neka-cfdi-sender';
+import { notifyNazreToInvoice } from '@/lib/ops/neka-notify-nazre';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -103,16 +104,20 @@ export async function GET(req: NextRequest) {
 
   const supabase = createAdminClient();
   const testMode = isFacturamaSandbox();
+  const notifyOnly = process.env.NEKA_NOTIFY_ONLY === 'true';
   const hoy = new Date().toISOString().slice(0, 10);
 
   const summary = {
     ranAt:         new Date().toISOString(),
     fechaCorte:    hoy,
     testMode,
+    notifyOnly,
     totalClientes: 0,
     skippedYaFacturados: 0,
+    skippedYaNotificados: 0,
     intentados:    0,
     emitidos:      0,
+    notificados:   0,
     errores:       [] as Array<{ clienteId: string; rfc: string; razon: string; error: string }>,
   };
 
@@ -154,6 +159,62 @@ export async function GET(req: NextRequest) {
         clienteId: cliente.id, rfc: cliente.rfc, razon: cliente.razon_social,
         error: 'cliente sin conceptos configurados en su plan',
       });
+      continue;
+    }
+
+    // Modo notify-only (Facturama API prod sin contratar todavia): en vez de
+    // timbrar, avisa a Nazre por correo con los datos listos. Registra
+    // notify_sent por ciclo para idempotencia — si el cron corre 2 veces el
+    // mismo dia, se detecta y se salta la re-notificacion.
+    if (notifyOnly) {
+      const yaNotificado = await yaNotificadoEsteCiclo(cliente.id, ciclo, supabase);
+      if (yaNotificado) {
+        summary.skippedYaNotificados++;
+        continue;
+      }
+
+      summary.intentados++;
+      const cfdi = buildCfdiInput(cliente);
+      const notifyRes = await notifyNazreToInvoice({
+        cliente, cfdi, cicloKey: ciclo, testMode,
+      });
+
+      if (!notifyRes.ok) {
+        summary.errores.push({
+          clienteId: cliente.id, rfc: cliente.rfc, razon: cliente.razon_social,
+          error: `notify a Nazre fallo: ${notifyRes.error ?? 'sin detalle'}`,
+        });
+        continue;
+      }
+
+      try {
+        await recordBillingEvent({
+          cliente_id:    cliente.id,
+          tipo:          'notify_sent',
+          ciclo_key:     ciclo,
+          monto:         cfdi.total,
+          moneda:        'MXN',
+          sent_to_email: notifyRes.to,
+          sent_at:       new Date().toISOString(),
+          meta:          { reason: 'NEKA_NOTIFY_ONLY', testMode },
+        }, supabase);
+
+        const next = nextBillingDate(cliente.fecha_proxima_facturacion, cliente.periodicidad);
+        await updateCliente(cliente.id, {
+          fecha_proxima_facturacion: next,
+        }, supabase);
+        await supabase
+          .from('centinelia_clientes')
+          .update({ fecha_ultima_facturacion: hoy })
+          .eq('id', cliente.id);
+
+        summary.notificados++;
+      } catch (e) {
+        summary.errores.push({
+          clienteId: cliente.id, rfc: cliente.rfc, razon: cliente.razon_social,
+          error:     `post-notify: ${(e as Error).message}`,
+        });
+      }
       continue;
     }
 

@@ -15,7 +15,10 @@ export type BillingEventTipo =
   | 'rep_emitido'
   | 'pago_recibido'
   | 'cancelacion'
-  | 'error_emision';
+  | 'error_emision'
+  | 'reminder_sent'
+  | 'suspension_alert'
+  | 'notify_sent';
 
 export interface CentineliaBillingEvent {
   id:                 string;
@@ -94,6 +97,28 @@ export async function yaFacturadoEsteCiclo(
     .maybeSingle();
   if (error) throw new Error(`yaFacturadoEsteCiclo: ${error.message}`);
   return (data as CentineliaBillingEvent | null) ?? null;
+}
+
+/**
+ * Verifica si ya se mandó notify_sent a Nazre para (cliente, ciclo) en modo
+ * NEKA_NOTIFY_ONLY. La constraint unique existente NO cubre notify_sent
+ * (solo cfdi_emitido/rep_emitido), asi que la idempotencia se garantiza aca
+ * a nivel aplicacion — si el cron corre 2 veces el mismo ciclo, no re-avisa.
+ */
+export async function yaNotificadoEsteCiclo(
+  clienteId: string,
+  cicloKey:  string,
+  supabase:  SupabaseClient = createAdminClient(),
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from(TABLE)
+    .select('id')
+    .eq('cliente_id', clienteId)
+    .eq('ciclo_key', cicloKey)
+    .eq('tipo', 'notify_sent')
+    .maybeSingle();
+  if (error) throw new Error(`yaNotificadoEsteCiclo: ${error.message}`);
+  return !!data;
 }
 
 export async function listBillingForCliente(
