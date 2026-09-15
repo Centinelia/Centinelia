@@ -74,6 +74,50 @@ export function shouldSendBitacoraNow(
   return hour >= cfg.hour && hour <= cfg.hour + 4;
 }
 
+/**
+ * Retorna true si el cron `bitacora-weekly-catchup` debe considerar este
+ * agente hoy. Corre 1-2 días DESPUÉS del `cfg.day_of_week` para dar el
+ * "safety-net" cuando los 5 slots del envío principal fallaron.
+ *
+ * daysSinceCfgDay=0 → hoy es el día de envío principal (skip; lo maneja el
+ * cron principal). daysSinceCfgDay=1 o 2 → catchup activo. >2 → ya pasó
+ * demasiado, no reintentamos (la semana siguiente tiene su propia ventana).
+ *
+ * Puro: fácil de testear sin DB.
+ */
+export function isEligibleForCatchup(
+  cfg:       BitacoraConfig | null,
+  dayOfWeek: number,
+): boolean {
+  if (!cfg?.enabled) return false;
+  if ((cfg.recipients ?? []).length === 0) return false;
+  const daysSince = (dayOfWeek - cfg.day_of_week + 7) % 7;
+  return daysSince >= 1 && daysSince <= 2;
+}
+
+/**
+ * Calcula la fecha original en la que el envío debió ocurrir. Se usa como
+ * `currentDate` simulado en `runPersistentFlow` para que
+ * `weekdaysInMonthUpTo` e `isLastWeekdayOfMonth` calculen igual que en el
+ * envío original perdido.
+ *
+ * Ejemplo: si hoy es domingo (dow=0) y cfg.day_of_week=6 (sábado),
+ * daysSince=1, entonces originalSendDate = ayer a las cfg.hour MX.
+ *
+ * Puro: fácil de testear sin DB.
+ */
+export function calcOriginalSendDate(
+  now:      Date,
+  dowToday: number,
+  cfg:      Pick<BitacoraConfig, 'day_of_week' | 'hour'>,
+): Date {
+  const daysSince = (dowToday - cfg.day_of_week + 7) % 7;
+  const original = new Date(now);
+  original.setDate(original.getDate() - daysSince);
+  original.setHours(cfg.hour, 0, 0, 0);
+  return original;
+}
+
 export async function runEphemeralFlow(
   supabase:    SupabaseClient,
   agent:       Record<string, unknown>,

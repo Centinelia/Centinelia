@@ -23,6 +23,8 @@ import { nowInMX, weekStartMonday } from '@/lib/bitacora/schedule';
 import {
   runPersistentFlow,
   runEphemeralFlow,
+  isEligibleForCatchup,
+  calcOriginalSendDate,
   type BitacoraConfig,
   type TemplateConfig,
 } from '@/lib/bitacora/weekly-flow';
@@ -58,15 +60,7 @@ export async function GET(req: NextRequest) {
   }
   const agents = (agentsRaw ?? []) as AgentRow[];
 
-  // Sólo agents cuya `cfg.day_of_week` fue AYER (o hace hasta 2 días para
-  // tolerar catchups de la semana en curso durante todo el domingo).
-  const eligible = agents.filter(a => {
-    const cfg = a.bitacora_weekly_config;
-    if (!cfg?.enabled) return false;
-    if ((cfg.recipients ?? []).length === 0) return false;
-    const daysSinceCfgDay = (mx.dayOfWeek - cfg.day_of_week + 7) % 7;
-    return daysSinceCfgDay >= 1 && daysSinceCfgDay <= 2;
-  });
+  const eligible = agents.filter(a => isEligibleForCatchup(a.bitacora_weekly_config, mx.dayOfWeek));
 
   if (eligible.length === 0) {
     return NextResponse.json({ ok: true, matched: 0, dayOfWeek: mx.dayOfWeek });
@@ -90,13 +84,7 @@ export async function GET(req: NextRequest) {
       continue;
     }
 
-    // Calcular el sábado (o día configurado) de la semana que debió enviarse.
-    // daysSinceCfgDay días atrás desde `mx.date`.
-    const daysSinceCfgDay = (mx.dayOfWeek - cfg.day_of_week + 7) % 7;
-    const originalSendDate = new Date(mx.date);
-    originalSendDate.setDate(originalSendDate.getDate() - daysSinceCfgDay);
-    originalSendDate.setHours(cfg.hour, 0, 0, 0);
-
+    const originalSendDate = calcOriginalSendDate(mx.date, mx.dayOfWeek, cfg);
     const monday = weekStartMonday(originalSendDate);
     const weekStartDate = monday.toISOString().slice(0, 10);
     const nextMonday = new Date(monday);
