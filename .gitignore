@@ -76,3 +76,10 @@ dev-fixtures/
 # Ver postmortem 2026-09-08 (debug-verdantis-smtp.ts casi comiteado con pass en claro).
 scripts/debug-*.ts
 scripts/send-*-preview.ts
+
+# Output artifacts de scripts (xlsx generados, zips de build, etc.)
+scripts/output/
+
+# Playwright / vitest artifacts
+test-results/
+playwright-report/
