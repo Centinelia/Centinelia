@@ -321,6 +321,35 @@ describe('CanvaProvider.autofillTemplate', () => {
       globalThis.fetch = original;
     }
   });
+
+  test('autofillTemplate cache expiry — after TTL, refetches', async () => {
+    let callCount = 0;
+    const original = globalThis.fetch;
+    globalThis.fetch = async () => {
+      callCount++;
+      // POST on odd counts, GET poll on even counts
+      if (callCount % 2 === 1) return makeFetchResponse({ job: { id: `job${callCount}`, status: 'in_progress' } }, 202);
+      return makeFetchResponse(autofillJobFixture);
+    };
+    try {
+      // cacheTtlMs=50 so the cache expires quickly
+      const provider = new CanvaProvider(ACCESS_TOKEN, { pollIntervalMs: 0, cacheTtlMs: 50 });
+      const dataFields = { headline: { type: 'text', text: 'Cache expiry test' } };
+
+      // First call — populates cache
+      await provider.autofillTemplate('DAF0x7xABCDE', dataFields);
+      assert.equal(callCount, 2, `first call should make 2 fetches, got ${callCount}`);
+
+      // Wait for cache to expire (50ms TTL + 50ms buffer)
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Second call — cache expired, must refetch
+      await provider.autofillTemplate('DAF0x7xABCDE', dataFields);
+      assert.equal(callCount, 4, `after expiry should make 4 total fetches, got ${callCount}`);
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------

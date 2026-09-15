@@ -44,24 +44,6 @@ export interface Design {
   previewUrl: string;
 }
 
-export interface CanvaTokenResult {
-  accessToken: string;
-  refreshToken: string;
-  expiresIn: number;
-  scope: string;
-}
-
-export type CanvaDataFieldType = 'text' | 'image';
-
-export interface CanvaDataField {
-  name: string;
-  type: CanvaDataFieldType;
-  /** For type='text' */
-  text?: string;
-  /** For type='image' — Canva asset ID already uploaded */
-  asset_id?: string;
-}
-
 export type CanvaExportFormat = 'png' | 'jpg' | 'mp4' | 'pdf';
 
 export interface CanvaExportResult {
@@ -112,20 +94,23 @@ function parseRetryAfterMs(retryAfterHeader: string | null): number | null {
 // ─── CanvaProvider class ─────────────────────────────────────────────────────
 
 export class CanvaProvider {
-  // Node strip-only TS mode cannot handle `constructor(private token: string)` shorthand.
-  // Use the explicit class-body declaration + constructor assignment form instead.
+  // Use explicit class-body field declaration (private token: string) instead of
+  // constructor parameter shorthand (constructor(private token: string)).
+  // Node's strip-only TS loader does not support the shorthand.
   private token: string;
   private pollIntervalMs: number;
   private retryDelayMs: number;
+  private cacheTtlMs: number;
 
   // In-memory cache for autofill preview_url results. Key: templateId+JSON(dataFields).
-  // TTL: 24h (same as export URL lifetime per Canva docs).
+  // TTL: 24h by default (same as export URL lifetime per Canva docs).
   private autofillCache: Map<string, CacheEntry>;
 
-  constructor(token: string, opts: { pollIntervalMs?: number; retryDelayMs?: number } = {}) {
+  constructor(token: string, opts: { pollIntervalMs?: number; retryDelayMs?: number; cacheTtlMs?: number } = {}) {
     this.token = token;
     this.pollIntervalMs = opts.pollIntervalMs ?? 2000;
     this.retryDelayMs = opts.retryDelayMs ?? 1000;
+    this.cacheTtlMs = opts.cacheTtlMs ?? CACHE_TTL_MS;
     this.autofillCache = new Map();
   }
 
@@ -265,7 +250,7 @@ export class CanvaProvider {
     this.autofillCache.set(cacheKey, {
       designId: result.designId,
       previewUrl: result.previewUrl,
-      expiresAt: Date.now() + CACHE_TTL_MS,
+      expiresAt: Date.now() + this.cacheTtlMs,
     });
 
     return result;

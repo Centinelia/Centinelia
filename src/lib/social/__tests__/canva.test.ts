@@ -148,7 +148,7 @@ describe('CanvaProvider rate limit backoff', () => {
         makeFetchResponse(
           { code: 'RATE_LIMITED', message: 'Too many requests' },
           429,
-          { 'retry-after': '1' },
+          { 'retry-after': '0' },
         ),
       )
       .mockResolvedValueOnce(
@@ -242,6 +242,31 @@ describe('CanvaProvider.autofillTemplate', () => {
     expect(second.previewUrl).toBe(first.previewUrl);
     // Only 2 fetch calls for the first request — second call hit cache
     expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('autofillTemplate cache expiry — after TTL, refetches', async () => {
+    // Use a very short cacheTtlMs so we can expire it with real time + setTimeout
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+      // First call: POST + GET poll
+      .mockResolvedValueOnce(makeFetchResponse({ job: { id: 'jobId001', status: 'in_progress' } }, 202))
+      .mockResolvedValueOnce(makeFetchResponse(autofillJobFixture))
+      // Second call (after expiry): POST + GET poll
+      .mockResolvedValueOnce(makeFetchResponse({ job: { id: 'jobId002', status: 'in_progress' } }, 202))
+      .mockResolvedValueOnce(makeFetchResponse(autofillJobFixture));
+
+    const provider = new CanvaProvider(ACCESS_TOKEN, { pollIntervalMs: 0, cacheTtlMs: 50 });
+    const dataFields = { headline: { type: 'text', text: 'Cache expiry test' } };
+
+    // First call — populates cache
+    await provider.autofillTemplate('DAF0x7xABCDE', dataFields);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+
+    // Wait for cache to expire (50ms TTL + 50ms buffer)
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Second call — cache is expired, must refetch
+    await provider.autofillTemplate('DAF0x7xABCDE', dataFields);
+    expect(fetchSpy).toHaveBeenCalledTimes(4);
   });
 });
 
