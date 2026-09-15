@@ -20,6 +20,7 @@ import { getMeerkatIdForAgentRow } from '@/lib/vapi/meerkat-map';
 import { resolveMeerkatVersionForAgent } from '@/lib/feature-flags/version-flag-resolver';
 import { evaluateFlagsForOrg } from '@/lib/feature-flags/all-active';
 import { getOrgToken } from '@/lib/portal/org-token';
+import { downloadAndStoreVapiRecording } from '@/lib/vapi/recordings';
 
 export async function POST(req: NextRequest) {
   // Fix T8 audit 2026-08-10: hardening Vapi webhook auth.
@@ -452,6 +453,28 @@ export async function POST(req: NextRequest) {
         metadata:     { outcome, duration_seconds: durationSeconds },
       }, { onConflict: 'call_id' });
       after(async () => {
+        // A-recordings. Descargar mp3 de Vapi y subir a bucket propio.
+        // Vapi retiene el audio pocos días en su S3; sin este step los
+        // endpoints /api/{admin,portal}/recording/[callId] dan 404 después
+        // de esa ventana. Ver [[project_centinelia_vapi_cleanup]] §grabaciones.
+        // Fire-and-forget: si falla, se pierde el audio de esta llamada pero
+        // no rompe el resto del post-procesamiento. Retención 90d controlada
+        // por cron cleanup-recordings.
+        if (callDbId && recordingUrl) {
+          const storagePath = await downloadAndStoreVapiRecording({
+            supabase,
+            agentId:     resolvedAgentId,
+            voiceCallId: callDbId,
+            recordingUrl,
+          });
+          if (storagePath) {
+            await supabase
+              .from('voice_calls')
+              .update({ recording_storage_path: storagePath })
+              .eq('id', callDbId);
+          }
+        }
+
         // A0. Auto-refill declinada: notificar antes que el pause message para
         // que el cliente sepa distinguir "sin plan" de "Stripe rechazó tarjeta".
         if (refillAttemptFailed && agent) {

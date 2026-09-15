@@ -7,14 +7,22 @@ export async function POST(req: NextRequest) {
   const firstMessage = body.greeting?.trim()
     ?? 'Hola, gracias por llamar. ¿En qué le puedo ayudar?';
 
+  const key = process.env.VAPI_PUBLIC_KEY;
+  const assistantId = process.env.DEMO_AGENT_ID;
+
+  if (!key || !assistantId) {
+    console.error('[demo-call] missing env', { hasKey: !!key, hasAssistant: !!assistantId });
+    return NextResponse.json({ error: 'Configuración de demo incompleta' }, { status: 500 });
+  }
+
   const res = await fetch('https://api.vapi.ai/call/web', {
     method:  'POST',
     headers: {
-      'Authorization': `Bearer ${process.env.VAPI_API_KEY}`,
+      'Authorization': `Bearer ${key}`,
       'Content-Type':  'application/json',
     },
     body: JSON.stringify({
-      assistantId:        process.env.DEMO_AGENT_ID,
+      assistantId,
       assistantOverrides: { firstMessage },
     }),
   });
