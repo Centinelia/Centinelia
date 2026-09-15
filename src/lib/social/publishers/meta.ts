@@ -194,13 +194,23 @@ export class MetaPublisher implements SocialPublisher {
 
   /**
    * Replies to a DM thread via the Instagram Messaging API (POST /me/messages).
-   * recipient is a JSON-encoded object with the thread id.
+   * Meta expects a JSON body — recipient and message are NOT query params.
+   * Only access_token goes in the query string.
    */
   async replyToDm(threadId: string, message: string): Promise<void> {
-    await this.graphPost<{ message_id: string }>(`/me/messages`, {
-      recipient: JSON.stringify({ id: threadId }),
-      message: JSON.stringify({ text: message }),
+    const url = new URL(`${GRAPH}/me/messages`);
+    url.searchParams.set('access_token', this.token());
+    const res = await fetch(url.toString(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        recipient: { id: threadId },
+        message: { text: message },
+      }),
     });
+    if (!res.ok) {
+      throw new Error(`Meta DM: ${res.status} ${await res.text()}`);
+    }
   }
 
   /**

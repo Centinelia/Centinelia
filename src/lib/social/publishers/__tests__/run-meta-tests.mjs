@@ -94,7 +94,10 @@ const mockAccount = {
   access_token: 'tk',
   denylist_words: [],
   paused: false,
+  paused_reason: null,
+  paused_at: null,
   status: 'active',
+  metadata: {},
 };
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
@@ -166,6 +169,54 @@ describe('MetaPublisher.createMediaContainer', () => {
       });
       const params = new URL(capturedUrl).searchParams;
       assert.equal(params.get('media_type'), 'STORIES', `media_type should be STORIES, got: ${params.get('media_type')}`);
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+
+  test('para carousel: crea N contenedores hijo y luego el padre', async () => {
+    const urls = ['https://cdn/1.jpg', 'https://cdn/2.jpg', 'https://cdn/3.jpg'];
+    const postedUrls = [];
+    let callIdx = 0;
+    const childIds = ['child-1', 'child-2', 'child-3'];
+    const original = globalThis.fetch;
+    globalThis.fetch = async (input) => {
+      postedUrls.push(String(input));
+      if (callIdx < 3) {
+        const id = childIds[callIdx++];
+        return makeFetchResponse({ id });
+      }
+      return makeFetchResponse({ id: 'parent-carousel' });
+    };
+    try {
+      const p = new MetaPublisher(mockAccount);
+      const { containerId } = await p.createMediaContainer({
+        mediaType: 'carousel',
+        mediaUrls: urls,
+        caption: 'Test carousel',
+      });
+
+      assert.equal(containerId, 'parent-carousel', `containerId should be parent-carousel, got: ${containerId}`);
+      assert.equal(postedUrls.length, 4, `expected 4 fetch calls (3 children + 1 parent), got: ${postedUrls.length}`);
+
+      // Each child call must have is_carousel_item=true and image_url
+      const child1Params = new URL(postedUrls[0]).searchParams;
+      assert.equal(child1Params.get('is_carousel_item'), 'true', `child 1 missing is_carousel_item`);
+      assert.equal(child1Params.get('image_url'), 'https://cdn/1.jpg', `child 1 image_url mismatch`);
+
+      const child2Params = new URL(postedUrls[1]).searchParams;
+      assert.equal(child2Params.get('is_carousel_item'), 'true', `child 2 missing is_carousel_item`);
+      assert.equal(child2Params.get('image_url'), 'https://cdn/2.jpg', `child 2 image_url mismatch`);
+
+      const child3Params = new URL(postedUrls[2]).searchParams;
+      assert.equal(child3Params.get('is_carousel_item'), 'true', `child 3 missing is_carousel_item`);
+      assert.equal(child3Params.get('image_url'), 'https://cdn/3.jpg', `child 3 image_url mismatch`);
+
+      // Parent call must have media_type=CAROUSEL and children='child-1,child-2,child-3'
+      const parentParams = new URL(postedUrls[3]).searchParams;
+      assert.equal(parentParams.get('media_type'), 'CAROUSEL', `parent missing media_type=CAROUSEL`);
+      assert.equal(parentParams.get('children'), 'child-1,child-2,child-3', `parent children mismatch`);
+      assert.equal(parentParams.get('caption'), 'Test carousel', `parent caption mismatch`);
     } finally {
       globalThis.fetch = original;
     }
@@ -357,24 +408,34 @@ describe('MetaPublisher.replyToComment', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Test 6: replyToDm
+// Test 6: replyToDm — POST /me/messages with JSON body
 // ---------------------------------------------------------------------------
 
 describe('MetaPublisher.replyToDm', () => {
-  test('envía POST /me/messages con recipient + message', async () => {
+  test('envía POST /me/messages con JSON body: recipient.id + message.text', async () => {
     let capturedUrl = '';
+    let capturedInit = null;
     const original = globalThis.fetch;
-    globalThis.fetch = async (input) => {
+    globalThis.fetch = async (input, init) => {
       capturedUrl = String(input);
+      capturedInit = init;
       return makeFetchResponse({ message_id: 'msg-abc' });
     };
     try {
       const p = new MetaPublisher(mockAccount);
       await p.replyToDm('thread-123', 'Hola, con gusto te ayudamos!');
       assert.ok(capturedUrl.includes('me/messages'), `URL should contain me/messages, got: ${capturedUrl}`);
-      const params = new URL(capturedUrl).searchParams;
-      assert.ok(params.get('recipient').includes('thread-123'), `recipient should contain thread-123: ${params.get('recipient')}`);
-      assert.ok(params.get('message').includes('Hola'), `message should contain 'Hola': ${params.get('message')}`);
+      // access_token stays in query string
+      assert.equal(new URL(capturedUrl).searchParams.get('access_token'), 'tk', `access_token should be in query string`);
+      // recipient and message must NOT be query params
+      assert.equal(new URL(capturedUrl).searchParams.get('recipient'), null, `recipient should NOT be a query param`);
+      assert.equal(new URL(capturedUrl).searchParams.get('message'), null, `message should NOT be a query param`);
+      // Verify Content-Type header
+      assert.equal(capturedInit?.headers?.['Content-Type'], 'application/json', `Content-Type should be application/json`);
+      // Verify body shape
+      const body = JSON.parse(capturedInit?.body);
+      assert.deepEqual(body.recipient, { id: 'thread-123' }, `body.recipient mismatch`);
+      assert.deepEqual(body.message, { text: 'Hola, con gusto te ayudamos!' }, `body.message mismatch`);
     } finally {
       globalThis.fetch = original;
     }

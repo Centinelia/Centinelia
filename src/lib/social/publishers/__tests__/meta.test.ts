@@ -29,7 +29,10 @@ const mockAccount: SocialAccount = {
   access_token: 'tk',
   denylist_words: [],
   paused: false,
+  paused_reason: null,
+  paused_at: null,
   status: 'active',
+  metadata: {},
 };
 
 // ---------------------------------------------------------------------------
@@ -95,6 +98,50 @@ describe('MetaPublisher.createMediaContainer', () => {
 
     const params = new URL(capturedUrl).searchParams;
     expect(params.get('media_type')).toBe('STORIES');
+  });
+
+  it('para carousel: crea N contenedores hijo y luego el padre', async () => {
+    const urls = ['https://cdn/1.jpg', 'https://cdn/2.jpg', 'https://cdn/3.jpg'];
+    const postedUrls: string[] = [];
+    let callIdx = 0;
+    const childIds = ['child-1', 'child-2', 'child-3'];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      postedUrls.push(String(input));
+      if (callIdx < 3) {
+        const id = childIds[callIdx++];
+        return makeFetchResponse({ id });
+      }
+      return makeFetchResponse({ id: 'parent-carousel' });
+    });
+
+    const p = new MetaPublisher(mockAccount);
+    const { containerId } = await p.createMediaContainer({
+      mediaType: 'carousel',
+      mediaUrls: urls,
+      caption: 'Test carousel',
+    });
+
+    expect(containerId).toBe('parent-carousel');
+    expect(postedUrls).toHaveLength(4); // 3 children + 1 parent
+
+    // Each child call must have is_carousel_item=true and image_url
+    const child1Params = new URL(postedUrls[0]).searchParams;
+    expect(child1Params.get('is_carousel_item')).toBe('true');
+    expect(child1Params.get('image_url')).toBe('https://cdn/1.jpg');
+
+    const child2Params = new URL(postedUrls[1]).searchParams;
+    expect(child2Params.get('is_carousel_item')).toBe('true');
+    expect(child2Params.get('image_url')).toBe('https://cdn/2.jpg');
+
+    const child3Params = new URL(postedUrls[2]).searchParams;
+    expect(child3Params.get('is_carousel_item')).toBe('true');
+    expect(child3Params.get('image_url')).toBe('https://cdn/3.jpg');
+
+    // Parent call must have media_type=CAROUSEL and children='child-1,child-2,child-3'
+    const parentParams = new URL(postedUrls[3]).searchParams;
+    expect(parentParams.get('media_type')).toBe('CAROUSEL');
+    expect(parentParams.get('children')).toBe('child-1,child-2,child-3');
+    expect(parentParams.get('caption')).toBe('Test carousel');
   });
 
   it('lanza error si la API responde 400', async () => {
@@ -265,16 +312,18 @@ describe('MetaPublisher.replyToComment', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Test 6: replyToDm — POST /me/messages
+// Test 6: replyToDm — POST /me/messages with JSON body
 // ---------------------------------------------------------------------------
 
 describe('MetaPublisher.replyToDm', () => {
   beforeEach(() => { vi.restoreAllMocks(); });
 
-  it('envía POST /me/messages con recipient + message', async () => {
+  it('envía POST /me/messages con JSON body: recipient.id + message.text', async () => {
     let capturedUrl = '';
-    vi.spyOn(globalThis, 'fetch').mockImplementationOnce(async (input) => {
+    let capturedInit: RequestInit | undefined;
+    vi.spyOn(globalThis, 'fetch').mockImplementationOnce(async (input, init) => {
       capturedUrl = String(input);
+      capturedInit = init;
       return makeFetchResponse({ message_id: 'msg-abc' });
     });
 
@@ -282,9 +331,17 @@ describe('MetaPublisher.replyToDm', () => {
     await p.replyToDm('thread-123', 'Hola, con gusto te ayudamos!');
 
     expect(capturedUrl).toContain('me/messages');
-    const params = new URL(capturedUrl).searchParams;
-    expect(params.get('recipient')).toContain('thread-123');
-    expect(params.get('message')).toContain('Hola');
+    // access_token stays in query string
+    expect(new URL(capturedUrl).searchParams.get('access_token')).toBe('tk');
+    // recipient and message must be in the JSON body, NOT query params
+    expect(new URL(capturedUrl).searchParams.get('recipient')).toBeNull();
+    expect(new URL(capturedUrl).searchParams.get('message')).toBeNull();
+    // Verify Content-Type header
+    expect((capturedInit?.headers as Record<string, string>)?.['Content-Type']).toBe('application/json');
+    // Verify body shape
+    const body = JSON.parse(capturedInit?.body as string);
+    expect(body.recipient).toEqual({ id: 'thread-123' });
+    expect(body.message).toEqual({ text: 'Hola, con gusto te ayudamos!' });
   });
 });
 

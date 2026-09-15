@@ -15,5 +15,8 @@ export interface SocialAccount {
   brand_summary?: string;
   denylist_words: string[];
   paused: boolean;
+  paused_reason: string | null;
+  paused_at: string | null; // ISO timestamp
   status: 'active' | 'needs_reauth' | 'disconnected';
+  metadata: Record<string, unknown>; // JSONB — kill-switch and audit use
 }
