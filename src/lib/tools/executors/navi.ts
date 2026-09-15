@@ -495,10 +495,9 @@ function buildMetaPublisher(acc: SocialAccount): MetaPublisher {
 // El cron publish-scheduled-posts YA skipea cuentas pausadas (R62/R95).
 // Esta capa es defense-in-depth para llamadas directas de handler.
 
-function assertNotPaused(acc: SocialAccount | Record<string, unknown>): void {
-  const account = acc as Record<string, unknown>;
-  if (account.paused === true) {
-    const handle = (account.external_username as string | undefined) ?? (account.id as string);
+function assertNotPaused(acc: SocialAccount): void {
+  if (acc.paused === true) {
+    const handle = acc.external_username ?? acc.id;
     throw new NaviToolError(
       'ACCOUNT_PAUSED',
       `La cuenta ${handle} está pausada. Reactívala primero en el portal.`,
@@ -666,7 +665,7 @@ async function handleCrearBorradorPost(
   });
 
   // Kill switch: no crear borrador si la cuenta está pausada (R91, R92)
-  assertNotPaused(acc as unknown as Record<string, unknown>);
+  assertNotPaused(acc);
 
   // Verificar slot si se proporcionó
   // Ownership se verifica a través del editorial_calendar padre (que sí tiene portal_email).
@@ -790,7 +789,7 @@ async function handleProgramarPublicacion(
     targetAccountId: draft.social_account_id as string,
     requireTarget:   false,
   });
-  assertNotPaused(accForPausedCheck as unknown as Record<string, unknown>);
+  assertNotPaused(accForPausedCheck);
 
   const { data: updated, error } = await sb
     .from('content_drafts')
@@ -844,7 +843,7 @@ async function handlePublicarAhora(
   });
 
   // Kill switch: no publicar si la cuenta está pausada (R91, R92)
-  assertNotPaused(acc as unknown as Record<string, unknown>);
+  assertNotPaused(acc);
 
   // Marcar como publicando
   await sb
@@ -932,7 +931,7 @@ async function handleIgResponderComentario(
   });
 
   // Kill switch: no responder si la cuenta está pausada (R91, R92)
-  assertNotPaused(acc as unknown as Record<string, unknown>);
+  assertNotPaused(acc);
 
   const publisher = buildMetaPublisher(acc);
   await publisher.replyToComment(commentId, message);
@@ -973,7 +972,7 @@ async function handleIgResponderDm(
   });
 
   // Kill switch: no responder si la cuenta está pausada (R91, R92)
-  assertNotPaused(acc as unknown as Record<string, unknown>);
+  assertNotPaused(acc);
 
   const publisher = buildMetaPublisher(acc);
   await publisher.replyToDm(threadId, message);
