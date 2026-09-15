@@ -70,6 +70,17 @@ const SOURCE_META: Record<string, { label: string; trigger: string }> = {
   ticket_email_notify:     { label: 'Correo de ticket al encargado',   trigger: 'voice_call' },
   web_search:              { label: 'Búsqueda web (Brave)',            trigger: 'voice_call' },
   web_search_leads:        { label: 'Búsqueda de leads (Brave)',       trigger: 'chat' },
+  // Work-based sources (feat/pool-work-based-billing 2026-09-15). Registrar
+  // acciones de negocio post-conversación cobra tarea base aunque no dispare
+  // notificación externa.
+  order_registered:        { label: 'Registro de pedido',              trigger: 'voice_call' },
+  lead_registered:         { label: 'Registro de lead',                trigger: 'voice_call' },
+  appointment_registered:  { label: 'Registro de cita',                trigger: 'voice_call' },
+  appointment_modified:    { label: 'Cita modificada',                 trigger: 'voice_call' },
+  appointment_cancelled:   { label: 'Cita cancelada',                  trigger: 'voice_call' },
+  ticket_registered:       { label: 'Registro de ticket',              trigger: 'voice_call' },
+  incident_registered:     { label: 'Registro de queja',               trigger: 'voice_call' },
+  customer_registered:     { label: 'Registro de cliente nuevo',       trigger: 'voice_call' },
   // Fallbacks
   unknown:             { label: 'Consumo sin identificar',     trigger: 'manual' },
 };

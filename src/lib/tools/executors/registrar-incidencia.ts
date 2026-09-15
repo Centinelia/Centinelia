@@ -72,6 +72,19 @@ export async function registrarIncidencia(ctx: any, args: RegistrarIncidenciaArg
   if (insErr) throw new Error(`registrar_incidencia insert: ${insErr.message}`);
   const incidentId = incidentRow.id;
 
+  // Cobro base work-based: registrar una queja (categorizar, resolver duplicado,
+  // agendar callback) es trabajo del meerkat independiente de los emails que
+  // dispare. Los cobros por notif email siguen abajo como cargos adicionales.
+  try {
+    await consumeAiOp(ctx.agent.id, 1, {
+      source: 'incident_registered',
+      label:  'Registro de queja',
+      reference_id: incidentId,
+    });
+  } catch (err) {
+    console.error('registrar_incidencia consumeAiOp base failed silently:', err);
+  }
+
   let sentCount = 0;
   if (recipients.length > 0) {
     const { subject, html } = renderIncidentCardEmail({

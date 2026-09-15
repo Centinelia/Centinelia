@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     .single();
 
   // Save order to database
-  await supabase.from('orders_voice').insert({
+  const { data: orderRow } = await supabase.from('orders_voice').insert({
     agent_id,
     nombre:    nombre    ?? null,
     telefono:  telefono  ?? null,
@@ -35,7 +35,20 @@ export async function POST(req: NextRequest) {
     direccion: direccion ?? null,
     notas:     notas     ?? null,
     status:    'nuevo',
-  });
+  }).select('id').single();
+
+  // Cobro base work-based: registrar un pedido es trabajo del meerkat aunque
+  // no dispare notificación externa. try/catch para no abortar si el pool
+  // está en overage — el pedido ya se registró; drift detector recupera.
+  try {
+    await consumeAiOp(agent_id, 1, {
+      source: 'order_registered',
+      label:  'Registro de pedido',
+      reference_id: orderRow?.id as string | undefined,
+    });
+  } catch (err) {
+    console.error('registrar_pedido consumeAiOp base failed silently:', err);
+  }
 
   // Notify owner via WhatsApp
   if (agent?.transfer_whatsapp) {

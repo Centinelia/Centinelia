@@ -126,7 +126,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Insert con starts_at poblado.
-    await supabase.from('appointments_voice').insert({
+    const { data: apptRow } = await supabase.from('appointments_voice').insert({
       agent_id,
       nombre:   nombre   ?? null,
       telefono: telefono ?? null,
@@ -135,7 +135,20 @@ export async function POST(req: NextRequest) {
       hora:     hora     ?? null,
       starts_at: startsAt.toISOString(),
       status:   'confirmada',
-    });
+    }).select('id').single();
+
+    // Cobro base work-based: agendar/modificar cita es trabajo del meerkat
+    // aunque no sincronice con Google/Outlook. El cobro por calendar_event_created
+    // sigue vivo abajo para el side-effect externo. try/catch no aborta el flow.
+    try {
+      await consumeAiOp(agent_id, 1, {
+        source: accion === 'modificar' ? 'appointment_modified' : 'appointment_registered',
+        label:  accion === 'modificar' ? 'Cita modificada' : 'Registro de cita',
+        reference_id: apptRow?.id as string | undefined,
+      });
+    } catch (err) {
+      console.error('agendar_cita consumeAiOp base failed silently:', err);
+    }
 
     // Sync a Google/Outlook Calendar si está conectado.
     const title = `Cita ${servicio ? `— ${servicio} ` : ''}${nombre ? `(${nombre})` : ''}`.trim();
@@ -155,12 +168,25 @@ export async function POST(req: NextRequest) {
       });
     }
   } else if (accion === 'cancelar' && telefono) {
-    await supabase
+    const { data: cancelledRows } = await supabase
       .from('appointments_voice')
       .update({ status: 'cancelada' })
       .eq('agent_id', agent_id)
       .eq('telefono', telefono)
-      .eq('status', 'confirmada');
+      .eq('status', 'confirmada')
+      .select('id');
+    // Cobro base solo si canceló al menos una cita real.
+    if (cancelledRows && cancelledRows.length > 0) {
+      try {
+        await consumeAiOp(agent_id, 1, {
+          source: 'appointment_cancelled',
+          label:  'Cita cancelada',
+          reference_id: cancelledRows[0].id as string,
+        });
+      } catch (err) {
+        console.error('agendar_cita consumeAiOp cancel failed silently:', err);
+      }
+    }
   }
 
   // Notify owner via WhatsApp

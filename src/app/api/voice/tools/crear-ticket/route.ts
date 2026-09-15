@@ -90,6 +90,19 @@ export async function POST(req: NextRequest) {
     created_by:   'voice',
   });
 
+  // Cobro base work-based: crear ticket es trabajo del meerkat (categoriza,
+  // auto-asigna, escala) aunque no se dispare notif externa. Los cobros por
+  // WA/email al asignado siguen abajo para el side-effect externo real.
+  try {
+    await consumeAiOp(agentId, 1, {
+      source: 'ticket_registered',
+      label:  'Registro de ticket',
+      reference_id: folio,
+    });
+  } catch (err) {
+    console.error('crear_ticket consumeAiOp base failed silently:', err);
+  }
+
   // WhatsApp notification to assigned tech (if critica/alta) or transfer_whatsapp
   const waTo = (prioridad === 'critica' || prioridad === 'alta') && asignadoTel
     ? asignadoTel
