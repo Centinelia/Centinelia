@@ -1435,6 +1435,236 @@ const INV_PROCESAR_FACTURA_TRANE_TOOL: Anthropic.Tool = {
   },
 };
 
+// ── Navi — herramientas de publicacion social (feature: social_publishing) ────
+// 14 herramientas estandar + 2 exclusivas de Navi Agencia.
+// Exportadas desde CHAT_TOOL_BY_NAME para el test de completeness.
+
+const CANVA_LISTAR_PLANTILLAS_TOOL: Anthropic.Tool = {
+  name: 'canva_listar_plantillas',
+  description: 'Lista las plantillas de Canva disponibles para el negocio. Filtra por categoria (post, story, reel, carousel) si se indica. En Navi Agencia requiere `target_account_id`.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      target_account_id: { type: 'string', description: 'ID de social_accounts. Obligatorio para navi_agencia.' },
+      categoria:         { type: 'string', description: 'Filtro de categoria: post, story, reel, carousel (opcional).' },
+    },
+    required: [],
+  },
+};
+
+const CANVA_GENERAR_DISENO_TOOL: Anthropic.Tool = {
+  name: 'canva_generar_diseno',
+  description: 'Genera un diseno en Canva usando una plantilla de la marca y los campos de datos indicados. En Navi Agencia requiere `target_account_id`.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      target_account_id: { type: 'string', description: 'ID de social_accounts. Obligatorio para navi_agencia.' },
+      template_id:       { type: 'string', description: 'ID de la plantilla Canva obtenido de canva_listar_plantillas.' },
+      data_fields:       { type: 'object', additionalProperties: true, description: 'Campos variables de la plantilla (texto, imagenes).' },
+    },
+    required: ['template_id'],
+  },
+};
+
+const CANVA_EXPORTAR_TOOL: Anthropic.Tool = {
+  name: 'canva_exportar',
+  description: 'Exporta un diseno de Canva a imagen o video (PNG, JPG, MP4). Devuelve URL de descarga. En Navi Agencia requiere `target_account_id`.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      target_account_id: { type: 'string', description: 'ID de social_accounts. Obligatorio para navi_agencia.' },
+      design_id:         { type: 'string', description: 'ID del diseno Canva a exportar.' },
+      format:            { type: 'string', enum: ['png', 'jpg', 'mp4', 'gif'], description: 'Formato de exportacion. Default png.' },
+    },
+    required: ['design_id'],
+  },
+};
+
+const GENERAR_CAPTION_TOOL: Anthropic.Tool = {
+  name: 'generar_caption',
+  description: 'Genera el caption para un post de redes sociales segun el tema, tono y tipo de publicacion. En Navi Agencia requiere `target_account_id`.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      target_account_id: { type: 'string', description: 'ID de social_accounts. Obligatorio para navi_agencia.' },
+      tema:              { type: 'string', description: 'Tema principal del post.' },
+      tono:              { type: 'string', description: 'Tono deseado: informativo, casual, promocional, inspirador (opcional).' },
+      tipo_publicacion:  { type: 'string', enum: ['post', 'story', 'reel', 'carousel'], description: 'Tipo de publicacion.' },
+      incluir_cta:       { type: 'boolean', description: 'Incluir llamada a la accion al final. Default true.' },
+    },
+    required: ['tema'],
+  },
+};
+
+const GENERAR_HASHTAGS_TOOL: Anthropic.Tool = {
+  name: 'generar_hashtags',
+  description: 'Genera una lista de hashtags relevantes para un post. Combina hashtags de alto volumen y de nicho. En Navi Agencia requiere `target_account_id`.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      target_account_id: { type: 'string', description: 'ID de social_accounts. Obligatorio para navi_agencia.' },
+      tema:              { type: 'string', description: 'Tema o palabras clave del post.' },
+      cantidad:          { type: 'number', description: 'Numero de hashtags a generar. Default 10, max 30.' },
+    },
+    required: ['tema'],
+  },
+};
+
+const CREAR_BORRADOR_POST_TOOL: Anthropic.Tool = {
+  name: 'crear_borrador_post',
+  description: 'Crea un borrador de post para Instagram con el contenido, plantilla y programacion indicados. Queda en estado "draft" hasta programar o publicar. En Navi Agencia requiere `target_account_id`.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      target_account_id: { type: 'string', description: 'ID de social_accounts. Obligatorio para navi_agencia.' },
+      template_id:       { type: 'string', description: 'ID de la plantilla Canva (opcional).' },
+      media_type:        { type: 'string', enum: ['image', 'carousel', 'reel', 'story'] },
+      media_urls:        { type: 'array', items: { type: 'string' }, description: 'URLs de los medios del post.' },
+      caption:           { type: 'string', description: 'Texto del post.' },
+      hashtags:          { type: 'array', items: { type: 'string' }, description: 'Lista de hashtags sin el #.' },
+      scheduled_for:     { type: 'string', description: 'Timestamp ISO para programar (opcional).' },
+      slot_id:           { type: 'string', description: 'UUID del slot del calendario editorial (opcional).' },
+    },
+    required: ['media_type'],
+  },
+};
+
+const PROGRAMAR_PUBLICACION_TOOL: Anthropic.Tool = {
+  name: 'programar_publicacion',
+  description: 'Programa la publicacion de un borrador de post en la fecha y hora indicadas. En Navi Agencia requiere `target_account_id`.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      target_account_id: { type: 'string', description: 'ID de social_accounts. Obligatorio para navi_agencia.' },
+      post_id:           { type: 'string', description: 'ID del borrador a programar.' },
+      scheduled_for:     { type: 'string', description: 'Timestamp ISO de la publicacion.' },
+    },
+    required: ['post_id', 'scheduled_for'],
+  },
+};
+
+const PUBLICAR_AHORA_TOOL: Anthropic.Tool = {
+  name: 'publicar_ahora',
+  description: 'Publica de inmediato un borrador de post en Instagram. En Navi Agencia requiere `target_account_id`.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      target_account_id: { type: 'string', description: 'ID de social_accounts. Obligatorio para navi_agencia.' },
+      post_id:           { type: 'string', description: 'ID del borrador a publicar.' },
+    },
+    required: ['post_id'],
+  },
+};
+
+const IG_RESPONDER_COMENTARIO_TOOL: Anthropic.Tool = {
+  name: 'ig_responder_comentario',
+  description: 'Responde a un comentario de Instagram en nombre del negocio. En Navi Agencia requiere `target_account_id`.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      target_account_id: { type: 'string', description: 'ID de social_accounts. Obligatorio para navi_agencia.' },
+      comment_id:        { type: 'string', description: 'ID del comentario de Instagram.' },
+      respuesta:         { type: 'string', description: 'Texto de la respuesta.' },
+    },
+    required: ['comment_id', 'respuesta'],
+  },
+};
+
+const IG_RESPONDER_DM_TOOL: Anthropic.Tool = {
+  name: 'ig_responder_dm',
+  description: 'Responde a un mensaje directo (DM) de Instagram. En Navi Agencia requiere `target_account_id`.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      target_account_id: { type: 'string', description: 'ID de social_accounts. Obligatorio para navi_agencia.' },
+      thread_id:         { type: 'string', description: 'ID del hilo de conversacion del DM.' },
+      respuesta:         { type: 'string', description: 'Texto de la respuesta.' },
+    },
+    required: ['thread_id', 'respuesta'],
+  },
+};
+
+const CONSULTAR_METRICAS_POST_TOOL: Anthropic.Tool = {
+  name: 'consultar_metricas_post',
+  description: 'Consulta las metricas de un post de Instagram (impresiones, alcance, likes, comentarios, guardados). En Navi Agencia requiere `target_account_id`.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      target_account_id: { type: 'string', description: 'ID de social_accounts. Obligatorio para navi_agencia.' },
+      post_id:           { type: 'string', description: 'ID del post cuyas metricas se consultan.' },
+    },
+    required: ['post_id'],
+  },
+};
+
+const PROPONER_CALENDARIO_EDITORIAL_TOOL: Anthropic.Tool = {
+  name: 'proponer_calendario_editorial',
+  description: 'Propone un calendario editorial para la semana o el mes con temas, tipos de publicacion y horarios optimos. En Navi Agencia requiere `target_account_id`.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      target_account_id: { type: 'string', description: 'ID de social_accounts. Obligatorio para navi_agencia.' },
+      periodo:           { type: 'string', enum: ['semana', 'mes'], description: 'Periodo del calendario. Default semana.' },
+      frecuencia_diaria: { type: 'number', description: 'Numero de posts por dia. Default 1.' },
+    },
+    required: [],
+  },
+};
+
+const LISTAR_MEDIA_DEL_CLIENTE_TOOL: Anthropic.Tool = {
+  name: 'listar_media_del_cliente',
+  description: 'Lista los archivos de medios (fotos y videos) disponibles en la biblioteca del negocio para usar en posts. En Navi Agencia requiere `target_account_id`.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      target_account_id: { type: 'string', description: 'ID de social_accounts. Obligatorio para navi_agencia.' },
+      tipo:              { type: 'string', enum: ['imagen', 'video', 'todos'], description: 'Filtrar por tipo. Default todos.' },
+    },
+    required: [],
+  },
+};
+
+const USAR_MEDIA_DEL_CLIENTE_TOOL: Anthropic.Tool = {
+  name: 'usar_media_del_cliente',
+  description: 'Selecciona un archivo de medios de la biblioteca del negocio para usarlo en un post o diseno. Devuelve la URL lista para usar. En Navi Agencia requiere `target_account_id`.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      target_account_id: { type: 'string', description: 'ID de social_accounts. Obligatorio para navi_agencia.' },
+      media_id:          { type: 'string', description: 'ID del archivo de medios obtenido de listar_media_del_cliente.' },
+    },
+    required: ['media_id'],
+  },
+};
+
+// Exclusivas navi_agencia
+
+const LISTAR_CUENTAS_GESTIONADAS_TOOL: Anthropic.Tool = {
+  name: 'listar_cuentas_gestionadas',
+  description: 'Lista todas las cuentas de redes sociales que la agencia gestiona. Devuelve nombre, red social y estado de cada cuenta. Exclusiva de Navi Agencia.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      red_social: { type: 'string', enum: ['instagram', 'facebook', 'todas'], description: 'Filtrar por red social. Default todas.' },
+    },
+    required: [],
+  },
+};
+
+const REPLICAR_CONTENIDO_ENTRE_CUENTAS_TOOL: Anthropic.Tool = {
+  name: 'replicar_contenido_entre_cuentas',
+  description: 'Replica un borrador de post de una cuenta gestionada a una o varias cuentas destino, con adaptacion de caption si se solicita. Exclusiva de Navi Agencia.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      post_id:         { type: 'string', description: 'ID del post origen a replicar.' },
+      cuentas_destino: { type: 'array', items: { type: 'string' }, description: 'IDs de social_accounts destino.' },
+      adaptar_caption: { type: 'boolean', description: 'Ajusta el caption al tono de cada cuenta destino. Default false.' },
+    },
+    required: ['post_id', 'cuentas_destino'],
+  },
+};
+
 const ALL_TOOLS = [
   DELEGAR_TAREA_TOOL,
   CONSULTAR_AGENTE_TOOL,
@@ -1490,6 +1720,23 @@ const ALL_TOOLS = [
   INV_REPORTE_UTILIDAD_TOOL,
   INV_BUSCAR_POR_CLIENTE_TOOL,
   INV_PROCESAR_FACTURA_TRANE_TOOL,
+  // Navi social publishing
+  CANVA_LISTAR_PLANTILLAS_TOOL,
+  CANVA_GENERAR_DISENO_TOOL,
+  CANVA_EXPORTAR_TOOL,
+  GENERAR_CAPTION_TOOL,
+  GENERAR_HASHTAGS_TOOL,
+  CREAR_BORRADOR_POST_TOOL,
+  PROGRAMAR_PUBLICACION_TOOL,
+  PUBLICAR_AHORA_TOOL,
+  IG_RESPONDER_COMENTARIO_TOOL,
+  IG_RESPONDER_DM_TOOL,
+  CONSULTAR_METRICAS_POST_TOOL,
+  PROPONER_CALENDARIO_EDITORIAL_TOOL,
+  LISTAR_MEDIA_DEL_CLIENTE_TOOL,
+  USAR_MEDIA_DEL_CLIENTE_TOOL,
+  LISTAR_CUENTAS_GESTIONADAS_TOOL,
+  REPLICAR_CONTENIDO_ENTRE_CUENTAS_TOOL,
 ];
 
 // VOICE_TO_CHAT y UNIVERSAL_TOOLS viven en src/lib/tools/channel-mapping.ts
@@ -1576,6 +1823,23 @@ export const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
   inv_reporte_utilidad:      INV_REPORTE_UTILIDAD_TOOL,
   inv_buscar_por_cliente:    INV_BUSCAR_POR_CLIENTE_TOOL,
   inv_procesar_factura_trane: INV_PROCESAR_FACTURA_TRANE_TOOL,
+  // Navi social publishing (14 estandar + 2 agencia)
+  canva_listar_plantillas:           CANVA_LISTAR_PLANTILLAS_TOOL,
+  canva_generar_diseno:              CANVA_GENERAR_DISENO_TOOL,
+  canva_exportar:                    CANVA_EXPORTAR_TOOL,
+  generar_caption:                   GENERAR_CAPTION_TOOL,
+  generar_hashtags:                  GENERAR_HASHTAGS_TOOL,
+  crear_borrador_post:               CREAR_BORRADOR_POST_TOOL,
+  programar_publicacion:             PROGRAMAR_PUBLICACION_TOOL,
+  publicar_ahora:                    PUBLICAR_AHORA_TOOL,
+  ig_responder_comentario:           IG_RESPONDER_COMENTARIO_TOOL,
+  ig_responder_dm:                   IG_RESPONDER_DM_TOOL,
+  consultar_metricas_post:           CONSULTAR_METRICAS_POST_TOOL,
+  proponer_calendario_editorial:     PROPONER_CALENDARIO_EDITORIAL_TOOL,
+  listar_media_del_cliente:          LISTAR_MEDIA_DEL_CLIENTE_TOOL,
+  usar_media_del_cliente:            USAR_MEDIA_DEL_CLIENTE_TOOL,
+  listar_cuentas_gestionadas:        LISTAR_CUENTAS_GESTIONADAS_TOOL,
+  replicar_contenido_entre_cuentas:  REPLICAR_CONTENIDO_ENTRE_CUENTAS_TOOL,
 };
 
 // Nash-only tools — nunca en ALL_TOOLS, se agregan condicionalmente cuando

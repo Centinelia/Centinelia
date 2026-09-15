@@ -121,6 +121,24 @@ export const VOICE_TO_CHAT: Record<string, string | null> = {
   inv_importar_backlog:      'inv_importar_backlog',
   inv_normalizar_bodegas:    'inv_normalizar_bodegas',
   inv_reporte_utilidad:      'inv_reporte_utilidad',
+
+  // Navi social publishing (14 estandar + 2 agencia). Mismo nombre en los 3 canales.
+  canva_listar_plantillas:           'canva_listar_plantillas',
+  canva_generar_diseno:              'canva_generar_diseno',
+  canva_exportar:                    'canva_exportar',
+  generar_caption:                   'generar_caption',
+  generar_hashtags:                  'generar_hashtags',
+  crear_borrador_post:               'crear_borrador_post',
+  programar_publicacion:             'programar_publicacion',
+  publicar_ahora:                    'publicar_ahora',
+  ig_responder_comentario:           'ig_responder_comentario',
+  ig_responder_dm:                   'ig_responder_dm',
+  consultar_metricas_post:           'consultar_metricas_post',
+  proponer_calendario_editorial:     'proponer_calendario_editorial',
+  listar_media_del_cliente:          'listar_media_del_cliente',
+  usar_media_del_cliente:            'usar_media_del_cliente',
+  listar_cuentas_gestionadas:        'listar_cuentas_gestionadas',
+  replicar_contenido_entre_cuentas:  'replicar_contenido_entre_cuentas',
 };
 
 /**

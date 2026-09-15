@@ -282,6 +282,31 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
   // Nalú — analista de tesorería. Procesa statements bancarios, reconciliación,
   // reporting diario. Tools chat/email principalmente.
   nalu:  ['create_file', 'create_document', 'save_to_drive', 'buscar_archivo', 'leer_archivo', 'read_url', 'buscar_correo_enviado', 'buscar_documento_oficina', 'enviar_documento_oficina', 'extraer_voz_del_cliente', 'search_leads'],
+
+  // Navi — gestor de redes sociales. 14 tools estandar para publicacion,
+  // diseno Canva, engagement IG y metricas. Feature-gated 'social_publishing'.
+  // No voice-only (todas tienen equivalente chat/email).
+  navi: [
+    'canva_listar_plantillas', 'canva_generar_diseno', 'canva_exportar',
+    'generar_caption', 'generar_hashtags',
+    'crear_borrador_post', 'programar_publicacion', 'publicar_ahora',
+    'ig_responder_comentario', 'ig_responder_dm',
+    'consultar_metricas_post', 'proponer_calendario_editorial',
+    'listar_media_del_cliente', 'usar_media_del_cliente',
+  ],
+
+  // Navi Agencia — version agencia de Navi. Las 14 tools estandar mas 2
+  // exclusivas para gestionar multiples cuentas de clientes.
+  // Feature-gated 'social_publishing' + agency_mode=true.
+  navi_agencia: [
+    'canva_listar_plantillas', 'canva_generar_diseno', 'canva_exportar',
+    'generar_caption', 'generar_hashtags',
+    'crear_borrador_post', 'programar_publicacion', 'publicar_ahora',
+    'ig_responder_comentario', 'ig_responder_dm',
+    'consultar_metricas_post', 'proponer_calendario_editorial',
+    'listar_media_del_cliente', 'usar_media_del_cliente',
+    'listar_cuentas_gestionadas', 'replicar_contenido_entre_cuentas',
+  ],
 };
 
 // Universal tools que TODOS los meerkats reciben en voice y chat/email,
@@ -662,6 +687,299 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
         },
       },
       server: server('exec/inv_pedir_reposicion'),
+    };
+
+    // ─── Navi — redes sociales (social_publishing) ───────────────────────────
+    // 14 tools estandar (navi + navi_agencia) y 2 exclusivas de agencia.
+    // Todas usan el exec shared endpoint; el handler despacha por tool name.
+
+    case 'canva_listar_plantillas': return {
+      type: 'function',
+      function: {
+        name: 'canva_listar_plantillas',
+        description: 'Lista las plantillas de Canva disponibles para el negocio. Filtra por categoria si se indica (post, story, reel, carousel). En Navi Agencia requiere `target_account_id`.',
+        parameters: {
+          type: 'object',
+          properties: {
+            target_account_id: { type: 'string', description: 'ID de social_accounts. Obligatorio para navi_agencia.' },
+            categoria:         { type: 'string', description: 'Filtro de categoria: post, story, reel, carousel (opcional).' },
+          },
+          required: [],
+        },
+      },
+      server: server('exec/canva_listar_plantillas'),
+    };
+
+    case 'canva_generar_diseno': return {
+      type: 'function',
+      function: {
+        name: 'canva_generar_diseno',
+        description: 'Genera un diseno en Canva usando una plantilla de la marca y los campos de datos indicados. En Navi Agencia requiere `target_account_id`.',
+        parameters: {
+          type: 'object',
+          properties: {
+            target_account_id: { type: 'string', description: 'ID de social_accounts. Obligatorio para navi_agencia.' },
+            template_id:       { type: 'string', description: 'ID de la plantilla Canva obtenido de canva_listar_plantillas.' },
+            data_fields:       { type: 'object', additionalProperties: true, description: 'Objeto con los campos variables de la plantilla (texto, imagenes).' },
+          },
+          required: ['template_id'],
+        },
+      },
+      server: server('exec/canva_generar_diseno'),
+    };
+
+    case 'canva_exportar': return {
+      type: 'function',
+      function: {
+        name: 'canva_exportar',
+        description: 'Exporta un diseno de Canva a imagen o video (PNG, JPG, MP4). Devuelve URL de descarga. En Navi Agencia requiere `target_account_id`.',
+        parameters: {
+          type: 'object',
+          properties: {
+            target_account_id: { type: 'string', description: 'ID de social_accounts. Obligatorio para navi_agencia.' },
+            design_id:         { type: 'string', description: 'ID del diseno Canva a exportar.' },
+            format:            { type: 'string', enum: ['png', 'jpg', 'mp4', 'gif'], description: 'Formato de exportacion. Default png.' },
+          },
+          required: ['design_id'],
+        },
+      },
+      server: server('exec/canva_exportar'),
+    };
+
+    case 'generar_caption': return {
+      type: 'function',
+      function: {
+        name: 'generar_caption',
+        description: 'Genera el caption para un post de redes sociales basado en el tema, tono y tipo de publicacion. En Navi Agencia requiere `target_account_id`.',
+        parameters: {
+          type: 'object',
+          properties: {
+            target_account_id: { type: 'string', description: 'ID de social_accounts. Obligatorio para navi_agencia.' },
+            tema:              { type: 'string', description: 'Tema principal del post.' },
+            tono:              { type: 'string', description: 'Tono deseado: informativo, casual, promocional, inspirador (opcional).' },
+            tipo_publicacion:  { type: 'string', enum: ['post', 'story', 'reel', 'carousel'], description: 'Tipo de publicacion.' },
+            incluir_cta:       { type: 'boolean', description: 'Incluir llamada a la accion al final. Default true.' },
+          },
+          required: ['tema'],
+        },
+      },
+      server: server('exec/generar_caption'),
+    };
+
+    case 'generar_hashtags': return {
+      type: 'function',
+      function: {
+        name: 'generar_hashtags',
+        description: 'Genera una lista de hashtags relevantes para un post. Mezcla hashtags de alto volumen y de nicho. En Navi Agencia requiere `target_account_id`.',
+        parameters: {
+          type: 'object',
+          properties: {
+            target_account_id: { type: 'string', description: 'ID de social_accounts. Obligatorio para navi_agencia.' },
+            tema:              { type: 'string', description: 'Tema o palabras clave del post.' },
+            cantidad:          { type: 'number', description: 'Numero de hashtags a generar. Default 10, max 30.' },
+          },
+          required: ['tema'],
+        },
+      },
+      server: server('exec/generar_hashtags'),
+    };
+
+    case 'crear_borrador_post': return {
+      type: 'function',
+      function: {
+        name: 'crear_borrador_post',
+        description: 'Crea un borrador de post para Instagram con el contenido, plantilla y programacion indicados. El borrador queda en estado "draft" hasta programar o publicar. En Navi Agencia requiere `target_account_id`.',
+        parameters: {
+          type: 'object',
+          properties: {
+            target_account_id: { type: 'string', description: 'ID de social_accounts. Obligatorio para navi_agencia.' },
+            template_id:       { type: 'string', description: 'ID de la plantilla Canva (opcional).' },
+            media_type:        { type: 'string', enum: ['image', 'carousel', 'reel', 'story'] },
+            media_urls:        { type: 'array', items: { type: 'string' }, description: 'URLs de los medios del post.' },
+            caption:           { type: 'string', description: 'Texto del post.' },
+            hashtags:          { type: 'array', items: { type: 'string' }, description: 'Lista de hashtags sin el #.' },
+            scheduled_for:     { type: 'string', description: 'Timestamp ISO para programar (opcional, sin fecha queda como draft).' },
+            slot_id:           { type: 'string', description: 'UUID del slot del calendario editorial (opcional).' },
+          },
+          required: ['media_type'],
+        },
+      },
+      server: server('exec/crear_borrador_post'),
+    };
+
+    case 'programar_publicacion': return {
+      type: 'function',
+      function: {
+        name: 'programar_publicacion',
+        description: 'Programa la publicacion de un borrador de post en la fecha y hora indicadas. En Navi Agencia requiere `target_account_id`.',
+        parameters: {
+          type: 'object',
+          properties: {
+            target_account_id: { type: 'string', description: 'ID de social_accounts. Obligatorio para navi_agencia.' },
+            post_id:           { type: 'string', description: 'ID del borrador de post a programar.' },
+            scheduled_for:     { type: 'string', description: 'Timestamp ISO de la publicacion.' },
+          },
+          required: ['post_id', 'scheduled_for'],
+        },
+      },
+      server: server('exec/programar_publicacion'),
+    };
+
+    case 'publicar_ahora': return {
+      type: 'function',
+      function: {
+        name: 'publicar_ahora',
+        description: 'Publica de inmediato un borrador de post en Instagram. En Navi Agencia requiere `target_account_id`.',
+        parameters: {
+          type: 'object',
+          properties: {
+            target_account_id: { type: 'string', description: 'ID de social_accounts. Obligatorio para navi_agencia.' },
+            post_id:           { type: 'string', description: 'ID del borrador de post a publicar.' },
+          },
+          required: ['post_id'],
+        },
+      },
+      server: server('exec/publicar_ahora'),
+    };
+
+    case 'ig_responder_comentario': return {
+      type: 'function',
+      function: {
+        name: 'ig_responder_comentario',
+        description: 'Responde a un comentario de Instagram en nombre del negocio. En Navi Agencia requiere `target_account_id`.',
+        parameters: {
+          type: 'object',
+          properties: {
+            target_account_id: { type: 'string', description: 'ID de social_accounts. Obligatorio para navi_agencia.' },
+            comment_id:        { type: 'string', description: 'ID del comentario de Instagram a responder.' },
+            respuesta:         { type: 'string', description: 'Texto de la respuesta.' },
+          },
+          required: ['comment_id', 'respuesta'],
+        },
+      },
+      server: server('exec/ig_responder_comentario'),
+    };
+
+    case 'ig_responder_dm': return {
+      type: 'function',
+      function: {
+        name: 'ig_responder_dm',
+        description: 'Responde a un mensaje directo (DM) de Instagram. En Navi Agencia requiere `target_account_id`.',
+        parameters: {
+          type: 'object',
+          properties: {
+            target_account_id: { type: 'string', description: 'ID de social_accounts. Obligatorio para navi_agencia.' },
+            thread_id:         { type: 'string', description: 'ID del hilo de conversacion del DM.' },
+            respuesta:         { type: 'string', description: 'Texto de la respuesta.' },
+          },
+          required: ['thread_id', 'respuesta'],
+        },
+      },
+      server: server('exec/ig_responder_dm'),
+    };
+
+    case 'consultar_metricas_post': return {
+      type: 'function',
+      function: {
+        name: 'consultar_metricas_post',
+        description: 'Consulta las metricas de un post de Instagram (impresiones, alcance, likes, comentarios, guardados). En Navi Agencia requiere `target_account_id`.',
+        parameters: {
+          type: 'object',
+          properties: {
+            target_account_id: { type: 'string', description: 'ID de social_accounts. Obligatorio para navi_agencia.' },
+            post_id:           { type: 'string', description: 'ID del post cuyas metricas se consultan.' },
+          },
+          required: ['post_id'],
+        },
+      },
+      server: server('exec/consultar_metricas_post'),
+    };
+
+    case 'proponer_calendario_editorial': return {
+      type: 'function',
+      function: {
+        name: 'proponer_calendario_editorial',
+        description: 'Propone un calendario editorial para la semana o el mes, con temas, tipos de publicacion y horarios optimos. En Navi Agencia requiere `target_account_id`.',
+        parameters: {
+          type: 'object',
+          properties: {
+            target_account_id: { type: 'string', description: 'ID de social_accounts. Obligatorio para navi_agencia.' },
+            periodo:           { type: 'string', enum: ['semana', 'mes'], description: 'Periodo del calendario. Default semana.' },
+            frecuencia_diaria: { type: 'number', description: 'Numero de posts por dia. Default 1.' },
+          },
+          required: [],
+        },
+      },
+      server: server('exec/proponer_calendario_editorial'),
+    };
+
+    case 'listar_media_del_cliente': return {
+      type: 'function',
+      function: {
+        name: 'listar_media_del_cliente',
+        description: 'Lista los archivos de medios (fotos y videos) disponibles en la biblioteca del negocio para usar en posts. En Navi Agencia requiere `target_account_id`.',
+        parameters: {
+          type: 'object',
+          properties: {
+            target_account_id: { type: 'string', description: 'ID de social_accounts. Obligatorio para navi_agencia.' },
+            tipo:              { type: 'string', enum: ['imagen', 'video', 'todos'], description: 'Filtrar por tipo. Default todos.' },
+          },
+          required: [],
+        },
+      },
+      server: server('exec/listar_media_del_cliente'),
+    };
+
+    case 'usar_media_del_cliente': return {
+      type: 'function',
+      function: {
+        name: 'usar_media_del_cliente',
+        description: 'Selecciona un archivo de medios de la biblioteca del negocio para usarlo en un post o diseno. Devuelve la URL lista para usar. En Navi Agencia requiere `target_account_id`.',
+        parameters: {
+          type: 'object',
+          properties: {
+            target_account_id: { type: 'string', description: 'ID de social_accounts. Obligatorio para navi_agencia.' },
+            media_id:          { type: 'string', description: 'ID del archivo de medios obtenido de listar_media_del_cliente.' },
+          },
+          required: ['media_id'],
+        },
+      },
+      server: server('exec/usar_media_del_cliente'),
+    };
+
+    // Exclusivas navi_agencia (2)
+    case 'listar_cuentas_gestionadas': return {
+      type: 'function',
+      function: {
+        name: 'listar_cuentas_gestionadas',
+        description: 'Lista todas las cuentas de redes sociales que esta agencia gestiona. Devuelve nombre, red social y estado de cada cuenta. Exclusiva de Navi Agencia.',
+        parameters: {
+          type: 'object',
+          properties: {
+            red_social: { type: 'string', enum: ['instagram', 'facebook', 'todas'], description: 'Filtrar por red social. Default todas.' },
+          },
+          required: [],
+        },
+      },
+      server: server('exec/listar_cuentas_gestionadas'),
+    };
+
+    case 'replicar_contenido_entre_cuentas': return {
+      type: 'function',
+      function: {
+        name: 'replicar_contenido_entre_cuentas',
+        description: 'Replica un borrador de post de una cuenta gestionada a una o varias cuentas destino, con adaptacion de caption si se solicita. Exclusiva de Navi Agencia.',
+        parameters: {
+          type: 'object',
+          properties: {
+            post_id:                { type: 'string', description: 'ID del post origen a replicar.' },
+            cuentas_destino:        { type: 'array', items: { type: 'string' }, description: 'Lista de IDs de social_accounts destino.' },
+            adaptar_caption:        { type: 'boolean', description: 'Si true, ajusta el caption al tono de cada cuenta destino. Default false.' },
+          },
+          required: ['post_id', 'cuentas_destino'],
+        },
+      },
+      server: server('exec/replicar_contenido_entre_cuentas'),
     };
 
     default: return null;

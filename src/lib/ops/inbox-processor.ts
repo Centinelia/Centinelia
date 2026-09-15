@@ -800,6 +800,93 @@ const DRIVE_MGMT_EMAIL_TOOLS: Anthropic.Tool[] = [
   },
 ];
 
+// ─── Navi — publicacion social (feature: social_publishing) ──────────────────
+// 14 tools estandar + 2 exclusivas navi_agencia. Mismo schema que chat para
+// que el executor las despache sin diferencia de canal.
+const NAVI_EMAIL_TOOLS: Anthropic.Tool[] = [
+  {
+    name: 'canva_listar_plantillas',
+    description: 'Lista las plantillas de Canva disponibles para el negocio. En Navi Agencia requiere target_account_id.',
+    input_schema: { type: 'object' as const, properties: { target_account_id: { type: 'string' }, categoria: { type: 'string' } }, required: [] },
+  },
+  {
+    name: 'canva_generar_diseno',
+    description: 'Genera un diseno en Canva con una plantilla y campos variables. En Navi Agencia requiere target_account_id.',
+    input_schema: { type: 'object' as const, properties: { target_account_id: { type: 'string' }, template_id: { type: 'string' }, data_fields: { type: 'object', additionalProperties: true } }, required: ['template_id'] },
+  },
+  {
+    name: 'canva_exportar',
+    description: 'Exporta un diseno de Canva a PNG, JPG o MP4. En Navi Agencia requiere target_account_id.',
+    input_schema: { type: 'object' as const, properties: { target_account_id: { type: 'string' }, design_id: { type: 'string' }, format: { type: 'string', enum: ['png', 'jpg', 'mp4', 'gif'] } }, required: ['design_id'] },
+  },
+  {
+    name: 'generar_caption',
+    description: 'Genera el caption para un post de redes sociales. En Navi Agencia requiere target_account_id.',
+    input_schema: { type: 'object' as const, properties: { target_account_id: { type: 'string' }, tema: { type: 'string' }, tono: { type: 'string' }, tipo_publicacion: { type: 'string', enum: ['post', 'story', 'reel', 'carousel'] }, incluir_cta: { type: 'boolean' } }, required: ['tema'] },
+  },
+  {
+    name: 'generar_hashtags',
+    description: 'Genera hashtags relevantes para un post. En Navi Agencia requiere target_account_id.',
+    input_schema: { type: 'object' as const, properties: { target_account_id: { type: 'string' }, tema: { type: 'string' }, cantidad: { type: 'number' } }, required: ['tema'] },
+  },
+  {
+    name: 'crear_borrador_post',
+    description: 'Crea un borrador de post para Instagram. En Navi Agencia requiere target_account_id.',
+    input_schema: { type: 'object' as const, properties: { target_account_id: { type: 'string' }, template_id: { type: 'string' }, media_type: { type: 'string', enum: ['image', 'carousel', 'reel', 'story'] }, media_urls: { type: 'array', items: { type: 'string' } }, caption: { type: 'string' }, hashtags: { type: 'array', items: { type: 'string' } }, scheduled_for: { type: 'string' }, slot_id: { type: 'string' } }, required: ['media_type'] },
+  },
+  {
+    name: 'programar_publicacion',
+    description: 'Programa la publicacion de un borrador de post. En Navi Agencia requiere target_account_id.',
+    input_schema: { type: 'object' as const, properties: { target_account_id: { type: 'string' }, post_id: { type: 'string' }, scheduled_for: { type: 'string' } }, required: ['post_id', 'scheduled_for'] },
+  },
+  {
+    name: 'publicar_ahora',
+    description: 'Publica de inmediato un borrador de post. En Navi Agencia requiere target_account_id.',
+    input_schema: { type: 'object' as const, properties: { target_account_id: { type: 'string' }, post_id: { type: 'string' } }, required: ['post_id'] },
+  },
+  {
+    name: 'ig_responder_comentario',
+    description: 'Responde a un comentario de Instagram. En Navi Agencia requiere target_account_id.',
+    input_schema: { type: 'object' as const, properties: { target_account_id: { type: 'string' }, comment_id: { type: 'string' }, respuesta: { type: 'string' } }, required: ['comment_id', 'respuesta'] },
+  },
+  {
+    name: 'ig_responder_dm',
+    description: 'Responde a un DM de Instagram. En Navi Agencia requiere target_account_id.',
+    input_schema: { type: 'object' as const, properties: { target_account_id: { type: 'string' }, thread_id: { type: 'string' }, respuesta: { type: 'string' } }, required: ['thread_id', 'respuesta'] },
+  },
+  {
+    name: 'consultar_metricas_post',
+    description: 'Consulta metricas de un post de Instagram. En Navi Agencia requiere target_account_id.',
+    input_schema: { type: 'object' as const, properties: { target_account_id: { type: 'string' }, post_id: { type: 'string' } }, required: ['post_id'] },
+  },
+  {
+    name: 'proponer_calendario_editorial',
+    description: 'Propone un calendario editorial semanal o mensual. En Navi Agencia requiere target_account_id.',
+    input_schema: { type: 'object' as const, properties: { target_account_id: { type: 'string' }, periodo: { type: 'string', enum: ['semana', 'mes'] }, frecuencia_diaria: { type: 'number' } }, required: [] },
+  },
+  {
+    name: 'listar_media_del_cliente',
+    description: 'Lista archivos de medios de la biblioteca del negocio. En Navi Agencia requiere target_account_id.',
+    input_schema: { type: 'object' as const, properties: { target_account_id: { type: 'string' }, tipo: { type: 'string', enum: ['imagen', 'video', 'todos'] } }, required: [] },
+  },
+  {
+    name: 'usar_media_del_cliente',
+    description: 'Selecciona archivo de medios de la biblioteca del negocio para un post. En Navi Agencia requiere target_account_id.',
+    input_schema: { type: 'object' as const, properties: { target_account_id: { type: 'string' }, media_id: { type: 'string' } }, required: ['media_id'] },
+  },
+  // Exclusivas navi_agencia
+  {
+    name: 'listar_cuentas_gestionadas',
+    description: 'Navi Agencia: lista todas las cuentas de redes sociales que la agencia gestiona.',
+    input_schema: { type: 'object' as const, properties: { red_social: { type: 'string', enum: ['instagram', 'facebook', 'todas'] } }, required: [] },
+  },
+  {
+    name: 'replicar_contenido_entre_cuentas',
+    description: 'Navi Agencia: replica borrador de post a una o varias cuentas destino con adaptacion opcional de caption.',
+    input_schema: { type: 'object' as const, properties: { post_id: { type: 'string' }, cuentas_destino: { type: 'array', items: { type: 'string' } }, adaptar_caption: { type: 'boolean' } }, required: ['post_id', 'cuentas_destino'] },
+  },
+];
+
 // Email tool name → Anthropic.Tool object (para filtrar por preset)
 // Exported para el test de completeness. Uso interno solo en este archivo.
 export const EMAIL_TOOL_BY_NAME: Record<string, Anthropic.Tool> = Object.fromEntries(
@@ -811,6 +898,7 @@ export const EMAIL_TOOL_BY_NAME: Record<string, Anthropic.Tool> = Object.fromEnt
     ...GOBIERNO_EMAIL_TOOLS,
     ...CAMPO_EMAIL_TOOLS,
     ...DRIVE_MGMT_EMAIL_TOOLS,
+    ...NAVI_EMAIL_TOOLS,
   ].map(t => [t.name, t]),
 );
 
@@ -843,6 +931,27 @@ export const MEERKAT_EMAIL_DISTRIBUTION: Record<string, string[]> = {
   nala:  ['qb_crear_orden_compra', 'qb_consultar_orden_compra', 'qb_descargar_oc_pdf', 'firmar_oc', 'sf_timbrar_desde_oc', 'sf_cancelar_cfdi', 'sf_consultar_estado_sat', 'enviar_oc_a_pagos', 'registrar_comprobante_pago', 'enviar_oc_a_proveedor', 'archivar_expediente', 'qb_crear_orden_compra_desde_cotizacion', 'buscar_archivo', 'leer_archivo', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
   nalu:  ['create_file', 'create_document', 'save_to_drive', 'buscar_archivo', 'leer_archivo', 'read_url', 'buscar_correo_enviado', 'buscar_documento_oficina', 'enviar_documento_oficina', 'extraer_voz_del_cliente', 'search_leads', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
   nami:  ['inv_agregar_equipo', 'inv_actualizar_estatus', 'inv_asignar_cliente', 'inv_registrar_venta', 'inv_transferir_bodega', 'inv_buscar_por_serie', 'inv_buscar_por_modelo', 'inv_buscar_por_cliente', 'inv_stock_snapshot', 'inv_importar_backlog', 'inv_pedir_reposicion', 'inv_normalizar_bodegas', 'inv_reporte_utilidad', 'inv_procesar_factura_trane', 'enviar_correo', 'buscar_correo_enviado', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
+  // Navi — gestor de redes sociales. 14 tools estandar gateadas por social_publishing.
+  navi: [
+    'canva_listar_plantillas', 'canva_generar_diseno', 'canva_exportar',
+    'generar_caption', 'generar_hashtags',
+    'crear_borrador_post', 'programar_publicacion', 'publicar_ahora',
+    'ig_responder_comentario', 'ig_responder_dm',
+    'consultar_metricas_post', 'proponer_calendario_editorial',
+    'listar_media_del_cliente', 'usar_media_del_cliente',
+    'delegar_tarea', 'consultar_agente', 'pedir_a_humano',
+  ],
+  // Navi Agencia — las 14 estandar mas 2 exclusivas multi-cuenta.
+  navi_agencia: [
+    'canva_listar_plantillas', 'canva_generar_diseno', 'canva_exportar',
+    'generar_caption', 'generar_hashtags',
+    'crear_borrador_post', 'programar_publicacion', 'publicar_ahora',
+    'ig_responder_comentario', 'ig_responder_dm',
+    'consultar_metricas_post', 'proponer_calendario_editorial',
+    'listar_media_del_cliente', 'usar_media_del_cliente',
+    'listar_cuentas_gestionadas', 'replicar_contenido_entre_cuentas',
+    'delegar_tarea', 'consultar_agente', 'pedir_a_humano',
+  ],
 };
 
 /**
