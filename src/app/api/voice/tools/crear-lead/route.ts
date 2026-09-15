@@ -33,6 +33,20 @@ export async function POST(req: NextRequest) {
     nombre, negocio, giro, servicio, presupuesto, timeline, email, whatsapp,
   });
 
+  // Cobro base work-based: solo cobrar cuando es lead NUEVO. Un update de un
+  // lead reciente (mismo prospecto <10min) no es trabajo nuevo del meerkat.
+  if (upsert.action === 'created') {
+    try {
+      await consumeAiOp(agent_id, 1, {
+        source: 'lead_registered',
+        label:  'Registro de lead',
+        reference_id: upsert.id,
+      });
+    } catch (err) {
+      console.error('crear_lead consumeAiOp base failed silently:', err);
+    }
+  }
+
   if (agent?.portal_email) {
     void syncLeadToSheets(agent.portal_email, agent_id, args);
   }

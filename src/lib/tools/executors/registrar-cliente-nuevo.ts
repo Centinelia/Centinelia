@@ -66,6 +66,19 @@ export async function registrarClienteNuevo(ctx: any, args: RegistrarClienteNuev
   if (insErr) throw new Error(`registrar_cliente_nuevo insert: ${insErr.message}`);
   const incidentId = incidentRow.id;
 
+  // Cobro base work-based: dar de alta un cliente en el sistema (dedup, match
+  // por biz+sucursal, registro) es trabajo del meerkat aunque no dispare emails.
+  // Los cobros por notif email siguen abajo como cargos adicionales.
+  try {
+    await consumeAiOp(ctx.agent.id, 1, {
+      source: 'customer_registered',
+      label:  'Registro de cliente nuevo',
+      reference_id: incidentId,
+    });
+  } catch (err) {
+    console.error('registrar_cliente_nuevo consumeAiOp base failed silently:', err);
+  }
+
   let sentCount = 0;
   if (recipients.length > 0) {
     const { subject, html } = renderNewClientCardEmail({

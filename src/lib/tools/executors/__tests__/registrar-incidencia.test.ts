@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { registrarIncidencia } from '../registrar-incidencia';
 import { sendMeerkatHtmlEmail } from '../../../email/send-as-agent';
 import { upsertFollowupContactForIncident } from '../../../incidents/scheduling';
+import { consumeAiOp } from '../../../ai/ops-guard';
 
 vi.mock('../../../email/send-as-agent', () => ({
   sendMeerkatHtmlEmail: vi.fn(() => Promise.resolve({ ok: true, provider: 'resend' })),
@@ -10,6 +11,11 @@ vi.mock('../../../email/send-as-agent', () => ({
 
 vi.mock('../../../incidents/scheduling', () => ({
   upsertFollowupContactForIncident: vi.fn(() => Promise.resolve({ outbound_contact_id: 'oc-1' })),
+}));
+
+vi.mock('../../../ai/ops-guard', () => ({
+  consumeAiOp: vi.fn(() => Promise.resolve({ ok: true, aiOpsUsed: 1, aiOpsLimit: 1000 })),
+  refundOps:   vi.fn(() => Promise.resolve({ ok: true })),
 }));
 
 function makeCtx(overrides: any = {}) {
@@ -188,5 +194,36 @@ describe('registrarIncidencia', () => {
     expect(res.ok).toBe(true);
     expect(res.email_sent).toBe(false);
     expect((upsertFollowupContactForIncident as any)).toHaveBeenCalledTimes(1);
+  });
+
+  // Work-based billing (2026-09-15): registrar la queja cobra 1 tarea base,
+  // ADEMÁS de las N tareas por cada email enviado al encargado.
+  it('cobra 1 tarea base incident_registered + N tareas por notif email', async () => {
+    const ctx = makeCtx();
+    await registrarIncidencia(ctx as any, {
+      business_name: 'X', contact_phone: '8112345678', address: 'Y', motivo: 'Z',
+    });
+    const calls = (consumeAiOp as any).mock.calls;
+    // Debe haber al menos 2 llamadas: 1 base + 1 por notif (1 recipient default).
+    expect(calls.length).toBeGreaterThanOrEqual(2);
+    const sources = calls.map((c: any[]) => c[2]?.source);
+    expect(sources).toContain('incident_registered');
+    expect(sources).toContain('incidencia_notif');
+    // El registro base cobra 1, la notif cobra 1 (1 recipient).
+    const baseCall = calls.find((c: any[]) => c[2]?.source === 'incident_registered');
+    expect(baseCall[1]).toBe(1);
+  });
+
+  it('cobra 1 tarea base aunque no haya recipients (no notif email)', async () => {
+    const ctx = makeCtx();
+    ctx.org.directory = [];
+    await registrarIncidencia(ctx as any, {
+      business_name: 'X', contact_phone: '8112345678', address: 'Y', motivo: 'Z',
+    });
+    const calls = (consumeAiOp as any).mock.calls;
+    const sources = calls.map((c: any[]) => c[2]?.source);
+    expect(sources).toContain('incident_registered');
+    // Sin recipients no debe haber incidencia_notif.
+    expect(sources).not.toContain('incidencia_notif');
   });
 });
