@@ -1,0 +1,20 @@
+{
+  "job": {
+    "id": "jobId123abc",
+    "status": "success",
+    "result": {
+      "design": {
+        "id": "DAFdesignXYZ",
+        "title": "Post Instagram — Promo Semanal (autofilled)",
+        "url": "https://www.canva.com/design/DAFdesignXYZ/view",
+        "thumbnail": {
+          "width": 595,
+          "height": 595,
+          "url": "https://thumbnail.canva.com/XYZpreview.png"
+        },
+        "created_at": 1726020000,
+        "updated_at": 1726020001
+      }
+    }
+  }
+}

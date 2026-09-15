@@ -1,0 +1,7 @@
+{
+  "access_token": "accessTokenXYZ789",
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "refresh_token": "refreshTokenABC123",
+  "scope": "design:content:read design:content:write asset:read asset:write brandtemplate:content:read brandtemplate:meta:read"
+}

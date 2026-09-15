@@ -1,0 +1,11 @@
+{
+  "job": {
+    "id": "exportJobABC",
+    "status": "success",
+    "result": {
+      "urls": [
+        "https://export.canva.com/DAFdesignXYZ/export_page1.png"
+      ]
+    }
+  }
+}
