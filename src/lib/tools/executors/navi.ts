@@ -1,11 +1,12 @@
 /**
- * Navi — 14 handlers estándar de herramientas de redes sociales.
+ * Navi — 14 handlers estándar + 2 herramientas exclusivas de variante Agencia.
  *
  * Estructura:
- *   - NAVI_STANDARD_TOOLS: Set con los 14 nombres de herramienta.
+ *   - NAVI_STANDARD_TOOLS: Set con los 14 nombres de herramienta (variante PyME).
+ *   - NAVI_AGENCIA_TOOLS: Set con 2 herramientas exclusivas de variante Agencia.
  *   - runNaviTool: delegador principal llamado desde executor.ts.
  *   - Helpers internos: resolveSocialAccount, resolveCanvaClient.
- *   - 14 handlers internos: uno por herramienta.
+ *   - 14 handlers estándar + 2 handlers de agencia.
  *
  * Reglas de seguridad aplicadas (R43, R46, R47, R49):
  *   - role='navi': auto-resuelve la única cuenta social del agente.
@@ -14,17 +15,15 @@
  *   - CanvaProvider construido por agente desde integration_accounts.
  *   - MetaPublisher construido por social_account con page access_token.
  *
- * Consumo de ops (R44):
+ * Consumo de ops (R44, R57):
  *   canva_listar_plantillas=0, canva_generar_diseno=2, canva_exportar=1,
  *   generar_caption=1, generar_hashtags=1, crear_borrador_post=2,
  *   programar_publicacion=1, publicar_ahora=1, ig_responder_comentario=1,
  *   ig_responder_dm=1, consultar_metricas_post=0, proponer_calendario_editorial=5,
- *   listar_media_del_cliente=0, usar_media_del_cliente=1.
+ *   listar_media_del_cliente=0, usar_media_del_cliente=1,
+ *   listar_cuentas_gestionadas=0, replicar_contenido_entre_cuentas=3.
  *
- * logLlmCall (R45): source, model, usage, agentId, portalEmail — en cada llamada Anthropic.
- *
- * Herramientas Task 9 (listar_cuentas_gestionadas, replicar_contenido_entre_cuentas)
- *   NO están implementadas aquí (R48) — runNaviTool lanza error claro si las recibe.
+ * logLlmCall (R45, R54): source, model, usage, agentId, portalEmail — en cada llamada Anthropic.
  */
 
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -38,7 +37,7 @@ import Anthropic from '@anthropic-ai/sdk';
 
 type SupabaseClient = ReturnType<typeof createAdminClient>;
 
-// ─── Conjunto de herramientas estándar Navi ──────────────────────────────────
+// ─── Conjunto de herramientas estándar Navi (variante PyME) ──────────────────
 
 export const NAVI_STANDARD_TOOLS = new Set<string>([
   'canva_listar_plantillas',
@@ -57,22 +56,31 @@ export const NAVI_STANDARD_TOOLS = new Set<string>([
   'usar_media_del_cliente',
 ]);
 
-// Ops consumidas por herramienta (R44)
+// ─── Herramientas exclusivas de variante Agencia (R53) ───────────────────────
+
+export const NAVI_AGENCIA_TOOLS = new Set<string>([
+  'listar_cuentas_gestionadas',
+  'replicar_contenido_entre_cuentas',
+]);
+
+// Ops consumidas por herramienta (R44, R57)
 const OPS_POR_HERRAMIENTA: Record<string, number> = {
-  canva_listar_plantillas:      0,
-  canva_generar_diseno:         2,
-  canva_exportar:               1,
-  generar_caption:              1,
-  generar_hashtags:             1,
-  crear_borrador_post:          2,
-  programar_publicacion:        1,
-  publicar_ahora:               1,
-  ig_responder_comentario:      1,
-  ig_responder_dm:              1,
-  consultar_metricas_post:      0,
-  proponer_calendario_editorial: 5,
-  listar_media_del_cliente:     0,
-  usar_media_del_cliente:       1,
+  canva_listar_plantillas:         0,
+  canva_generar_diseno:            2,
+  canva_exportar:                  1,
+  generar_caption:                 1,
+  generar_hashtags:                1,
+  crear_borrador_post:             2,
+  programar_publicacion:           1,
+  publicar_ahora:                  1,
+  ig_responder_comentario:         1,
+  ig_responder_dm:                 1,
+  consultar_metricas_post:         0,
+  proponer_calendario_editorial:   5,
+  listar_media_del_cliente:        0,
+  usar_media_del_cliente:          1,
+  listar_cuentas_gestionadas:      0,
+  replicar_contenido_entre_cuentas: 3,
 };
 
 // Modelos Anthropic usados en esta capa
@@ -110,15 +118,10 @@ export async function runNaviTool(
   input:     Record<string, unknown>,
   ctx:       NaviToolCtx,
 ): Promise<unknown> {
-  // Herramientas Task 9 — explícitamente fuera de scope
-  if (toolName === 'listar_cuentas_gestionadas' || toolName === 'replicar_contenido_entre_cuentas') {
-    throw new NaviToolError(
-      'TASK9_NOT_IMPLEMENTED',
-      `La herramienta '${toolName}' está reservada para la variante Agencia (Task 9) y aún no está disponible.`,
-    );
-  }
+  const isStandard = NAVI_STANDARD_TOOLS.has(toolName);
+  const isAgencia  = NAVI_AGENCIA_TOOLS.has(toolName);
 
-  if (!NAVI_STANDARD_TOOLS.has(toolName)) {
+  if (!isStandard && !isAgencia) {
     throw new NaviToolError(
       'UNKNOWN_NAVI_TOOL',
       `Herramienta '${toolName}' no reconocida en el módulo Navi.`,
@@ -126,6 +129,20 @@ export async function runNaviTool(
   }
 
   const sb = ctx.supabase ?? createAdminClient();
+
+  // Despachar herramientas de agencia (R53, R59)
+  if (isAgencia) {
+    const result = await dispatchNaviAgenciaTool(toolName, input, ctx, sb);
+    const ops = OPS_POR_HERRAMIENTA[toolName] ?? 0;
+    if (ops > 0) {
+      await consumeAiOp(ctx.agentId, ops, {
+        source: `navi_tool:${toolName}`,
+        label:  `Navi Agencia — ${toolName}`,
+      });
+    }
+    return result;
+  }
+
   const result = await dispatchNaviTool(toolName, input, ctx.agentId, ctx.portalEmail, sb);
 
   // Consumir ops al finalizar exitosamente
@@ -166,6 +183,205 @@ async function dispatchNaviTool(
     case 'usar_media_del_cliente':        return handleUsarMediaDelCliente(input, agentId, portalEmail, sb);
     default:
       throw new NaviToolError('UNKNOWN_NAVI_TOOL', `Herramienta '${toolName}' no tiene handler.`);
+  }
+}
+
+// ─── Router interno para herramientas de variante Agencia ─────────────────────
+
+async function dispatchNaviAgenciaTool(
+  toolName:    string,
+  input:       Record<string, unknown>,
+  ctx:         NaviToolCtx,
+  sb:          SupabaseClient,
+): Promise<unknown> {
+  switch (toolName) {
+    case 'listar_cuentas_gestionadas':
+      return handleListarCuentasGestionadas(input, ctx, sb);
+    case 'replicar_contenido_entre_cuentas':
+      return handleReplicarContenidoEntreCuentas(input, ctx, sb);
+    default:
+      throw new NaviToolError('UNKNOWN_NAVI_TOOL', `Herramienta de agencia '${toolName}' no tiene handler.`);
+  }
+}
+
+// ─── Handler: listar_cuentas_gestionadas (R56, R57) ──────────────────────────
+
+async function handleListarCuentasGestionadas(
+  input: Record<string, unknown>,
+  ctx:   NaviToolCtx,
+  sb:    SupabaseClient,
+): Promise<unknown> {
+  const agentId     = (input.agent_id as string | undefined) ?? ctx.agentId;
+  const portalEmail = (input.portal_email as string | undefined) ?? ctx.portalEmail;
+
+  const { data: accounts } = await sb
+    .from('social_accounts')
+    .select('id, external_username, page_id, status, paused, brand_summary, agent_id')
+    .eq('portal_email', portalEmail)
+    .eq('agent_id', agentId);
+
+  const rows = (accounts ?? []) as Array<Record<string, unknown>>;
+
+  // Enriquecer con próxima publicación por cuenta
+  const enriched = await Promise.all(rows.map(async (acc) => {
+    const { data: next } = await sb
+      .from('content_drafts')
+      .select('scheduled_for, caption')
+      .eq('social_account_id', acc.id as string)
+      .in('status', ['scheduled', 'approved'])
+      .order('scheduled_for', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    return { ...acc, next_publication: next ?? null };
+  }));
+
+  return {
+    ok:       true,
+    accounts: enriched,
+    message:  `Encontré ${enriched.length} cuentas gestionadas`,
+  };
+}
+
+// ─── Handler: replicar_contenido_entre_cuentas (R56) ─────────────────────────
+
+async function handleReplicarContenidoEntreCuentas(
+  input: Record<string, unknown>,
+  ctx:   NaviToolCtx,
+  sb:    SupabaseClient,
+): Promise<unknown> {
+  const portalEmail      = (input.portal_email as string | undefined) ?? ctx.portalEmail;
+  const agentId          = (input.agent_id as string | undefined) ?? ctx.agentId;
+  const sourceMediaId    = input.source_media_id as string;
+  const targetAccountIds = input.target_account_ids as string[] | undefined;
+
+  // Guard: target_account_ids debe ser array no vacío (R56)
+  if (!Array.isArray(targetAccountIds) || targetAccountIds.length === 0) {
+    throw new NaviToolError('INVALID_TARGETS', 'target_account_ids debe ser un arreglo no vacío de UUIDs.');
+  }
+
+  // Verificar ownership del source (R56 §1)
+  const { data: sourceDraft } = await sb
+    .from('content_drafts')
+    .select('*')
+    .eq('published_media_id', sourceMediaId)
+    .single();
+
+  if (
+    !sourceDraft ||
+    (sourceDraft as Record<string, unknown>).portal_email !== portalEmail ||
+    (sourceDraft as Record<string, unknown>).agent_id !== agentId
+  ) {
+    throw new NaviToolError(
+      'SOURCE_NOT_FOUND',
+      'No encontré publicación con ese media_id que pertenezca a tu Navi.',
+    );
+  }
+
+  const src = sourceDraft as Record<string, unknown>;
+  const client = new Anthropic();
+  const drafts: unknown[] = [];
+
+  // Por cada target (R56 §2-4)
+  for (const targetId of targetAccountIds) {
+    // Verificar ownership del target
+    const { data: targetAcc } = await sb
+      .from('social_accounts')
+      .select('*')
+      .eq('id', targetId)
+      .single();
+
+    const acc = targetAcc as Record<string, unknown> | null;
+
+    if (!acc || acc.portal_email !== portalEmail || acc.agent_id !== agentId) {
+      throw new NaviToolError(
+        'ACCOUNT_NOT_MANAGED',
+        `ACCOUNT_NOT_MANAGED: ${targetId}`,
+      );
+    }
+
+    // Adaptar caption al brand voice del target (R56 §3)
+    const t0 = Date.now();
+    const response = await client.messages.create({
+      model:      HAIKU,
+      max_tokens: 400,
+      system:     `Adaptas captions manteniendo la idea pero cambiando el tono para la voz de marca: ${(acc.brand_summary as string | null) ?? '(voz genérica profesional)'}`,
+      messages:   [{
+        role:    'user',
+        content: (src.caption as string) ?? '',
+      }],
+    });
+
+    void logLlmCall({
+      source:      'replicar_contenido_entre_cuentas',
+      model:       HAIKU,
+      usage:       response.usage,
+      agentId:     ctx.agentId,
+      portalEmail: ctx.portalEmail,
+      latencyMs:   Date.now() - t0,
+      meta:        { target_account_id: targetId, source_media_id: sourceMediaId },
+    });
+
+    const adaptedCaption = response.content[0]?.type === 'text'
+      ? response.content[0].text
+      : (src.caption as string) ?? '';
+
+    // Insertar borrador para el target (R56 §4)
+    const { data: draft } = await sb
+      .from('content_drafts')
+      .insert({
+        portal_email:      portalEmail,
+        agent_id:          agentId,
+        social_account_id: targetId,
+        media_urls:        (src.media_urls as string[]) ?? [],
+        caption:           adaptedCaption,
+        hashtags:          (src.hashtags as string[]) ?? [],
+        media_type:        (src.media_type as string) ?? 'image',
+        status:            'pending_approval',
+        auto_publish:      false,
+        navi_reasoning:    `Replicado de post ${sourceMediaId}`,
+      })
+      .select()
+      .single();
+
+    drafts.push(draft);
+  }
+
+  // consumeAiOp una sola vez con count=3 fijo (R56 §5, R57) — llamado desde runNaviTool post-dispatch
+
+  return {
+    ok:      true,
+    drafts,
+    message: `Creé ${drafts.length} borradores para revisión`,
+  };
+}
+
+// ─── Helper: enforcement de target_account_id para navi_agencia (R55) ────────
+//
+// Usado por handlers que no trabajan con cuentas sociales directamente
+// (canva_generar_diseno, proponer_calendario_editorial, programar_publicacion,
+// publicar_ahora, consultar_metricas_post) para lanzar MISSING_TARGET_ACCOUNT
+// cuando el agente es navi_agencia pero no provee target_account_id.
+
+async function requireTargetForAgencia(
+  sb:             SupabaseClient,
+  agentId:        string,
+  targetAccountId: string | undefined,
+): Promise<void> {
+  if (targetAccountId) return; // Si se provee, no hay nada que verificar aquí
+
+  const { data: agentRow } = await sb
+    .from('voice_agents')
+    .select('role')
+    .eq('id', agentId)
+    .single();
+
+  const role = (agentRow?.role as string | null) ?? '';
+  if (role === 'navi_agencia') {
+    throw new NaviToolError(
+      'MISSING_TARGET_ACCOUNT',
+      'Para la variante Agencia es obligatorio especificar target_account_id.',
+    );
   }
 }
 
@@ -291,6 +507,9 @@ async function handleCanvaGenerarDiseno(
   portalEmail: string,
   sb:          SupabaseClient,
 ): Promise<unknown> {
+  // Enforcement de target_account_id para navi_agencia (R55)
+  await requireTargetForAgencia(sb, agentId, input.target_account_id as string | undefined);
+
   const canva      = await resolveCanvaClient(sb, agentId, portalEmail);
   const templateId = input.template_id as string;
   const dataFields = (input.data_fields as Record<string, unknown>) ?? {};
@@ -501,6 +720,9 @@ async function handleProgramarPublicacion(
   portalEmail: string,
   sb:          SupabaseClient,
 ): Promise<unknown> {
+  // Enforcement de target_account_id para navi_agencia (R55)
+  await requireTargetForAgencia(sb, agentId, input.target_account_id as string | undefined);
+
   const draftId     = input.draft_id as string;
   const scheduledFor = input.scheduled_for as string;
 
@@ -546,6 +768,9 @@ async function handlePublicarAhora(
   portalEmail: string,
   sb:          SupabaseClient,
 ): Promise<unknown> {
+  // Enforcement de target_account_id para navi_agencia (R55)
+  await requireTargetForAgencia(sb, agentId, input.target_account_id as string | undefined);
+
   const draftId = input.draft_id as string;
   if (!draftId) throw new NaviToolError('MISSING_DRAFT_ID', 'Se requiere draft_id.');
 
@@ -714,6 +939,9 @@ async function handleConsultarMetricasPost(
   const contentDraftId  = input.content_draft_id as string;
   const targetAccountId = input.target_account_id as string | undefined;
 
+  // Enforcement de target_account_id para navi_agencia (R55)
+  await requireTargetForAgencia(sb, agentId, targetAccountId);
+
   if (!contentDraftId) throw new NaviToolError('MISSING_DRAFT_ID', 'Se requiere content_draft_id.');
 
   // Verificar ownership del draft
@@ -787,8 +1015,11 @@ async function handleProponerCalendarioEditorial(
   input:       Record<string, unknown>,
   agentId:     string,
   portalEmail: string,
-  _sb:         SupabaseClient,
+  sb:          SupabaseClient,
 ): Promise<unknown> {
+  // Enforcement de target_account_id para navi_agencia (R55)
+  await requireTargetForAgencia(sb, agentId, input.target_account_id as string | undefined);
+
   const month       = (input.month as string | undefined) ?? new Date().toISOString().slice(0, 7);
   const postsPerWeek = Number(input.posts_per_week ?? 3);
   const themes      = (input.themes as string[] | undefined) ?? [];

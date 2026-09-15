@@ -106,7 +106,7 @@ vi.mock('@/lib/social/sentiment', () => ({
 
 // ─── Importar bajo prueba ────────────────────────────────────────────────────
 
-import { runNaviTool, NAVI_STANDARD_TOOLS, NaviToolError } from '../navi';
+import { runNaviTool, NAVI_STANDARD_TOOLS, NAVI_AGENCIA_TOOLS, NaviToolError } from '../navi';
 
 // ─── Helpers de mock ──────────────────────────────────────────────────────────
 
@@ -254,20 +254,14 @@ describe('NAVI_STANDARD_TOOLS', () => {
 // ─── Tests: delegador principal (runNaviTool) ─────────────────────────────────
 
 describe('runNaviTool — delegador', () => {
-  it('lanza TASK9_NOT_IMPLEMENTED para listar_cuentas_gestionadas', async () => {
-    const { from, enqueue } = makeQueuedSb();
-    enqueue({ data: makeAgentRow() });
-    const ctx = makeCtx({ from });
-    await expect(runNaviTool('listar_cuentas_gestionadas', {}, ctx))
-      .rejects.toThrow('TASK9_NOT_IMPLEMENTED');
+  it('listar_cuentas_gestionadas ahora está en NAVI_AGENCIA_TOOLS (Task 9)', () => {
+    expect(NAVI_AGENCIA_TOOLS.has('listar_cuentas_gestionadas')).toBe(true);
+    expect(NAVI_STANDARD_TOOLS.has('listar_cuentas_gestionadas')).toBe(false);
   });
 
-  it('lanza TASK9_NOT_IMPLEMENTED para replicar_contenido_entre_cuentas', async () => {
-    const { from, enqueue } = makeQueuedSb();
-    enqueue({ data: makeAgentRow() });
-    const ctx = makeCtx({ from });
-    await expect(runNaviTool('replicar_contenido_entre_cuentas', {}, ctx))
-      .rejects.toThrow('TASK9_NOT_IMPLEMENTED');
+  it('replicar_contenido_entre_cuentas ahora está en NAVI_AGENCIA_TOOLS (Task 9)', () => {
+    expect(NAVI_AGENCIA_TOOLS.has('replicar_contenido_entre_cuentas')).toBe(true);
+    expect(NAVI_STANDARD_TOOLS.has('replicar_contenido_entre_cuentas')).toBe(false);
   });
 
   it('lanza UNKNOWN_NAVI_TOOL para herramientas desconocidas', async () => {
@@ -313,6 +307,9 @@ describe('canva_listar_plantillas', () => {
 describe('canva_generar_diseno', () => {
   it('(happy) retorna designId y previewUrl', async () => {
     const { from, enqueue } = makeQueuedSb();
+    // requireTargetForAgencia: voice_agents (role='navi', no lanza)
+    enqueue({ data: makeAgentRow('navi') });
+    // resolveCanvaClient: integration_accounts
     enqueue({ data: { access_token: 'canva-tok' } });
     const result = await runNaviTool('canva_generar_diseno', { template_id: TEMPLATE_ID, data_fields: { titulo: 'Oferta' } }, makeCtx({ from })) as Record<string, unknown>;
     expect(result.ok).toBe(true);
@@ -322,6 +319,9 @@ describe('canva_generar_diseno', () => {
 
   it('(error) CANVA_NOT_CONNECTED si no hay token', async () => {
     const { from, enqueue } = makeQueuedSb();
+    // requireTargetForAgencia: voice_agents (role='navi', no lanza)
+    enqueue({ data: makeAgentRow('navi') });
+    // resolveCanvaClient: integration_accounts (null → CANVA_NOT_CONNECTED)
     enqueue({ data: null });
     await expect(runNaviTool('canva_generar_diseno', { template_id: TEMPLATE_ID }, makeCtx({ from })))
       .rejects.toThrow('CANVA_NOT_CONNECTED');
@@ -329,6 +329,9 @@ describe('canva_generar_diseno', () => {
 
   it('(edge) MISSING_TEMPLATE_ID si no se provee template_id', async () => {
     const { from, enqueue } = makeQueuedSb();
+    // requireTargetForAgencia: voice_agents (role='navi', no lanza)
+    enqueue({ data: makeAgentRow('navi') });
+    // resolveCanvaClient: integration_accounts
     enqueue({ data: { access_token: 'tok' } });
     await expect(runNaviTool('canva_generar_diseno', {}, makeCtx({ from })))
       .rejects.toThrow('MISSING_TEMPLATE_ID');
@@ -508,6 +511,8 @@ describe('crear_borrador_post', () => {
 describe('programar_publicacion', () => {
   it('(happy) borrador approved → status=scheduled', async () => {
     const { from, enqueue } = makeQueuedSb();
+    // requireTargetForAgencia: voice_agents (role='navi', no lanza)
+    enqueue({ data: makeAgentRow('navi') });
     // Borrador aprobado
     enqueue({ data: makeDraft({ status: 'approved' }) });
     // Update resultado
@@ -524,6 +529,8 @@ describe('programar_publicacion', () => {
 
   it('(error) borrador en estado pending_approval → INVALID_STATUS', async () => {
     const { from, enqueue } = makeQueuedSb();
+    // requireTargetForAgencia: voice_agents (role='navi', no lanza)
+    enqueue({ data: makeAgentRow('navi') });
     enqueue({ data: makeDraft({ status: 'pending_approval' }) });
 
     await expect(runNaviTool('programar_publicacion', {
@@ -744,6 +751,8 @@ describe('ig_responder_dm', () => {
 describe('consultar_metricas_post', () => {
   it('(a) snapshot reciente → retorna desde cache', async () => {
     const { from, enqueue } = makeQueuedSb();
+    // requireTargetForAgencia: voice_agents (role='navi', no lanza)
+    enqueue({ data: makeAgentRow('navi') });
     // Draft fetch
     enqueue({ data: makeDraft({ status: 'published', published_media_id: 'ig-media-001' }) });
     // social_metrics con snapshot reciente (hace 1h)
@@ -761,6 +770,7 @@ describe('consultar_metricas_post', () => {
 
   it('(b) snapshot añejo (> 24h) → refresca vía MetaPublisher', async () => {
     const { from, enqueue } = makeQueuedSb();
+    // requireTargetForAgencia: target_account_id se provee, no hay query de voice_agents aquí
     // 1. Draft fetch
     enqueue({ data: makeDraft({ status: 'published', published_media_id: 'ig-media-001', social_account_id: SOCIAL_ACC_ID }) });
     // 2. social_metrics: snapshot añejo (hace 25h)
@@ -785,6 +795,8 @@ describe('consultar_metricas_post', () => {
 
   it('(c) draft no publicado → NOT_PUBLISHED', async () => {
     const { from, enqueue } = makeQueuedSb();
+    // requireTargetForAgencia: voice_agents (role='navi', no lanza)
+    enqueue({ data: makeAgentRow('navi') });
     enqueue({ data: makeDraft({ status: 'approved' }) });
 
     await expect(runNaviTool('consultar_metricas_post', { content_draft_id: DRAFT_ID }, makeCtx({ from })))
@@ -793,6 +805,8 @@ describe('consultar_metricas_post', () => {
 
   it('(d) draft de otra org → DRAFT_NOT_OWNED', async () => {
     const { from, enqueue } = makeQueuedSb();
+    // requireTargetForAgencia: voice_agents (role='navi', no lanza)
+    enqueue({ data: makeAgentRow('navi') });
     enqueue({ data: makeDraft({ portal_email: OTHER_EMAIL }) });
 
     await expect(runNaviTool('consultar_metricas_post', { content_draft_id: DRAFT_ID }, makeCtx({ from })))
@@ -942,6 +956,9 @@ describe('consumeAiOp — consumo correcto de ops', () => {
   it('canva_generar_diseno: ops=2, llama consumeAiOp con count=2', async () => {
     const { consumeAiOp } = await import('@/lib/ai/ops-guard');
     const { from, enqueue } = makeQueuedSb();
+    // requireTargetForAgencia: voice_agents (role='navi', no lanza)
+    enqueue({ data: makeAgentRow('navi') });
+    // resolveCanvaClient: integration_accounts
     enqueue({ data: { access_token: 'tok' } });
     await runNaviTool('canva_generar_diseno', { template_id: TEMPLATE_ID }, makeCtx({ from }));
     expect(consumeAiOp).toHaveBeenCalledWith(AGENT_ID, 2, expect.objectContaining({ source: 'navi_tool:canva_generar_diseno' }));
