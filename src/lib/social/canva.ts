@@ -10,24 +10,38 @@
 //
 // Async jobs (autofill, export): polls until status = 'success' | 'failed'.
 //
+// preview_url cache: in-memory Map, TTL 24h, keyed by templateId+dataFields.
+//
+// Static OAuth methods: exchangeCodeForToken / refreshToken do NOT need an instance
+// (they use clientId/clientSecret from env, not the per-user access token).
+//
 // Env vars:
 //   CANVA_CLIENT_ID     — OAuth client ID from Canva Developer Portal
 //   CANVA_CLIENT_SECRET — OAuth client secret from Canva Developer Portal
 
 const CANVA_API_BASE = 'https://api.canva.com/rest/v1';
+// Verified against https://www.canva.dev/docs/connect/api-reference/authentication/generate-access-token/
 const CANVA_TOKEN_URL = 'https://api.canva.com/rest/v1/oauth/token';
 
 const MAX_RETRIES = 5;
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-export interface CanvaProviderOptions {
-  clientId?: string;
-  clientSecret?: string;
-  /** Override poll interval in ms (used in tests). Default: 2000. */
-  pollIntervalMs?: number;
-  /** Base retry delay in ms before exponential backoff (used in tests). Default: 1000. */
-  retryDelayMs?: number;
+export type BrandTemplateCategory = 'post' | 'reel' | 'story' | 'carousel';
+
+export interface BrandTemplate {
+  id: string;
+  title: string;
+  viewUrl: string;
+  previewUrl: string;
+}
+
+export interface Design {
+  id: string;
+  title: string;
+  url: string;
+  previewUrl: string;
 }
 
 export interface CanvaTokenResult {
@@ -35,13 +49,6 @@ export interface CanvaTokenResult {
   refreshToken: string;
   expiresIn: number;
   scope: string;
-}
-
-export interface CanvaBrandTemplate {
-  id: string;
-  title: string;
-  viewUrl: string;
-  previewUrl: string;
 }
 
 export type CanvaDataFieldType = 'text' | 'image';
@@ -55,26 +62,24 @@ export interface CanvaDataField {
   asset_id?: string;
 }
 
-export interface CanvaAutofillResult {
-  designId: string;
-  previewUrl: string;
-}
-
 export type CanvaExportFormat = 'png' | 'jpg' | 'mp4' | 'pdf';
 
 export interface CanvaExportResult {
   url: string;
-}
-
-export interface CanvaDesign {
-  id: string;
-  title: string;
-  url: string;
-  previewUrl: string;
+  expiresAt: Date;
 }
 
 export interface CanvaUploadAssetResult {
   assetId: string;
+  url: string;
+}
+
+// ─── Internal cache entry ────────────────────────────────────────────────────
+
+interface CacheEntry {
+  designId: string;
+  previewUrl: string;
+  expiresAt: number; // Date.now() ms
 }
 
 // ─── Error class ────────────────────────────────────────────────────────────
@@ -107,78 +112,84 @@ function parseRetryAfterMs(retryAfterHeader: string | null): number | null {
 // ─── CanvaProvider class ─────────────────────────────────────────────────────
 
 export class CanvaProvider {
-  // Declared without `private` so Node's strip-only TS mode can handle the file.
-  // These fields are intentionally not mutated after construction.
-  clientId: string;
-  clientSecret: string;
-  pollIntervalMs: number;
-  retryDelayMs: number;
+  // Node strip-only TS mode cannot handle `constructor(private token: string)` shorthand.
+  // Use the explicit class-body declaration + constructor assignment form instead.
+  private token: string;
+  private pollIntervalMs: number;
+  private retryDelayMs: number;
 
-  constructor(opts: CanvaProviderOptions = {}) {
-    this.clientId = opts.clientId ?? process.env.CANVA_CLIENT_ID ?? '';
-    this.clientSecret = opts.clientSecret ?? process.env.CANVA_CLIENT_SECRET ?? '';
+  // In-memory cache for autofill preview_url results. Key: templateId+JSON(dataFields).
+  // TTL: 24h (same as export URL lifetime per Canva docs).
+  private autofillCache: Map<string, CacheEntry>;
+
+  constructor(token: string, opts: { pollIntervalMs?: number; retryDelayMs?: number } = {}) {
+    this.token = token;
     this.pollIntervalMs = opts.pollIntervalMs ?? 2000;
     this.retryDelayMs = opts.retryDelayMs ?? 1000;
+    this.autofillCache = new Map();
   }
 
-  // ─── OAuth token exchange ──────────────────────────────────────────────────
+  // ─── Static OAuth methods ──────────────────────────────────────────────────
 
   /**
    * Exchanges an authorization_code from the Canva OAuth callback for
-   * access + refresh tokens.
+   * access + refresh tokens. Static — no instance/token needed.
    */
-  async exchangeToken(opts: {
-    code: string;
-    redirectUri: string;
-  }): Promise<CanvaTokenResult> {
+  static async exchangeCodeForToken(
+    code: string,
+    redirectUri: string,
+  ): Promise<{ accessToken: string; refreshToken: string; expiresIn: number }> {
+    const clientId = process.env.CANVA_CLIENT_ID ?? '';
+    const clientSecret = process.env.CANVA_CLIENT_SECRET ?? '';
+
     const body = new URLSearchParams({
       grant_type: 'authorization_code',
-      code: opts.code,
-      redirect_uri: opts.redirectUri,
-      client_id: this.clientId,
-      client_secret: this.clientSecret,
+      code,
+      redirect_uri: redirectUri,
+      client_id: clientId,
+      client_secret: clientSecret,
     });
 
-    const res = await this.withRetry(() =>
-      fetch(CANVA_TOKEN_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: body.toString(),
-      }),
-    );
+    const res = await fetch(CANVA_TOKEN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
+    });
 
     const json = await res.json() as Record<string, unknown>;
-    return this.parseTokenResponse(json, res.status);
+    return CanvaProvider.parseTokenResponse(json, res.status);
   }
 
   /**
-   * Uses a refresh_token to obtain a new access_token (and potentially
-   * a new refresh_token).
+   * Uses a refresh_token to obtain a new access_token. Static — no instance needed.
    */
-  async refreshAccessToken(refreshToken: string): Promise<CanvaTokenResult> {
+  static async refreshToken(
+    refreshToken: string,
+  ): Promise<{ accessToken: string; refreshToken: string; expiresIn: number }> {
+    const clientId = process.env.CANVA_CLIENT_ID ?? '';
+    const clientSecret = process.env.CANVA_CLIENT_SECRET ?? '';
+
     const body = new URLSearchParams({
       grant_type: 'refresh_token',
       refresh_token: refreshToken,
-      client_id: this.clientId,
-      client_secret: this.clientSecret,
+      client_id: clientId,
+      client_secret: clientSecret,
     });
 
-    const res = await this.withRetry(() =>
-      fetch(CANVA_TOKEN_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: body.toString(),
-      }),
-    );
+    const res = await fetch(CANVA_TOKEN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
+    });
 
     const json = await res.json() as Record<string, unknown>;
-    return this.parseTokenResponse(json, res.status);
+    return CanvaProvider.parseTokenResponse(json, res.status);
   }
 
-  private parseTokenResponse(
+  private static parseTokenResponse(
     json: Record<string, unknown>,
     status: number,
-  ): CanvaTokenResult {
+  ): { accessToken: string; refreshToken: string; expiresIn: number } {
     if (status >= 400) {
       const code = String(json.code ?? json.error ?? 'TOKEN_ERROR');
       const msg = String(json.message ?? json.error_description ?? 'Token request failed');
@@ -188,7 +199,6 @@ export class CanvaProvider {
       accessToken: String(json.access_token ?? ''),
       refreshToken: String(json.refresh_token ?? ''),
       expiresIn: Number(json.expires_in ?? 3600),
-      scope: String(json.scope ?? ''),
     };
   }
 
@@ -196,18 +206,22 @@ export class CanvaProvider {
 
   /**
    * Lists all brand templates accessible to the user.
-   * Returns a flat array (handles pagination internally if needed in future).
+   * Optional category filter appends ?dataset=<category> to the request.
    */
-  async listBrandTemplates(accessToken: string): Promise<CanvaBrandTemplate[]> {
-    const res = await this.apiGet(accessToken, '/brand-templates');
+  async listBrandTemplates(category?: BrandTemplateCategory): Promise<BrandTemplate[]> {
+    const path = category
+      ? `/brand-templates?dataset=${encodeURIComponent(category)}`
+      : '/brand-templates';
+
+    const res = await this.apiGet(path);
     const json = await res.json() as Record<string, unknown>;
     this.assertOk(json, res.status);
 
     const items = Array.isArray(json.items) ? (json.items as Record<string, unknown>[]) : [];
-    return items.map(this.parseBrandTemplate);
+    return items.map(item => this.parseBrandTemplate(item));
   }
 
-  parseBrandTemplate = (item: Record<string, unknown>): CanvaBrandTemplate => {
+  private parseBrandTemplate(item: Record<string, unknown>): BrandTemplate {
     const thumbnail = (item.thumbnail ?? {}) as Record<string, unknown>;
     return {
       id: String(item.id ?? ''),
@@ -215,24 +229,29 @@ export class CanvaProvider {
       viewUrl: String(item.view_url ?? ''),
       previewUrl: String(thumbnail.url ?? ''),
     };
-  };
+  }
 
   // ─── Autofill ─────────────────────────────────────────────────────────────
 
   /**
    * Fills a brand template with data fields, then polls until the async
-   * autofill job completes.
-   * Returns the new designId and its preview URL.
+   * autofill job completes. Returns the new designId and its preview URL.
+   * Results are cached in-memory for 24h (keyed by templateId + dataFields).
    */
   async autofillTemplate(
-    accessToken: string,
     templateId: string,
-    dataFields: CanvaDataField[],
-  ): Promise<CanvaAutofillResult> {
+    dataFields: Record<string, unknown>,
+  ): Promise<{ designId: string; previewUrl: string }> {
+    // Check cache first
+    const cacheKey = `${templateId}:${JSON.stringify(dataFields)}`;
+    const cached = this.autofillCache.get(cacheKey);
+    if (cached && Date.now() < cached.expiresAt) {
+      return { designId: cached.designId, previewUrl: cached.previewUrl };
+    }
+
     // POST to create the autofill job
     const body = { data: dataFields };
     const res = await this.apiPost(
-      accessToken,
       `/brand-templates/${encodeURIComponent(templateId)}/autofill`,
       body,
     );
@@ -240,22 +259,27 @@ export class CanvaProvider {
     this.assertOk(initial, res.status);
 
     const jobId = this.extractJobId(initial);
+    const result = await this.pollAutofillJob(jobId);
 
-    // Poll until success or failure
-    return this.pollAutofillJob(accessToken, jobId);
+    // Store in cache
+    this.autofillCache.set(cacheKey, {
+      designId: result.designId,
+      previewUrl: result.previewUrl,
+      expiresAt: Date.now() + CACHE_TTL_MS,
+    });
+
+    return result;
   }
 
   private async pollAutofillJob(
-    accessToken: string,
     jobId: string,
-  ): Promise<CanvaAutofillResult> {
+  ): Promise<{ designId: string; previewUrl: string }> {
     for (;;) {
       if (this.pollIntervalMs > 0) {
         await sleep(this.pollIntervalMs);
       }
 
       const res = await this.apiGet(
-        accessToken,
         `/brand-templates/autofill/${encodeURIComponent(jobId)}`,
       );
       const json = await res.json() as Record<string, unknown>;
@@ -286,9 +310,8 @@ export class CanvaProvider {
   /**
    * Fetches metadata for a single design by ID.
    */
-  async getDesign(accessToken: string, designId: string): Promise<CanvaDesign> {
+  async getDesign(designId: string): Promise<Design> {
     const res = await this.apiGet(
-      accessToken,
       `/designs/${encodeURIComponent(designId)}`,
     );
     const json = await res.json() as Record<string, unknown>;
@@ -308,10 +331,9 @@ export class CanvaProvider {
 
   /**
    * Creates an export job for a design, polls until complete, and returns
-   * the export URL.
+   * the export URL plus its expiry (Canva export URLs expire after 24h).
    */
   async exportDesign(
-    accessToken: string,
     designId: string,
     format: CanvaExportFormat,
   ): Promise<CanvaExportResult> {
@@ -320,16 +342,15 @@ export class CanvaProvider {
       format: format.toUpperCase(),
     };
 
-    const res = await this.apiPost(accessToken, '/exports', body);
+    const res = await this.apiPost('/exports', body);
     const initial = await res.json() as Record<string, unknown>;
     this.assertOk(initial, res.status);
 
     const jobId = this.extractJobId(initial);
-    return this.pollExportJob(accessToken, jobId);
+    return this.pollExportJob(jobId);
   }
 
   private async pollExportJob(
-    accessToken: string,
     jobId: string,
   ): Promise<CanvaExportResult> {
     for (;;) {
@@ -338,7 +359,6 @@ export class CanvaProvider {
       }
 
       const res = await this.apiGet(
-        accessToken,
         `/exports/${encodeURIComponent(jobId)}`,
       );
       const json = await res.json() as Record<string, unknown>;
@@ -354,7 +374,11 @@ export class CanvaProvider {
       if (status === 'success') {
         const result = (job.result ?? {}) as Record<string, unknown>;
         const urls = Array.isArray(result.urls) ? result.urls : [];
-        return { url: String(urls[0] ?? '') };
+        return {
+          url: String(urls[0] ?? ''),
+          // Canva export URLs expire 24h after creation (per Canva Connect docs)
+          expiresAt: new Date(Date.now() + CACHE_TTL_MS),
+        };
       }
       // status === 'in_progress' — keep polling
     }
@@ -364,10 +388,9 @@ export class CanvaProvider {
 
   /**
    * Uploads a file buffer as a Canva asset (image, video, etc.).
-   * Returns the assetId, which can then be used as a data field in autofill.
+   * Returns the assetId (for use in autofill data fields) and the CDN thumbnail URL.
    */
   async uploadAsset(
-    accessToken: string,
     fileBuffer: Buffer,
     mimeType: string,
     name: string = 'upload',
@@ -376,7 +399,7 @@ export class CanvaProvider {
       fetch(`${CANVA_API_BASE}/assets`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${this.token}`,
           'Content-Type': mimeType,
           'Asset-Name': encodeURIComponent(name),
         },
@@ -388,17 +411,22 @@ export class CanvaProvider {
     this.assertOk(json, res.status);
 
     const asset = (json.asset ?? {}) as Record<string, unknown>;
-    return { assetId: String(asset.id ?? '') };
+    const thumbnail = (asset.thumbnail ?? {}) as Record<string, unknown>;
+    return {
+      assetId: String(asset.id ?? ''),
+      // CDN thumbnail URL returned by Canva after upload
+      url: String(thumbnail.url ?? String(asset.url ?? '')),
+    };
   }
 
   // ─── HTTP helpers ─────────────────────────────────────────────────────────
 
-  private async apiGet(accessToken: string, path: string): Promise<Response> {
+  private async apiGet(path: string): Promise<Response> {
     return this.withRetry(() =>
       fetch(`${CANVA_API_BASE}${path}`, {
         method: 'GET',
         headers: {
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${this.token}`,
           Accept: 'application/json',
         },
       }),
@@ -406,7 +434,6 @@ export class CanvaProvider {
   }
 
   private async apiPost(
-    accessToken: string,
     path: string,
     body: unknown,
   ): Promise<Response> {
@@ -414,7 +441,7 @@ export class CanvaProvider {
       fetch(`${CANVA_API_BASE}${path}`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${this.token}`,
           'Content-Type': 'application/json',
           Accept: 'application/json',
         },
@@ -478,8 +505,9 @@ export class CanvaProvider {
 
   /**
    * Constructs the Canva OAuth authorization URL to redirect the user to.
+   * clientId is read from CANVA_CLIENT_ID env var.
    */
-  buildAuthorizationUrl(opts: {
+  static buildAuthorizationUrl(opts: {
     redirectUri: string;
     state: string;
     codeChallenge?: string;
@@ -495,7 +523,7 @@ export class CanvaProvider {
 
     const params = new URLSearchParams({
       response_type: 'code',
-      client_id: this.clientId,
+      client_id: process.env.CANVA_CLIENT_ID ?? '',
       redirect_uri: opts.redirectUri,
       scope: scopes,
       state: opts.state,
@@ -508,14 +536,4 @@ export class CanvaProvider {
 
     return `https://www.canva.com/api/oauth/authorize?${params.toString()}`;
   }
-}
-
-// Singleton for use in production routes (reads from env vars).
-// Lazy so it doesn't throw at module load if env vars are missing.
-let _canvaProvider: CanvaProvider | null = null;
-export function getCanvaProvider(): CanvaProvider {
-  if (!_canvaProvider) {
-    _canvaProvider = new CanvaProvider();
-  }
-  return _canvaProvider;
 }
