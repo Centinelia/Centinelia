@@ -201,6 +201,12 @@ async function executeAgentToolInner(
     if (!policy.allowed) return { ok: false, error: policy.message };
   }
 
+  // ── Navi standard tools (Task 8) ─────────────────────────────────────────
+  const { NAVI_STANDARD_TOOLS, runNaviTool } = await import('./executors/navi');
+  if (NAVI_STANDARD_TOOLS.has(toolName)) {
+    return runNaviTool(toolName, toolInput, { agentId, portalEmail, supabase });
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
   // read_url
   // ─────────────────────────────────────────────────────────────────────────
