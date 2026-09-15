@@ -5,6 +5,7 @@ import { getPrimaryAgentFromToken }     from '@/lib/portal/org-token';
 import { notFound, redirect }           from 'next/navigation';
 import { cookies }                      from 'next/headers';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { socialPublishingEnabled }      from '@/lib/feature-flags/social-publishing';
 import { ThemeProvider }                from '@/components/ThemeProvider';
 
 import OficinaSidebarV2                 from './OficinaSidebarV2';
@@ -51,15 +52,19 @@ export default async function OficinaLayout({
   const [poolStatus, { data: orgMeta }] = await Promise.all([
     loadPoolStatus(supabase, lookupEmail, agent as any),
     lookupEmail
-      ? supabase.from('organizations').select('logo_url, invoicing_provider').eq('portal_email', lookupEmail).maybeSingle()
+      ? supabase.from('organizations').select('logo_url, invoicing_provider, features').eq('portal_email', lookupEmail).maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
   const { minutesIncluded, minutesUsed, minutesRemain, aiOpsUsed, aiOpsLimit } = poolStatus;
   const orgLogoUrl   = (orgMeta?.logo_url as string | null) ?? null;
-  const hasStripe    = !!(agent as any).stripe_customer_id;
-  const hasInvoicing = !!(orgMeta as any)?.invoicing_provider;
-  const vertical     = ((agent as any).features as any)?.vertical as string | undefined;
-  const modules      = session?.isSubUser ? (session.modules ?? []) : undefined;
+  const hasStripe          = !!(agent as any).stripe_customer_id;
+  const hasInvoicing       = !!(orgMeta as any)?.invoicing_provider;
+  const vertical           = ((agent as any).features as any)?.vertical as string | undefined;
+  const modules            = session?.isSubUser ? (session.modules ?? []) : undefined;
+
+  // Feature flag para Navi / gestor de redes sociales (R78).
+  // La columna organizations.features viene en orgMeta (ya cargado arriba).
+  const hasSocialPublishing = socialPublishingEnabled((orgMeta as any)?.features);
 
   // Business switcher options
   const { data: clientAgents } = lookupEmail
@@ -193,6 +198,7 @@ export default async function OficinaLayout({
             vertical={vertical}
             modules={modules}
             hasInvoicing={hasInvoicing}
+            hasSocialPublishing={hasSocialPublishing}
           />
           <main className="flex-1 min-w-0 flex flex-col">
             <div className="px-4 sm:px-6 py-6 flex-1">

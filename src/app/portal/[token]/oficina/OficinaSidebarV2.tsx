@@ -20,7 +20,7 @@ import {
   ArrowLeft, Search, CreditCard, FolderOpen,
   ClipboardList, Gavel, Headphones, PieChart, Brain,
   ChevronDown, ChevronRight, Phone, PhoneOutgoing, LayoutTemplate, CalendarClock,
-  Inbox, FileSignature, Receipt, Megaphone, Users, BookOpen, Package,
+  Inbox, FileSignature, Receipt, Megaphone, Users, BookOpen, Package, Share2,
 } from 'lucide-react';
 
 interface NavItem {
@@ -41,6 +41,9 @@ interface NavItem {
   // Feature gate: si true, solo aparece cuando la org tiene invoicing_provider
   // configurado (pack ciclo_oc_cfdi requiere PAC conectado). Ver Expedientes OC.
   requiresInvoicing?: boolean;
+  // Feature gate: si true, solo aparece cuando social_publishing está habilitado
+  // en organizations.features. Pasado por el layout como prop `hasSocialPublishing`.
+  requiresSocialPublishing?: boolean;
 }
 
 interface NavSection { group: string; items: NavItem[]; }
@@ -107,19 +110,36 @@ const NAV_SECTIONS: NavSection[] = [
       // empleado. Ver /portal/[token]?tab=negocio#integraciones.
     ],
   },
+  {
+    group: 'REDES',
+    items: [
+      // Visible solo si organizations.features.social_publishing.enabled === true (R78, R75).
+      // El layout pasa hasSocialPublishing al sidebar para evitar un fetch adicional.
+      {
+        href:                    '/redes',
+        moduleId:                'of_redes',
+        label:                   'Redes sociales',
+        icon:                    Share2,
+        badgeKey:                '',
+        requiresSocialPublishing: true,
+      },
+    ],
+  },
 ];
 
 interface Props {
-  token:            string;
-  badges?:          Record<string, number>;
-  minutesRemain?:   number;
-  minutesIncluded?: number;
-  aiOpsUsed?:       number;
-  aiOpsLimit?:      number;
-  hasStripe?:       boolean;
-  vertical?:        string;
-  modules?:         string[];
-  hasInvoicing?:    boolean;
+  token:                 string;
+  badges?:               Record<string, number>;
+  minutesRemain?:        number;
+  minutesIncluded?:      number;
+  aiOpsUsed?:            number;
+  aiOpsLimit?:           number;
+  hasStripe?:            boolean;
+  vertical?:             string;
+  modules?:              string[];
+  hasInvoicing?:         boolean;
+  /** true cuando organizations.features.social_publishing.enabled === true */
+  hasSocialPublishing?:  boolean;
 }
 
 // Barra de uso — colores contra fondo dark
@@ -132,7 +152,7 @@ function uColorDark(pct: number): string {
 export default function OficinaSidebarV2({
   token, badges = {}, minutesRemain = 0, minutesIncluded = 0,
   aiOpsUsed = 0, aiOpsLimit = 0, hasStripe = false, vertical, modules,
-  hasInvoicing = false,
+  hasInvoicing = false, hasSocialPublishing = false,
 }: Props) {
   const pathname = usePathname();
   const base     = `/portal/${token}/oficina`;
@@ -141,6 +161,7 @@ export default function OficinaSidebarV2({
     s.items
       .filter(i => !i.vertical || i.vertical === vertical)
       .filter(i => !i.requiresInvoicing || hasInvoicing)
+      .filter(i => !i.requiresSocialPublishing || hasSocialPublishing)
       .filter(i => !modules || modules.includes(i.moduleId) || (i.moduleIdOr && modules.includes(i.moduleIdOr)))
       .some(i => (i.href === ''
         ? pathname === base || pathname === `${base}/`
@@ -186,6 +207,7 @@ export default function OficinaSidebarV2({
           const visibleItems = section.items
             .filter(item => !item.vertical || item.vertical === vertical)
             .filter(item => !item.requiresInvoicing || hasInvoicing)
+            .filter(item => !item.requiresSocialPublishing || hasSocialPublishing)
             .filter(item => !modules || modules.includes(item.moduleId) || (item.moduleIdOr && modules.includes(item.moduleIdOr)));
           if (visibleItems.length === 0) return null;
 
