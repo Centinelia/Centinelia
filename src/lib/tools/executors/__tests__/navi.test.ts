@@ -456,8 +456,10 @@ describe('crear_borrador_post', () => {
     enqueue({ data: makeAgentRow('navi') });
     enqueue({ data: { id: SOCIAL_ACC_ID } });
     enqueue({ data: makeSocialAccount() });
-    // slot con auto_publish
-    enqueue({ data: { auto_publish: true, portal_email: TEST_EMAIL, agent_id: AGENT_ID } });
+    // slot (ahora solo devuelve auto_publish y calendar_id — portal_email/agent_id no existen en la tabla)
+    enqueue({ data: { auto_publish: true, calendar_id: 'cal-uuid-001' } });
+    // calendar padre (verificación de ownership via portal_email)
+    enqueue({ data: { portal_email: TEST_EMAIL } });
     enqueue({ data: { ...makeDraft(), status: 'approved', auto_publish: true } });
 
     const result = await runNaviTool('crear_borrador_post', {

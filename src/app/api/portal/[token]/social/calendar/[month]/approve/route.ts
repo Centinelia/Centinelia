@@ -52,7 +52,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       status:      'approved',
       approved_by: session.portalEmail,
       approved_at: now,
-      updated_at:  now,
+      // updated_at no existe en editorial_calendars — omitido intencionalmente
     })
     .eq('id', calendar.id)
     .eq('portal_email', resolved.portalEmail)

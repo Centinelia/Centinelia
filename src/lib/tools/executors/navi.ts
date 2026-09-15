@@ -645,18 +645,31 @@ async function handleCrearBorradorPost(
   });
 
   // Verificar slot si se proporcionó
+  // Ownership se verifica a través del editorial_calendar padre (que sí tiene portal_email).
+  // editorial_calendar_slots no tiene portal_email ni agent_id por diseño de esquema.
   let autoPublish = false;
   if (slotId) {
     const { data: slot } = await sb
       .from('editorial_calendar_slots')
-      .select('auto_publish, portal_email, agent_id')
+      .select('auto_publish, calendar_id')
       .eq('id', slotId)
       .single();
 
-    // Validar ownership del slot
-    if (!slot || slot.portal_email !== portalEmail || slot.agent_id !== agentId) {
-      throw new NaviToolError('SLOT_NOT_OWNED', 'El slot del calendario no pertenece a este agente.');
+    if (!slot) {
+      throw new NaviToolError('SLOT_NOT_OWNED', 'El slot del calendario no existe.');
     }
+
+    // Verificar ownership a través del calendario padre
+    const { data: calendar } = await sb
+      .from('editorial_calendars')
+      .select('portal_email')
+      .eq('id', slot.calendar_id)
+      .single();
+
+    if (!calendar || calendar.portal_email !== portalEmail) {
+      throw new NaviToolError('SLOT_NOT_OWNED', 'El slot del calendario no pertenece a este portal.');
+    }
+
     autoPublish = !!slot.auto_publish;
   }
 
@@ -992,10 +1005,10 @@ async function handleConsultarMetricasPost(
   const fresh = await publisher.fetchMetrics(mediaId);
 
   // Persistir snapshot
+  // Nota: social_metrics no tiene agent_id ni portal_email; snapshot_type es requerido.
   await sb.from('social_metrics').insert({
     content_draft_id: contentDraftId,
-    agent_id:         agentId,
-    portal_email:     portalEmail,
+    snapshot_type:    '24h' as const,
     impressions:      fresh.impressions ?? 0,
     reach:            fresh.reach ?? 0,
     likes:            fresh.likes ?? 0,
