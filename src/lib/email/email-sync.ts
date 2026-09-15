@@ -4,6 +4,7 @@ import { getConnector, type IntegrationRow } from '@/lib/connectors';
 import { quickClassifyEmail } from '@/lib/ops/email-quick-classify';
 import { EMAIL_BODY_TRUNCATE_CHARS } from '@/lib/constants';
 import { processIncomingAttachments } from '@/lib/email/attachment-reader';
+import { ingestNaviMediaFromEmail } from '@/lib/social/media-ingestion';
 import type { EmailConnector } from '@/lib/connectors/types';
 
 /**
@@ -224,6 +225,33 @@ async function syncIntegration(integration: EmailIntegration, supabase: ReturnTy
     );
 
     const enriched = await enrichWithAttachments(conn.email, msg);
+
+    // ── Ingesta de media para Navi / Navi Agencia ──────────────────────────
+    // Se ejecuta en paralelo lógico con el pipeline normal. Cualquier fallo
+    // aquí NO debe interrumpir el procesamiento del correo.
+    if (agent.role === 'navi' || agent.role === 'navi_agencia') {
+      try {
+        const naviResult = await ingestNaviMediaFromEmail(
+          conn.email,
+          {
+            id:           agent.id as string,
+            role:         agent.role as string | null,
+            portal_email: agent.portal_email as string,
+          },
+          {
+            id:          msg.id,
+            text:        msg.body,
+            attachments: msg.attachments,
+          },
+        );
+        if (naviResult.ingested > 0) {
+          console.log(`[email-sync] Navi ingestion: ${naviResult.ingested} archivo(s) de media persistido(s) para agente ${agent.id as string}`);
+        }
+      } catch (naviErr) {
+        // Fallo silencioso — la ingesta de media nunca debe bloquear el pipeline de correo
+        console.error(`[email-sync] Navi media ingestion falló para mensaje ${msg.id}:`, naviErr);
+      }
+    }
 
     await processInboxEmail({
       agentId:           agent.id,
