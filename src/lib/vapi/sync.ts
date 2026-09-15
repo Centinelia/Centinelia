@@ -283,8 +283,8 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
   // reporting diario. Tools chat/email principalmente.
   nalu:  ['create_file', 'create_document', 'save_to_drive', 'buscar_archivo', 'leer_archivo', 'read_url', 'buscar_correo_enviado', 'buscar_documento_oficina', 'enviar_documento_oficina', 'extraer_voz_del_cliente', 'search_leads'],
 
-  // Navi — gestor de redes sociales. 14 tools estandar para publicacion,
-  // diseno Canva, engagement IG y metricas. Feature-gated 'social_publishing'.
+  // Navi — gestor de redes sociales. 14 tools estándar para publicación,
+  // diseño Canva, engagement IG y métricas. Feature-gated 'social_publishing'.
   // No voice-only (todas tienen equivalente chat/email).
   navi: [
     'canva_listar_plantillas', 'canva_generar_diseno', 'canva_exportar',
@@ -295,8 +295,8 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
     'listar_media_del_cliente', 'usar_media_del_cliente',
   ],
 
-  // Navi Agencia — version agencia de Navi. Las 14 tools estandar mas 2
-  // exclusivas para gestionar multiples cuentas de clientes.
+  // Navi Agencia — versión agencia de Navi. Las 14 tools estándar más 2
+  // exclusivas para gestionar múltiples cuentas de clientes.
   // Feature-gated 'social_publishing' + agency_mode=true.
   navi_agencia: [
     'canva_listar_plantillas', 'canva_generar_diseno', 'canva_exportar',
@@ -690,19 +690,19 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
     };
 
     // ─── Navi — redes sociales (social_publishing) ───────────────────────────
-    // 14 tools estandar (navi + navi_agencia) y 2 exclusivas de agencia.
+    // 14 tools estándar (navi + navi_agencia) y 2 exclusivas de agencia.
     // Todas usan el exec shared endpoint; el handler despacha por tool name.
 
     case 'canva_listar_plantillas': return {
       type: 'function',
       function: {
         name: 'canva_listar_plantillas',
-        description: 'Lista las plantillas de Canva disponibles para el negocio. Filtra por categoria si se indica (post, story, reel, carousel). En Navi Agencia requiere `target_account_id`.',
+        description: 'Lista las plantillas de Canva disponibles para el negocio. Filtra por categoría si se indica (post, story, reel, carousel). En Navi Agencia requiere `target_account_id`.',
         parameters: {
           type: 'object',
           properties: {
             target_account_id: { type: 'string', description: 'ID de social_accounts. Obligatorio para navi_agencia.' },
-            categoria:         { type: 'string', description: 'Filtro de categoria: post, story, reel, carousel (opcional).' },
+            categoria:         { type: 'string', description: 'Filtro de categoría: post, story, reel, carousel (opcional).' },
           },
           required: [],
         },
@@ -714,13 +714,13 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
       type: 'function',
       function: {
         name: 'canva_generar_diseno',
-        description: 'Genera un diseno en Canva usando una plantilla de la marca y los campos de datos indicados. En Navi Agencia requiere `target_account_id`.',
+        description: 'Genera un diseño en Canva usando una plantilla de la marca y los campos de datos indicados. En Navi Agencia requiere `target_account_id`.',
         parameters: {
           type: 'object',
           properties: {
             target_account_id: { type: 'string', description: 'ID de social_accounts. Obligatorio para navi_agencia.' },
             template_id:       { type: 'string', description: 'ID de la plantilla Canva obtenido de canva_listar_plantillas.' },
-            data_fields:       { type: 'object', additionalProperties: true, description: 'Objeto con los campos variables de la plantilla (texto, imagenes).' },
+            data_fields:       { type: 'object', additionalProperties: true, description: 'Objeto con los campos variables de la plantilla (texto, imágenes).' },
           },
           required: ['template_id'],
         },
@@ -732,13 +732,13 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
       type: 'function',
       function: {
         name: 'canva_exportar',
-        description: 'Exporta un diseno de Canva a imagen o video (PNG, JPG, MP4). Devuelve URL de descarga. En Navi Agencia requiere `target_account_id`.',
+        description: 'Exporta un diseño de Canva a imagen o video (PNG, JPG, MP4). Devuelve URL de descarga. En Navi Agencia requiere `target_account_id`.',
         parameters: {
           type: 'object',
           properties: {
             target_account_id: { type: 'string', description: 'ID de social_accounts. Obligatorio para navi_agencia.' },
-            design_id:         { type: 'string', description: 'ID del diseno Canva a exportar.' },
-            format:            { type: 'string', enum: ['png', 'jpg', 'mp4', 'gif'], description: 'Formato de exportacion. Default png.' },
+            design_id:         { type: 'string', description: 'ID del diseño Canva a exportar.' },
+            format:            { type: 'string', enum: ['png', 'jpg', 'mp4', 'gif'], description: 'Formato de exportación. Default png.' },
           },
           required: ['design_id'],
         },
@@ -750,15 +750,15 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
       type: 'function',
       function: {
         name: 'generar_caption',
-        description: 'Genera el caption para un post de redes sociales basado en el tema, tono y tipo de publicacion. En Navi Agencia requiere `target_account_id`.',
+        description: 'Genera el caption para un post de redes sociales basado en el tema, tono y tipo de publicación. En Navi Agencia requiere `target_account_id`.',
         parameters: {
           type: 'object',
           properties: {
             target_account_id: { type: 'string', description: 'ID de social_accounts. Obligatorio para navi_agencia.' },
             tema:              { type: 'string', description: 'Tema principal del post.' },
             tono:              { type: 'string', description: 'Tono deseado: informativo, casual, promocional, inspirador (opcional).' },
-            tipo_publicacion:  { type: 'string', enum: ['post', 'story', 'reel', 'carousel'], description: 'Tipo de publicacion.' },
-            incluir_cta:       { type: 'boolean', description: 'Incluir llamada a la accion al final. Default true.' },
+            tipo_publicacion:  { type: 'string', enum: ['post', 'story', 'reel', 'carousel'], description: 'Tipo de publicación.' },
+            incluir_cta:       { type: 'boolean', description: 'Incluir llamada a la acción al final. Default true.' },
           },
           required: ['tema'],
         },
@@ -776,7 +776,7 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
           properties: {
             target_account_id: { type: 'string', description: 'ID de social_accounts. Obligatorio para navi_agencia.' },
             tema:              { type: 'string', description: 'Tema o palabras clave del post.' },
-            cantidad:          { type: 'number', description: 'Numero de hashtags a generar. Default 10, max 30.' },
+            cantidad:          { type: 'number', description: 'Número de hashtags a generar. Default 10, max 30.' },
           },
           required: ['tema'],
         },
@@ -788,7 +788,7 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
       type: 'function',
       function: {
         name: 'crear_borrador_post',
-        description: 'Crea un borrador de post para Instagram con el contenido, plantilla y programacion indicados. El borrador queda en estado "draft" hasta programar o publicar. En Navi Agencia requiere `target_account_id`.',
+        description: 'Crea un borrador de post para Instagram con el contenido, plantilla y programación indicados. El borrador queda en estado "draft" hasta programar o publicar. En Navi Agencia requiere `target_account_id`.',
         parameters: {
           type: 'object',
           properties: {
@@ -811,13 +811,13 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
       type: 'function',
       function: {
         name: 'programar_publicacion',
-        description: 'Programa la publicacion de un borrador de post en la fecha y hora indicadas. En Navi Agencia requiere `target_account_id`.',
+        description: 'Programa la publicación de un borrador de post en la fecha y hora indicadas. En Navi Agencia requiere `target_account_id`.',
         parameters: {
           type: 'object',
           properties: {
             target_account_id: { type: 'string', description: 'ID de social_accounts. Obligatorio para navi_agencia.' },
             post_id:           { type: 'string', description: 'ID del borrador de post a programar.' },
-            scheduled_for:     { type: 'string', description: 'Timestamp ISO de la publicacion.' },
+            scheduled_for:     { type: 'string', description: 'Timestamp ISO de la publicación.' },
           },
           required: ['post_id', 'scheduled_for'],
         },
@@ -869,7 +869,7 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
           type: 'object',
           properties: {
             target_account_id: { type: 'string', description: 'ID de social_accounts. Obligatorio para navi_agencia.' },
-            thread_id:         { type: 'string', description: 'ID del hilo de conversacion del DM.' },
+            thread_id:         { type: 'string', description: 'ID del hilo de conversación del DM.' },
             respuesta:         { type: 'string', description: 'Texto de la respuesta.' },
           },
           required: ['thread_id', 'respuesta'],
@@ -882,12 +882,12 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
       type: 'function',
       function: {
         name: 'consultar_metricas_post',
-        description: 'Consulta las metricas de un post de Instagram (impresiones, alcance, likes, comentarios, guardados). En Navi Agencia requiere `target_account_id`.',
+        description: 'Consulta las métricas de un post de Instagram (impresiones, alcance, likes, comentarios, guardados). En Navi Agencia requiere `target_account_id`.',
         parameters: {
           type: 'object',
           properties: {
             target_account_id: { type: 'string', description: 'ID de social_accounts. Obligatorio para navi_agencia.' },
-            post_id:           { type: 'string', description: 'ID del post cuyas metricas se consultan.' },
+            post_id:           { type: 'string', description: 'ID del post cuyas métricas se consultan.' },
           },
           required: ['post_id'],
         },
@@ -899,13 +899,13 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
       type: 'function',
       function: {
         name: 'proponer_calendario_editorial',
-        description: 'Propone un calendario editorial para la semana o el mes, con temas, tipos de publicacion y horarios optimos. En Navi Agencia requiere `target_account_id`.',
+        description: 'Propone un calendario editorial para la semana o el mes, con temas, tipos de publicación y horarios óptimos. En Navi Agencia requiere `target_account_id`.',
         parameters: {
           type: 'object',
           properties: {
             target_account_id: { type: 'string', description: 'ID de social_accounts. Obligatorio para navi_agencia.' },
-            periodo:           { type: 'string', enum: ['semana', 'mes'], description: 'Periodo del calendario. Default semana.' },
-            frecuencia_diaria: { type: 'number', description: 'Numero de posts por dia. Default 1.' },
+            periodo:           { type: 'string', enum: ['semana', 'mes'], description: 'Período del calendario. Default semana.' },
+            frecuencia_diaria: { type: 'number', description: 'Número de posts por día. Default 1.' },
           },
           required: [],
         },
@@ -934,7 +934,7 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
       type: 'function',
       function: {
         name: 'usar_media_del_cliente',
-        description: 'Selecciona un archivo de medios de la biblioteca del negocio para usarlo en un post o diseno. Devuelve la URL lista para usar. En Navi Agencia requiere `target_account_id`.',
+        description: 'Selecciona un archivo de medios de la biblioteca del negocio para usarlo en un post o diseño. Devuelve la URL lista para usar. En Navi Agencia requiere `target_account_id`.',
         parameters: {
           type: 'object',
           properties: {
@@ -968,7 +968,7 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
       type: 'function',
       function: {
         name: 'replicar_contenido_entre_cuentas',
-        description: 'Replica un borrador de post de una cuenta gestionada a una o varias cuentas destino, con adaptacion de caption si se solicita. Exclusiva de Navi Agencia.',
+        description: 'Replica un borrador de post de una cuenta gestionada a una o varias cuentas destino, con adaptación de caption si se solicita. Exclusiva de Navi Agencia.',
         parameters: {
           type: 'object',
           properties: {

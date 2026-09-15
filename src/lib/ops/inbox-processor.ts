@@ -800,8 +800,8 @@ const DRIVE_MGMT_EMAIL_TOOLS: Anthropic.Tool[] = [
   },
 ];
 
-// ─── Navi — publicacion social (feature: social_publishing) ──────────────────
-// 14 tools estandar + 2 exclusivas navi_agencia. Mismo schema que chat para
+// ─── Navi — publicación social (feature: social_publishing) ──────────────────
+// 14 tools estándar + 2 exclusivas navi_agencia. Mismo schema que chat para
 // que el executor las despache sin diferencia de canal.
 const NAVI_EMAIL_TOOLS: Anthropic.Tool[] = [
   {
@@ -811,12 +811,12 @@ const NAVI_EMAIL_TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'canva_generar_diseno',
-    description: 'Genera un diseno en Canva con una plantilla y campos variables. En Navi Agencia requiere target_account_id.',
+    description: 'Genera un diseño en Canva con una plantilla y campos variables. En Navi Agencia requiere target_account_id.',
     input_schema: { type: 'object' as const, properties: { target_account_id: { type: 'string' }, template_id: { type: 'string' }, data_fields: { type: 'object', additionalProperties: true } }, required: ['template_id'] },
   },
   {
     name: 'canva_exportar',
-    description: 'Exporta un diseno de Canva a PNG, JPG o MP4. En Navi Agencia requiere target_account_id.',
+    description: 'Exporta un diseño de Canva a PNG, JPG o MP4. En Navi Agencia requiere target_account_id.',
     input_schema: { type: 'object' as const, properties: { target_account_id: { type: 'string' }, design_id: { type: 'string' }, format: { type: 'string', enum: ['png', 'jpg', 'mp4', 'gif'] } }, required: ['design_id'] },
   },
   {
@@ -836,7 +836,7 @@ const NAVI_EMAIL_TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'programar_publicacion',
-    description: 'Programa la publicacion de un borrador de post. En Navi Agencia requiere target_account_id.',
+    description: 'Programa la publicación de un borrador de post. En Navi Agencia requiere target_account_id.',
     input_schema: { type: 'object' as const, properties: { target_account_id: { type: 'string' }, post_id: { type: 'string' }, scheduled_for: { type: 'string' } }, required: ['post_id', 'scheduled_for'] },
   },
   {
@@ -856,7 +856,7 @@ const NAVI_EMAIL_TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'consultar_metricas_post',
-    description: 'Consulta metricas de un post de Instagram. En Navi Agencia requiere target_account_id.',
+    description: 'Consulta métricas de un post de Instagram. En Navi Agencia requiere target_account_id.',
     input_schema: { type: 'object' as const, properties: { target_account_id: { type: 'string' }, post_id: { type: 'string' } }, required: ['post_id'] },
   },
   {
@@ -882,7 +882,7 @@ const NAVI_EMAIL_TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'replicar_contenido_entre_cuentas',
-    description: 'Navi Agencia: replica borrador de post a una o varias cuentas destino con adaptacion opcional de caption.',
+    description: 'Navi Agencia: replica borrador de post a una o varias cuentas destino con adaptación opcional de caption.',
     input_schema: { type: 'object' as const, properties: { post_id: { type: 'string' }, cuentas_destino: { type: 'array', items: { type: 'string' } }, adaptar_caption: { type: 'boolean' } }, required: ['post_id', 'cuentas_destino'] },
   },
 ];
@@ -931,7 +931,7 @@ export const MEERKAT_EMAIL_DISTRIBUTION: Record<string, string[]> = {
   nala:  ['qb_crear_orden_compra', 'qb_consultar_orden_compra', 'qb_descargar_oc_pdf', 'firmar_oc', 'sf_timbrar_desde_oc', 'sf_cancelar_cfdi', 'sf_consultar_estado_sat', 'enviar_oc_a_pagos', 'registrar_comprobante_pago', 'enviar_oc_a_proveedor', 'archivar_expediente', 'qb_crear_orden_compra_desde_cotizacion', 'buscar_archivo', 'leer_archivo', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
   nalu:  ['create_file', 'create_document', 'save_to_drive', 'buscar_archivo', 'leer_archivo', 'read_url', 'buscar_correo_enviado', 'buscar_documento_oficina', 'enviar_documento_oficina', 'extraer_voz_del_cliente', 'search_leads', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
   nami:  ['inv_agregar_equipo', 'inv_actualizar_estatus', 'inv_asignar_cliente', 'inv_registrar_venta', 'inv_transferir_bodega', 'inv_buscar_por_serie', 'inv_buscar_por_modelo', 'inv_buscar_por_cliente', 'inv_stock_snapshot', 'inv_importar_backlog', 'inv_pedir_reposicion', 'inv_normalizar_bodegas', 'inv_reporte_utilidad', 'inv_procesar_factura_trane', 'enviar_correo', 'buscar_correo_enviado', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
-  // Navi — gestor de redes sociales. 14 tools estandar gateadas por social_publishing.
+  // Navi — gestor de redes sociales. 14 tools estándar gateadas por social_publishing.
   navi: [
     'canva_listar_plantillas', 'canva_generar_diseno', 'canva_exportar',
     'generar_caption', 'generar_hashtags',
@@ -941,7 +941,7 @@ export const MEERKAT_EMAIL_DISTRIBUTION: Record<string, string[]> = {
     'listar_media_del_cliente', 'usar_media_del_cliente',
     'delegar_tarea', 'consultar_agente', 'pedir_a_humano',
   ],
-  // Navi Agencia — las 14 estandar mas 2 exclusivas multi-cuenta.
+  // Navi Agencia — las 14 estándar más 2 exclusivas multi-cuenta.
   navi_agencia: [
     'canva_listar_plantillas', 'canva_generar_diseno', 'canva_exportar',
     'generar_caption', 'generar_hashtags',
