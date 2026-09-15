@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Plus, User, Calendar, Pause, Play, Edit3, Loader2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Plus, User, Calendar, Pause, Play, Edit3, Loader2, AlertCircle, FileText } from 'lucide-react';
+import type { ClienteDoc } from '@/lib/billing/centinelia-clientes';
+import { DocsSection } from './DocsSection';
 
 interface Cliente {
   id: string;
@@ -21,6 +23,7 @@ interface Cliente {
   metodo_pago_default: 'PUE' | 'PPD';
   forma_pago_default: string;
   notas: string | null;
+  docs: ClienteDoc[];
 }
 
 const PERIODICIDAD_LABEL: Record<Cliente['periodicidad'], string> = {
@@ -145,10 +148,15 @@ export default function ClientesNekaPage() {
                 {c.conceptos.length} concepto{c.conceptos.length !== 1 ? 's' : ''}: {c.conceptos.slice(0, 2).map(cc => `${cc.descripcion} $${cc.valor_unitario}`).join(', ')}
                 {c.conceptos.length > 2 ? ` +${c.conceptos.length - 2} más` : ''}
               </p>
-              <p className="text-xs mt-1 flex items-center gap-1" style={{ color: 'var(--c-text-3)' }}>
+              <p className="text-xs mt-1 flex items-center gap-1 flex-wrap" style={{ color: 'var(--c-text-3)' }}>
                 <Calendar size={11} />
                 Próxima factura: {c.fecha_proxima_facturacion}
                 {c.fecha_ultima_facturacion && ` · Última: ${c.fecha_ultima_facturacion}`}
+                {c.docs && c.docs.length > 0 && (
+                  <span className="inline-flex items-center gap-1 ml-2">
+                    · <FileText size={11} /> {c.docs.length} doc{c.docs.length !== 1 ? 's' : ''}
+                  </span>
+                )}
               </p>
             </div>
             <div className="flex items-center gap-1 flex-shrink-0">
@@ -371,6 +379,14 @@ function ClienteForm({ initial, onClose, onSaved }: { initial: Cliente | null; o
           <input type="checkbox" checked={f.activo} onChange={e => setF({ ...f, activo: e.target.checked })} />
           Cliente activo (Nala factura automáticamente en su fecha)
         </label>
+
+        {initial && (
+          <DocsSection
+            clienteId={initial.id}
+            initialDocs={initial.docs ?? []}
+            onClienteUpdated={onSaved}
+          />
+        )}
 
         {error && (
           <div className="rounded-lg p-3 text-xs flex items-start gap-2 mt-4"
