@@ -388,7 +388,7 @@ export class CanvaProvider {
           'Content-Type': mimeType,
           'Asset-Name': encodeURIComponent(name),
         },
-        body: fileBuffer,
+        body: new Uint8Array(fileBuffer),
       }),
     );
 
