@@ -208,33 +208,48 @@ describe('navi-social-schema', () => {
     expect(data?.public).toBe(false);
   }, 10000);
 
-  // ── B3: RLS policies scoped to user-media bucket ─────────────────────────────
-  it('RLS policies user-media service {read,insert,delete} exist and are bucket-scoped', async () => {
-    const { data, error } = await supabase.rpc('query_navi_bucket_policies' as any).throwOnError();
-    // Fallback: query via SQL if rpc doesn't exist; use execute_sql via admin client
-    // Since we can't easily do raw SQL here, query pg_policies via information schema
-    // We use the admin client to query pg_catalog via a workaround:
-    const { data: policies, error: polErr } = await (supabase as any)
-      .from('pg_policies')
-      .select('policyname, cmd, qual, with_check')
-      .eq('tablename', 'objects')
-      .like('policyname', 'user-media service %');
+  // ── B3: RLS enforcement — unauthenticated access blocked, service_role allowed ──
+  it('RLS on user-media bucket blocks unauthenticated and allows service_role', async () => {
+    const storageUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL!}/storage/v1`;
+    const testPath = `test-rls-${Date.now()}.txt`;
+    const testContent = Buffer.from('rls-test');
 
-    if (polErr) {
-      // pg_policies not exposed via PostgREST — use rpc or direct query approach
-      // Verify via supabase storage API that bucket exists with correct access controls
-      // by checking the 3 expected policy names exist via the MCP SQL approach
-      // Since we're in vitest context, skip and note this is covered by runner
-      console.warn('pg_policies not queryable via PostgREST — B3 verified in runner only');
-      return;
-    }
+    // 1. Unauthenticated upload — must be blocked (no apikey header).
+    // Supabase returns 400 "No API key found" when the apikey header is absent entirely,
+    // 401 when an invalid key is given, and 403 when a valid-but-unauthorized key is given.
+    // All three are non-success — the upload is blocked regardless.
+    const unauthUpload = await fetch(`${storageUrl}/object/user-media/${testPath}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: testContent,
+    });
+    expect(
+      unauthUpload.status >= 400,
+      `unauthenticated upload should be blocked but got HTTP ${unauthUpload.status}`
+    ).toBe(true);
 
-    const names = (policies ?? []).map((p: any) => p.policyname);
-    expect(names).toContain('user-media service read');
-    expect(names).toContain('user-media service insert');
-    expect(names).toContain('user-media service delete');
-    expect(names.length).toBe(3);
-  }, 10000);
+    // 2. Service_role upload — must succeed
+    const svcUpload = await supabase.storage
+      .from('user-media')
+      .upload(testPath, testContent, { contentType: 'text/plain', upsert: true });
+    expect(svcUpload.error, `service_role upload should succeed but got: ${svcUpload.error?.message}`).toBeNull();
+
+    // 3. Unauthenticated download — must be blocked (400/401/403)
+    const unauthDownload = await fetch(`${storageUrl}/object/user-media/${testPath}`);
+    expect(
+      unauthDownload.status >= 400,
+      `unauthenticated download should be blocked but got HTTP ${unauthDownload.status}`
+    ).toBe(true);
+
+    // 4. Service_role download — must succeed
+    const svcDownload = await supabase.storage
+      .from('user-media')
+      .download(testPath);
+    expect(svcDownload.error, `service_role download should succeed but got: ${svcDownload.error?.message}`).toBeNull();
+
+    // 5. Cleanup
+    await supabase.storage.from('user-media').remove([testPath]);
+  }, 15000);
 
   // ── B4: content_drafts.status accepts all 9 values ───────────────────────────
   it('content_drafts.status accepts all 9 valid values and rejects invalid', async () => {
@@ -275,8 +290,6 @@ describe('navi-social-schema', () => {
 
   // ── B5: user_media_uploads.expires_at defaults to now() + 90 days ────────────
   it('user_media_uploads.expires_at defaults to now() + 90 days', async () => {
-    const before = new Date();
-
     const { data, error } = await supabase
       .from('user_media_uploads')
       .insert({

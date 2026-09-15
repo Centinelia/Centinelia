@@ -270,40 +270,55 @@ describe('navi-social-schema', async () => {
     assert.equal(data.public, false, `user-media bucket should be private (public=false) but got: ${data.public}`);
   });
 
-  // ── B3: RLS policies scoped to user-media bucket ────────────────────────────────
-  test('RLS policies user-media service {read,insert,delete} exist and are bucket-scoped', async () => {
-    // Query pg_policies via a raw SQL approach through the service role
-    // We use the storage schema to check bucket policies via supabase client
-    // PostgREST exposes pg_policies in some Supabase versions via the pg_catalog schema
-    const { data, error } = await supabase
-      .from('pg_policies')
-      .select('policyname, cmd, qual, with_check')
-      .eq('tablename', 'objects')
-      .like('policyname', 'user-media service %');
+  // ── B3: RLS enforcement — unauthenticated access blocked, service_role allowed ────
+  test('RLS on user-media bucket blocks unauthenticated and allows service_role', async () => {
+    const storageUrl = `${url}/storage/v1`;
+    const testPath = `test-rls-${Date.now()}.txt`;
+    const testContent = Buffer.from('rls-test');
 
-    if (error) {
-      // pg_policies not exposed via PostgREST in this project — verified via MCP in Fix Round 1
-      // The 3 policies were confirmed to exist: user-media service read/insert/delete
-      // This test documents the expected state; manual verification output is in task-1-report.md
-      console.warn(`B3 WARNING: pg_policies not accessible via PostgREST (${error.message}). `
-        + 'Policies were verified manually via MCP SQL in Fix Round 1. '
-        + 'Run: SELECT policyname FROM pg_policies WHERE tablename=\'objects\' AND policyname LIKE \'%user-media%\'');
-      return;  // Soft-pass: don't fail the suite, manual evidence is in the report
-    }
+    // 1. Unauthenticated upload — must be blocked (no apikey header).
+    // Supabase returns 400 "No API key found" when the apikey header is absent entirely,
+    // 401 when an invalid key is given, and 403 when a valid-but-unauthorized key is given.
+    // All three are non-success — the upload is blocked regardless.
+    const unauthUpload = await fetch(`${storageUrl}/object/user-media/${testPath}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: testContent,
+    });
+    assert.ok(
+      unauthUpload.status >= 400,
+      `unauthenticated upload should be blocked but got HTTP ${unauthUpload.status}`
+    );
 
-    const names = (data ?? []).map((p) => p.policyname);
-    assert.ok(names.includes('user-media service read'), `missing 'user-media service read' policy`);
-    assert.ok(names.includes('user-media service insert'), `missing 'user-media service insert' policy`);
-    assert.ok(names.includes('user-media service delete'), `missing 'user-media service delete' policy`);
-    assert.equal(names.length, 3, `expected exactly 3 user-media policies, found: ${JSON.stringify(names)}`);
+    // 2. Service_role upload — must succeed
+    const svcUpload = await supabase.storage
+      .from('user-media')
+      .upload(testPath, testContent, { contentType: 'text/plain', upsert: true });
+    assert.equal(
+      svcUpload.error,
+      null,
+      `service_role upload should succeed but got: ${svcUpload.error?.message}`
+    );
 
-    for (const policy of data) {
-      const scopeText = JSON.stringify(policy.qual ?? '') + JSON.stringify(policy.with_check ?? '');
-      assert.ok(
-        scopeText.includes('user-media'),
-        `policy '${policy.policyname}' should reference 'user-media' in qual/with_check`
-      );
-    }
+    // 3. Unauthenticated download — must be blocked (400/401/403)
+    const unauthDownload = await fetch(`${storageUrl}/object/user-media/${testPath}`);
+    assert.ok(
+      unauthDownload.status >= 400,
+      `unauthenticated download should be blocked but got HTTP ${unauthDownload.status}`
+    );
+
+    // 4. Service_role download — must succeed
+    const svcDownload = await supabase.storage
+      .from('user-media')
+      .download(testPath);
+    assert.equal(
+      svcDownload.error,
+      null,
+      `service_role download should succeed but got: ${svcDownload.error?.message}`
+    );
+
+    // 5. Cleanup
+    await supabase.storage.from('user-media').remove([testPath]);
   });
 
   // ── B4: content_drafts.status accepts all 9 values ────────────────────────────
