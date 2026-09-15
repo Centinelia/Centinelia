@@ -11,6 +11,7 @@
  * Cleanup runs in afterAll via organizations DELETE (cascades to agents + social_accounts).
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { createClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 const supabase = createAdminClient();
@@ -208,44 +209,58 @@ describe('navi-social-schema', () => {
     expect(data?.public).toBe(false);
   }, 10000);
 
-  // ── B3: RLS enforcement — unauthenticated access blocked, service_role allowed ──
-  it('RLS on user-media bucket blocks unauthenticated and allows service_role', async () => {
-    const storageUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL!}/storage/v1`;
-    const testPath = `test-rls-${Date.now()}.txt`;
-    const testContent = Buffer.from('rls-test');
+  // ── B3: Tests actual Postgres RLS policy enforcement (not Kong edge auth). ──
+  // Uses anon key so requests reach Postgres and hit the "to service_role" policy.
+  // If a broader policy is added later (regression), this test catches it because
+  // anon would gain access it shouldn't have. A no-key HTTP test would only prove
+  // Kong rejects unauthenticated requests, which says nothing about RLS.
+  it('RLS on user-media bucket blocks anon role and allows service_role (RLS policy behavioral test)', async () => {
+    const anonKey = process.env.SUPABASE_ANON_KEY;
+    if (!anonKey) {
+      console.warn(
+        'B3 SKIPPED: SUPABASE_ANON_KEY not set in env. Add it from Supabase dashboard ' +
+        'Project Settings > API to enable RLS regression coverage.'
+      );
+      return;
+    }
 
-    // 1. Unauthenticated upload — must be blocked (no apikey header).
-    // Supabase returns 400 "No API key found" when the apikey header is absent entirely,
-    // 401 when an invalid key is given, and 403 when a valid-but-unauthorized key is given.
-    // All three are non-success — the upload is blocked regardless.
-    const unauthUpload = await fetch(`${storageUrl}/object/user-media/${testPath}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: testContent,
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anonClient = createClient(supabaseUrl!, anonKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
     });
-    expect(
-      unauthUpload.status >= 400,
-      `unauthenticated upload should be blocked but got HTTP ${unauthUpload.status}`
-    ).toBe(true);
 
-    // 2. Service_role upload — must succeed
+    const testPath = `test-rls-${Date.now()}.txt`;
+    const testContent = Buffer.from('rls test');
+
+    // 1. Anon upload — must be BLOCKED by RLS (not by Kong; anon key IS accepted by Kong).
+    const anonUpload = await anonClient.storage.from('user-media').upload(testPath, testContent);
+    expect(
+      anonUpload.error,
+      'Anon key SHOULD be blocked by RLS (only service_role has policy)'
+    ).not.toBeNull();
+
+    // 2. Service upload — must succeed
     const svcUpload = await supabase.storage
       .from('user-media')
       .upload(testPath, testContent, { contentType: 'text/plain', upsert: true });
-    expect(svcUpload.error, `service_role upload should succeed but got: ${svcUpload.error?.message}`).toBeNull();
-
-    // 3. Unauthenticated download — must be blocked (400/401/403)
-    const unauthDownload = await fetch(`${storageUrl}/object/user-media/${testPath}`);
     expect(
-      unauthDownload.status >= 400,
-      `unauthenticated download should be blocked but got HTTP ${unauthDownload.status}`
-    ).toBe(true);
+      svcUpload.error,
+      `service_role SHOULD succeed per RLS policy but got: ${svcUpload.error?.message}`
+    ).toBeNull();
 
-    // 4. Service_role download — must succeed
-    const svcDownload = await supabase.storage
-      .from('user-media')
-      .download(testPath);
-    expect(svcDownload.error, `service_role download should succeed but got: ${svcDownload.error?.message}`).toBeNull();
+    // 3. Anon download — must be BLOCKED
+    const anonDownload = await anonClient.storage.from('user-media').download(testPath);
+    expect(
+      anonDownload.error,
+      'Anon SHOULD NOT download'
+    ).not.toBeNull();
+
+    // 4. Service download — must succeed
+    const svcDownload = await supabase.storage.from('user-media').download(testPath);
+    expect(
+      svcDownload.error,
+      `service_role SHOULD download but got: ${svcDownload.error?.message}`
+    ).toBeNull();
 
     // 5. Cleanup
     await supabase.storage.from('user-media').remove([testPath]);

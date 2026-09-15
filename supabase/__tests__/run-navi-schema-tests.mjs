@@ -270,24 +270,34 @@ describe('navi-social-schema', async () => {
     assert.equal(data.public, false, `user-media bucket should be private (public=false) but got: ${data.public}`);
   });
 
-  // ── B3: RLS enforcement — unauthenticated access blocked, service_role allowed ────
-  test('RLS on user-media bucket blocks unauthenticated and allows service_role', async () => {
-    const storageUrl = `${url}/storage/v1`;
-    const testPath = `test-rls-${Date.now()}.txt`;
-    const testContent = Buffer.from('rls-test');
+  // ── B3: Tests actual Postgres RLS policy enforcement (not Kong edge auth). ────
+  // Uses anon key so requests reach Postgres and hit the "to service_role" policy.
+  // If a broader policy is added later (regression), this test catches it because
+  // anon would gain access it shouldn't have. A no-key HTTP test would only prove
+  // Kong rejects unauthenticated requests, which says nothing about RLS.
+  test('RLS on user-media bucket blocks anon role and allows service_role (RLS policy behavioral test)', async (t) => {
+    const anonKey = process.env.SUPABASE_ANON_KEY;
+    if (!anonKey) {
+      console.warn(
+        'B3 SKIPPED: SUPABASE_ANON_KEY not set in env. Add it from Supabase dashboard ' +
+        'Project Settings > API to enable RLS regression coverage.'
+      );
+      t.skip('SUPABASE_ANON_KEY not set');
+      return;
+    }
 
-    // 1. Unauthenticated upload — must be blocked (no apikey header).
-    // Supabase returns 400 "No API key found" when the apikey header is absent entirely,
-    // 401 when an invalid key is given, and 403 when a valid-but-unauthorized key is given.
-    // All three are non-success — the upload is blocked regardless.
-    const unauthUpload = await fetch(`${storageUrl}/object/user-media/${testPath}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: testContent,
+    const anonClient = createClient(url, anonKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
     });
+
+    const testPath = `test-rls-${Date.now()}.txt`;
+    const testContent = Buffer.from('rls test');
+
+    // 1. Anon upload — must be BLOCKED by RLS (not by Kong; anon key IS accepted by Kong).
+    const anonUpload = await anonClient.storage.from('user-media').upload(testPath, testContent);
     assert.ok(
-      unauthUpload.status >= 400,
-      `unauthenticated upload should be blocked but got HTTP ${unauthUpload.status}`
+      anonUpload.error,
+      'Anon key SHOULD be blocked by RLS (only service_role has policy) but upload succeeded'
     );
 
     // 2. Service_role upload — must succeed
@@ -297,24 +307,22 @@ describe('navi-social-schema', async () => {
     assert.equal(
       svcUpload.error,
       null,
-      `service_role upload should succeed but got: ${svcUpload.error?.message}`
+      `service_role SHOULD succeed per RLS policy but got: ${svcUpload.error?.message}`
     );
 
-    // 3. Unauthenticated download — must be blocked (400/401/403)
-    const unauthDownload = await fetch(`${storageUrl}/object/user-media/${testPath}`);
+    // 3. Anon download — must be BLOCKED
+    const anonDownload = await anonClient.storage.from('user-media').download(testPath);
     assert.ok(
-      unauthDownload.status >= 400,
-      `unauthenticated download should be blocked but got HTTP ${unauthDownload.status}`
+      anonDownload.error,
+      'Anon SHOULD NOT download but download succeeded'
     );
 
     // 4. Service_role download — must succeed
-    const svcDownload = await supabase.storage
-      .from('user-media')
-      .download(testPath);
+    const svcDownload = await supabase.storage.from('user-media').download(testPath);
     assert.equal(
       svcDownload.error,
       null,
-      `service_role download should succeed but got: ${svcDownload.error?.message}`
+      `service_role SHOULD download but got: ${svcDownload.error?.message}`
     );
 
     // 5. Cleanup
