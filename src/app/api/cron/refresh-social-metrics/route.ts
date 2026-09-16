@@ -40,6 +40,9 @@ export const GET = defineCron({
 
     const rows = drafts ?? [];
     let processed = 0;
+    let expected = 0;               // solo cuenta snapshots que TOCABA crear (no drafts sin trabajo)
+    let skippedTooRecent = 0;       // draft < 24h, ningún snapshot aplica todavía
+    let skippedAlreadyPresent = 0;  // draft ya tiene todos los snapshots pendientes
     const errors: string[] = [];
 
     for (const draft of rows) {
@@ -71,7 +74,7 @@ export const GET = defineCron({
         .filter(([, thresholdMs]) => ageMs >= thresholdMs)
         .map(([type]) => type);
 
-      if (candidateTypes.length === 0) continue;
+      if (candidateTypes.length === 0) { skippedTooRecent++; continue; }
 
       // Verificar qué snapshots ya existen para este draft
       const { data: existing } = await supabase
@@ -83,7 +86,10 @@ export const GET = defineCron({
       const existingTypes = new Set((existing ?? []).map(r => r.snapshot_type as string));
       const missingTypes = candidateTypes.filter(t => !existingTypes.has(t));
 
-      if (missingTypes.length === 0) continue;
+      if (missingTypes.length === 0) { skippedAlreadyPresent++; continue; }
+
+      // Este draft SÍ va a intentar crear N snapshots → contarlos como expected
+      expected += missingTypes.length;
 
       // Obtener métricas desde Meta
       try {
@@ -149,10 +155,15 @@ export const GET = defineCron({
     }
 
     return {
-      expected:  rows.length,
+      expected,
       processed,
       errors,
-      metadata:  { drafts_seen: rows.length, snapshots_created: processed },
+      metadata: {
+        drafts_seen:            rows.length,
+        skipped_too_recent:     skippedTooRecent,
+        skipped_already_present: skippedAlreadyPresent,
+        snapshots_created:      processed,
+      },
     };
   },
 });

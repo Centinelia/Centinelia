@@ -323,4 +323,48 @@ describe('navi-refresh-social-metrics', () => {
 
     vi.useRealTimers();
   });
+
+  // ── (e) Regression: 3 drafts todos too_recent NO debe reportar CRITICO ──
+  //
+  // Antes del fix, `expected = rows.length` (3) y `processed = 0` (todos hicieron
+  // `continue` por edad < 24h). defineCron interpretaba processed<expected como
+  // parcial y disparaba [CRITICO]. Ahora expected solo cuenta snapshots que
+  // TOCABA crear — si todos skippean por lógica de negocio, expected=0.
+
+  it('(e) 3 drafts todos <24h reporta expected=0 (no CRITICO)', async () => {
+    const publisher = makePublisher();
+    mockBuildPublisher.mockReturnValue(publisher);
+
+    const drafts = [
+      { ...makeDraft(PUBLISHED_10H_AGO), id: 'd-1' },
+      { ...makeDraft(PUBLISHED_10H_AGO), id: 'd-2' },
+      { ...makeDraft(PUBLISHED_10H_AGO), id: 'd-3' },
+    ];
+
+    const sbFrom = vi.fn((table: string) => {
+      if (table === 'content_drafts') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq:    vi.fn().mockReturnThis(),
+            not:   vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue({ data: drafts, error: null }),
+          }),
+        };
+      }
+      return { insert: vi.fn().mockReturnThis(), select: vi.fn().mockReturnThis(), maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'r' }, error: null }), update: vi.fn().mockReturnThis(), eq: vi.fn().mockResolvedValue({ error: null }) };
+    });
+
+    mockCreateAdminClient.mockReturnValue({ from: sbFrom });
+    vi.setSystemTime(NOW);
+
+    const res = await GET(makeRequest() as never);
+    const body = await res.json() as { expected: number; processed: number; errors_count: number; metadata: { skipped_too_recent: number } };
+
+    expect(body.expected).toBe(0);
+    expect(body.processed).toBe(0);
+    expect(body.errors_count).toBe(0);
+    expect(body.metadata.skipped_too_recent).toBe(3);
+
+    vi.useRealTimers();
+  });
 });
