@@ -97,11 +97,16 @@ export async function consumeAiOp(agentId: string, count = 1, meta?: OpsMeta): P
         crossed_100_threshold: pool.crossed_100_threshold,
         crossed_120_threshold: pool.crossed_120_threshold,
       });
-      after(async () => {
+      // Sync insert (antes iba en after() — Vercel podía cortar la función
+      // antes de completarlo → row perdida = charge sin fila en historial.
+      // Mismo fix que Path NEW línea 76. Ver [[project-centinelia-pool-drift-detector]].
+      try {
         await supabase
           .from('ai_ops_log')
           .insert({ agent_id: agentId, portal_email: portalEmail, ...logPayload });
-      });
+      } catch (err) {
+        console.error('[ops-guard] ai_ops_log insert failed (audit gap):', err);
+      }
       return { ok: true, used: pool.minutes_used_after, limit: pool.minutes_pool };
     }
   }

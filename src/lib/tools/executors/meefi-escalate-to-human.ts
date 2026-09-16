@@ -16,6 +16,7 @@
 
 import { sendMeerkatHtmlEmail } from '@/lib/email/send-as-agent';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { consumeAiOp } from '@/lib/ai/ops-guard';
 
 export type EscalationTopic =
   | 'cuentas_docs'
@@ -111,6 +112,21 @@ export async function executeMeefiEscalateToHuman(
   const fromAddress = process.env.EMAIL_FROM_ADDRESS ?? 'notificaciones@centinelia.mx';
   const brandedFrom = `Nelia · Meefi Soporte <${fromAddress}>`;
 
+  // Cobro base (acción de escalar) — se cobra siempre que se intente,
+  // independiente del outcome del envío. Ver [[feedback-pool-accuracy-top-priority]].
+  if (agentId) {
+    try {
+      await consumeAiOp(agentId, 1, {
+        source:       'meefi_escalation',
+        reference_id: ticketId,
+        label:        'Escalamiento Meefi a humano',
+        context:      `${input.priority}·${input.topic}·${humanName}`,
+      });
+    } catch (err) {
+      console.error('meefi_escalate_to_human consumeAiOp base failed silently:', err);
+    }
+  }
+
   const sendResult = await sendMeerkatHtmlEmail(
     {
       agentId,
@@ -122,6 +138,19 @@ export async function executeMeefiEscalateToHuman(
     },
     supabase,
   );
+
+  // Cobro de la notif por correo — solo si el envío fue exitoso.
+  if (sendResult.ok && agentId) {
+    try {
+      await consumeAiOp(agentId, 1, {
+        source:       'meefi_escalation_notif',
+        reference_id: ticketId,
+        label:        'Correo de escalamiento enviado',
+      });
+    } catch (err) {
+      console.error('meefi_escalate_to_human consumeAiOp notif failed silently:', err);
+    }
+  }
 
   return {
     ok:             sendResult.ok,

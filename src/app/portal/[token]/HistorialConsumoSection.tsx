@@ -81,6 +81,15 @@ const SOURCE_META: Record<string, { label: string; trigger: string }> = {
   ticket_registered:       { label: 'Registro de ticket',              trigger: 'voice_call' },
   incident_registered:     { label: 'Registro de queja',               trigger: 'voice_call' },
   customer_registered:     { label: 'Registro de cliente nuevo',       trigger: 'voice_call' },
+  // Ruteo de bandeja compartida (Sonnet decide qué meerkat contesta)
+  org_dispatcher:          { label: 'Ruteo de correo compartido',      trigger: 'inbox' },
+  // Meefi Soporte (demo) — reglas iguales que producción per
+  // [[feedback-pool-accuracy-top-priority]]: acciones cobran, reads no.
+  meefi_escalation:        { label: 'Escalamiento Meefi a humano',     trigger: 'voice_call' },
+  meefi_escalation_notif:  { label: 'Correo de escalamiento Meefi',    trigger: 'voice_call' },
+  meefi_password_reset:    { label: 'Reset de contraseña Meefi',       trigger: 'voice_call' },
+  meefi_2fa_recovery:      { label: 'Recuperación 2FA Meefi',          trigger: 'voice_call' },
+  meefi_bug_report:        { label: 'Reporte de bug Meefi',            trigger: 'voice_call' },
   // Fallbacks
   unknown:             { label: 'Consumo sin identificar',     trigger: 'manual' },
 };
