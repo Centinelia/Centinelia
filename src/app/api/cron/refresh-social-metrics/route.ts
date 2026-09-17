@@ -43,6 +43,7 @@ export const GET = defineCron({
     let expected = 0;               // solo cuenta snapshots que TOCABA crear (no drafts sin trabajo)
     let skippedTooRecent = 0;       // draft < 24h, ningún snapshot aplica todavía
     let skippedAlreadyPresent = 0;  // draft ya tiene todos los snapshots pendientes
+    let skippedSmoke = 0;           // draft con tokens/media sintéticos de smoke tests (ver incidente 2026-09-17)
     const errors: string[] = [];
 
     for (const draft of rows) {
@@ -63,6 +64,24 @@ export const GET = defineCron({
         agent_id: string | null;
         portal_email: string;
       };
+
+      // Guard defensivo: skip cuentas/drafts sintéticos de smoke tests que hayan
+      // leakeado a prod. Sin este guard, cada corrida hourly del cron intentaba
+      // fetchMetrics contra Meta con tokens fake, generando alertas [CRITICO] cada
+      // hora hasta que se limpiaran manualmente (incidente 2026-09-17).
+      const looksSynthetic =
+        (typeof account.access_token === 'string' && account.access_token.startsWith('smoke-')) ||
+        (typeof account.external_account_id === 'string' && account.external_account_id.startsWith('smoke-')) ||
+        (typeof draft.published_media_id === 'string' && draft.published_media_id.startsWith('smoke-'));
+      if (looksSynthetic) {
+        skippedSmoke++;
+        log.info('Skip draft sintético (smoke leftover)', {
+          draftId:  draft.id,
+          mediaId:  draft.published_media_id,
+          account:  account.external_account_id,
+        });
+        continue;
+      }
 
       const publishedAt = new Date(draft.published_at as string).getTime();
       const ageMs = now.getTime() - publishedAt;
@@ -159,10 +178,11 @@ export const GET = defineCron({
       processed,
       errors,
       metadata: {
-        drafts_seen:            rows.length,
-        skipped_too_recent:     skippedTooRecent,
+        drafts_seen:             rows.length,
+        skipped_too_recent:      skippedTooRecent,
         skipped_already_present: skippedAlreadyPresent,
-        snapshots_created:      processed,
+        skipped_smoke:           skippedSmoke,
+        snapshots_created:       processed,
       },
     };
   },

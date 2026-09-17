@@ -367,4 +367,90 @@ describe('navi-refresh-social-metrics', () => {
 
     vi.useRealTimers();
   });
+
+  // ── (f) Regression 2026-09-17: drafts smoke leftover en prod no disparan CRITICO ──
+  //
+  // Incidente: 3 filas smoke (access_token='smoke-access-tok', published_media_id=
+  // 'smoke-media-id-123') quedaron huérfanas en prod tras que afterAll del smoke
+  // integration falló. Cada corrida hourly del cron intentaba fetchMetrics con token
+  // fake → Meta 400 OAuthException → alertCronPartialFailure → correo [CRITICO].
+  //
+  // El guard defensivo saltea drafts sintéticos silenciosamente (expected=0, errors=0)
+  // aunque haya leftovers, en vez de gritar cada hora.
+
+  it('(f) drafts smoke con tokens/media sintéticos no cuentan como error ni expected', async () => {
+    const publisher = makePublisher();
+    // fetchMetrics NO debería llamarse si el guard funciona
+    publisher.fetchMetrics = vi.fn().mockRejectedValue(new Error('no debería llamarse'));
+    mockBuildPublisher.mockReturnValue(publisher);
+
+    const smokeDrafts = [
+      {
+        ...makeDraft(PUBLISHED_25H_AGO, 'smoke-media-id-123'),
+        id: 'draft-smoke-1',
+        social_accounts: {
+          ...makeDraft(PUBLISHED_25H_AGO).social_accounts,
+          access_token:        'smoke-access-tok',
+          external_account_id: 'smoke-publish-ig-1',
+        },
+      },
+      {
+        ...makeDraft(PUBLISHED_25H_AGO, 'smoke-media-id-123'),
+        id: 'draft-smoke-2',
+        social_accounts: {
+          ...makeDraft(PUBLISHED_25H_AGO).social_accounts,
+          access_token:        'smoke-access-tok',
+          external_account_id: 'smoke-publish-ig-2',
+        },
+      },
+      {
+        ...makeDraft(PUBLISHED_25H_AGO, 'smoke-media-id-123'),
+        id: 'draft-smoke-3',
+        social_accounts: {
+          ...makeDraft(PUBLISHED_25H_AGO).social_accounts,
+          access_token:        'smoke-access-tok',
+          external_account_id: 'smoke-publish-ig-3',
+        },
+      },
+    ];
+
+    const upsertFn = vi.fn();
+    const sbFrom = vi.fn((table: string) => {
+      if (table === 'content_drafts') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq:    vi.fn().mockReturnThis(),
+            not:   vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue({ data: smokeDrafts, error: null }),
+          }),
+        };
+      }
+      if (table === 'social_metrics') {
+        return {
+          select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnThis(), in: vi.fn().mockResolvedValue({ data: [], error: null }) }),
+          upsert: upsertFn,
+        };
+      }
+      return { insert: vi.fn().mockReturnThis(), select: vi.fn().mockReturnThis(), maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'r' }, error: null }), update: vi.fn().mockReturnThis(), eq: vi.fn().mockResolvedValue({ error: null }) };
+    });
+
+    mockCreateAdminClient.mockReturnValue({ from: sbFrom });
+    vi.setSystemTime(NOW);
+
+    const res = await GET(makeRequest() as never);
+    const body = await res.json() as { expected: number; processed: number; errors_count: number; metadata: { skipped_smoke: number } };
+
+    // Sin guard: expected=3, processed=0, errors=3 → alertCronPartialFailure dispara [CRITICO].
+    // Con guard: expected=0, processed=0, errors=0, skipped_smoke=3 → no alerta.
+    expect(body.expected).toBe(0);
+    expect(body.processed).toBe(0);
+    expect(body.errors_count).toBe(0);
+    expect(body.metadata.skipped_smoke).toBe(3);
+
+    // fetchMetrics NUNCA se llama para drafts smoke
+    expect(publisher.fetchMetrics).not.toHaveBeenCalled();
+    expect(upsertFn).not.toHaveBeenCalled();
+
+    vi.useRealTimers();
+  });
 });
