@@ -13,6 +13,7 @@
 
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { assertNotProdOrAllowed } from './_helpers/assert-not-prod';
 
 // ─── Mocks hoisted ────────────────────────────────────────────────────────────
 
@@ -60,6 +61,8 @@ let draftId:          string;
 // ─── Setup / Teardown ─────────────────────────────────────────────────────────
 
 beforeAll(async () => {
+  assertNotProdOrAllowed();
+
   // 1. Org con features.social_publishing.enabled=true (habilita la publicación).
   //    Post BUG-SCHEMA-FEATURES-ORG fix: features vive en organizations, no en voice_agents.
   const { error: orgErr } = await sb.from('organizations').insert({

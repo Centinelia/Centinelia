@@ -25,6 +25,7 @@
 
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { assertNotProdOrAllowed } from './_helpers/assert-not-prod';
 
 // ─── Mocks hoisted ────────────────────────────────────────────────────────────
 
@@ -121,6 +122,8 @@ let otherAccountId:  string;
 // ─── Setup / Teardown ─────────────────────────────────────────────────────────
 
 beforeAll(async () => {
+  assertNotProdOrAllowed();
+
   // Org propia
   const org = await sb.from('organizations').insert({
     portal_email: ORG_EMAIL,

@@ -22,6 +22,7 @@
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import { NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { assertNotProdOrAllowed } from './_helpers/assert-not-prod';
 
 // ─── Mocks hoisted — solo para el guard (sesión, token, feature flag) ──────────
 // La operación real de DB la hace la ruta usando su propio createAdminClient.
@@ -95,6 +96,8 @@ let accountB3:  string;
 // ─── Setup / Teardown ─────────────────────────────────────────────────────────
 
 beforeAll(async () => {
+  assertNotProdOrAllowed();
+
   // Crear Org A
   const orgA = await sb.from('organizations').insert({
     portal_email: ORG_A_EMAIL,
