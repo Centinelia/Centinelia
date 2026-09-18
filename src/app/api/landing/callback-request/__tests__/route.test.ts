@@ -1,16 +1,28 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { POST } from '../route';
 
-// Mock sendEmail para no necesitar RESEND_API_KEY en tests
-vi.mock('@/lib/email/send', () => ({
-  sendEmail: vi.fn().mockResolvedValue(true),
+// Mocks de los helpers de landing
+vi.mock('@/lib/landing/callback-throttle', () => ({
+  checkThrottle: vi.fn().mockResolvedValue({ allowed: true }),
+}));
+
+vi.mock('@/lib/landing/callback-store', () => ({
+  createRequest: vi.fn().mockResolvedValue({ id: 'test-request-id' }),
+}));
+
+vi.mock('@/lib/landing/otp-sms', () => ({
+  sendOtp: vi.fn().mockResolvedValue({ ok: true }),
+}));
+
+vi.mock('@/lib/landing/notify-owner', () => ({
+  notifyOwnerNewLead: vi.fn().mockResolvedValue(undefined),
 }));
 
 beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe('POST /api/landing/callback-request', () => {
+describe('POST /api/landing/callback-request Phase 2', () => {
   it('rechaza payload sin consent', async () => {
     const req = new Request('http://localhost/api/landing/callback-request', {
       method: 'POST',
@@ -60,7 +72,7 @@ describe('POST /api/landing/callback-request', () => {
     expect(res.status).toBe(400);
   });
 
-  it('acepta payload valido y responde ok', async () => {
+  it('responde con requestId y no llama a Vapi todavia (solo OTP)', async () => {
     const req = new Request('http://localhost/api/landing/callback-request', {
       method: 'POST',
       body:   JSON.stringify({ phone: '8112345678', industry: 'tortilleria_abarrotes', consent: true }),
@@ -69,6 +81,7 @@ describe('POST /api/landing/callback-request', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.ok).toBe(true);
+    expect(body.requestId).toBeTruthy();
   });
 
   it('acepta industria "construccion"', async () => {
@@ -89,19 +102,57 @@ describe('POST /api/landing/callback-request', () => {
     expect(res.status).toBe(200);
   });
 
-  it('llama a sendEmail con el telefono y la industria del payload', async () => {
-    const { sendEmail } = await import('@/lib/email/send');
+  it('llama a sendOtp con el requestId y el telefono', async () => {
+    const { sendOtp } = await import('@/lib/landing/otp-sms');
     const req = new Request('http://localhost/api/landing/callback-request', {
       method: 'POST',
       body:   JSON.stringify({ phone: '8119876543', industry: 'despacho_contable', consent: true }),
     });
     await POST(req);
-    expect(sendEmail).toHaveBeenCalledOnce();
-    expect(sendEmail).toHaveBeenCalledWith(
+    expect(sendOtp).toHaveBeenCalledOnce();
+    expect(sendOtp).toHaveBeenCalledWith('test-request-id', '8119876543');
+  });
+
+  it('llama a notifyOwnerNewLead con los datos del lead', async () => {
+    const { notifyOwnerNewLead } = await import('@/lib/landing/notify-owner');
+    const req = new Request('http://localhost/api/landing/callback-request', {
+      method: 'POST',
+      body:   JSON.stringify({ phone: '8119876543', industry: 'despacho_contable', consent: true }),
+    });
+    await POST(req);
+    expect(notifyOwnerNewLead).toHaveBeenCalledOnce();
+    expect(notifyOwnerNewLead).toHaveBeenCalledWith(
       expect.objectContaining({
-        to:      'nazre20@gmail.com',
-        subject: expect.stringContaining('despacho_contable'),
+        phone:    '8119876543',
+        industry: 'despacho_contable',
       }),
     );
+  });
+
+  it('responde 429 en ip_rate_limit', async () => {
+    const { checkThrottle } = await import('@/lib/landing/callback-throttle');
+    vi.mocked(checkThrottle).mockResolvedValueOnce({ allowed: false, reason: 'ip_rate_limit' });
+    const req = new Request('http://localhost/api/landing/callback-request', {
+      method:  'POST',
+      headers: { 'x-forwarded-for': '10.0.0.99' },
+      body:    JSON.stringify({ phone: '8199999999', industry: 'otro', consent: true }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(429);
+    const body = await res.json();
+    expect(body.error).toBe('ip_rate_limit');
+  });
+
+  it('responde 429 en phone_rate_limit', async () => {
+    const { checkThrottle } = await import('@/lib/landing/callback-throttle');
+    vi.mocked(checkThrottle).mockResolvedValueOnce({ allowed: false, reason: 'phone_rate_limit' });
+    const req = new Request('http://localhost/api/landing/callback-request', {
+      method: 'POST',
+      body:   JSON.stringify({ phone: '8112345678', industry: 'otro', consent: true }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(429);
+    const body = await res.json();
+    expect(body.error).toBe('phone_rate_limit');
   });
 });

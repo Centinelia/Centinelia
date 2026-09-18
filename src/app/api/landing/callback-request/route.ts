@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
-import { sendEmail } from '@/lib/email/send';
+import { checkThrottle } from '@/lib/landing/callback-throttle';
+import { createRequest } from '@/lib/landing/callback-store';
+import { sendOtp } from '@/lib/landing/otp-sms';
+import { notifyOwnerNewLead } from '@/lib/landing/notify-owner';
 
 // Telefono mexicano de 10 digitos (sin cero inicial, sin codigo de pais).
-// Acepta numeros locales (area 2-3 digitos + 7-8 digitos = 10 total).
 const MX_PHONE_RE = /^[1-9]\d{9}$/;
 
 const INDUSTRIES = [
@@ -12,24 +14,9 @@ const INDUSTRIES = [
   'servicios_profesionales',
   'otro',
 ] as const;
-type Industry = (typeof INDUSTRIES)[number];
 
-interface Payload {
-  phone:    string;
-  industry: Industry;
-  consent:  true;
-}
-
-function validate(body: unknown): Payload | null {
-  if (typeof body !== 'object' || body === null) return null;
-  const b = body as Record<string, unknown>;
-  if (b.consent !== true) return null;
-  if (typeof b.phone !== 'string' || !MX_PHONE_RE.test(b.phone)) return null;
-  if (
-    typeof b.industry !== 'string' ||
-    !(INDUSTRIES as readonly string[]).includes(b.industry)
-  ) return null;
-  return { phone: b.phone, industry: b.industry as Industry, consent: true };
+function extractIp(req: Request): string | null {
+  return req.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? null;
 }
 
 export async function POST(req: Request) {
@@ -40,18 +27,32 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'invalid_json' }, { status: 400 });
   }
 
-  const payload = validate(body);
-  if (!payload) {
+  const b = body as Record<string, unknown> | null;
+  if (!b || b.consent !== true) {
+    return NextResponse.json({ ok: false, error: 'invalid_payload' }, { status: 400 });
+  }
+  if (typeof b.phone !== 'string' || !MX_PHONE_RE.test(b.phone)) {
+    return NextResponse.json({ ok: false, error: 'invalid_payload' }, { status: 400 });
+  }
+  if (typeof b.industry !== 'string' || !(INDUSTRIES as readonly string[]).includes(b.industry)) {
     return NextResponse.json({ ok: false, error: 'invalid_payload' }, { status: 400 });
   }
 
-  // Phase 1: notificar al owner por correo con los datos del lead.
-  // Phase 2 disparara OTP + Vapi outbound.
-  await sendEmail({
-    to:      'nazre20@gmail.com',
-    subject: `Nuevo lead landing: ${payload.industry} (${payload.phone})`,
-    html:    `<p>Telefono: ${payload.phone}</p><p>Industria: ${payload.industry}</p><p>Consentimiento: si</p>`,
+  const ip = extractIp(req);
+  const throttle = await checkThrottle({ ip, phone: b.phone });
+  if (!throttle.allowed) {
+    return NextResponse.json({ ok: false, error: throttle.reason }, { status: 429 });
+  }
+
+  const { id: requestId } = await createRequest({
+    phone:     b.phone,
+    industry:  b.industry as string,
+    ip,
+    userAgent: req.headers.get('user-agent') ?? null,
   });
 
-  return NextResponse.json({ ok: true });
+  await sendOtp(requestId, b.phone);
+  await notifyOwnerNewLead({ requestId, phone: b.phone, industry: b.industry as string });
+
+  return NextResponse.json({ ok: true, requestId });
 }
