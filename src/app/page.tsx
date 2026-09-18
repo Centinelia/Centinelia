@@ -32,18 +32,17 @@ export default function LandingPage() {
 
   async function handleCallbackSubmit(
     payload: CallbackRequestPayload,
-  ): Promise<{ ok: boolean; message?: string }> {
-    // Phase 1: POST al endpoint stub que captura el lead y notifica al owner.
-    // Phase 2 reemplaza este handler con OTP + Vapi outbound.
+  ): Promise<{ ok: boolean; requestId?: string; message?: string }> {
     const res = await fetch('/api/landing/callback-request', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify(payload),
     });
-    if (!res.ok) {
-      return { ok: false, message: 'No pudimos procesar tu solicitud. Intenta de nuevo.' };
+    const body = await res.json();
+    if (!res.ok || !body.ok) {
+      return { ok: false, message: body.error ?? 'No pudimos procesar tu solicitud. Intenta de nuevo.' };
     }
-    return { ok: true, message: 'Recibido. Te llamamos en menos de 30 minutos.' };
+    return { ok: true, requestId: body.requestId };
   }
 
   return (
