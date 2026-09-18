@@ -6,9 +6,14 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Check, Star, Clock, Zap, Phone } from 'lucide-react';
 import AnimatedSection from './AnimatedSection';
+import { FEATURE_PLAN_CONFIG, JORNADA_CONFIG, MINUTES_RATE_EXTRA } from '@/lib/billing/plans';
 
 const fmt = (n: number) => new Intl.NumberFormat('es-MX').format(n);
 const IVA = 0.16;
+
+// Setup fee y tarifa extra desde plans.ts (fuente de verdad)
+const SETUP_FEE = FEATURE_PLAN_CONFIG.pro.setupFee; // 14990
+const EXTRA_MIN_RATE = MINUTES_RATE_EXTRA;            // 12
 
 function AnimatedNumber({ value, className, style }: { value: number; className?: string; style?: React.CSSProperties }) {
   const [display, setDisplay] = useState(value);
@@ -41,7 +46,7 @@ function AnimatedNumber({ value, className, style }: { value: number; className?
 
 const AGENT_TYPES = [
   {
-    id: 'pro', name: 'Empleado Centinelia', setupFee: 14990, color: '#9B6DFF', popular: true,
+    id: 'pro', name: 'Empleado Centinelia', setupFee: SETUP_FEE, color: '#9B6DFF', popular: true,
     features: [
       'Voz profesional',
       'Memoria de tu organización',
@@ -61,21 +66,23 @@ const JORNADA_TABS: { id: JornadaId; label: string; icon: React.ReactNode; color
   { id: 'tareas',    label: 'Solo tareas',  icon: <Zap size={11} />,                         color: '#10B981' },
 ];
 
+// Labels de UI (Media Jornada / Jornada Completa / Alta Demanda) se mantienen por spec de landing.
+// Precios y cantidades se leen de JORNADA_CONFIG (plans.ts) para evitar drift.
 const JORNADA_TIERS: Record<JornadaId, { id: string; label: string; subtitle: string; minutes: number; ops: number; price: number; callsPerDay?: number; popular?: boolean }[]> = {
   combinada: [
-    { id: 'starter', label: 'Media Jornada',    subtitle: 'Ideal para organizaciones pequeñas.',          minutes: 250,  ops: 300,  price: 2997,  callsPerDay: 4  },
-    { id: 'growth',  label: 'Jornada Completa', subtitle: 'Ideal para la mayoría de las organizaciones.', minutes: 500,  ops: 600,  price: 5994,  callsPerDay: 8, popular: true },
-    { id: 'scale',   label: 'Alta Demanda',     subtitle: 'Ideal para operaciones con alto volumen.',     minutes: 1000, ops: 1200, price: 11988, callsPerDay: 17 },
+    { id: 'starter', label: 'Media Jornada',    subtitle: 'Ideal para organizaciones pequeñas.',          minutes: JORNADA_CONFIG.combinada.starter.minutes,  ops: JORNADA_CONFIG.combinada.starter.aiOps,  price: JORNADA_CONFIG.combinada.starter.mxn,  callsPerDay: 4  },
+    { id: 'growth',  label: 'Jornada Completa', subtitle: 'Ideal para la mayoría de las organizaciones.', minutes: JORNADA_CONFIG.combinada.growth.minutes,   ops: JORNADA_CONFIG.combinada.growth.aiOps,   price: JORNADA_CONFIG.combinada.growth.mxn,   callsPerDay: 8, popular: true },
+    { id: 'scale',   label: 'Alta Demanda',     subtitle: 'Ideal para operaciones con alto volumen.',     minutes: JORNADA_CONFIG.combinada.scale.minutes,    ops: JORNADA_CONFIG.combinada.scale.aiOps,    price: JORNADA_CONFIG.combinada.scale.mxn,    callsPerDay: 17 },
   ],
   minutos: [
-    { id: 'starter', label: 'Media Jornada',    subtitle: 'Más minutos, canal de voz dedicado.',         minutes: 500,  ops: 20, price: 2997,  callsPerDay: 8  },
-    { id: 'growth',  label: 'Jornada Completa', subtitle: 'Para operaciones con alto volumen de llamadas.', minutes: 900,  ops: 20, price: 5994,  callsPerDay: 15, popular: true },
-    { id: 'scale',   label: 'Alta Demanda',     subtitle: 'Máximos minutos disponibles.',                minutes: 1800, ops: 20, price: 11988, callsPerDay: 30 },
+    { id: 'starter', label: 'Media Jornada',    subtitle: 'Más minutos, canal de voz dedicado.',            minutes: JORNADA_CONFIG.minutos.starter.minutes,  ops: JORNADA_CONFIG.minutos.starter.aiOps, price: JORNADA_CONFIG.minutos.starter.mxn,  callsPerDay: 8  },
+    { id: 'growth',  label: 'Jornada Completa', subtitle: 'Para operaciones con alto volumen de llamadas.', minutes: JORNADA_CONFIG.minutos.growth.minutes,   ops: JORNADA_CONFIG.minutos.growth.aiOps,  price: JORNADA_CONFIG.minutos.growth.mxn,   callsPerDay: 15, popular: true },
+    { id: 'scale',   label: 'Alta Demanda',     subtitle: 'Máximos minutos disponibles.',                   minutes: JORNADA_CONFIG.minutos.scale.minutes,    ops: JORNADA_CONFIG.minutos.scale.aiOps,   price: JORNADA_CONFIG.minutos.scale.mxn,    callsPerDay: 30 },
   ],
   tareas: [
-    { id: 'starter', label: 'Media Jornada',    subtitle: 'Sin llamadas: solo inteligencia y tareas.',   minutes: 0, ops: 500,  price: 2997  },
-    { id: 'growth',  label: 'Jornada Completa', subtitle: 'Para equipos con alta carga de tareas.',      minutes: 0, ops: 1200, price: 5994,  popular: true },
-    { id: 'scale',   label: 'Alta Demanda',     subtitle: 'Automatización de alto volumen.',             minutes: 0, ops: 3000, price: 11988 },
+    { id: 'starter', label: 'Media Jornada',    subtitle: 'Sin llamadas: solo inteligencia y tareas.',   minutes: 0, ops: JORNADA_CONFIG.tareas.starter.aiOps, price: JORNADA_CONFIG.tareas.starter.mxn  },
+    { id: 'growth',  label: 'Jornada Completa', subtitle: 'Para equipos con alta carga de tareas.',      minutes: 0, ops: JORNADA_CONFIG.tareas.growth.aiOps,  price: JORNADA_CONFIG.tareas.growth.mxn,  popular: true },
+    { id: 'scale',   label: 'Alta Demanda',     subtitle: 'Automatización de alto volumen.',             minutes: 0, ops: JORNADA_CONFIG.tareas.scale.aiOps,   price: JORNADA_CONFIG.tareas.scale.mxn   },
   ],
 };
 
@@ -369,6 +376,42 @@ export default function PricingSection() {
             style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 8px 32px rgba(108,59,255,0.4)' }}
           >
             Contratar mi primer Centinelia
+          </Link>
+        </div>
+      </AnimatedSection>
+
+      {/* ─── Notas de incorporación + minutos extra ── */}
+      <AnimatedSection>
+        <div className="mt-6 text-center text-xs text-gray-500">
+          Incluye una sola incorporación de ${fmt(SETUP_FEE)} + IVA.
+        </div>
+        <div className="mt-4 text-center text-xs text-gray-500">
+          Minutos adicionales ${fmt(EXTRA_MIN_RATE)} MXN por minuto. Se compran desde el portal en cualquier momento.
+        </div>
+      </AnimatedSection>
+
+      {/* ─── Franja: empleado a la medida ─────────── */}
+      <AnimatedSection>
+        <div className="mt-16 max-w-4xl mx-auto rounded-xl p-8 text-center"
+          style={{ background: '#F5F0FF', border: '1px solid #D6C2FF' }}>
+          <h3 className="text-2xl font-bold mb-3" style={{ color: '#1A0A3B' }}>
+            ¿El rol que necesita tu negocio no está en el catálogo?
+          </h3>
+          <p className="mb-4 max-w-2xl mx-auto" style={{ color: '#374151' }}>
+            Diseñamos empleados digitales a la medida de tu operación. Empezamos con un diagnóstico
+            de tu negocio, automatizamos lo que necesita quedar listo antes, y luego incorporamos
+            al empleado que tu equipo va a usar.
+          </p>
+          <p className="mb-6 max-w-2xl mx-auto font-medium" style={{ color: '#374151' }}>
+            Consultoría y automatización desde $60,000 + IVA. Después, el empleado que diseñamos
+            entra en un plan del catálogo o en cotización empresarial.
+          </p>
+          <Link
+            href="/cotizar"
+            className="inline-block px-8 py-4 font-semibold rounded-lg transition"
+            style={{ background: '#6C3BFF', color: '#fff' }}
+          >
+            Agenda tu diagnóstico
           </Link>
         </div>
       </AnimatedSection>
