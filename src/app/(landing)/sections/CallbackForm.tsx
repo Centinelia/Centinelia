@@ -21,9 +21,9 @@ interface Props {
 }
 
 const INDUSTRIES: { key: IndustryKey; label: string }[] = [
-  { key: 'tortilleria_abarrotes', label: 'Tortilleria, abarrotes o reparto' },
+  { key: 'tortilleria_abarrotes', label: 'Tortillería, abarrotes o reparto' },
   { key: 'construccion', label: 'Constructora u obra' },
-  { key: 'despacho_contable', label: 'Despacho contable o de facturacion' },
+  { key: 'despacho_contable', label: 'Despacho contable o de facturación' },
   { key: 'servicios_profesionales', label: 'Servicios profesionales' },
   { key: 'otro', label: 'Otro' },
 ];
@@ -45,7 +45,7 @@ export default function CallbackForm({ onSubmit }: Props) {
     e.preventDefault();
     setError(null);
     if (!MX_PHONE_RE.test(phone)) {
-      setError('Telefono no valido. Escribe los 10 digitos sin espacios ni guiones.');
+      setError('Teléfono no válido. Escribe los 10 dígitos sin espacios ni guiones.');
       return;
     }
     setSending(true);
@@ -75,10 +75,10 @@ export default function CallbackForm({ onSubmit }: Props) {
       } else if (body.ok && body.callStatus === 'fallback_manual') {
         setStage('fallback');
       } else {
-        setError(body.error ?? 'Codigo incorrecto. Intentalo de nuevo.');
+        setError(body.error ?? 'Código incorrecto. Inténtalo de nuevo.');
       }
     } catch {
-      setError('Error de red. Intentalo de nuevo.');
+      setError('Error de red. Inténtalo de nuevo.');
     } finally {
       setVerifying(false);
     }
@@ -89,10 +89,10 @@ export default function CallbackForm({ onSubmit }: Props) {
       <section className="py-24 px-6 bg-[#FAFBFF]">
         <div className="max-w-2xl mx-auto text-center">
           <p className="text-2xl font-medium text-[#1A0A3B]">
-            Nia te esta llamando ahora. Contesta al +52&nbsp;{phone.slice(0, 2)} {phone.slice(2, 6)} {phone.slice(6)}.
+            Nia te está llamando ahora. Contesta al +52&nbsp;{phone.slice(0, 2)} {phone.slice(2, 6)} {phone.slice(6)}.
           </p>
           <p className="mt-4 text-sm text-gray-600">
-            La llamada dura unos 2 minutos. Nia te va a preguntar sobre tu negocio para mostrarte como trabajaria contigo.
+            La llamada dura unos 2 minutos. Nia te va a preguntar sobre tu negocio para mostrarte cómo trabajaría contigo.
           </p>
         </div>
       </section>
@@ -104,7 +104,7 @@ export default function CallbackForm({ onSubmit }: Props) {
       <section className="py-24 px-6 bg-[#FAFBFF]">
         <div className="max-w-2xl mx-auto text-center">
           <p className="text-2xl font-medium text-[#1A0A3B]">
-            Se nos complico llamarte de forma automatica. Te llamamos en menos de 30 minutos.
+            Se nos complicó llamarte de forma automática. Te llamamos en menos de 30 minutos.
           </p>
           <p className="mt-4 text-sm text-gray-600">
             Quedamos pendientes contigo. Si prefieres, escribe a hola@centinelia.mx.
@@ -119,14 +119,14 @@ export default function CallbackForm({ onSubmit }: Props) {
       <section className="py-24 px-6 bg-[#FAFBFF]">
         <div className="max-w-2xl mx-auto text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-[#1A0A3B] mb-4">
-            Te mandamos un codigo por SMS
+            Te mandamos un código por SMS
           </h2>
           <p className="text-gray-600 mb-8">
-            Escribe el codigo de 6 digitos que te enviamos al +52 {phone.slice(0, 2)} {phone.slice(2, 6)} {phone.slice(6)}.
+            Escribe el código de 6 dígitos que te enviamos al +52 {phone.slice(0, 2)} {phone.slice(2, 6)} {phone.slice(6)}.
           </p>
           <form onSubmit={handleOtpVerify} className="flex flex-col gap-4">
             <label className="text-left">
-              <span className="text-sm font-medium text-[#1A0A3B]">Codigo de verificacion</span>
+              <span className="text-sm font-medium text-[#1A0A3B]">Código de verificación</span>
               <input
                 type="text"
                 inputMode="numeric"
@@ -145,7 +145,7 @@ export default function CallbackForm({ onSubmit }: Props) {
               disabled={verifying || otpCode.length < 6}
               className="mt-2 px-8 py-4 bg-[#6C3BFF] text-white font-semibold rounded-lg hover:bg-[#5A2FD9] disabled:opacity-50 transition"
             >
-              {verifying ? 'Verificando...' : 'Verificar codigo'}
+              {verifying ? 'Verificando...' : 'Verificar código'}
             </button>
           </form>
         </div>
@@ -162,7 +162,7 @@ export default function CallbackForm({ onSubmit }: Props) {
         </h2>
         <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4">
           <label className="text-left">
-            <span className="text-sm font-medium text-[#1A0A3B]">Tu telefono</span>
+            <span className="text-sm font-medium text-[#1A0A3B]">Tu teléfono</span>
             <input
               type="tel"
               value={phone}
@@ -192,7 +192,7 @@ export default function CallbackForm({ onSubmit }: Props) {
               className="mt-1"
             />
             <span>
-              Autorizo que Centinelia me contacte por telefono. Ver <a href="/privacidad" className="text-[#6C3BFF] underline">aviso de privacidad</a>.
+              Autorizo que Centinelia me contacte por teléfono. Ver <a href="/privacidad-datos" className="text-[#6C3BFF] underline">aviso de privacidad</a>.
             </span>
           </label>
           {consent && (
@@ -207,7 +207,7 @@ export default function CallbackForm({ onSubmit }: Props) {
           {error && <p className="text-red-600 text-sm">{error}</p>}
         </form>
         <p className="mt-6 text-sm text-gray-600 max-w-lg mx-auto">
-          Vas a hablar con Nia. Va a durar unos 2 minutos. Te va a preguntar sobre tu negocio para mostrarte como trabajaria contigo.
+          Vas a hablar con Nia. Va a durar unos 2 minutos. Te va a preguntar sobre tu negocio para mostrarte cómo trabajaría contigo.
         </p>
       </div>
     </section>

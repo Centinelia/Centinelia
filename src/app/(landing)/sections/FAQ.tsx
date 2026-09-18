@@ -40,7 +40,7 @@ const ITEMS: { q: string; a: string }[] = [
   },
   {
     q: '¿Dónde guardan mis datos?',
-    a: 'En Supabase (nube), México y Estados Unidos, con encripción en tránsito y en reposo. El aviso de privacidad completo está en /privacidad.',
+    a: 'En Supabase (nube), México y Estados Unidos, con encripción en tránsito y en reposo. El aviso de privacidad completo está en /privacidad-datos.',
   },
 ];
 
