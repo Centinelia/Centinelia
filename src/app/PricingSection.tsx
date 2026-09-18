@@ -312,7 +312,7 @@ export default function PricingSection() {
           Aumenta o reduce la jornada cuando tu operación cambie.
           <br className="hidden sm:inline" />
           <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.28)' }}>
-            Los coordinadores (Nox, Niva) usan automáticamente la tarifa Solo tareas — no atienden llamadas.
+            Los coordinadores (Nox, Niva) usan automáticamente la tarifa Solo tareas: no atienden llamadas.
           </span>
         </p>
       </AnimatedSection>

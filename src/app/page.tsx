@@ -96,7 +96,7 @@ export default function LandingPage() {
               <Link href="/faq" className="text-xs transition-opacity hover:opacity-70" style={{ color: C.textMute }}>
                 FAQ
               </Link>
-              <Link href="/privacidad" className="text-xs transition-opacity hover:opacity-70" style={{ color: C.textMute }}>
+              <Link href="/privacidad-datos" className="text-xs transition-opacity hover:opacity-70" style={{ color: C.textMute }}>
                 Privacidad
               </Link>
               <Link href="/registro" className="text-xs transition-opacity hover:opacity-70" style={{ color: C.textMute }}>
@@ -161,7 +161,7 @@ export default function LandingPage() {
               <Link href="/faq" className="text-xs transition-colors" style={{ color: C.textMute }}>
                 Preguntas frecuentes
               </Link>
-              <Link href="/privacidad" className="text-xs transition-colors" style={{ color: C.textMute }}>
+              <Link href="/privacidad-datos" className="text-xs transition-colors" style={{ color: C.textMute }}>
                 Privacidad
               </Link>
               <Link href="/portal/login" className="text-xs transition-colors" style={{ color: C.textMute }}>
