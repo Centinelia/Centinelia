@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowLeft, Plus, User, Calendar, Pause, Play, Edit3, Loader2, AlertCircle, FileText } from 'lucide-react';
 import type { ClienteDoc } from '@/lib/billing/centinelia-clientes';
 import { DocsSection } from './DocsSection';
+import { FacturasSection } from './FacturasSection';
 
 interface Cliente {
   id: string;
@@ -386,6 +387,10 @@ function ClienteForm({ initial, onClose, onSaved }: { initial: Cliente | null; o
             initialDocs={initial.docs ?? []}
             onClienteUpdated={onSaved}
           />
+        )}
+
+        {initial && (
+          <FacturasSection clienteId={initial.id} />
         )}
 
         {error && (
