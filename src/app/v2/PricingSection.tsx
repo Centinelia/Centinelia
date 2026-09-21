@@ -373,47 +373,6 @@ export default function PricingSection() {
           </Link>
         </div>
       </AnimatedSection>
-
-      {/* ─── Empleado a la medida ─────────────── */}
-      <AnimatedSection>
-        <div
-          className="rounded-2xl px-6 sm:px-10 py-8 sm:py-10 mb-8 max-w-3xl mx-auto text-center"
-          style={{
-            background: 'rgba(108,59,255,0.08)',
-            border:     '1.5px solid rgba(108,59,255,0.3)',
-          }}
-        >
-          <span
-            className="text-[11px] font-bold tracking-widest uppercase inline-block px-3 py-1 rounded-full mb-4"
-            style={{ background: 'rgba(108,59,255,0.28)', color: '#B89CFF', border: '1px solid rgba(108,59,255,0.5)' }}
-          >
-            Empleado a la medida
-          </span>
-          <h3
-            className="font-bold mb-4"
-            style={{ fontSize: 'clamp(1.15rem, 2.2vw, 1.4rem)', color: '#fff', lineHeight: 1.3 }}
-          >
-            ¿El rol que necesita tu negocio<br />no está en el catálogo?
-          </h3>
-          <p className="text-sm leading-relaxed mb-3" style={{ color: 'rgba(255,255,255,0.7)' }}>
-            Diseñamos empleados digitales a la medida de tu operación. Empezamos con un diagnóstico de tu negocio, automatizamos lo que necesita quedar listo antes, y luego incorporamos al empleado que tu equipo va a usar.
-          </p>
-          <p className="text-sm leading-relaxed mb-6" style={{ color: '#C4A8FF' }}>
-            Consultoría y automatización desde <span className="font-bold" style={{ color: '#fff' }}>$60,000 + IVA</span>.
-          </p>
-          <Link
-            href="/cotizar"
-            className="inline-block px-8 py-3 rounded-2xl text-sm font-bold transition-all hover:opacity-90 hover:scale-[1.02]"
-            style={{
-              background: 'linear-gradient(135deg, #6C3BFF, #9B6DFF)',
-              color:      '#fff',
-              boxShadow:  '0 8px 24px rgba(108,59,255,0.35)',
-            }}
-          >
-            Agenda tu diagnóstico
-          </Link>
-        </div>
-      </AnimatedSection>
     </>
   );
 }

@@ -710,47 +710,82 @@ export default function LandingPage() {
           <PricingSection />
 
 
-          {/* ─── Empresarial ────────────────────────── */}
+          {/* ─── Custom: rol a la medida + oficina completa (2-col compacta) ── */}
           <AnimatedSection>
-          <div
-            className="relative rounded-2xl p-7 sm:p-10 mt-8"
-            style={{
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              overflow: 'hidden',
-            }}
-          >
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2,
-              background: 'linear-gradient(90deg, transparent, rgba(155,109,255,0.5), transparent)' }} />
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6">
-              <div className="flex-1">
-                <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: 'rgba(155,109,255,0.6)' }}>
-                  Para equipos
-                </p>
-                <h3 className="font-bold mb-2" style={{ color: '#fff', fontSize: '1.25rem' }}>
-                  ¿Necesitas una oficina a la medida?
-                </h3>
-                <p className="text-sm mb-6" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                  Diseñamos una oficina digital completa para organizaciones con múltiples sucursales, procesos complejos o necesidades especiales.
-                </p>
-                <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2">
-                  {['Múltiples Centinelias', 'Sucursales', 'CRM', 'Flujos personalizados', 'Integraciones', 'SLA dedicado'].map(f => (
-                    <li key={f} className="flex items-center gap-2 text-sm" style={{ color: 'rgba(255,255,255,0.55)' }}>
-                      <Check size={13} color="#9B6DFF" className="flex-shrink-0" /> {f}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="flex sm:flex-col sm:items-end gap-3 sm:gap-4 flex-shrink-0 sm:pt-1">
-                <Link
-                  href="/cotizar"
-                  className="px-6 py-3 rounded-xl text-sm font-semibold transition-all hover:opacity-90 text-center"
-                  style={{ background: 'rgba(108,59,255,0.25)', color: '#C4A8FF', border: '1.5px solid rgba(108,59,255,0.45)', whiteSpace: 'nowrap' }}
-                >
-                  Diseñar mi oficina digital
-                </Link>
-              </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-8">
+
+            {/* Empleado a la medida (rol nuevo) */}
+            <div
+              className="relative rounded-2xl p-6 sm:p-7 flex flex-col"
+              style={{
+                background: 'rgba(108,59,255,0.08)',
+                border:     '1.5px solid rgba(108,59,255,0.3)',
+                overflow:   'hidden',
+              }}
+            >
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2,
+                background: 'linear-gradient(90deg, transparent, rgba(155,109,255,0.7), transparent)' }} />
+              <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: 'rgba(155,109,255,0.7)' }}>
+                Empleado a la medida
+              </p>
+              <h3 className="font-bold mb-2" style={{ color: '#fff', fontSize: '1.15rem', lineHeight: 1.25 }}>
+                ¿Tu rol no está en el catálogo?
+              </h3>
+              <p className="text-sm mb-4 flex-1" style={{ color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>
+                Diagnosticamos tu operación, automatizamos lo previo y diseñamos al empleado que tu equipo va a usar.
+              </p>
+              <p className="text-xs mb-5" style={{ color: '#C4A8FF' }}>
+                Consultoría desde <span className="font-bold" style={{ color: '#fff' }}>$60,000 + IVA</span>
+              </p>
+              <Link
+                href="/cotizar"
+                className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 text-center w-full sm:w-fit"
+                style={{
+                  background: 'linear-gradient(135deg, #6C3BFF, #9B6DFF)',
+                  color:      '#fff',
+                  boxShadow:  '0 6px 20px rgba(108,59,255,0.35)',
+                }}
+              >
+                Agenda tu diagnóstico
+              </Link>
             </div>
+
+            {/* Para equipos (oficina completa) */}
+            <div
+              className="relative rounded-2xl p-6 sm:p-7 flex flex-col"
+              style={{
+                background: 'rgba(255,255,255,0.03)',
+                border:     '1px solid rgba(255,255,255,0.1)',
+                overflow:   'hidden',
+              }}
+            >
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2,
+                background: 'linear-gradient(90deg, transparent, rgba(155,109,255,0.5), transparent)' }} />
+              <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: 'rgba(155,109,255,0.6)' }}>
+                Para equipos
+              </p>
+              <h3 className="font-bold mb-2" style={{ color: '#fff', fontSize: '1.15rem', lineHeight: 1.25 }}>
+                ¿Necesitas una oficina completa?
+              </h3>
+              <p className="text-sm mb-4 flex-1" style={{ color: 'rgba(255,255,255,0.4)', lineHeight: 1.5 }}>
+                Diseñamos oficinas digitales para organizaciones con múltiples sucursales, procesos complejos o necesidades especiales.
+              </p>
+              <ul className="grid grid-cols-2 gap-x-4 gap-y-1.5 mb-5">
+                {['Múltiples Centinelias', 'Sucursales', 'CRM', 'Integraciones', 'Flujos custom', 'SLA dedicado'].map(f => (
+                  <li key={f} className="flex items-center gap-1.5 text-xs" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                    <Check size={11} color="#9B6DFF" className="flex-shrink-0" /> {f}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/cotizar"
+                className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 text-center w-full sm:w-fit"
+                style={{ background: 'rgba(108,59,255,0.25)', color: '#C4A8FF', border: '1.5px solid rgba(108,59,255,0.45)', whiteSpace: 'nowrap' }}
+              >
+                Diseñar mi oficina
+              </Link>
+            </div>
+
           </div>
           </AnimatedSection>
 
