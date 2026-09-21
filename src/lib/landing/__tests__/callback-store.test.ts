@@ -66,7 +66,7 @@ describe('callback-store', () => {
 
     const result = await createRequest({
       phone:     '8112345678',
-      industry:  'tortilleria_abarrotes',
+      orgName: 'Test Org', orgDescription: 'Test desc', expectation: 'Test exp',
       ip:        '127.0.0.1',
       userAgent: 'test',
     });
@@ -82,7 +82,7 @@ describe('callback-store', () => {
     mockFrom.mockReturnValue({ insert: mockInsert });
 
     await expect(
-      createRequest({ phone: '8112345679', industry: 'otro', ip: null, userAgent: null }),
+      createRequest({ phone: '8112345679', orgName: 'Test Org', orgDescription: 'Test desc', expectation: 'Test exp', ip: null, userAgent: null }),
     ).rejects.toThrow('createRequest fallo: DB error');
   });
 
@@ -147,7 +147,10 @@ describe('callback-store', () => {
     const fakeRow = {
       id:              'uuid-test-6',
       phone:           '8112345678',
-      industry:        'otro',
+      industry:        'custom_demo',
+      org_name:        'Test Org',
+      org_description: 'Test desc',
+      expectation:     'Test exp',
       ip:              null,
       user_agent:      null,
       consent_at:      new Date().toISOString(),

@@ -27,7 +27,7 @@ describe('notifyOwnerFallback', () => {
     await notifyOwnerFallback({
       requestId: 'r1',
       phone:     '8112345678',
-      industry:  'tortilleria_abarrotes',
+      orgName: 'Test Org', orgDescription: 'Test desc', expectation: 'Test exp',
       reason:    'vapi_call_failed',
     });
     expect(mockSendEmail).toHaveBeenCalledOnce();
@@ -40,7 +40,7 @@ describe('notifyOwnerFallback', () => {
     await notifyOwnerFallback({
       requestId: 'r2',
       phone:     '8119999999',
-      industry:  'construccion',
+      orgName: 'Test Org', orgDescription: 'Test desc', expectation: 'Test exp',
       reason:    'vapi_no_phone',
     });
     const [opts] = mockSendEmail.mock.calls[0];
@@ -51,7 +51,7 @@ describe('notifyOwnerFallback', () => {
     await notifyOwnerFallback({
       requestId: 'r3',
       phone:     '8112345678',
-      industry:  'servicios_profesionales',
+      orgName: 'Test Org', orgDescription: 'Test desc', expectation: 'Test exp',
       reason:    'agent_not_seeded',
     });
     const [opts] = mockSendEmail.mock.calls[0];
@@ -65,7 +65,7 @@ describe('notifyOwnerFallback', () => {
     mockSendEmail.mockResolvedValueOnce(false);
     // No debe lanzar — el fallback del fallback no debe crashear el pipeline
     await expect(
-      notifyOwnerFallback({ requestId: 'r4', phone: '8112345678', industry: 'otro', reason: 'x' }),
+      notifyOwnerFallback({ requestId: 'r4', phone: '8112345678', orgName: 'Test Org', orgDescription: 'Test desc', expectation: 'Test exp', reason: 'x' }),
     ).resolves.toBeUndefined();
   });
 });
@@ -77,7 +77,7 @@ describe('notifyOwnerNewLead', () => {
     await notifyOwnerNewLead({
       requestId: 'r5',
       phone:     '8112345678',
-      industry:  'despacho_contable',
+      orgName: 'Test Org', orgDescription: 'Test desc', expectation: 'Test exp',
     });
     expect(mockSendEmail).toHaveBeenCalledOnce();
     const [opts] = mockSendEmail.mock.calls[0];
@@ -87,7 +87,7 @@ describe('notifyOwnerNewLead', () => {
   });
 
   it('incluye requestId en el html', async () => {
-    await notifyOwnerNewLead({ requestId: 'r6', phone: '8112345678', industry: 'otro' });
+    await notifyOwnerNewLead({ requestId: 'r6', phone: '8112345678', orgName: 'Test Org', orgDescription: 'Test desc', expectation: 'Test exp' });
     const [opts] = mockSendEmail.mock.calls[0];
     expect(opts.html).toContain('r6');
   });

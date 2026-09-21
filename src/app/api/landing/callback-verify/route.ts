@@ -3,7 +3,19 @@ import { verifyOtp } from '@/lib/landing/otp-sms';
 import { getById } from '@/lib/landing/callback-store';
 import { triggerLandingDemoCall } from '@/lib/vapi/landing-demo';
 import { notifyOwnerFallback } from '@/lib/landing/notify-owner';
-import type { IndustryKey } from '@/lib/landing/constants';
+
+// Horario laboral MX (America/Monterrey). Fuera de rango → fallback manual.
+const IN_HOURS_START = 9;
+const IN_HOURS_END   = 20;
+
+function currentHourMx(): number {
+  const s = new Date().toLocaleString('en-US', {
+    timeZone: 'America/Monterrey',
+    hour:     'numeric',
+    hour12:   false,
+  });
+  return parseInt(s, 10);
+}
 
 export async function POST(req: Request) {
   let body: unknown;
@@ -28,37 +40,55 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'not_found' }, { status: 404 });
   }
 
-  // Horario laboral MX (9am-8pm America/Monterrey)
-  const nowMx = new Date().toLocaleString('en-US', {
-    timeZone: 'America/Monterrey',
-    hour:     'numeric',
-    hour12:   false,
-  });
-  const hourMx = parseInt(nowMx, 10);
-  const inHours = hourMx >= 9 && hourMx < 20;
+  // Los 3 campos son NOT NULL en filas del nuevo flow. Si están null, la
+  // fila es legacy — no podemos hacer llamada dinámica, sale por fallback.
+  const orgName        = request.org_name;
+  const orgDescription = request.org_description;
+  const expectation    = request.expectation;
+
+  if (!orgName || !orgDescription || !expectation) {
+    await notifyOwnerFallback({
+      requestId:      b.requestId,
+      phone:          request.phone,
+      orgName:        orgName        ?? '(no capturado)',
+      orgDescription: orgDescription ?? '(no capturado)',
+      expectation:    expectation    ?? '(no capturado)',
+      reason:         'legacy_row_missing_context',
+    });
+    return NextResponse.json({ ok: true, callStatus: 'fallback_manual', reason: 'legacy_row' });
+  }
+
+  const hourMx = currentHourMx();
+  const inHours = hourMx >= IN_HOURS_START && hourMx < IN_HOURS_END;
 
   if (!inHours) {
     await notifyOwnerFallback({
-      requestId: b.requestId,
-      phone:     request.phone,
-      industry:  request.industry,
-      reason:    'out_of_hours',
+      requestId:      b.requestId,
+      phone:          request.phone,
+      orgName,
+      orgDescription,
+      expectation,
+      reason:         'out_of_hours',
     });
     return NextResponse.json({ ok: true, callStatus: 'fallback_manual', reason: 'out_of_hours' });
   }
 
   const callResult = await triggerLandingDemoCall({
-    phone:     request.phone,
-    industry:  request.industry as IndustryKey,
-    requestId: b.requestId,
+    phone:          request.phone,
+    orgName,
+    orgDescription,
+    expectation,
+    requestId:      b.requestId,
   });
 
   if (!callResult.ok) {
     await notifyOwnerFallback({
-      requestId: b.requestId,
-      phone:     request.phone,
-      industry:  request.industry,
-      reason:    `vapi_fail: ${callResult.error ?? 'unknown'}`,
+      requestId:      b.requestId,
+      phone:          request.phone,
+      orgName,
+      orgDescription,
+      expectation,
+      reason:         `vapi_fail: ${callResult.error ?? 'unknown'}`,
     });
     return NextResponse.json({ ok: true, callStatus: 'fallback_manual', reason: 'vapi_fail' });
   }

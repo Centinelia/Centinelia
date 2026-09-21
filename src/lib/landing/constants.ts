@@ -10,15 +10,3 @@ export const LANDING_DEMO_AGENT_ID = '00000000-0000-0000-0000-000000000001';
  * No aparece en admin/clientes ni en el pool de minutos de clientes reales.
  */
 export const LANDING_DEMO_PORTAL_EMAIL = 'landing-demo@centinelia.mx';
-
-/**
- * Industria del prospect capturada en el form del demo.
- * Placeholder mientras migramos a contexto dinámico (org_name + description +
- * expectation) en Commit 2 del demo dinamizado 2026-09-21. Nazre.
- */
-export type IndustryKey =
-  | 'tortilleria_abarrotes'
-  | 'construccion'
-  | 'despacho_contable'
-  | 'servicios_profesionales'
-  | 'otro';

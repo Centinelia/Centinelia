@@ -13,39 +13,52 @@ export type CallStatus =
   | 'fallback_manual';
 
 export interface CallbackRequest {
-  id:              string;
-  phone:           string;
-  industry:        string;
-  ip:              string | null;
-  user_agent:      string | null;
-  consent_at:      string;
-  otp_hash:        string | null;
-  otp_expires_at:  string | null;
-  otp_attempts:    number;
-  otp_verified_at: string | null;
-  vapi_call_id:    string | null;
-  call_status:     CallStatus | null;
-  call_started_at: string | null;
-  call_ended_at:   string | null;
-  created_at:      string;
-  updated_at:      string;
+  id:               string;
+  phone:            string;
+  // Legacy — se mantiene nullable durante migración a contexto dinámico. Row nuevas
+  // usan org_name/org_description/expectation en su lugar.
+  industry:         string | null;
+  org_name:         string | null;
+  org_description:  string | null;
+  expectation:      string | null;
+  ip:               string | null;
+  user_agent:       string | null;
+  consent_at:       string;
+  otp_hash:         string | null;
+  otp_expires_at:   string | null;
+  otp_attempts:     number;
+  otp_verified_at:  string | null;
+  vapi_call_id:     string | null;
+  call_status:      CallStatus | null;
+  call_started_at:  string | null;
+  call_ended_at:    string | null;
+  created_at:       string;
+  updated_at:       string;
 }
 
-// Inserta una nueva solicitud de callback. Retorna el id generado.
+// Inserta una nueva solicitud de callback con contexto dinámico del demo.
+// Retorna el id generado.
 export async function createRequest(input: {
-  phone:     string;
-  industry:  string;
-  ip:        string | null;
-  userAgent: string | null;
+  phone:           string;
+  orgName:         string;
+  orgDescription:  string;
+  expectation:     string;
+  ip:              string | null;
+  userAgent:       string | null;
 }): Promise<{ id: string }> {
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from('landing_callback_requests')
     .insert({
-      phone:      input.phone,
-      industry:   input.industry,
-      ip:         input.ip,
-      user_agent: input.userAgent,
+      phone:           input.phone,
+      // La columna `industry` sigue existiendo y es NOT NULL en la tabla original;
+      // usamos 'custom_demo' como marker para rows del nuevo flow dinámico.
+      industry:        'custom_demo',
+      org_name:        input.orgName,
+      org_description: input.orgDescription,
+      expectation:     input.expectation,
+      ip:              input.ip,
+      user_agent:      input.userAgent,
     })
     .select('id')
     .single();
