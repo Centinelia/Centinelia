@@ -250,7 +250,8 @@ export default function LandingPage() {
               className="mb-8 leading-relaxed mt-[20vw] sm:mt-0"
               style={{ fontSize: 'clamp(1rem, 1.8vw, 1.15rem)', color: 'rgba(255,255,255,0.62)' }}
             >
-              Contesta el teléfono, cotiza, factura, cobra y agenda. Sin contratar a nadie.<br /><br />
+              Contesta el teléfono, cotiza, factura, cobra y agenda.<br />
+              Sin contratar a nadie.<br /><br />
               Empleados especializados que trabajan juntos y nunca descansan.
             </p>
 
