@@ -250,8 +250,8 @@ export default function LandingPage() {
               className="mb-8 leading-relaxed mt-[20vw] sm:mt-0"
               style={{ fontSize: 'clamp(1rem, 1.8vw, 1.15rem)', color: 'rgba(255,255,255,0.62)' }}
             >
-              Primera oficina digital con empleados especializados que responden llamadas, correos, agendas, documentos y tareas.<br /><br />
-              Trabajan juntos. Nunca descansan.
+              Contesta el teléfono, cotiza, factura, cobra y agenda. Sin contratar a nadie.<br /><br />
+              Empleados especializados que trabajan juntos y nunca descansan.
             </p>
 
             {/* CTAs */}
@@ -297,7 +297,7 @@ export default function LandingPage() {
             padding: '0 20px',
           }}
         >
-          {['Sin contrato mínimo', 'Activo en menos de 24 h', 'Número local incluido', 'Soporte en español'].map(t => (
+          {['Sin contratar a nadie', 'Activo en menos de 24 h', 'Número local incluido', 'Soporte en español'].map(t => (
             <span key={t} className="flex items-center gap-1.5 text-xs" style={{ color: 'rgba(255,255,255,0.38)' }}>
               <Check size={11} color="#9B6DFF" /> {t}
             </span>
