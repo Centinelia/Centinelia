@@ -298,7 +298,7 @@ export default function LandingPage() {
             padding: '0 20px',
           }}
         >
-          {['Sin contratar a nadie', 'Activo en menos de 24 h', 'Número local incluido', 'Soporte en español'].map(t => (
+          {['Sin contrato mínimo', 'Activo en menos de 24 h', 'Número local incluido', 'Soporte en español'].map(t => (
             <span key={t} className="flex items-center gap-1.5 text-xs" style={{ color: 'rgba(255,255,255,0.38)' }}>
               <Check size={11} color="#9B6DFF" /> {t}
             </span>
