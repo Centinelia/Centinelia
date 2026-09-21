@@ -11,7 +11,7 @@ import LandingWidgets from '../LandingWidgets';
 import PricingSection from './PricingSection';
 import RotatingNiche from '../RotatingNiche';
 import FaqSection from '../FaqSection';
-import NiaInterview from '../NiaInterview';
+import DemoNia from './DemoNia';
 import AnimatedSection from '../AnimatedSection';
 import MeerkatReveal from '../MeerkatReveal';
 import OverloadIllustration from '../OverloadIllustration';
@@ -660,7 +660,7 @@ export default function LandingPage() {
       <IndustriesSection />
 
       {/* ── PRIMERA ENTREVISTA ───────────────────────────────────────────── */}
-      <NiaInterview />
+      <DemoNia />
 
       {/* ── PLANES ───────────────────────────────────────────────────────── */}
       <section
