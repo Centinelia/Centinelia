@@ -43,6 +43,7 @@ const TEAM = [
   { nombre: 'Nelia', rol: 'Atención al Cliente', desc: 'Responde dudas y acompaña al cliente hasta resolverlas.',            color: '#3b82f6', img: '/meerkats/nelia.png' },
   { nombre: 'Nova',  rol: 'Despacho',         desc: 'Despacha equipos, actualiza estatus y coordina cada salida en campo.',                   color: '#ef4444', img: '/meerkats/nova.png'  },
   { nombre: 'Nala',  rol: 'Facturación',      desc: 'Timbra CFDIs, archiva comprobantes y mantiene el orden fiscal.',                         color: '#a16207', img: '/meerkats/nala.png'  },
+  { nombre: 'Nalú', rol: 'Tesorería',         desc: 'Concilia banca, detecta diferencias y entrega el reporte financiero diario.',            color: '#059669', img: '/meerkats/nalu.png'  },
   { nombre: 'Nami',  rol: 'Inventarios',      desc: 'Lleva el conteo del inventario, detecta faltantes y dispara reposiciones.',              color: '#EA580C', img: '/meerkats/nami.png'  },
 ];
 
@@ -573,7 +574,7 @@ export default function LandingPage() {
           </div>
 
           {/* Fila 2 — 6 empleados, expandida 150% para igualar tamaño de tarjetas de la fila 1 (4 vs 6 = 1.5×) */}
-          <div className="grid grid-cols-2 sm:grid-cols-6 gap-3 mt-3 sm:-mx-[25%]">
+          <div className="grid grid-cols-2 sm:grid-cols-7 gap-3 mt-3 sm:-mx-[25%]">
             {TEAM.slice(4).map((m, i, arr) => {
               const isLastOdd = i === arr.length - 1 && arr.length % 2 !== 0;
               return (
