@@ -278,7 +278,7 @@ export default function DemoNia() {
                 >
                   <div>
                     <label htmlFor="org_name" className="text-xs font-semibold mb-2 block" style={{ color: 'rgba(26,10,59,0.65)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                      ¿Cómo se llama tu negocio?
+                      ¿Cuál es el nombre de tu negocio?
                     </label>
                     <input
                       id="org_name"
