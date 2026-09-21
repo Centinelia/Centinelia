@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import LandingNav from '../LandingNav';
 import LandingWidgets from '../LandingWidgets';
-import PricingSection from '../PricingSection';
+import PricingSection from './PricingSection';
 import RotatingNiche from '../RotatingNiche';
 import FaqSection from '../FaqSection';
 import NiaInterview from '../NiaInterview';
