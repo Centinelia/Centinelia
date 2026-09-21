@@ -27,12 +27,12 @@ describe('CallbackForm — stage: form', () => {
     const onSubmit = vi.fn().mockResolvedValue({ ok: true });
     render(<CallbackForm onSubmit={onSubmit} />);
     fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.change(screen.getByLabelText(/tu tel[eé]fono/i), { target: { value: '123' } });
+    fireEvent.change(screen.getByLabelText(/tu telefono/i), { target: { value: '123' } });
     fireEvent.change(screen.getByLabelText(/tu tipo de negocio/i), { target: { value: 'tortilleria_abarrotes' } });
     fireEvent.click(screen.getByRole('button', { name: /quiero que me llame/i }));
     await waitFor(() => {
       expect(onSubmit).not.toHaveBeenCalled();
-      expect(screen.getByText(/tel[eé]fono no v[aá]lido/i)).toBeInTheDocument();
+      expect(screen.getByText(/telefono no valido/i)).toBeInTheDocument();
     });
   });
 
@@ -40,12 +40,12 @@ describe('CallbackForm — stage: form', () => {
     const onSubmit = vi.fn().mockResolvedValue({ ok: true, requestId: 'test-req-id' });
     render(<CallbackForm onSubmit={onSubmit} />);
     fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.change(screen.getByLabelText(/tu tel[eé]fono/i), { target: { value: '8112345678' } });
+    fireEvent.change(screen.getByLabelText(/tu telefono/i), { target: { value: '8112345678' } });
     fireEvent.change(screen.getByLabelText(/tu tipo de negocio/i), { target: { value: 'tortilleria_abarrotes' } });
     fireEvent.click(screen.getByRole('button', { name: /quiero que me llame/i }));
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith({ phone: '8112345678', industry: 'tortilleria_abarrotes', consent: true });
-      expect(screen.getByText(/c[oó]digo de verificaci[oó]n/i)).toBeInTheDocument();
+      expect(screen.getByText(/codigo de verificacion/i)).toBeInTheDocument();
     });
   });
 
@@ -53,7 +53,7 @@ describe('CallbackForm — stage: form', () => {
     const onSubmit = vi.fn().mockResolvedValue({ ok: false, message: 'Error de prueba' });
     render(<CallbackForm onSubmit={onSubmit} />);
     fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.change(screen.getByLabelText(/tu tel[eé]fono/i), { target: { value: '8112345678' } });
+    fireEvent.change(screen.getByLabelText(/tu telefono/i), { target: { value: '8112345678' } });
     fireEvent.click(screen.getByRole('button', { name: /quiero que me llame/i }));
     await waitFor(() => {
       expect(screen.getByText(/error de prueba/i)).toBeInTheDocument();
@@ -66,23 +66,23 @@ describe('CallbackForm — stage: otp', () => {
     const onSubmit = vi.fn().mockResolvedValue({ ok: true, requestId: 'req-123' });
     render(<CallbackForm onSubmit={onSubmit} />);
     fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.change(screen.getByLabelText(/tu tel[eé]fono/i), { target: { value: '8112345678' } });
+    fireEvent.change(screen.getByLabelText(/tu telefono/i), { target: { value: '8112345678' } });
     fireEvent.click(screen.getByRole('button', { name: /quiero que me llame/i }));
     await waitFor(() => {
-      expect(screen.getByText(/c[oó]digo de verificaci[oó]n/i)).toBeInTheDocument();
+      expect(screen.getByText(/codigo de verificacion/i)).toBeInTheDocument();
     });
   }
 
   it('muestra input de codigo y boton verificar', async () => {
     await renderOtpStage();
     expect(screen.getByPlaceholderText('123456')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /verificar c[oó]digo/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /verificar codigo/i })).toBeInTheDocument();
   });
 
   it('boton verificar deshabilitado si codigo tiene menos de 6 digitos', async () => {
     await renderOtpStage();
     fireEvent.change(screen.getByPlaceholderText('123456'), { target: { value: '123' } });
-    expect(screen.getByRole('button', { name: /verificar c[oó]digo/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /verificar codigo/i })).toBeDisabled();
   });
 
   it('avanza a stage dialing cuando verify responde dialing', async () => {
@@ -91,9 +91,9 @@ describe('CallbackForm — stage: otp', () => {
     });
     await renderOtpStage();
     fireEvent.change(screen.getByPlaceholderText('123456'), { target: { value: '654321' } });
-    fireEvent.click(screen.getByRole('button', { name: /verificar c[oó]digo/i }));
+    fireEvent.click(screen.getByRole('button', { name: /verificar codigo/i }));
     await waitFor(() => {
-      expect(screen.getByText(/nia te est[aá] llamando/i)).toBeInTheDocument();
+      expect(screen.getByText(/nia te esta llamando/i)).toBeInTheDocument();
     });
   });
 
@@ -103,9 +103,9 @@ describe('CallbackForm — stage: otp', () => {
     });
     await renderOtpStage();
     fireEvent.change(screen.getByPlaceholderText('123456'), { target: { value: '654321' } });
-    fireEvent.click(screen.getByRole('button', { name: /verificar c[oó]digo/i }));
+    fireEvent.click(screen.getByRole('button', { name: /verificar codigo/i }));
     await waitFor(() => {
-      expect(screen.getByText(/se nos complic[oó]/i)).toBeInTheDocument();
+      expect(screen.getByText(/se nos complico/i)).toBeInTheDocument();
     });
   });
 
@@ -115,7 +115,7 @@ describe('CallbackForm — stage: otp', () => {
     });
     await renderOtpStage();
     fireEvent.change(screen.getByPlaceholderText('123456'), { target: { value: '999999' } });
-    fireEvent.click(screen.getByRole('button', { name: /verificar c[oó]digo/i }));
+    fireEvent.click(screen.getByRole('button', { name: /verificar codigo/i }));
     await waitFor(() => {
       expect(screen.getByText('wrong_code')).toBeInTheDocument();
     });
@@ -130,13 +130,13 @@ describe('CallbackForm — stage: dialing', () => {
     const onSubmit = vi.fn().mockResolvedValue({ ok: true, requestId: 'req-abc' });
     render(<CallbackForm onSubmit={onSubmit} />);
     fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.change(screen.getByLabelText(/tu tel[eé]fono/i), { target: { value: '8112345678' } });
+    fireEvent.change(screen.getByLabelText(/tu telefono/i), { target: { value: '8112345678' } });
     fireEvent.click(screen.getByRole('button', { name: /quiero que me llame/i }));
-    await waitFor(() => screen.getByText(/c[oó]digo de verificaci[oó]n/i));
+    await waitFor(() => screen.getByText(/codigo de verificacion/i));
     fireEvent.change(screen.getByPlaceholderText('123456'), { target: { value: '654321' } });
-    fireEvent.click(screen.getByRole('button', { name: /verificar c[oó]digo/i }));
+    fireEvent.click(screen.getByRole('button', { name: /verificar codigo/i }));
     await waitFor(() => {
-      expect(screen.getByText(/nia te est[aá] llamando/i)).toBeInTheDocument();
+      expect(screen.getByText(/nia te esta llamando/i)).toBeInTheDocument();
     });
   });
 });
@@ -149,13 +149,13 @@ describe('CallbackForm — stage: fallback', () => {
     const onSubmit = vi.fn().mockResolvedValue({ ok: true, requestId: 'req-abc' });
     render(<CallbackForm onSubmit={onSubmit} />);
     fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.change(screen.getByLabelText(/tu tel[eé]fono/i), { target: { value: '8112345678' } });
+    fireEvent.change(screen.getByLabelText(/tu telefono/i), { target: { value: '8112345678' } });
     fireEvent.click(screen.getByRole('button', { name: /quiero que me llame/i }));
-    await waitFor(() => screen.getByText(/c[oó]digo de verificaci[oó]n/i));
+    await waitFor(() => screen.getByText(/codigo de verificacion/i));
     fireEvent.change(screen.getByPlaceholderText('123456'), { target: { value: '654321' } });
-    fireEvent.click(screen.getByRole('button', { name: /verificar c[oó]digo/i }));
+    fireEvent.click(screen.getByRole('button', { name: /verificar codigo/i }));
     await waitFor(() => {
-      expect(screen.getByText(/se nos complic[oó]/i)).toBeInTheDocument();
+      expect(screen.getByText(/se nos complico/i)).toBeInTheDocument();
     });
   });
 });

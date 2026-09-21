@@ -47,7 +47,7 @@ export async function sendOtp(
   await twilioClient().messages.create({
     to:   `+52${phone}`,
     from: process.env.TWILIO_FROM_NUMBER!,
-    body: `Tu código Centinelia: ${code}. Válido ${OTP_TTL_MIN} minutos.`,
+    body: `Tu codigo Centinelia: ${code}. Valido ${OTP_TTL_MIN} minutos.`,
   });
 
   return { ok: true };

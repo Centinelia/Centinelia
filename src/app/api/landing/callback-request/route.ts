@@ -51,26 +51,8 @@ export async function POST(req: Request) {
     userAgent: req.headers.get('user-agent') ?? null,
   });
 
-  // Envolver en try/catch: si Twilio o SMTP fallan, el lead ya está registrado
-  // y respondemos 200 con warning para que el frontend avance al stage OTP con
-  // instrucciones de fallback.
-  let otpWarning: string | undefined;
-  try {
-    await sendOtp(requestId, b.phone);
-  } catch (err) {
-    console.error('[callback-request] sendOtp failed:', err);
-    otpWarning = 'otp_delivery_delayed';
-  }
+  await sendOtp(requestId, b.phone);
+  await notifyOwnerNewLead({ requestId, phone: b.phone, industry: b.industry as string });
 
-  try {
-    await notifyOwnerNewLead({ requestId, phone: b.phone, industry: b.industry as string });
-  } catch (err) {
-    console.error('[callback-request] notifyOwnerNewLead failed:', err);
-  }
-
-  return NextResponse.json({
-    ok: true,
-    requestId,
-    ...(otpWarning ? { warning: otpWarning } : {}),
-  });
+  return NextResponse.json({ ok: true, requestId });
 }

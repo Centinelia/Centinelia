@@ -24,12 +24,12 @@ export async function notifyOwnerFallback(input: {
     to:      OWNER_EMAIL,
     subject: `[FALLBACK] Lead landing sin llamada auto: ${input.phone}`,
     html: `
-      <p>El pipeline automático de callback falló. Necesita callback manual.</p>
+      <p>El pipeline automatico de callback fallo. Necesita callback manual.</p>
       <ul>
         <li><strong>Request ID:</strong> ${input.requestId}</li>
-        <li><strong>Teléfono:</strong> ${input.phone}</li>
+        <li><strong>Telefono:</strong> ${input.phone}</li>
         <li><strong>Industria:</strong> ${input.industry}</li>
-        <li><strong>Razón:</strong> ${input.reason}</li>
+        <li><strong>Razon:</strong> ${input.reason}</li>
       </ul>
       <p><strong>Llamar en menos de 30 minutos.</strong></p>
     `,
@@ -50,10 +50,10 @@ export async function notifyOwnerNewLead(input: {
     to:      OWNER_EMAIL,
     subject: `Nuevo lead landing: ${input.industry} (${input.phone})`,
     html: `
-      <p>Nuevo prospecto desde la landing. Verificación OTP pendiente.</p>
+      <p>Nuevo prospecto desde la landing. Verificacion OTP pendiente.</p>
       <ul>
         <li><strong>Request ID:</strong> ${input.requestId}</li>
-        <li><strong>Teléfono:</strong> ${input.phone}</li>
+        <li><strong>Telefono:</strong> ${input.phone}</li>
         <li><strong>Industria:</strong> ${input.industry}</li>
       </ul>
     `,
