@@ -35,6 +35,14 @@ const CATEGORIES = [
     color: '#6C3BFF',
     items: [
       {
+        q: '¿Esto es un chatbot?',
+        a: 'No. Un chatbot solo responde texto en una ventana. Un empleado digital de Centinelia contesta el teléfono, manda correos y usa tus sistemas como cualquier persona del equipo.',
+      },
+      {
+        q: '¿Puedo probar antes de pagar?',
+        a: 'Sí. Sube a la sección "Antes de contratarla... Conócela" de esta página, llena los tres campos y Nia te llama al teléfono en menos de 60 segundos como si ya fuera tu recepcionista.',
+      },
+      {
         q: '¿Tengo que cambiar mi número telefónico?',
         a: 'El tuyo no. Tu Centinelia opera desde un número propio. Tu número personal sigue siendo tuyo.',
       },
@@ -52,6 +60,14 @@ const CATEGORIES = [
     label: 'Operación',
     color: '#22c55e',
     items: [
+      {
+        q: '¿Y si se equivoca? ¿Quién revisa?',
+        a: 'Cada acción del empleado queda registrada en tu portal con quién, qué y cuándo. Puedes corregir en el momento. Nox y Niva, los directores digitales, revisan al resto del equipo automáticamente.',
+      },
+      {
+        q: '¿Manda WhatsApp?',
+        a: 'Por ahora no. Los empleados trabajan por teléfono, chat de portal y correo. WhatsApp saliente al cliente final no está en producto todavía.',
+      },
       {
         q: '¿Puede transferir llamadas a una persona?',
         a: 'Sí. Resuelve la mayoría de las llamadas por sí mismo, y transfiere a alguien de tu equipo cuando sea necesario.',
@@ -74,6 +90,10 @@ const CATEGORIES = [
     label: 'Crecimiento',
     color: '#f59e0b',
     items: [
+      {
+        q: '¿Y si necesito un rol que no está en el catálogo?',
+        a: 'Lo diseñamos a la medida. Empezamos con un diagnóstico de tu operación, automatizamos lo que necesita quedar listo antes, y luego incorporamos al empleado. Consultoría y automatización desde 60,000 pesos más IVA.',
+      },
       {
         q: '¿Mis datos son privados?',
         a: 'Sí. Toda la información permanece aislada para tu organización. Solo las personas que autorices pueden acceder a ella.',

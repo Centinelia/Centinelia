@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Check, Star, Clock, Zap, Phone } from 'lucide-react';
 import AnimatedSection from './AnimatedSection';
+import { FEATURE_PLAN_CONFIG } from '@/lib/billing/plans';
 
 const fmt = (n: number) => new Intl.NumberFormat('es-MX').format(n);
 const IVA = 0.16;
@@ -41,7 +42,7 @@ function AnimatedNumber({ value, className, style }: { value: number; className?
 
 const AGENT_TYPES = [
   {
-    id: 'pro', name: 'Empleado Centinelia', setupFee: 14990, color: '#9B6DFF', popular: true,
+    id: 'pro', name: 'Empleado Centinelia', setupFee: FEATURE_PLAN_CONFIG.pro.setupFee, color: '#9B6DFF', popular: true,
     features: [
       'Voz profesional',
       'Memoria de tu organización',
@@ -305,7 +306,7 @@ export default function PricingSection() {
           Aumenta o reduce la jornada cuando tu operación cambie.
           <br className="hidden sm:inline" />
           <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.28)' }}>
-            Los coordinadores (Nox, Niva) usan automáticamente la tarifa Solo tareas — no atienden llamadas.
+            Los coordinadores (Nox, Niva) usan automáticamente la tarifa Solo tareas: no atienden llamadas.
           </span>
         </p>
       </AnimatedSection>

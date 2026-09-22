@@ -8,7 +8,7 @@
 // Estilo matching DemoNia/NiaInterview: bg #FAFBFF, dark text, purple accent,
 // framer-motion via AnimatedSection.
 
-import AnimatedSection from '../AnimatedSection';
+import AnimatedSection from './AnimatedSection';
 import { Check, X } from 'lucide-react';
 
 interface Row {

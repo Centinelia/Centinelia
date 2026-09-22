@@ -11,7 +11,8 @@ import LandingWidgets from './LandingWidgets';
 import PricingSection from './PricingSection';
 import RotatingNiche from './RotatingNiche';
 import FaqSection from './FaqSection';
-import NiaInterview from './NiaInterview';
+import DemoNia from './DemoNia';
+import Comparativa from './Comparativa';
 import AnimatedSection from './AnimatedSection';
 import MeerkatReveal from './MeerkatReveal';
 import OverloadIllustration from './OverloadIllustration';
@@ -21,29 +22,30 @@ import TeamFlowSection from './TeamFlowSection';
 import ReglasManifesto from './ReglasManifesto';
 import FaqLanding from './FaqLanding';
 import BeforeAfterSection from './BeforeAfterSection';
-import IndustriesSection from './IndustriesSection';
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
 const DIRECTORS = {
   nombres: 'Nox & Niva',
   rol:     'Dirección',
+  tagline: 'Encuentran orden donde otros ven caos',
   desc:    'Dirigen a todo el equipo. Distribuyen trabajo, supervisan resultados y mantienen a todos sincronizados para que tu operación funcione sola.',
   color:   '#6C3BFF',
   img:     '/meerkats/nox-niva.png',
 };
 
 const TEAM = [
-  { nombre: 'Nia',   rol: 'Recepción',         desc: 'Atiende llamadas, agenda citas y recibe cada solicitud.',              color: '#6C3BFF', img: '/meerkats/nia.png',  imgPad: '0px' },
-  { nombre: 'Noah',  rol: 'Ventas',            desc: 'Llama prospectos, califica leads y cierra oportunidades nuevas.', color: '#22c55e', img: '/meerkats/noah.png'  },
-  { nombre: 'Nara',  rol: 'Coordinación',      desc: 'Coordina procesos, da seguimiento y mantiene la operación en orden.',  color: '#4338CA', img: '/meerkats/nara.png'  },
-  { nombre: 'Neo',   rol: 'Tecnología',        desc: 'Resuelve tickets, gestiona incidentes y mantiene los sistemas activos.', color: '#06b6d4', img: '/meerkats/neo.png'  },
-  { nombre: 'Naia',  rol: 'Recursos Humanos',  desc: 'Organiza vacaciones, permisos y expedientes del equipo.',              color: '#ec4899', img: '/meerkats/naia.png'  },
-  { nombre: 'Nico',  rol: 'Recuperación',      desc: 'Cobra, recuerda pagos y recupera clientes inactivos.',                 color: '#f59e0b', img: '/meerkats/nico.png'  },
-  { nombre: 'Nelia', rol: 'Atención al Cliente', desc: 'Responde dudas y acompaña al cliente hasta resolverlas.',            color: '#3b82f6', img: '/meerkats/nelia.png' },
-  { nombre: 'Nova',  rol: 'Despacho',         desc: 'Despacha equipos, actualiza estatus y coordina cada salida en campo.',                   color: '#ef4444', img: '/meerkats/nova.png'  },
-  { nombre: 'Nala',  rol: 'Facturación',      desc: 'Timbra CFDIs, archiva comprobantes y mantiene el orden fiscal.',                         color: '#a16207', img: '/meerkats/nala.png'  },
-  { nombre: 'Nami',  rol: 'Inventarios',      desc: 'Lleva el conteo del inventario, detecta faltantes y dispara reposiciones.',              color: '#EA580C', img: '/meerkats/nami.png'  },
+  { nombre: 'Nia',   rol: 'Recepción',           tagline: 'Nunca se le escapa un dato',                  desc: 'Atiende llamadas, agenda citas y recibe cada solicitud.',                                color: '#6C3BFF', img: '/meerkats/nia.png',  imgPad: '0px' },
+  { nombre: 'Noah',  rol: 'Ventas',              tagline: 'Siempre al teléfono, siempre cerrando',       desc: 'Llama prospectos, califica leads y cierra oportunidades nuevas.',                        color: '#22c55e', img: '/meerkats/noah.png'  },
+  { nombre: 'Nara',  rol: 'Coordinación',        tagline: 'Carpeta en mano, todo bajo control',          desc: 'Coordina procesos, da seguimiento y mantiene la operación en orden.',                    color: '#4338CA', img: '/meerkats/nara.png'  },
+  { nombre: 'Neo',   rol: 'Tecnología',          tagline: 'Laptop abierta, problema resuelto',           desc: 'Resuelve tickets, gestiona incidentes y mantiene los sistemas activos.',                 color: '#06b6d4', img: '/meerkats/neo.png'  },
+  { nombre: 'Naia',  rol: 'Recursos Humanos',    tagline: 'Con lupa: nada se le escapa',                 desc: 'Organiza vacaciones, permisos y expedientes del equipo.',                                color: '#ec4899', img: '/meerkats/naia.png'  },
+  { nombre: 'Nico',  rol: 'Recuperación',        tagline: 'Ya tiene tu dinero contado',                  desc: 'Cobra, recuerda pagos y recupera clientes inactivos.',                                   color: '#f59e0b', img: '/meerkats/nico.png'  },
+  { nombre: 'Nelia', rol: 'Atención al Cliente', tagline: 'Siempre conectada, siempre respondiendo',     desc: 'Responde dudas y acompaña al cliente hasta resolverlas.',                                color: '#3b82f6', img: '/meerkats/nelia.png' },
+  { nombre: 'Nova',  rol: 'Despacho',            tagline: 'El cerebro operativo de tu equipo en campo',  desc: 'Despacha equipos, actualiza estatus y coordina cada salida en campo.',                   color: '#ef4444', img: '/meerkats/nova.png'  },
+  { nombre: 'Nala',  rol: 'Facturación',         tagline: 'El SAT no perdona errores, y ella tampoco',   desc: 'Timbra CFDIs, archiva comprobantes y mantiene el orden fiscal.',                         color: '#a16207', img: '/meerkats/nala.png'  },
+  { nombre: 'Nalú',  rol: 'Tesorería',           tagline: 'Cada peso conciliado, cada break atrapado',   desc: 'Concilia banca, detecta diferencias y entrega el reporte financiero diario.',            color: '#059669', img: '/meerkats/nalu.png'  },
+  { nombre: 'Nami',  rol: 'Inventarios',         tagline: 'Cada serie, cada bodega, todo bajo control',  desc: 'Lleva el conteo del inventario, detecta faltantes y dispara reposiciones.',              color: '#EA580C', img: '/meerkats/nami.png'  },
 ];
 
 const LIMITS = [
@@ -250,8 +252,9 @@ export default function LandingPage() {
               className="mb-8 leading-relaxed mt-[20vw] sm:mt-0"
               style={{ fontSize: 'clamp(1rem, 1.8vw, 1.15rem)', color: 'rgba(255,255,255,0.62)' }}
             >
-              Primera oficina digital con empleados especializados que responden llamadas, correos, agendas, documentos y tareas.<br /><br />
-              Trabajan juntos. Nunca descansan.
+              Contesta el teléfono, cotiza, factura, cobra y agenda.<br />
+              Sin contratar a nadie.<br /><br />
+              Empleados especializados que trabajan juntos y nunca descansan.
             </p>
 
             {/* CTAs */}
@@ -517,9 +520,12 @@ export default function LandingPage() {
                 <p style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: DIRECTORS.color, marginBottom: 2 }}>
                   {DIRECTORS.rol}
                 </p>
-                <h3 className="font-bold" style={{ fontSize: '1.05rem', color: C.text, lineHeight: 1.2, marginBottom: 4 }}>
+                <h3 className="font-bold" style={{ fontSize: '1.05rem', color: C.text, lineHeight: 1.2, marginBottom: 3 }}>
                   {DIRECTORS.nombres}
                 </h3>
+                <p style={{ fontSize: '0.72rem', fontStyle: 'italic', color: DIRECTORS.color, opacity: 0.85, lineHeight: 1.3, marginBottom: 6 }}>
+                  {DIRECTORS.tagline}
+                </p>
                 <p style={{ fontSize: '0.75rem', color: C.textSub, lineHeight: 1.5 }}>{DIRECTORS.desc}</p>
               </div>
             </div>
@@ -561,9 +567,12 @@ export default function LandingPage() {
                     <p style={{ fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: m.color, marginBottom: 2 }}>
                       {m.rol}
                     </p>
-                    <h3 className="font-bold" style={{ fontSize: '0.95rem', color: C.text, lineHeight: 1.2, marginBottom: 4 }}>
+                    <h3 className="font-bold" style={{ fontSize: '0.95rem', color: C.text, lineHeight: 1.2, marginBottom: 3 }}>
                       {m.nombre}
                     </h3>
+                    <p style={{ fontSize: '0.68rem', fontStyle: 'italic', color: m.color, opacity: 0.82, lineHeight: 1.3, marginBottom: 5 }}>
+                      {m.tagline}
+                    </p>
                     <p style={{ fontSize: '0.72rem', color: C.textSub, lineHeight: 1.5 }}>{m.desc}</p>
                   </div>
                 </div>
@@ -572,7 +581,7 @@ export default function LandingPage() {
           </div>
 
           {/* Fila 2 — 6 empleados, expandida 150% para igualar tamaño de tarjetas de la fila 1 (4 vs 6 = 1.5×) */}
-          <div className="grid grid-cols-2 sm:grid-cols-6 gap-3 mt-3 sm:-mx-[25%]">
+          <div className="grid grid-cols-2 sm:grid-cols-7 gap-3 mt-3 sm:-mx-[25%]">
             {TEAM.slice(4).map((m, i, arr) => {
               const isLastOdd = i === arr.length - 1 && arr.length % 2 !== 0;
               return (
@@ -594,9 +603,12 @@ export default function LandingPage() {
                       <p style={{ fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: m.color, marginBottom: 2 }}>
                         {m.rol}
                       </p>
-                      <h3 className="font-bold" style={{ fontSize: '0.95rem', color: C.text, lineHeight: 1.2, marginBottom: 4 }}>
+                      <h3 className="font-bold" style={{ fontSize: '0.95rem', color: C.text, lineHeight: 1.2, marginBottom: 3 }}>
                         {m.nombre}
                       </h3>
+                      <p style={{ fontSize: '0.68rem', fontStyle: 'italic', color: m.color, opacity: 0.82, lineHeight: 1.3, marginBottom: 5 }}>
+                        {m.tagline}
+                      </p>
                       <p style={{ fontSize: '0.72rem', color: C.textSub, lineHeight: 1.5 }}>{m.desc}</p>
                     </div>
                   </div>
@@ -654,11 +666,11 @@ export default function LandingPage() {
       {/* ── LO QUE CAMBIA EL LUNES ──────────────────────────────────────── */}
       <BeforeAfterSection />
 
-      {/* ── ASÍ TRABAJA EN TU NEGOCIO ───────────────────────────────────── */}
-      <IndustriesSection />
-
       {/* ── PRIMERA ENTREVISTA ───────────────────────────────────────────── */}
-      <NiaInterview />
+      <DemoNia />
+
+      {/* ── COMPARATIVA LABORAL (humano vs empleado digital) ────────────── */}
+      <Comparativa />
 
       {/* ── PLANES ───────────────────────────────────────────────────────── */}
       <section
@@ -709,47 +721,82 @@ export default function LandingPage() {
           <PricingSection />
 
 
-          {/* ─── Empresarial ────────────────────────── */}
+          {/* ─── Custom: rol a la medida + oficina completa (2-col compacta) ── */}
           <AnimatedSection>
-          <div
-            className="relative rounded-2xl p-7 sm:p-10 mt-8"
-            style={{
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              overflow: 'hidden',
-            }}
-          >
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2,
-              background: 'linear-gradient(90deg, transparent, rgba(155,109,255,0.5), transparent)' }} />
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6">
-              <div className="flex-1">
-                <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: 'rgba(155,109,255,0.6)' }}>
-                  Para equipos
-                </p>
-                <h3 className="font-bold mb-2" style={{ color: '#fff', fontSize: '1.25rem' }}>
-                  ¿Necesitas una oficina a la medida?
-                </h3>
-                <p className="text-sm mb-6" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                  Diseñamos una oficina digital completa para organizaciones con múltiples sucursales, procesos complejos o necesidades especiales.
-                </p>
-                <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2">
-                  {['Múltiples Centinelias', 'Sucursales', 'CRM', 'Flujos personalizados', 'Integraciones', 'SLA dedicado'].map(f => (
-                    <li key={f} className="flex items-center gap-2 text-sm" style={{ color: 'rgba(255,255,255,0.55)' }}>
-                      <Check size={13} color="#9B6DFF" className="flex-shrink-0" /> {f}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="flex sm:flex-col sm:items-end gap-3 sm:gap-4 flex-shrink-0 sm:pt-1">
-                <Link
-                  href="/cotizar"
-                  className="px-6 py-3 rounded-xl text-sm font-semibold transition-all hover:opacity-90 text-center"
-                  style={{ background: 'rgba(108,59,255,0.25)', color: '#C4A8FF', border: '1.5px solid rgba(108,59,255,0.45)', whiteSpace: 'nowrap' }}
-                >
-                  Diseñar mi oficina digital
-                </Link>
-              </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-8">
+
+            {/* Empleado a la medida (rol nuevo) */}
+            <div
+              className="relative rounded-2xl p-6 sm:p-7 flex flex-col"
+              style={{
+                background: 'rgba(108,59,255,0.08)',
+                border:     '1.5px solid rgba(108,59,255,0.3)',
+                overflow:   'hidden',
+              }}
+            >
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2,
+                background: 'linear-gradient(90deg, transparent, rgba(155,109,255,0.7), transparent)' }} />
+              <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: 'rgba(155,109,255,0.7)' }}>
+                Empleado a la medida
+              </p>
+              <h3 className="font-bold mb-2" style={{ color: '#fff', fontSize: '1.15rem', lineHeight: 1.25 }}>
+                ¿Tu rol no está en el catálogo?
+              </h3>
+              <p className="text-sm mb-4 flex-1" style={{ color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>
+                Diagnosticamos tu operación, automatizamos lo previo y diseñamos al empleado que tu equipo va a usar.
+              </p>
+              <p className="text-xs mb-5" style={{ color: '#C4A8FF' }}>
+                Consultoría desde <span className="font-bold" style={{ color: '#fff' }}>$60,000 + IVA</span>
+              </p>
+              <Link
+                href="/cotizar"
+                className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 text-center w-full sm:w-fit"
+                style={{
+                  background: 'linear-gradient(135deg, #6C3BFF, #9B6DFF)',
+                  color:      '#fff',
+                  boxShadow:  '0 6px 20px rgba(108,59,255,0.35)',
+                }}
+              >
+                Agenda tu diagnóstico
+              </Link>
             </div>
+
+            {/* Para equipos (oficina completa) */}
+            <div
+              className="relative rounded-2xl p-6 sm:p-7 flex flex-col"
+              style={{
+                background: 'rgba(255,255,255,0.03)',
+                border:     '1px solid rgba(255,255,255,0.1)',
+                overflow:   'hidden',
+              }}
+            >
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2,
+                background: 'linear-gradient(90deg, transparent, rgba(155,109,255,0.5), transparent)' }} />
+              <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: 'rgba(155,109,255,0.6)' }}>
+                Para equipos
+              </p>
+              <h3 className="font-bold mb-2" style={{ color: '#fff', fontSize: '1.15rem', lineHeight: 1.25 }}>
+                ¿Necesitas una oficina completa?
+              </h3>
+              <p className="text-sm mb-4 flex-1" style={{ color: 'rgba(255,255,255,0.4)', lineHeight: 1.5 }}>
+                Diseñamos oficinas digitales para organizaciones con múltiples sucursales, procesos complejos o necesidades especiales.
+              </p>
+              <ul className="grid grid-cols-2 gap-x-4 gap-y-1.5 mb-5">
+                {['Múltiples Centinelias', 'Sucursales', 'CRM', 'Integraciones', 'Flujos custom', 'SLA dedicado'].map(f => (
+                  <li key={f} className="flex items-center gap-1.5 text-xs" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                    <Check size={11} color="#9B6DFF" className="flex-shrink-0" /> {f}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/cotizar"
+                className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 text-center w-full sm:w-fit"
+                style={{ background: 'rgba(108,59,255,0.25)', color: '#C4A8FF', border: '1.5px solid rgba(108,59,255,0.45)', whiteSpace: 'nowrap' }}
+              >
+                Diseñar mi oficina
+              </Link>
+            </div>
+
           </div>
           </AnimatedSection>
 

@@ -16,7 +16,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { Phone, Loader2, Check, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import AnimatedSection from '../AnimatedSection';
+import AnimatedSection from './AnimatedSection';
 
 const MX_PHONE_RE = /^[1-9]\d{9}$/;
 
