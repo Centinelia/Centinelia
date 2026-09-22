@@ -84,9 +84,16 @@ export const JORNADA_CONFIG: Record<JornadaType, Record<MinutesTier, JornadaTier
     enterprise: jt('enterprise', 0,    0,    ''),
   },
   minutos: {
-    starter:    jt('starter',    500,  20, 'STRIPE_MINUTOS_STARTER'),
-    growth:     jt('growth',     900,  20, 'STRIPE_MINUTOS_GROWTH'),
-    scale:      jt('scale',      1800, 20, 'STRIPE_MINUTOS_SCALE'),
+    // Rebalance 2026-09-22: 500/900/1800 → 350/650/1300. Solo Minutos ahora
+    // = Combinada × 1.3-1.4 minutos. El "trade" para el cliente (renunciar a
+    // tareas por más minutos) queda razonable (~1180 tareas → 300 min en AD),
+    // no solo aritméticamente correcto. Márgenes ~69-71%, ligeramente por
+    // debajo de Combinada (73%) pero suficientemente holgado, y muy arriba
+    // del status quo (55-60%). Cero clientes activos en Solo Minutos al
+    // momento del rebalance → sin fricción de renewal.
+    starter:    jt('starter',    350,  20, 'STRIPE_MINUTOS_STARTER'),
+    growth:     jt('growth',     650,  20, 'STRIPE_MINUTOS_GROWTH'),
+    scale:      jt('scale',      1300, 20, 'STRIPE_MINUTOS_SCALE'),
     enterprise: jt('enterprise', 0,    0,  ''),
   },
   tareas: {

@@ -69,9 +69,9 @@ const JORNADA_TIERS: Record<JornadaId, { id: string; label: string; subtitle: st
     { id: 'scale',   label: 'Alta Demanda',     subtitle: 'Ideal para operaciones con alto volumen.',     minutes: 1000, ops: 1200, price: 11988, callsPerDay: 17 },
   ],
   minutos: [
-    { id: 'starter', label: 'Media Jornada',    subtitle: 'Más minutos, canal de voz dedicado.',         minutes: 500,  ops: 20, price: 2997,  callsPerDay: 8  },
-    { id: 'growth',  label: 'Jornada Completa', subtitle: 'Para operaciones con alto volumen de llamadas.', minutes: 900,  ops: 20, price: 5994,  callsPerDay: 15, popular: true },
-    { id: 'scale',   label: 'Alta Demanda',     subtitle: 'Máximos minutos disponibles.',                minutes: 1800, ops: 20, price: 11988, callsPerDay: 30 },
+    { id: 'starter', label: 'Media Jornada',    subtitle: 'Más minutos, canal de voz dedicado.',         minutes: 350,  ops: 20, price: 2997,  callsPerDay: 6  },
+    { id: 'growth',  label: 'Jornada Completa', subtitle: 'Para operaciones con alto volumen de llamadas.', minutes: 650,  ops: 20, price: 5994,  callsPerDay: 11, popular: true },
+    { id: 'scale',   label: 'Alta Demanda',     subtitle: 'Máximos minutos disponibles.',                minutes: 1300, ops: 20, price: 11988, callsPerDay: 22 },
   ],
   tareas: [
     { id: 'starter', label: 'Media Jornada',    subtitle: 'Sin llamadas: solo inteligencia y tareas.',   minutes: 0, ops: 500,  price: 2997  },
