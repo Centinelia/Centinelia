@@ -254,6 +254,14 @@
       "schedule": "0 16 * * *"
     },
     {
+      "path": "/api/cron/neka-cobros-semanal",
+      "schedule": "0 15 * * 1"
+    },
+    {
+      "path": "/api/cron/neka-rep-reminders",
+      "schedule": "0 16 * * *"
+    },
+    {
       "path": "/api/cron/sync-dropbox-tokens",
       "schedule": "0 */3 * * *"
     },

@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { isAdmin } from '@/lib/admin/auth';
 import { MEERKAT_ROLES } from '@/lib/portal/meerkat-roles';
 import { getCentineliaFiscalConfig, isFacturamaSandbox } from '@/lib/invoicing/facturama/centinelia-preset';
-import { ArrowLeft, FileText, ShieldCheck, KeyRound, Zap, MessageCircle, MailCheck, Users, Clock } from 'lucide-react';
+import { ArrowLeft, FileText, ShieldCheck, KeyRound, Zap, MessageCircle, MailCheck, Users, Clock, Receipt } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -83,6 +83,14 @@ export default async function NekaConfigPage() {
           >
             <Users size={14} />
             Clientes
+          </Link>
+          <Link
+            href="/admin/staff/neka/facturas-recibidas"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90"
+            style={{ background: 'rgba(34,197,94,0.1)', color: '#15803d', border: '1px solid rgba(34,197,94,0.3)' }}
+          >
+            <Receipt size={14} />
+            Facturas recibidas
           </Link>
           <Link
             href="/admin/staff/neka/pagos-pendientes"
