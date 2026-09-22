@@ -12,6 +12,7 @@ import PricingSection from './PricingSection';
 import RotatingNiche from '../RotatingNiche';
 import FaqSection from '../FaqSection';
 import DemoNia from './DemoNia';
+import Comparativa from './Comparativa';
 import AnimatedSection from '../AnimatedSection';
 import MeerkatReveal from '../MeerkatReveal';
 import OverloadIllustration from '../OverloadIllustration';
@@ -661,6 +662,9 @@ export default function LandingPage() {
 
       {/* ── PRIMERA ENTREVISTA ───────────────────────────────────────────── */}
       <DemoNia />
+
+      {/* ── COMPARATIVA LABORAL (humano vs empleado digital) ────────────── */}
+      <Comparativa />
 
       {/* ── PLANES ───────────────────────────────────────────────────────── */}
       <section
