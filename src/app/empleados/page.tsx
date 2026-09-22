@@ -427,7 +427,7 @@ export default function EmpleadosPage() {
                 </ul>
 
                 {/* CTA */}
-                <div>
+                <div className="flex flex-wrap gap-3">
                   <Link
                     href={`/registro?role=${m.id}`}
                     className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold transition-all hover:scale-[1.03] hover:opacity-90 cursor-pointer"
@@ -438,6 +438,16 @@ export default function EmpleadosPage() {
                     }}
                   >
                     Contratar a {m.nombre} <ArrowRight size={13} />
+                  </Link>
+                  <Link
+                    href={`/empleados/${m.id}`}
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-medium transition-all hover:opacity-70 cursor-pointer"
+                    style={{
+                      color: C.textSub,
+                      border: `1px solid ${C.border}`,
+                    }}
+                  >
+                    Conocer a fondo a {m.nombre}
                   </Link>
                 </div>
               </AnimatedSection>

@@ -5,6 +5,7 @@ import LandingNav from '@/app/LandingNav';
 import LandingWidgets from '@/app/LandingWidgets';
 import AnimatedSection from '@/app/AnimatedSection';
 import IndustryFooter from '@/app/industrias/IndustryFooter';
+import { INDUSTRIES as LONG_TAIL_INDUSTRIES } from '@/lib/industrias/data';
 
 const BASE_URL = 'https://www.centinelia.mx';
 
@@ -190,6 +191,42 @@ export default function IndustriasPage() {
                 </Link>
               </div>
             </AnimatedSection>
+          </div>
+        </div>
+      </section>
+
+      {/* ── MÁS INDUSTRIAS (long tail dinámico) ── */}
+      <section style={{ background: '#fff', padding: '80px 24px', borderTop: `1px solid ${C.border}` }}>
+        <div className="max-w-5xl mx-auto">
+          <AnimatedSection className="mb-10 text-center">
+            <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: C.accent }}>
+              Más industrias
+            </p>
+            <h2 className="font-bold" style={{ fontSize: 'clamp(1.4rem, 3vw, 2rem)', color: C.text }}>
+              Casos específicos por giro
+            </h2>
+          </AnimatedSection>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {LONG_TAIL_INDUSTRIES.map((ind, i) => {
+              const Icon = ind.icon;
+              return (
+                <AnimatedSection key={ind.slug} delay={i * 0.04}>
+                  <Link
+                    href={`/industrias/${ind.slug}`}
+                    className="group rounded-2xl p-5 flex items-start gap-4 h-full transition-all hover:shadow-md hover:-translate-y-0.5"
+                    style={{ background: C.bg, border: `1px solid ${C.border}` }}
+                  >
+                    <div className="rounded-xl flex items-center justify-center flex-shrink-0" style={{ width: 44, height: 44, background: `${ind.color}16` }}>
+                      <Icon size={22} color={ind.color} />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold mb-1" style={{ fontSize: '0.95rem', color: C.text }}>{ind.titulo}</h3>
+                      <p className="text-xs" style={{ color: C.textSub, lineHeight: 1.55 }}>{ind.heroSub}</p>
+                    </div>
+                  </Link>
+                </AnimatedSection>
+              );
+            })}
           </div>
         </div>
       </section>

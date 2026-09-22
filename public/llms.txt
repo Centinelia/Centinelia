@@ -1,170 +1,254 @@
 # Centinelia
 
-> Agentes de voz con inteligencia artificial que atienden las llamadas de tu negocio 24/7 en Mexico.
+> Empleados digitales especializados que atienden el teléfono, cotizan, facturan, cobran y agendan 24/7 para organizaciones mexicanas. Trabajan en voz, chat y correo al mismo tiempo, sin IMSS, aguinaldo ni ausencias.
 
-Centinelia es un SaaS mexicano que provee equipos de agentes de voz con IA para pequenas y medianas empresas. Los agentes contestan llamadas entrantes, realizan llamadas salientes, capturan leads, agendan citas, toman pedidos y se transfieren llamadas entre si en tiempo real. Hablan espanol e ingles con voces naturales generadas por ElevenLabs.
+Centinelia es un SaaS mexicano que provee empleados digitales para pequeñas y medianas empresas. Cada empleado tiene un rol especializado (recepción, ventas, cobranza, facturación, tesorería, inventarios y más), voz propia con calidad profesional, memoria de tu organización y coordinación en tiempo real con el resto del equipo. Están activos en menos de 24 horas y trabajan 24/7 en español mexicano nativo, con inglés opcional.
 
-Sitio web: https://www.centinelia.mx
-Demo: llama al +52 (81) 2188 8490
-Ubicacion: Monterrey, Nuevo Leon, Mexico
+Para el contenido completo del sitio en una sola pasada, ver https://www.centinelia.mx/llms-full.txt (spec llms-full 2025).
 
-## Que hace Centinelia
+- Sitio web: https://www.centinelia.mx
+- Ventas: +52 81 1633 3559
+- Demo (Nia contesta en vivo): +52 81 2188 8490
+- Correo: hola@centinelia.mx
+- Ubicación: Monterrey, Nuevo León, México
 
-- Recepcionista 24/7: contesta cada llamada sin importar la hora, sin llamadas en espera ni perdidas
-- Captura automatica de leads: nombre, telefono y necesidad del cliente registrados despues de cada llamada
-- Agendamiento de citas: integracion con Cal.com, Google Calendar y Calendly; el agente consulta disponibilidad en tiempo real
-- Llamadas salientes automaticas: seguimiento a prospectos, confirmacion de citas, reactivacion de clientes
-- Transferencia inteligente: deriva la llamada al humano o al agente especialista correcto segun el contexto
-- Escalacion a WhatsApp: cuando el cliente prefiere continuar por mensajeria
-- Toma de pedidos por telefono (Plan Pro)
-- Memoria de cliente: recuerda informacion de llamadas anteriores (Plan Pro)
-- Multiidioma: espanol e ingles en la misma llamada, deteccion automatica (Plan Pro)
-- Promotor de resenas Google: envia link automaticamente despues de cada llamada exitosa
-- Aprendizaje supervisado: el agente extrae aprendizajes de cada llamada que el dueno puede aprobar para incorporar a la base de conocimiento
-- Equipo coordinado: tantos agentes especializados como el negocio necesite, que se comunican y delegan trabajo entre si
+## Qué son los empleados digitales de Centinelia
 
-## Para quien es Centinelia
+Un empleado digital no es un chatbot ni un menú de opciones ("marque 1 para ventas"). Es una capacidad operativa que:
 
-Negocios mexicanos que reciben llamadas y no quieren perderlas: clinicas, restaurantes, despachos legales, inmobiliarias, tiendas, academias, consultorios medicos, talleres mecanicos y cualquier PyME con flujo de llamadas entrantes o salientes.
+- Contesta llamadas entrantes 24/7 sin llamadas en espera ni perdidas
+- Realiza llamadas salientes: prospección, confirmación de citas, cobranza, reactivación
+- Administra su propio correo electrónico entrante y saliente
+- Chatea con clientes desde el portal
+- Genera documentos, propuestas, contratos y reportes
+- Agenda citas coordinándose con Cal.com, Google Calendar, Calendly y otros
+- Captura leads con nombre, teléfono, necesidad y contexto de la conversación
+- Toma pedidos por teléfono
+- Timbra CFDIs con el PAC del cliente (Facturama, Solución Factible, CONTPAQi)
+- Concilia banca y entrega reportes financieros diarios
+- Controla inventarios y dispara reposiciones
+- Despacha equipos y coordina operaciones en campo
+- Transfiere llamadas en vivo entre empleados digitales o a personas del equipo
+- Aprende continuamente: extrae aprendizajes de cada interacción y el dueño los aprueba
 
-No es para: call centers masivos, negocios sin telefono como punto de contacto, o empresas que necesitan integracion con sistemas ERP enterprise (eso es Plan Empresarial con cotizacion).
+Cada empleado digital opera en los tres canales (voz + chat + correo) simultáneamente y comparte contexto con el resto del equipo.
 
-## Equipo de agentes especializados
+## El equipo de empleados digitales
 
-Cada cuenta puede configurar tantos agentes como necesite, con roles distintos:
+**Dirección**
 
-- **Recepcionista**: atiende llamadas entrantes, agenda citas, captura leads
-- **Ejecutivo de ventas**: realiza llamadas salientes a prospectos nuevos
-- **Agente de seguimiento**: llama a prospectos que no contestaron, hace hasta N intentos configurables
-- **Ejecutivo de recuperacion**: reactiva clientes dormidos, gestiona cobros
-- **Cobrador**: especializado en recuperacion de cartera vencida
-- **Supervisor de desempeno**: monitorea metricas, genera reportes de llamadas
+- **Nox** y **Niva** son los directores. Distribuyen trabajo, supervisan resultados y mantienen a todo el equipo sincronizado. Son coordinadores, no atienden llamadas directamente.
 
-Los agentes se transfieren llamadas entre si en tiempo real: si el cliente necesita a un especialista, el recepcionista lo transfiere en vivo sin que el cliente cuelgue.
+**Operación**
 
-## Precios
+- **Nia** lleva recepción. Atiende llamadas, agenda citas y recibe cada solicitud.
+- **Noah** lleva ventas. Llama prospectos, califica leads y cierra oportunidades nuevas.
+- **Nara** lleva coordinación. Coordina procesos, da seguimiento y mantiene la operación en orden.
+- **Neo** lleva tecnología. Resuelve tickets, gestiona incidentes y mantiene los sistemas activos.
+- **Naia** lleva recursos humanos. Organiza vacaciones, permisos y expedientes del equipo.
+- **Nico** lleva recuperación de cartera. Cobra, recuerda pagos y recupera clientes inactivos.
+- **Nelia** lleva atención al cliente. Responde dudas y acompaña al cliente hasta resolverlas.
+- **Nova** lleva despacho. Coordina equipos en campo, actualiza estatus y despacha operaciones.
+- **Nala** lleva facturación. Timbra CFDIs, archiva comprobantes y mantiene el orden fiscal.
+- **Nalú** lleva tesorería. Concilia banca, detecta diferencias y entrega el reporte financiero diario.
+- **Nami** lleva inventarios. Cuenta stock, detecta faltantes y dispara reposiciones.
 
-Todos los planes incluyen cuota de instalacion unica y minutos mensuales incluidos. Tasa: $9.99 MXN/min incluido, $12.99 MXN/min extra.
+Cada organización arma su equipo según lo que necesita. Puede contratar un solo empleado o una oficina digital completa.
 
-| Plan | Tier | Precio mensual | Instalacion | Minutos |
-|------|------|---------------|-------------|---------|
-| Comercial | Starter | $2,997 MXN | $8,990 MXN | 300 min |
-| Comercial | Growth | $5,994 MXN | $8,990 MXN | 600 min |
-| Comercial | Scale | $11,988 MXN | $8,990 MXN | 1,200 min |
-| Pro | Starter | $2,997 MXN | $14,990 MXN | 300 min |
-| Pro | Growth | $5,994 MXN | $14,990 MXN | 600 min |
-| Pro | Scale | $11,988 MXN | $14,990 MXN | 1,200 min |
-| Empresarial | — | Cotizacion personalizada | — | — |
+## Para quién es Centinelia
 
-Sin contratos de permanencia. Cancela cuando quieras, el servicio termina al final del ciclo de facturacion.
+Organizaciones mexicanas que reciben o hacen llamadas y quieren ampliar capacidad sin ampliar nómina: clínicas, consultorios, restaurantes, despachos legales y contables, inmobiliarias, tiendas, academias, talleres mecánicos, comercializadoras, constructoras y cualquier PYME con flujo de conversaciones (teléfono, correo, chat) por atender.
 
-## Que incluye cada plan
+No es para: call centers masivos ni negocios sin teléfono como punto de contacto. Para operaciones con integraciones ERP complejas o múltiples sucursales, existe el plan Empresarial con cotización personalizada.
 
-**Plan Comercial:** Recepcionista 24/7, captura de leads, agendamiento de citas, transferencia inteligente, escalacion WhatsApp, resenas Google automaticas, portal con reportes y horas pico
+## Precios (MXN, más IVA)
 
-**Plan Pro:** Todo el Comercial + llamadas salientes, toma de pedidos, memoria de cliente, multiidioma, grabaciones, hasta 3 llamadas simultaneas
+Todos los precios son mensuales, sin contratos de permanencia. Cancelas cuando quieras y el servicio termina al final del ciclo de facturación.
 
-**Plan Empresarial:** Todo el Pro + integracion POS/CRM, multiples sucursales, numero dedicado, soporte prioritario
+**Incorporación única por empleado digital: $14,990 MXN + IVA**
+
+**Cada empleado digital se contrata con una jornada y un tier.**
+
+Tiers (mismo precio en todas las jornadas):
+
+| Tier          | Precio mensual |
+|---------------|---------------:|
+| Esencial      | $2,997 MXN     |
+| Profesional   | $5,994 MXN     |
+| Alta Demanda  | $11,988 MXN    |
+| Empresarial   | Cotización     |
+
+Jornadas disponibles (asignación mensual):
+
+| Jornada       | Esencial              | Profesional           | Alta Demanda           |
+|---------------|-----------------------|-----------------------|------------------------|
+| Combinada     | 250 min + 300 tareas  | 500 min + 600 tareas  | 1,000 min + 1,200 tareas |
+| Solo Minutos  | 350 min + 20 tareas   | 650 min + 20 tareas   | 1,300 min + 20 tareas   |
+| Solo Tareas   | 500 tareas            | 1,200 tareas          | 3,000 tareas            |
+
+Los directores (Nox y Niva) son coordinadores tareas-only: 500 / 1,200 / 3,000 tareas por tier, sin minutos de voz.
+
+Tarifa de minutos extra (más allá de la jornada): **$12 MXN/min + IVA**. Se puede activar recarga automática o comprar minutos puntuales desde el portal.
+
+Los minutos no usados acumulan al mes siguiente hasta un máximo del doble de los minutos incluidos. Al llegar al tope, los excedentes se pierden.
 
 ## Integraciones
 
-- Cal.com (API directa, el agente crea la cita en tiempo real)
-- Google Calendar, Calendly (el agente captura datos y envia link por WhatsApp)
-- WhatsApp (escalacion y mensajeria saliente)
-- Stripe (facturacion y portal de cliente)
-- Notion (gestion de conocimiento interna)
+- Cal.com (API directa, el empleado agenda la cita en tiempo real)
+- Google Calendar, Calendly
+- Notion (base de conocimiento del negocio)
+- Google Drive, Google Sheets, Dropbox, OneDrive
+- QuickBooks Online (contabilidad)
+- CONTPAQi Comercial, Aspel, Bind (ERP fiscal)
+- Facturama, Solución Factible (PAC para CFDIs)
+- Stripe (facturación de suscripción y portal de cliente)
+- Correo entrante y saliente (Gmail, Outlook, SMTP propio)
+- WhatsApp entrante (mensajes de clientes hacia el negocio)
+- Mercado Libre
+- Sistemas propios vía API o webhook
 
-## Tecnologia
+Nota sobre WhatsApp: hoy los empleados digitales pueden recibir mensajes de WhatsApp del cliente hacia el negocio. Las conversaciones salientes de WhatsApp iniciadas por el empleado no están en producto todavía. La escalación a mensajería fuera del teléfono se resuelve por correo.
 
-- Orquestacion de voz: Vapi.ai
-- LLM: Claude de Anthropic (claude-3-5-haiku para tiempo real)
-- Transcripcion: Deepgram nova-2 con deteccion automatica de idioma
-- Voces: ElevenLabs (texto a voz de alta fidelidad)
-- Backend: Next.js / Vercel
-- Pagos: Stripe
+## Tecnología
 
-## Como funciona tecnicamente
+- Orquestación de voz: Vapi.ai
+- LLM: Claude de Anthropic (Sonnet para razonamiento profundo, Haiku para tiempo real)
+- Transcripción: Deepgram con detección automática de idioma
+- Voces: ElevenLabs (síntesis de voz de alta fidelidad)
+- Backend: Next.js sobre Vercel
+- Base de datos: Supabase (Postgres + Storage + Auth)
+- Pagos y facturación de suscripción: Stripe
+- Timbrado CFDI: Facturama y Solución Factible según cliente
 
-1. El negocio recibe un numero de telefono dedicado (gestionado via Vapi)
-2. Cuando llega una llamada, Vapi crea una sesion con el LLM de Anthropic
-3. El agente usa el system prompt configurado + base de conocimiento del negocio
-4. Al terminar la llamada, el webhook extrae leads, aprendizajes y genera mensajes para el equipo
-5. Todo aparece en el portal del cliente en tiempo real
+## Diferenciadores clave
 
-El portal del cliente es accesible desde cualquier dispositivo. No se requiere app.
-
-## Diferenciadores clave vs competidores
-
-- **Equipo real, no un bot**: tantos agentes especializados como el negocio necesite, que colaboran entre si, no un solo chatbot de voz
-- **Aprendizaje continuo**: el sistema extrae aprendizajes de cada llamada; el dueno los aprueba y el agente los incorpora
-- **Activo en menos de 24 horas**: sin integraciones complejas para el plan basico
-- **Precios en MXN**: pensado para el mercado mexicano, no conversion de USD
-- **Espanol nativo**: entrenado en espanol mexicano, no traduccion de un producto gringo
-- **Sin contratos**: mes a mes, cancela cuando quieras
+- **Equipo real, no un solo bot**: tantos empleados especializados como el negocio necesite, que colaboran entre sí y se transfieren llamadas y trabajo en vivo.
+- **Tres canales por defecto**: cada empleado atiende voz, chat y correo. No hay que contratar un producto por canal.
+- **Aprendizaje continuo supervisado**: el sistema extrae aprendizajes de cada interacción y el dueño los aprueba antes de que se incorporen al conocimiento del empleado.
+- **Activo en menos de 24 horas**: sin integraciones complejas obligatorias para arrancar.
+- **Precios en pesos mexicanos**: producto pensado para el mercado mexicano, no traducción de un producto en dólares.
+- **Español mexicano nativo**: entrenado en modismos y contexto local.
+- **Sin contratos de permanencia**: mes a mes, cancelas cuando quieras.
+- **Sin costos laborales adicionales**: sin IMSS, aguinaldo, vacaciones, PTU, incapacidades ni reemplazos por ausencias.
 
 ## Preguntas frecuentes
 
-**¿Suena natural o robotico?**
-Usa voces de ElevenLabs, la misma tecnologia que usan estudios de doblaje globales. La mayoria de los clientes no notan la diferencia.
+**¿Esto es un chatbot?**
+No. Un chatbot solo responde texto en una ventana. Un empleado digital de Centinelia contesta el teléfono, manda correos, chatea desde el portal y usa los sistemas del negocio como cualquier persona del equipo.
 
-**¿Que pasa si el agente no sabe responder algo?**
-El agente lo dice con honestidad y ofrece tomar los datos del cliente para que el equipo le llame de regreso. Nunca inventa respuestas.
+**¿Suena natural o robótico?**
+Usa voces de ElevenLabs, la misma tecnología que usan estudios de doblaje y plataformas de contenido globales. La mayoría de los clientes no notan la diferencia. Puedes marcarle al demo (+52 81 2188 8490) para probarlo tú mismo.
 
-**¿Cuanto tiempo tarda en estar activo?**
-Menos de 24 horas. No necesitas saber de tecnologia.
+**¿Qué pasa si el empleado digital no sabe responder algo?**
+Reconoce sus límites. Si no tiene la información, lo dice con honestidad y ofrece tomar los datos del cliente para que el equipo humano le llame de regreso. Nunca inventa respuestas.
+
+**¿Cuánto tiempo tarda en estar activo?**
+Menos de 24 horas. Después de contratar, accedes al portal, capturas la información de tu organización y tu empleado digital queda listo. No necesitas saber de tecnología.
 
 **¿Puede agendar citas?**
-Si, en los planes Comercial y Pro. Se integra directamente con Cal.com o envia link de Calendly/Google Calendar por WhatsApp.
+Sí. Se integra directamente con Cal.com para agendar en tiempo real, o envía link de Calendly / Google Calendar por correo.
 
 **¿Puede hacer llamadas salientes?**
-Si, en el Plan Pro. Seguimiento a prospectos, confirmacion de citas, cobranza.
+Sí. Seguimiento a prospectos, confirmación de citas, cobranza, reactivación de clientes inactivos.
 
-**¿Habla ingles?**
-Si, en el Plan Pro. Detecta automaticamente el idioma del cliente en la misma llamada.
+**¿Habla inglés?**
+Sí, con detección automática del idioma del cliente en la misma llamada.
 
 **¿Puede transferir la llamada a una persona real?**
-Si, el agente puede transferir en vivo a cualquier numero configurado. Tambien puede escalar por WhatsApp.
+Sí. El empleado puede transferir en vivo a cualquier número configurado, y puede escalar por correo cuando el cliente prefiere seguir por escrito.
 
-**¿Cuantas llamadas puede atender al mismo tiempo?**
-Plan Comercial: 1 llamada simultanea. Plan Pro: hasta 3. Plan Empresarial: segun volumen.
+**¿Manda WhatsApp saliente?**
+Por ahora no. Los empleados digitales trabajan por teléfono, chat de portal y correo. Reciben mensajes de WhatsApp entrantes del cliente, pero no inician conversaciones salientes de WhatsApp todavía.
 
-**¿Mis datos y los de mis clientes estan seguros?**
-Los datos se almacenan en infraestructura en la nube con cifrado en transito y en reposo. Cumple con la Ley Federal de Proteccion de Datos Personales en Posesion de los Particulares (LFPDPPP).
+**¿Cuántas llamadas puede atender al mismo tiempo?**
+Depende del plan y de la jornada. La configuración por defecto atiende una llamada a la vez; para operaciones de mayor volumen se activa concurrencia mayor.
+
+**¿Y si necesito un rol que no está en el catálogo?**
+Se diseña a la medida. Empezamos con un diagnóstico de la operación, automatizamos lo previo que necesita quedar listo y luego incorporamos al empleado. Consultoría y diseño de rol desde $60,000 MXN + IVA.
+
+**¿Puedo cancelar cuando quiera?**
+Sí, sin penalizaciones. No hay contratos de permanencia. El servicio termina al final del ciclo de facturación.
+
+**¿Qué pasa si comete un error?**
+Cada llamada queda grabada y transcrita en el portal. Si algo no quedó bien, se ajusta la configuración en tiempo real y el cambio se aplica en minutos. Los directores digitales (Nox y Niva) revisan al resto del equipo automáticamente.
+
+**¿Mis datos y los de mis clientes están seguros?**
+Los datos se almacenan en infraestructura en la nube con cifrado en tránsito y en reposo. Centinelia cumple con la Ley Federal de Protección de Datos Personales en Posesión de los Particulares (LFPDPPP) de México.
 
 **¿Funciona para restaurantes?**
-Si. El agente puede tomar reservaciones, informar sobre el menu, horarios y ubicacion, y tomar pedidos para llevar (Plan Pro).
+Sí. Nia toma reservaciones, informa el menú, horarios y ubicación, y con el resto del equipo se pueden tomar pedidos para llevar.
 
-**¿Funciona para clinicas y consultorios?**
-Si. El agente agenda citas, confirma horarios, da indicaciones de ubicacion y puede recordar pacientes frecuentes (Plan Pro).
+**¿Funciona para clínicas y consultorios?**
+Sí. Nia agenda citas, confirma horarios, da indicaciones de ubicación y recuerda a pacientes frecuentes.
 
 **¿Funciona para despachos legales o contables?**
-Si. El agente califica el tipo de caso, agenda consultas y deriva casos urgentes al abogado o contador de guardia.
+Sí. Nia califica el tipo de caso, agenda consultas y deriva casos urgentes al abogado o contador de guardia. Nala factura los honorarios en automático.
 
 **¿Funciona para inmobiliarias?**
-Si. El agente califica al prospecto (tipo de propiedad, presupuesto, zona), agenda visitas y notifica al asesor por WhatsApp.
+Sí. Nia y Noah califican al prospecto (tipo de propiedad, presupuesto, zona), agendan visitas y notifican al asesor.
 
-**¿Hay descuentos para multiples sucursales?**
-Si, en el Plan Empresarial. Contactar a hola@centinelia.mx para cotizacion.
+**¿Hay descuentos para múltiples sucursales u oficina completa?**
+Sí. Se cotiza como Empresarial. Contacto: hola@centinelia.mx.
 
-**¿Necesito cambiar mi numero de telefono?**
-No. Centinelia te asigna un numero nuevo que puedes publicar o configurar como desvio desde tu numero actual.
+**¿Necesito cambiar mi número de teléfono?**
+No. Centinelia asigna un número dedicado que se puede publicar como principal o configurar como desvío desde el número actual.
 
-**¿Que pasa con los minutos no usados?**
-Los minutos no usados acumulan al mes siguiente hasta un maximo del doble de los minutos incluidos en tu plan. Al llegar al tope, los excedentes se pierden.
+## Casos de uso más comunes
+
+- Recepcionista virtual 24/7 para clínicas y consultorios
+- Toma de pedidos por teléfono en restaurantes
+- Prospección saliente y calificación de leads para inmobiliarias
+- Cobranza automatizada y recuperación de cartera
+- Facturación CFDI desde notas de venta o correos
+- Conciliación bancaria diaria y reporte financiero
+- Ciclo completo Orden de Compra → CFDI para constructoras y comercializadoras
+- Coordinación de equipos de campo y despacho de operaciones
 
 ## Contacto
 
 - Sitio web: https://www.centinelia.mx
 - Correo: hola@centinelia.mx
-- Demo: +52 (81) 2188 8490
+- Ventas y soporte: +52 81 1633 3559
+- Demo (Nia contesta en vivo): +52 81 2188 8490
 - Instagram: https://www.instagram.com/centinelia.mx/
 - LinkedIn: https://www.linkedin.com/company/centinelia/
 - Facebook: https://www.facebook.com/centineliamx/
 
+## Páginas principales
+
+- Home: https://www.centinelia.mx/
+- Catálogo de empleados: https://www.centinelia.mx/empleados
+- Preguntas frecuentes: https://www.centinelia.mx/faq
+- Industrias: https://www.centinelia.mx/industrias
+- Clínicas: https://www.centinelia.mx/industrias/clinicas
+- Restaurantes: https://www.centinelia.mx/industrias/restaurantes
+- Despachos: https://www.centinelia.mx/industrias/despachos
+- Inmobiliarias: https://www.centinelia.mx/industrias/inmobiliarias
+- Tiendas: https://www.centinelia.mx/industrias/tiendas
+- Talleres mecánicos: https://www.centinelia.mx/industrias/talleres-mecanicos
+- Veterinarias: https://www.centinelia.mx/industrias/veterinarias
+- Escuelas y academias: https://www.centinelia.mx/industrias/escuelas
+- Gimnasios: https://www.centinelia.mx/industrias/gimnasios
+- Notarías: https://www.centinelia.mx/industrias/notarias
+- Ópticas: https://www.centinelia.mx/industrias/opticas
+- Spas y estética: https://www.centinelia.mx/industrias/spas
+- Servicios a domicilio: https://www.centinelia.mx/industrias/servicios-a-domicilio
+- Guarderías: https://www.centinelia.mx/industrias/guarderias
+- Concesionarias: https://www.centinelia.mx/industrias/concesionarias
+- Pack Ciclo OC-CFDI: https://www.centinelia.mx/pack-ciclo-oc-cfdi
+- Cotizar oficina completa: https://www.centinelia.mx/cotizar
+- Pedir rol nuevo: https://www.centinelia.mx/pedir-rol
+- Comparaciones vs otras plataformas: https://www.centinelia.mx/vs
+- Centinelia vs Bland AI: https://www.centinelia.mx/vs/bland-ai
+- Centinelia vs Retell AI: https://www.centinelia.mx/vs/retell-ai
+- Centinelia vs Vapi.ai: https://www.centinelia.mx/vs/vapi
+- Registro: https://www.centinelia.mx/registro
+- Portal de clientes: https://www.centinelia.mx/portal/login
+
 ## Optional
 
-Centinelia es desarrollado por Pneuma Studio (https://pneumastudio.mx), agencia de automatizacion y desarrollo web ubicada en Monterrey, Nuevo Leon, Mexico.
+Centinelia es desarrollado y operado por Pneuma Studio (https://pneumastudio.mx), un estudio de automatización y desarrollo de producto ubicado en Monterrey, Nuevo León, México.
 
-Categoria: Software de atencion telefonica automatizada / Agentes de voz con IA / Recepcionista virtual / Business automation SaaS / Mexico
+Categoría: Empleados digitales / Automatización operativa / Recepción telefónica automatizada / SaaS de operaciones para PYMEs mexicanas.
 
-Palabras clave relevantes: recepcionista IA Mexico, agente de voz inteligencia artificial, atencion telefonica automatizada PyME, contestador automatico inteligente, bot de voz para negocios Mexico, agendar citas por telefono IA, captura de leads automatica, llamadas salientes automatizadas Mexico
+Términos relacionados: empleado digital, recepcionista virtual 24/7, agente de voz con inteligencia artificial, atención telefónica automatizada, contestador inteligente, agendamiento automático de citas, captura de leads, llamadas salientes automatizadas, facturación CFDI automática, cobranza automatizada, tesorería automatizada, inventarios automatizados, oficina digital, capacidad operativa, PYME México, Monterrey.
