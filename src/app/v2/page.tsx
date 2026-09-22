@@ -29,23 +29,24 @@ import IndustriesSection from '../IndustriesSection';
 const DIRECTORS = {
   nombres: 'Nox & Niva',
   rol:     'Dirección',
+  tagline: 'Encuentran orden donde otros ven caos',
   desc:    'Dirigen a todo el equipo. Distribuyen trabajo, supervisan resultados y mantienen a todos sincronizados para que tu operación funcione sola.',
   color:   '#6C3BFF',
   img:     '/meerkats/nox-niva.png',
 };
 
 const TEAM = [
-  { nombre: 'Nia',   rol: 'Recepción',         desc: 'Atiende llamadas, agenda citas y recibe cada solicitud.',              color: '#6C3BFF', img: '/meerkats/nia.png',  imgPad: '0px' },
-  { nombre: 'Noah',  rol: 'Ventas',            desc: 'Llama prospectos, califica leads y cierra oportunidades nuevas.', color: '#22c55e', img: '/meerkats/noah.png'  },
-  { nombre: 'Nara',  rol: 'Coordinación',      desc: 'Coordina procesos, da seguimiento y mantiene la operación en orden.',  color: '#4338CA', img: '/meerkats/nara.png'  },
-  { nombre: 'Neo',   rol: 'Tecnología',        desc: 'Resuelve tickets, gestiona incidentes y mantiene los sistemas activos.', color: '#06b6d4', img: '/meerkats/neo.png'  },
-  { nombre: 'Naia',  rol: 'Recursos Humanos',  desc: 'Organiza vacaciones, permisos y expedientes del equipo.',              color: '#ec4899', img: '/meerkats/naia.png'  },
-  { nombre: 'Nico',  rol: 'Recuperación',      desc: 'Cobra, recuerda pagos y recupera clientes inactivos.',                 color: '#f59e0b', img: '/meerkats/nico.png'  },
-  { nombre: 'Nelia', rol: 'Atención al Cliente', desc: 'Responde dudas y acompaña al cliente hasta resolverlas.',            color: '#3b82f6', img: '/meerkats/nelia.png' },
-  { nombre: 'Nova',  rol: 'Despacho',         desc: 'Despacha equipos, actualiza estatus y coordina cada salida en campo.',                   color: '#ef4444', img: '/meerkats/nova.png'  },
-  { nombre: 'Nala',  rol: 'Facturación',      desc: 'Timbra CFDIs, archiva comprobantes y mantiene el orden fiscal.',                         color: '#a16207', img: '/meerkats/nala.png'  },
-  { nombre: 'Nalú', rol: 'Tesorería',         desc: 'Concilia banca, detecta diferencias y entrega el reporte financiero diario.',            color: '#059669', img: '/meerkats/nalu.png'  },
-  { nombre: 'Nami',  rol: 'Inventarios',      desc: 'Lleva el conteo del inventario, detecta faltantes y dispara reposiciones.',              color: '#EA580C', img: '/meerkats/nami.png'  },
+  { nombre: 'Nia',   rol: 'Recepción',           tagline: 'Nunca se le escapa un dato',                  desc: 'Atiende llamadas, agenda citas y recibe cada solicitud.',                                color: '#6C3BFF', img: '/meerkats/nia.png',  imgPad: '0px' },
+  { nombre: 'Noah',  rol: 'Ventas',              tagline: 'Siempre al teléfono, siempre cerrando',       desc: 'Llama prospectos, califica leads y cierra oportunidades nuevas.',                        color: '#22c55e', img: '/meerkats/noah.png'  },
+  { nombre: 'Nara',  rol: 'Coordinación',        tagline: 'Carpeta en mano, todo bajo control',          desc: 'Coordina procesos, da seguimiento y mantiene la operación en orden.',                    color: '#4338CA', img: '/meerkats/nara.png'  },
+  { nombre: 'Neo',   rol: 'Tecnología',          tagline: 'Laptop abierta, problema resuelto',           desc: 'Resuelve tickets, gestiona incidentes y mantiene los sistemas activos.',                 color: '#06b6d4', img: '/meerkats/neo.png'  },
+  { nombre: 'Naia',  rol: 'Recursos Humanos',    tagline: 'Con lupa: nada se le escapa',                 desc: 'Organiza vacaciones, permisos y expedientes del equipo.',                                color: '#ec4899', img: '/meerkats/naia.png'  },
+  { nombre: 'Nico',  rol: 'Recuperación',        tagline: 'Ya tiene tu dinero contado',                  desc: 'Cobra, recuerda pagos y recupera clientes inactivos.',                                   color: '#f59e0b', img: '/meerkats/nico.png'  },
+  { nombre: 'Nelia', rol: 'Atención al Cliente', tagline: 'Siempre conectada, siempre respondiendo',     desc: 'Responde dudas y acompaña al cliente hasta resolverlas.',                                color: '#3b82f6', img: '/meerkats/nelia.png' },
+  { nombre: 'Nova',  rol: 'Despacho',            tagline: 'El cerebro operativo de tu equipo en campo',  desc: 'Despacha equipos, actualiza estatus y coordina cada salida en campo.',                   color: '#ef4444', img: '/meerkats/nova.png'  },
+  { nombre: 'Nala',  rol: 'Facturación',         tagline: 'El SAT no perdona errores, y ella tampoco',   desc: 'Timbra CFDIs, archiva comprobantes y mantiene el orden fiscal.',                         color: '#a16207', img: '/meerkats/nala.png'  },
+  { nombre: 'Nalú',  rol: 'Tesorería',           tagline: 'Cada peso conciliado, cada break atrapado',   desc: 'Concilia banca, detecta diferencias y entrega el reporte financiero diario.',            color: '#059669', img: '/meerkats/nalu.png'  },
+  { nombre: 'Nami',  rol: 'Inventarios',         tagline: 'Cada serie, cada bodega, todo bajo control',  desc: 'Lleva el conteo del inventario, detecta faltantes y dispara reposiciones.',              color: '#EA580C', img: '/meerkats/nami.png'  },
 ];
 
 const LIMITS = [
@@ -520,9 +521,12 @@ export default function LandingPage() {
                 <p style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: DIRECTORS.color, marginBottom: 2 }}>
                   {DIRECTORS.rol}
                 </p>
-                <h3 className="font-bold" style={{ fontSize: '1.05rem', color: C.text, lineHeight: 1.2, marginBottom: 4 }}>
+                <h3 className="font-bold" style={{ fontSize: '1.05rem', color: C.text, lineHeight: 1.2, marginBottom: 3 }}>
                   {DIRECTORS.nombres}
                 </h3>
+                <p style={{ fontSize: '0.72rem', fontStyle: 'italic', color: DIRECTORS.color, opacity: 0.85, lineHeight: 1.3, marginBottom: 6 }}>
+                  {DIRECTORS.tagline}
+                </p>
                 <p style={{ fontSize: '0.75rem', color: C.textSub, lineHeight: 1.5 }}>{DIRECTORS.desc}</p>
               </div>
             </div>
@@ -564,9 +568,12 @@ export default function LandingPage() {
                     <p style={{ fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: m.color, marginBottom: 2 }}>
                       {m.rol}
                     </p>
-                    <h3 className="font-bold" style={{ fontSize: '0.95rem', color: C.text, lineHeight: 1.2, marginBottom: 4 }}>
+                    <h3 className="font-bold" style={{ fontSize: '0.95rem', color: C.text, lineHeight: 1.2, marginBottom: 3 }}>
                       {m.nombre}
                     </h3>
+                    <p style={{ fontSize: '0.68rem', fontStyle: 'italic', color: m.color, opacity: 0.82, lineHeight: 1.3, marginBottom: 5 }}>
+                      {m.tagline}
+                    </p>
                     <p style={{ fontSize: '0.72rem', color: C.textSub, lineHeight: 1.5 }}>{m.desc}</p>
                   </div>
                 </div>
