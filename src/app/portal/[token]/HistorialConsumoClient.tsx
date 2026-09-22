@@ -58,10 +58,14 @@ const MIN_SOURCE_META: Record<LedgerSource, { iconKey: string; color: string; la
   auto_pausado:       { iconKey: 'x',              color: '#B45309', label: 'Empleado pausado (auto)' },
 };
 
+// TRIGGER_META: fuente que dispara una TAREA. voice_call es la única fuente que
+// consumió también minutos (llamada), así que se pinta cyan; el resto son
+// interacciones no-voz que se pintan en tonos verde-family (paleta oficial:
+// cyan minutos / verde tareas — feedback-colores-minutos-tareas).
 const TRIGGER_META: Record<string, { iconKey: string; color: string; label: string }> = {
-  voice_call:      { iconKey: 'phone',       color: '#6C3BFF', label: 'Desde llamada' },
-  email:           { iconKey: 'mail',        color: '#3b82f6', label: 'Desde correo' },
-  inbox:           { iconKey: 'mail',        color: '#3b82f6', label: 'Desde bandeja' },
+  voice_call:      { iconKey: 'phone',       color: '#0E7490', label: 'Desde llamada' },
+  email:           { iconKey: 'mail',        color: '#10B981', label: 'Desde correo' },
+  inbox:           { iconKey: 'mail',        color: '#10B981', label: 'Desde bandeja' },
   schedule:        { iconKey: 'calendar',    color: '#a855f7', label: 'Programada' },
   scheduled:       { iconKey: 'calendar',    color: '#a855f7', label: 'Programada' },
   manual:          { iconKey: 'clipboard',   color: '#22c55e', label: 'Bajo demanda' },
@@ -186,13 +190,16 @@ export default function HistorialConsumoClient({
             style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
             {(['minutos', 'tareas'] as const).map(t => {
               const activeTab = tab === t;
+              // Paleta oficial: cyan minutos, verde tareas (feedback-colores-minutos-tareas)
+              const activeColor = t === 'minutos' ? '#0E7490' : '#10B981';
+              const activeBg    = t === 'minutos' ? 'rgba(6,182,212,0.10)' : 'rgba(16,185,129,0.10)';
               return (
                 <button key={t} onClick={() => setTab(t)}
                   className="px-4 py-1.5 rounded-md text-[12px] font-semibold transition-all"
                   style={{
-                    background: activeTab ? '#ffffff' : 'transparent',
-                    color:      activeTab ? '#1A0A3B' : '#6B6480',
-                    boxShadow:  activeTab ? '0 1px 2px rgba(26,10,59,0.06)' : 'none',
+                    background: activeTab ? activeBg : 'transparent',
+                    color:      activeTab ? activeColor : '#6B6480',
+                    boxShadow:  activeTab ? `0 1px 2px ${activeColor}20` : 'none',
                   }}>
                   {t === 'minutos' ? 'Minutos' : 'Tareas'}
                 </button>

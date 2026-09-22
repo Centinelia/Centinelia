@@ -466,7 +466,7 @@ export default function PortalSidebarV2(props: PortalSidebarV2Props) {
               {/* Minutos */}
               <div className="mb-2">
                 <div className="mb-1 flex justify-between">
-                  <span className="text-[11px] text-neutral-600">Minutos</span>
+                  <span className="text-[11px] font-semibold" style={{ color: '#0E7490' }}>Minutos</span>
                   <span
                     className="text-[11px] font-medium tabular-nums"
                     style={{ color: hasMinPlan ? uColor(minPct) : '#9ca3af' }}
@@ -488,7 +488,7 @@ export default function PortalSidebarV2(props: PortalSidebarV2Props) {
               {/* Tareas */}
               <div>
                 <div className="mb-1 flex justify-between">
-                  <span className="text-[11px] text-neutral-600">Tareas</span>
+                  <span className="text-[11px] font-semibold" style={{ color: '#10B981' }}>Tareas</span>
                   <span
                     className="text-[11px] font-medium tabular-nums"
                     style={{ color: opsLimit > 0 ? uColor(opsPct) : '#9ca3af' }}

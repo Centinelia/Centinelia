@@ -309,7 +309,7 @@ export default function OficinaSidebarV2({
                 </p>
                 <div className="mb-2.5">
                   <div className="flex justify-between mb-1">
-                    <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.65)' }}>Minutos</span>
+                    <span className="text-[11px] font-semibold" style={{ color: '#67E8F9' }}>Minutos</span>
                     <span className="text-[11px] font-semibold tabular-nums" style={{ color: hasMinPlan ? uColorDark(minPct) : 'rgba(255,255,255,0.35)' }}>
                       {hasMinPlan ? `${minutesRemain} rest.` : 'Jornada sin minutos'}
                     </span>
@@ -320,7 +320,7 @@ export default function OficinaSidebarV2({
                 </div>
                 <div>
                   <div className="flex justify-between mb-1">
-                    <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.65)' }}>Tareas</span>
+                    <span className="text-[11px] font-semibold" style={{ color: '#6EE7B7' }}>Tareas</span>
                     <span className="text-[11px] font-semibold tabular-nums" style={{ color: aiOpsLimit > 0 ? uColorDark(opsPct) : 'rgba(255,255,255,0.35)' }}>
                       {aiOpsLimit > 0 ? `${opsRemain} rest.` : 'Jornada sin tareas'}
                     </span>
