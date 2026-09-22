@@ -161,12 +161,92 @@ export const twilioVerifier: ProviderVerifier<TwilioEvent> = {
   },
 };
 
+// ─── Meta WhatsApp Cloud API ────────────────────────────────────────────────
+//
+// Meta firma cada webhook POST con HMAC-SHA256(rawBody, META_WA_APP_SECRET) y
+// pone el resultado en el header `x-hub-signature-256: sha256=<hex>`. La
+// verificacion inicial (GET con hub.mode/hub.verify_token/hub.challenge) NO
+// pasa por aqui — se maneja en el route handler directo.
+
+export interface MetaWaEvent {
+  object: string;
+  entry?: Array<{
+    id?:      string;
+    changes?: Array<{
+      field?: string;
+      value?: {
+        messaging_product?: string;
+        metadata?:          { display_phone_number?: string; phone_number_id?: string };
+        contacts?:          Array<{ profile?: { name?: string }; wa_id?: string }>;
+        messages?:          Array<{
+          from?:      string;
+          id?:        string;
+          timestamp?: string;
+          type?:      string;
+          text?:      { body?: string };
+        }>;
+        statuses?:          Array<{ id?: string; status?: string; timestamp?: string }>;
+      };
+    }>;
+  }>;
+}
+
+export const metaWaVerifier: ProviderVerifier<MetaWaEvent> = {
+  name: 'meta_wa',
+  dedupeTable: 'webhook_events',
+  async verify(req, rawBody) {
+    const appSecret = process.env.META_WA_APP_SECRET;
+    if (!appSecret) {
+      console.error('[webhook:meta_wa] META_WA_APP_SECRET not set');
+      return { ok: false, error: 'server_misconfigured', status: 503 };
+    }
+
+    const header = req.headers.get('x-hub-signature-256') ?? '';
+    if (!header.startsWith('sha256=')) {
+      return { ok: false, error: 'missing_signature', status: 400 };
+    }
+    const provided = header.slice('sha256='.length);
+    const expected = createHmac('sha256', appSecret).update(rawBody).digest('hex');
+
+    let matches = false;
+    try {
+      matches =
+        provided.length === expected.length &&
+        timingSafeEqual(Buffer.from(provided, 'hex'), Buffer.from(expected, 'hex'));
+    } catch {
+      matches = false;
+    }
+    if (!matches) return { ok: false, error: 'invalid_signature', status: 401 };
+
+    let event: MetaWaEvent;
+    try {
+      event = JSON.parse(rawBody) as MetaWaEvent;
+    } catch {
+      return { ok: false, error: 'invalid_json', status: 400 };
+    }
+
+    // Meta event id: usar el message id del primer message del primer entry.
+    // Statuses son eventos separados y tambien tienen id.
+    const firstEntry  = event.entry?.[0];
+    const firstChange = firstEntry?.changes?.[0]?.value;
+    const messageId   = firstChange?.messages?.[0]?.id;
+    const statusId    = firstChange?.statuses?.[0]?.id;
+    const eventId     = messageId ?? statusId ?? `meta:${Date.now()}:${Math.random()}`;
+    const eventType   = firstChange?.messages ? 'message'
+                      : firstChange?.statuses  ? (firstChange.statuses[0].status ?? 'status')
+                      : 'unknown';
+
+    return { ok: true, event, eventId, eventType };
+  },
+};
+
 // ─── Registry de providers ──────────────────────────────────────────────────
 
 export const PROVIDERS = {
-  stripe: stripeVerifier,
-  vapi:   vapiVerifier,
-  twilio: twilioVerifier,
+  stripe:  stripeVerifier,
+  vapi:    vapiVerifier,
+  twilio:  twilioVerifier,
+  meta_wa: metaWaVerifier,
 } as const;
 
 export type ProviderName = keyof typeof PROVIDERS;

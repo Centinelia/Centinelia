@@ -257,7 +257,7 @@ export const POST = withWebhookAuth('meta_wa', async (_req: NextRequest, { event
       if (block.type === 'tool_use') toolCalls.push(block);
     }
   } catch (e) {
-    await refundOps(agent.id, 'wa_message', 1).catch(() => {});
+    await refundOps(agent.id, 1, { source: 'wa_meta_message' }).catch(() => {});
     console.error('wa/meta: LLM error', e);
     return NextResponse.json({ ok: true, skipped: 'llm_error' });
   }
@@ -271,15 +271,18 @@ export const POST = withWebhookAuth('meta_wa', async (_req: NextRequest, { event
       handoffMotivo     = ((tc.input as Record<string, unknown>).motivo as string) ?? 'sin motivo declarado';
       continue;
     }
-    // Persistir tool call en wa_tool_calls (tabla generica de audit)
-    await supabase.from('wa_tool_calls').insert({
-      agent_id:        agent.id,
-      customer_number: customerNumber,
-      tool_name:       tc.name,
-      tool_input:      tc.input,
-      handled_by:      'inline_v1',
-      created_at:      nowIso,
-    }).catch(() => { /* tabla podria no existir en fase A; ignorar */ });
+    // Persistir tool call en wa_tool_calls (tabla generica de audit).
+    // Envuelto en try para tolerar que la tabla no exista aun (Fase A).
+    try {
+      await supabase.from('wa_tool_calls').insert({
+        agent_id:        agent.id,
+        customer_number: customerNumber,
+        tool_name:       tc.name,
+        tool_input:      tc.input,
+        handled_by:      'inline_v1',
+        created_at:      nowIso,
+      });
+    } catch { /* tabla podria no existir en fase A; ignorar */ }
   }
 
   // 9. Handoff dispatch (Modo 1: transferencia dura al numero fijo del cliente)
