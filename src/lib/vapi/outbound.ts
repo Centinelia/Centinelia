@@ -115,6 +115,7 @@ export async function triggerOutboundCall({
   campaignInstructions,
   externalSource,
   externalId,
+  voiceOverride,
 }: {
   agent:                 VoiceAgent;
   customerNumber:        string;
@@ -124,6 +125,21 @@ export async function triggerOutboundCall({
   campaignInstructions?: string;
   externalSource?:       string;
   externalId?:           string;
+  /**
+   * Override de voice params solo para esta llamada. Vapi requiere `provider`
+   * si envías cualquier voice override (los demás campos son opcionales).
+   * Uso principal: subir speed y ajustar chunkPlan para el demo landing donde
+   * Nia base (speed 0.91, chunks 25 chars) suena lenta y entrecortada para
+   * conversación live.
+   */
+  voiceOverride?:        {
+    provider:          '11labs';
+    voiceId:           string;
+    speed?:            number;
+    stability?:        number;
+    similarityBoost?:  number;
+    chunkPlan?:        { enabled?: boolean; minCharacters?: number; punctuationBoundaries?: string[] };
+  };
 }): Promise<{ ok: boolean; callId?: string; error?: string }> {
   if (!agent.vapi_agent_id) {
     return { ok: false, error: 'El agente no está sincronizado con Vapi' };
@@ -301,6 +317,7 @@ export async function triggerOutboundCall({
       assistantOverrides: {
         firstMessage,
         model: modelOverride,
+        ...(voiceOverride ? { voice: voiceOverride } : {}),
       },
     }),
   });
