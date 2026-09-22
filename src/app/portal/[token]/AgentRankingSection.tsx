@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Trophy, Bot, Zap } from 'lucide-react';
+import { Trophy, Clock, Zap } from 'lucide-react';
 import Image from 'next/image';
 
 type Period = 'semana' | 'mes' | 'año';
@@ -124,22 +124,22 @@ export default function AgentRankingSection({ token }: { token: string }) {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-          {/* Minutos */}
+          {/* Minutos — cyan (paleta oficial feedback-colores-minutos-tareas) */}
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-1.5 mb-1 px-1">
-              <Bot size={12} style={{ color: '#3b82f6' }} />
-              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#3b82f6' }}>Minutos</span>
+              <Clock size={12} style={{ color: '#0E7490' }} />
+              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#0E7490' }}>Minutos</span>
             </div>
             {byMinutes.map((a, i) => (
               <RankRow key={a.id} agent={a} rank={i} value={a.minutes} unit="min" />
             ))}
           </div>
 
-          {/* Ops */}
+          {/* Ops — verde (paleta oficial) */}
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-1.5 mb-1 px-1">
-              <Zap size={12} style={{ color: '#a855f7' }} />
-              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#a855f7' }}>Tareas</span>
+              <Zap size={12} style={{ color: '#10B981' }} />
+              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#10B981' }}>Tareas</span>
             </div>
             {byOps.map((a, i) => (
               <RankRow key={a.id} agent={a} rank={i} value={a.ops} unit="tareas" />
