@@ -21,7 +21,7 @@ interface Row {
 
 const ROWS: Row[] = [
   { label: 'Arranca en',                    humano: '2 a 4 semanas',           digital: 'El siguiente lunes',        humanoBad: true,  digitalOk: true  },
-  { label: 'Sueldo mensual',                humano: '$12,000 a $25,000',       digital: 'Desde $2,997',              humanoBad: false, digitalOk: true  },
+  { label: 'Sueldo mensual',                humano: '$12,000 a $25,000',       digital: 'Desde $2,997 + IVA',        humanoBad: false, digitalOk: true  },
   { label: 'IMSS y prestaciones',           humano: '+30% del sueldo',         digital: 'Incluido',                  humanoBad: true,  digitalOk: true  },
   { label: 'Aguinaldo',                     humano: '15 días',                  digital: 'No aplica',                 humanoBad: true,  digitalOk: true  },
   { label: 'Vacaciones (crecen cada año)',  humano: 'Sí',                       digital: 'No aplica',                 humanoBad: true,  digitalOk: true  },
@@ -165,7 +165,7 @@ export default function Comparativa() {
                   Un empleado humano cuesta entre <strong style={{ color: '#fff' }}>$200,000 y $450,000</strong> con sueldo y carga laboral completa.
                 </p>
                 <p className="text-sm leading-relaxed mt-3" style={{ color: 'rgba(255,255,255,0.7)' }}>
-                  Un empleado digital arranca desde <strong style={{ color: '#fff' }}>$35,964</strong>.
+                  Un empleado digital arranca desde <strong style={{ color: '#fff' }}>$35,964 + IVA</strong>.
                 </p>
               </div>
               <div className="flex flex-col items-start md:items-end">
