@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail, infraAlertHtml } from '@/lib/email/send';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
+import { evaluateElevenLabsPace, EL_PACE_CRITICAL, EL_PACE_WARN, EL_USED_PCT_CRITICAL, EL_USED_PCT_WARN } from '@/lib/monitoring/elevenlabs-pace';
 
 // ──────────────────────────────────────────────────────────────
 // Invoicing alert thresholds
@@ -21,6 +22,8 @@ const VAPI_LOW_THRESHOLD   = 20;   // USD
 const TWILIO_LOW_THRESHOLD = 10;   // USD
 const CLAUDE_COST_PER_OP   = 0.0024;
 
+// Umbrales ElevenLabs viven en @/lib/monitoring/elevenlabs-pace para poder testearse aparte.
+
 // Storage cuota alerts (Supabase Pro tier: 100 GB included, overage $0.021/GB/mo)
 // Buckets vigilados: csd, cfdi, cfdi-cancellations
 const STORAGE_BUCKETS_WATCH = ['csd', 'cfdi', 'cfdi-cancellations'];
@@ -34,8 +37,8 @@ export async function GET(req: NextRequest) {
 
   const claudeBudget = parseFloat(process.env.CLAUDE_MONTHLY_BUDGET ?? '50');
 
-  // Fetch all three in parallel
-  const [vapiRes, twilioRes, opsRes] = await Promise.all([
+  // Fetch all four in parallel
+  const [vapiRes, twilioRes, opsRes, elevenRes] = await Promise.all([
     fetch('https://api.vapi.ai/account', {
       headers: { Authorization: `Bearer ${process.env.VAPI_API_KEY}` },
     }).then(r => r.ok ? r.json() : null).catch(() => null),
@@ -51,6 +54,12 @@ export async function GET(req: NextRequest) {
       .from('voice_agents')
       .select('ai_ops_used')
       .neq('id', process.env.DEMO_AGENT_ID ?? ''),
+
+    process.env.ELEVENLABS_API_KEY
+      ? fetch('https://api.elevenlabs.io/v1/user/subscription', {
+          headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY },
+        }).then(r => r.ok ? r.json() : null).catch(() => null)
+      : Promise.resolve(null),
   ]);
 
   const vapiBalance  = typeof vapiRes?.balance   === 'number' ? vapiRes.balance   : null;
@@ -97,6 +106,31 @@ export async function GET(req: NextRequest) {
       actionUrl: 'https://console.anthropic.com/settings/billing',
       color:     claudeCost >= claudeBudget ? '#ef4444' : '#f59e0b',
     });
+  }
+
+  // ─── ElevenLabs pace check ────────────────────────────────────
+  // Sin monitor los créditos TTS pueden acabarse a mitad de ciclo y
+  // los meerkats de voz se quedan mudos. Alertamos por dos vías:
+  //   1) % consumido absoluto (≥75% avisa, ≥90% crítico)
+  //   2) ritmo relativo al día del ciclo (pace ≥ 1.25 avisa, ≥ 1.5 crítico).
+  const elCharCount = typeof elevenRes?.character_count === 'number' ? elevenRes.character_count : null;
+  const elCharLimit = typeof elevenRes?.character_limit === 'number' ? elevenRes.character_limit : null;
+  const elResetUnix = typeof elevenRes?.next_character_count_reset_unix === 'number' ? elevenRes.next_character_count_reset_unix : null;
+
+  if (elCharCount !== null && elCharLimit !== null && elCharLimit > 0 && elResetUnix !== null) {
+    const r = evaluateElevenLabsPace(elCharCount, elCharLimit, elResetUnix);
+    if (r.level !== 'ok') {
+      alerts.push({
+        service:   'ElevenLabs — créditos TTS (voz de meerkats)',
+        current:   `${elCharCount.toLocaleString('es-MX')} / ${elCharLimit.toLocaleString('es-MX')} (${r.usedPct.toFixed(1)}%, ritmo ${r.pace.toFixed(2)}×, ${r.daysRemaining.toFixed(0)}d al reset)`,
+        threshold: r.level === 'critical'
+          ? `≥ ${EL_USED_PCT_CRITICAL}% consumido o ritmo ≥ ${EL_PACE_CRITICAL}× (riesgo real de quedarse sin TTS)`
+          : `≥ ${EL_USED_PCT_WARN}% consumido o ritmo ≥ ${EL_PACE_WARN}× (vigilar)`,
+        action:    'Considerar upgrade de plan (Creator → Pro → Scale)',
+        actionUrl: 'https://elevenlabs.io/subscription',
+        color:     r.level === 'critical' ? '#ef4444' : '#f59e0b',
+      });
+    }
   }
 
   // ── Invoicing alerts ──────────────────────────────────────────
