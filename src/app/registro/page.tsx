@@ -1420,21 +1420,24 @@ function RegistroInner() {
             </p>
 
             {/* Jornada type tabs — only for non-coordinator employees */}
+            {/* Cada sabor toma su color de identidad al seleccionarse
+                (feedback-colores-minutos-tareas): morado combinada,
+                cyan minutos, verde tareas. */}
             {!isCoordinator && (
               <div className="flex gap-2 mb-4" style={{ paddingTop: 20 }}>
                 {([
-                  { id: 'combinada', label: 'Combinada',    icon: <><Clock size={10} /><Zap size={10} /></> },
-                  { id: 'minutos',   label: 'Solo minutos', icon: <Clock size={10} /> },
-                  { id: 'tareas',    label: 'Solo tareas',  icon: <Zap size={10} /> },
+                  { id: 'combinada', label: 'Combinada',    icon: <><Clock size={10} /><Zap size={10} /></>, bg: 'rgba(108,59,255,0.2)',  border: '#6C3BFF', text: '#9B6DFF' },
+                  { id: 'minutos',   label: 'Solo minutos', icon: <Clock size={10} />,                        bg: 'rgba(34,211,238,0.15)', border: '#22D3EE', text: '#67E8F9' },
+                  { id: 'tareas',    label: 'Solo tareas',  icon: <Zap size={10} />,                          bg: 'rgba(52,211,153,0.15)', border: '#34D399', text: '#6EE7B7' },
                 ] as const).map(j => {
                   const sel = jornada === j.id;
                   return (
                     <button key={j.id} type="button" onClick={() => setJornada(j.id)}
                       className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-semibold transition-all"
                       style={{
-                        background: sel ? 'rgba(108,59,255,0.2)' : 'rgba(255,255,255,0.05)',
-                        border:     `1.5px solid ${sel ? '#6C3BFF' : 'rgba(255,255,255,0.08)'}`,
-                        color:      sel ? '#9B6DFF' : 'rgba(255,255,255,0.45)',
+                        background: sel ? j.bg : 'rgba(255,255,255,0.05)',
+                        border:     `1.5px solid ${sel ? j.border : 'rgba(255,255,255,0.08)'}`,
+                        color:      sel ? j.text : 'rgba(255,255,255,0.45)',
                       }}>
                       <span className="flex items-center gap-0.5 flex-shrink-0">{j.icon}</span>
                       <span>{j.label}</span>
@@ -1478,17 +1481,17 @@ function RegistroInner() {
                         style={{ borderColor: sel ? '#6C3BFF' : 'rgba(255,255,255,0.2)', background: sel ? '#6C3BFF' : 'transparent' }}>
                         {sel && <div className="w-2 h-2 rounded-full bg-white" />}
                       </div>
-                      {/* Label + bullets */}
+                      {/* Label + bullets — paleta oficial: cyan minutos, verde tareas */}
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-white text-sm mb-2">{t.label}</p>
                         <div className="flex flex-col gap-1">
                           {alloc.minutes > 0 && (
-                            <p className="text-xs flex items-center gap-1.5" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                            <p className="text-xs flex items-center gap-1.5" style={{ color: sel ? '#67E8F9' : '#22D3EE' }}>
                               <Clock size={11} style={{ flexShrink: 0 }} />
                               Hasta {alloc.minutes} minutos de conversación al mes
                             </p>
                           )}
-                          <p className="text-xs flex items-center gap-1.5" style={{ color: sel ? '#9B6DFF' : 'rgba(255,255,255,0.4)' }}>
+                          <p className="text-xs flex items-center gap-1.5" style={{ color: sel ? '#6EE7B7' : '#34D399' }}>
                             <Zap size={11} style={{ flexShrink: 0 }} />
                             {alloc.aiOps} tareas inteligentes{jornada === 'minutos' && alloc.aiOps <= 20 ? ' (buffer)' : ''}
                           </p>

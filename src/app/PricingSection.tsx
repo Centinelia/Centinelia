@@ -241,7 +241,13 @@ export default function PricingSection() {
                     <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2,
                       background: `linear-gradient(90deg, ${jornadaColor}, ${jornadaColor}88)` }} />
                   )}
-                  {/* Top row */}
+                  {/* Top row — paleta oficial por recurso (feedback-colores-minutos-tareas):
+                       cyan para minutos, verde para tareas. Contraste AAA sobre bg oscuro. */}
+                  {(() => {
+                    const MIN_COLOR   = isSelected ? '#67E8F9' : '#22D3EE'; // cyan
+                    const TASK_COLOR  = isSelected ? '#6EE7B7' : '#34D399'; // verde
+                    return (
+                  <>
                   <div className="flex items-start gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
@@ -250,23 +256,26 @@ export default function PricingSection() {
                           <Star size={11} className="absolute top-2.5 right-3" color="#9B6DFF" style={{ fill: '#9B6DFF' }} />
                         )}
                       </div>
-                      {/* Resource line */}
+                      {/* Resource line: número grande del recurso principal del sabor */}
                       {jornadaId !== 'tareas' ? (
                         <div className="flex items-baseline gap-1">
-                          <span className="text-2xl font-bold tabular-nums" style={{ color: isSelected ? jornadaColor : '#fff' }}>
+                          <span className="text-2xl font-bold tabular-nums" style={{ color: isSelected ? MIN_COLOR : '#fff' }}>
                             {fmt(t.minutes)}
                           </span>
                           <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>min/mes</span>
                         </div>
                       ) : (
                         <div className="flex items-baseline gap-1">
-                          <span className="text-2xl font-bold tabular-nums" style={{ color: isSelected ? jornadaColor : '#fff' }}>
+                          <span className="text-2xl font-bold tabular-nums" style={{ color: isSelected ? TASK_COLOR : '#fff' }}>
                             {fmt(t.ops)}
                           </span>
                           <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>tareas/mes</span>
                         </div>
                       )}
-                      <p className="text-xs mt-0.5" style={{ color: `${jornadaColor}99` }}>
+                      {/* Bullet secundario: qué extra viene incluido en el sabor */}
+                      <p className="text-xs mt-0.5" style={{
+                        color: jornadaId === 'tareas' ? `${MIN_COLOR}c0` : `${TASK_COLOR}d0`,
+                      }}>
                         {jornadaId === 'combinada'
                           ? `${t.ops} tareas incluidas`
                           : jornadaId === 'minutos'
@@ -283,14 +292,17 @@ export default function PricingSection() {
                       </div>
                       {t.callsPerDay !== undefined && (
                         <p className="text-xs mt-auto" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                          ≈ <span style={{ color: isSelected ? jornadaColor : 'rgba(255,255,255,0.55)', fontWeight: 600 }}>{t.callsPerDay} llamadas</span>/día
+                          ≈ <span style={{ color: isSelected ? MIN_COLOR : 'rgba(255,255,255,0.55)', fontWeight: 600 }}>{t.callsPerDay} llamadas</span>/día
                         </p>
                       )}
                     </div>
                   </div>
-                  <p className="text-xs text-center w-full font-bold" style={{ color: `${jornadaColor}99`, fontStyle: 'italic' }}>
+                  <p className="text-xs text-center w-full font-bold" style={{ color: `${jornadaColor}b0`, fontStyle: 'italic' }}>
                     {t.subtitle}
                   </p>
+                  </>
+                    );
+                  })()}
                 </motion.button>
                 </AnimatedSection>
               );
