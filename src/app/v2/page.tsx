@@ -604,9 +604,12 @@ export default function LandingPage() {
                       <p style={{ fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: m.color, marginBottom: 2 }}>
                         {m.rol}
                       </p>
-                      <h3 className="font-bold" style={{ fontSize: '0.95rem', color: C.text, lineHeight: 1.2, marginBottom: 4 }}>
+                      <h3 className="font-bold" style={{ fontSize: '0.95rem', color: C.text, lineHeight: 1.2, marginBottom: 3 }}>
                         {m.nombre}
                       </h3>
+                      <p style={{ fontSize: '0.68rem', fontStyle: 'italic', color: m.color, opacity: 0.82, lineHeight: 1.3, marginBottom: 5 }}>
+                        {m.tagline}
+                      </p>
                       <p style={{ fontSize: '0.72rem', color: C.textSub, lineHeight: 1.5 }}>{m.desc}</p>
                     </div>
                   </div>
