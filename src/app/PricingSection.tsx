@@ -56,10 +56,12 @@ const AGENT_TYPES = [
 
 type JornadaId = 'combinada' | 'minutos' | 'tareas';
 
-const JORNADA_TABS: { id: JornadaId; label: string; icon: React.ReactNode; color: string }[] = [
-  { id: 'combinada', label: 'Combinada',    icon: <><Clock size={11} /><Zap size={11} /></>, color: '#6C3BFF' },
-  { id: 'minutos',   label: 'Solo minutos', icon: <Phone size={11} />,                       color: '#0E7490' },
-  { id: 'tareas',    label: 'Solo tareas',  icon: <Zap size={11} />,                         color: '#10B981' },
+// color: usado para bg/border (con opacidad translúcida).
+// light: variante clara para texto — cumple contraste AA sobre bg dark.
+const JORNADA_TABS: { id: JornadaId; label: string; icon: React.ReactNode; color: string; light: string }[] = [
+  { id: 'combinada', label: 'Combinada',    icon: <><Clock size={11} /><Zap size={11} /></>, color: '#6C3BFF', light: '#C4A8FF' },
+  { id: 'minutos',   label: 'Solo minutos', icon: <Phone size={11} />,                       color: '#0E7490', light: '#67E8F9' },
+  { id: 'tareas',    label: 'Solo tareas',  icon: <Zap size={11} />,                         color: '#10B981', light: '#6EE7B7' },
 ];
 
 const JORNADA_TIERS: Record<JornadaId, { id: string; label: string; subtitle: string; minutes: number; ops: number; price: number; callsPerDay?: number; popular?: boolean }[]> = {
@@ -201,7 +203,7 @@ export default function PricingSection() {
                     style={{
                       background: active ? `${j.color}22` : 'transparent',
                       border: active ? `1px solid ${j.color}55` : '1px solid transparent',
-                      color: active ? j.color : 'rgba(255,255,255,0.4)',
+                      color: active ? j.light : 'rgba(255,255,255,0.4)',
                       cursor: 'pointer',
                     }}
                   >
