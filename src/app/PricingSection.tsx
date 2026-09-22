@@ -242,10 +242,15 @@ export default function PricingSection() {
                       background: `linear-gradient(90deg, ${jornadaColor}, ${jornadaColor}88)` }} />
                   )}
                   {/* Top row — paleta oficial por recurso (feedback-colores-minutos-tareas):
-                       cyan para minutos, verde para tareas. Contraste AAA sobre bg oscuro. */}
+                       cyan para minutos, verde para tareas. Contraste AAA sobre bg oscuro.
+                       ACCENT: variante clara de la identidad del sabor para info crítica
+                       (precio, subtitle) — el morado saturado #6C3BFF no lee bien sobre bg. */}
                   {(() => {
                     const MIN_COLOR   = isSelected ? '#67E8F9' : '#22D3EE'; // cyan
                     const TASK_COLOR  = isSelected ? '#6EE7B7' : '#34D399'; // verde
+                    const ACCENT      = jornadaId === 'combinada' ? '#C4A8FF'  // lila brillante ~7:1
+                                      : jornadaId === 'minutos'   ? MIN_COLOR
+                                                                  : TASK_COLOR;
                     return (
                   <>
                   <div className="flex items-start gap-4">
@@ -285,7 +290,7 @@ export default function PricingSection() {
                     </div>
                     <div className="flex flex-col items-end flex-shrink-0 self-stretch">
                       <div className="flex items-baseline gap-0.5">
-                        <span className="text-2xl font-bold tabular-nums" style={{ color: isSelected ? jornadaColor : '#fff' }}>
+                        <span className="text-2xl font-bold tabular-nums" style={{ color: isSelected ? ACCENT : '#fff' }}>
                           ${fmt(t.price)}
                         </span>
                         <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>/mes + IVA</span>
@@ -297,7 +302,10 @@ export default function PricingSection() {
                       )}
                     </div>
                   </div>
-                  <p className="text-xs text-center w-full font-bold" style={{ color: `${jornadaColor}b0`, fontStyle: 'italic' }}>
+                  <p className="text-xs text-center w-full font-bold" style={{
+                    color: isSelected ? ACCENT : 'rgba(255,255,255,0.55)',
+                    fontStyle: 'italic',
+                  }}>
                     {t.subtitle}
                   </p>
                   </>
