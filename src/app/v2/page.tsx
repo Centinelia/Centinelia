@@ -20,7 +20,7 @@ import AudioWaveform from '../AudioWaveform';
 import Marquee from '../Marquee';
 import TeamFlowSection from '../TeamFlowSection';
 import ReglasManifesto from '../ReglasManifesto';
-import FaqLanding from '../FaqLanding';
+import FaqLanding from './FaqLanding';
 import BeforeAfterSection from '../BeforeAfterSection';
 import IndustriesSection from '../IndustriesSection';
 
