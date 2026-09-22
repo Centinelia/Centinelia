@@ -30,13 +30,16 @@ import { limiters, rateLimit } from '@/lib/ratelimit';
 import { PROVIDERS, type ProviderName } from './providers';
 import { checkAndClaimEvent, stripeIdempotency, type IdempotencyResult } from './idempotency';
 import type Stripe from 'stripe';
-import type { VapiEvent, TwilioEvent } from './providers';
+import type { VapiEvent, TwilioEvent, MetaWaEvent } from './providers';
 
-// Type mapping provider name → event type
+// Type mapping provider name → event type.
+// Keys DEBEN cubrir exactamente ProviderName (keyof typeof PROVIDERS en ./providers).
+// Si agregas un provider nuevo, agrega su tipo aquí O el generic P falla al indexar.
 export type EventByProvider = {
-  stripe: Stripe.Event;
-  vapi:   VapiEvent;
-  twilio: TwilioEvent;
+  stripe:  Stripe.Event;
+  vapi:    VapiEvent;
+  twilio:  TwilioEvent;
+  meta_wa: MetaWaEvent;
 };
 
 export interface WebhookContext<P extends ProviderName> {
