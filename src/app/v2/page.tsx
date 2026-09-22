@@ -22,7 +22,6 @@ import TeamFlowSection from '../TeamFlowSection';
 import ReglasManifesto from '../ReglasManifesto';
 import FaqLanding from './FaqLanding';
 import BeforeAfterSection from '../BeforeAfterSection';
-import IndustriesSection from '../IndustriesSection';
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -666,9 +665,6 @@ export default function LandingPage() {
 
       {/* ── LO QUE CAMBIA EL LUNES ──────────────────────────────────────── */}
       <BeforeAfterSection />
-
-      {/* ── ASÍ TRABAJA EN TU NEGOCIO ───────────────────────────────────── */}
-      <IndustriesSection />
 
       {/* ── PRIMERA ENTREVISTA ───────────────────────────────────────────── */}
       <DemoNia />
