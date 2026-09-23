@@ -153,6 +153,7 @@ const TOOL_HUMAN_LABEL: Record<string, string> = {
   sheets_buscar:            'buscar filas en un Google Sheet por texto',
   buscar_producto:          'consultar catálogo Notion por SKU/nombre (precio real, no inventado)',
   catalogo_buscar_codigo:   'buscar código de pieza/producto en el catálogo Excel/CSV del cliente (Dropbox, Google Drive u OneDrive)',
+  consultar_fichas:'consultar las fichas informativas del negocio (trámites, productos, servicios, procedimientos, etc.)',
 };
 
 function peerToolCapabilities(peer: TeamPeer): string[] {
@@ -238,7 +239,7 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
   // Nia — recepcionista de 1er contacto. Voice-only: transferencias y encuesta.
   // solicitar_factura queda en Nico/Nox (bug Haiku 4.5 halucinando CFDI 22:35
   // del 2026-08-04). Nia siempre delega vía delegar_tarea.
-  nia:   ['crear_lead', 'crear_contacto_saliente', 'agendar_cita', 'registrar_pedido', 'buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'registrar_encuesta', 'buscar_documento_oficina', 'buscar_correo_enviado', 'agregar_tag_contacto'],
+  nia:   ['crear_lead', 'crear_contacto_saliente', 'agendar_cita', 'registrar_pedido', 'buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'registrar_encuesta', 'buscar_documento_oficina', 'buscar_correo_enviado', 'agregar_tag_contacto', 'consultar_fichas'],
   // Noah — ventas outbound. marcar_no_llamar por regulatorio LFPDPPP. ML tools
   // feature-gated ('mercadolibre') solo suman si org activa la feature.
   // qb_crear_cotizacion agregada 2026-08-19: ventas cotiza directo en QB cuando
@@ -255,8 +256,10 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
   nelia: ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'registrar_encuesta', 'enviar_correo', 'buscar_archivo', 'buscar_documento_oficina', 'buscar_correo_enviado', 'enviar_documento_oficina', 'extraer_voz_del_cliente', 'generar_one_pager', 'generar_correo_estructurado', 'generar_reporte_metricas_excel', 'registrar_incidencia', 'registrar_cliente_nuevo', 'verificar_recepcion_incidencia', 'meefi_lookup_user_account', 'meefi_send_password_reset_link', 'meefi_check_transfer_status', 'meefi_initiate_2fa_recovery', 'meefi_capture_bug_report', 'meefi_escalate_to_human', 'meefi_search_help_center'],
   // Neo — helpdesk IT. `llamar_a` para escalar responsable (Scope A A1 CRITICAL #1).
   neo:   ['crear_ticket', 'consultar_incidentes', 'buscar_directorio', 'buscar_archivo', 'leer_archivo', 'llamar_a'],
-  // Nara — municipal (civic reports + trámites externos si feature activa).
-  nara:  ['crear_reporte_civico', 'consultar_reporte_civico', 'actualizar_reporte_civico', 'buscar_cliente', 'registrar_encuesta', 'notificar_transferencia', 'transferir_llamada', 'consultar_catalogo_externo', 'buscar_en_padron_externo', 'enviar_tramite_externo', 'generar_reporte_metricas_excel'],
+  // Nara — municipal (civic reports + trámites externos si feature activa +
+  // consulta de fichas técnicas del municipio via RAG cuando el pack
+  // fichas_informativas está activo).
+  nara:  ['crear_reporte_civico', 'consultar_reporte_civico', 'actualizar_reporte_civico', 'buscar_cliente', 'registrar_encuesta', 'notificar_transferencia', 'transferir_llamada', 'consultar_catalogo_externo', 'buscar_en_padron_externo', 'enviar_tramite_externo', 'consultar_fichas', 'generar_reporte_metricas_excel'],
   // Naia — RRHH. Owner de iniciar_onboarding + HR MVP tools (registrar_falta,
   // consultar_vacaciones, solicitar_permiso, verificar_incidencia).
   naia:  ['iniciar_onboarding', 'agendar_cita', 'buscar_cliente', 'enviar_correo', 'crear_documento', 'buscar_documento_oficina', 'buscar_correo_enviado', 'list_calendar_events', 'create_calendar_event', 'delete_calendar_event', 'buscar_archivo', 'registrar_falta', 'consultar_vacaciones', 'solicitar_permiso', 'verificar_incidencia', 'generar_correo_estructurado'],
@@ -496,6 +499,29 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
 
     case 'catalogo_buscar_codigo':
       return { type: 'function', function: { name: 'catalogo_buscar_codigo', description: 'Busca un código de pieza o producto en el catálogo Excel/CSV que el cliente mantiene en su almacenamiento en la nube (Dropbox, Google Drive u OneDrive). Úsala ANTES de llenar una OC, cotización o factura cuando necesites el SKU correcto. NO inventes códigos si no encuentras — dile al cliente y ofrece delegar.', parameters: { type: 'object', properties: { query: { type: 'string', description: 'Término a buscar (parte del SKU o descripción).' }, exact: { type: 'boolean', description: 'True para match exacto contra SKU. Default false (fuzzy).' } }, required: ['query'] } }, server: server('exec/catalogo_buscar_codigo') };
+
+    case 'consultar_fichas':
+      return {
+        type: 'function',
+        function: {
+          name: 'consultar_fichas',
+          description: 'Nia/Nara: consulta las fichas informativas del negocio para responder al cliente. Úsala ANTES de contestar cualquier pregunta cubierta por la documentación oficial (trámites, productos, servicios, procedimientos, etc.). Devuelve fichas relevantes + contacto humano sugerido para transferir con transferir_llamada si la duda excede lo cubierto. NUNCA inventes procesos, requisitos ni costos que no aparezcan en los resultados.',
+          parameters: {
+            type: 'object',
+            properties: {
+              query: { type: 'string', description: 'Pregunta del ciudadano o términos clave del trámite.' },
+              top_k: { type: 'number', description: 'Máximo de fichas a devolver (default 5).' },
+            },
+            required: ['query'],
+          },
+        },
+        server: server('exec/consultar_fichas'),
+        messages: [
+          { type: 'request-start', content: 'Deme un momento para sacar la documentación oficial sobre este tema y poderle responder todas sus dudas.' },
+          { type: 'request-start', content: 'Permítame consultar la ficha oficial para darle información precisa.' },
+          { type: 'request-start', content: 'Un momento por favor, voy a revisar la información oficial sobre este tema para orientarle bien.' },
+        ],
+      };
 
     case 'marcar_no_llamar': return { type: 'function', function: { name: 'marcar_no_llamar', description: 'Marca un número de teléfono como "no volver a llamar". Úsala inmediatamente cuando el ciudadano diga que no quiere recibir más llamadas ("no me llamen", "quítenme de la lista", "no me interesa"). Los futuros crons de llamadas salientes respetarán esta marca. Después de llamar esta herramienta, termina la llamada con cortesía sin insistir.', parameters: { type: 'object', properties: { telefono: { type: 'string', description: 'Número de teléfono del ciudadano tal como está en el sistema (con o sin lada). Se normaliza automáticamente en el servidor.' }, motivo: { type: 'string', description: 'Motivo breve de la solicitud (ej: "no interesado", "número equivocado", "ya no vive aquí"). Opcional.' } }, required: ['telefono'] } }, server: server('marcar-no-llamar') };
 

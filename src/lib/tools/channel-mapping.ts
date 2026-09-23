@@ -96,6 +96,7 @@ export const VOICE_TO_CHAT: Record<string, string | null> = {
   agregar_tag_contacto:      'agregar_tag_contacto',
   pedir_a_humano:            'pedir_a_humano',
   catalogo_buscar_codigo:    'catalogo_buscar_codigo',
+  consultar_fichas: 'consultar_fichas',
 
   // Meefi demo — Nelia Soporte. Mismo nombre en los 3 canales.
   meefi_lookup_user_account:       'meefi_lookup_user_account',

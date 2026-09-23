@@ -2014,6 +2014,60 @@ async function executeAgentToolInner(
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // consultar_fichas — pack fichas_informativas. Modo dual:
+  //   'stuffed' (default): devuelve TODAS las fichas del portal, el meerkat
+  //                        elige la relevante en razonamiento. Anthropic caching.
+  //   'embeddings':        RAG semántico con pgvector + OpenAI embeddings.
+  // El mode vive en organizations.features.fichas_informativas_mode.
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'consultar_fichas') {
+    const agentFeatures = (agent.features as Record<string, unknown> | undefined) ?? {};
+    if (!agentFeatures.fichas_informativas) {
+      return { ok: false, error: 'El pack Fichas Informativas no está activo para esta cuenta.' };
+    }
+    const { query, top_k } = toolInput as { query?: string; top_k?: number };
+    if (!query?.trim()) return { ok: false, error: 'Proporciona una pregunta o término a buscar en las fichas.' };
+
+    const { data: orgRow } = await supabase
+      .from('organizations')
+      .select('features')
+      .eq('portal_email', portalEmail)
+      .maybeSingle();
+    const orgFeatures = (orgRow?.features as Record<string, unknown> | undefined) ?? {};
+    const mode = (orgFeatures.fichas_informativas_mode as string) === 'embeddings' ? 'embeddings' : 'stuffed';
+
+    if (mode === 'embeddings') {
+      const { searchFichas } = await import('@/lib/rag/search');
+      const res = await searchFichas(query.trim(), portalEmail, { topK: typeof top_k === 'number' ? top_k : undefined });
+      if (res.matches.length === 0) {
+        return { ok: false, error: `Sin coincidencias en las fichas informativas para "${query}". Si el cliente insiste, ofrece transferir al área responsable.` };
+      }
+      return {
+        ok:              true,
+        mode:            'embeddings',
+        matches:         res.matches,
+        suggested_ficha: res.suggested_ficha,
+        confidence:      res.confidence,
+        total_hits:      res.total_hits,
+      };
+    }
+
+    // Modo stuffed: devolver catálogo completo. El LLM elige.
+    const { loadFichasCatalog } = await import('@/lib/rag/catalog');
+    const catalog = await loadFichasCatalog(portalEmail);
+    if (catalog.total === 0) {
+      return { ok: false, error: 'Aún no hay fichas informativas cargadas para esta cuenta. Ofrece transferir al área responsable.' };
+    }
+    return {
+      ok:            true,
+      mode:          'stuffed',
+      fichas:        catalog.fichas,
+      total:         catalog.total,
+      approx_tokens: catalog.approx_tokens,
+    };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   // Fiscal: solicitar_factura + consultar_factura
   // Emite CFDIs vía el PAC del negocio (SF, CONTPAQi, etc.). El flujo manual
   // (email al responsable de facturación) fue eliminado 2026-08-19 — si el
