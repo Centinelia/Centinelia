@@ -12,6 +12,45 @@ type SupabaseClient = ReturnType<typeof createAdminClient>;
 
 const LEGAL_ABBREV_RULE = `PRONUNCIACIÓN DE SIGLAS EN RAZONES SOCIALES: Al leer o repetir una razón social con siglas legales, deletrea letra por letra con pausas — NUNCA la digas corrida. Ejemplos: "S.A. de C.V." → "ese, a, de ce, ve" (no "sadv"). "S. de R.L." → "ese, de erre, ele". "S.A.P.I. de C.V." → "ese, a, pe, i, de ce, ve". Al confirmar la razón social, léela lentamente con pausas entre cada sigla.`;
 
+const SPANISH_DOMAIN_PRONUNCIATION_RULE = `PRONUNCIACIÓN DE DOMINIOS Y URLs EN ESPAÑOL:
+Al mencionar o repetir un URL, dominio o correo, dicta las siglas de dominio EN ESPAÑOL, letra por letra con nombre fonético español, NUNCA en inglés.
+
+Reglas específicas de dominios comunes:
+- ".mx" se dice "punto eme, equis" (NUNCA "punto em ex" ni "punto emex").
+- ".gob" se dice "punto gob" (como palabra corta en español).
+- ".com" se dice "punto com" (como palabra corta en español).
+- ".org" se dice "punto org" (como palabra corta en español).
+- ".net" se dice "punto net" (como palabra corta en español).
+- ".gob.mx" se dice "punto gob, punto eme, equis".
+- ".com.mx" se dice "punto com, punto eme, equis".
+
+Ejemplo correcto para "pagopredial.santiago.gob.mx":
+"pagopredial, punto santiago, punto gob, punto eme, equis"
+
+Ejemplo INCORRECTO (nunca lo hagas):
+"pagopredial punto santiago punto gob punto em ex" (leyendo mx en inglés)
+"pagopredial punto santiago gob mx" (todo corrido)
+
+Dicta URLs pausado, con comas entre partes, para que el interlocutor pueda anotarlo. Si te piden repetir, hazlo MÁS DESPACIO que la primera vez (nunca más rápido).
+
+Para correos electrónicos usa el mismo patrón: "predial@santiago.gob.mx" → "predial, arroba, santiago, punto gob, punto eme, equis".
+
+QUÉ PARTES DE UN URL DECIR Y QUÉ PARTES OMITIR:
+Cuando dictes un URL al cliente por voz, di SOLO el dominio útil (subdominio + dominio + extensión). NO dictes basura técnica que el navegador maneja solo:
+- OMITIR: "https://", "http://", "www." al inicio.
+- OMITIR: rutas de archivo del servidor como "/default.aspx", "/index.php", "/index.html", "/home", "/main".
+- OMITIR: query strings ("?id=123&session=abc"), fragmentos ("#seccion") y trailing slashes.
+
+Ejemplos:
+- URL real: "https://pagopredial.santiago.gob.mx/default.aspx"
+  Lo que dices: "pagopredial, punto santiago, punto gob, punto eme, equis"
+- URL real: "https://www.centinelia.mx/portal/login?next=/dash"
+  Lo que dices: "centinelia, punto eme, equis, diagonal portal, diagonal login"
+- URL real: "https://empresa.com.mx/productos/oferta.html#detalle"
+  Lo que dices: "empresa, punto com, punto eme, equis, diagonal productos"
+
+Si una ruta específica es la que el cliente necesita (ej. "/facturacion" para llegar a la sección de facturación), sí la dictas — pero solo si es semánticamente útil, nunca extensiones de archivo del servidor.`;
+
 const ALFANUMERIC_DICTATION_RULE = `DICTADO DE CÓDIGOS ALFANUMÉRICOS Y CORREOS ELECTRÓNICOS (RFC, CURP, folios, placas, IMEI, cuentas, EMAILS):
 Antes de que el cliente diga el código o correo, PÍDELE QUE LO DELETREE con alfabeto fonético: "Para no equivocarme, ¿me lo puede deletrear con nombres? Por ejemplo: X de Xilófono, A de Amor, cero, uno..." No lo pidas después — pídelo primero.
 
@@ -339,6 +378,7 @@ NO adornes, NO especules, NO digas "creo que...". El silencio o la declinación 
       blocks.push(`IDIOMA: Responde SIEMPRE en español. NUNCA emitas texto en otro alfabeto (hindi, chino, árabe, cirílico, japonés, coreano, tailandés) — si el transcriptor te muestra algo así, ignóralo y pide al cliente que repita en español.`);
     }
     blocks.push(`PRONUNCIACIÓN DE CORREOS ELECTRÓNICOS: Cuando repitas un correo en voz alta, usa términos en español: @ = "arroba", . = "punto", ".com" = "punto com". Nunca uses "at" ni "dot".
+${SPANISH_DOMAIN_PRONUNCIATION_RULE}
 ${LEGAL_ABBREV_RULE}
 ${ALFANUMERIC_DICTATION_RULE}`);
     blocks.push(`TAREAS COMPLEJAS QUE REQUIEREN COMPAÑEROS:
