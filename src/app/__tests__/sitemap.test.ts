@@ -89,4 +89,12 @@ describe('sitemap.ts', () => {
       expect(urls, `Falta /industrias/${slug} en sitemap`).toContain(`${BASE}/industrias/${slug}`);
     }
   });
+
+  it('incluye /glosario y una entrada por cada término', async () => {
+    const { terminoSlugs } = await import('@/lib/glosario/data');
+    expect(urls).toContain(`${BASE}/glosario`);
+    for (const slug of terminoSlugs()) {
+      expect(urls, `Falta /glosario/${slug} en sitemap`).toContain(`${BASE}/glosario/${slug}`);
+    }
+  });
 });

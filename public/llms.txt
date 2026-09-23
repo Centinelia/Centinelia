@@ -238,6 +238,7 @@ No. Centinelia asigna un número dedicado que se puede publicar como principal o
 - Pack Ciclo OC-CFDI: https://www.centinelia.mx/pack-ciclo-oc-cfdi
 - Cotizar oficina completa: https://www.centinelia.mx/cotizar
 - Pedir rol nuevo: https://www.centinelia.mx/pedir-rol
+- Glosario: https://www.centinelia.mx/glosario
 - Comparaciones vs otras plataformas: https://www.centinelia.mx/vs
 - Centinelia vs Bland AI: https://www.centinelia.mx/vs/bland-ai
 - Centinelia vs Retell AI: https://www.centinelia.mx/vs/retell-ai

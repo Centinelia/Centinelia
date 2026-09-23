@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { meerkatSlugs } from '@/lib/meerkats/data';
 import { industrySlugs } from '@/lib/industrias/data';
 import { COMPARISONS } from '@/lib/vs/data';
+import { terminoSlugs } from '@/lib/glosario/data';
 
 // IndexNow: ping instantáneo a Bing/Yandex/Seznam/Naver cuando cambia contenido.
 // Bing feeds Copilot; Yandex feeds YandexGPT. Con este endpoint, un cambio en
@@ -27,6 +28,7 @@ function buildDefaultUrls(): string[] {
     '/empleados',
     '/industrias',
     '/vs',
+    '/glosario',
     '/faq',
     '/pack-ciclo-oc-cfdi',
     '/cotizar',
@@ -38,6 +40,7 @@ function buildDefaultUrls(): string[] {
   for (const slug of meerkatSlugs())  paths.push(`/empleados/${slug}`);
   for (const slug of industrySlugs()) paths.push(`/industrias/${slug}`);
   for (const c of COMPARISONS)        paths.push(`/vs/${c.slug}`);
+  for (const slug of terminoSlugs())  paths.push(`/glosario/${slug}`);
 
   const CUSTOM_INDUSTRIES = ['clinicas', 'restaurantes', 'despachos', 'inmobiliarias', 'tiendas'];
   for (const slug of CUSTOM_INDUSTRIES) paths.push(`/industrias/${slug}`);

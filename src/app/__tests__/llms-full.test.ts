@@ -101,10 +101,11 @@ describe('llms-full.txt', () => {
       '## 6. Casos por industria',
       '## 7. Pack Ciclo OC-CFDI',
       '## 8. Comparación con otras plataformas',
-      '## 9. Preguntas frecuentes generales',
-      '## 10. Contacto',
-      '## 11. Páginas del sitio',
-      '## 12. Categorización',
+      '## 9. Glosario de términos citables',
+      '## 10. Preguntas frecuentes generales',
+      '## 11. Contacto',
+      '## 12. Páginas del sitio',
+      '## 13. Categorización',
     ];
     for (const s of sections) {
       expect(content, `Falta sección ${s}`).toContain(s);

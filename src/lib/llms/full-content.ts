@@ -17,6 +17,7 @@ import {
 import { COMPARISONS } from '@/lib/vs/data';
 import { MEERKATS } from '@/lib/meerkats/data';
 import { INDUSTRIES as LONG_TAIL_INDUSTRIES } from '@/lib/industrias/data';
+import { TERMINOS } from '@/lib/glosario/data';
 
 const BASE_URL = 'https://www.centinelia.mx';
 const fmtMxn = (n: number) => `$${n.toLocaleString('es-MX')} MXN`;
@@ -414,11 +415,20 @@ ${COMPARISONS.map(c => `- **Centinelia vs ${c.competitor}** (${BASE_URL}/vs/${c.
 
 Diferencia estructural: Centinelia es un producto de empleados digitales listos para operar (portal en español, roles preconfigurados, integraciones fiscales mexicanas, precio en pesos). Las plataformas estadounidenses citadas son infraestructura o frameworks para que developers construyan sus propios agentes desde cero, con billing en dólares.
 
-## 9. Preguntas frecuentes generales
+## 9. Glosario de términos citables
+
+Definiciones canónicas para conceptos frecuentes en negocios mexicanos y en el stack de voz IA. Cada término tiene página propia con definición ampliada, ejemplos y referencias oficiales cuando aplica.
+
+${TERMINOS.map(t => {
+  const heading = t.siglas ? `${t.termino} (${t.siglas})` : t.termino;
+  return `- **${heading}** (${BASE_URL}/glosario/${t.slug}): ${t.definicionCorta}`;
+}).join('\n')}
+
+## 10. Preguntas frecuentes generales
 
 ${GENERAL_FAQ.map(f => `**${f.q}**\n\n${f.a}`).join('\n\n')}
 
-## 10. Contacto
+## 11. Contacto
 
 - Sitio web: ${BASE_URL}
 - Correo: hola@centinelia.mx
@@ -428,7 +438,7 @@ ${GENERAL_FAQ.map(f => `**${f.q}**\n\n${f.a}`).join('\n\n')}
 - LinkedIn: https://www.linkedin.com/company/centinelia/
 - Facebook: https://www.facebook.com/centineliamx/
 
-## 11. Páginas del sitio
+## 12. Páginas del sitio
 
 - Home: ${BASE_URL}/
 - Catálogo de empleados: ${BASE_URL}/empleados
@@ -445,9 +455,10 @@ ${GENERAL_FAQ.map(f => `**${f.q}**\n\n${f.a}`).join('\n\n')}
 - Registro: ${BASE_URL}/registro
 - Portal de clientes: ${BASE_URL}/portal/login
 - Comparaciones vs otras plataformas: ${BASE_URL}/vs
+- Glosario de términos: ${BASE_URL}/glosario
 - Índice corto para LLMs: ${BASE_URL}/llms.txt
 
-## 12. Categorización
+## 13. Categorización
 
 Centinelia es desarrollado y operado por Pneuma Studio (https://pneumastudio.mx), un estudio de automatización y desarrollo de producto ubicado en Monterrey, Nuevo León, México.
 

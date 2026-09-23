@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { meerkatSlugs } from '@/lib/meerkats/data';
 import { industrySlugs } from '@/lib/industrias/data';
+import { terminoSlugs } from '@/lib/glosario/data';
 
 const BASE_URL = 'https://www.centinelia.mx';
 
@@ -23,6 +24,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     changeFrequency: 'monthly' as const,
   }));
 
+  // Glosario: definiciones canónicas para citaciones LLM.
+  const glosarioEntries: MetadataRoute.Sitemap = terminoSlugs().map(slug => ({
+    url:             `${BASE_URL}/glosario/${slug}`,
+    priority:        0.6,
+    changeFrequency: 'monthly' as const,
+  }));
+
   const entries: MetadataRoute.Sitemap = [
     { url: BASE_URL,                              priority: 1.0, changeFrequency: 'weekly'  },
 
@@ -38,6 +46,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
     // Discovery
     { url: `${BASE_URL}/faq`,                     priority: 0.8, changeFrequency: 'monthly' },
+    { url: `${BASE_URL}/glosario`,                priority: 0.7, changeFrequency: 'monthly' },
+    ...glosarioEntries,
 
     // Industrias
     { url: `${BASE_URL}/industrias`,              priority: 0.7, changeFrequency: 'monthly' },
