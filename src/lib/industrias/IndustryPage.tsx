@@ -5,6 +5,7 @@ import LandingNav      from '@/app/LandingNav';
 import AnimatedSection from '@/app/AnimatedSection';
 import IndustryFooter  from '@/app/industrias/IndustryFooter';
 import { MEERKATS } from '@/lib/meerkats/data';
+import { BASE_URL, breadcrumbSchema, todayIso } from '@/lib/seo/schemas';
 import type { Industry } from './data';
 
 interface Props {
@@ -22,11 +23,14 @@ const C = {
 };
 
 export default function IndustryPage({ data }: Props) {
-  const Icon = data.icon;
+  const Icon         = data.icon;
+  const dateModified = todayIso();
+  const canonical    = `${BASE_URL}/industrias/${data.slug}`;
 
   const faqSchema = {
     '@context': 'https://schema.org',
     '@type':    'FAQPage',
+    dateModified,
     mainEntity: data.faq.map(f => ({
       '@type':        'Question',
       name:           f.q,
@@ -34,11 +38,18 @@ export default function IndustryPage({ data }: Props) {
     })),
   };
 
+  const breadcrumb = breadcrumbSchema([
+    { name: 'Inicio',      url: BASE_URL },
+    { name: 'Industrias',  url: `${BASE_URL}/industrias` },
+    { name: data.titulo,   url: canonical },
+  ]);
+
   const meerkats = MEERKATS.filter(m => data.meerkatsRelevantes.includes(m.slug));
 
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }} />
       <LandingNav />
 
       {/* Hero */}
@@ -97,7 +108,7 @@ export default function IndustryPage({ data }: Props) {
             <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: data.color }}>
               El problema
             </p>
-            <h2 className="font-bold mb-8" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text, maxWidth: 640 }}>
+            <h2 id="problemas" className="font-bold mb-8" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text, maxWidth: 640 }}>
               Cada llamada perdida es un cliente que se va con la competencia
             </h2>
           </AnimatedSection>
@@ -121,7 +132,7 @@ export default function IndustryPage({ data }: Props) {
             <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: data.color }}>
               Qué hace
             </p>
-            <h2 className="font-bold mb-8" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text }}>
+            <h2 id="capacidades" className="font-bold mb-8" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text }}>
               Capacidades específicas para {data.categoria.toLowerCase()}
             </h2>
           </AnimatedSection>
@@ -145,7 +156,7 @@ export default function IndustryPage({ data }: Props) {
             <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: data.color }}>
               Llamadas salientes
             </p>
-            <h2 className="font-bold mb-8" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text }}>
+            <h2 id="salientes" className="font-bold mb-8" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text }}>
               También llama, no solo contesta
             </h2>
           </AnimatedSection>
@@ -170,7 +181,7 @@ export default function IndustryPage({ data }: Props) {
               <p className="text-xs font-semibold tracking-widest uppercase mb-3 text-center" style={{ color: data.color }}>
                 Empleados digitales recomendados
               </p>
-              <h2 className="font-bold mb-8 text-center" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text }}>
+              <h2 id="equipo-recomendado" className="font-bold mb-8 text-center" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text }}>
                 Este equipo cubre {data.categoria.toLowerCase()}
               </h2>
             </AnimatedSection>
@@ -202,7 +213,7 @@ export default function IndustryPage({ data }: Props) {
       <section style={{ background: '#fff', padding: '70px 24px', borderTop: `1px solid ${C.border}` }}>
         <div className="max-w-3xl mx-auto">
           <AnimatedSection>
-            <h2 className="font-bold mb-8 text-center" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text }}>
+            <h2 id="faq" className="font-bold mb-8 text-center" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text }}>
               Preguntas frecuentes
             </h2>
           </AnimatedSection>
@@ -252,6 +263,12 @@ export default function IndustryPage({ data }: Props) {
           </AnimatedSection>
         </div>
       </section>
+
+      <div style={{ background: '#0D0520', padding: '20px 24px', textAlign: 'center' }}>
+        <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.35)' }}>
+          Actualizado el <time dateTime={dateModified}>{dateModified}</time>
+        </p>
+      </div>
 
       <IndustryFooter />
     </>

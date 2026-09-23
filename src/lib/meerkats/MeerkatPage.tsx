@@ -5,6 +5,7 @@ import LandingNav      from '@/app/LandingNav';
 import AnimatedSection from '@/app/AnimatedSection';
 import IndustryFooter  from '@/app/industrias/IndustryFooter';
 import { FEATURE_PLAN_CONFIG, TIER_PRICE_MXN } from '@/lib/billing/plans';
+import { BASE_URL, breadcrumbSchema, todayIso } from '@/lib/seo/schemas';
 import type { Meerkat } from './data';
 import { MEERKATS } from './data';
 
@@ -23,14 +24,19 @@ const C = {
 };
 
 export default function MeerkatPage({ data }: Props) {
+  const dateModified = todayIso();
+  const canonical    = `${BASE_URL}/empleados/${data.slug}`;
+
   const productSchema = {
     '@context': 'https://schema.org',
     '@type':    'Product',
     name:       `${data.nombre}, ${data.rol}`,
-    image:      `https://www.centinelia.mx${data.image}`,
+    image:      `${BASE_URL}${data.image}`,
     description: data.descLarga,
     brand:      { '@type': 'Brand', name: 'Centinelia' },
     category:   'BusinessApplication',
+    url:        canonical,
+    dateModified,
     offers: [
       { '@type': 'Offer', name: `${data.rol} - Esencial`,     price: TIER_PRICE_MXN.starter, priceCurrency: 'MXN', description: 'Plan mensual, sin contratos.' },
       { '@type': 'Offer', name: `${data.rol} - Profesional`,  price: TIER_PRICE_MXN.growth,  priceCurrency: 'MXN', description: 'Plan mensual, sin contratos.' },
@@ -41,6 +47,7 @@ export default function MeerkatPage({ data }: Props) {
   const faqSchema = {
     '@context': 'https://schema.org',
     '@type':    'FAQPage',
+    dateModified,
     mainEntity: data.faq.map(f => ({
       '@type':        'Question',
       name:           f.q,
@@ -48,12 +55,19 @@ export default function MeerkatPage({ data }: Props) {
     })),
   };
 
+  const breadcrumb = breadcrumbSchema([
+    { name: 'Inicio',    url: BASE_URL },
+    { name: 'Empleados', url: `${BASE_URL}/empleados` },
+    { name: data.nombre, url: canonical },
+  ]);
+
   const relacionados = MEERKATS.filter(m => m.slug !== data.slug).slice(0, 4);
 
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }} />
       <LandingNav />
 
       {/* Hero */}
@@ -125,7 +139,7 @@ export default function MeerkatPage({ data }: Props) {
             <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: data.color }}>
               Qué hace
             </p>
-            <h2 className="font-bold mb-8" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text }}>
+            <h2 id="capacidades" className="font-bold mb-8" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text }}>
               Capacidades de {data.nombre}
             </h2>
           </AnimatedSection>
@@ -149,7 +163,7 @@ export default function MeerkatPage({ data }: Props) {
             <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: data.color }}>
               En qué la usan
             </p>
-            <h2 className="font-bold mb-8" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text }}>
+            <h2 id="casos-de-uso" className="font-bold mb-8" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text }}>
               Casos de uso reales
             </h2>
           </AnimatedSection>
@@ -173,7 +187,7 @@ export default function MeerkatPage({ data }: Props) {
             <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: data.color }}>
               Herramientas
             </p>
-            <h2 className="font-bold mb-8" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text }}>
+            <h2 id="herramientas" className="font-bold mb-8" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text }}>
               Con qué trabaja {data.nombre}
             </h2>
           </AnimatedSection>
@@ -193,7 +207,7 @@ export default function MeerkatPage({ data }: Props) {
       <section style={{ background: C.bg, padding: '70px 24px', borderTop: `1px solid ${C.border}` }}>
         <div className="max-w-5xl mx-auto">
           <AnimatedSection>
-            <h2 className="font-bold mb-8 text-center" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text }}>
+            <h2 id="vs-humano" className="font-bold mb-8 text-center" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text }}>
               Por qué {data.nombre} y no un {data.rol.toLowerCase()} humano
             </h2>
           </AnimatedSection>
@@ -217,7 +231,7 @@ export default function MeerkatPage({ data }: Props) {
       <section style={{ background: '#fff', padding: '70px 24px', borderTop: `1px solid ${C.border}` }}>
         <div className="max-w-3xl mx-auto">
           <AnimatedSection>
-            <h2 className="font-bold mb-8 text-center" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text }}>
+            <h2 id="faq" className="font-bold mb-8 text-center" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text }}>
               Preguntas frecuentes sobre {data.nombre}
             </h2>
           </AnimatedSection>
@@ -305,6 +319,12 @@ export default function MeerkatPage({ data }: Props) {
           </AnimatedSection>
         </div>
       </section>
+
+      <div style={{ background: '#0D0520', padding: '20px 24px', textAlign: 'center' }}>
+        <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.35)' }}>
+          Actualizado el <time dateTime={dateModified}>{dateModified}</time>
+        </p>
+      </div>
 
       <IndustryFooter />
     </>

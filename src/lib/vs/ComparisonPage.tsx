@@ -3,6 +3,7 @@ import { ArrowRight, Check, Phone } from 'lucide-react';
 import LandingNav      from '@/app/LandingNav';
 import AnimatedSection from '@/app/AnimatedSection';
 import IndustryFooter  from '@/app/industrias/IndustryFooter';
+import { BASE_URL, breadcrumbSchema, todayIso } from '@/lib/seo/schemas';
 import type { CompetitorComparison } from './data';
 
 interface Props {
@@ -20,9 +21,13 @@ const C = {
 };
 
 export default function ComparisonPage({ data }: Props) {
+  const dateModified = todayIso();
+  const canonical    = `${BASE_URL}/vs/${data.slug}`;
+
   const faqSchema = {
     '@context': 'https://schema.org',
     '@type':    'FAQPage',
+    dateModified,
     mainEntity: data.faq.map(f => ({
       '@type':          'Question',
       name:             f.q,
@@ -30,11 +35,21 @@ export default function ComparisonPage({ data }: Props) {
     })),
   };
 
+  const breadcrumb = breadcrumbSchema([
+    { name: 'Inicio',        url: BASE_URL },
+    { name: 'Comparaciones', url: `${BASE_URL}/vs` },
+    { name: `Centinelia vs ${data.competitor}`, url: canonical },
+  ]);
+
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }}
       />
       <LandingNav />
 
@@ -95,7 +110,7 @@ export default function ComparisonPage({ data }: Props) {
       <section style={{ background: '#fff', padding: '70px 24px', borderTop: `1px solid ${C.border}` }}>
         <div className="max-w-5xl mx-auto">
           <AnimatedSection>
-            <h2 className="font-bold mb-6 text-center" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text }}>
+            <h2 id="comparacion" className="font-bold mb-6 text-center" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text }}>
               Comparación lado a lado
             </h2>
           </AnimatedSection>
@@ -128,7 +143,7 @@ export default function ComparisonPage({ data }: Props) {
       <section style={{ background: C.bg, padding: '70px 24px', borderTop: `1px solid ${C.border}` }}>
         <div className="max-w-5xl mx-auto">
           <AnimatedSection>
-            <h2 className="font-bold mb-8 text-center" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text }}>
+            <h2 id="cuando-elegir-centinelia" className="font-bold mb-8 text-center" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text }}>
               Cuándo elegir Centinelia
             </h2>
           </AnimatedSection>
@@ -152,7 +167,7 @@ export default function ComparisonPage({ data }: Props) {
       <section style={{ background: '#fff', padding: '70px 24px', borderTop: `1px solid ${C.border}` }}>
         <div className="max-w-5xl mx-auto">
           <AnimatedSection>
-            <h2 className="font-bold mb-3 text-center" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text }}>
+            <h2 id="cuando-elegir-competidor" className="font-bold mb-3 text-center" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text }}>
               Cuándo elegir {data.competitor}
             </h2>
             <p className="text-center mb-8" style={{ color: C.textSub, maxWidth: 560, margin: '0 auto 32px' }}>
@@ -176,7 +191,7 @@ export default function ComparisonPage({ data }: Props) {
       <section style={{ background: C.bg, padding: '70px 24px', borderTop: `1px solid ${C.border}` }}>
         <div className="max-w-3xl mx-auto">
           <AnimatedSection>
-            <h2 className="font-bold mb-8 text-center" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text }}>
+            <h2 id="faq" className="font-bold mb-8 text-center" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text }}>
               Preguntas frecuentes
             </h2>
           </AnimatedSection>
@@ -226,6 +241,12 @@ export default function ComparisonPage({ data }: Props) {
           </AnimatedSection>
         </div>
       </section>
+
+      <div style={{ background: '#0D0520', padding: '20px 24px', textAlign: 'center' }}>
+        <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.35)' }}>
+          Actualizado el <time dateTime={dateModified}>{dateModified}</time>
+        </p>
+      </div>
 
       <IndustryFooter />
     </>

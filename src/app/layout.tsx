@@ -101,6 +101,52 @@ const organizationSchema = {
   foundingLocation: { '@type': 'Place', addressCountry: 'MX' },
 };
 
+// LocalBusiness schema para señal local en AI Overviews (Gemini), Bing Copilot
+// y directorios locales. Referencia geo aproximada: Monterrey centro histórico.
+const localBusinessSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'LocalBusiness',
+  '@id': `${BASE_URL}/#localbusiness`,
+  name: 'Centinelia',
+  url: BASE_URL,
+  image: `${BASE_URL}/logo-icon.png`,
+  telephone: '+52-81-1633-3559',
+  email: 'hola@centinelia.mx',
+  description: 'Empleados digitales que contestan el teléfono, cotizan, facturan, cobran y agendan 24/7 para organizaciones mexicanas.',
+  priceRange: '$2,997 MXN - $11,988 MXN mensuales',
+  address: {
+    '@type': 'PostalAddress',
+    addressLocality: 'Monterrey',
+    addressRegion: 'Nuevo León',
+    addressCountry: 'MX',
+  },
+  geo: {
+    '@type': 'GeoCoordinates',
+    latitude: 25.6866,
+    longitude: -100.3161,
+  },
+  openingHoursSpecification: [
+    {
+      '@type': 'OpeningHoursSpecification',
+      dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+      opens: '00:00',
+      closes: '23:59',
+    },
+  ],
+  areaServed: [
+    { '@type': 'Country', name: 'México' },
+    { '@type': 'AdministrativeArea', name: 'Nuevo León' },
+    { '@type': 'City', name: 'Monterrey' },
+    { '@type': 'City', name: 'Ciudad de México' },
+    { '@type': 'City', name: 'Guadalajara' },
+  ],
+  sameAs: [
+    'https://www.instagram.com/centinelia.mx/',
+    'https://www.linkedin.com/company/centinelia/',
+    'https://www.facebook.com/centineliamx/',
+  ],
+};
+
 const softwareSchema = {
   '@context': 'https://schema.org',
   '@type': 'SoftwareApplication',
@@ -177,6 +223,7 @@ export default function RootLayout({
     >
       <head>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessSchema) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
       </head>
