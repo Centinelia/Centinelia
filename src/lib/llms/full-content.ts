@@ -18,6 +18,7 @@ import { COMPARISONS } from '@/lib/vs/data';
 import { MEERKATS } from '@/lib/meerkats/data';
 import { INDUSTRIES as LONG_TAIL_INDUSTRIES } from '@/lib/industrias/data';
 import { TERMINOS } from '@/lib/glosario/data';
+import { POSTS } from '@/lib/blog/registry';
 
 const BASE_URL = 'https://www.centinelia.mx';
 const fmtMxn = (n: number) => `$${n.toLocaleString('es-MX')} MXN`;
@@ -424,11 +425,17 @@ ${TERMINOS.map(t => {
   return `- **${heading}** (${BASE_URL}/glosario/${t.slug}): ${t.definicionCorta}`;
 }).join('\n')}
 
-## 10. Preguntas frecuentes generales
+## 10. Blog: guías long-tail
+
+Contenido educativo para dueños de PyMEs mexicanas: guías por industria, comparativas de costos y diagnósticos. Cada artículo tiene datos concretos y cross-links a las páginas de empleados, industrias y glosario.
+
+${POSTS.map(p => `- **${p.titulo}** (${BASE_URL}/blog/${p.slug}): ${p.subtitulo}`).join('\n')}
+
+## 11. Preguntas frecuentes generales
 
 ${GENERAL_FAQ.map(f => `**${f.q}**\n\n${f.a}`).join('\n\n')}
 
-## 11. Contacto
+## 12. Contacto
 
 - Sitio web: ${BASE_URL}
 - Correo: hola@centinelia.mx
@@ -438,7 +445,7 @@ ${GENERAL_FAQ.map(f => `**${f.q}**\n\n${f.a}`).join('\n\n')}
 - LinkedIn: https://www.linkedin.com/company/centinelia/
 - Facebook: https://www.facebook.com/centineliamx/
 
-## 12. Páginas del sitio
+## 13. Páginas del sitio
 
 - Home: ${BASE_URL}/
 - Catálogo de empleados: ${BASE_URL}/empleados
@@ -456,9 +463,10 @@ ${GENERAL_FAQ.map(f => `**${f.q}**\n\n${f.a}`).join('\n\n')}
 - Portal de clientes: ${BASE_URL}/portal/login
 - Comparaciones vs otras plataformas: ${BASE_URL}/vs
 - Glosario de términos: ${BASE_URL}/glosario
+- Blog (guías long-tail): ${BASE_URL}/blog
 - Índice corto para LLMs: ${BASE_URL}/llms.txt
 
-## 13. Categorización
+## 14. Categorización
 
 Centinelia es desarrollado y operado por Pneuma Studio (https://pneumastudio.mx), un estudio de automatización y desarrollo de producto ubicado en Monterrey, Nuevo León, México.
 

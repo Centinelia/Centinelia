@@ -97,4 +97,12 @@ describe('sitemap.ts', () => {
       expect(urls, `Falta /glosario/${slug} en sitemap`).toContain(`${BASE}/glosario/${slug}`);
     }
   });
+
+  it('incluye /blog y una entrada por cada post publicado', async () => {
+    const { postSlugs } = await import('@/lib/blog/registry');
+    expect(urls).toContain(`${BASE}/blog`);
+    for (const slug of postSlugs()) {
+      expect(urls, `Falta /blog/${slug} en sitemap`).toContain(`${BASE}/blog/${slug}`);
+    }
+  });
 });
