@@ -105,4 +105,24 @@ describe('sitemap.ts', () => {
       expect(urls, `Falta /blog/${slug} en sitemap`).toContain(`${BASE}/blog/${slug}`);
     }
   });
+
+  it('incluye /precios y las 3 comparativas de precio', async () => {
+    const { precioSlugs } = await import('@/lib/precios/data');
+    expect(urls).toContain(`${BASE}/precios`);
+    for (const slug of precioSlugs()) {
+      expect(urls, `Falta /precios/${slug} en sitemap`).toContain(`${BASE}/precios/${slug}`);
+    }
+  });
+
+  it('incluye /soluciones y las 3 landings por dolor', async () => {
+    const { solucionSlugs } = await import('@/lib/soluciones/data');
+    expect(urls).toContain(`${BASE}/soluciones`);
+    for (const slug of solucionSlugs()) {
+      expect(urls, `Falta /soluciones/${slug} en sitemap`).toContain(`${BASE}/soluciones/${slug}`);
+    }
+  });
+
+  it('incluye /calcular-ahorro', () => {
+    expect(urls).toContain(`${BASE}/calcular-ahorro`);
+  });
 });

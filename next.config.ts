@@ -57,7 +57,8 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       // URLs comunes que 404 — redirect a la más cercana en intención.
-      { source: '/precios',       destination: '/#pricing',    permanent: false },
+      // /precios ahora tiene página real con comparativas; el redirect a
+      // /#pricing se eliminó el 2026-09-23.
       { source: '/como-funciona', destination: '/empleados',   permanent: false },
       // Escalation emails viejos apuntaban a facturacion-emision/pendientes.
       // Renombré a facturas/pendientes 2026-09-07. Redirect para no romper

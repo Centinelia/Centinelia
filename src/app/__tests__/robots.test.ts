@@ -19,7 +19,8 @@ describe('robots.ts', () => {
   it('tiene regla default (userAgent *) que permite crawl', () => {
     const wildcard = rulesByAgent.get('*');
     expect(wildcard).toBeDefined();
-    expect(wildcard?.allow).toBe('/');
+    const allow = Array.isArray(wildcard?.allow) ? wildcard?.allow : [wildcard?.allow];
+    expect(allow).toContain('/');
   });
 
   it.each([
@@ -41,7 +42,8 @@ describe('robots.ts', () => {
   ])('permite explícitamente al bot LLM %s', agent => {
     const rule = rulesByAgent.get(agent);
     expect(rule, `Falta regla para ${agent}`).toBeDefined();
-    expect(rule?.allow).toBe('/');
+    const allow = Array.isArray(rule?.allow) ? rule?.allow : [rule?.allow];
+    expect(allow).toContain('/');
   });
 
   it.each([
@@ -68,6 +70,15 @@ describe('robots.ts', () => {
       for (const path of privatePaths) {
         expect(disallow, `${agent} debe bloquear ${path}`).toContain(path);
       }
+    }
+  });
+
+  it('/api/public/ está explícitamente permitido en el wildcard y bots LLM', () => {
+    const permittedAgents = ['*', 'GPTBot', 'ClaudeBot', 'PerplexityBot', 'Google-Extended'];
+    for (const agent of permittedAgents) {
+      const rule = rulesByAgent.get(agent);
+      const allow = Array.isArray(rule?.allow) ? rule?.allow : [rule?.allow];
+      expect(allow, `${agent} debe permitir /api/public/`).toContain('/api/public/');
     }
   });
 });

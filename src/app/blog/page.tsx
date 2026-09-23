@@ -15,7 +15,10 @@ export const metadata: Metadata = {
     'automatizar recepción restaurante clínica', 'costo recepcionista México',
     'facturación CFDI automatizada', 'cobranza automatizada',
   ],
-  alternates: { canonical: `${BASE_URL}/blog` },
+  alternates: {
+    canonical: `${BASE_URL}/blog`,
+    types:     { 'application/rss+xml': `${BASE_URL}/rss.xml` },
+  },
   openGraph: {
     title:       'Blog Centinelia | Guías prácticas de automatización operativa',
     description: 'Contenido educativo para dueños de PyMEs mexicanas: cuándo automatizar, cuánto cuesta, cómo empezar.',

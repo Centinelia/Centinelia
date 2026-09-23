@@ -3,16 +3,19 @@ import type { MetadataRoute } from 'next';
 const BASE_URL = 'https://www.centinelia.mx';
 
 // Rutas privadas o de infraestructura que ningún bot debe crawlear.
+// /api/public/ es la excepción explícita: catálogo read-only para LLMs.
 const PRIVATE_PATHS = ['/admin/', '/api/', '/portal/', '/onboarding/', '/setup/', '/r/', '/s/', '/reporte/'];
+const PUBLIC_API    = '/api/public/';
 
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
       // Default: buscadores clásicos + resto de bots.
+      // El allow más largo (/api/public/) vence al disallow (/api/) por spec.
       {
         userAgent: '*',
-        allow: '/',
-        disallow: PRIVATE_PATHS,
+        allow:     ['/', PUBLIC_API],
+        disallow:  PRIVATE_PATHS,
       },
 
       // Bots de LLM que citan la fuente. Los queremos DENTRO.
@@ -40,7 +43,7 @@ export default function robots(): MetadataRoute.Robots {
         'Meta-ExternalAgent',
       ].map(userAgent => ({
         userAgent,
-        allow: '/',
+        allow:    ['/', PUBLIC_API],
         disallow: PRIVATE_PATHS,
       })),
 

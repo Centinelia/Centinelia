@@ -4,6 +4,8 @@ import { industrySlugs } from '@/lib/industrias/data';
 import { COMPARISONS } from '@/lib/vs/data';
 import { terminoSlugs } from '@/lib/glosario/data';
 import { postSlugs } from '@/lib/blog/registry';
+import { precioSlugs } from '@/lib/precios/data';
+import { solucionSlugs } from '@/lib/soluciones/data';
 
 // IndexNow: ping instantáneo a Bing/Yandex/Seznam/Naver cuando cambia contenido.
 // Bing feeds Copilot; Yandex feeds YandexGPT. Con este endpoint, un cambio en
@@ -31,12 +33,16 @@ function buildDefaultUrls(): string[] {
     '/vs',
     '/glosario',
     '/blog',
+    '/precios',
+    '/soluciones',
+    '/calcular-ahorro',
     '/faq',
     '/pack-ciclo-oc-cfdi',
     '/cotizar',
     '/pedir-rol',
     '/llms.txt',
     '/llms-full.txt',
+    '/rss.xml',
   ];
 
   for (const slug of meerkatSlugs())  paths.push(`/empleados/${slug}`);
@@ -44,6 +50,8 @@ function buildDefaultUrls(): string[] {
   for (const c of COMPARISONS)        paths.push(`/vs/${c.slug}`);
   for (const slug of terminoSlugs())  paths.push(`/glosario/${slug}`);
   for (const slug of postSlugs())     paths.push(`/blog/${slug}`);
+  for (const slug of precioSlugs())   paths.push(`/precios/${slug}`);
+  for (const slug of solucionSlugs()) paths.push(`/soluciones/${slug}`);
 
   const CUSTOM_INDUSTRIES = ['clinicas', 'restaurantes', 'despachos', 'inmobiliarias', 'tiendas'];
   for (const slug of CUSTOM_INDUSTRIES) paths.push(`/industrias/${slug}`);

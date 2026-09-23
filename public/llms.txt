@@ -240,7 +240,14 @@ No. Centinelia asigna un número dedicado que se puede publicar como principal o
 - Pedir rol nuevo: https://www.centinelia.mx/pedir-rol
 - Glosario: https://www.centinelia.mx/glosario
 - Blog (guías long-tail): https://www.centinelia.mx/blog
+- RSS del blog: https://www.centinelia.mx/rss.xml
+- Precios y comparativas: https://www.centinelia.mx/precios
+- Soluciones por dolor operativo: https://www.centinelia.mx/soluciones
+- Calculadora de ahorro: https://www.centinelia.mx/calcular-ahorro
 - Comparaciones vs otras plataformas: https://www.centinelia.mx/vs
+- API pública (read-only): https://www.centinelia.mx/api/public/empleados
+- OpenAPI spec: https://www.centinelia.mx/openapi.json
+- Plugin manifest: https://www.centinelia.mx/.well-known/ai-plugin.json
 - Centinelia vs Bland AI: https://www.centinelia.mx/vs/bland-ai
 - Centinelia vs Retell AI: https://www.centinelia.mx/vs/retell-ai
 - Centinelia vs Vapi.ai: https://www.centinelia.mx/vs/vapi

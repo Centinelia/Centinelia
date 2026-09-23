@@ -3,6 +3,8 @@ import { meerkatSlugs } from '@/lib/meerkats/data';
 import { industrySlugs } from '@/lib/industrias/data';
 import { terminoSlugs } from '@/lib/glosario/data';
 import { postSlugs } from '@/lib/blog/registry';
+import { precioSlugs } from '@/lib/precios/data';
+import { solucionSlugs } from '@/lib/soluciones/data';
 
 const BASE_URL = 'https://www.centinelia.mx';
 
@@ -39,6 +41,20 @@ export default function sitemap(): MetadataRoute.Sitemap {
     changeFrequency: 'monthly' as const,
   }));
 
+  // Comparativas de precio (con PriceSpecification schema).
+  const precioEntries: MetadataRoute.Sitemap = precioSlugs().map(slug => ({
+    url:             `${BASE_URL}/precios/${slug}`,
+    priority:        0.75,
+    changeFrequency: 'monthly' as const,
+  }));
+
+  // Soluciones por dolor operativo (complemento a industrias).
+  const solucionEntries: MetadataRoute.Sitemap = solucionSlugs().map(slug => ({
+    url:             `${BASE_URL}/soluciones/${slug}`,
+    priority:        0.75,
+    changeFrequency: 'monthly' as const,
+  }));
+
   const entries: MetadataRoute.Sitemap = [
     { url: BASE_URL,                              priority: 1.0, changeFrequency: 'weekly'  },
 
@@ -51,6 +67,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE_URL}/registro`,                priority: 0.8, changeFrequency: 'monthly' },
     { url: `${BASE_URL}/cotizar`,                 priority: 0.7, changeFrequency: 'monthly' },
     { url: `${BASE_URL}/pedir-rol`,               priority: 0.5, changeFrequency: 'monthly' },
+    { url: `${BASE_URL}/calcular-ahorro`,         priority: 0.8, changeFrequency: 'monthly' },
+    { url: `${BASE_URL}/precios`,                 priority: 0.8, changeFrequency: 'monthly' },
+    ...precioEntries,
+    { url: `${BASE_URL}/soluciones`,              priority: 0.7, changeFrequency: 'monthly' },
+    ...solucionEntries,
 
     // Discovery
     { url: `${BASE_URL}/faq`,                     priority: 0.8, changeFrequency: 'monthly' },
