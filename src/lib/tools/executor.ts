@@ -2042,6 +2042,11 @@ async function executeAgentToolInner(
       if (res.matches.length === 0) {
         return { ok: false, error: `Sin coincidencias en las fichas informativas para "${query}". Si el cliente insiste, ofrece transferir al área responsable.` };
       }
+      // Cobro: 1 op por consulta exitosa (regla de pricing fichas_informativas 2026-09-23).
+      await consumeAiOp(agentId, 1, {
+        source: 'tool_consultar_fichas',
+        label:  `Consulta de fichas (embeddings, ${res.matches.length} coincidencias)`,
+      });
       return {
         ok:              true,
         mode:            'embeddings',
@@ -2058,6 +2063,11 @@ async function executeAgentToolInner(
     if (catalog.total === 0) {
       return { ok: false, error: 'Aún no hay fichas informativas cargadas para esta cuenta. Ofrece transferir al área responsable.' };
     }
+    // Cobro: 1 op por consulta exitosa (regla de pricing fichas_informativas 2026-09-23).
+    await consumeAiOp(agentId, 1, {
+      source: 'tool_consultar_fichas',
+      label:  `Consulta de fichas (stuffed, ${catalog.total} fichas)`,
+    });
     return {
       ok:            true,
       mode:          'stuffed',
