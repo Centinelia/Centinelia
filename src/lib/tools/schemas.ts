@@ -450,6 +450,25 @@ export const TOOL_SCHEMAS: Record<string, ToolSchema> = {
     channels: ['voice', 'chat', 'email'],
   },
 
+  // consultar_fichas — pack fichas_informativas. RAG (o catálogo stuffed) sobre
+  // fichas informativas del negocio: trámites municipales, productos, servicios,
+  // procedimientos internos, etc. Feature gated: fichas_informativas. Solo lectura.
+  // Devuelve fichas + suggested_ficha con contacto humano para engarzar con
+  // transferir_llamada.
+  consultar_fichas: {
+    name: 'consultar_fichas',
+    description: 'Nia/Nara: consulta las fichas informativas del negocio para responder dudas del cliente o ciudadano. Úsala ANTES de contestar cualquier pregunta que probablemente esté cubierta en la documentación oficial (trámites, productos, servicios, procedimientos, etc.). El resultado tiene un campo mode: (a) mode=stuffed → devuelve el CATÁLOGO COMPLETO de fichas activas con sus secciones, contactos, ligas, horarios, plazos y costos; tú eliges la ficha relevante según la duda. (b) mode=embeddings → devuelve solo los fragmentos más semánticamente cercanos + suggested_ficha con contacto humano. En ambos casos: NUNCA inventes procesos, requisitos ni costos que no aparezcan en los resultados. Si la duda excede lo cubierto por la ficha, transfiere con transferir_llamada usando el contacto de la ficha (nombre, correo, extensión).',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        query: { type: 'string', description: 'La pregunta del cliente tal como la formuló, o los términos clave (ej. "cómo pago mi predial", "cuál es el precio del producto X", "requisitos para dar de alta").' },
+        top_k: { type: 'number', description: 'Máximo de fichas a devolver (default 5).' },
+      },
+      required: ['query'],
+    },
+    channels: ['voice', 'chat', 'email'],
+  },
+
 };
 
 // ─── Adapter functions ────────────────────────────────────────────────────────

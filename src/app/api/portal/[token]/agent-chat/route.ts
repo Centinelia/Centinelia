@@ -1280,6 +1280,19 @@ const CATALOGO_BUSCAR_CODIGO_TOOL: Anthropic.Tool = {
   },
 };
 
+const CONSULTAR_FICHAS_TOOL: Anthropic.Tool = {
+  name: 'consultar_fichas',
+  description: 'Nia/Nara: consulta las fichas informativas del negocio para responder al cliente. Úsala ANTES de contestar cualquier pregunta cubierta por la documentación oficial (trámites, productos, servicios, etc.). Devuelve fichas relevantes + contacto humano sugerido (nombre, correo, extensión) para que puedas transferir con transferir_llamada si la duda excede lo cubierto. NUNCA inventes procesos, requisitos ni costos que no aparezcan en los resultados.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      query: { type: 'string', description: 'Pregunta del cliente o términos clave del tema.' },
+      top_k: { type: 'number', description: 'Máximo de fichas a devolver (default 5).' },
+    },
+    required: ['query'],
+  },
+};
+
 // ─── Nami — pack inventory_excel (piloto AC Proyectos) ─────────────────────
 const INV_BUSCAR_POR_SERIE_TOOL: Anthropic.Tool = {
   name: 'inv_buscar_por_serie',
@@ -1802,6 +1815,7 @@ export const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
   ...Object.fromEntries(QB_TOOLS.map(t => [t.name, t])),
   buscar_producto: BUSCAR_PRODUCTO_TOOL,
   catalogo_buscar_codigo: CATALOGO_BUSCAR_CODIGO_TOOL,
+  consultar_fichas: CONSULTAR_FICHAS_TOOL,
   revisar_incidentes_plataforma: REVISAR_INCIDENTES_PLATAFORMA_TOOL,
   crear_incidente:               CREAR_INCIDENTE_TOOL,
   responder_cliente_afectado:    RESPONDER_CLIENTE_AFECTADO_TOOL,

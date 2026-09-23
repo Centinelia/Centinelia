@@ -450,6 +450,21 @@ NO la uses para:
       required: ['query'],
     },
   },
+  // Pack fichas_informativas — RAG (o catálogo stuffed) sobre las fichas
+  // informativas del negocio (trámites, productos, servicios, procedimientos)
+  // para responder correos con base sólo en la ficha.
+  {
+    name:        'consultar_fichas',
+    description: 'Nia/Nara: consulta las fichas informativas del negocio para responder correos. Úsala ANTES de responder cualquier pregunta cubierta por la documentación oficial (trámites, productos, servicios, etc.). Devuelve fichas relevantes + contacto humano sugerido para incluir en la respuesta si la duda excede lo cubierto por la ficha. NUNCA inventes procesos, requisitos ni costos que no aparezcan en los resultados.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        query: { type: 'string', description: 'Pregunta del ciudadano tal como la escribió, o términos clave del trámite.' },
+        top_k: { type: 'number', description: 'Máximo de fichas a devolver (default 5).' },
+      },
+      required: ['query'],
+    },
+  },
 ];
 
 const QB_EMAIL_TOOLS: Anthropic.Tool[] = [
@@ -917,13 +932,13 @@ export const EMAIL_TOOL_BY_NAME: Record<string, Anthropic.Tool> = Object.fromEnt
  * (qb_crear_orden_compra, firmar_oc, sf_timbrar_desde_oc, etc. — 12 tools).
  */
 export const MEERKAT_EMAIL_DISTRIBUTION: Record<string, string[]> = {
-  nia:   ['crear_lead', 'crear_contacto_saliente', 'agendar_cita', 'registrar_pedido', 'buscar_cliente', 'buscar_correo_enviado', 'agregar_tag_contacto', 'registrar_encuesta', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano', 'reportar_falla'],
+  nia:   ['crear_lead', 'crear_contacto_saliente', 'agendar_cita', 'registrar_pedido', 'buscar_cliente', 'buscar_correo_enviado', 'agregar_tag_contacto', 'registrar_encuesta', 'consultar_fichas', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano', 'reportar_falla'],
   noah:  ['crear_lead', 'crear_contacto_saliente', 'agregar_tag_contacto', 'buscar_cliente', 'buscar_correo_enviado', 'buscar_producto', 'catalogo_buscar_codigo', 'list_calendar_events', 'create_calendar_event', 'generar_propuesta_comercial', 'generar_cotizacion', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
   nico:  ['buscar_cliente', 'buscar_correo_enviado', 'buscar_documento_oficina', 'solicitar_factura', 'consultar_factura', 'solicitar_cancelacion_factura', 'qb_consultar_facturas', 'qb_buscar_cliente', 'qb_registrar_pago', 'qb_crear_factura', 'qb_reporte_ingresos', 'enviar_documento_oficina', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
   // meefi_* tools gatadas por feature 'meefi_demo'; orgs sin esa feature no las ejecutan.
   nelia: ['buscar_cliente', 'buscar_correo_enviado', 'buscar_documento_oficina', 'buscar_archivo', 'enviar_documento_oficina', 'generar_one_pager', 'generar_correo_estructurado', 'generar_reporte_metricas_excel', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'create_document', 'create_file', 'save_to_drive', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano', 'meefi_lookup_user_account', 'meefi_send_password_reset_link', 'meefi_check_transfer_status', 'meefi_initiate_2fa_recovery', 'meefi_capture_bug_report', 'meefi_escalate_to_human', 'meefi_search_help_center'],
   neo:   ['crear_ticket', 'consultar_incidentes', 'buscar_directorio', 'buscar_archivo', 'leer_archivo', 'buscar_correo_enviado', 'buscar_documento_oficina', 'enviar_documento_oficina', 'buscar_cliente', 'reportar_falla', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
-  nara:  ['crear_reporte_civico', 'consultar_reporte_civico', 'actualizar_reporte_civico', 'consultar_catalogo_externo', 'buscar_en_padron_externo', 'enviar_tramite_externo', 'buscar_cliente', 'buscar_correo_enviado', 'generar_reporte_metricas_excel', 'buscar_archivo', 'leer_archivo', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
+  nara:  ['crear_reporte_civico', 'consultar_reporte_civico', 'actualizar_reporte_civico', 'consultar_catalogo_externo', 'buscar_en_padron_externo', 'enviar_tramite_externo', 'consultar_fichas', 'buscar_cliente', 'buscar_correo_enviado', 'generar_reporte_metricas_excel', 'buscar_archivo', 'leer_archivo', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
   naia:  ['iniciar_onboarding', 'agendar_cita', 'list_calendar_events', 'create_calendar_event', 'delete_calendar_event', 'buscar_cliente', 'buscar_correo_enviado', 'buscar_documento_oficina', 'buscar_archivo', 'leer_archivo', 'registrar_falta', 'consultar_vacaciones', 'solicitar_permiso', 'verificar_incidencia', 'generar_correo_estructurado', 'create_document', 'save_to_drive', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
   nova:  ['asignar_unidad_campo', 'consultar_unidades_disponibles', 'crear_ticket', 'buscar_cliente', 'buscar_correo_enviado', 'buscar_documento_oficina', 'buscar_archivo', 'leer_archivo', 'enviar_documento_oficina', 'create_document', 'create_file', 'extraer_voz_del_cliente', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
   nox:   ['create_document', 'create_file', 'crear_borrador_contrato', 'save_to_drive', 'organize_files', 'buscar_documento_oficina', 'enviar_documento_oficina', 'buscar_archivo', 'leer_archivo', 'buscar_cliente', 'buscar_correo_enviado', 'catalogo_buscar_codigo', 'list_calendar_events', 'create_calendar_event', 'verificar_gasto_recurrente', 'sheets_agregar_fila', 'sheets_actualizar_fila', 'sheets_leer', 'sheets_buscar', 'preparar_brief_del_dia', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano', 'reportar_falla'],
