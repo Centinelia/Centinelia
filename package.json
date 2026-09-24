@@ -10,6 +10,7 @@
     "check:llm-logging": "node scripts/check-llm-logging.mjs",
     "test": "vitest run",
     "test:integration": "vitest run tests/integration --config=vitest.integration.config.ts",
+    "test:smoke": "vitest run --config=vitest.smoke.config.ts",
     "test:e2e": "playwright test"
   },
   "dependencies": {
