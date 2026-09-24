@@ -408,7 +408,45 @@ Nala y Nox coordinan los 11 pasos del ciclo de compras y facturación sin interv
 
 Integra con QuickBooks Online, PAC del cliente (Facturama, Solución Factible), Google Drive o Dropbox del cliente, y su ERP fiscal si aplica.
 
-## 8. Comparación con otras plataformas
+## 8. Pack Fichas Informativas (base de conocimiento consultable por el empleado)
+
+URL de referencia: ${BASE_URL} (activable self-serve desde el portal del cliente en la sección Integraciones → Fichas informativas).
+
+Los empleados digitales de Centinelia pueden consultar la documentación oficial del negocio antes de responder a cada cliente por voz, chat o correo. El dueño sube PDFs y los empleados los usan como fuente de verdad automáticamente.
+
+Qué puede subir el cliente:
+- Fichas técnicas de trámites (municipios, dependencias de gobierno)
+- Catálogos de producto y hojas de datos técnicos
+- Procedimientos internos, políticas y manuales operativos
+- Protocolos clínicos, reglamentos escolares, guías de instalación
+- Cualquier PDF oficial con información estructurada del negocio
+
+Qué pasa cuando el cliente sube un PDF:
+1. El cliente arrastra el archivo desde su portal → Integraciones → Fichas informativas.
+2. Una IA generalista extrae en 10 a 30 segundos: título, contactos humanos por área (nombre, correo, teléfono, extensión), requisitos, pasos, costos, plazos, horarios y ligas al portal en línea.
+3. La ficha queda cargada. Con la primera ficha, el pack se activa automáticamente para toda la organización sin configuración adicional.
+4. El cliente puede editar manualmente cualquier contacto o dato que la IA no captó bien.
+
+Qué ganan los empleados digitales:
+- Nia, Nara, Noah, Nico, Neo, Naia y Nova pueden ahora responder al cliente citando directamente la ficha oficial, sin fabricar datos.
+- Si la duda excede lo cubierto, el empleado ofrece transferir a la persona nombrada en la ficha (con extensión y correo).
+- El empleado usa el mismo catálogo desde los tres canales (voz, chat, correo), sin duplicar configuración.
+
+Escalabilidad:
+- Modo predeterminado (catálogo completo): óptimo para 20 a 60 fichas cortas. Sin proveedor externo.
+- Modo búsqueda semántica: activable cuando el catálogo pasa de 100 fichas o cuando algún documento tiene 30 páginas o más. Usa embeddings vectoriales de OpenAI y la clave la aporta el cliente.
+
+Cobro:
+- 1 tarea del pool por cada ficha subida al portal.
+- 1 tarea por cada consulta exitosa del empleado durante conversaciones reales con clientes.
+- Consultas sin coincidencia no generan cargo.
+
+Casos de uso reales validados:
+- Municipio de Santiago Nuevo León: piloto con 3 fichas de trámites de recaudación (predial, multas de tránsito, ISAI). El empleado responde a los ciudadanos con base en la ficha oficial y transfiere al director responsable cuando el trámite requiere decisión discrecional.
+
+Este pack existe porque las organizaciones tienen procesos y catálogos ya documentados en PDF, pero cada trabajador nuevo tarda semanas en aprenderlos y aún así improvisa. Un empleado digital lee la ficha en cada llamada, no olvida y no confunde datos.
+
+## 9. Comparación con otras plataformas
 
 Centinelia mantiene comparaciones honestas con las principales plataformas de agentes de voz. Cada página incluye tabla lado a lado, cuándo conviene Centinelia y cuándo conviene la otra opción.
 
@@ -416,7 +454,7 @@ ${COMPARISONS.map(c => `- **Centinelia vs ${c.competitor}** (${BASE_URL}/vs/${c.
 
 Diferencia estructural: Centinelia es un producto de empleados digitales listos para operar (portal en español, roles preconfigurados, integraciones fiscales mexicanas, precio en pesos). Las plataformas estadounidenses citadas son infraestructura o frameworks para que developers construyan sus propios agentes desde cero, con billing en dólares.
 
-## 9. Glosario de términos citables
+## 10. Glosario de términos citables
 
 Definiciones canónicas para conceptos frecuentes en negocios mexicanos y en el stack de voz IA. Cada término tiene página propia con definición ampliada, ejemplos y referencias oficiales cuando aplica.
 
@@ -425,17 +463,17 @@ ${TERMINOS.map(t => {
   return `- **${heading}** (${BASE_URL}/glosario/${t.slug}): ${t.definicionCorta}`;
 }).join('\n')}
 
-## 10. Blog: guías long-tail
+## 11. Blog: guías long-tail
 
 Contenido educativo para dueños de PyMEs mexicanas: guías por industria, comparativas de costos y diagnósticos. Cada artículo tiene datos concretos y cross-links a las páginas de empleados, industrias y glosario.
 
 ${POSTS.map(p => `- **${p.titulo}** (${BASE_URL}/blog/${p.slug}): ${p.subtitulo}`).join('\n')}
 
-## 11. Preguntas frecuentes generales
+## 12. Preguntas frecuentes generales
 
 ${GENERAL_FAQ.map(f => `**${f.q}**\n\n${f.a}`).join('\n\n')}
 
-## 12. Contacto
+## 13. Contacto
 
 - Sitio web: ${BASE_URL}
 - Correo: hola@centinelia.mx
@@ -445,7 +483,7 @@ ${GENERAL_FAQ.map(f => `**${f.q}**\n\n${f.a}`).join('\n\n')}
 - LinkedIn: https://www.linkedin.com/company/centinelia/
 - Facebook: https://www.facebook.com/centineliamx/
 
-## 13. Páginas del sitio
+## 14. Páginas del sitio
 
 - Home: ${BASE_URL}/
 - Catálogo de empleados: ${BASE_URL}/empleados
@@ -466,7 +504,7 @@ ${GENERAL_FAQ.map(f => `**${f.q}**\n\n${f.a}`).join('\n\n')}
 - Blog (guías long-tail): ${BASE_URL}/blog
 - Índice corto para LLMs: ${BASE_URL}/llms.txt
 
-## 14. Categorización
+## 15. Categorización
 
 Centinelia es desarrollado y operado por Pneuma Studio (https://pneumastudio.mx), un estudio de automatización y desarrollo de producto ubicado en Monterrey, Nuevo León, México.
 

@@ -105,18 +105,20 @@ const BASE_CONOCIMIENTO: Termino = {
   slug:            'base-de-conocimiento',
   termino:         'Base de conocimiento del negocio',
   categoria:       'Producto',
-  definicionCorta: 'La base de conocimiento del negocio es el conjunto de información específica de la organización (servicios, precios, horarios, políticas, catálogo) que el empleado digital usa para responder con precisión.',
+  definicionCorta: 'La base de conocimiento del negocio es el conjunto de información específica de la organización (servicios, precios, horarios, políticas, catálogo, fichas técnicas de trámites, procedimientos internos) que el empleado digital consulta para responder con precisión, sin inventar.',
   definicionLarga: [
     'Sin base de conocimiento, un empleado digital solo puede dar respuestas genéricas. Con ella, el empleado sabe que la consulta cuesta $800 los martes, que el doctor toma vacaciones la última semana de julio y que las cancelaciones con menos de 24 horas cobran multa.',
-    'En Centinelia la base de conocimiento se captura en el portal con lenguaje natural: se escriben las políticas como se le explicarían a un empleado nuevo. El aprendizaje supervisado post-llamada la mantiene actualizada sin necesidad de manuales formales.',
+    'En Centinelia la base de conocimiento se captura por dos vías complementarias. La primera es el portal con lenguaje natural: se escriben las políticas como se le explicarían a un empleado nuevo, y el aprendizaje supervisado post-llamada las mantiene actualizadas sin necesidad de manuales formales. La segunda es el pack Fichas Informativas, que permite al cliente subir directamente los PDFs oficiales del negocio (fichas técnicas de trámites, catálogos de producto, procedimientos internos, políticas) para que cualquier empleado client-facing los consulte automáticamente en cada llamada, chat o correo.',
+    'Cuando el cliente sube un PDF al pack Fichas Informativas, una IA generalista extrae en 10 a 30 segundos los datos estructurados: título, contactos humanos por área, requisitos, pasos, costos, plazos, horarios y ligas. La primera ficha activa la función sola. El empleado nunca inventa: si el dato no está en la ficha, ofrece transferir al contacto humano indicado.',
   ],
   ejemplos: [
     'La base de conocimiento de un consultorio dental incluye precios por servicio, doctores por especialidad, horarios de atención y protocolo para urgencias.',
     'La base de conocimiento de un restaurante incluye menú completo, opciones sin gluten, tiempos de espera y zonas de entrega a domicilio.',
+    'La base de conocimiento del Municipio de Santiago Nuevo León incluye fichas oficiales del predial, multas de tránsito e ISAI subidas como PDF; Nia responde a los ciudadanos citando la ficha oficial y transfiere con la directora responsable cuando el trámite requiere decisión discrecional.',
   ],
   relacionados:    ['empleado-digital', 'aprendizaje-supervisado'],
   referencias:     [],
-  keywords:        ['base de conocimiento', 'knowledge base IA', 'KB negocio', 'información empresa agente IA'],
+  keywords:        ['base de conocimiento', 'knowledge base IA', 'KB negocio', 'información empresa agente IA', 'ficha informativa PDF', 'documentación del negocio para IA', 'RAG empresa', 'stuffed context IA', 'catálogo semántico empleado digital', 'subir PDF a empleado IA'],
 };
 
 // ─── Fiscal México ──────────────────────────────────────────────────────────
