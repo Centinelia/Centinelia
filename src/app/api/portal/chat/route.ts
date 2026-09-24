@@ -54,7 +54,7 @@ Contenida en 5 sub-tabs: **Perfil · Identidad · Operación · Directorio · In
 - **Perfil del responsable:** el dueño describe sus prioridades, cómo trabaja y qué considera urgente. Se comparte con todos los empleados.
 - **Identidad visual:** logo, colores de marca.
 - **Tono de marca:** guía de voz que los empleados usan al escribir (correos, documentos, mensajes).
-- **Sitio web y reseñas:** URL del negocio + link de reseñas de Google.
+- **Sitio web:** URL del negocio para sincronizar conocimiento del sitio.
 - **Horario de atención:** días y horas en que los empleados atienden llamadas. Fuera de horario no atienden. El teléfono del owner (número de transferencia o WhatsApp) siempre se atiende 24/7 sin importar el horario.
 - **Tu CRM en Google Sheets:** integración para sincronizar leads/llamadas/citas a una hoja del negocio.
 - **Personas de la organización (Directorio):** contactos internos del negocio a quienes los empleados pueden transferir o escalar. Incluye guardia (rotación de responsables por semana).

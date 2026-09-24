@@ -29,7 +29,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
   const { data: org } = agent?.portal_email
     ? await supabase
         .from('organizations')
-        .select('calendar_type, calendar_event_type_id, calendar_link, calendar_api_key, google_review_url')
+        .select('calendar_type, calendar_event_type_id, calendar_link, calendar_api_key')
         .eq('portal_email', agent.portal_email)
         .maybeSingle()
     : { data: null };
@@ -54,7 +54,6 @@ export async function GET(_req: NextRequest, { params }: Params) {
     calendar_event_type_id:   org?.calendar_event_type_id  ?? '',
     calendar_link:            org?.calendar_link           ?? '',
     cal_api_configured:       !!(org?.calendar_api_key),
-    google_review_url:        org?.google_review_url       ?? '',
     per_agent_calendar_count,
   });
 }
@@ -66,7 +65,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = await req.json();
-  const allowed = ['calendar_type', 'calendar_api_key', 'calendar_event_type_id', 'calendar_link', 'google_review_url'];
+  const allowed = ['calendar_type', 'calendar_api_key', 'calendar_event_type_id', 'calendar_link'];
 
   const supabase = createAdminClient();
   const resolvedPatch = await resolveOrgFromToken(token);
@@ -81,7 +80,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   for (const key of allowed) {
     if (!(key in body)) continue;
     const val = body[key] || null;
-    if (CALENDAR_FIELDS.has(key) || key === 'google_review_url') {
+    if (CALENDAR_FIELDS.has(key)) {
       orgUpdate[key] = val;
       hasChanges = true;
     }
