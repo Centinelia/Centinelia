@@ -84,7 +84,7 @@ export function buildPortalNav(input: BuildNavInput): NavGroup[] {
       { label: 'Perfil del responsable',          anchor: 'perfil-dueno' },
       { label: 'Identidad visual',                anchor: 'branding' },
       { label: 'Tono de marca',                   anchor: 'tono-de-marca' },
-      { label: 'Sitio web y reseñas',             anchor: 'sitio' },
+      { label: 'Sitio web',                       anchor: 'sitio' },
       { label: 'Horario de atención',             anchor: 'horarios' },
       { label: 'Tu CRM en Google Sheets',         anchor: 'sheets-crm' },
       { label: 'Personas de la organización',     anchor: 'directorio' },

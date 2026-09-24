@@ -45,7 +45,6 @@ import { PageContainer, PageSection, GridStretch, SectionHeader, Card, StatChip 
 import KnowledgeBaseEditor    from './KnowledgeBaseEditor';
 import OwnerProfileEditor     from './OwnerProfileEditor';
 import WebsiteSyncButton      from './WebsiteSyncButton';
-import ReviewLinkEditor       from './ReviewLinkEditor';
 import BusinessHoursEditor    from './BusinessHoursEditor';
 import BrandVoiceEditor       from './BrandVoiceEditor';
 import OutboundSection           from './OutboundSection';
@@ -192,7 +191,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           : Promise.resolve([] as any[]),
         supabase
           .from('organizations')
-          .select('knowledge_base, owner_profile, business_description, business_email, business_hours, business_website, website_knowledge, google_review_url, email_brand_color, brand_color_secondary, brand_website, brand_address, brand_phone, email_footer_text, billing_model, contract_accepted_at, contract_ip, contract_signer_name, multilingual, brand_voice_guide, directory, monthly_ops_pool, monthly_ops_used, fallback_phone_number, ops_ledger_enabled')
+          .select('knowledge_base, owner_profile, business_description, business_email, business_hours, business_website, website_knowledge, email_brand_color, brand_color_secondary, brand_website, brand_address, brand_phone, email_footer_text, billing_model, contract_accepted_at, contract_ip, contract_signer_name, multilingual, brand_voice_guide, directory, monthly_ops_pool, monthly_ops_used, fallback_phone_number, ops_ledger_enabled')
           .eq('portal_email', agent.portal_email)
           .single()
           .then(r => r.data),
@@ -410,7 +409,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
   const supportWhatsApp    = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP ?? '';
   const supportEmail       = process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? 'hola@centinelia.mx';
-  const centineliReviewUrl = process.env.NEXT_PUBLIC_CENTINELIA_REVIEW_URL ?? '';
 
   // accountSerial ya fue fetcheado en Batch 1 arriba
 
@@ -1245,14 +1243,11 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                       style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 2px rgba(26,10,59,0.04)' }}>
                       <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
                         <div>
-                          <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>Sitio web y reseñas</h2>
+                          <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>Sitio web</h2>
                         </div>
                       </div>
                       <div className="px-5 py-5" style={{ borderTop: '1px solid #F0EDF9' }}>
                         <WebsiteSyncButton token={token} currentUrl={orgSettings?.business_website ?? (agent as any).business_website ?? orgSettings?.brand_website ?? (agent as any).brand_website ?? null} />
-                      </div>
-                      <div className="px-5 py-5" style={{ borderTop: '1px solid #F0EDF9' }}>
-                        <ReviewLinkEditor token={token} initialValue={orgSettings?.google_review_url ?? (agent as any).google_review_url ?? ''} />
                       </div>
                     </div>
                   </div>
