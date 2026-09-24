@@ -283,6 +283,36 @@ export async function POST(req: NextRequest) {
         break;
       }
 
+      // ── Pack perfiles_vivos: extractor post-llamada fire-and-forget ──────
+      // Si el org tiene perfiles_vivos activo y el caller matchea un contacto
+      // de la cartera, Claude Sonnet 4.6 extrae resumen + sentimiento + promesa
+      // + próxima acción y registra la interacción. El feature gate y el
+      // match viven adentro del extractor para no cargar imports aquí si
+      // no aplica.
+      if (callDbId && transcript && callerNumber && durationSeconds > 5) {
+        const callType = call?.type;
+        void (async () => {
+          try {
+            const { data: ag } = await supabase.from('voice_agents').select('portal_email').eq('id', resolvedAgentId).maybeSingle();
+            const pe = ag?.portal_email as string | undefined;
+            if (!pe) return;
+            const { extraerYRegistrarInteraccion } = await import('@/lib/perfiles-vivos/extractor');
+            await extraerYRegistrarInteraccion({
+              portalEmail:  pe,
+              agentId:      resolvedAgentId,
+              callDbId,
+              callerNumber,
+              transcript,
+              summary,
+              durationSeg:  durationSeconds,
+              tipo:         callType === 'outboundPhoneCall' ? 'llamada_saliente' : 'llamada_entrante',
+            });
+          } catch (err) {
+            console.error('[webhook] perfiles-vivos extractor failed (no-op):', err);
+          }
+        })();
+      }
+
       // Llamadas unanswered (duration <=5s por outcome-normalize línea 158) NO
       // cobran minutos ni escriben ledger de consumo — evita cobrar por drops
       // pre-conexión (auditor Municipio: "esta llamada no conectó, ¿por qué se

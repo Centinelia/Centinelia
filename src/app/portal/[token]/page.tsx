@@ -54,6 +54,7 @@ import PoliciesSection          from './PoliciesSection';
 import OrgCard                  from './OrgCard';
 import DailyAvailabilityCard    from './DailyAvailabilityCard';
 import FichasInformativasSection from './FichasInformativasSection';
+import PerfilesVivosSection      from './PerfilesVivosSection';
 import NegocioTabs              from './NegocioTabs';
 import DirectorioEditor         from './DirectorioEditor';
 import type { DirectoryPerson } from '@/lib/helpdesk/folio';
@@ -1285,6 +1286,10 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
                   <div id="fichas-informativas" style={{ scrollMarginTop: 80 }}>
                     <FichasInformativasSection token={token} />
+                  </div>
+
+                  <div id="perfiles-vivos" style={{ scrollMarginTop: 80 }}>
+                    <PerfilesVivosSection token={token} />
                   </div>
                 </>
 

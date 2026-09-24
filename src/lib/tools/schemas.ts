@@ -469,6 +469,64 @@ export const TOOL_SCHEMAS: Record<string, ToolSchema> = {
     channels: ['voice', 'chat', 'email'],
   },
 
+  // ─── Pack perfiles_vivos — memoria persistente por contacto ─────────────────
+  consultar_contacto: {
+    name: 'consultar_contacto',
+    description: 'Consulta el perfil vivo de un contacto (deudor, prospecto, paciente, cliente activo). Úsala al INICIO de cada llamada, chat o correo cuando tengas el teléfono/correo/ID del contacto. Devuelve datos, estado actual, próxima acción pendiente, contadores (interacciones, promesas hechas/cumplidas), sentimiento último y las últimas 5 interacciones con resumen. Te da continuidad histórica para que el cliente sienta que hay memoria y no eres un empleado nuevo cada vez. Si el contacto no existe, lo dices honestamente y ofreces registrar uno nuevo.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        telefono:    { type: 'string', description: 'Teléfono del contacto (cualquier formato: +52..., 52..., 10 dígitos raw).' },
+        correo:      { type: 'string', description: 'Correo electrónico.' },
+        external_id: { type: 'string', description: 'ID del contacto en el CRM/cartera del negocio si el cliente lo dictó.' },
+        nombre:      { type: 'string', description: 'Nombre parcial o completo (fallback fuzzy si no hay otros identificadores).' },
+      },
+      required: [],
+    },
+    channels: ['voice', 'chat', 'email'],
+  },
+
+  registrar_interaccion: {
+    name: 'registrar_interaccion',
+    description: 'Registra una interacción con un contacto vivo al FINAL de la conversación. Úsala cuando cierras la llamada/chat/correo para capturar: resumen, sentimiento del contacto, temas tocados, promesa de pago si hubo, próxima acción acordada, escalación si aplica. El sistema actualiza automáticamente los contadores y el sentimiento último del perfil. Sin esta llamada, la memoria del contacto queda incompleta.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        contacto_id:    { type: 'string', description: 'ID del contacto (obtenido de consultar_contacto).' },
+        tipo:           { type: 'string', description: 'Tipo de interacción: llamada_entrante, llamada_saliente, correo, chat, sms, nota_manual.' },
+        resumen:        { type: 'string', description: '1-2 oraciones de qué pasó en la interacción.' },
+        sentimiento:    { type: 'string', description: 'cooperativo | evasivo | agresivo | frustrado | positivo | neutro.' },
+        temas:          { type: 'array', items: { type: 'string' }, description: 'Temas tocados (ej. pago_prometido, queja_servicio, negociacion).' },
+        promesa_monto:  { type: 'number', description: 'Si prometió pagar, monto en MXN.' },
+        promesa_fecha:  { type: 'string', description: 'Si prometió pagar, fecha límite en YYYY-MM-DD.' },
+        proxima_accion: { type: 'string', description: 'Qué debe pasar después (ej. "confirmar pago viernes", "llamar en 2 semanas").' },
+        escalado_a:     { type: 'string', description: 'Si escalaste, a quién (nombre, área o correo).' },
+        duracion_seg:   { type: 'number', description: 'Duración de la interacción en segundos.' },
+      },
+      required: ['contacto_id', 'tipo'],
+    },
+    channels: ['voice', 'chat', 'email'],
+  },
+
+  actualizar_contacto_estado: {
+    name: 'actualizar_contacto_estado',
+    description: 'Actualiza el estado dinámico del contacto: cambio de estado_actual (ej. promesa_cumplida, legal, inactivo), próxima acción y fecha, capacidad de pago detectada, notas. Úsala cuando confirmas que una promesa se cumplió, cuando escalas a legal, o cuando detectas cambios en la situación del contacto que afectan cómo debemos tratarlo en el futuro.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        contacto_id:              { type: 'string', description: 'ID del contacto.' },
+        estado_actual:            { type: 'string', description: 'Nuevo estado: activo | promesa_pendiente | promesa_rota | legal | pagado | inactivo.' },
+        proxima_accion_at:        { type: 'string', description: 'Cuándo hacer la próxima acción (ISO timestamp).' },
+        proxima_accion_tipo:      { type: 'string', description: 'Qué acción hacer (ej. "confirmar_pago", "llamada_seguimiento", "escalar_legal").' },
+        capacidad_pago_detectada: { type: 'string', description: 'alta | media | baja | desconocida.' },
+        notas:                    { type: 'string', description: 'Notas libres actualizadas sobre el contacto.' },
+        promesa_cumplida:         { type: 'boolean', description: 'true si estás confirmando que una promesa se cumplió (incrementa contador).' },
+      },
+      required: ['contacto_id'],
+    },
+    channels: ['voice', 'chat', 'email'],
+  },
+
 };
 
 // ─── Adapter functions ────────────────────────────────────────────────────────

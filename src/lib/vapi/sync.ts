@@ -154,6 +154,9 @@ const TOOL_HUMAN_LABEL: Record<string, string> = {
   buscar_producto:          'consultar catálogo Notion por SKU/nombre (precio real, no inventado)',
   catalogo_buscar_codigo:   'buscar código de pieza/producto en el catálogo Excel/CSV del cliente (Dropbox, Google Drive u OneDrive)',
   consultar_fichas:'consultar las fichas informativas del negocio (trámites, productos, servicios, procedimientos, etc.)',
+  consultar_contacto:'consultar perfil vivo del contacto con historial de últimas 5 interacciones (memoria persistente por deudor, prospecto, paciente)',
+  registrar_interaccion:'registrar interacción al final de la llamada (resumen, sentimiento, promesa, próxima acción)',
+  actualizar_contacto_estado:'actualizar estado del contacto (promesa cumplida, escalación, próxima acción, capacidad de pago)',
 };
 
 function peerToolCapabilities(peer: TeamPeer): string[] {
@@ -239,32 +242,32 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
   // Nia — recepcionista de 1er contacto. Voice-only: transferencias y encuesta.
   // solicitar_factura queda en Nico/Nox (bug Haiku 4.5 halucinando CFDI 22:35
   // del 2026-08-04). Nia siempre delega vía delegar_tarea.
-  nia:   ['crear_lead', 'crear_contacto_saliente', 'agendar_cita', 'registrar_pedido', 'buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'registrar_encuesta', 'buscar_documento_oficina', 'buscar_correo_enviado', 'agregar_tag_contacto', 'consultar_fichas'],
+  nia:   ['crear_lead', 'crear_contacto_saliente', 'agendar_cita', 'registrar_pedido', 'buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'registrar_encuesta', 'buscar_documento_oficina', 'buscar_correo_enviado', 'agregar_tag_contacto', 'consultar_fichas', 'consultar_contacto', 'registrar_interaccion', 'actualizar_contacto_estado'],
   // Noah — ventas outbound. marcar_no_llamar por regulatorio LFPDPPP. ML tools
   // feature-gated ('mercadolibre') solo suman si org activa la feature.
   // qb_crear_cotizacion agregada 2026-08-19: ventas cotiza directo en QB cuando
   // negocia con cliente y delega el timbrado a Nala.
   // ML tools hidden 2026-08-19: 0 orgs activos, código intacto. Reactivar en preset o via pack mercado_libre (Capa 2) cuando llegue cliente.
-  noah:  ['crear_lead', 'crear_contacto_saliente', 'agregar_tag_contacto', 'registrar_pedido', 'buscar_cliente', 'buscar_directorio', 'enviar_correo', 'llamar_a', 'notificar_transferencia', 'transferir_llamada', 'buscar_documento_oficina', 'buscar_correo_enviado', 'buscar_producto', 'catalogo_buscar_codigo', 'consultar_fichas', 'marcar_no_llamar', 'trigger_outbound_call', 'generar_propuesta_comercial', 'generar_cotizacion', 'generar_correo_estructurado'],
+  noah:  ['crear_lead', 'crear_contacto_saliente', 'agregar_tag_contacto', 'registrar_pedido', 'buscar_cliente', 'buscar_directorio', 'enviar_correo', 'llamar_a', 'notificar_transferencia', 'transferir_llamada', 'buscar_documento_oficina', 'buscar_correo_enviado', 'buscar_producto', 'catalogo_buscar_codigo', 'consultar_fichas', 'consultar_contacto', 'registrar_interaccion', 'actualizar_contacto_estado', 'marcar_no_llamar', 'trigger_outbound_call', 'generar_propuesta_comercial', 'generar_cotizacion', 'generar_correo_estructurado'],
   // Nico — cobranza y fiscal (CFDIs + P&L). Owner del pack invoicing_cfdi.
   // QB tools feature-gated ('quickbooks').
-  nico:  ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'enviar_correo', 'crear_documento', 'enviar_documento_oficina', 'solicitar_factura', 'consultar_factura', 'consultar_fichas', 'generar_correo_estructurado'],
+  nico:  ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'enviar_correo', 'crear_documento', 'enviar_documento_oficina', 'solicitar_factura', 'consultar_factura', 'consultar_fichas', 'consultar_contacto', 'registrar_interaccion', 'actualizar_contacto_estado', 'generar_correo_estructurado'],
   // Nelia — servicio al cliente + contenido postventa. Owner de extraer_voz
   // (insights de cliente) + generar_one_pager (contenido postventa).
   // meefi_* tools están en el preset de cualquier Nelia (role='nelia');
   // el executor las despacha sin gate org-específico. Hoy solo Meefi tiene Nelia.
   nelia: ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'registrar_encuesta', 'enviar_correo', 'buscar_archivo', 'buscar_documento_oficina', 'buscar_correo_enviado', 'enviar_documento_oficina', 'extraer_voz_del_cliente', 'generar_one_pager', 'generar_correo_estructurado', 'generar_reporte_metricas_excel', 'registrar_incidencia', 'registrar_cliente_nuevo', 'verificar_recepcion_incidencia', 'meefi_lookup_user_account', 'meefi_send_password_reset_link', 'meefi_check_transfer_status', 'meefi_initiate_2fa_recovery', 'meefi_capture_bug_report', 'meefi_escalate_to_human', 'meefi_search_help_center'],
   // Neo — helpdesk IT. `llamar_a` para escalar responsable (Scope A A1 CRITICAL #1).
-  neo:   ['crear_ticket', 'consultar_incidentes', 'buscar_directorio', 'buscar_archivo', 'leer_archivo', 'consultar_fichas', 'llamar_a'],
+  neo:   ['crear_ticket', 'consultar_incidentes', 'buscar_directorio', 'buscar_archivo', 'leer_archivo', 'consultar_fichas', 'consultar_contacto', 'registrar_interaccion', 'actualizar_contacto_estado', 'llamar_a'],
   // Nara — municipal (civic reports + trámites externos si feature activa +
   // consulta de fichas técnicas del municipio via RAG cuando el pack
   // fichas_informativas está activo).
-  nara:  ['crear_reporte_civico', 'consultar_reporte_civico', 'actualizar_reporte_civico', 'buscar_cliente', 'registrar_encuesta', 'notificar_transferencia', 'transferir_llamada', 'consultar_catalogo_externo', 'buscar_en_padron_externo', 'enviar_tramite_externo', 'consultar_fichas', 'generar_reporte_metricas_excel'],
+  nara:  ['crear_reporte_civico', 'consultar_reporte_civico', 'actualizar_reporte_civico', 'buscar_cliente', 'registrar_encuesta', 'notificar_transferencia', 'transferir_llamada', 'consultar_catalogo_externo', 'buscar_en_padron_externo', 'enviar_tramite_externo', 'consultar_fichas', 'consultar_contacto', 'registrar_interaccion', 'actualizar_contacto_estado', 'generar_reporte_metricas_excel'],
   // Naia — RRHH. Owner de iniciar_onboarding + HR MVP tools (registrar_falta,
   // consultar_vacaciones, solicitar_permiso, verificar_incidencia).
-  naia:  ['iniciar_onboarding', 'agendar_cita', 'buscar_cliente', 'enviar_correo', 'crear_documento', 'buscar_documento_oficina', 'buscar_correo_enviado', 'list_calendar_events', 'create_calendar_event', 'delete_calendar_event', 'buscar_archivo', 'registrar_falta', 'consultar_vacaciones', 'solicitar_permiso', 'verificar_incidencia', 'consultar_fichas', 'generar_correo_estructurado'],
+  naia:  ['iniciar_onboarding', 'agendar_cita', 'buscar_cliente', 'enviar_correo', 'crear_documento', 'buscar_documento_oficina', 'buscar_correo_enviado', 'list_calendar_events', 'create_calendar_event', 'delete_calendar_event', 'buscar_archivo', 'registrar_falta', 'consultar_vacaciones', 'solicitar_permiso', 'verificar_incidencia', 'consultar_fichas', 'consultar_contacto', 'registrar_interaccion', 'actualizar_contacto_estado', 'generar_correo_estructurado'],
   // Nova — Centro de Coordinación (despacho de campo). Owner de asignar_unidad.
-  nova:  ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'crear_ticket', 'crear_documento', 'buscar_documento_oficina', 'buscar_correo_enviado', 'extraer_voz_del_cliente', 'asignar_unidad_campo', 'consultar_unidades_disponibles', 'consultar_fichas'],
+  nova:  ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'crear_ticket', 'crear_documento', 'buscar_documento_oficina', 'buscar_correo_enviado', 'extraer_voz_del_cliente', 'asignar_unidad_campo', 'consultar_unidades_disponibles', 'consultar_fichas', 'consultar_contacto', 'registrar_interaccion', 'actualizar_contacto_estado'],
   // Nox — coordinador director (rol hub por diseño, excepción a tope 12-15).
   // Contract drafts, sheets, save_to_drive gated por features respectivas.
   // Pack ciclo_oc_cfdi (shared con Nala + escalación humana + admin QB de departamentos).
@@ -521,6 +524,78 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
           { type: 'request-start', content: 'Permítame consultar la ficha oficial para darle información precisa.' },
           { type: 'request-start', content: 'Un momento por favor, voy a revisar la información oficial sobre este tema para orientarle bien.' },
         ],
+      };
+
+    case 'consultar_contacto':
+      return {
+        type: 'function',
+        function: {
+          name: 'consultar_contacto',
+          description: 'Consulta el perfil vivo del contacto (deudor, prospecto, paciente, cliente activo) con historial de últimas 5 interacciones. Úsala al INICIO de cada llamada cuando ya tengas el teléfono, correo o ID del contacto. Devuelve datos, estado actual, próxima acción pendiente, contadores (interacciones, promesas hechas/cumplidas), sentimiento último y las últimas 5 interacciones con resumen. Te da continuidad histórica para que el cliente sienta memoria y no seas un empleado nuevo cada vez. Si el contacto no existe, dilo honestamente y ofrece registrar uno nuevo.',
+          parameters: {
+            type: 'object',
+            properties: {
+              telefono:    { type: 'string', description: 'Teléfono del contacto (cualquier formato).' },
+              correo:      { type: 'string', description: 'Correo electrónico.' },
+              external_id: { type: 'string', description: 'ID del contacto en el CRM/cartera del negocio.' },
+              nombre:      { type: 'string', description: 'Nombre parcial o completo (fallback fuzzy).' },
+            },
+          },
+        },
+        server: server('exec/consultar_contacto'),
+        messages: [
+          { type: 'request-start', content: 'Un momento, déjeme revisar su expediente para darle continuidad a lo que ya habíamos hablado.' },
+          { type: 'request-start', content: 'Permítame consultar sus datos y el historial que tenemos con usted.' },
+        ],
+      };
+
+    case 'registrar_interaccion':
+      return {
+        type: 'function',
+        function: {
+          name: 'registrar_interaccion',
+          description: 'Registra la interacción actual al FINAL de la conversación. Captura resumen, sentimiento, temas, promesa de pago si hubo, próxima acción y escalación si aplica. Sin esta llamada, la memoria del contacto queda incompleta y en la próxima llamada no habrá continuidad.',
+          parameters: {
+            type: 'object',
+            properties: {
+              contacto_id:    { type: 'string', description: 'ID del contacto (obtenido de consultar_contacto).' },
+              tipo:           { type: 'string', description: 'llamada_entrante | llamada_saliente | correo | chat | sms | nota_manual.' },
+              resumen:        { type: 'string', description: '1-2 oraciones de qué pasó.' },
+              sentimiento:    { type: 'string', description: 'cooperativo | evasivo | agresivo | frustrado | positivo | neutro.' },
+              temas:          { type: 'array', items: { type: 'string' } },
+              promesa_monto:  { type: 'number', description: 'Si prometió pagar, monto en MXN.' },
+              promesa_fecha:  { type: 'string', description: 'Fecha límite YYYY-MM-DD.' },
+              proxima_accion: { type: 'string' },
+              escalado_a:     { type: 'string' },
+              duracion_seg:   { type: 'number' },
+            },
+            required: ['contacto_id', 'tipo'],
+          },
+        },
+        server: server('exec/registrar_interaccion'),
+      };
+
+    case 'actualizar_contacto_estado':
+      return {
+        type: 'function',
+        function: {
+          name: 'actualizar_contacto_estado',
+          description: 'Actualiza el estado dinámico del contacto: cambio de estado_actual (promesa_cumplida, legal, inactivo), próxima acción, capacidad de pago detectada, notas. Úsala cuando confirmas una promesa cumplida, escalas a legal, o detectas cambios en la situación del contacto.',
+          parameters: {
+            type: 'object',
+            properties: {
+              contacto_id:              { type: 'string' },
+              estado_actual:            { type: 'string', description: 'activo | promesa_pendiente | promesa_rota | legal | pagado | inactivo.' },
+              proxima_accion_at:        { type: 'string', description: 'ISO timestamp.' },
+              proxima_accion_tipo:      { type: 'string' },
+              capacidad_pago_detectada: { type: 'string', description: 'alta | media | baja | desconocida.' },
+              notas:                    { type: 'string' },
+              promesa_cumplida:         { type: 'boolean', description: 'true incrementa contador.' },
+            },
+            required: ['contacto_id'],
+          },
+        },
+        server: server('exec/actualizar_contacto_estado'),
       };
 
     case 'marcar_no_llamar': return { type: 'function', function: { name: 'marcar_no_llamar', description: 'Marca un número de teléfono como "no volver a llamar". Úsala inmediatamente cuando el ciudadano diga que no quiere recibir más llamadas ("no me llamen", "quítenme de la lista", "no me interesa"). Los futuros crons de llamadas salientes respetarán esta marca. Después de llamar esta herramienta, termina la llamada con cortesía sin insistir.', parameters: { type: 'object', properties: { telefono: { type: 'string', description: 'Número de teléfono del ciudadano tal como está en el sistema (con o sin lada). Se normaliza automáticamente en el servidor.' }, motivo: { type: 'string', description: 'Motivo breve de la solicitud (ej: "no interesado", "número equivocado", "ya no vive aquí"). Opcional.' } }, required: ['telefono'] } }, server: server('marcar-no-llamar') };

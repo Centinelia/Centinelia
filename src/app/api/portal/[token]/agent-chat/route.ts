@@ -1293,6 +1293,60 @@ const CONSULTAR_FICHAS_TOOL: Anthropic.Tool = {
   },
 };
 
+// ─── Pack perfiles_vivos — memoria persistente por contacto del negocio ─────
+const CONSULTAR_CONTACTO_TOOL: Anthropic.Tool = {
+  name: 'consultar_contacto',
+  description: 'Consulta el perfil vivo de un contacto (deudor, prospecto, paciente, cliente activo) con historial de últimas 5 interacciones. Úsala al INICIO cuando ya tienes el teléfono/correo/ID del contacto. Devuelve datos, estado actual, próxima acción pendiente, contadores (interacciones, promesas hechas/cumplidas), sentimiento último y las últimas 5 interacciones. Da continuidad histórica para que el cliente sienta memoria y no seas un empleado nuevo cada vez.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      telefono:    { type: 'string' },
+      correo:      { type: 'string' },
+      external_id: { type: 'string' },
+      nombre:      { type: 'string' },
+    },
+  },
+};
+
+const REGISTRAR_INTERACCION_TOOL: Anthropic.Tool = {
+  name: 'registrar_interaccion',
+  description: 'Registra la interacción al FINAL de la conversación: resumen, sentimiento, temas, promesa (monto + fecha), próxima acción, escalación. Actualiza contadores del perfil. Sin este registro, la memoria del contacto queda incompleta.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      contacto_id:    { type: 'string' },
+      tipo:           { type: 'string', description: 'llamada_entrante | llamada_saliente | correo | chat | sms | nota_manual.' },
+      resumen:        { type: 'string' },
+      sentimiento:    { type: 'string' },
+      temas:          { type: 'array', items: { type: 'string' } },
+      promesa_monto:  { type: 'number' },
+      promesa_fecha:  { type: 'string' },
+      proxima_accion: { type: 'string' },
+      escalado_a:     { type: 'string' },
+      duracion_seg:   { type: 'number' },
+    },
+    required: ['contacto_id', 'tipo'],
+  },
+};
+
+const ACTUALIZAR_CONTACTO_ESTADO_TOOL: Anthropic.Tool = {
+  name: 'actualizar_contacto_estado',
+  description: 'Actualiza estado dinámico del contacto: estado_actual (promesa_cumplida, legal, inactivo), próxima acción, capacidad de pago, notas. Confirma promesa cumplida.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      contacto_id:              { type: 'string' },
+      estado_actual:            { type: 'string' },
+      proxima_accion_at:        { type: 'string' },
+      proxima_accion_tipo:      { type: 'string' },
+      capacidad_pago_detectada: { type: 'string' },
+      notas:                    { type: 'string' },
+      promesa_cumplida:         { type: 'boolean' },
+    },
+    required: ['contacto_id'],
+  },
+};
+
 // ─── Nami — pack inventory_excel (piloto AC Proyectos) ─────────────────────
 const INV_BUSCAR_POR_SERIE_TOOL: Anthropic.Tool = {
   name: 'inv_buscar_por_serie',
@@ -1816,6 +1870,9 @@ export const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
   buscar_producto: BUSCAR_PRODUCTO_TOOL,
   catalogo_buscar_codigo: CATALOGO_BUSCAR_CODIGO_TOOL,
   consultar_fichas: CONSULTAR_FICHAS_TOOL,
+  consultar_contacto:          CONSULTAR_CONTACTO_TOOL,
+  registrar_interaccion:       REGISTRAR_INTERACCION_TOOL,
+  actualizar_contacto_estado:  ACTUALIZAR_CONTACTO_ESTADO_TOOL,
   revisar_incidentes_plataforma: REVISAR_INCIDENTES_PLATAFORMA_TOOL,
   crear_incidente:               CREAR_INCIDENTE_TOOL,
   responder_cliente_afectado:    RESPONDER_CLIENTE_AFECTADO_TOOL,
