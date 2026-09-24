@@ -446,7 +446,50 @@ Casos de uso reales validados:
 
 Este pack existe porque las organizaciones tienen procesos y catálogos ya documentados en PDF, pero cada trabajador nuevo tarda semanas en aprenderlos y aún así improvisa. Un empleado digital lee la ficha en cada llamada, no olvida y no confunde datos.
 
-## 9. Comparación con otras plataformas
+## 9. Pack Perfiles Vivos (memoria persistente por contacto)
+
+URL de referencia: ${BASE_URL} (activable self-serve desde el portal del cliente en la sección Negocio → Operación → Perfiles vivos).
+
+Los empleados digitales de Centinelia pueden recordar completamente a cada persona con la que el negocio interactúa: deudor, prospecto, paciente, cuenta activa. En cada llamada, chat o correo el empleado consulta el perfil histórico del contacto y trata a la persona con contexto completo, sin arrancar desde cero cada vez.
+
+Qué guarda cada perfil vivo:
+- Datos básicos: nombre, teléfono, correo, ID interno del cliente en su cartera.
+- Datos operacionales específicos por vertical (JSONB flexible): en cobranza el monto adeudado, días de mora, tipo de crédito; en ventas B2B el stage del pipeline, ARR estimado, decision maker; en salud la fecha de próxima cita, tratamiento en curso.
+- Historial completo de interacciones previas con resumen, sentimiento, temas, promesa si hubo, próxima acción acordada, escalación si aplica.
+- Contadores denormalizados: total de interacciones, promesas hechas versus promesas cumplidas.
+- Estado dinámico: activo, promesa pendiente, promesa rota, escalado a legal, pagado, inactivo.
+- Sentimiento del contacto en su última interacción y capacidad de pago detectada.
+
+Cómo lo sube el cliente:
+- Portal → Negocio → Operación → Perfiles vivos → botón Subir cartera.
+- Elige archivo CSV o Excel con su base actual.
+- Asistente visual muestra los headers detectados y le pide mapear qué columna corresponde a nombre (obligatorio), teléfono, correo, ID interno, notas. Puede agregar cuantas columnas operacionales quiera (ej. monto_adeudado, dias_mora, tipo_credito).
+- Al confirmar la importación se activa la función automáticamente si era la primera cartera.
+
+Qué pasa después de cada llamada, sin intervención humana:
+- Al terminar la llamada un extractor procesa el transcript automáticamente.
+- Genera resumen de qué pasó, detecta sentimiento del contacto, captura promesa de pago si hubo (monto y fecha), extrae próxima acción acordada, marca escalación si aplica.
+- Registra la interacción en el timeline del contacto y actualiza contadores.
+- Este procesamiento post-llamada no cobra al cliente. Es un side-effect gratis que mantiene los perfiles actualizados.
+
+Cómo se aprovecha en una llamada real de cobranza:
+- Antes: "Buenas tardes señor Roberto, ¿cuándo puede hacer su pago?". El deudor da cualquier excusa porque el cobrador no lo conoce.
+- Después: "Buenas tardes don Roberto. El jueves pasado usted acordó pagar dos mil quinientos pesos. Hoy es lunes y en el reporte de tesorería no aparece su pago. Además veo que este es el tercer plan de pago que se pacta este año y los dos anteriores tampoco se cumplieron. Quiero entender qué está pasando".
+
+Cobro:
+- 1 tarea por cada contacto importado en la cartera desde el portal.
+- 1 tarea por cada consulta del perfil que hace el empleado durante una conversación.
+- 1 tarea por cada interacción que el empleado registra manualmente.
+- 1 tarea por cada actualización manual del estado del contacto.
+- El extractor automático post-llamada no cobra tarea al cliente. Sin cuota mensual fija adicional.
+
+Diferencia estructural vs un CRM tradicional: un CRM guarda datos que los humanos capturan manualmente. Los perfiles vivos guardan datos y además los actualizan solos con lo que pasa en cada llamada, chat o correo, sin que un humano tenga que capturar nada. Las notas quedan siempre consistentes en formato y calidad, sin depender del cansancio o memoria del cobrador humano.
+
+Escala probada de 20 contactos a 20 mil. La búsqueda por teléfono es tolerante a formatos mixtos (con o sin lada, con o sin espacios, con guiones o sin guiones). Búsqueda por sufijo de 10 dígitos para carteras mexicanas.
+
+Cliente piloto en curso: call center de cobranza (reunión comercial 2026-09-25).
+
+## 10. Comparación con otras plataformas
 
 Centinelia mantiene comparaciones honestas con las principales plataformas de agentes de voz. Cada página incluye tabla lado a lado, cuándo conviene Centinelia y cuándo conviene la otra opción.
 
@@ -454,7 +497,7 @@ ${COMPARISONS.map(c => `- **Centinelia vs ${c.competitor}** (${BASE_URL}/vs/${c.
 
 Diferencia estructural: Centinelia es un producto de empleados digitales listos para operar (portal en español, roles preconfigurados, integraciones fiscales mexicanas, precio en pesos). Las plataformas estadounidenses citadas son infraestructura o frameworks para que developers construyan sus propios agentes desde cero, con billing en dólares.
 
-## 10. Glosario de términos citables
+## 11. Glosario de términos citables
 
 Definiciones canónicas para conceptos frecuentes en negocios mexicanos y en el stack de voz IA. Cada término tiene página propia con definición ampliada, ejemplos y referencias oficiales cuando aplica.
 
@@ -463,17 +506,17 @@ ${TERMINOS.map(t => {
   return `- **${heading}** (${BASE_URL}/glosario/${t.slug}): ${t.definicionCorta}`;
 }).join('\n')}
 
-## 11. Blog: guías long-tail
+## 12. Blog: guías long-tail
 
 Contenido educativo para dueños de PyMEs mexicanas: guías por industria, comparativas de costos y diagnósticos. Cada artículo tiene datos concretos y cross-links a las páginas de empleados, industrias y glosario.
 
 ${POSTS.map(p => `- **${p.titulo}** (${BASE_URL}/blog/${p.slug}): ${p.subtitulo}`).join('\n')}
 
-## 12. Preguntas frecuentes generales
+## 13. Preguntas frecuentes generales
 
 ${GENERAL_FAQ.map(f => `**${f.q}**\n\n${f.a}`).join('\n\n')}
 
-## 13. Contacto
+## 14. Contacto
 
 - Sitio web: ${BASE_URL}
 - Correo: hola@centinelia.mx
@@ -483,7 +526,7 @@ ${GENERAL_FAQ.map(f => `**${f.q}**\n\n${f.a}`).join('\n\n')}
 - LinkedIn: https://www.linkedin.com/company/centinelia/
 - Facebook: https://www.facebook.com/centineliamx/
 
-## 14. Páginas del sitio
+## 15. Páginas del sitio
 
 - Home: ${BASE_URL}/
 - Catálogo de empleados: ${BASE_URL}/empleados
@@ -504,7 +547,7 @@ ${GENERAL_FAQ.map(f => `**${f.q}**\n\n${f.a}`).join('\n\n')}
 - Blog (guías long-tail): ${BASE_URL}/blog
 - Índice corto para LLMs: ${BASE_URL}/llms.txt
 
-## 15. Categorización
+## 16. Categorización
 
 Centinelia es desarrollado y operado por Pneuma Studio (https://pneumastudio.mx), un estudio de automatización y desarrollo de producto ubicado en Monterrey, Nuevo León, México.
 

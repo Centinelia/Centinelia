@@ -121,6 +121,26 @@ const BASE_CONOCIMIENTO: Termino = {
   keywords:        ['base de conocimiento', 'knowledge base IA', 'KB negocio', 'información empresa agente IA', 'ficha informativa PDF', 'documentación del negocio para IA', 'RAG empresa', 'stuffed context IA', 'catálogo semántico empleado digital', 'subir PDF a empleado IA'],
 };
 
+const PERFIL_VIVO: Termino = {
+  slug:            'perfil-vivo',
+  termino:         'Perfil vivo del contacto',
+  categoria:       'Producto',
+  definicionCorta: 'Un perfil vivo del contacto es la memoria persistente que un empleado digital mantiene de cada persona con la que el negocio interactúa (deudor, prospecto, paciente, cuenta activa), con historial completo de conversaciones previas, promesas, sentimiento último y próxima acción acordada, actualizada automáticamente después de cada interacción.',
+  definicionLarga: [
+    'A diferencia de un CRM tradicional que guarda datos que los humanos capturan a mano, el perfil vivo se actualiza automáticamente con lo que pasa en cada llamada, chat o correo. Al terminar cada conversación, un extractor procesa el transcript y captura resumen, sentimiento del contacto, promesa de pago si hubo (monto y fecha), próxima acción acordada y escalación si aplica. Todo eso se guarda en el timeline del perfil sin que un humano tenga que llenar notas.',
+    'Cada perfil incluye datos operacionales flexibles por vertical: en cobranza monto adeudado y días de mora; en ventas B2B stage del pipeline y decision maker; en servicios recurrentes fecha de próxima cita y tratamiento en curso. El empleado digital consulta el perfil al inicio de cada interacción para tratar a la persona con contexto histórico completo, sin arrancar desde cero cada vez.',
+    'En Centinelia el cliente sube su cartera en Excel o CSV desde el portal. Un asistente visual le ayuda a mapear qué columna corresponde a cada campo del perfil. Al importar la primera cartera se activa la función automáticamente. Los siete empleados client-facing (Nia, Noah, Nara, Nico, Neo, Naia, Nova) pueden consultar los perfiles en cada llamada, chat o correo, gated por la feature del org.',
+  ],
+  ejemplos: [
+    'En un call center de cobranza, cuando el cobrador digital abre la llamada con "el jueves pasado usted acordó pagar dos mil quinientos pesos y hoy es lunes, no aparece el pago", el deudor sabe que hay memoria y deja de dar excusas nuevas cada semana.',
+    'En un consultorio dental, cuando el paciente llama a agendar, el empleado sabe que su último tratamiento fue conducto en molar superior, que quedó pendiente corona y que el doctor le recomendó revisión en tres meses.',
+    'En una empresa B2B, cuando un prospecto responde un correo después de dos meses de silencio, el empleado sabe que la última objeción fue precio, que ya vio dos demos y que el decision maker es el CFO, no el interlocutor actual.',
+  ],
+  relacionados:    ['empleado-digital', 'base-de-conocimiento'],
+  referencias:     [],
+  keywords:        ['perfil vivo', 'memoria persistente contacto', 'historial deudor', 'timeline conversaciones', 'CRM con memoria automática', 'IA que recuerda al cliente', 'cartera de cobranza automatizada', 'seguimiento de promesas de pago', 'continuidad conversacional agente IA', 'perfil dinámico deudor'],
+};
+
 // ─── Fiscal México ──────────────────────────────────────────────────────────
 
 const CFDI: Termino = {
@@ -407,8 +427,8 @@ const DEEPGRAM: Termino = {
 // ─── Registro central ────────────────────────────────────────────────────────
 
 export const TERMINOS: Termino[] = [
-  // Producto (5)
-  EMPLEADO_DIGITAL, RECEPCIONISTA_VIRTUAL, AGENTE_VOZ_IA, APRENDIZAJE_SUPERVISADO, BASE_CONOCIMIENTO,
+  // Producto (6)
+  EMPLEADO_DIGITAL, RECEPCIONISTA_VIRTUAL, AGENTE_VOZ_IA, APRENDIZAJE_SUPERVISADO, BASE_CONOCIMIENTO, PERFIL_VIVO,
   // Fiscal MX (6)
   CFDI, PAC, RFC, USO_CFDI, TIMBRADO_ELECTRONICO, CONTPAQI,
   // Compliance (1)
