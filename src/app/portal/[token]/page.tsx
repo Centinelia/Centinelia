@@ -54,6 +54,7 @@ import IntegrationsHub           from './IntegrationsHub';
 import PoliciesSection          from './PoliciesSection';
 import OrgCard                  from './OrgCard';
 import DailyAvailabilityCard    from './DailyAvailabilityCard';
+import FichasInformativasSection from './FichasInformativasSection';
 import NegocioTabs              from './NegocioTabs';
 import DirectorioEditor         from './DirectorioEditor';
 import type { DirectoryPerson } from '@/lib/helpdesk/folio';
@@ -1282,6 +1283,10 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
                   <div id="disponibilidad-diaria" style={{ scrollMarginTop: 80 }}>
                     <DailyAvailabilityCard token={token} />
+                  </div>
+
+                  <div id="fichas-informativas" style={{ scrollMarginTop: 80 }}>
+                    <FichasInformativasSection token={token} />
                   </div>
                 </>
 
