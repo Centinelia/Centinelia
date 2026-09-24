@@ -13,7 +13,6 @@ import MercadoLibreSection       from './MercadoLibreSection';
 import QuickBooksSection         from './QuickBooksSection';
 import GoogleWorkspaceCard       from './GoogleWorkspaceCard';
 import FacturacionSection        from './oficina/integraciones/facturacion/FacturacionSection';
-import FichasInformativasSection from './FichasInformativasSection';
 // StorageSection removido 2026-09-04 (Dropbox / Drive / OneDrive ahora per-agent).
 
 /* ── types ─────────────────────────────────────────────────────────────── */
@@ -24,7 +23,6 @@ interface EmailStatus  { provider: 'gmail' | 'outlook'; email?: string }
 interface MLStatus     { connected: boolean; nickname: string | null }
 interface QBStatus     { connected: boolean; company_name: string | null }
 interface SFStatus     { connected: boolean }
-interface FichasStatus { enabled: boolean; count: number }
 // DropboxStatus removido 2026-09-04 (org-level dropbox descontinuado en UI).
 interface HubStatus    {
   cal:        CalStatus | null;
@@ -34,7 +32,6 @@ interface HubStatus    {
   ml:         MLStatus | null;
   qb:         QBStatus | null;
   sf:         SFStatus | null;
-  fichas:     FichasStatus | null;
 }
 
 interface PacksInfo {
@@ -502,7 +499,7 @@ interface Props {
 
 export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }: Props) {
   const [status, setStatus] = useState<HubStatus>({
-    cal: null, notion: null, emails: [], teamsEmail: null, ml: null, qb: null, sf: null, fichas: null,
+    cal: null, notion: null, emails: [], teamsEmail: null, ml: null, qb: null, sf: null,
   });
   const [statusLoaded, setStatusLoaded] = useState(false);
   const [packsInfo, setPacksInfo] = useState<PacksInfo | null>(null);
@@ -539,8 +536,7 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
           ? fetch(`/api/portal/${token}/teams`).then(r => r.json()).catch(() => null)
           : Promise.resolve(null),
         fetch(`/api/portal/${token}/invoicing/config`).then(r => r.json()).catch(() => null),
-        fetch(`/api/portal/${token}/fichas`).then(r => r.json()).catch(() => null),
-      ]).then(([calData, notionData, emailData, mlData, qbData, teamsData, sfData, fichasData]) => {
+      ]).then(([calData, notionData, emailData, mlData, qbData, teamsData, sfData]) => {
         if (cancelled) return;
         setStatus({
           cal:        calData    ?? null,
@@ -550,9 +546,6 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
           ml:         mlData    ?? null,
           qb:         qbData    ?? null,
           sf:         sfData    ?? null,
-          fichas:     fichasData
-            ? { enabled: fichasData.enabled === true, count: Array.isArray(fichasData.fichas) ? fichasData.fichas.length : 0 }
-            : null,
         });
         setStatusLoaded(true);
       });
@@ -589,10 +582,6 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
     ? 'Solución Factible · Timbrado CFDI 4.0'
     : 'Elige tu proveedor y emite CFDI 4.0 automáticamente';
 
-  const fichasSubtitle = status.fichas?.enabled
-    ? `${status.fichas.count} ${status.fichas.count === 1 ? 'ficha cargada' : 'fichas cargadas'}`
-    : 'Sube documentos oficiales para que tu equipo responda con base en ellos';
-
   // buildStorageSubtitle removido 2026-09-04 — Storage row eliminado.
 
   /* ── summary caps ───────────────────────────────────────────────────── */
@@ -603,8 +592,7 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
     // en su configurar. Ver [[org-level-email-deprecated]].
     // Calendario aquí es solo org-level (Cal.com / Calendly). Google Calendar y
     // Outlook Calendar son per-empleado. Ver .brain/decisions/2026-09-04-...
-    { id: 'calendario',      label: 'Calendario',        connected: !!status.cal?.calendar_type },
-    { id: 'fichas',          label: 'Fichas informativas', connected: !!(status.fichas?.enabled && status.fichas.count > 0) },
+    { id: 'calendario',  label: 'Calendario',  connected: !!status.cal?.calendar_type },
     // 'crm' (Notion / Conocimiento del cliente) hidden 2026-09-07: nadie lo usa
     // en prod. NotionSection y schemas preservados en código para reactivación futura.
     // 'mensajeria' (Teams) hidden 2026-09-07: mismo motivo. TeamsSection preservado.
@@ -664,14 +652,6 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
           <IntegrationsSection token={token} plan={plan} />
         </div>
       ),
-    },
-    {
-      key: 'fichas',
-      icon: <FileText size={16} style={{ color: '#6C3BFF' }} />,
-      label: 'Fichas informativas',
-      subtitle: fichasSubtitle,
-      connected: !!(status.fichas?.enabled && status.fichas.count > 0),
-      children: <FichasInformativasSection token={token} />,
     },
     // 'crm' (Notion / Conocimiento del cliente) row hidden 2026-09-07: nadie lo
     // usa en prod. NotionSection + NotionSchemasSection preservados en código para

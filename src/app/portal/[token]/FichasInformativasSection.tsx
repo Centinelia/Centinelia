@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { FileText, Upload, Trash2, Edit2, Check, X, Loader2, Link as LinkIcon, Mail, Phone } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { FileText, Upload, Trash2, Edit2, Check, X, Loader2, Link as LinkIcon, Mail, Phone, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+
+const PAGE_SIZE = 20;
 
 interface Ficha {
   id:                    string;
@@ -38,6 +40,8 @@ export default function FichasInformativasSection({ token }: Props) {
   const [uploading,setUploading]= useState(false);
   const [msg,      setMsg]      = useState<string | null>(null);
   const [error,    setError]    = useState<string | null>(null);
+  const [query,    setQuery]    = useState('');
+  const [page,     setPage]     = useState(0);
 
   const loadFichas = useCallback(async () => {
     setLoading(true);
@@ -79,6 +83,29 @@ export default function FichasInformativasSection({ token }: Props) {
       setUploading(false);
     }
   }
+
+  // Filtro por búsqueda: match parcial (case-insensitive) contra título, código,
+  // dependencia, unidad, contactos y liga. Suficiente para catálogos hasta ~1000
+  // fichas sin necesitar índice remoto.
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return fichas;
+    return fichas.filter((f) => {
+      const hay = [
+        f.titulo, f.codigo, f.dependencia, f.unidad_administrativa,
+        f.contacto_nombre, f.contacto_puesto, f.contacto_correo,
+        f.contacto_telefono, f.contacto_extension, f.liga_en_linea,
+      ].filter(Boolean).join(' ').toLowerCase();
+      return hay.includes(q);
+    });
+  }, [fichas, query]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage   = Math.min(page, totalPages - 1);
+  const visible    = filtered.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE);
+
+  // Reset paginación cuando cambia el filtro (evita quedar en página 3 tras filtrar a 5 resultados).
+  useEffect(() => { setPage(0); }, [query, fichas.length]);
 
   async function handleDelete(ficha: Ficha) {
     if (!confirm(`¿Borrar la ficha "${ficha.titulo}"? Esta acción no se puede deshacer.`)) return;
@@ -153,7 +180,35 @@ export default function FichasInformativasSection({ token }: Props) {
         </div>
       )}
 
-      <div className="flex flex-col gap-2 mt-2">
+      {fichas.length > 0 && (
+        <div className="flex items-center gap-2 rounded-lg px-3 py-2" style={{ background: '#FFFFFF', border: '1px solid #E8E3F5' }}>
+          <Search size={14} style={{ color: '#9B8FB5' }} />
+          <input
+            type="text"
+            placeholder="Buscar por título, código, contacto, dependencia…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="flex-1 text-sm bg-transparent outline-none"
+            style={{ color: '#1A0A3B' }}
+          />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery('')}
+              className="p-1 rounded hover:opacity-80"
+              style={{ color: '#9B8FB5' }}
+              aria-label="Limpiar búsqueda"
+            >
+              <X size={12} />
+            </button>
+          )}
+          <span className="text-xs whitespace-nowrap" style={{ color: '#4A3B6B' }}>
+            {filtered.length} de {fichas.length}
+          </span>
+        </div>
+      )}
+
+      <div className="flex flex-col gap-2">
         {loading && (
           <div className="text-sm py-6 text-center flex items-center justify-center gap-2" style={{ color: '#4A3B6B' }}>
             <Loader2 size={16} className="animate-spin" />
@@ -165,7 +220,12 @@ export default function FichasInformativasSection({ token }: Props) {
             Aún no hay fichas cargadas. Sube la primera para arrancar.
           </div>
         )}
-        {fichas.map((f) => (
+        {!loading && fichas.length > 0 && filtered.length === 0 && (
+          <div className="text-sm py-6 text-center rounded-lg" style={{ color: '#4A3B6B', background: '#FFFFFF', border: '1px dashed #E8E3F5' }}>
+            Ninguna ficha coincide con "{query}". Prueba con otro término.
+          </div>
+        )}
+        {visible.map((f) => (
           <FichaCard
             key={f.id}
             ficha={f}
@@ -175,6 +235,46 @@ export default function FichasInformativasSection({ token }: Props) {
           />
         ))}
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between gap-2 mt-1">
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            disabled={safePage === 0}
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity"
+            style={{
+              background:  '#FFFFFF',
+              color:       '#1A0A3B',
+              border:      '1px solid #E8E3F5',
+              opacity:     safePage === 0 ? 0.4 : 1,
+              cursor:      safePage === 0 ? 'not-allowed' : 'pointer',
+            }}
+          >
+            <ChevronLeft size={14} />
+            Anterior
+          </button>
+          <span className="text-xs" style={{ color: '#4A3B6B' }}>
+            Página {safePage + 1} de {totalPages} · mostrando {visible.length} de {filtered.length}
+          </span>
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+            disabled={safePage >= totalPages - 1}
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity"
+            style={{
+              background:  '#FFFFFF',
+              color:       '#1A0A3B',
+              border:      '1px solid #E8E3F5',
+              opacity:     safePage >= totalPages - 1 ? 0.4 : 1,
+              cursor:      safePage >= totalPages - 1 ? 'not-allowed' : 'pointer',
+            }}
+          >
+            Siguiente
+            <ChevronRight size={14} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -227,24 +327,26 @@ function FichaCard({ ficha, token, onDelete, onEdited }: { ficha: Ficha; token: 
             {ficha.dependencia ? ` · ${ficha.dependencia}` : ''}
           </div>
         </div>
-        <div className="flex gap-1">
+        <div className="flex gap-1.5">
           <button
             type="button"
             onClick={() => setEditing((v) => !v)}
-            className="p-1.5 rounded hover:opacity-80"
-            style={{ color: '#6C3BFF' }}
+            className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors"
+            style={{ color: '#6C3BFF', background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.2)' }}
             aria-label="Editar"
           >
-            <Edit2 size={14} />
+            <Edit2 size={12} />
+            Editar
           </button>
           <button
             type="button"
             onClick={onDelete}
-            className="p-1.5 rounded hover:opacity-80"
-            style={{ color: '#DC2626' }}
-            aria-label="Borrar"
+            className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors"
+            style={{ color: '#DC2626', background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.2)' }}
+            aria-label="Eliminar"
           >
-            <Trash2 size={14} />
+            <Trash2 size={12} />
+            Eliminar
           </button>
         </div>
       </div>
