@@ -28,6 +28,12 @@ const NIA_CONFIGS: MeerkatConfigVersions = {
   // v2: primer battle test del pilar 3. Cambio minimo (temperature 0.35 -> 0.36)
   // para validar el flujo goldens -> flag rollout gradual -> llamada real -> observabilidad.
   2: { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.36, maxTokens: 400, speed: 0.91, minChars: 25, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3' },
+  // v3 2026-09-24: Turbo -> Flash v2.5 para bajar consumo de creditos ElevenLabs.
+  // Baseline previo: Nia Municipio Santiago consumia 60% del volumen (59.4 min/7d),
+  // pace 2.08x contra el plan Creator. Flash v2.5 es ~50% mas barato en creditos que
+  // Turbo y ya vive en 6 meerkats (Nara, Naia, Neo, Nova, Nox, Niva) sin issues.
+  // Solo cambia voiceModel; todo lo demas identico a v2.
+  3: { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.36, maxTokens: 400, speed: 0.91, minChars: 25, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-3' },
 };
 
 const NOAH_CONFIGS: MeerkatConfigVersions = {
@@ -64,6 +70,12 @@ const NELIA_CONFIGS: MeerkatConfigVersions = {
   // nova-3 confundió Charro→Carro, Meche→Mertxe, Fondita→Condita. nova-2 tiene
   // +latencia pero mejor accuracy en dialectos MX + nombres.
   2: { provider: 'anthropic', model: 'claude-sonnet-4-6',       temperature: 0.40, maxTokens: 200, speed: 0.98, minChars: 28, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-2' },
+  // v3 2026-09-24: Turbo -> Flash v2.5 para bajar consumo de creditos ElevenLabs.
+  // Baseline previo: Nelia Tortilleria consumia 33% del volumen (33.5 min/7d), segundo
+  // consumidor solo despues de Nia Municipio. Flash v2.5 ~50% mas barato que Turbo, ya
+  // battle-tested en 6 meerkats. Sonnet 4.6 + nova-2 se conservan (razones documentadas
+  // en v2). Solo cambia voiceModel.
+  3: { provider: 'anthropic', model: 'claude-sonnet-4-6',       temperature: 0.40, maxTokens: 200, speed: 0.98, minChars: 28, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
 };
 
 const NARA_CONFIGS: MeerkatConfigVersions = {
