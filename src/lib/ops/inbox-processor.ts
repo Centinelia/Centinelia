@@ -465,6 +465,57 @@ NO la uses para:
       required: ['query'],
     },
   },
+  // Pack perfiles_vivos — memoria persistente por contacto para dar continuidad
+  // en correos consecutivos con el mismo deudor/prospecto/paciente.
+  {
+    name:        'consultar_contacto',
+    description: 'Consulta el perfil vivo del contacto (deudor, prospecto, paciente, cuenta activa) con las últimas 5 interacciones. Úsala AL INICIO del proceso de respuesta cuando ya tienes el correo o teléfono del contacto, para conocer historial, promesas previas, sentimiento último y próxima acción pendiente. Da continuidad para que el correo suene informado y no un empleado nuevo.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        telefono:    { type: 'string' },
+        correo:      { type: 'string' },
+        external_id: { type: 'string' },
+        nombre:      { type: 'string' },
+      },
+    },
+  },
+  {
+    name:        'registrar_interaccion',
+    description: 'Registra la interacción actual (correo) al FINAL del envío. Captura resumen, sentimiento, temas, promesa si hubo, próxima acción, escalación. Sin esta llamada, la memoria del contacto queda incompleta.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        contacto_id:    { type: 'string' },
+        tipo:           { type: 'string', description: 'Para email siempre "correo".' },
+        resumen:        { type: 'string' },
+        sentimiento:    { type: 'string' },
+        temas:          { type: 'array', items: { type: 'string' } },
+        promesa_monto:  { type: 'number' },
+        promesa_fecha:  { type: 'string' },
+        proxima_accion: { type: 'string' },
+        escalado_a:     { type: 'string' },
+      },
+      required: ['contacto_id', 'tipo'],
+    },
+  },
+  {
+    name:        'actualizar_contacto_estado',
+    description: 'Actualiza estado dinámico del contacto: estado_actual, próxima acción, capacidad de pago, notas. Confirma promesa cumplida.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        contacto_id:              { type: 'string' },
+        estado_actual:            { type: 'string' },
+        proxima_accion_at:        { type: 'string' },
+        proxima_accion_tipo:      { type: 'string' },
+        capacidad_pago_detectada: { type: 'string' },
+        notas:                    { type: 'string' },
+        promesa_cumplida:         { type: 'boolean' },
+      },
+      required: ['contacto_id'],
+    },
+  },
 ];
 
 const QB_EMAIL_TOOLS: Anthropic.Tool[] = [
@@ -932,15 +983,15 @@ export const EMAIL_TOOL_BY_NAME: Record<string, Anthropic.Tool> = Object.fromEnt
  * (qb_crear_orden_compra, firmar_oc, sf_timbrar_desde_oc, etc. — 12 tools).
  */
 export const MEERKAT_EMAIL_DISTRIBUTION: Record<string, string[]> = {
-  nia:   ['crear_lead', 'crear_contacto_saliente', 'agendar_cita', 'registrar_pedido', 'buscar_cliente', 'buscar_correo_enviado', 'agregar_tag_contacto', 'registrar_encuesta', 'consultar_fichas', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano', 'reportar_falla'],
-  noah:  ['crear_lead', 'crear_contacto_saliente', 'agregar_tag_contacto', 'buscar_cliente', 'buscar_correo_enviado', 'buscar_producto', 'catalogo_buscar_codigo', 'consultar_fichas', 'list_calendar_events', 'create_calendar_event', 'generar_propuesta_comercial', 'generar_cotizacion', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
-  nico:  ['buscar_cliente', 'buscar_correo_enviado', 'buscar_documento_oficina', 'solicitar_factura', 'consultar_factura', 'solicitar_cancelacion_factura', 'consultar_fichas', 'qb_consultar_facturas', 'qb_buscar_cliente', 'qb_registrar_pago', 'qb_crear_factura', 'qb_reporte_ingresos', 'enviar_documento_oficina', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
+  nia:   ['crear_lead', 'crear_contacto_saliente', 'agendar_cita', 'registrar_pedido', 'buscar_cliente', 'buscar_correo_enviado', 'agregar_tag_contacto', 'registrar_encuesta', 'consultar_fichas', 'consultar_contacto', 'registrar_interaccion', 'actualizar_contacto_estado', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano', 'reportar_falla'],
+  noah:  ['crear_lead', 'crear_contacto_saliente', 'agregar_tag_contacto', 'buscar_cliente', 'buscar_correo_enviado', 'buscar_producto', 'catalogo_buscar_codigo', 'consultar_fichas', 'consultar_contacto', 'registrar_interaccion', 'actualizar_contacto_estado', 'list_calendar_events', 'create_calendar_event', 'generar_propuesta_comercial', 'generar_cotizacion', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
+  nico:  ['buscar_cliente', 'buscar_correo_enviado', 'buscar_documento_oficina', 'solicitar_factura', 'consultar_factura', 'solicitar_cancelacion_factura', 'consultar_fichas', 'consultar_contacto', 'registrar_interaccion', 'actualizar_contacto_estado', 'qb_consultar_facturas', 'qb_buscar_cliente', 'qb_registrar_pago', 'qb_crear_factura', 'qb_reporte_ingresos', 'enviar_documento_oficina', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
   // meefi_* tools gatadas por feature 'meefi_demo'; orgs sin esa feature no las ejecutan.
   nelia: ['buscar_cliente', 'buscar_correo_enviado', 'buscar_documento_oficina', 'buscar_archivo', 'enviar_documento_oficina', 'generar_one_pager', 'generar_correo_estructurado', 'generar_reporte_metricas_excel', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'create_document', 'create_file', 'save_to_drive', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano', 'meefi_lookup_user_account', 'meefi_send_password_reset_link', 'meefi_check_transfer_status', 'meefi_initiate_2fa_recovery', 'meefi_capture_bug_report', 'meefi_escalate_to_human', 'meefi_search_help_center'],
-  neo:   ['crear_ticket', 'consultar_incidentes', 'buscar_directorio', 'buscar_archivo', 'leer_archivo', 'buscar_correo_enviado', 'buscar_documento_oficina', 'enviar_documento_oficina', 'buscar_cliente', 'consultar_fichas', 'reportar_falla', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
-  nara:  ['crear_reporte_civico', 'consultar_reporte_civico', 'actualizar_reporte_civico', 'consultar_catalogo_externo', 'buscar_en_padron_externo', 'enviar_tramite_externo', 'consultar_fichas', 'buscar_cliente', 'buscar_correo_enviado', 'generar_reporte_metricas_excel', 'buscar_archivo', 'leer_archivo', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
-  naia:  ['iniciar_onboarding', 'agendar_cita', 'list_calendar_events', 'create_calendar_event', 'delete_calendar_event', 'buscar_cliente', 'buscar_correo_enviado', 'buscar_documento_oficina', 'buscar_archivo', 'leer_archivo', 'registrar_falta', 'consultar_vacaciones', 'solicitar_permiso', 'verificar_incidencia', 'consultar_fichas', 'generar_correo_estructurado', 'create_document', 'save_to_drive', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
-  nova:  ['asignar_unidad_campo', 'consultar_unidades_disponibles', 'crear_ticket', 'buscar_cliente', 'buscar_correo_enviado', 'buscar_documento_oficina', 'buscar_archivo', 'leer_archivo', 'enviar_documento_oficina', 'create_document', 'create_file', 'extraer_voz_del_cliente', 'consultar_fichas', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
+  neo:   ['crear_ticket', 'consultar_incidentes', 'buscar_directorio', 'buscar_archivo', 'leer_archivo', 'buscar_correo_enviado', 'buscar_documento_oficina', 'enviar_documento_oficina', 'buscar_cliente', 'consultar_fichas', 'consultar_contacto', 'registrar_interaccion', 'actualizar_contacto_estado', 'reportar_falla', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
+  nara:  ['crear_reporte_civico', 'consultar_reporte_civico', 'actualizar_reporte_civico', 'consultar_catalogo_externo', 'buscar_en_padron_externo', 'enviar_tramite_externo', 'consultar_fichas', 'consultar_contacto', 'registrar_interaccion', 'actualizar_contacto_estado', 'buscar_cliente', 'buscar_correo_enviado', 'generar_reporte_metricas_excel', 'buscar_archivo', 'leer_archivo', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
+  naia:  ['iniciar_onboarding', 'agendar_cita', 'list_calendar_events', 'create_calendar_event', 'delete_calendar_event', 'buscar_cliente', 'buscar_correo_enviado', 'buscar_documento_oficina', 'buscar_archivo', 'leer_archivo', 'registrar_falta', 'consultar_vacaciones', 'solicitar_permiso', 'verificar_incidencia', 'consultar_fichas', 'consultar_contacto', 'registrar_interaccion', 'actualizar_contacto_estado', 'generar_correo_estructurado', 'create_document', 'save_to_drive', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
+  nova:  ['asignar_unidad_campo', 'consultar_unidades_disponibles', 'crear_ticket', 'buscar_cliente', 'buscar_correo_enviado', 'buscar_documento_oficina', 'buscar_archivo', 'leer_archivo', 'enviar_documento_oficina', 'create_document', 'create_file', 'extraer_voz_del_cliente', 'consultar_fichas', 'consultar_contacto', 'registrar_interaccion', 'actualizar_contacto_estado', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
   nox:   ['create_document', 'create_file', 'crear_borrador_contrato', 'save_to_drive', 'organize_files', 'buscar_documento_oficina', 'enviar_documento_oficina', 'buscar_archivo', 'leer_archivo', 'buscar_cliente', 'buscar_correo_enviado', 'catalogo_buscar_codigo', 'list_calendar_events', 'create_calendar_event', 'verificar_gasto_recurrente', 'sheets_agregar_fila', 'sheets_actualizar_fila', 'sheets_leer', 'sheets_buscar', 'preparar_brief_del_dia', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano', 'reportar_falla'],
   niva:  ['create_document', 'create_file', 'save_to_drive', 'buscar_documento_oficina', 'enviar_documento_oficina', 'buscar_archivo', 'leer_archivo', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'revisar_desempeno_equipo', 'generar_pitch_deck', 'generar_reporte_metricas_excel', 'aprobar_gasto', 'evaluar_limite_gasto', 'verificar_gasto_recurrente', 'list_calendar_events', 'search_leads', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],
   nala:  ['qb_crear_orden_compra', 'qb_consultar_orden_compra', 'qb_descargar_oc_pdf', 'firmar_oc', 'sf_timbrar_desde_oc', 'sf_cancelar_cfdi', 'sf_consultar_estado_sat', 'enviar_oc_a_pagos', 'registrar_comprobante_pago', 'enviar_oc_a_proveedor', 'archivar_expediente', 'qb_crear_orden_compra_desde_cotizacion', 'buscar_archivo', 'leer_archivo', 'delegar_tarea', 'consultar_agente', 'pedir_a_humano'],

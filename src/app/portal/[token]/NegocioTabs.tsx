@@ -36,6 +36,7 @@ const ANCHOR_TO_TAB: Record<string, string> = {
   'sheets-crm':           'operacion',
   'disponibilidad-diaria': 'operacion',
   'fichas-informativas':  'operacion',
+  'perfiles-vivos':       'operacion',
   directorio:      'directorio',
   integraciones:   'integraciones',
 };

@@ -2078,6 +2078,116 @@ async function executeAgentToolInner(
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // Pack perfiles_vivos — memoria persistente por contacto del negocio.
+  // Tools: consultar_contacto, registrar_interaccion, actualizar_contacto_estado.
+  // Gate por organizations.features.perfiles_vivos. Cobro 1 op por acción
+  // exitosa (regla work-based).
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'consultar_contacto' || toolName === 'registrar_interaccion' || toolName === 'actualizar_contacto_estado') {
+    // Gate por org
+    const { data: orgRow } = await supabase
+      .from('organizations')
+      .select('features')
+      .eq('portal_email', portalEmail)
+      .maybeSingle();
+    const orgFeatures = (orgRow?.features as Record<string, unknown> | undefined) ?? {};
+    if (orgFeatures.perfiles_vivos !== true) {
+      return { ok: false, error: 'El pack Perfiles Vivos no está activo para esta cuenta. Activa el feature en organizations.features o sube tu cartera desde el portal.' };
+    }
+
+    if (toolName === 'consultar_contacto') {
+      const { telefono, correo, external_id, nombre } = toolInput as { telefono?: string; correo?: string; external_id?: string; nombre?: string };
+      if (!telefono && !correo && !external_id && !nombre) {
+        return { ok: false, error: 'Proporciona al menos un identificador: telefono, correo, external_id o nombre.' };
+      }
+      const { lookupContacto } = await import('@/lib/perfiles-vivos/lookup');
+      const res = await lookupContacto(portalEmail, { telefono, correo, external_id, nombre });
+      if (!res.contacto) {
+        return {
+          ok:     false,
+          error:  'Sin coincidencias. Ofrece registrar un contacto nuevo o pedir más datos.',
+          matched_by: null,
+        };
+      }
+      // Cobro 1 op por consulta exitosa
+      await consumeAiOp(agentId, 1, {
+        source: 'tool_consultar_contacto',
+        label:  `Perfil vivo consultado: ${res.contacto.nombre} (match=${res.matched_by})`,
+      });
+      return {
+        ok:            true,
+        contacto:      res.contacto,
+        interacciones: res.interacciones,
+        matched_by:    res.matched_by,
+      };
+    }
+
+    if (toolName === 'registrar_interaccion') {
+      const args = toolInput as {
+        contacto_id: string; tipo: string; resumen?: string; sentimiento?: string;
+        temas?: string[]; promesa_monto?: number; promesa_fecha?: string;
+        proxima_accion?: string; escalado_a?: string; duracion_seg?: number;
+      };
+      if (!args.contacto_id?.trim()) return { ok: false, error: 'contacto_id es obligatorio.' };
+      if (!args.tipo?.trim())         return { ok: false, error: 'tipo es obligatorio.' };
+      const { registrarInteraccion } = await import('@/lib/perfiles-vivos/lookup');
+      try {
+        const res = await registrarInteraccion({
+          portalEmail,
+          contactoId:     args.contacto_id,
+          tipo:           args.tipo,
+          meerkatId:      agentId,
+          resumen:        args.resumen,
+          sentimiento:    args.sentimiento,
+          temas:          args.temas,
+          promesa_monto:  args.promesa_monto,
+          promesa_fecha:  args.promesa_fecha,
+          proxima_accion: args.proxima_accion,
+          escalado_a:     args.escalado_a,
+          duracion_seg:   args.duracion_seg,
+        });
+        // Cobro 1 op por registro exitoso
+        await consumeAiOp(agentId, 1, {
+          source: 'tool_registrar_interaccion',
+          label:  `Interacción registrada: ${args.tipo}${args.promesa_monto ? ' + promesa' : ''}`,
+        });
+        return { ok: true, interaccion_id: res.id };
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : String(err) };
+      }
+    }
+
+    // actualizar_contacto_estado
+    const args = toolInput as {
+      contacto_id: string; estado_actual?: string; proxima_accion_at?: string;
+      proxima_accion_tipo?: string; capacidad_pago_detectada?: string;
+      notas?: string; promesa_cumplida?: boolean;
+    };
+    if (!args.contacto_id?.trim()) return { ok: false, error: 'contacto_id es obligatorio.' };
+    const { actualizarContactoEstado } = await import('@/lib/perfiles-vivos/lookup');
+    try {
+      await actualizarContactoEstado({
+        portalEmail,
+        contactoId:               args.contacto_id,
+        estado_actual:            args.estado_actual,
+        proxima_accion_at:        args.proxima_accion_at,
+        proxima_accion_tipo:      args.proxima_accion_tipo,
+        capacidad_pago_detectada: args.capacidad_pago_detectada,
+        notas:                    args.notas,
+        promesa_cumplida:         args.promesa_cumplida,
+      });
+      // Cobro 1 op por actualización exitosa
+      await consumeAiOp(agentId, 1, {
+        source: 'tool_actualizar_contacto_estado',
+        label:  `Contacto actualizado${args.promesa_cumplida ? ' (promesa cumplida)' : ''}`,
+      });
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   // Fiscal: solicitar_factura + consultar_factura
   // Emite CFDIs vía el PAC del negocio (SF, CONTPAQi, etc.). El flujo manual
   // (email al responsable de facturación) fue eliminado 2026-08-19 — si el
