@@ -1277,9 +1277,12 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     </div>
                   </div>
 
-                  <div id="sheets-crm" style={{ scrollMarginTop: 80 }}>
-                    <SheetsMappingsSection token={token} />
-                  </div>
+                  {/* Sheets/CRM (SheetsMappingsSection) hidden 2026-09-24: 0 orgs
+                      activos lo usan en prod. Component + endpoint /api/portal/[token]/sheets
+                      preservados en código para reactivación futura si llega cliente
+                      que quiera mapear su CRM/sheet externo al pipeline. Anchor
+                      'sheets-crm' → 'operacion' conservado en NegocioTabs para
+                      retrocompat de deep-links viejos. */}
 
                   <div id="disponibilidad-diaria" style={{ scrollMarginTop: 80 }}>
                     <DailyAvailabilityCard token={token} />
