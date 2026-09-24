@@ -70,7 +70,7 @@ export default function Comparativa() {
             className="font-extrabold tracking-tight mb-5"
             style={{ fontSize: 'clamp(2.2rem, 5vw, 3.8rem)', color: '#1A0A3B', lineHeight: 1.06 }}
           >
-            No es solo el sueldo.<br />Y no es lo único que se acumula.
+            No es solo el sueldo.<br />El resto no viene en el recibo.
           </h2>
           <p
             className="leading-relaxed"
