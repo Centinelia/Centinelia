@@ -2109,11 +2109,8 @@ async function executeAgentToolInner(
           matched_by: null,
         };
       }
-      // Cobro 1 op por consulta exitosa
-      await consumeAiOp(agentId, 1, {
-        source: 'tool_consultar_contacto',
-        label:  `Perfil vivo consultado: ${res.contacto.nombre} (match=${res.matched_by})`,
-      });
+      // No cobra: es un read puro (misma regla que consultar_factura / consultar_cliente).
+      // Ver [[feedback-pool-work-based]] — reads no cobran, solo acciones de negocio.
       return {
         ok:            true,
         contacto:      res.contacto,

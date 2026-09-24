@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { socialPublishingEnabled } from '@/lib/feature-flags/social-publishing';
 
 /**
  * Capa 2 tool-bloat: skills packs.
@@ -28,6 +29,9 @@ export interface OrgPackContext {
   has_tramites?:        boolean;
   has_incidencia_flow?: boolean;
   has_inventory_excel?: boolean;
+  has_fichas_informativas?: boolean;
+  has_perfiles_vivos?:      boolean;
+  has_social_publishing?:   boolean;
 }
 
 export interface SkillPack {
@@ -169,6 +173,34 @@ export const SKILL_PACKS: SkillPack[] = [
     source: 'organizations.incidencia_flow_enabled',
     activeCheck: ctx => !!ctx.has_incidencia_flow,
   },
+  {
+    id: 'fichas_informativas', label: 'Fichas informativas',
+    description: 'Base documental consultable por meerkats client-facing (trámites, catálogos, procedimientos). Modo stuffed/embeddings según config del org.',
+    tools: ['consultar_fichas'],
+    source: 'organizations.features.fichas_informativas',
+    activeCheck: ctx => !!ctx.has_fichas_informativas,
+  },
+  {
+    id: 'perfiles_vivos', label: 'Perfiles vivos',
+    description: 'Memoria persistente por contacto (deudor, prospecto, paciente). Continuidad histórica + registro de interacciones + estado.',
+    tools: ['consultar_contacto', 'registrar_interaccion', 'actualizar_contacto_estado'],
+    source: 'organizations.features.perfiles_vivos',
+    activeCheck: ctx => !!ctx.has_perfiles_vivos,
+  },
+  {
+    id: 'social_publishing', label: 'Publicación en redes',
+    description: 'Navi / Navi Agencia: Canva + Instagram — plantillas, diseños, captions, hashtags, borradores, programación, publicación, comentarios/DMs, métricas, calendario editorial. Las 2 tools multi-cuenta se restringen adicionalmente por role a navi_agencia.',
+    tools: [
+      'canva_listar_plantillas', 'canva_generar_diseno', 'canva_exportar',
+      'generar_caption', 'generar_hashtags',
+      'crear_borrador_post', 'programar_publicacion', 'publicar_ahora',
+      'ig_responder_comentario', 'ig_responder_dm', 'consultar_metricas_post',
+      'proponer_calendario_editorial', 'listar_media_del_cliente', 'usar_media_del_cliente',
+      'listar_cuentas_gestionadas', 'replicar_contenido_entre_cuentas',
+    ],
+    source: 'organizations.features.social_publishing.enabled',
+    activeCheck: ctx => !!ctx.has_social_publishing,
+  },
 ];
 
 /**
@@ -226,7 +258,7 @@ export async function resolveOrgPackContext(
 ): Promise<OrgPackContext> {
   const [qb, org, sheets, ml, agents] = await Promise.all([
     supabase.from('qb_integrations').select('realm_id').eq('portal_email', portalEmail).maybeSingle(),
-    supabase.from('organizations').select('invoicing_provider, catalog_config, outbound_daily_limit, incidencia_flow_enabled, inventory_excel_config').eq('portal_email', portalEmail).maybeSingle(),
+    supabase.from('organizations').select('invoicing_provider, catalog_config, outbound_daily_limit, incidencia_flow_enabled, inventory_excel_config, features').eq('portal_email', portalEmail).maybeSingle(),
     supabase.from('sheets_mappings').select('id').eq('portal_email', portalEmail).limit(1),
     supabase.from('integration_accounts').select('id').eq('portal_email', portalEmail).eq('provider', 'mercadolibre').limit(1),
     supabase.from('voice_agents').select('features').eq('portal_email', portalEmail),
@@ -241,19 +273,24 @@ export async function resolveOrgPackContext(
   const anyFeature = (key: string) =>
     agentRows.some(a => (a.features as Record<string, unknown> | null)?.[key] === true);
 
+  const orgFeatures = (org.data?.features as Record<string, unknown> | null | undefined) ?? {};
+
   return {
-    qb_realm_id:         (qb.data?.realm_id as string | null | undefined) ?? null,
-    invoicing_provider:  (org.data?.invoicing_provider as string | null | undefined) ?? null,
-    has_catalog:         !!org.data?.catalog_config,
-    has_ml:              ((ml.data ?? []).length) > 0,
-    has_outbound:        ((org.data?.outbound_daily_limit as number | null | undefined) ?? 0) > 0,
-    has_civic:           anyFeature('civic_reports'),
-    has_contracts:       anyFeature('contract_drafts'),
-    has_sheets:          ((sheets.data ?? []).length) > 0,
-    has_hr:              anyFeature('hr_enabled'),
-    has_field_dispatch:  anyFeature('field_dispatch'),
-    has_tramites:        anyFeature('tramites_externos'),
-    has_incidencia_flow: org.data?.incidencia_flow_enabled === true,
-    has_inventory_excel: !!org.data?.inventory_excel_config,
+    qb_realm_id:             (qb.data?.realm_id as string | null | undefined) ?? null,
+    invoicing_provider:      (org.data?.invoicing_provider as string | null | undefined) ?? null,
+    has_catalog:             !!org.data?.catalog_config,
+    has_ml:                  ((ml.data ?? []).length) > 0,
+    has_outbound:            ((org.data?.outbound_daily_limit as number | null | undefined) ?? 0) > 0,
+    has_civic:               anyFeature('civic_reports'),
+    has_contracts:           anyFeature('contract_drafts'),
+    has_sheets:              ((sheets.data ?? []).length) > 0,
+    has_hr:                  anyFeature('hr_enabled'),
+    has_field_dispatch:      anyFeature('field_dispatch'),
+    has_tramites:            anyFeature('tramites_externos'),
+    has_incidencia_flow:     org.data?.incidencia_flow_enabled === true,
+    has_inventory_excel:     !!org.data?.inventory_excel_config,
+    has_fichas_informativas: orgFeatures.fichas_informativas === true,
+    has_perfiles_vivos:      orgFeatures.perfiles_vivos === true,
+    has_social_publishing:   socialPublishingEnabled(orgFeatures),
   };
 }

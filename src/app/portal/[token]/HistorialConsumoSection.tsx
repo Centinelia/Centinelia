@@ -57,8 +57,11 @@ const SOURCE_META: Record<string, { label: string; trigger: string }> = {
   batch_eval:          { label: 'Evaluación CES + auto-eval (batch)', trigger: 'schedule' },
   // Terceros deudas cerradas (N6)
   whatsapp_reply:      { label: 'Respuesta WhatsApp',                 trigger: 'chat' },
+  wa_meta_message:     { label: 'Mensaje WhatsApp (Meta)',            trigger: 'chat' },
   teams_reply:         { label: 'Respuesta Microsoft Teams',          trigger: 'chat' },
   helpdesk_classify:   { label: 'Clasificación de ticket helpdesk',   trigger: 'manual' },
+  portal_bitacora:     { label: 'Plantilla de bitácora cargada',      trigger: 'manual' },
+  verificacion_notif:  { label: 'Aviso de verificación al encargado', trigger: 'voice_call' },
   // Cost-based sources agregados en fix/pool-accounting-gaps (external I/O real)
   invoice_stamped:         { label: 'Factura timbrada con PAC',        trigger: 'voice_call' },
   invoice_email_sent:      { label: 'CFDI enviado al cliente',         trigger: 'voice_call' },
@@ -90,6 +93,16 @@ const SOURCE_META: Record<string, { label: string; trigger: string }> = {
   meefi_password_reset:    { label: 'Reset de contraseña Meefi',       trigger: 'voice_call' },
   meefi_2fa_recovery:      { label: 'Recuperación 2FA Meefi',          trigger: 'voice_call' },
   meefi_bug_report:        { label: 'Reporte de bug Meefi',            trigger: 'voice_call' },
+  // Fichas informativas (pack shipped 2026-09-23, PRs #63-66). Runtime = 1 op
+  // por consulta exitosa; setup = 1 op por ficha subida (solo si viene agentId).
+  tool_consultar_fichas:     { label: 'Consulta de fichas informativas', trigger: 'voice_call' },
+  ingest_ficha_informativa:  { label: 'Ficha informativa cargada',       trigger: 'manual' },
+  // Perfiles vivos (pack shipped 2026-09-24, PRs #70-72). Consultar es read
+  // (no cobra). Cobran: registrar interacción, actualizar estado, e import
+  // batched (1 op por contacto creado/actualizado).
+  tool_registrar_interaccion:      { label: 'Interacción con contacto registrada', trigger: 'voice_call' },
+  tool_actualizar_contacto_estado: { label: 'Estado de contacto actualizado',       trigger: 'voice_call' },
+  import_cartera_contactos:        { label: 'Cartera de contactos importada',       trigger: 'manual' },
   // Fallbacks
   unknown:             { label: 'Consumo sin identificar',     trigger: 'manual' },
 };
