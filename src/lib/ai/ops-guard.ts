@@ -2,6 +2,7 @@ import { after } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { executeAutoRefillOps } from '@/lib/billing/auto-refill';
 import { consumePoolOps, fireOverageAlertIfNeeded } from '@/lib/annual-contracts/pool-consume';
+import { validateLedgerEntry, resolveReason } from './ledger-schemas';
 
 export interface OpsResult {
   ok:    boolean;
@@ -10,10 +11,21 @@ export interface OpsResult {
 }
 
 export interface OpsMeta {
-  source?:       string;   // 'heartbeat' | 'learn' | 'weekly_insights' | 'nox_brief' | 'agent_chat' | etc.
+  /**
+   * Tipo semantico de la operacion (Fase 7 nuevo, preferido).
+   * Debe estar en LEDGER_REASONS de ledger-schemas.ts.
+   * Si se pasan ambos `reason` y `source`, `reason` tiene prioridad.
+   */
+  reason?:       string;
+  /**
+   * Alias legacy de `reason`. Se mantiene para backwards-compat con todos
+   * los call sites de Fases 2-3-6 que ya usaban `source`. Internamente se
+   * normaliza con resolveReason(reason, source).
+   */
+  source?:       string;
   reference_id?: string;   // task_id, report_id, meeting_id, etc.
   label?:        string;   // Texto legible corto para historial de consumo (fallback: source)
-  context?:      string;   // Descripción completa expandida — se muestra al hacer hover en el historial
+  context?:      string;   // Descripcion completa expandida
 }
 
 // Atomically checks and consumes AI ops from the account pool.
@@ -24,8 +36,27 @@ export interface OpsMeta {
 //   LEGACY (c) stripe standalone: mismo RPC, account_email=null.
 export async function consumeAiOp(agentId: string, count = 1, meta?: OpsMeta): Promise<OpsResult> {
   const supabase = createAdminClient();
+
+  // Fase 7: normalizar reason/source con backwards-compat.
+  // `reason` es el campo nuevo semantico; `source` es el alias legacy.
+  // resolveReason prioriza `reason` si se pasan ambos.
+  const resolvedReason = resolveReason(meta?.reason, meta?.source);
+
+  // Validacion defensiva: solo warning, NUNCA bloquea el cobro.
+  if (resolvedReason !== 'unknown') {
+    const metaForValidation = {
+      reference_id: meta?.reference_id,
+      ...(meta?.context ? (() => { try { return JSON.parse(meta.context); } catch { return {}; } })() : {}),
+    };
+    const validation = validateLedgerEntry(resolvedReason, metaForValidation);
+    if (!validation.ok) {
+      console.warn('[ops-guard] ledger metadata warning (cobro continua):', validation.error);
+    }
+  }
+
   const logPayload = {
-    source:       meta?.source       ?? 'unknown',
+    source:       resolvedReason,    // ai_ops_log.source (backwards-compat con consumption-audit.ts)
+    reason:       resolvedReason,    // ai_ops_log.reason (nuevo campo Fase 7)
     reference_id: meta?.reference_id ?? null,
     label:        meta?.label        ?? null,
     context:      meta?.context      ?? null,
@@ -218,6 +249,75 @@ export async function resetAiOps(portalEmail: string): Promise<void> {
     supabase.from('organizations').update({ monthly_ops_used: 0 }).eq('portal_email', portalEmail),
     supabase.from('voice_agents').update({ ai_ops_used: 0 }).eq('portal_email', portalEmail),
   ]);
+}
+
+// ─── Fase 7 I-2 fix: cobro org-level cuando no hay agente activo ─────────────
+//
+// Problema original: createRule (Fase 2) y createTask (Fase 3) llaman
+// consumeAiOp via getPrimaryAgentId(). Si el org no tiene agentes activos,
+// getPrimaryAgentId() devuelve null y el cobro se SKIPEA en silencio.
+// Esto viola feedback_pool_accuracy_top_priority y feedback_zero_debt.
+//
+// Fix: chargeOrgDirectly inserta directamente en ai_ops_log con agent_id=null
+// y portal_email del org. El ledger eventualmente queda registrado aunque no
+// haya voice_agent. NO usa ops_ledger (que requiere agentId para cap enforcement),
+// solo loggea en ai_ops_log para trazabilidad.
+//
+// El llamador (agent-rules/service.ts) decide: si hay agente → consumeAiOp,
+// si no hay agente → chargeOrgDirectly. De ninguna manera se skipea en silencio.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Cobra ops directamente al nivel del org (sin agente) para casos donde el org
+ * no tiene voice_agents activos. Inserta en ai_ops_log con agent_id=null.
+ *
+ * Uso: cuando getPrimaryAgentId retorna null (org sin agentes activos).
+ * Garantiza cero-gap de cobro aunque el org no tenga empleados aun activos.
+ *
+ * Defensivo: si el insert falla, logga el error sin throw.
+ */
+export async function chargeOrgDirectly(
+  portalEmail: string,
+  count = 1,
+  meta?: OpsMeta,
+): Promise<void> {
+  if (!portalEmail || count <= 0) return;
+
+  const resolvedReason = resolveReason(meta?.reason, meta?.source);
+
+  // Validacion defensiva
+  if (resolvedReason !== 'unknown') {
+    const metaForValidation: Record<string, unknown> = {
+      reference_id: meta?.reference_id,
+    };
+    if (meta?.context) {
+      try { Object.assign(metaForValidation, JSON.parse(meta.context)); } catch { /* noop */ }
+    }
+    const validation = validateLedgerEntry(resolvedReason, metaForValidation);
+    if (!validation.ok) {
+      console.warn('[ops-guard] chargeOrgDirectly ledger metadata warning:', validation.error);
+    }
+  }
+
+  try {
+    const supabase = createAdminClient();
+    await supabase.from('ai_ops_log').insert({
+      agent_id:     null,
+      portal_email: portalEmail,
+      source:       resolvedReason,
+      reason:       resolvedReason,
+      reference_id: meta?.reference_id ?? null,
+      label:        meta?.label        ?? null,
+      context:      meta?.context      ?? null,
+      count,
+    });
+    console.log(
+      '[ops-guard] chargeOrgDirectly: cobro org-level sin agente activo',
+      { portalEmail, count, reason: resolvedReason },
+    );
+  } catch (err) {
+    console.error('[ops-guard] chargeOrgDirectly failed (audit gap):', { portalEmail, count, meta, err });
+  }
 }
 
 // Fija la cuota mensual de ops de la cuenta. El argumento aiOpsPerAgent viene

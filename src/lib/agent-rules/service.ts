@@ -14,7 +14,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { validateCreateRuleInput, type CreateRuleInput } from './validation';
 import { invalidateRulesCache } from './cache';
-import { consumeAiOp } from '@/lib/ai/ops-guard';
+import { consumeAiOp, chargeOrgDirectly } from '@/lib/ai/ops-guard';
 
 export interface AgentRule {
   id: string;
@@ -56,14 +56,26 @@ export async function createRule(input: CreateRuleInput): Promise<AgentRule> {
   const rule = data as AgentRule;
 
   // Cobrar 1 op de setup al agente primario del org (spec 8.1 rule_setup).
-  // consumeAiOp requiere agentId (voice_agents.id), no portal_email directamente.
-  // Buscamos el primer agente activo del org para el cobro.
+  // Fase 7 I-2 fix: si no hay agente activo, cobrar via chargeOrgDirectly
+  // (org-level, sin agentId) en vez de skipear en silencio.
+  // Garantiza cero-gap aun cuando el org no tiene voice_agents activos aun.
   const primaryAgentId = await getPrimaryAgentId(input.portalEmail);
   if (primaryAgentId) {
     await consumeAiOp(primaryAgentId, 1, {
-      source:       'rule_setup',
+      reason:       'rule_setup',
       reference_id: rule.id,
       label:        `Regla creada: ${input.regla.slice(0, 60)}`,
+    });
+  } else {
+    // Org sin agentes activos — cobro org-level directo para no perder el registro.
+    console.warn(
+      '[agent-rules/service] createRule: org sin agente activo, usando chargeOrgDirectly (Fase 7 I-2 fix)',
+      { portalEmail: input.portalEmail, ruleId: rule.id },
+    );
+    await chargeOrgDirectly(input.portalEmail, 1, {
+      reason:       'rule_setup',
+      reference_id: rule.id,
+      label:        `Regla creada (org-level): ${input.regla.slice(0, 60)}`,
     });
   }
 
