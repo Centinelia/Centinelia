@@ -91,9 +91,27 @@ vi.mock('@/lib/supabase/admin', () => ({
     from: vi.fn().mockReturnValue({
       select:      vi.fn().mockReturnThis(),
       eq:          vi.fn().mockReturnThis(),
-      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-      order:       vi.fn().mockReturnThis(),
-      limit:       vi.fn().mockResolvedValue({ data: [], error: null }),
+      // Devolver features con agent_missions_enabled=true para que los bloques
+      // de Reglas y Tareas se inyecten en tests de prompt builder. Sin este flag,
+      // el kill switch los bloquea (comportamiento correcto en prod con flag OFF).
+      maybeSingle: vi.fn().mockResolvedValue({
+        data: {
+          features:          { agent_missions_enabled: true },
+          brand_voice_guide: null,
+          owner_passphrase:  null,
+          daily_availability: null,
+          industry:          null,
+          business_email:    null,
+          brand_phone:       null,
+          business_website:  null,
+          brand_website:     null,
+          brand_address:     null,
+          directory:         null,
+        },
+        error: null,
+      }),
+      order: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue({ data: [], error: null }),
     }),
     rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
   }),
@@ -143,7 +161,8 @@ describe('prompt-builder-tasks: bloque de tareas en voice builder', () => {
       portal_email:  'test@empresa.com',
       agent_name:    'Nia',
       business_name: 'Test Corp',
-      features:      { meerkat_role_id: 'nia' },
+      // agent_missions_enabled=true activa el bloque de tareas (kill switch Fase 9.2)
+      features:      { meerkat_role_id: 'nia', agent_missions_enabled: true },
       timezone:      'America/Monterrey',
     } as unknown as import('@/types/agent').VoiceAgent;
 
@@ -208,7 +227,8 @@ describe('prompt-builder-tasks: bloque de tareas en voice builder', () => {
       portal_email:  'test@empresa.com',
       agent_name:    'Nia',
       business_name: 'Test Corp',
-      features:      { meerkat_role_id: 'nia' },
+      // agent_missions_enabled=true activa el bloque de tareas (kill switch Fase 9.2)
+      features:      { meerkat_role_id: 'nia', agent_missions_enabled: true },
       timezone:      'America/Monterrey',
     } as unknown as import('@/types/agent').VoiceAgent;
 

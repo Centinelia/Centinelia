@@ -66,6 +66,13 @@ export interface SearchOpts {
   topK?:         number;
   /** Si viene, activa pre-filtro por tag whitelist del rol. Backward compat: omitir. */
   meerkatRoleId?: string;
+  /**
+   * Features del org (organizations.features). Cuando retrieval_v2_enabled=false,
+   * el pre-filtro por whitelist se omite aunque meerkatRoleId este presente.
+   * Cuando rerank_enabled=false, se pasa a shouldRerank para forzar skip.
+   * Si no se pasa, se asume ON (backward compat).
+   */
+  orgFeatures?: Record<string, unknown>;
 }
 
 // ─── Internal chunk type from both RPCs ──────────────────────────────────────
@@ -128,8 +135,18 @@ export async function searchFichas(
 
   const matchCount = Math.max(topK * 2, 15);
 
+  // Kill switch: si retrieval_v2_enabled=false, ignorar meerkatRoleId y usar
+  // path legacy sin filtro por whitelist. Backward compat: si orgFeatures no
+  // se pasa, se asume que el flag esta activo (se mantiene el comportamiento
+  // previo a Fase 9).
+  const orgFeatures = opts.orgFeatures;
+  const retrieval_v2_on =
+    !orgFeatures ||
+    orgFeatures.retrieval_v2_enabled === true ||
+    orgFeatures.retrieval_v2_enabled === 'true';
+
   // ─── Path con pre-filtro por whitelist (meerkatRoleId presente) ────────────
-  if (opts.meerkatRoleId) {
+  if (opts.meerkatRoleId && retrieval_v2_on) {
     let whitelist: string[] = [];
     try {
       whitelist = await getEffectiveWhitelist(portalEmail, opts.meerkatRoleId);

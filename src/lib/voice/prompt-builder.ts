@@ -10,6 +10,7 @@ import { formatDailyAvailabilityForPrompt } from '@/lib/daily-availability';
 import { getCachedRulesForAgent } from '@/lib/agent-rules/cache';
 import { listTasksForAgent } from '@/lib/agent-tasks/service';
 import { describeTrigger } from '@/lib/agent-tasks/prompt-helpers';
+import { isFeatureEnabled } from '@/lib/feature-flags/agent-missions';
 
 type SupabaseClient = ReturnType<typeof createAdminClient>;
 
@@ -225,16 +226,18 @@ TONO Y ESTILO DE VOZ:
   let orgPassphrase:    string | null = null;
   let orgDailyAvail:   unknown       = null;
   let orgForIndustry:  { industry?: string | null } | null = null;
+  let orgFeaturesRow:  Record<string, unknown> | null = null;
   if (orgId && supabase) {
     const { data: orgRow } = await supabase
       .from('organizations')
-      .select('brand_voice_guide, owner_passphrase, daily_availability, industry')
+      .select('brand_voice_guide, owner_passphrase, daily_availability, industry, features')
       .eq('portal_email', orgId)
       .maybeSingle();
     orgBrandVoice  = (orgRow?.brand_voice_guide as string | null) ?? null;
     orgPassphrase  = (orgRow?.owner_passphrase as string | null) ?? null;
     orgDailyAvail  = (orgRow as Record<string, unknown> | null)?.daily_availability ?? null;
     orgForIndustry = orgRow as { industry?: string | null } | null;
+    orgFeaturesRow = (orgRow as Record<string, unknown> | null)?.features as Record<string, unknown> | null ?? null;
   }
 
   if (!isCoordinator && orgBrandVoice?.trim()) {
@@ -651,10 +654,16 @@ Cuando hayas capturado datos del cliente durante la llamada (nombre, teléfono, 
   // Ver spec Sección 5.2: applies_to={} = todos; meerkat_role_id = ANY(applies_to).
   // Si el builder se llama sin portal_email o meerkat_role_id (agentes legacy sin
   // features.meerkat_role_id), se omite el bloque sin error.
+  // Kill switch (Fase 9.2): si agent_missions_enabled=false, omitir bloque.
+  // Fuente de features: orgFeaturesRow (cargado del SELECT de organizations) toma
+  // precedencia. Si no hay orgId o el SELECT no corrió, cae en agent.features como
+  // proxy conservador (backward compat con llamadas sin supabase client).
   {
     const rulesPortalEmail = (agent.portal_email as string | null | undefined) ?? null;
     const rulesMeerkatRoleId = meerkatRoleId ?? null;
-    if (rulesPortalEmail && rulesMeerkatRoleId) {
+    const featuresForFlag = orgFeaturesRow ?? (agent.features as Record<string, unknown> | null) ?? null;
+    const missionsOn = isFeatureEnabled({ features: featuresForFlag }, 'agent_missions_enabled');
+    if (rulesPortalEmail && rulesMeerkatRoleId && missionsOn) {
       try {
         const orgRules = await getCachedRulesForAgent(rulesPortalEmail, rulesMeerkatRoleId);
         if (orgRules.length > 0) {
@@ -679,10 +688,14 @@ Cuando hayas capturado datos del cliente durante la llamada (nombre, teléfono, 
   // tiene disponibles (tipo cron/phrase/manual) y pueda responder al usuario.
   // Solo voice/whatsapp reciben este bloque. outbound NO (PAC-4).
   // Si listTasksForAgent falla, warn log y sin bloque (mismo patrón que Reglas).
+  // Kill switch (Fase 9.2): si agent_missions_enabled=false, omitir bloque.
+  // Fuente de features: mismo patrón que el bloque de Reglas arriba.
   {
     const tasksPortalEmail   = (agent.portal_email as string | null | undefined) ?? null;
     const tasksOwnerAgentId  = agent.id as string | null | undefined;
-    if (tasksPortalEmail && tasksOwnerAgentId) {
+    const featuresForTaskFlag = orgFeaturesRow ?? (agent.features as Record<string, unknown> | null) ?? null;
+    const missionsOnTasks = isFeatureEnabled({ features: featuresForTaskFlag }, 'agent_missions_enabled');
+    if (tasksPortalEmail && tasksOwnerAgentId && missionsOnTasks) {
       try {
         const agentTasks = await listTasksForAgent(tasksOwnerAgentId, { activeOnly: true });
         if (agentTasks.length > 0) {

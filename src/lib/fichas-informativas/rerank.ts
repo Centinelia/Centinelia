@@ -62,10 +62,20 @@ export interface RerankTriggerContext {
 /**
  * Evalúa si se debe activar el rerank para este contexto.
  * Retorna true si alguna condición se cumple.
+ *
+ * Kill switch (Fase 9.2): si rerank_enabled=false en orgFeatures, retorna false
+ * incondicionalmente — ninguna otra condicion puede activar rerank.
+ * Backward compat: si orgFeatures no tiene la clave, las condiciones de volumen
+ * y distancia siguen funcionando como antes.
  */
 export function shouldRerank(ctx: RerankTriggerContext): boolean {
-  // Condición 3: feature flag explícito
-  if (ctx.orgFeatures.rerank_enabled === true) return true;
+  // Kill switch: rerank_enabled=false desactiva el rerank aunque se cumplan
+  // las condiciones de volumen o distancia.
+  const flagValue = ctx.orgFeatures.rerank_enabled;
+  if (flagValue === false || flagValue === 'false') return false;
+
+  // Condición 3: feature flag explícito ON
+  if (flagValue === true || flagValue === 'true') return true;
 
   // Condición 1: muchas fichas en el org
   if (ctx.totalFichas > RERANK_TRIGGER_THRESHOLD_FICHAS) return true;

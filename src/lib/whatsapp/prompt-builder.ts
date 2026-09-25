@@ -1,6 +1,7 @@
 import type { VoiceAgent, BusinessHours } from '@/types/agent';
 import { getCachedRulesForAgent } from '@/lib/agent-rules/cache';
 import { listTasksForAgent } from '@/lib/agent-tasks/service';
+import { isFeatureEnabled } from '@/lib/feature-flags/agent-missions';
 import { describeTrigger } from '@/lib/agent-tasks/prompt-helpers';
 
 export async function buildWASystemPrompt(agent: VoiceAgent, brandVoiceGuide?: string | null): Promise<string> {
@@ -145,11 +146,14 @@ Usa la herramienta guardar_lead con el campo servicio describiendo el pedido.`);
   }
 
   // ── Reglas de operación del negocio (Bloque 2, solo stuffed — PAC-4) ────────
+  // Kill switch (Fase 9.2): si agent_missions_enabled=false, omitir bloque.
   {
     const rulesPortalEmail = (agent.portal_email as string | null | undefined) ?? null;
     const rulesF = (agent.features ?? {}) as { meerkat_role_id?: string };
     const rulesMeerkatRoleId = rulesF.meerkat_role_id ?? null;
-    if (rulesPortalEmail && rulesMeerkatRoleId) {
+    const waFeaturesForFlag = (agent as unknown as { org_features?: Record<string, unknown> }).org_features ?? (agent.features as Record<string, unknown> | null) ?? null;
+    const missionsOn = isFeatureEnabled({ features: waFeaturesForFlag }, 'agent_missions_enabled');
+    if (rulesPortalEmail && rulesMeerkatRoleId && missionsOn) {
       try {
         const orgRules = await getCachedRulesForAgent(rulesPortalEmail, rulesMeerkatRoleId);
         if (orgRules.length > 0) {
@@ -170,9 +174,12 @@ Usa la herramienta guardar_lead con el campo servicio describiendo el pedido.`);
 
   // ── Tareas que puede ejecutar este meerkat (Bloque 3 del spec) ─────────────
   // Solo voice/whatsapp reciben este bloque. outbound NO (PAC-4).
+  // Kill switch (Fase 9.2): si agent_missions_enabled=false, omitir bloque.
   {
     const tasksOwnerAgentId = agent.id as string | null | undefined;
-    if (tasksOwnerAgentId) {
+    const waFeaturesForTasks = (agent as unknown as { org_features?: Record<string, unknown> }).org_features ?? (agent.features as Record<string, unknown> | null) ?? null;
+    const missionsOnTasks = isFeatureEnabled({ features: waFeaturesForTasks }, 'agent_missions_enabled');
+    if (tasksOwnerAgentId && missionsOnTasks) {
       try {
         const agentTasks = await listTasksForAgent(tasksOwnerAgentId, { activeOnly: true });
         if (agentTasks.length > 0) {

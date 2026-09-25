@@ -54,6 +54,10 @@ const PHRASE_TASK = {
   active:         true,
 };
 
+// Features con flag activo — se pasan directamente para evitar SELECT extra.
+const FEATURES_ON  = { agent_missions_enabled: true };
+const FEATURES_OFF = { agent_missions_enabled: false };
+
 describe('matchPhraseToTask', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -62,7 +66,7 @@ describe('matchPhraseToTask', () => {
   it('retorna match cuando el usuario dice la frase exacta', async () => {
     buildPhraseTasksChain([PHRASE_TASK]);
 
-    const result = await matchPhraseToTask(AGENT_ID, 'dame el reporte');
+    const result = await matchPhraseToTask(AGENT_ID, 'dame el reporte', FEATURES_ON);
     expect(result).not.toBeNull();
     expect(result?.taskId).toBe('task-phrase-001');
     expect(result?.matchedPhrase).toBe('dame el reporte');
@@ -72,7 +76,7 @@ describe('matchPhraseToTask', () => {
   it('retorna match cuando el usuario escribe en mayúsculas (case-insensitive)', async () => {
     buildPhraseTasksChain([PHRASE_TASK]);
 
-    const result = await matchPhraseToTask(AGENT_ID, 'DAME EL REPORTE ahora');
+    const result = await matchPhraseToTask(AGENT_ID, 'DAME EL REPORTE ahora', FEATURES_ON);
     expect(result).not.toBeNull();
     expect(result?.matchedPhrase).toBe('dame el reporte');
   });
@@ -80,7 +84,7 @@ describe('matchPhraseToTask', () => {
   it('retorna match cuando la frase está dentro de un mensaje más largo', async () => {
     buildPhraseTasksChain([PHRASE_TASK]);
 
-    const result = await matchPhraseToTask(AGENT_ID, 'Oye, necesito el resumen diario de hoy por favor');
+    const result = await matchPhraseToTask(AGENT_ID, 'Oye, necesito el resumen diario de hoy por favor', FEATURES_ON);
     expect(result).not.toBeNull();
     expect(result?.matchedPhrase).toBe('necesito el resumen diario');
   });
@@ -88,21 +92,21 @@ describe('matchPhraseToTask', () => {
   it('retorna null cuando el mensaje no contiene ninguna frase registrada', async () => {
     buildPhraseTasksChain([PHRASE_TASK]);
 
-    const result = await matchPhraseToTask(AGENT_ID, 'Hola, ¿cómo estás?');
+    const result = await matchPhraseToTask(AGENT_ID, 'Hola, ¿cómo estás?', FEATURES_ON);
     expect(result).toBeNull();
   });
 
   it('retorna null cuando no hay tareas phrase activas', async () => {
     buildPhraseTasksChain([]);
 
-    const result = await matchPhraseToTask(AGENT_ID, 'dame el reporte');
+    const result = await matchPhraseToTask(AGENT_ID, 'dame el reporte', FEATURES_ON);
     expect(result).toBeNull();
   });
 
   it('retorna null si el mensaje está vacío', async () => {
     buildPhraseTasksChain([PHRASE_TASK]);
 
-    const result = await matchPhraseToTask(AGENT_ID, '');
+    const result = await matchPhraseToTask(AGENT_ID, '', FEATURES_ON);
     expect(result).toBeNull();
     // No debe llamar a Supabase para mensajes vacíos
     expect(mockFrom).not.toHaveBeenCalled();
@@ -111,8 +115,18 @@ describe('matchPhraseToTask', () => {
   it('retorna null si el mensaje es solo espacios', async () => {
     buildPhraseTasksChain([PHRASE_TASK]);
 
-    const result = await matchPhraseToTask(AGENT_ID, '   ');
+    const result = await matchPhraseToTask(AGENT_ID, '   ', FEATURES_ON);
     expect(result).toBeNull();
+    expect(mockFrom).not.toHaveBeenCalled();
+  });
+
+  // Kill switch: flag OFF retorna null sin tocar Supabase
+  it('retorna null cuando agent_missions_enabled=false (kill switch)', async () => {
+    buildPhraseTasksChain([PHRASE_TASK]);
+
+    const result = await matchPhraseToTask(AGENT_ID, 'dame el reporte', FEATURES_OFF);
+    expect(result).toBeNull();
+    // Con orgFeatures pasado y flag OFF, no debe consultar tareas
     expect(mockFrom).not.toHaveBeenCalled();
   });
 
@@ -132,7 +146,7 @@ describe('matchPhraseToTask', () => {
     mockFrom.mockReturnValue(chain);
 
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const result = await matchPhraseToTask(AGENT_ID, 'dame el reporte');
+    const result = await matchPhraseToTask(AGENT_ID, 'dame el reporte', FEATURES_ON);
     expect(result).toBeNull();
     expect(warnSpy).toHaveBeenCalledWith('[phrase-matcher] Error al obtener tareas:', 'DB error');
     warnSpy.mockRestore();

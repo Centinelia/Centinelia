@@ -2,6 +2,7 @@ import type { VoiceAgent } from '@/types/agent';
 import { VOICE_RULES } from '@/lib/voice/rules';
 import { MEERKAT_MAP, type MeerkatRoleId } from '@/lib/portal/meerkat-roles';
 import { getCachedRulesForAgent } from '@/lib/agent-rules/cache';
+import { isFeatureEnabled } from '@/lib/feature-flags/agent-missions';
 
 export async function buildOutboundSystemPrompt(
   agent: VoiceAgent,
@@ -150,10 +151,20 @@ Si nadie contesta, ofrece que alguien le llame de regreso y toma sus datos.`);
   }
 
   // ── Reglas de operación del negocio (Bloque 2, solo stuffed, sin Tareas — PAC-4) ──
+  // Kill switch (Fase 9.2): si agent_missions_enabled=false, omitir bloque.
+  // features en agent.features (voice_agents) — no en organizations. El flag
+  // vive en organizations.features pero el agent no lo carga directamente.
+  // Usamos isFeatureEnabled con las features del agente como proxy conservador:
+  // si el flag no esta en las features del agent, retorna false (default OFF),
+  // lo que preserva el comportamiento pre-Fase 9 hasta que se active el flag.
   {
     const rulesPortalEmail = (agent.portal_email as string | null | undefined) ?? null;
     const rulesMeerkatRoleId = (f as { meerkat_role_id?: string }).meerkat_role_id ?? null;
-    if (rulesPortalEmail && rulesMeerkatRoleId) {
+    // Para outbound, el org features se pasa como parte del agent.features
+    // (cargado por el caller via organizations.features).
+    const agentFeaturesForFlag = (agent as unknown as { org_features?: Record<string, unknown> }).org_features ?? f as Record<string, unknown>;
+    const missionsOn = isFeatureEnabled({ features: agentFeaturesForFlag }, 'agent_missions_enabled');
+    if (rulesPortalEmail && rulesMeerkatRoleId && missionsOn) {
       try {
         const orgRules = await getCachedRulesForAgent(rulesPortalEmail, rulesMeerkatRoleId);
         if (orgRules.length > 0) {
