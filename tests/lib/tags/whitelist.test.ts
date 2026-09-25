@@ -231,6 +231,42 @@ describe('getAllRoles', () => {
   });
 });
 
+describe('flujo integrado addTagToRoleForOrg + cache invalidation', () => {
+  it('addTagToRoleForOrg invalida cache y el siguiente getEffectiveWhitelist refleja el tag nuevo', async () => {
+    // 1ra llamada: llena cache con defaults para 'nala'
+    setupFromMock(
+      [{ tag_slug: 'contabilidad' }, { tag_slug: 'cobranza' }],
+      [],
+    );
+    const first = await getEffectiveWhitelist('test@example.com', 'nala');
+    expect(first.sort()).toEqual(['cobranza', 'contabilidad']);
+
+    // Registrar llamadas a mockFrom hasta ahora
+    const callsBefore = mockFrom.mock.calls.length;
+
+    // addTagToRoleForOrg hace upsert + invalida cache
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'org_role_tag_additions') {
+        return { upsert: vi.fn().mockResolvedValue({ error: null }) };
+      }
+      return {};
+    });
+    await addTagToRoleForOrg('test@example.com', 'nala', 'rh', 'user@test');
+
+    // 3ra llamada: cache invalidado, debe re-consultar Supabase e incluir 'rh'
+    setupFromMock(
+      [{ tag_slug: 'contabilidad' }, { tag_slug: 'cobranza' }],
+      [{ tag_slug: 'rh' }],
+    );
+    const second = await getEffectiveWhitelist('test@example.com', 'nala');
+    expect(second.sort()).toEqual(['cobranza', 'contabilidad', 'rh']);
+
+    // Confirma que hubo nuevas llamadas a Supabase (no devolvio cache stale)
+    const callsAfter = mockFrom.mock.calls.length;
+    expect(callsAfter).toBeGreaterThan(callsBefore);
+  });
+});
+
 describe('invalidateWhitelistCache', () => {
   it('sin argumentos limpia todo el cache', async () => {
     setupFromMock([{ tag_slug: 'ventas' }], []);
