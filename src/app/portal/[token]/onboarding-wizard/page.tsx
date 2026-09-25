@@ -52,18 +52,25 @@ export default async function OnboardingWizardPage({ params }: Props) {
   // Obtener agentes activos del org para el multi-select de reglas
   const { data: agentsRaw } = await supabase
     .from('voice_agents')
-    .select('id, agent_name')
+    .select('id, agent_name, features')
     .eq('portal_email', portalEmail)
     .eq('active', true)
     .order('created_at', { ascending: true });
 
-  const agents = (agentsRaw ?? []).map(a => ({
-    id:   a.id as string,
-    name: ((a as any).agent_name as string | null)?.trim() || 'Empleado',
-  }));
+  const agents = (agentsRaw ?? [])
+    .map(a => {
+      const features = (a as any).features as Record<string, unknown> | null;
+      const meerkatRoleId = (features?.meerkat_role_id as string | undefined) ?? '';
+      return {
+        id:            a.id as string,
+        name:          ((a as any).agent_name as string | null)?.trim() || 'Empleado',
+        meerkatRoleId,
+      };
+    })
+    .filter(a => a.meerkatRoleId !== '');
 
   // Primer agente activo (para la bienvenida y creación de tareas)
-  const primaryAgent = agents[0] ?? { id: '', name: 'tu empleado' };
+  const primaryAgent = agents[0] ?? { id: '', name: 'tu empleado', meerkatRoleId: '' };
 
   return (
     <OnboardingWizardClient

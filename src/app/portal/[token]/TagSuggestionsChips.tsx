@@ -21,26 +21,25 @@ interface Props {
   initialTags?: string[];
 }
 
-// Catálogo de etiquetas conocidas (espejo del enum en DB).
+// Catálogo de etiquetas conocidas (espejo del enum en DB — ficha_tags migration).
 // Se usa para mostrar el selector de "agregar etiqueta".
-const TAG_CATALOG = [
-  'tramite',
-  'producto',
-  'servicio',
-  'precio',
-  'contacto',
-  'horario',
-  'requisito',
-  'politica',
-  'procedimiento',
-  'area',
-  'directorio',
-  'beneficio',
-  'restriccion',
-  'otro',
-] as const;
-
-type Tag = typeof TAG_CATALOG[number];
+export const TAG_CATALOG: readonly { slug: string; label: string }[] = [
+  { slug: 'contabilidad',        label: 'Contabilidad' },
+  { slug: 'cobranza',            label: 'Cobranza' },
+  { slug: 'ventas',              label: 'Ventas' },
+  { slug: 'atencion_cliente',    label: 'Atención al cliente' },
+  { slug: 'catalogo_productos',  label: 'Catálogo de productos' },
+  { slug: 'politicas',           label: 'Políticas' },
+  { slug: 'rh',                  label: 'Recursos humanos' },
+  { slug: 'operaciones',         label: 'Operaciones' },
+  { slug: 'logistica',           label: 'Logística' },
+  { slug: 'marketing',           label: 'Marketing' },
+  { slug: 'finanzas',            label: 'Finanzas' },
+  { slug: 'legal',               label: 'Legal' },
+  { slug: 'fiscal',              label: 'Fiscal' },
+  { slug: 'onboarding_clientes', label: 'Onboarding de clientes' },
+  { slug: 'soporte_tecnico',     label: 'Soporte técnico' },
+];
 
 export default function TagSuggestionsChips({ token, fichaId, initialTags = [] }: Props) {
   const [tags,       setTags]       = useState<string[]>(initialTags);
@@ -99,7 +98,7 @@ export default function TagSuggestionsChips({ token, fichaId, initialTags = [] }
     saveTags(next);
   }
 
-  const available = TAG_CATALOG.filter(t => !tags.includes(t));
+  const available = TAG_CATALOG.filter(t => !tags.includes(t.slug));
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -107,23 +106,27 @@ export default function TagSuggestionsChips({ token, fichaId, initialTags = [] }
       {tags.length > 0 && (
         <div className="flex flex-wrap gap-1.5 items-center">
           <Tag size={11} style={{ color: '#9B8FB5', flexShrink: 0 }} />
-          {tags.map(tag => (
-            <span
-              key={tag}
-              className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-0.5 rounded-full"
-              style={{ background: 'rgba(108,59,255,0.08)', color: '#6C3BFF', border: '1px solid rgba(108,59,255,0.2)' }}
-            >
-              {tag}
-              <button
-                type="button"
-                onClick={() => removeTag(tag)}
-                className="hover:opacity-60"
-                aria-label={`Quitar etiqueta ${tag}`}
+          {tags.map(tag => {
+            const entry = TAG_CATALOG.find(t => t.slug === tag);
+            const displayLabel = entry ? entry.label : tag;
+            return (
+              <span
+                key={tag}
+                className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-0.5 rounded-full"
+                style={{ background: 'rgba(108,59,255,0.08)', color: '#6C3BFF', border: '1px solid rgba(108,59,255,0.2)' }}
               >
-                <X size={9} />
-              </button>
-            </span>
-          ))}
+                {displayLabel}
+                <button
+                  type="button"
+                  onClick={() => removeTag(tag)}
+                  className="hover:opacity-60"
+                  aria-label={`Quitar etiqueta ${displayLabel}`}
+                >
+                  <X size={9} />
+                </button>
+              </span>
+            );
+          })}
           {saving && <Loader2 size={11} className="animate-spin" style={{ color: '#9B8FB5' }} />}
           {saved  && <Check   size={11} style={{ color: '#22c55e' }} />}
           {available.length > 0 && !showPicker && (
@@ -142,15 +145,15 @@ export default function TagSuggestionsChips({ token, fichaId, initialTags = [] }
       {/* Picker de etiquetas disponibles */}
       {showPicker && available.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mt-1">
-          {available.map(tag => (
+          {available.map(t => (
             <button
-              key={tag}
+              key={t.slug}
               type="button"
-              onClick={() => addTag(tag)}
+              onClick={() => addTag(t.slug)}
               className="text-xs px-2.5 py-0.5 rounded-full font-medium transition-opacity hover:opacity-80"
               style={{ background: '#FAFAFB', color: '#6B6480', border: '1px solid #E8E3F5' }}
             >
-              + {tag}
+              + {t.label}
             </button>
           ))}
           <button

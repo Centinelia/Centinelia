@@ -44,7 +44,7 @@ interface Props {
   portalEmail: string;
   agentId:    string;
   agentName:  string;
-  agents:     { id: string; name: string }[];
+  agents:     { id: string; name: string; meerkatRoleId: string }[];
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -142,7 +142,7 @@ function Step2Rules({
   onAdd:    () => void;
   onUpdate: (id: string, field: keyof RuleDraft, value: unknown) => void;
   onRemove: (id: string) => void;
-  agents:   { id: string; name: string }[];
+  agents:   { id: string; name: string; meerkatRoleId: string }[];
 }) {
   return (
     <div className="flex flex-col gap-4">
@@ -211,7 +211,7 @@ function Step2Rules({
                 <input
                   type="checkbox"
                   checked={rule.applies_to.length === 0}
-                  onChange={e => onUpdate(rule.id, 'applies_to', e.target.checked ? [] : [agents[0]?.id ?? ''])}
+                  onChange={e => onUpdate(rule.id, 'applies_to', e.target.checked ? [] : [agents[0]?.meerkatRoleId ?? ''])}
                   className="w-3.5 h-3.5 rounded accent-purple-600"
                 />
                 <span className="text-xs" style={{ color: '#6B6480' }}>Aplica a todos</span>
@@ -221,15 +221,15 @@ function Step2Rules({
             {rule.applies_to.length > 0 && agents.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {agents.map(a => {
-                  const selected = rule.applies_to.includes(a.id);
+                  const selected = rule.applies_to.includes(a.meerkatRoleId);
                   return (
                     <button
-                      key={a.id}
+                      key={a.meerkatRoleId}
                       type="button"
                       onClick={() => {
                         const next = selected
-                          ? rule.applies_to.filter(x => x !== a.id)
-                          : [...rule.applies_to, a.id];
+                          ? rule.applies_to.filter(x => x !== a.meerkatRoleId)
+                          : [...rule.applies_to, a.meerkatRoleId];
                         onUpdate(rule.id, 'applies_to', next);
                       }}
                       className="text-xs px-2.5 py-1 rounded-full font-medium transition-colors"
@@ -474,6 +474,26 @@ function Step3Tasks({
                   )}
                 </div>
 
+                {/* Sub-paso 3: Reglas específicas (parámetros opcionales) */}
+                <div>
+                  <p className="text-xs font-semibold mb-1.5" style={{ color: '#1A0A3B' }}>
+                    Reglas específicas de esta tarea
+                    <span className="ml-1.5 text-[10px] font-normal" style={{ color: '#9B8FB5' }}>Opcional</span>
+                  </p>
+                  <textarea
+                    rows={3}
+                    maxLength={4000}
+                    value={task.parameters}
+                    onChange={e => updateField(i, 'parameters', e.target.value)}
+                    placeholder="Ejemplo: 'Solo cobra a clientes con mora mayor a 30 días. Nunca menciones penalizaciones en el primer contacto.'"
+                    className="w-full px-3 py-2 rounded-lg text-sm resize-none"
+                    style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none', fontFamily: 'inherit' }}
+                  />
+                  <p className="text-[10px] text-right mt-0.5" style={{ color: task.parameters.length > 3800 ? '#ef4444' : '#9B8FB5' }}>
+                    {task.parameters.length}/4000
+                  </p>
+                </div>
+
                 {/* Sub-paso 4: Entregable */}
                 <div>
                   <p className="text-xs font-semibold mb-2" style={{ color: '#1A0A3B' }}>
@@ -541,9 +561,9 @@ function Step4Review({
 }: {
   rules:  RuleDraft[];
   tasks:  TaskDraft[];
-  agents: { id: string; name: string }[];
+  agents: { id: string; name: string; meerkatRoleId: string }[];
 }) {
-  const agentMap = Object.fromEntries(agents.map(a => [a.id, a.name]));
+  const agentMap = Object.fromEntries(agents.map(a => [a.meerkatRoleId, a.name]));
 
   return (
     <div className="flex flex-col gap-5">
