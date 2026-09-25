@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Users, Upload, Trash2, Edit2, Check, X, Loader2, Search, ChevronLeft, ChevronRight, Eye, ArrowRight, Filter } from 'lucide-react';
+import { useApi } from '@/lib/hooks/useApi';
 
 const PAGE_SIZE = 20;
 
@@ -60,16 +61,18 @@ interface ColumnMapping {
 
 const ESTADOS = ['activo', 'promesa_pendiente', 'promesa_rota', 'legal', 'pagado', 'inactivo'];
 
+interface ContactosResponse {
+  enabled:   boolean;
+  contactos: Contacto[];
+  total:     number;
+}
+
 export default function PerfilesVivosSection({ token }: { token: string }) {
-  const [enabled,    setEnabled]    = useState(false);
-  const [contactos,  setContactos]  = useState<Contacto[]>([]);
-  const [total,      setTotal]      = useState(0);
   const [page,       setPage]       = useState(0);
   const [query,      setQuery]      = useState('');
   const [estado,     setEstado]     = useState<string | null>(null);
-  const [loading,    setLoading]    = useState(true);
   const [msg,        setMsg]        = useState<string | null>(null);
-  const [error,      setError]      = useState<string | null>(null);
+  const [uiError,    setUiError]    = useState<string | null>(null);
   const [detailId,   setDetailId]   = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
 
@@ -80,30 +83,26 @@ export default function PerfilesVivosSection({ token }: { token: string }) {
     return () => clearTimeout(t);
   }, [query]);
 
-  const loadContactos = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
-      if (estado) params.set('estado', estado);
-      if (debouncedQuery) params.set('q', debouncedQuery);
-      const res = await fetch(`/api/portal/${token}/contactos?${params.toString()}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      setEnabled(data.enabled === true);
-      setContactos(data.contactos ?? []);
-      setTotal(data.total ?? 0);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar');
-    } finally {
-      setLoading(false);
-    }
+  // Reset a página 0 cuando cambia filtro/búsqueda
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de paginación cuando cambia filtro es sincronización derivada legítima.
+    setPage(0);
+  }, [debouncedQuery, estado]);
+
+  const url = useMemo(() => {
+    const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
+    if (estado) params.set('estado', estado);
+    if (debouncedQuery) params.set('q', debouncedQuery);
+    return `/api/portal/${token}/contactos?${params.toString()}`;
   }, [token, page, estado, debouncedQuery]);
 
-  useEffect(() => { loadContactos(); }, [loadContactos]);
-  useEffect(() => { setPage(0); }, [debouncedQuery, estado]);
+  const { data, error: fetchError, isLoading: loading, mutate } = useApi<ContactosResponse>(url);
 
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const enabled     = data?.enabled === true;
+  const contactos   = data?.contactos ?? [];
+  const total       = data?.total ?? 0;
+  const displayError = uiError ?? fetchError?.message ?? null;
+  const totalPages  = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   async function handleDelete(c: Contacto) {
     if (!confirm(`¿Eliminar el contacto "${c.nombre}" y todo su historial? Esta acción no se puede deshacer.`)) return;
@@ -114,9 +113,9 @@ export default function PerfilesVivosSection({ token }: { token: string }) {
         throw new Error((j as { error?: string }).error ?? `HTTP ${res.status}`);
       }
       setMsg(`Contacto "${c.nombre}" eliminado.`);
-      await loadContactos();
+      await mutate();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al eliminar');
+      setUiError(err instanceof Error ? err.message : 'Error al eliminar');
     }
   }
 
@@ -161,9 +160,9 @@ export default function PerfilesVivosSection({ token }: { token: string }) {
           <Check size={16} /> <span>{msg}</span>
         </div>
       )}
-      {error && (
+      {displayError && (
         <div className="text-sm p-3 rounded-lg flex items-center gap-2" style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>
-          <X size={16} /> <span>{error}</span>
+          <X size={16} /> <span>{displayError}</span>
         </div>
       )}
 
@@ -260,9 +259,9 @@ export default function PerfilesVivosSection({ token }: { token: string }) {
           onDone={(msgTxt) => {
             setShowImport(false);
             setMsg(msgTxt);
-            loadContactos();
+            mutate();
           }}
-          onError={(e) => setError(e)}
+          onError={(e) => setUiError(e)}
         />
       )}
 
@@ -271,7 +270,7 @@ export default function PerfilesVivosSection({ token }: { token: string }) {
           token={token}
           contactoId={detailId}
           onClose={() => setDetailId(null)}
-          onEdited={() => loadContactos()}
+          onEdited={() => mutate()}
         />
       )}
     </div>
@@ -547,35 +546,35 @@ function MapField({ label, value, headers, onChange, required = false }: { label
 }
 
 // ─── Modal de detalle ───────────────────────────────────────────────────────
-function ContactoDetail({ token, contactoId, onClose, onEdited }: { token: string; contactoId: string; onClose: () => void; onEdited: () => void }) {
-  const [contacto,      setContacto]      = useState<Contacto | null>(null);
-  const [interacciones, setInteracciones] = useState<Interaccion[]>([]);
-  const [loading,       setLoading]       = useState(true);
-  const [editing,       setEditing]       = useState(false);
-  const [form,          setForm]          = useState<Partial<Contacto>>({});
-  const [saving,        setSaving]        = useState(false);
-  const [err,           setErr]           = useState<string | null>(null);
+interface ContactoDetailResponse {
+  contacto:      Contacto;
+  interacciones: Interaccion[];
+}
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/portal/${token}/contactos/${contactoId}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      setContacto(data.contacto);
-      setInteracciones(data.interacciones ?? []);
-      setForm(data.contacto);
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
-    } finally {
-      setLoading(false);
-    }
-  }, [token, contactoId]);
-  useEffect(() => { load(); }, [load]);
+function ContactoDetail({ token, contactoId, onClose, onEdited }: { token: string; contactoId: string; onClose: () => void; onEdited: () => void }) {
+  const { data, error: fetchErr, isLoading: loading, mutate } = useApi<ContactoDetailResponse>(
+    `/api/portal/${token}/contactos/${contactoId}`,
+  );
+  const contacto      = data?.contacto ?? null;
+  const interacciones = data?.interacciones ?? [];
+
+  const [editing, setEditing] = useState(false);
+  const [form,    setForm]    = useState<Partial<Contacto>>({});
+  const [saving,  setSaving]  = useState(false);
+  const [uiErr,   setUiErr]   = useState<string | null>(null);
+  const err = uiErr ?? fetchErr?.message ?? null;
+
+  // Rehidratar form cuando llegue contacto del server. Sync de estado externo
+  // (SWR data) → estado local editable. Es el patrón estándar props→state.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sincronizacion legitima de SWR cache a form editable local.
+    if (contacto) setForm(contacto);
+  }, [contacto]);
 
   async function save() {
+    if (!contacto) return;
     setSaving(true);
-    setErr(null);
+    setUiErr(null);
     try {
       const patch: Record<string, unknown> = {};
       for (const k of ['nombre', 'telefono', 'correo', 'external_id', 'estado_actual', 'notas', 'capacidad_pago_detectada', 'proxima_accion_at', 'proxima_accion_tipo', 'datos_operacionales'] as const) {
@@ -591,10 +590,10 @@ function ContactoDetail({ token, contactoId, onClose, onEdited }: { token: strin
         throw new Error((j as { error?: string }).error ?? `HTTP ${res.status}`);
       }
       setEditing(false);
-      await load();
+      await mutate();
       onEdited();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
+      setUiErr(e instanceof Error ? e.message : String(e));
     } finally {
       setSaving(false);
     }

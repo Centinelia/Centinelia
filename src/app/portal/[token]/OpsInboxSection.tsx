@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Inbox, Check, X, FileText, RefreshCw, Search, AlertTriangle, MessageSquare, RotateCcw, PlugZap } from 'lucide-react';
 import { SectionHeader, EmptyState } from '@/components/portal-ui';
@@ -12,6 +12,7 @@ import InboxRow from './inbox/InboxRow';
 import InboxZone from './inbox/InboxZone';
 import CategoryChips from './inbox/CategoryChips';
 import { resolveAttachmentHref } from '@/lib/portal/attachment-url';
+import { useApi } from '@/lib/hooks/useApi';
 
 interface InboxItem {
   id:                  string;
@@ -104,14 +105,27 @@ interface OpsInboxSectionProps {
   agents: InboxAgent[];
 }
 
+interface InboxResponse {
+  items:                     InboxItem[];
+  humanRequests:             HumanRequest[];
+  integrationsNeedingReauth: ReauthNeeded[];
+  trustStage?:               number;
+}
+
 export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps) {
-  const [items, setItems]                                 = useState<InboxItem[]>([]);
-  const [humanRequests, setHumanReqs]                     = useState<HumanRequest[]>([]);
-  const [reauthNeeded, setReauthNeeded]                   = useState<ReauthNeeded[]>([]);
+  const { data, isLoading: loading, mutate } = useApi<InboxResponse>(`/api/portal/${token}/ops-inbox`);
+  const items         = useMemo(() => data?.items ?? [], [data]);
+  const humanRequests = useMemo(() => data?.humanRequests ?? [], [data]);
+  const reauthNeeded  = useMemo(() => data?.integrationsNeedingReauth ?? [], [data]);
   // trust_stage de la cuenta. 3=Autónomo (default), 2=Supervisado, 1=Observador.
   // Determina cuándo mostrar Aprobar/Rechazar en el frontend.
-  const [trustStage, setTrustStage]     = useState<number>(3);
-  const [loading, setLoading]           = useState(true);
+  const trustStage    = typeof data?.trustStage === 'number' ? data.trustStage : 3;
+
+  // Revalidación explícita. Antes había un helper load({ silent: true }) que
+  // hacía re-fetch sin toggle de loading; SWR ya hace revalidación silenciosa
+  // por default cuando el cache tiene data (isLoading queda false).
+  const load = useCallback(async () => { await mutate(); }, [mutate]);
+
   const [expandedId, setExpanded]       = useState<string | null>(null);
   const [acting, setActing]             = useState<{ id: string; kind: 'approved' | 'rejected' | 'unspam' } | null>(null);
   const searchParams = useSearchParams();
@@ -168,20 +182,6 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
     router.replace(qs ? `?${qs}` : '?', { scroll: false });
   }, [router, searchParams]);
 
-  const load = useCallback(async (opts?: { silent?: boolean }) => {
-    if (!opts?.silent) setLoading(true);
-    try {
-      const res = await fetch(`/api/portal/${token}/ops-inbox`);
-      if (res.ok) {
-        const data = await res.json();
-        setItems(data.items ?? []);
-        setHumanReqs(data.humanRequests ?? []);
-        setReauthNeeded(data.integrationsNeedingReauth ?? []);
-        if (typeof data.trustStage === 'number') setTrustStage(data.trustStage);
-      }
-    } finally { if (!opts?.silent) setLoading(false); }
-  }, [token]);
-
   const markRead = useCallback((id: string) => {
     fetch(`/api/portal/${token}/read-receipt`, {
       method:  'POST',
@@ -189,9 +189,6 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
       body:    JSON.stringify({ item_type: 'inbox', item_id: id }),
     }).catch(() => {});
   }, [token]);
-
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { load(); }, [load]);
 
   const [draftEdits, setDraftEdits] = useState<Record<string, string>>({});
   const [flaggingId, setFlaggingId]   = useState<string | null>(null);
@@ -257,20 +254,25 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
         return false;
       }
       const data = await res.json() as { agent_name?: string };
-      // Update optimista
-      setItems(prev => prev.map(x =>
-        x.id === id
-          ? {
-              ...x,
-              agent_id:            newAgentId,
-              assigned_by:         'human',
-              assignment_metadata: {
-                ...(x.assignment_metadata ?? {}),
-                reassigned_at: new Date().toISOString(),
-              },
-            }
-          : x,
-      ));
+      // Update optimista via SWR mutate: aplica el cambio local inmediato y
+      // dispara revalidacion contra el server. Si el server difiere, la UI
+      // se corrige sin flash.
+      await mutate(current => current ? {
+        ...current,
+        items: current.items.map(x =>
+          x.id === id
+            ? {
+                ...x,
+                agent_id:            newAgentId,
+                assigned_by:         'human',
+                assignment_metadata: {
+                  ...(x.assignment_metadata ?? {}),
+                  reassigned_at: new Date().toISOString(),
+                },
+              }
+            : x,
+        ),
+      } : current);
       toast.success(`Reasignado a ${data.agent_name ?? 'nuevo empleado'}.`);
       return true;
     } catch {
@@ -331,8 +333,10 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
         // desaparece del tab actual (Pendientes/Escalados) sin ocultar el
         // resto de la lista con el spinner. Luego refetch silencioso valida
         // contra el server (si hay drift, el estado se corrige sin flash).
-        setItems(prev => prev.map(x => x.id === id ? { ...x, status } : x));
-        void load({ silent: true });
+        void mutate(current => current ? {
+          ...current,
+          items: current.items.map(x => x.id === id ? { ...x, status } : x),
+        } : current);
       } else {
         // Sin toast el usuario ve "Procesando..." y luego nada — parece que
         // el botón no hizo nada. Mejor comunicar el error.
@@ -353,7 +357,10 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
         body:    JSON.stringify({ id, status: 'unspam' }),
       });
       if (res.ok) {
-        setItems(prev => prev.map(i => i.id === id ? { ...i, status: 'pending', category: 'otro' } : i));
+        await mutate(current => current ? {
+          ...current,
+          items: current.items.map(i => i.id === id ? { ...i, status: 'pending', category: 'otro' } : i),
+        } : current);
         setExpanded(null);
         toast.success('Rescatado. Ahora aparece en Pendientes.');
       } else {

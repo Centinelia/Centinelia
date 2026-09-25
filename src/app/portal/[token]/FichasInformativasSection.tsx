@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { FileText, Upload, Trash2, Edit2, Check, X, Loader2, Link as LinkIcon, Mail, Phone, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useApi } from '@/lib/hooks/useApi';
 
 const PAGE_SIZE = 20;
 
@@ -32,39 +33,32 @@ interface Props {
 
 type Mode = 'stuffed' | 'embeddings';
 
+interface FichasResponse {
+  fichas:  Ficha[];
+  enabled: boolean;
+  mode:    Mode;
+}
+
 export default function FichasInformativasSection({ token }: Props) {
-  const [fichas,   setFichas]   = useState<Ficha[]>([]);
-  const [enabled,  setEnabled]  = useState(false);
-  const [mode,     setMode]     = useState<Mode>('stuffed');
-  const [loading,  setLoading]  = useState(true);
-  const [uploading,setUploading]= useState(false);
-  const [msg,      setMsg]      = useState<string | null>(null);
-  const [error,    setError]    = useState<string | null>(null);
-  const [query,    setQuery]    = useState('');
-  const [page,     setPage]     = useState(0);
+  const { data, error: fetchError, isLoading: loading, mutate } =
+    useApi<FichasResponse>(`/api/portal/${token}/fichas`);
 
-  const loadFichas = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/portal/${token}/fichas`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      setFichas(data.fichas ?? []);
-      setEnabled(data.enabled === true);
-      setMode((data.mode as Mode) ?? 'stuffed');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar fichas');
-    } finally {
-      setLoading(false);
-    }
-  }, [token]);
+  const fichas  = useMemo(() => data?.fichas ?? [], [data]);
+  const enabled = data?.enabled === true;
+  const mode    = data?.mode ?? 'stuffed';
 
-  useEffect(() => { loadFichas(); }, [loadFichas]);
+  const [uploading, setUploading] = useState(false);
+  const [msg,       setMsg]       = useState<string | null>(null);
+  const [uiError,   setUiError]   = useState<string | null>(null);
+  const [query,     setQuery]     = useState('');
+  const [page,      setPage]      = useState(0);
+
+  const error = uiError ?? fetchError?.message ?? null;
 
   async function handleUpload(file: File) {
     setUploading(true);
     setMsg('Subiendo PDF y extrayendo datos con IA...');
-    setError(null);
+    setUiError(null);
     try {
       const fd = new FormData();
       fd.append('file', file);
@@ -75,9 +69,9 @@ export default function FichasInformativasSection({ token }: Props) {
       }
       const autoMsg = data.auto_activated ? ' Las fichas quedaron activas automáticamente.' : '';
       setMsg(`Ficha "${data.titulo}" cargada con ${data.chunks_count} secciones.${autoMsg}`);
-      await loadFichas();
+      await mutate();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al subir la ficha');
+      setUiError(err instanceof Error ? err.message : 'Error al subir la ficha');
       setMsg(null);
     } finally {
       setUploading(false);
@@ -105,7 +99,10 @@ export default function FichasInformativasSection({ token }: Props) {
   const visible    = filtered.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE);
 
   // Reset paginación cuando cambia el filtro (evita quedar en página 3 tras filtrar a 5 resultados).
-  useEffect(() => { setPage(0); }, [query, fichas.length]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de paginación cuando cambia filtro es sincronización derivada legítima.
+    setPage(0);
+  }, [query, fichas.length]);
 
   async function handleDelete(ficha: Ficha) {
     if (!confirm(`¿Borrar la ficha "${ficha.titulo}"? Esta acción no se puede deshacer.`)) return;
@@ -116,9 +113,9 @@ export default function FichasInformativasSection({ token }: Props) {
         throw new Error((j as { error?: string }).error ?? `HTTP ${res.status}`);
       }
       setMsg(`Ficha "${ficha.titulo}" eliminada.`);
-      await loadFichas();
+      await mutate();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al eliminar');
+      setUiError(err instanceof Error ? err.message : 'Error al eliminar');
     }
   }
 
@@ -222,7 +219,7 @@ export default function FichasInformativasSection({ token }: Props) {
         )}
         {!loading && fichas.length > 0 && filtered.length === 0 && (
           <div className="text-sm py-6 text-center rounded-lg" style={{ color: '#4A3B6B', background: '#FFFFFF', border: '1px dashed #E8E3F5' }}>
-            Ninguna ficha coincide con "{query}". Prueba con otro término.
+            Ninguna ficha coincide con «{query}». Prueba con otro término.
           </div>
         )}
         {visible.map((f) => (
@@ -231,7 +228,7 @@ export default function FichasInformativasSection({ token }: Props) {
             ficha={f}
             token={token}
             onDelete={() => handleDelete(f)}
-            onEdited={() => loadFichas()}
+            onEdited={() => mutate()}
           />
         ))}
       </div>
