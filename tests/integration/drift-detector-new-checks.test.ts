@@ -56,8 +56,12 @@ describe('detectTaskActionOrphans', () => {
     }
 
     const orphans = await detectTaskActionOrphans(1); // solo 1 hora de ventana
-    // Puede haber orphans de otras fuentes; verificamos que no falla
+    // Filtrar por el agente específico de este test para aislar de orphans de otras fuentes.
+    // cleanupAiOpsLog en beforeAll/afterEach garantiza que no hay datos del test previos.
+    const ourOrphans = orphans.filter(o => o.portal_email === TEST_EMAIL &&
+      o.run_id?.startsWith('test-run-'));
     expect(Array.isArray(orphans)).toBe(true);
+    expect(ourOrphans.length).toBe(0);
   });
 
   it('detecta task_action sin task_execution_start correspondiente', async () => {
