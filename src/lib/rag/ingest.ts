@@ -23,6 +23,7 @@ import { parseFichaWithLLM } from './parse-ficha-llm';
 import { parseFichaSantiago } from './parse-ficha-santiago';
 import { chunkSections } from './chunk';
 import { embedTexts } from './embed';
+import { autotagFicha } from '@/lib/autotag/service';
 
 export type IngestParserKind = 'llm' | 'santiago';
 export type FichaMode       = 'stuffed' | 'embeddings';
@@ -35,6 +36,16 @@ export interface IngestOpts {
   mode?:       FichaMode;
   /** ID del voice_agent al que atribuye el cargo. Si se omite, no cobra. */
   agentId?:    string;
+  /**
+   * Tags ya aprobados por el cliente (desde el modal de nueva ficha).
+   * Si se pasan, se usan directamente con autotag_status='manual_override'.
+   * Si no se pasan, se corre autotag síncrono.
+   *
+   * Cobro: el autotag NO cobra ops. Costo absorbido por Centinelia (~$0.001).
+   * Ver feedback_batch_eval_no_charge y spec Sección 3 "Cobro autotag".
+   */
+  tags?:          string[];
+  enableAutotag?: boolean;
 }
 
 export interface IngestResult {
@@ -44,6 +55,9 @@ export interface IngestResult {
   chunks_count:   number;
   mode:           FichaMode;
   auto_activated: boolean;
+  /** Tags asignados a la ficha (autotag o manual_override). */
+  tags:           string[];
+  autotag_status: string;
   contactos_extraidos: {
     nombre:    string | null;
     puesto:    string | null;
@@ -139,6 +153,32 @@ export async function ingestFicha(pdfBuffer: Buffer, opts: IngestOpts): Promise<
     .single();
   if (insErr) throw new Error(`Ingest: insert ficha error: ${insErr.message}`);
 
+  // ── Autotag ──────────────────────────────────────────────────────────────
+  // Cobro: NINGUNO. El autotag al crear una ficha está absorbido como parte
+  // del setup. No cobra ops al cliente. Ver feedback_batch_eval_no_charge.
+  let finalTags: string[] = [];
+  let autotagStatus = 'pending';
+
+  if (opts.enableAutotag !== false && (opts.tags !== undefined || opts.enableAutotag === true)) {
+    if (opts.tags && opts.tags.length > 0) {
+      // El cliente ya aprobó/modificó los chips → manual_override.
+      finalTags      = opts.tags;
+      autotagStatus  = 'manual_override';
+    } else {
+      // Correr autotag síncrono. Texto disponible: raw_text del parsed.
+      const autotagText = parsed.rawText ?? parsed.titulo ?? '';
+      const autotagResult = await autotagFicha(portalEmail, autotagText);
+      finalTags     = autotagResult.tags;
+      autotagStatus = autotagResult.status;
+    }
+
+    // Actualizar la row con tags + autotag_status
+    await supabase
+      .from('fichas_informativas')
+      .update({ tags: finalTags, autotag_status: autotagStatus })
+      .eq('id', fichaRow.id);
+  }
+
   // Chunkear
   const header = [parsed.codigo, parsed.titulo, parsed.dependencia, parsed.unidadAdministrativa]
     .filter(Boolean)
@@ -182,6 +222,8 @@ export async function ingestFicha(pdfBuffer: Buffer, opts: IngestOpts): Promise<
     chunks_count:   chunks.length,
     mode,
     auto_activated: autoActivated,
+    tags:           finalTags,
+    autotag_status: autotagStatus,
     contactos_extraidos: {
       nombre:    parsed.contactoNombre,
       puesto:    parsed.contactoPuesto,

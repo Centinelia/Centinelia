@@ -37,6 +37,9 @@ const EDITABLE_FIELDS = new Set([
   'unidad_administrativa',
 ]);
 
+// Campos especiales que requieren manejo distinto (no text/null simple).
+// 'tags': array de strings — se maneja abajo antes de la validación estándar.
+
 // ─── PATCH ──────────────────────────────────────────────────────────────────
 export async function PATCH(req: NextRequest, { params }: Params) {
   const { token, fichaId } = await params;
@@ -70,6 +73,14 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   }
 
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+
+  // Tags: array de slugs validados por el cliente (manual_override).
+  if (Array.isArray(body.tags)) {
+    const tags = (body.tags as unknown[]).filter(s => typeof s === 'string') as string[];
+    patch.tags            = tags;
+    patch.autotag_status  = 'manual_override';
+  }
+
   for (const [k, v] of Object.entries(body)) {
     if (!EDITABLE_FIELDS.has(k)) continue;
     if (typeof v === 'string') {

@@ -122,13 +122,28 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const buffer = Buffer.from(await file.arrayBuffer());
 
+  // Leer tags opcionales que el cliente ya aprobó desde el modal (Fase 5.4).
+  // Si el modal envió tags → manual_override. Si no → autotag síncrono.
+  const tagsRaw = formData.get('tags');
+  let clientTags: string[] | undefined;
+  if (typeof tagsRaw === 'string' && tagsRaw.trim().length > 0) {
+    try {
+      const parsed = JSON.parse(tagsRaw);
+      if (Array.isArray(parsed) && parsed.every(s => typeof s === 'string')) {
+        clientTags = parsed as string[];
+      }
+    } catch { /* ignorar tags malformados */ }
+  }
+
   try {
     const result = await ingestFicha(buffer, {
-      portalEmail: resolved.portalEmail,
-      filename:    file.name,
-      uploadedBy:  session.portalEmail,
-      parser:      'llm',
-      agentId:     agent.id,
+      portalEmail:   resolved.portalEmail,
+      filename:      file.name,
+      uploadedBy:    session.portalEmail,
+      parser:        'llm',
+      agentId:       agent.id,
+      enableAutotag: true,
+      tags:          clientTags,
     });
     return NextResponse.json({ ok: true, ...result }, { status: 201 });
   } catch (err) {
