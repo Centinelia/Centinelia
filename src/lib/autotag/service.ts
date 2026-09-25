@@ -79,37 +79,37 @@ export async function autotagFicha(
 
     if (msg === 'autotag_timeout') {
       // Timeout: el caller marcará la ficha como 'pending' para retry async.
-      void logLlmCall({
+      logLlmCall({
         source:       'autotag_service',
         model:        MODEL,
         usage:        { input_tokens: 0, output_tokens: 0 },
         portalEmail,
         latencyMs:    AUTOTAG_TIMEOUT_MS,
         error:        'autotag_timeout',
-      });
+      }).catch(err => console.error('[autotag] logLlmCall failed:', err));
       return { tags: [], status: 'pending' };
     }
 
     // Error de red u otro — status='error'
-    void logLlmCall({
+    logLlmCall({
       source:       'autotag_service',
       model:        MODEL,
       usage:        { input_tokens: 0, output_tokens: 0 },
       portalEmail,
       latencyMs:    Date.now() - __start,
       error:        msg,
-    });
+    }).catch(err => console.error('[autotag] logLlmCall failed:', err));
     return { tags: [], status: 'error' };
   }
 
   // Log exitoso
-  void logLlmCall({
+  logLlmCall({
     source:       'autotag_service',
     model:        MODEL,
     usage:        response.usage,
     portalEmail,
     latencyMs:    Date.now() - __start,
-  });
+  }).catch(err => console.error('[autotag] logLlmCall failed:', err));
 
   // Parsear respuesta
   const rawText = response.content
