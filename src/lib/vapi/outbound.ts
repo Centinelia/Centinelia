@@ -252,7 +252,7 @@ export async function triggerOutboundCall({
 
   const enrichedContext = (customerContext ?? '') + externalContextBlock + incidentContextBlock;
 
-  const systemPrompt   = buildOutboundSystemPrompt(agent, resolvedName, expandedMotivo, enrichedContext, finalCampaignInstructions);
+  const systemPrompt   = await buildOutboundSystemPrompt(agent, resolvedName, expandedMotivo, enrichedContext, finalCampaignInstructions);
 
   // Resolver la config real del meerkat (mismo path que sync.ts inbound). Antes
   // este bloque hardcodeaba Haiku 4.5 ignorando la config → outbound de meerkats

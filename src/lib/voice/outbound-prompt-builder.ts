@@ -1,14 +1,15 @@
 import type { VoiceAgent } from '@/types/agent';
 import { VOICE_RULES } from '@/lib/voice/rules';
 import { MEERKAT_MAP, type MeerkatRoleId } from '@/lib/portal/meerkat-roles';
+import { getCachedRulesForAgent } from '@/lib/agent-rules/cache';
 
-export function buildOutboundSystemPrompt(
+export async function buildOutboundSystemPrompt(
   agent: VoiceAgent,
   customerName?: string,
   motivo?: string,
   customerContext?: string,
   campaignInstructions?: string,
-): string {
+): Promise<string> {
   const agentName = agent.agent_name?.trim() || 'Centinelia';
   const f = agent.features ?? {};
 
@@ -146,6 +147,29 @@ Si nadie contesta, ofrece que alguien le llame de regreso y toma sus datos.`);
   // ── Campaign-specific instructions (highest priority, set per call) ─────────
   if (campaignInstructions?.trim()) {
     blocks.push(`INSTRUCCIONES DE ESTA CAMPAÑA:\n${campaignInstructions.trim()}`);
+  }
+
+  // ── Reglas de operación del negocio (Bloque 2, solo stuffed, sin Tareas — PAC-4) ──
+  {
+    const rulesPortalEmail = (agent.portal_email as string | null | undefined) ?? null;
+    const rulesMeerkatRoleId = (f as { meerkat_role_id?: string }).meerkat_role_id ?? null;
+    if (rulesPortalEmail && rulesMeerkatRoleId) {
+      try {
+        const orgRules = await getCachedRulesForAgent(rulesPortalEmail, rulesMeerkatRoleId);
+        if (orgRules.length > 0) {
+          const rulesBlock = [
+            '## Reglas de tu negocio (respétalas siempre)',
+            ...orgRules.map((r) => {
+              const line = `- ${r.regla}`;
+              return r.detalles ? `${line}\n  Detalles: ${r.detalles}` : line;
+            }),
+          ].join('\n');
+          blocks.push(rulesBlock);
+        }
+      } catch (err) {
+        console.warn('[prompt-builder] getCachedRulesForAgent failed (outbound):', err);
+      }
+    }
   }
 
   // ── Role knowledge base ───────────────────────────────────────────────────

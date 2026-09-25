@@ -1,6 +1,7 @@
 import type { VoiceAgent, BusinessHours } from '@/types/agent';
+import { getCachedRulesForAgent } from '@/lib/agent-rules/cache';
 
-export function buildWASystemPrompt(agent: VoiceAgent, brandVoiceGuide?: string | null): string {
+export async function buildWASystemPrompt(agent: VoiceAgent, brandVoiceGuide?: string | null): Promise<string> {
   const agentName = agent.agent_name?.trim() || agent.business_name;
 
   const now = new Date().toLocaleString('es-MX', {
@@ -139,6 +140,30 @@ Pregunta: qué productos desean, cantidad, nombre del cliente, si es entrega a d
 Si es entrega, pide la dirección completa.
 Confirma el pedido completo antes de registrar.
 Usa la herramienta guardar_lead con el campo servicio describiendo el pedido.`);
+  }
+
+  // ── Reglas de operación del negocio (Bloque 2, solo stuffed — PAC-4) ────────
+  {
+    const rulesPortalEmail = (agent.portal_email as string | null | undefined) ?? null;
+    const rulesF = (agent.features ?? {}) as { meerkat_role_id?: string };
+    const rulesMeerkatRoleId = rulesF.meerkat_role_id ?? null;
+    if (rulesPortalEmail && rulesMeerkatRoleId) {
+      try {
+        const orgRules = await getCachedRulesForAgent(rulesPortalEmail, rulesMeerkatRoleId);
+        if (orgRules.length > 0) {
+          const rulesBlock = [
+            '## Reglas de tu negocio (respétalas siempre)',
+            ...orgRules.map((r) => {
+              const line = `- ${r.regla}`;
+              return r.detalles ? `${line}\n  Detalles: ${r.detalles}` : line;
+            }),
+          ].join('\n');
+          blocks.push(rulesBlock);
+        }
+      } catch (err) {
+        console.warn('[prompt-builder] getCachedRulesForAgent failed (whatsapp):', err);
+      }
+    }
   }
 
   if (agent.knowledge_base?.trim()) {

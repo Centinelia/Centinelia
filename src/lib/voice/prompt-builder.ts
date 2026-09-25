@@ -7,6 +7,7 @@ import { getActiveTramitesForOrg } from '@/lib/tramites/config';
 import { renderTramitesSection } from '@/lib/tramites/prompt';
 import { getOrgIndustry } from '@/lib/industry';
 import { formatDailyAvailabilityForPrompt } from '@/lib/daily-availability';
+import { getCachedRulesForAgent } from '@/lib/agent-rules/cache';
 
 type SupabaseClient = ReturnType<typeof createAdminClient>;
 
@@ -640,6 +641,35 @@ Cuando hayas capturado datos del cliente durante la llamada (nombre, teléfono, 
 4. Para fechas y horas: sé explícito. Ejemplo: "La cita es para el... martes veintidós de julio... a las diez de la mañana."
 5. Cierra la confirmación con una pregunta corta: "¿Es correcto?" o "¿Está bien así?" Si el cliente corrige algo, repite solo el dato corregido para confirmar el cambio.
 6. Solo omite esta confirmación en llamadas puramente informativas donde no se capturó ningún dato del cliente.`);
+  }
+
+  // ── Reglas de operación del negocio (Bloque 2 del spec, siempre stuffed) ────
+  // Se inyectan antes de la base de conocimiento para que tengan prioridad
+  // semántica frente a cualquier ficha informativa o KB que pueda contradecirlas.
+  // Ver spec Sección 5.2: applies_to={} = todos; meerkat_role_id = ANY(applies_to).
+  // Si el builder se llama sin portal_email o meerkat_role_id (agentes legacy sin
+  // features.meerkat_role_id), se omite el bloque sin error.
+  {
+    const rulesPortalEmail = (agent.portal_email as string | null | undefined) ?? null;
+    const rulesMeerkatRoleId = meerkatRoleId ?? null;
+    if (rulesPortalEmail && rulesMeerkatRoleId) {
+      try {
+        const orgRules = await getCachedRulesForAgent(rulesPortalEmail, rulesMeerkatRoleId);
+        if (orgRules.length > 0) {
+          const rulesBlock = [
+            '## Reglas de tu negocio (respétalas siempre)',
+            ...orgRules.map((r) => {
+              const line = `- ${r.regla}`;
+              return r.detalles ? `${line}\n  Detalles: ${r.detalles}` : line;
+            }),
+          ].join('\n');
+          blocks.push(rulesBlock);
+        }
+      } catch (err) {
+        // No romper el meerkat si las reglas fallan. Log y continuar.
+        console.warn('[prompt-builder] getCachedRulesForAgent failed (voice):', err);
+      }
+    }
   }
 
   // ── Knowledge base ────────────────────────────────────────────────────────

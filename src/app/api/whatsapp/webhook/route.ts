@@ -265,7 +265,7 @@ export const POST = withWebhookAuth('twilio', async (_req: NextRequest, { event,
       .maybeSingle();
     brandVoiceGuide = (org?.brand_voice_guide as string | null) ?? null;
   }
-  const systemPrompt = buildWASystemPrompt(agent, brandVoiceGuide);
+  const systemPrompt = await buildWASystemPrompt(agent, brandVoiceGuide);
 
   let claudeReply = '';
   let capturedLead: WACapturedLead | null = null;

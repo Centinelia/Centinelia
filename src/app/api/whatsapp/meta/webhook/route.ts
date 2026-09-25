@@ -228,7 +228,7 @@ export const POST = withWebhookAuth('meta_wa', async (_req: NextRequest, { event
   }
 
   // 6. Build system prompt (base + addendum PrimeLift)
-  const systemPrompt = buildWASystemPrompt(agent) + '\n\n' + PRIMELIFT_ADDENDUM;
+  const systemPrompt = (await buildWASystemPrompt(agent)) + '\n\n' + PRIMELIFT_ADDENDUM;
 
   const claudeMessages: Anthropic.MessageParam[] = allMessages
     .slice(-30)
