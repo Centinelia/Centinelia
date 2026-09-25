@@ -83,3 +83,6 @@ scripts/output/
 # Playwright / vitest artifacts
 test-results/
 playwright-report/
+
+# npm install backup artifacts (temporal, generado por scripts de setup)
+node_modules_bak/
