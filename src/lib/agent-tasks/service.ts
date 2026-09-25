@@ -96,10 +96,14 @@ export async function createTask(input: CreateTaskInput): Promise<AgentTask> {
   const task = data as AgentTask;
 
   // Cobrar 1 op de setup al agente dueño. Si falla el cobro NO revierte el insert.
+  // Fix I1 (Round 1): usa reason (nuevo) en vez de source (legacy) y pasa campos
+  // estructurados task_id + trigger_type para que validateLedgerEntry no emita warnings.
   try {
     await consumeAiOp(input.ownerAgentId, 1, {
-      source:       'task_setup',
+      reason:       'task_setup',
       reference_id: task.id,
+      task_id:      task.id,
+      trigger_type: input.trigger_type,
       label:        `Tarea creada: ${input.slug.slice(0, 60)}`,
     });
   } catch (opErr) {

@@ -4,6 +4,31 @@ import { executeAutoRefillOps } from '@/lib/billing/auto-refill';
 import { consumePoolOps, fireOverageAlertIfNeeded } from '@/lib/annual-contracts/pool-consume';
 import { validateLedgerEntry, resolveReason } from './ledger-schemas';
 
+// Helper interno: construye metaForValidation desde los campos estructurados
+// de OpsMeta mas el JSON de context si esta presente.
+// Extraido para reusar en consumeAiOp y chargeOrgDirectly sin duplicar logica.
+function buildMetaForValidation(meta?: OpsMeta): Record<string, unknown> {
+  const m: Record<string, unknown> = {
+    reference_id:   meta?.reference_id,
+    rule_id:        meta?.rule_id,
+    task_id:        meta?.task_id,
+    run_id:         meta?.run_id,
+    ficha_id:       meta?.ficha_id,
+    applies_to:     meta?.applies_to,
+    trigger_type:   meta?.trigger_type,
+    trigger_source: meta?.trigger_source,
+    action_types:   meta?.action_types,
+    ficha_ids:      meta?.ficha_ids,
+  };
+  if (meta?.context) {
+    try {
+      const parsed = JSON.parse(meta.context) as Record<string, unknown>;
+      Object.assign(m, parsed);
+    } catch { /* context mal formado — ignorar */ }
+  }
+  return m;
+}
+
 export interface OpsResult {
   ok:    boolean;
   used:  number;
@@ -26,6 +51,20 @@ export interface OpsMeta {
   reference_id?: string;   // task_id, report_id, meeting_id, etc.
   label?:        string;   // Texto legible corto para historial de consumo (fallback: source)
   context?:      string;   // Descripcion completa expandida
+
+  // ── Campos estructurados por reason (opcionales, Round 1 fix C2) ─────────
+  // Se leen directamente en metaForValidation sin depender del JSON en context.
+  // Backwards-compat: callers que solo populan reference_id siguen funcionando
+  // (solo verán warnings de metadata incompleta, nunca un error fatal).
+  rule_id?:        string;
+  task_id?:        string;
+  run_id?:         string;
+  ficha_id?:       string;
+  applies_to?:     string[];
+  trigger_type?:   string;
+  trigger_source?: string;
+  action_types?:   string[];
+  ficha_ids?:      string[];
 }
 
 // Atomically checks and consumes AI ops from the account pool.
@@ -43,12 +82,10 @@ export async function consumeAiOp(agentId: string, count = 1, meta?: OpsMeta): P
   const resolvedReason = resolveReason(meta?.reason, meta?.source);
 
   // Validacion defensiva: solo warning, NUNCA bloquea el cobro.
+  // Fix C2 (Round 1): metaForValidation se construye desde campos estructurados
+  // de OpsMeta directamente. Ver buildMetaForValidation para detalles.
   if (resolvedReason !== 'unknown') {
-    const metaForValidation = {
-      reference_id: meta?.reference_id,
-      ...(meta?.context ? (() => { try { return JSON.parse(meta.context); } catch { return {}; } })() : {}),
-    };
-    const validation = validateLedgerEntry(resolvedReason, metaForValidation);
+    const validation = validateLedgerEntry(resolvedReason, buildMetaForValidation(meta));
     if (!validation.ok) {
       console.warn('[ops-guard] ledger metadata warning (cobro continua):', validation.error);
     }
@@ -269,12 +306,23 @@ export async function resetAiOps(portalEmail: string): Promise<void> {
 
 /**
  * Cobra ops directamente al nivel del org (sin agente) para casos donde el org
- * no tiene voice_agents activos. Inserta en ai_ops_log con agent_id=null.
+ * no tiene voice_agents activos. Inserta en ai_ops_log con agent_id=null Y
+ * decrementa organizations.monthly_ops_used para que el pool refleje el cobro.
+ *
+ * Fix C1 (Round 1): antes solo insertaba en ai_ops_log (audit log) pero nunca
+ * decrementaba el pool. organizations.monthly_ops_used quedaba desajustado:
+ * el ledger tenia el registro pero el pool no reflejaba el descuento. Viola
+ * feedback_pool_accuracy_top_priority y feedback_zero_debt.
  *
  * Uso: cuando getPrimaryAgentId retorna null (org sin agentes activos).
  * Garantiza cero-gap de cobro aunque el org no tenga empleados aun activos.
  *
- * Defensivo: si el insert falla, logga el error sin throw.
+ * Estrategia de decremento:
+ *   1. Para annual_prepaid: llama consumePoolOps (maneja RPC y overage correctamente).
+ *   2. Para stripe u otros: UPDATE directo a organizations.monthly_ops_used.
+ *   En ambos casos el INSERT en ai_ops_log sigue ocurriendo para audit trail.
+ *
+ * Defensivo: si el decremento o el insert fallan, logga el error sin throw.
  */
 export async function chargeOrgDirectly(
   portalEmail: string,
@@ -285,15 +333,9 @@ export async function chargeOrgDirectly(
 
   const resolvedReason = resolveReason(meta?.reason, meta?.source);
 
-  // Validacion defensiva
+  // Validacion defensiva (C2 fix: usa buildMetaForValidation)
   if (resolvedReason !== 'unknown') {
-    const metaForValidation: Record<string, unknown> = {
-      reference_id: meta?.reference_id,
-    };
-    if (meta?.context) {
-      try { Object.assign(metaForValidation, JSON.parse(meta.context)); } catch { /* noop */ }
-    }
-    const validation = validateLedgerEntry(resolvedReason, metaForValidation);
+    const validation = validateLedgerEntry(resolvedReason, buildMetaForValidation(meta));
     if (!validation.ok) {
       console.warn('[ops-guard] chargeOrgDirectly ledger metadata warning:', validation.error);
     }
@@ -301,6 +343,41 @@ export async function chargeOrgDirectly(
 
   try {
     const supabase = createAdminClient();
+
+    // ── Paso 1: decrementar el pool org (C1 fix) ──────────────────────────
+    // consumePoolOps retorna consumed=true para annual_prepaid y lo decrementa
+    // via RPC atómica o UPDATE directo según el flag ops_ledger_enabled.
+    // Para stripe/expired retorna consumed=false → hacemos UPDATE directo.
+    let poolDecremented = false;
+    try {
+      const poolResult = await consumePoolOps(portalEmail, count, supabase);
+      if (poolResult.consumed) {
+        poolDecremented = true;
+        void fireOverageAlertIfNeeded(portalEmail, {
+          crossed_100_threshold: poolResult.crossed_100_threshold,
+          crossed_120_threshold: poolResult.crossed_120_threshold,
+        });
+      }
+    } catch (poolErr) {
+      console.warn('[ops-guard] chargeOrgDirectly consumePoolOps failed, intentando UPDATE directo:', poolErr);
+    }
+
+    if (!poolDecremented) {
+      // Fallback para stripe u otros modelos: UPDATE directo con SELECT-then-UPDATE.
+      // Incrementamos monthly_ops_used en `count` de forma segura.
+      const { data: orgRow } = await supabase
+        .from('organizations')
+        .select('monthly_ops_used')
+        .eq('portal_email', portalEmail)
+        .maybeSingle();
+      const current = (orgRow?.monthly_ops_used as number | null) ?? 0;
+      await supabase
+        .from('organizations')
+        .update({ monthly_ops_used: current + count })
+        .eq('portal_email', portalEmail);
+    }
+
+    // ── Paso 2: insertar en ai_ops_log (audit trail) ──────────────────────
     await supabase.from('ai_ops_log').insert({
       agent_id:     null,
       portal_email: portalEmail,
@@ -311,9 +388,10 @@ export async function chargeOrgDirectly(
       context:      meta?.context      ?? null,
       count,
     });
+
     console.log(
       '[ops-guard] chargeOrgDirectly: cobro org-level sin agente activo',
-      { portalEmail, count, reason: resolvedReason },
+      { portalEmail, count, reason: resolvedReason, poolDecremented },
     );
   } catch (err) {
     console.error('[ops-guard] chargeOrgDirectly failed (audit gap):', { portalEmail, count, meta, err });

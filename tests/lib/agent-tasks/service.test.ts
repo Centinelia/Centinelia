@@ -110,10 +110,12 @@ describe('createTask', () => {
 
     expect(task.id).toBe('task-uuid-789');
     expect(task.slug).toBe('enviar_reporte_diario');
+    // Fix I1 (Round 1): service.ts usa reason (nuevo campo preferido) + task_id estructurado.
+    // source es alias legacy — ya no es el campo emitido por este call site.
     expect(mockConsumeAiOp).toHaveBeenCalledWith(
       OWNER_AGENT_ID,
       1,
-      expect.objectContaining({ source: 'task_setup', reference_id: 'task-uuid-789' }),
+      expect.objectContaining({ reason: 'task_setup', reference_id: 'task-uuid-789', task_id: 'task-uuid-789' }),
     );
   });
 

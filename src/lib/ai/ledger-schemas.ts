@@ -23,15 +23,15 @@
 
 export const LEDGER_REASONS = {
   rule_setup: {
-    description: 'Creacion de una regla de operacion',
+    description: 'Creación de una regla de operación',
     metadata: ['rule_id', 'applies_to'],
   },
   task_setup: {
-    description: 'Creacion de una tarea programada',
+    description: 'Creación de una tarea programada',
     metadata: ['task_id', 'trigger_type'],
   },
   task_execution_start: {
-    description: 'Arranque de ejecucion de tarea programada',
+    description: 'Arranque de ejecución de tarea programada',
     metadata: ['task_id', 'run_id', 'trigger_source'],
   },
   task_action: {
@@ -39,7 +39,7 @@ export const LEDGER_REASONS = {
     metadata: ['task_id', 'run_id', 'action_types'],
   },
   ficha_setup: {
-    description: 'Creacion de ficha informativa',
+    description: 'Creación de ficha informativa',
     metadata: ['ficha_id'],
   },
   ficha_retrieval: {
@@ -47,7 +47,7 @@ export const LEDGER_REASONS = {
     metadata: ['ficha_ids'],
   },
   ficha_autotag_migration: {
-    description: 'Backfill masivo de autotag (NO cobra al cliente)',
+    description: 'Migración masiva de autotag (NO cobra al cliente)',
     metadata: ['ficha_id'],
   },
 } as const;

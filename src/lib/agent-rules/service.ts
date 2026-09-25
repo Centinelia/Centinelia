@@ -64,6 +64,8 @@ export async function createRule(input: CreateRuleInput): Promise<AgentRule> {
     await consumeAiOp(primaryAgentId, 1, {
       reason:       'rule_setup',
       reference_id: rule.id,
+      rule_id:      rule.id,
+      applies_to:   input.applies_to ?? [],
       label:        `Regla creada: ${input.regla.slice(0, 60)}`,
     });
   } else {
@@ -75,6 +77,8 @@ export async function createRule(input: CreateRuleInput): Promise<AgentRule> {
     await chargeOrgDirectly(input.portalEmail, 1, {
       reason:       'rule_setup',
       reference_id: rule.id,
+      rule_id:      rule.id,
+      applies_to:   input.applies_to ?? [],
       label:        `Regla creada (org-level): ${input.regla.slice(0, 60)}`,
     });
   }

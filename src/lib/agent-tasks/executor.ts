@@ -145,11 +145,17 @@ export async function executeTask(input: {
 
   // 4. Verificar pool: intentar cobrar 1 op de arranque.
   // Si el pool está agotado, consumeAiOp retorna { ok: false }.
+  // Fix I1 (Round 1): usa reason (nuevo) y pasa task_id, run_id, trigger_source
+  // como campos estructurados para que validateLedgerEntry no emita warnings.
+  // context JSON se mantiene para correlacion en detectTaskActionOrphans.
   const startOp = await consumeAiOp(ownerAgentId, 1, {
-    source:       'task_execution_start',
-    reference_id: taskId,
-    label:        `Inicio tarea: ${taskRow.slug as string}`,
-    context:      JSON.stringify({ run_id: runId, trigger_source: triggerSource }),
+    reason:         'task_execution_start',
+    reference_id:   taskId,
+    task_id:        taskId,
+    run_id:         runId,
+    trigger_source: triggerSource,
+    label:          `Inicio tarea: ${taskRow.slug as string}`,
+    context:        JSON.stringify({ run_id: runId, trigger_source: triggerSource }),
   });
 
   if (!startOp.ok) {

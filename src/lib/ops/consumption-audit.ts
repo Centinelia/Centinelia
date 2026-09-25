@@ -449,12 +449,14 @@ export async function detectTaskActionOrphans(
   const supabase = createAdminClient();
   const since    = new Date(Date.now() - hoursBack * 3_600_000).toISOString();
 
-  // Traer todos los rows de ai_ops_log con source='task_action' en la ventana.
-  // El context contiene JSON con run_id (si el executor lo puso correctamente).
+  // Traer todos los rows de ai_ops_log con source='task_action' O reason='task_action'
+  // en la ventana. Fix I2 (Round 1): el executor post-fix emite `reason` como campo
+  // preferido. Callers legacy siguen usando `source`. El filtro OR garantiza que el
+  // detector no quede ciego al cambio gradual de source -> reason en los call sites.
   const { data: actionRows } = await supabase
     .from('ai_ops_log')
     .select('agent_id, portal_email, context, created_at')
-    .eq('source', 'task_action')
+    .or('source.eq.task_action,reason.eq.task_action')
     .gte('created_at', since);
 
   if (!actionRows || actionRows.length === 0) return [];
@@ -486,11 +488,13 @@ export async function detectTaskActionOrphans(
 
   // Traer rows de task_execution_start en la misma ventana (+ buffer).
   // Buffer de 5 minutos antes para no perder starts justo en el límite.
+  // Fix I2 (Round 1): mismo OR-filter que los actionRows para no perder starts
+  // emitidos con reason (nuevo campo) en vez de source (legado).
   const bufferedSince = new Date(Date.now() - hoursBack * 3_600_000 - 5 * 60_000).toISOString();
   const { data: startRows } = await supabase
     .from('ai_ops_log')
     .select('context')
-    .eq('source', 'task_execution_start')
+    .or('source.eq.task_execution_start,reason.eq.task_execution_start')
     .gte('created_at', bufferedSince);
 
   // Construir set de run_ids con start confirmado.
