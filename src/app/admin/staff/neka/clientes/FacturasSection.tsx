@@ -1,8 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { FileText, Upload, Download, Loader2, CheckCircle2, Clock, Receipt } from 'lucide-react';
 import OficinaModal from '@/app/portal/[token]/oficina/OficinaModal';
+import { useApi } from '@/lib/hooks/useApi';
 
 interface Factura {
   id:                    string;
@@ -43,9 +44,17 @@ export interface FacturasSectionProps {
 }
 
 export function FacturasSection({ clienteId }: FacturasSectionProps) {
-  const [facturas, setFacturas] = useState<Factura[]>([]);
-  const [loading,  setLoading]  = useState(true);
-  const [error,    setError]    = useState<string | null>(null);
+  // SWR: data server-side (facturas) + revalidación automática + mutate() en side-effects.
+  const {
+    data:      facturas = [],
+    error:     fetchError,
+    isLoading: loading,
+    mutate,
+  } = useApi<Factura[]>(`/api/admin/staff/neka/clientes/${clienteId}/facturas`, { key: 'facturas' });
+
+  // Estado local: errores UI (uploads, marcar pagada, download) que no vienen del fetch principal.
+  const [error, setError] = useState<string | null>(null);
+  const displayError = error ?? fetchError?.message ?? null;
 
   const xmlInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
@@ -53,23 +62,6 @@ export function FacturasSection({ clienteId }: FacturasSectionProps) {
   const [uploading, setUp]      = useState(false);
 
   const [repFor, setRepFor] = useState<Factura | null>(null);
-
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res  = await fetch(`/api/admin/staff/neka/clientes/${clienteId}/facturas`);
-      const data = await res.json();
-      if (!res.ok) setError(data.error ?? 'Error al cargar');
-      else setFacturas(data.facturas ?? []);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }, [clienteId]);
-
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- `refresh` dispara setLoading; patrón "fetch on mount + manual refresh" no calza con la regla React 19 sin migrar a SWR/TanStack Query.
-  useEffect(() => { refresh(); }, [refresh]);
 
   const upload = async () => {
     const xml = xmlInputRef.current?.files?.[0];
@@ -91,7 +83,7 @@ export function FacturasSection({ clienteId }: FacturasSectionProps) {
       if (xmlInputRef.current) xmlInputRef.current.value = '';
       if (pdfInputRef.current) pdfInputRef.current.value = '';
       setCicloKey('');
-      await refresh();
+      await mutate();
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -110,7 +102,7 @@ export function FacturasSection({ clienteId }: FacturasSectionProps) {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? 'Error'); return; }
-      await refresh();
+      await mutate();
       if (data.repReminderAt) {
         alert(`Marcada como pagada. Neka te recuerda del REP el ${fmtDate(data.repReminderAt)}.`);
       }
@@ -128,7 +120,7 @@ export function FacturasSection({ clienteId }: FacturasSectionProps) {
       const res  = await fetch(`/api/admin/staff/neka/clientes/${clienteId}/facturas/${f.id}/rep`, { method: 'POST', body: form });
       const data = await res.json();
       if (!res.ok) return { ok: false, error: data.error ?? 'Error al subir REP' };
-      await refresh();
+      await mutate();
       return { ok: true };
     } catch (e) {
       return { ok: false, error: (e as Error).message };
@@ -308,7 +300,7 @@ export function FacturasSection({ clienteId }: FacturasSectionProps) {
         </div>
       </div>
 
-      {error && <div className="mt-3"><OficinaModal.Alert tone="danger">{error}</OficinaModal.Alert></div>}
+      {displayError && <div className="mt-3"><OficinaModal.Alert tone="danger">{displayError}</OficinaModal.Alert></div>}
 
       {repFor && (
         <RepUploadModal

@@ -33,6 +33,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { X, Loader2, AlertCircle } from 'lucide-react';
+import { formatMoney, parseMoney } from '@/lib/format/money';
 
 // ─── Public props ─────────────────────────────────────────────────────────────
 
@@ -323,6 +324,62 @@ OficinaModal.Select = function Select(props: SelectProps) {
     >
       {children}
     </select>
+  );
+};
+
+// ─── MoneyInput compound ──────────────────────────────────────────────────────
+//
+// Input de dinero premium: muestra "$1,234.56" cuando NO tiene focus, edita
+// como número plano cuando SÍ. onChange devuelve string plano (sin formato)
+// para que el consumer lo maneje con Number()/parseMoney().
+
+type MoneyInputProps = {
+  value:         string;
+  onChange:      (v: string) => void;
+  placeholder?:  string;
+  disabled?:     boolean;
+};
+
+OficinaModal.MoneyInput = function MoneyInput({ value, onChange, placeholder = '0.00', disabled }: MoneyInputProps) {
+  const [focused, setFocused] = useState(false);
+  const hasValue = value !== '' && !Number.isNaN(Number(value));
+
+  // Idle: mostrar formateado. Focus: valor plano editable.
+  const display = focused ? value : (hasValue ? formatMoney(value, { symbol: false }) : '');
+
+  return (
+    <div className="relative">
+      <span
+        className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[14px] font-semibold pointer-events-none select-none"
+        style={{ color: hasValue || focused ? '#6C3BFF' : '#9B8FB5' }}
+      >
+        $
+      </span>
+      <input
+        type="text"
+        inputMode="decimal"
+        value={display}
+        onChange={e => {
+          // Aceptar solo dígitos, punto y coma. Al parsear final quitamos la coma.
+          const raw = e.target.value.replace(/[^\d.,]/g, '').replace(/,/g, '');
+          onChange(raw);
+        }}
+        onFocus={e => { setFocused(true); applyFocusRing(e.currentTarget); }}
+        onBlur={e  => {
+          setFocused(false);
+          clearFocusRing(e.currentTarget);
+          // Normalize on blur: si es parseable, guardar el número limpio como string
+          if (value) {
+            const parsed = parseMoney(value);
+            if (Number.isFinite(parsed)) onChange(String(parsed));
+          }
+        }}
+        placeholder={placeholder}
+        disabled={disabled}
+        className="w-full pr-3.5 rounded-xl text-[14px] outline-none"
+        style={{ ...INPUT_BASE_STYLE, height: 40, paddingLeft: 28 }}
+      />
+    </div>
   );
 };
 

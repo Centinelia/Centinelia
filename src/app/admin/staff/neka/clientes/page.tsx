@@ -1,12 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Plus, User, Calendar, Pause, Play, Edit3, Loader2, AlertCircle, FileText } from 'lucide-react';
+import { ArrowLeft, Plus, User, Calendar, Pause, Play, Edit3, Loader2, FileText, Mail, MapPin, Repeat, TrendingUp } from 'lucide-react';
 import type { ClienteDoc } from '@/lib/billing/centinelia-clientes';
 import { DocsSection } from './DocsSection';
 import { FacturasSection } from './FacturasSection';
 import OficinaModal from '@/app/portal/[token]/oficina/OficinaModal';
+import { useApi } from '@/lib/hooks/useApi';
+import { formatMoney } from '@/lib/format/money';
 
 interface Cliente {
   id: string;
@@ -32,45 +34,48 @@ const PERIODICIDAD_LABEL: Record<Cliente['periodicidad'], string> = {
   monthly: 'Mensual', biweekly: 'Quincenal', weekly: 'Semanal', annual: 'Anual',
 };
 
+function conceptoTotal(cc: Cliente['conceptos'][number]): number {
+  return cc.valor_unitario * (cc.cantidad ?? 1) * (cc.con_iva !== false ? 1.16 : 1);
+}
+
+function clienteTotal(c: Cliente): number {
+  return c.conceptos.reduce((s, cc) => s + conceptoTotal(cc), 0);
+}
+
+function fmtFecha(iso: string | null): string {
+  if (!iso) return '—';
+  return new Date(iso + 'T12:00:00').toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
 export default function ClientesNekaPage() {
-  const [clientes, setClientes]   = useState<Cliente[]>([]);
-  const [loading, setLoading]     = useState(true);
-  const [error, setError]         = useState<string | null>(null);
-  const [showForm, setShowForm]   = useState(false);
-  const [editing, setEditing]     = useState<Cliente | null>(null);
+  const { data: clientes = [], error: fetchError, isLoading: loading, mutate } =
+    useApi<Cliente[]>('/api/admin/staff/neka/clientes', { key: 'clientes' });
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/admin/staff/neka/clientes');
-      const data = await res.json();
-      if (data.error) setError(data.error);
-      else setClientes(data.clientes ?? []);
-    } catch (e) { setError((e as Error).message); }
-    finally { setLoading(false); }
-  }, []);
-
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- `refresh` dispara setLoading; patrón "fetch on mount + manual refresh" no calza con la regla React 19 sin migrar a SWR/TanStack Query.
-  useEffect(() => { refresh(); }, [refresh]);
+  const [showForm, setShowForm] = useState(false);
+  const [editing,  setEditing]  = useState<Cliente | null>(null);
 
   const togglePause = async (c: Cliente) => {
     await fetch(`/api/admin/staff/neka/clientes/${c.id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ activo: !c.activo }),
     });
-    refresh();
+    mutate();
   };
 
+  const activos      = clientes.filter(c => c.activo).length;
+  const pausados     = clientes.filter(c => !c.activo).length;
   const totalMensual = clientes
     .filter(c => c.activo && c.periodicidad === 'monthly')
-    .reduce((sum, c) => sum + c.conceptos.reduce((s, cc) => s + (cc.valor_unitario * (cc.cantidad ?? 1) * (cc.con_iva !== false ? 1.16 : 1)), 0), 0);
+    .reduce((sum, c) => sum + clienteTotal(c), 0);
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <Link
         href="/admin/staff/neka"
-        className="inline-flex items-center gap-1.5 text-xs mb-4 hover:opacity-70 transition-opacity"
-        style={{ color: 'var(--c-text-3)' }}
+        className="inline-flex items-center gap-1.5 text-[12px] mb-4 transition-colors"
+        style={{ color: '#6B6480' }}
+        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#6C3BFF'; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#6B6480'; }}
       >
         <ArrowLeft size={12} />
         Volver a config
@@ -78,10 +83,11 @@ export default function ClientesNekaPage() {
 
       <header className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-bold" style={{ color: 'var(--c-text)' }}>
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] mb-1" style={{ color: '#9B6DFF' }}>Staff · Neka</p>
+          <h1 className="text-[28px] font-bold leading-tight tracking-tight" style={{ color: '#1A0A3B' }}>
             Clientes de Centinelia
           </h1>
-          <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
+          <p className="text-[13px] mt-1.5 max-w-2xl" style={{ color: '#6B6480' }}>
             Catálogo que Neka usa para facturar proactivamente. Cada cliente activo se factura automáticamente en su fecha próxima.
           </p>
         </div>
@@ -89,102 +95,62 @@ export default function ClientesNekaPage() {
           onClick={() => { setEditing(null); setShowForm(true); }}
           className="inline-flex items-center gap-2 rounded-xl text-[13px] font-semibold transition-all"
           style={{
-            padding:    '9px 18px',
+            padding:    '10px 18px',
             background: '#6C3BFF',
             color:      '#ffffff',
             boxShadow:  '0 2px 8px rgba(108,59,255,0.32)',
           }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#5A2FDB'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = '#6C3BFF'; }}
         >
           <Plus size={14} />
           Nuevo cliente
         </button>
       </header>
 
-      {/* Stats */}
+      {/* Stats — solo cuando ya cargaron y hay clientes */}
       {!loading && clientes.length > 0 && (
-        <div className="grid grid-cols-3 gap-3 mb-5">
-          <StatCard label="Activos" value={String(clientes.filter(c => c.activo).length)} />
-          <StatCard label="Pausados" value={String(clientes.filter(c => !c.activo).length)} />
-          <StatCard label="Ingreso mensual estimado" value={`$${totalMensual.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+          <StatCard label="Clientes activos" value={String(activos)} accent="#6C3BFF" icon={<User size={16} />} />
+          <StatCard label="Pausados" value={String(pausados)} accent="#9B8FB5" icon={<Pause size={16} />} />
+          <StatCard label="Ingreso mensual estimado" value={formatMoney(totalMensual)} accent="#22C55E" icon={<TrendingUp size={16} />} hint="con IVA · mensualidad" />
         </div>
       )}
 
       {loading && (
-        <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--c-text-3)' }}>
-          <Loader2 size={12} className="animate-spin" /> Cargando…
+        <div className="flex items-center gap-2 text-[13px]" style={{ color: '#6B6480' }}>
+          <Loader2 size={14} className="animate-spin" style={{ color: '#6C3BFF' }} /> Cargando clientes…
         </div>
       )}
 
-      {error && (
-        <div className="rounded-lg p-3 text-xs flex items-start gap-2 mb-4"
-             style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', color: '#b91c1c' }}>
-          <AlertCircle size={12} className="mt-0.5 flex-shrink-0" />
-          <span>{error}</span>
+      {fetchError && (
+        <div className="mb-4">
+          <OficinaModal.Alert tone="danger">{fetchError.message}</OficinaModal.Alert>
         </div>
       )}
 
       {!loading && clientes.length === 0 && (
-        <div className="rounded-2xl p-8 text-center" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-          <User size={32} className="mx-auto mb-2" style={{ color: 'var(--c-text-4)' }} />
-          <p className="text-sm mb-1" style={{ color: 'var(--c-text)' }}>Aún no hay clientes registrados</p>
-          <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>Agrega el primero para que Nala empiece a facturar automáticamente en el ciclo definido.</p>
+        <div className="rounded-2xl text-center flex flex-col items-center gap-3" style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', padding: '48px 24px' }}>
+          <div className="flex items-center justify-center rounded-2xl" style={{ background: 'rgba(108,59,255,0.08)', width: 56, height: 56 }}>
+            <User size={24} style={{ color: '#6C3BFF' }} />
+          </div>
+          <div>
+            <p className="text-[15px] font-semibold" style={{ color: '#1A0A3B' }}>Aún no hay clientes registrados</p>
+            <p className="text-[13px] mt-1 max-w-md" style={{ color: '#6B6480' }}>
+              Agrega el primero para que Neka empiece a facturar automáticamente en el ciclo definido.
+            </p>
+          </div>
         </div>
       )}
 
-      <div className="space-y-2">
+      <div className="flex flex-col gap-3">
         {clientes.map(c => (
-          <article
+          <ClienteCard
             key={c.id}
-            className="p-4 rounded-xl flex items-start gap-4"
-            style={{
-              background: c.activo ? 'var(--c-surface)' : 'rgba(0,0,0,0.02)',
-              border: '1px solid var(--c-border)',
-              opacity: c.activo ? 1 : 0.6,
-            }}
-          >
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-semibold text-sm" style={{ color: 'var(--c-text)' }}>{c.razon_social}</h3>
-                <code className="text-[10px] px-1.5 py-0.5 rounded font-mono" style={{ background: 'rgba(108,59,255,0.08)', color: '#6C3BFF' }}>{c.rfc}</code>
-                {!c.activo && <span className="text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded" style={{ background: 'rgba(0,0,0,0.05)', color: 'var(--c-text-3)' }}>pausado</span>}
-              </div>
-              <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
-                {c.correo_facturacion} · CP {c.cp} · régimen {c.regimen_fiscal} · {PERIODICIDAD_LABEL[c.periodicidad]}
-              </p>
-              <p className="text-xs mt-1" style={{ color: 'var(--c-text-2)' }}>
-                {c.conceptos.length} concepto{c.conceptos.length !== 1 ? 's' : ''}: {c.conceptos.slice(0, 2).map(cc => `${cc.descripcion} $${cc.valor_unitario}`).join(', ')}
-                {c.conceptos.length > 2 ? ` +${c.conceptos.length - 2} más` : ''}
-              </p>
-              <p className="text-xs mt-1 flex items-center gap-1 flex-wrap" style={{ color: 'var(--c-text-3)' }}>
-                <Calendar size={11} />
-                Próxima factura: {c.fecha_proxima_facturacion}
-                {c.fecha_ultima_facturacion && ` · Última: ${c.fecha_ultima_facturacion}`}
-                {c.docs && c.docs.length > 0 && (
-                  <span className="inline-flex items-center gap-1 ml-2">
-                    · <FileText size={11} /> {c.docs.length} doc{c.docs.length !== 1 ? 's' : ''}
-                  </span>
-                )}
-              </p>
-            </div>
-            <div className="flex items-center gap-1 flex-shrink-0">
-              <button
-                onClick={() => togglePause(c)}
-                className="p-2 rounded-lg transition-opacity hover:opacity-70"
-                style={{ background: 'rgba(108,59,255,0.05)', color: c.activo ? '#b45309' : '#15803d' }}
-                title={c.activo ? 'Pausar' : 'Activar'}
-              >
-                {c.activo ? <Pause size={13} /> : <Play size={13} />}
-              </button>
-              <button
-                onClick={() => { setEditing(c); setShowForm(true); }}
-                className="p-2 rounded-lg transition-opacity hover:opacity-70"
-                style={{ background: 'rgba(108,59,255,0.05)', color: '#6C3BFF' }}
-                title="Editar"
-              >
-                <Edit3 size={13} />
-              </button>
-            </div>
-          </article>
+            cliente={c}
+            onEdit={() => { setEditing(c); setShowForm(true); }}
+            onTogglePause={() => togglePause(c)}
+          />
         ))}
       </div>
 
@@ -192,18 +158,152 @@ export default function ClientesNekaPage() {
         <ClienteForm
           initial={editing}
           onClose={() => { setShowForm(false); setEditing(null); }}
-          onSaved={() => { setShowForm(false); setEditing(null); refresh(); }}
+          onSaved={() => { setShowForm(false); setEditing(null); mutate(); }}
         />
       )}
     </div>
   );
 }
 
-function StatCard({ label, value }: { label: string; value: string }) {
+// ─── Stats Card ──────────────────────────────────────────────────────────────
+
+function StatCard({ label, value, accent, icon, hint }: { label: string; value: string; accent: string; icon: React.ReactNode; hint?: string }) {
   return (
-    <div className="rounded-xl p-4" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-      <p className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--c-text-4)' }}>{label}</p>
-      <p className="text-lg font-bold mt-1" style={{ color: 'var(--c-text)' }}>{value}</p>
+    <div className="rounded-2xl transition-all" style={{ background: '#ffffff', border: '1px solid #E8E3F5', padding: '16px 18px', boxShadow: '0 1px 3px rgba(15,5,34,0.04)' }}>
+      <div className="flex items-center gap-2 mb-2">
+        <div className="flex items-center justify-center rounded-lg" style={{ background: `${accent}1A`, color: accent, width: 28, height: 28 }}>
+          {icon}
+        </div>
+        <p className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: '#6B6480' }}>{label}</p>
+      </div>
+      <p className="text-[24px] font-bold tracking-tight leading-none" style={{ color: '#1A0A3B' }}>{value}</p>
+      {hint && <p className="text-[11px] mt-1" style={{ color: '#9B8FB5' }}>{hint}</p>}
+    </div>
+  );
+}
+
+// ─── Cliente Card ────────────────────────────────────────────────────────────
+
+function ClienteCard({ cliente: c, onEdit, onTogglePause }: { cliente: Cliente; onEdit: () => void; onTogglePause: () => void }) {
+  const total = clienteTotal(c);
+  const conceptosPreview = c.conceptos.slice(0, 2);
+  const remaining = c.conceptos.length - conceptosPreview.length;
+
+  return (
+    <article
+      className="rounded-2xl transition-all group"
+      style={{
+        background: '#ffffff',
+        border:     `1px solid ${c.activo ? '#E8E3F5' : '#F0EBFA'}`,
+        boxShadow:  c.activo ? '0 1px 3px rgba(15,5,34,0.04)' : 'none',
+        opacity:    c.activo ? 1 : 0.72,
+      }}
+    >
+      {/* Header row: razón social + RFC + estado + actions */}
+      <div className="flex items-start gap-3" style={{ padding: '16px 18px 12px' }}>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="text-[16px] font-bold tracking-tight truncate" style={{ color: '#1A0A3B' }}>
+              {c.razon_social}
+            </h3>
+            <code
+              className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded-md"
+              style={{ background: 'rgba(108,59,255,0.10)', color: '#6C3BFF', border: '1px solid rgba(108,59,255,0.20)' }}
+            >
+              {c.rfc}
+            </code>
+            {!c.activo && (
+              <span className="text-[10px] uppercase font-bold tracking-[0.1em] px-2 py-0.5 rounded-md" style={{ background: '#F0EBFA', color: '#6B6480' }}>
+                Pausado
+              </span>
+            )}
+          </div>
+          <p className="text-[12px] mt-1.5 flex items-center gap-1.5" style={{ color: '#6B6480' }}>
+            <Repeat size={11} style={{ color: '#9B6DFF' }} />
+            {PERIODICIDAD_LABEL[c.periodicidad]} · {c.conceptos.length} concepto{c.conceptos.length !== 1 ? 's' : ''}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <button
+            onClick={onTogglePause}
+            className="flex items-center justify-center rounded-lg transition-colors"
+            style={{
+              width: 34, height: 34,
+              background: c.activo ? 'rgba(180,83,9,0.08)' : 'rgba(34,197,94,0.10)',
+              color:      c.activo ? '#B45309' : '#15803D',
+              border:     `1px solid ${c.activo ? 'rgba(180,83,9,0.16)' : 'rgba(34,197,94,0.20)'}`,
+            }}
+            title={c.activo ? 'Pausar cliente' : 'Reactivar cliente'}
+          >
+            {c.activo ? <Pause size={14} /> : <Play size={14} />}
+          </button>
+          <button
+            onClick={onEdit}
+            className="flex items-center justify-center rounded-lg transition-colors"
+            style={{
+              width: 34, height: 34,
+              background: 'rgba(108,59,255,0.08)',
+              color:      '#6C3BFF',
+              border:     '1px solid rgba(108,59,255,0.16)',
+            }}
+            title="Editar"
+          >
+            <Edit3 size={14} />
+          </button>
+        </div>
+      </div>
+
+      {/* Metadata grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3" style={{ padding: '0 18px 14px' }}>
+        <MetaItem icon={<Mail size={12} />} label="Facturación" value={c.correo_facturacion} />
+        <MetaItem icon={<MapPin size={12} />} label="Ubicación" value={`CP ${c.cp} · régimen ${c.regimen_fiscal}`} />
+        <MetaItem icon={<Calendar size={12} />} label="Próxima factura" value={fmtFecha(c.fecha_proxima_facturacion)} accent />
+      </div>
+
+      {/* Footer: conceptos + total + docs */}
+      <div
+        className="flex items-center justify-between gap-3 flex-wrap"
+        style={{ padding: '12px 18px', background: '#FAFAFB', borderTop: '1px solid #F0EBFA', borderRadius: '0 0 16px 16px' }}
+      >
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] font-bold uppercase tracking-[0.1em] mb-1" style={{ color: '#9B6DFF' }}>Conceptos</p>
+          <p className="text-[13px] truncate" style={{ color: '#1A0A3B' }}>
+            {conceptosPreview.map(cc => (
+              <span key={cc.descripcion}>
+                {cc.descripcion} <span style={{ color: '#6B6480' }}>{formatMoney(cc.valor_unitario)}</span>
+              </span>
+            )).reduce((acc, item, idx) => idx === 0 ? [item] : [...acc, <span key={`sep-${idx}`} style={{ color: '#9B8FB5' }}> · </span>, item], [] as React.ReactNode[])}
+            {remaining > 0 && <span className="ml-2" style={{ color: '#9B8FB5' }}>+{remaining} más</span>}
+          </p>
+        </div>
+        <div className="flex items-center gap-4 flex-shrink-0">
+          {c.docs && c.docs.length > 0 && (
+            <div className="flex items-center gap-1.5 text-[12px]" style={{ color: '#6B6480' }}>
+              <FileText size={12} style={{ color: '#9B6DFF' }} />
+              {c.docs.length} doc{c.docs.length !== 1 ? 's' : ''}
+            </div>
+          )}
+          <div className="text-right">
+            <p className="text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color: '#9B6DFF' }}>Total ciclo</p>
+            <p className="text-[15px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>{formatMoney(total)}</p>
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function MetaItem({ icon, label, value, accent }: { icon: React.ReactNode; label: string; value: string; accent?: boolean }) {
+  return (
+    <div className="flex items-start gap-2 min-w-0">
+      <span className="flex items-center justify-center rounded-md mt-0.5" style={{ background: accent ? 'rgba(108,59,255,0.10)' : '#F5F0FF', color: accent ? '#6C3BFF' : '#9B6DFF', width: 22, height: 22, flexShrink: 0 }}>
+        {icon}
+      </span>
+      <div className="min-w-0">
+        <p className="text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color: '#9B8FB5' }}>{label}</p>
+        <p className="text-[12.5px] truncate" style={{ color: accent ? '#6C3BFF' : '#1A0A3B', fontWeight: accent ? 600 : 500 }}>{value}</p>
+      </div>
     </div>
   );
 }
@@ -398,7 +498,7 @@ function ClienteForm({ initial, onClose, onSaved }: { initial: Cliente | null; o
             {f.conceptos.map((c, i) => (
               <div key={i} className="grid grid-cols-12 gap-2 items-center rounded-xl" style={{ background: '#FAFAFB', border: '1px solid #F0EBFA', padding: '10px' }}>
                 <div className="col-span-6"><OficinaModal.Input value={c.descripcion} onChange={e => updateConcepto(i, { descripcion: e.target.value })} placeholder="Descripción" /></div>
-                <div className="col-span-2"><OficinaModal.Input value={c.valor_unitario} onChange={e => updateConcepto(i, { valor_unitario: e.target.value })} placeholder="Precio" type="number" step="0.01" /></div>
+                <div className="col-span-2"><OficinaModal.MoneyInput value={c.valor_unitario} onChange={v => updateConcepto(i, { valor_unitario: v })} placeholder="0.00" /></div>
                 <div className="col-span-1"><OficinaModal.Input value={c.cantidad} onChange={e => updateConcepto(i, { cantidad: e.target.value })} placeholder="Cant" type="number" /></div>
                 <label className="flex items-center gap-1.5 text-[12px] col-span-2 cursor-pointer" style={{ color: '#6B6480' }}>
                   <input type="checkbox" checked={c.con_iva} onChange={e => updateConcepto(i, { con_iva: e.target.checked })} style={{ accentColor: '#6C3BFF' }} />

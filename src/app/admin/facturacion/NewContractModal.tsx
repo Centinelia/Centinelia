@@ -144,7 +144,7 @@ export default function NewContractModal({ onClose, onCreated }: Props) {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <OficinaModal.Field label="Monto MXN" hint="IVA incluido">
-            <OficinaModal.Input type="number" value={amountMxn} onChange={e => setAmountMxn(e.target.value)} placeholder="180000" />
+            <OficinaModal.MoneyInput value={amountMxn} onChange={setAmountMxn} placeholder="180,000.00" />
           </OficinaModal.Field>
           <OficinaModal.Field label="Empleados incluidos" hint="informativo">
             <OficinaModal.Input type="number" value={includedEmployees} onChange={e => setIncludedEmployees(e.target.value)} placeholder="3" />
