@@ -296,6 +296,10 @@
     {
       "path": "/api/cron/autotag-retry",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/backfill-ficha-tags",
+      "schedule": "*/10 * * * *"
     }
   ]
 }
