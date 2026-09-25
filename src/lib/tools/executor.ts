@@ -2038,7 +2038,13 @@ async function executeAgentToolInner(
 
     if (mode === 'embeddings') {
       const { searchFichas } = await import('@/lib/rag/search');
-      const res = await searchFichas(query.trim(), portalEmail, { topK: typeof top_k === 'number' ? top_k : undefined });
+      // PAC-2: meerkat_role_id vive en agent.features, no en agent.role.
+      // Si está presente, activa pre-filtro por whitelist (Fase 4).
+      const meerkatRoleId = (agentFeatures as Record<string, unknown>).meerkat_role_id as string | undefined;
+      const res = await searchFichas(query.trim(), portalEmail, {
+        topK: typeof top_k === 'number' ? top_k : undefined,
+        meerkatRoleId: meerkatRoleId ?? undefined,
+      });
       if (res.matches.length === 0) {
         return { ok: false, error: `Sin coincidencias en las fichas informativas para "${query}". Si el cliente insiste, ofrece transferir al área responsable.` };
       }

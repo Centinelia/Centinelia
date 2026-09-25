@@ -1,13 +1,25 @@
-// Búsqueda semántica sobre las fichas técnicas ingeridas. Compone:
-//   1. embed(query) → vector 1536
-//   2. RPC match_ficha_chunks (pgvector cosine, HNSW)
-//   3. Deduplica ficha y consolida hits en secciones útiles
-//   4. Carga la metadata de la ficha (contactos, liga, horario) para que Nara
-//      pueda cascadear con `transferir_a_extension` cuando el ciudadano
-//      necesita algo específico.
+// Búsqueda semántica sobre las fichas técnicas ingeridas. Pipeline de dos pasos:
+//
+//   Paso 1 (pre-filtro SQL, condicional):
+//     Si se pasa meerkatRoleId, calcula la whitelist efectiva del rol y filtra
+//     fichas candidatas por tag antes de hacer la búsqueda vectorial. Usa el RPC
+//     match_ficha_chunks_filtered (pgvector cosine + filtro por tags en un CTE).
+//
+//   Paso 2 (semantic search):
+//     Sobre el subset filtrado (o todo el catálogo si sin filtro), top-K con
+//     distancia cosine usando el índice HNSW existente.
+//
+//   Fallback:
+//     Si el pre-filtro devuelve 0 chunks (whitelist vacía o sin fichas candidatas),
+//     se hace fallback al RPC sin filtro (match_ficha_chunks) con warning log.
+//     Review Focus #4: nunca devuelve array vacío silencioso por whitelist vacía.
+//
+//   Backward compat:
+//     Sin meerkatRoleId, comportamiento idéntico al anterior (match_ficha_chunks).
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { embedText } from './embed';
+import { getEffectiveWhitelist } from '@/lib/tags/whitelist';
 
 export interface FichaMatch {
   ficha_id:     string;
@@ -44,11 +56,58 @@ export interface SearchResult {
   suggested_ficha: SuggestedFicha | null;
   confidence:      'high' | 'medium' | 'low';
   total_hits:      number;
+  /** true si se activó el pre-filtro por whitelist */
+  tag_filtered?:   boolean;
+  /** true si el pre-filtro no devolvió resultados y se hizo fallback sin filtro */
+  tag_filter_fallback?: boolean;
 }
 
 export interface SearchOpts {
-  topK?:  number;
+  topK?:         number;
+  /** Si viene, activa pre-filtro por tag whitelist del rol. Backward compat: omitir. */
+  meerkatRoleId?: string;
 }
+
+// ─── Internal chunk type from both RPCs ──────────────────────────────────────
+
+interface ChunkHit {
+  chunk_id:     string;
+  ficha_id:     string;
+  chunk_index:  number;
+  section_type: string;
+  content:      string;
+  token_count:  number;
+  similarity:   number;
+}
+
+// ─── Core aggregation helper ──────────────────────────────────────────────────
+
+function aggregateHits(
+  hits: ChunkHit[],
+  topK: number,
+): { sortedFichas: Array<{ ficha_id: string; best: number; chunks: FichaMatch['chunks'] }>; total: number } {
+  const byFicha = new Map<string, { ficha_id: string; best: number; chunks: FichaMatch['chunks'] }>();
+
+  for (const h of hits) {
+    const entry = byFicha.get(h.ficha_id) ?? { ficha_id: h.ficha_id, best: -1, chunks: [] };
+    entry.chunks.push({
+      chunk_index:  h.chunk_index,
+      section_type: h.section_type,
+      content:      h.content,
+      similarity:   h.similarity,
+    });
+    if (h.similarity > entry.best) entry.best = h.similarity;
+    byFicha.set(h.ficha_id, entry);
+  }
+
+  const sortedFichas = Array.from(byFicha.values())
+    .sort((a, b) => b.best - a.best)
+    .slice(0, topK);
+
+  return { sortedFichas, total: hits.length };
+}
+
+// ─── Main public function ─────────────────────────────────────────────────────
 
 export async function searchFichas(
   query: string,
@@ -61,45 +120,98 @@ export async function searchFichas(
 
   const supabase = createAdminClient();
 
+  // Paso 1: embedding de la query
   const queryEmbedding = await embedText(trimmed, {
     source:      'nara-fichas-search',
     portalEmail,
   });
 
-  // Traemos top-K + margen para dedupe por ficha.
+  const matchCount = Math.max(topK * 2, 15);
+
+  // ─── Path con pre-filtro por whitelist (meerkatRoleId presente) ────────────
+  if (opts.meerkatRoleId) {
+    let whitelist: string[] = [];
+    try {
+      whitelist = await getEffectiveWhitelist(portalEmail, opts.meerkatRoleId);
+    } catch (err) {
+      console.warn('[retrieval] getEffectiveWhitelist failed, degrading to no-filter:', err);
+    }
+
+    // Intentar RPC filtrado
+    const { data: filteredHits, error: filteredErr } = await supabase.rpc(
+      'match_ficha_chunks_filtered',
+      {
+        p_portal_email:        portalEmail,
+        p_query_embedding:     queryEmbedding as unknown as string,
+        p_effective_whitelist: whitelist,
+        p_limit:               matchCount,
+      },
+    );
+
+    if (filteredErr) {
+      console.warn('[retrieval] match_ficha_chunks_filtered error, degrading to no-filter:', filteredErr.message);
+    } else if (filteredHits && filteredHits.length > 0) {
+      // Pre-filtro exitoso
+      const { sortedFichas, total } = aggregateHits(filteredHits as ChunkHit[], topK);
+      const result = await buildResult(supabase, sortedFichas, total, topK);
+      return { ...result, tag_filtered: true };
+    } else {
+      // Pre-filtro devolvió 0 resultados — Review Focus #4: fallback con warning
+      console.warn(
+        '[retrieval] tag whitelist pre-filter returned 0 chunks for role',
+        opts.meerkatRoleId,
+        'portalEmail', portalEmail,
+        '— falling back to unfiltered search',
+      );
+    }
+
+    // Fallback: búsqueda sin filtro + flag tag_filter_fallback
+    const { data: fallbackHits, error: fallbackErr } = await supabase.rpc('match_ficha_chunks', {
+      query_embedding:     queryEmbedding as unknown as string,
+      portal_email_filter: portalEmail,
+      match_count:         matchCount,
+    });
+
+    if (fallbackErr) {
+      console.warn('[retrieval] match_ficha_chunks fallback error:', fallbackErr.message);
+      return { matches: [], suggested_ficha: null, confidence: 'low', total_hits: 0, tag_filter_fallback: true };
+    }
+    if (!fallbackHits || fallbackHits.length === 0) {
+      return { matches: [], suggested_ficha: null, confidence: 'low', total_hits: 0, tag_filter_fallback: true };
+    }
+
+    const { sortedFichas, total } = aggregateHits(fallbackHits as ChunkHit[], topK);
+    const result = await buildResult(supabase, sortedFichas, total, topK);
+    return { ...result, tag_filter_fallback: true };
+  }
+
+  // ─── Path sin filtro (backward compat — sin meerkatRoleId) ────────────────
   const { data: hits, error } = await supabase.rpc('match_ficha_chunks', {
     query_embedding:     queryEmbedding as unknown as string,
     portal_email_filter: portalEmail,
-    match_count:         Math.max(topK * 2, 10),
+    match_count:         matchCount,
   });
   if (error) throw new Error(`match_ficha_chunks error: ${error.message}`);
   if (!hits || hits.length === 0) {
     return { matches: [], suggested_ficha: null, confidence: 'low', total_hits: 0 };
   }
 
-  // Agrupar chunks por ficha manteniendo el mejor score.
-  const byFicha = new Map<string, {
-    ficha_id: string;
-    best:     number;
-    chunks:   FichaMatch['chunks'];
-  }>();
-  for (const h of hits as Array<{
-    chunk_id: string; ficha_id: string; chunk_index: number;
-    section_type: string; content: string; token_count: number; similarity: number;
-  }>) {
-    const entry = byFicha.get(h.ficha_id) ?? { ficha_id: h.ficha_id, best: -1, chunks: [] };
-    entry.chunks.push({
-      chunk_index:  h.chunk_index,
-      section_type: h.section_type,
-      content:      h.content,
-      similarity:   h.similarity,
-    });
-    if (h.similarity > entry.best) entry.best = h.similarity;
-    byFicha.set(h.ficha_id, entry);
-  }
-  const sortedFichas = Array.from(byFicha.values()).sort((a, b) => b.best - a.best);
+  const { sortedFichas, total } = aggregateHits(hits as ChunkHit[], topK);
+  return buildResult(supabase, sortedFichas, total, topK);
+}
 
-  // Cargar metadata de las fichas involucradas
+// ─── Build result from sorted fichas ─────────────────────────────────────────
+
+async function buildResult(
+  supabase: ReturnType<typeof createAdminClient>,
+  sortedFichas: Array<{ ficha_id: string; best: number; chunks: FichaMatch['chunks'] }>,
+  total: number,
+  topK: number,
+): Promise<SearchResult> {
+  if (sortedFichas.length === 0) {
+    return { matches: [], suggested_ficha: null, confidence: 'low', total_hits: 0 };
+  }
+
   const fichaIds = sortedFichas.map((f) => f.ficha_id);
   const { data: fichas, error: fErr } = await supabase
     .from('fichas_informativas')
@@ -151,6 +263,6 @@ export async function searchFichas(
     matches,
     suggested_ficha: suggested,
     confidence,
-    total_hits:      hits.length,
+    total_hits:      total,
   };
 }

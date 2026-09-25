@@ -98,18 +98,18 @@ describe('searchFichas', () => {
     expect(r.suggested_ficha).toBeNull();
   });
 
-  it('llama RPC con portal_email filter y match_count=max(topK*2, 10)', async () => {
+  it('llama RPC con portal_email filter y match_count=max(topK*2, 15)', async () => {
     mock.__state.hitsToReturn = [];
     await searchFichas('query', 'santiago-dev@centinelia.mx', { topK: 3 });
     expect(mock.rpc).toHaveBeenCalledWith('match_ficha_chunks', expect.objectContaining({
       portal_email_filter: 'santiago-dev@centinelia.mx',
-      match_count: 10, // max(3*2, 10) = 10
+      match_count: 15, // max(3*2, 15) = 15 — Fase 4 eleva el mínimo de 10 a 15
     }));
 
     mock.rpc.mockClear();
     await searchFichas('query', 'santiago-dev@centinelia.mx', { topK: 8 });
     expect(mock.rpc).toHaveBeenCalledWith('match_ficha_chunks', expect.objectContaining({
-      match_count: 16, // max(8*2, 10) = 16
+      match_count: 16, // max(8*2, 15) = 16
     }));
   });
 });
