@@ -102,54 +102,61 @@ CREATE TABLE role_default_tag_whitelist (
 );
 ```
 
-Seed inicial (afinable con el equipo de producto contra roster real, ver Sección 12):
+Seed inicial (roster confirmado contra `src/lib/portal/meerkat-roles.ts:MEERKAT_ROLES`, 15 slugs):
 
-| role | tags |
-|---|---|
-| nala | contabilidad, cobranza, ventas, politicas, fiscal |
-| nia | atencion_cliente, catalogo_productos, politicas, ventas, onboarding_clientes |
-| nox | operaciones, logistica, atencion_cliente, politicas |
-| nash | (todos) |
-| nova | operaciones, logistica |
-| nelia | atencion_cliente, politicas, onboarding_clientes |
-| neka | contabilidad, cobranza, fiscal, operaciones |
-| noah | ventas, catalogo_productos, atencion_cliente, marketing |
-| navi | marketing, atencion_cliente, ventas, catalogo_productos |
-| nalu | finanzas, contabilidad, fiscal |
+| meerkat_role_id | rol interno | tags |
+|---|---|---|
+| nia | Recepcionista | atencion_cliente, catalogo_productos, politicas, ventas, onboarding_clientes |
+| noah | Ventas | ventas, catalogo_productos, atencion_cliente, marketing |
+| nico | Cobranza | cobranza, contabilidad, atencion_cliente, politicas |
+| nelia | Atención al cliente | atencion_cliente, politicas, onboarding_clientes |
+| neo | Operaciones | operaciones, soporte_tecnico, politicas |
+| nara | Coordinadora (gobierno) | operaciones, atencion_cliente, politicas, legal |
+| naia | Recursos humanos | rh, politicas, atencion_cliente |
+| nova | Centro de coordinación | operaciones, logistica, atencion_cliente |
+| nala | Facturista (cliente) | contabilidad, cobranza, ventas, politicas, fiscal |
+| nalu | Analista de tesorería | finanzas, contabilidad, fiscal |
+| nami | Inventarios | catalogo_productos, operaciones, logistica |
+| neka | Facturista interna Centinelia | contabilidad, cobranza, fiscal, operaciones |
+| nox | Director | (todos, es coordinador) |
+| niva | Directora | (todos, es coordinador) |
+| nash | Operaciones internas Centinelia | (todos, es coordinador) |
 
-Nash es transversal por default (auditor/reporting). Los demás tienen 3 a 5 tags por rol.
+Los tres coordinadores (nox, niva, nash) reciben whitelist completa por su rol transversal. Los demás 3 a 5 tags según su especialidad. Ajustable si un cliente concreto necesita override via `org_role_tag_additions`.
 
 ### 4.3 Tabla `org_role_tag_additions` (escape hatch aditivo)
 
 ```sql
 CREATE TABLE org_role_tag_additions (
-  org_id    uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  role      text NOT NULL,
-  tag_slug  text NOT NULL REFERENCES ficha_tags(slug),
-  added_at  timestamptz NOT NULL DEFAULT now(),
-  added_by  uuid REFERENCES users(id),
-  PRIMARY KEY (org_id, role, tag_slug)
+  portal_email  text NOT NULL REFERENCES organizations(portal_email) ON DELETE CASCADE,
+  role          text NOT NULL,  -- corresponde a features->>meerkat_role_id de voice_agents
+  tag_slug      text NOT NULL REFERENCES ficha_tags(slug) ON DELETE RESTRICT,
+  added_at      timestamptz NOT NULL DEFAULT now(),
+  added_by      text,  -- portal_email del user que agregó, o admin identifier
+  PRIMARY KEY (portal_email, role, tag_slug)
 );
 ```
 
-Whitelist efectiva de un meerkat en un org = `role_default_tag_whitelist(role) ∪ org_role_tag_additions(org_id, role)`. Solo permite agregar, nunca quitar (el core del rol es inmutable).
+Whitelist efectiva de un meerkat en un org = `role_default_tag_whitelist(role) ∪ org_role_tag_additions(portal_email, role)`. Solo permite agregar, nunca quitar (el core del rol es inmutable).
+
+**Nota de convención**: todas las tablas nuevas de este spec usan `portal_email TEXT` como FK a `organizations`, no `org_id UUID`. Es la convención establecida en Centinelia (ver comentario en `20260923120000_fichas_informativas.sql:18`).
 
 ### 4.4 Tabla `agent_rules` (Reglas de operación)
 
 ```sql
 CREATE TABLE agent_rules (
-  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  org_id      uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  regla       text NOT NULL CHECK (char_length(regla) BETWEEN 1 AND 500),
-  detalles    text CHECK (detalles IS NULL OR char_length(detalles) <= 2000),
-  applies_to  text[] NOT NULL DEFAULT '{}',  -- lista de role slugs; vacío = todos
-  active      bool NOT NULL DEFAULT true,
-  created_at  timestamptz NOT NULL DEFAULT now(),
-  updated_at  timestamptz NOT NULL DEFAULT now(),
-  created_by  uuid REFERENCES users(id)
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  portal_email  text NOT NULL REFERENCES organizations(portal_email) ON DELETE CASCADE,
+  regla         text NOT NULL CHECK (char_length(regla) BETWEEN 1 AND 500),
+  detalles      text CHECK (detalles IS NULL OR char_length(detalles) <= 2000),
+  applies_to    text[] NOT NULL DEFAULT '{}',  -- lista de meerkat_role_id; vacío = todos
+  active        bool NOT NULL DEFAULT true,
+  created_at    timestamptz NOT NULL DEFAULT now(),
+  updated_at    timestamptz NOT NULL DEFAULT now(),
+  created_by    text  -- portal_email del creador, o admin identifier
 );
 
-CREATE INDEX ON agent_rules (org_id, active);
+CREATE INDEX ON agent_rules (portal_email, active);
 CREATE INDEX ON agent_rules USING GIN (applies_to);
 ```
 
@@ -158,9 +165,9 @@ Semántica de `applies_to`:
 - `applies_to = '{nala}'`: aplica solo a Nala.
 - `applies_to = '{nala,nia}'`: aplica a Nala y Nia.
 
-Nota terminológica: en este spec "role slug", "meerkat slug" y "role" refieren al mismo string identificador del meerkat (`nala`, `nia`, `nox`, etc.). Corresponde a la columna que hoy identifica al rol en `voice_agents` (nombre exacto de la columna a confirmar en auditoría, Sección 12).
+Nota terminológica: `applies_to` contiene valores de `voice_agents.features->>meerkat_role_id` (nia, noah, nico, nelia, neo, nara, naia, nova, nala, nalu, nami, neka, nox, niva, nash). En el spec estos strings se llaman indistintamente "role slug", "meerkat slug", "role" o "meerkat_role_id".
 
-No lleva tags. Reglas se stufean cuando `applies_to = '{}' OR meerkat_slug = ANY(applies_to)`, sin pasar por retrieval.
+No lleva tags. Reglas se stufean cuando `applies_to = '{}' OR meerkat_role_id = ANY(applies_to)`, sin pasar por retrieval.
 
 ### 4.5 Tabla `agent_tasks` (Tareas programadas)
 
@@ -169,24 +176,27 @@ CREATE TYPE task_trigger_type AS ENUM ('cron', 'manual', 'phrase');
 
 CREATE TABLE agent_tasks (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  org_id          uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  portal_email    text NOT NULL REFERENCES organizations(portal_email) ON DELETE CASCADE,
   owner_agent_id  uuid NOT NULL REFERENCES voice_agents(id) ON DELETE CASCADE,
   slug            text NOT NULL,  -- identificador legible: 'cobranza_mensual'
   mission         text NOT NULL,
   trigger_type    task_trigger_type NOT NULL,
-  trigger_config  jsonb NOT NULL,  -- ver 4.5.1
+  trigger_config  jsonb NOT NULL DEFAULT '{}',  -- ver 4.5.1
   parameters      text,
   deliverable     text NOT NULL,
   active          bool NOT NULL DEFAULT true,
   created_at      timestamptz NOT NULL DEFAULT now(),
   updated_at      timestamptz NOT NULL DEFAULT now(),
-  created_by      uuid REFERENCES users(id),
+  created_by      text,
   UNIQUE (owner_agent_id, slug)
 );
 
 CREATE INDEX ON agent_tasks (owner_agent_id, active);
 CREATE INDEX ON agent_tasks (trigger_type, active) WHERE trigger_type = 'cron';
+CREATE INDEX ON agent_tasks (portal_email, active);
 ```
+
+Nota: `owner_agent_id` es FK uuid a `voice_agents(id)` (identificador del agente físico del cliente), NO al `meerkat_role_id`. Un cliente puede tener varios `voice_agents` con el mismo `meerkat_role_id` (por ejemplo, dos Nias en distintos negocios), y cada `agent_tasks` pertenece a UNO específico. `portal_email` es redundante con `voice_agents.portal_email` pero se guarda denormalizado para queries rápidas y consistencia con las otras tablas.
 
 #### 4.5.1 Formato de `trigger_config`
 
@@ -232,8 +242,10 @@ ALTER TABLE fichas_informativas
     CHECK (autotag_status IN ('pending', 'done', 'manual_override', 'untagged_legacy', 'error'));
 
 CREATE INDEX ON fichas_informativas USING GIN (tags);
-CREATE INDEX ON fichas_informativas (org_id, autotag_status) WHERE autotag_status != 'done';
+CREATE INDEX ON fichas_informativas (portal_email, autotag_status) WHERE autotag_status != 'done';
 ```
+
+**Nota importante**: los tags viven en la tabla parent `fichas_informativas`, NO en `fichas_informativas_chunks`. El retrieval hace el pre-filtro por tag sobre la parent, luego semantic search sobre los chunks de las fichas que pasaron el filtro. Una ficha entera (con todos sus chunks) hereda los tags del parent.
 
 Estados de `autotag_status`:
 - `pending`: ficha recién creada, autotag async no ha corrido.
@@ -257,11 +269,13 @@ Personalidad, tools disponibles, capacidades por slug. Sigue viviendo en el prom
 ```sql
 SELECT regla, detalles
 FROM agent_rules
-WHERE org_id = :org_id
+WHERE portal_email = :portal_email
   AND active = true
-  AND (applies_to = '{}' OR :meerkat_slug = ANY(applies_to))
+  AND (applies_to = '{}' OR :meerkat_role_id = ANY(applies_to))
 ORDER BY created_at DESC;
 ```
+
+`portal_email` y `meerkat_role_id` se obtienen del `VoiceAgent` que llega al prompt builder: `agent.portal_email` y `agent.features?.meerkat_role_id`.
 
 Se inyecta como bloque markdown:
 
@@ -333,18 +347,28 @@ Solo aplica cuando el org tiene >20 fichas activas (modo retrieval, ver 5.4). Pi
 
 ### 6.1 Paso 1: Pre-filtro SQL por whitelist del meerkat
 
-Se calcula la whitelist efectiva del meerkat consultante (union de default + org additions). Cache 5 minutos por `(org_id, meerkat_slug)`.
+Se calcula la whitelist efectiva del meerkat consultante (union de default + org additions). Cache 5 minutos por `(portal_email, meerkat_role_id)`.
 
 ```sql
-SELECT id, contenido, embedding, tags, titulo
-FROM fichas_informativas
-WHERE org_id = :org_id
-  AND active = true
-  AND autotag_status IN ('done', 'manual_override', 'untagged_legacy', 'error')
-  AND (
-    tags && :effective_whitelist
-    OR tags = '{_untagged_}'
-  );
+-- Dos pasos: candidate ficha_ids por tag, luego chunks para semantic search.
+-- Paso 1a: parent fichas que pasan filtro por tag
+WITH candidate_fichas AS (
+  SELECT id
+  FROM fichas_informativas
+  WHERE portal_email = :portal_email
+    AND autotag_status IN ('done', 'manual_override', 'untagged_legacy', 'error')
+    AND (
+      tags && :effective_whitelist
+      OR tags = '{_untagged_}'
+    )
+)
+-- Paso 1b: chunks candidatos para semantic ranking en paso 2
+SELECT c.id, c.ficha_id, c.content, c.embedding, c.section_type,
+       f.titulo, f.tags
+FROM fichas_informativas_chunks c
+JOIN fichas_informativas f ON f.id = c.ficha_id
+WHERE c.ficha_id IN (SELECT id FROM candidate_fichas)
+  AND c.embedding IS NOT NULL;
 ```
 
 Reduce el universo del ~100% al ~20-30% del total según cliente y meerkat. Índice GIN sobre `tags` hace el filtro barato.
@@ -353,7 +377,7 @@ Fichas `untagged_legacy` y `error` participan sin filtro (fallback seguro durant
 
 ### 6.2 Paso 2: Semantic search sobre el subset
 
-Embedding de la query del turno con el modelo actual ya usado por `fichas_informativas` (OpenAI text-embedding-3-small o Voyage; se confirma en Sección 12). Top-K = 15 por distancia cosine con pgvector.
+Embedding de la query del turno con OpenAI `text-embedding-3-small` (1536 dim), confirmado en Sección 12. Top-K = 15 por distancia cosine con pgvector index HNSW (`vector_cosine_ops`, `m=16`, `ef_construction=64`) ya existente en `fichas_informativas_chunks`.
 
 ### 6.3 Paso 3 (condicional): Rerank con Haiku
 
@@ -683,58 +707,64 @@ PR separado, mínimo 60 días post ship-complete sin incidentes:
 
 No bloquea nada. Deuda técnica trackable en `learnings.md` del brain.
 
-## 11. Auditoría previa (bloqueante antes de implementación)
+## 11. Auditoría de código legacy (ejecutada 2026-09-24)
 
-Antes de escribir código de las tablas nuevas y componer los nuevos prompts, se ejecuta esta fase de investigación. Su output alimenta el plan de implementación con listas concretas de qué depurar.
+Auditoría ya ejecutada directamente en el repo antes de comenzar la implementación. Hallazgos concretos abajo. Cualquier auditoría adicional durante Fase 0 del plan solo confirma que no aparecieron campos nuevos entre este spec y el ship.
 
-### 11.1 Pasos de auditoría
+### 11.1 Campos legacy CONFIRMADOS para migración + hard delete
 
-1. **Grep en portal (frontend)**:
-   - Componentes de config del empleado con campos que se vuelven redundantes ("instrucciones", "prompt personalizado", "notas", "reglas específicas del agente").
-   - Componentes de config del org con campos redundantes ("políticas generales", "reglas del negocio" antiguas).
-   - Formularios que capturan estos campos y sus validaciones.
+**`voice_agents.transfer_rules`** (text)
+- Ubicación UI: `src/app/portal/[token]/AgentCustomization.tsx:66-90` (textarea "Reglas de transferencia").
+- Endpoint que lo escribe: `PATCH /api/portal/[token]/settings` con body `{ transfer_rules }`.
+- Uso probable en runtime: el prompt builder inyecta este texto en el system prompt del meerkat (a confirmar en Task 8.2).
+- **Migración**: para cada `voice_agents` con `transfer_rules IS NOT NULL AND length > 0`, insertar en `agent_rules` con:
+  - `portal_email = voice_agents.portal_email`
+  - `regla = 'Transferencia con humano: ' || voice_agents.transfer_rules` (o similar; Sonnet clasifica si es regla directa o requiere prefijo)
+  - `applies_to = ['{meerkat_role_id del agent}']`
+  - `active = true`
+- **Hard delete post-migración**: `ALTER TABLE voice_agents DROP COLUMN transfer_rules`, eliminar el textarea del UI, eliminar el `transfer_rules` del endpoint PATCH `/api/portal/[token]/settings`, eliminar lectura del prompt builder.
 
-2. **Grep en backend**:
-   - Endpoints que leen esos campos (rutas API bajo `/api/agents/[id]/config`, `/api/orgs/[id]/policies`, o similares).
-   - System prompt builders que inyectan esos campos.
-   - Tools de meerkats que consultan esos campos.
+### 11.2 Campos que se MANTIENEN (no redundantes)
 
-3. **Grep en Supabase**:
-   - Columnas de `voice_agents`, `organizations` y afines que quedan muertas.
-   - Foreign keys que se rompen al drop.
+- `voice_agents.first_message` (saludo bienvenida): config específica del voice pipeline de Vapi, no es una regla. Se mantiene.
+- Learnings (`src/app/portal/[token]/LearningsSection.tsx`, `src/app/api/cron/learn/route.ts`): sistema separado que aprende de conversaciones reales. Coexiste con Reglas y Tareas, no las reemplaza.
+- Knowledge Base Editor (`src/app/portal/[token]/AgentKnowledgeBaseEditor.tsx`, `src/app/portal/[token]/KnowledgeBaseEditor.tsx`): captura KB del negocio, coexiste con `fichas_informativas` y con Reglas.
 
-4. **Output**: sección `## Depuración inline` del spec (o addendum) con lista específica:
-   ```
-   - voice_agents.custom_instructions (text) → reemplazado por agent_rules.regla + agent_tasks
-   - organizations.business_policies (text) → reemplazado por agent_rules (applies_to = '{}')
-   - src/lib/prompt-builder/legacy-instructions.ts → eliminar
-   - src/app/api/agents/[id]/instructions/route.ts → eliminar
-   - src/components/agent-config/CustomInstructionsField.tsx → eliminar
-   ...
-   ```
+### 11.3 Prompt builders que necesitan integración de bloques nuevos
 
-5. **Migración de datos**: si algún campo tiene datos poblados en clientes reales, se ejecuta el script de Sección 9.2 antes del hard delete.
+1. **`src/lib/voice/prompt-builder.ts:buildSystemPrompt`** — canónico para voice inbound. Bloque de Reglas + Tareas titulares integra aquí primero.
+2. **`src/lib/voice/outbound-prompt-builder.ts`** — para llamadas salientes. Mismo bloque de Reglas, sin bloque de Tareas titulares (una tarea salient outbound ya sabe qué hacer por su config).
+3. **`src/lib/whatsapp/prompt-builder.ts`** — para WhatsApp. Mismo bloque de Reglas + Tareas titulares.
 
-### 11.2 Producto de la auditoría
+Cada builder respeta la firma `async function (agent: VoiceAgent, ...): Promise<string>` y saca `meerkat_role_id` de `agent.features?.meerkat_role_id`.
 
-- Lista concreta de campos, componentes, endpoints, archivos a eliminar.
-- Lista de tablas y columnas a `ALTER TABLE ... DROP COLUMN`.
-- Confirmación de qué scripts de migración son necesarios (o "ninguno" si los campos están vacíos en producción).
-- Confirmación de nombres exactos de tablas y convenciones existentes (por ejemplo `voice_agents` vs `agents`).
+### 11.4 Tools que consumen `voice_agents.features->>meerkat_role_id`
 
-Sin este output, el plan de implementación no se puede escribir con precisión.
+Ya confirmado en múltiples archivos: `src/lib/tools/executor.ts:972`, `1143`, `1155`, `4992`, `5051`, `5866`, `src/lib/ops/inbox-processor.ts:1602,1944`, `src/lib/social/media-ingestion.ts:4`. Estos NO cambian; solo se agregan los bloques nuevos al prompt.
 
-## 12. Puntos abiertos a resolver en el plan de implementación
+### 11.5 Convenciones existentes que este spec respeta
 
-Estos son puntos concretos que dependen de leer el código actual y no pueden decidirse en el spec sin verificar. Se resuelven en la fase de writing-plans o de auditoría (11):
+- FK a organizations por `portal_email TEXT`.
+- Feature flags en `organizations.features` jsonb.
+- Crons en `vercel.json` array `crons` con `path` + `schedule`.
+- Anthropic SDK con `logLlmCall` enforced por `pnpm lint`.
+- Tests: Vitest para unit e integration, Playwright para e2e. Comandos `pnpm test`, `pnpm test:integration`, `pnpm test:smoke`, `pnpm test:e2e`.
+- Migrations Supabase en `supabase/migrations/YYYYMMDDHHMMSS_slug.sql`.
 
-1. **Convención de nombres de tabla**: `voice_agents` es la tabla actual según brain README. Confirmar que `owner_agent_id` en `agent_tasks` referencia a `voice_agents(id)`.
-2. **Modelo de embeddings actual**: brain menciona `fichas_informativas` con embeddings, pero no especifica el modelo. Confirmar text-embedding-3-small vs Voyage vs otro.
-3. **Ubicación del prompt builder**: `src/lib/prompts/*` o `src/lib/agents/prompt-builder.ts` o similar. Auditoría lo localiza.
-4. **Roster real de meerkats**: brain README menciona Nia, Nox, Niva, Nova, Neo, Naia. Memoria auto-local menciona además Nala, Nelia, Neka, Noah, Navi, Nalú. Confirmar contra tabla `voice_agents` distinct `role`.
-5. **Seed inicial de `role_default_tag_whitelist`**: la propuesta de 4.2 se afina contra el roster real y contra los packs de tools activos de cada rol.
-6. **Feature flag storage**: existe `organizations.features` jsonb según brain (patrón de Navi). Confirmar que los tres flags nuevos entran ahí.
-7. **Cron scheduler**: patrón actual para tareas programadas del sistema (crons Vercel según [[project-centinelia-crons]]). El nuevo scheduler de `agent_tasks` debe integrarse a la infra existente, no duplicarla.
+## 12. Puntos abiertos resueltos con evidencia del código actual
+
+Estos puntos originalmente eran abiertos. Se cerraron con lectura directa del repo (`src/lib/portal/meerkat-roles.ts`, `src/lib/voice/prompt-builder.ts`, `supabase/migrations/20260923120000_fichas_informativas.sql`, `vercel.json`, `package.json`, `src/app/portal/[token]/AgentCustomization.tsx`) el 2026-09-24 antes de la implementación.
+
+1. **Tabla de agentes**: `voice_agents`. El identificador de rol vive en jsonb `agent.features->>meerkat_role_id`, NO en columna directa. Ejemplo real: `src/lib/billing/employee/queue.ts:234` filtra con `.eq('features->>meerkat_role_id', 'nala')`. Confirmado.
+2. **Modelo de embeddings**: OpenAI `text-embedding-3-small`, 1536 dim, HNSW index con cosine similarity. Confirmado en `supabase/migrations/20260923120000_fichas_informativas.sql:77-91`.
+3. **Prompt builder canónico**: `src/lib/voice/prompt-builder.ts:buildSystemPrompt(agent, learnings?, orgId?, supabase?)`. Además existen `src/lib/voice/outbound-prompt-builder.ts` (outbound calls) y `src/lib/whatsapp/prompt-builder.ts` (WhatsApp). Los tres necesitan integrar los bloques nuevos de Reglas y Tareas titulares.
+4. **Roster real**: 15 slugs confirmados en `src/lib/portal/meerkat-roles.ts:MEERKAT_ROLES`: `nia, noah, nico, nelia, neo, nara, naia, nova, nala, nalu, nami, neka, nox, niva, nash`. Tres coordinadores (`nox, niva, nash`) con whitelist completa por default. `nash` y `neka` son internos de Centinelia (`INTERNAL_MEERKAT_IDS`). El slug `navi` aún NO está en el roster de producción (spec de Navi todavía no shippeado), no aparece en el seed inicial. Se agrega cuando el pack Navi merge.
+5. **Seed inicial de whitelist**: ajustado en Sección 4.2 con los 15 slugs reales.
+6. **Convención de FK a `organizations`**: por `portal_email TEXT`, NO por `org_id UUID`. Comentario documental en `20260923120000_fichas_informativas.sql:18`: "Convención Centinelia: las FKs a organizations van por `portal_email TEXT`." Todas las tablas nuevas de este spec (`agent_rules`, `agent_tasks`, `org_role_tag_additions`, `agent_task_runs`) usan `portal_email` en vez de `org_id`.
+7. **Feature flags storage**: `organizations.features` jsonb, patrón confirmado en el pack de fichas (`organizations.features.fichas_informativas` y `organizations.features.fichas_informativas_mode`). Los tres flags nuevos (`agent_missions_enabled`, `retrieval_v2_enabled`, `rerank_enabled`) entran ahí.
+8. **Cron scheduler**: `vercel.json` con array `crons` de 20+ entries. Patrón: cada cron es un endpoint `/api/cron/*` con `schedule` cron expression. El nuevo scheduler `agent-tasks-scheduler` sigue el mismo patrón.
+9. **Campo legacy CONFIRMADO para migración + hard delete**: `voice_agents.transfer_rules` (text). Escrito por el cliente en `AgentCustomization.tsx` vía `PATCH /api/portal/[token]/settings`. Es exactamente una regla de negocio. Al migrar: `transfer_rules` texto → nueva `agent_rules(regla=[texto], applies_to=[agent_slug])`. El campo `first_message` (saludo bienvenida) es cosa distinta (config UI-specific de Vapi), NO redundante, se mantiene.
+10. **Stack real confirmado**: Next.js 16.2.9, React 19.2.4, TypeScript, Anthropic SDK 0.116.0, Vitest + Playwright, `pnpm lint` corre `eslint && check:llm-logging.mjs` (enforcement de `logLlmCall`).
 
 ## 13. Riesgos conocidos y mitigaciones
 

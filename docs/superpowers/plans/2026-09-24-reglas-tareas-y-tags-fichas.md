@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-24-reglas-tareas-y-tags-fichas-design.md`
 
+**IMPORTANTE — Correcciones post-auditoría (2026-09-24):** Después de escribir este plan se ejecutó la auditoría del código real. Los hallazgos concretos están en la sección **"Post-Audit Corrections"** al final de este archivo. **Esas correcciones tienen precedencia sobre cualquier detalle contradictorio en las tareas de abajo.** Léelas antes de arrancar cualquier fase.
+
 ## Global Constraints
 
 - **Next.js versión**: la del proyecto (`package.json`). Este NO es el Next.js estándar; APIs, conventions y file structure pueden diferir. Leer `node_modules/next/dist/docs/` relevante antes de escribir código nuevo. Ver `AGENTS.md` raíz del repo.
@@ -2438,6 +2440,164 @@ Reglas de operación de este subsistema: cómo agregar tag al catálogo, cómo a
 Checklist para el equipo cuando necesita crear una regla o tarea nueva para un cliente (setup manual, no wizard).
 
 - [ ] **Step 2: Commit via PR**
+
+---
+
+## Post-Audit Corrections (2026-09-24)
+
+Después de escribir el plan original se ejecutó auditoría directa del repo. Estos son los hallazgos concretos que **tienen precedencia sobre cualquier detalle contradictorio en las tareas de arriba**. Toda tarea que use nombres o supuestos distintos a los de esta sección los debe reemplazar por los de aquí antes de escribir código.
+
+### PAC-1: FK a organizations es `portal_email TEXT`, no `org_id UUID`
+
+Convención Centinelia (confirmada en `supabase/migrations/20260923120000_fichas_informativas.sql:18`). Todas las tablas nuevas usan `portal_email` como FK. Reemplazos concretos:
+
+- **Task 1.3**: schema de `org_role_tag_additions` cambia `org_id uuid ... REFERENCES organizations(id)` por `portal_email text NOT NULL REFERENCES organizations(portal_email) ON DELETE CASCADE`. `added_by` es `text` (portal_email del user), no `uuid`.
+- **Task 2.1**: schema de `agent_rules` cambia `org_id uuid` por `portal_email text NOT NULL REFERENCES organizations(portal_email) ON DELETE CASCADE`. `created_by` es `text`, no `uuid`. Índice: `CREATE INDEX ON agent_rules (portal_email, active);`.
+- **Task 3.1**: schema de `agent_tasks` agrega `portal_email text NOT NULL REFERENCES organizations(portal_email) ON DELETE CASCADE` (mantiene `owner_agent_id uuid`). Índice adicional: `CREATE INDEX ON agent_tasks (portal_email, active);`.
+- **Task 1.3**: `ALTER TABLE fichas_informativas` mantiene el existente (ya usa `portal_email`). Índice de autotag: `CREATE INDEX ON fichas_informativas (portal_email, autotag_status) WHERE autotag_status != 'done';`.
+
+**Los helpers del Task 1.4** (`getEffectiveWhitelist`, `addTagToRoleForOrg`) reciben `portalEmail: string` en vez de `orgId: string`. Renombrar parámetros en signatures.
+
+**Todos los services/endpoints** (Tasks 2.2, 2.3, 3.2, 3.3): auth extrae `portal_email` del request en vez de `org_id`. Ownership checks van por `portal_email`.
+
+### PAC-2: `role` no es columna, es jsonb `agent.features->>meerkat_role_id`
+
+Confirmado en múltiples archivos (`src/lib/billing/employee/queue.ts:234`, `src/lib/voice/prompt-builder.ts:95`).
+
+- **Query de reglas por meerkat** (Task 2.2 `getRulesForAgent`): el agent_slug de entrada es el `meerkat_role_id`. RPC `get_rules_for_agent` usa parámetro `p_meerkat_role_id` en vez de `p_agent_slug`. Filtro `p_meerkat_role_id = ANY(applies_to)`.
+- **Prompt builder** (Task 2.5): `meerkatRoleId = agent.features?.meerkat_role_id` es como se obtiene, NO `agent.role` o `agent.slug`.
+- **Executor de tarea** (Task 3.6): obtiene el `meerkat_role_id` del `owner_agent_id` con lookup a `voice_agents.features`.
+
+### PAC-3: Roster real es 15 slugs, no 10
+
+Confirmado en `src/lib/portal/meerkat-roles.ts:MEERKAT_ROLES`. Los 15 slugs son: `nia, noah, nico, nelia, neo, nara, naia, nova, nala, nalu, nami, neka, nox, niva, nash`.
+
+- **Task 1.2** (seed `role_default_tag_whitelist`): usar la tabla exacta de la Sección 4.2 del spec (post-corrección). Los coordinadores `nox`, `niva`, `nash` reciben whitelist COMPLETA (todos los 15 tags). Los otros 12 tienen 3-5 tags cada uno. `navi` NO va en el seed inicial porque aún no está mergeado.
+- El test del Task 1.2 valida 15 roles distintos, no 10.
+
+### PAC-4: Prompt builder canónico confirmado + hay 3 builders a modificar
+
+Paths exactos:
+
+1. **`src/lib/voice/prompt-builder.ts`** con función `buildSystemPrompt(agent: VoiceAgent, learnings?, orgId?, supabase?)` async, devuelve `Promise<string>`. Este es el que Task 2.5 y Task 3.7 modifican principalmente.
+2. **`src/lib/voice/outbound-prompt-builder.ts`** — para llamadas salientes. Agregar bloque de Reglas (sin Tareas titulares porque outbound ya sabe qué hacer). **Nueva sub-task 2.5b** al Task 2.5.
+3. **`src/lib/whatsapp/prompt-builder.ts`** — para WhatsApp. Agregar bloques de Reglas + Tareas titulares. **Nueva sub-task 2.5c** al Task 2.5.
+
+Los tres builders sacan `meerkat_role_id` de `agent.features?.meerkat_role_id` y `portal_email` de `agent.portal_email`.
+
+### PAC-5: Modelo de embedding y tabla chunks
+
+Confirmado en `20260923120000_fichas_informativas.sql`: OpenAI `text-embedding-3-small` (1536 dim), tabla `fichas_informativas_chunks` con HNSW cosine index existente.
+
+**Task 4.1 (retrieval)** debe hacer pipeline de dos pasos en dos queries o un CTE:
+
+1. `candidate_fichas`: parent fichas que pasan filtro por tag (WHERE clause sobre `fichas_informativas.tags`).
+2. `chunks`: JOIN a `fichas_informativas_chunks` de las fichas candidatas, semantic search sobre `embedding` con cosine.
+
+NO buscar semánticamente sobre la tabla parent (no tiene embedding). Los tags viven en la parent, la búsqueda vectorial en chunks.
+
+### PAC-6: Campo legacy CONFIRMADO para migración + hard delete
+
+`voice_agents.transfer_rules` (text). Escrito en `src/app/portal/[token]/AgentCustomization.tsx:66-90` vía `PATCH /api/portal/[token]/settings`.
+
+- **Task 8.1** (migration script): para cada `voice_agents` con `transfer_rules IS NOT NULL AND length > 5`, Sonnet lee el texto y decide:
+  - Si es "condición + acción" clara (ej. "cuando el cliente pida hablar con el gerente, transfiere") → insert en `agent_rules` con `portal_email = voice_agents.portal_email`, `regla = <texto directo>`, `applies_to = [<meerkat_role_id del agent>]`, `active = true`.
+  - Si es texto ambiguo → insert con `active = false` y `detalles = 'Regla migrada de la sección Reglas de transferencia. Revisa antes de activar.'`.
+- **Task 8.2** (hard delete):
+  - `ALTER TABLE voice_agents DROP COLUMN transfer_rules;`
+  - Eliminar textarea "Reglas de transferencia" en `src/app/portal/[token]/AgentCustomization.tsx` (líneas ~66-90).
+  - Eliminar `transfer_rules` del body handler en `PATCH /api/portal/[token]/settings`.
+  - Grep final para asegurar 0 referencias remanentes: `grep -rn "transfer_rules" src/ supabase/ tests/`.
+- **Task 8.1 no aplica si**: la migración de datos revela que ningún cliente productivo tiene `transfer_rules` poblado con contenido significativo. En ese caso, se salta directo al hard delete en Task 8.2.
+
+Nota: `voice_agents.first_message` NO es redundante (es config específica del voice pipeline de Vapi). Se mantiene.
+
+### PAC-7: Ubicación de learnings y KB (no redundantes)
+
+Componentes existentes que NO se tocan por este spec:
+
+- `src/app/portal/[token]/LearningsSection.tsx` + `src/app/api/cron/learn/route.ts`: sistema separado que aprende de conversaciones reales.
+- `src/app/portal/[token]/AgentKnowledgeBaseEditor.tsx` + `KnowledgeBaseEditor.tsx`: KB del negocio, coexiste con `fichas_informativas`.
+
+La auditoría de Fase 0 confirma que estos no aparecen como redundantes. Si aparecen en algún grep durante la ejecución del plan, no eliminar sin re-confirmar.
+
+### PAC-8: Stack y comandos exactos
+
+Verificado en `package.json`:
+
+- Next.js `16.2.9` (versión reciente; leer `node_modules/next/dist/docs/` si patrones parecen distintos).
+- React `19.2.4`.
+- TypeScript.
+- Anthropic SDK `@anthropic-ai/sdk 0.116.0`.
+- Testing: **Vitest** (no Jest) + **Playwright** para e2e.
+- Comandos exactos:
+  - `pnpm test` (unit)
+  - `pnpm test:integration` (usa `vitest.integration.config.ts`)
+  - `pnpm test:smoke` (usa `vitest.smoke.config.ts`)
+  - `pnpm test:e2e` (Playwright)
+  - `pnpm lint` (corre eslint + `check:llm-logging.mjs` que enforcea `logLlmCall`)
+- Migrations Supabase: naming `YYYYMMDDHHMMSS_slug.sql`, no `YYYY-MM-DD-NN_slug.sql`. **Corregir naming en Tasks 1.1, 1.2, 1.3, 2.1, 3.1** para usar formato timestamp de 14 dígitos (ejemplo: `20260924120000_ficha_tags.sql`).
+
+### PAC-9: Setup migration tracking
+
+**IMPORTANTE**: según [[reference-supabase-sql-editor-no-tracker]] y sesión 2026-09-23, aplicar migrations vía dashboard NO registra en schema_migrations, causa drift silencioso con `db push`. Regla obligatoria en toda tarea de migration:
+
+- **Aplicar SIEMPRE vía CLI**: `pnpm supabase db push` o equivalente.
+- Nunca copy-paste al SQL Editor del dashboard.
+- Verificar aplicación con `pnpm supabase migration list` después.
+
+### PAC-10: `pnpm supabase` invocation
+
+En Centinelia el CLI de Supabase se usa vía `pnpm exec supabase ...` o similar (a confirmar en scripts de `package.json`). Comandos en Tasks 1.1, 1.2, 1.3, 2.1, 3.1, 8.2 (aplicar migration):
+
+- `pnpm exec supabase db push` (si es el patrón).
+- Alternativa: `npx supabase db push`.
+- Ver `scripts/vercel-ignore.sh` y otros scripts existentes para pattern real.
+
+### Task nueva: Task 2.5b/c — Integrar bloques en outbound + whatsapp prompt builders
+
+**Files:**
+- Modify: `src/lib/voice/outbound-prompt-builder.ts`
+- Modify: `src/lib/whatsapp/prompt-builder.ts`
+- Create: `tests/integration/prompt-builder-outbound-rules.test.ts`
+- Create: `tests/integration/prompt-builder-whatsapp-rules.test.ts`
+
+**Interfaces:**
+- Consumes: `getCachedRulesForAgent()` (Task 2.4).
+- Produces: mismo bloque markdown `## Reglas de tu negocio (respétalas siempre)` inyectado en ambos builders. Outbound NO lleva bloque de Tareas titulares (tarea outbound ya sabe qué hacer); WhatsApp SÍ.
+
+- [ ] **Step 1-4**: TDD estándar, mismo patrón que Task 2.5.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/lib/voice/outbound-prompt-builder.ts src/lib/whatsapp/prompt-builder.ts tests/integration/prompt-builder-outbound-rules.test.ts tests/integration/prompt-builder-whatsapp-rules.test.ts
+git commit -m "feat(rules): inject rules block into outbound and whatsapp prompt builders"
+```
+
+### Task nueva: Task 3.8 — Integrar phrase matcher en meerkat tool loop
+
+**Files:**
+- Modify: canonical meerkat tool loop (identificar con auditoría: probablemente `src/lib/tools/executor.ts` o `src/app/api/portal/[token]/agent-chat/route.ts` o `src/app/api/whatsapp/webhook/route.ts`)
+
+**Interfaces:**
+- Consumes: `matchPhraseToTask` (Task 3.5), `executeTask` (Task 3.6).
+- Produces: mensaje del usuario que matchea una phrase task dispara `executeTask` en vez de flujo conversacional normal.
+
+- [ ] **Step 1: Grep para localizar tool loops**
+
+```bash
+grep -rn "toolCallId\|tool_use\|toolChoice" src/lib/tools/ src/app/api/portal/ src/app/api/voice/ src/app/api/whatsapp/ 2>&1
+```
+
+- [ ] **Step 2-5**: TDD integrando phrase-matcher en cada entry point (voice inbound, chat portal, WhatsApp inbound).
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add -A
+git commit -m "feat(tasks): phrase matcher integrated into voice/chat/whatsapp entry points"
+```
 
 ---
 
