@@ -1,20 +1,22 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Plus, Search, X, FileText, AlertTriangle } from 'lucide-react';
+import { Plus, Search, X, FileText, AlertTriangle, CheckCircle2, Clock, DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
 import type { AnnualContract, ContractStatus } from '@/types/annual-contract';
 import NewContractModal from './NewContractModal';
+import { useApi } from '@/lib/hooks/useApi';
+import { formatMoney } from '@/lib/format/money';
 
 type StatusFilter = 'all' | ContractStatus;
 type SortKey = 'expiry' | 'recent' | 'amount_desc';
 
 const STATUS_STYLE: Record<ContractStatus, { label: string; color: string; bg: string; border: string }> = {
-  draft:     { label: 'Borrador',  color: '#F59E0B', bg: '#FFFBEB', border: '#FDE68A' },
-  active:    { label: 'Activo',    color: '#10B981', bg: '#ECFDF5', border: '#A7F3D0' },
-  expired:   { label: 'Expirado',  color: '#EF4444', bg: '#FEF2F2', border: '#FECACA' },
-  cancelled: { label: 'Cancelado', color: '#6B7280', bg: '#F9FAFB', border: '#E5E7EB' },
+  draft:     { label: 'Borrador',  color: '#B45309', bg: 'rgba(180,83,9,0.08)', border: 'rgba(180,83,9,0.28)' },
+  active:    { label: 'Activo',    color: '#15803D', bg: 'rgba(34,197,94,0.10)', border: 'rgba(34,197,94,0.28)' },
+  expired:   { label: 'Expirado',  color: '#B91C1C', bg: 'rgba(239,68,68,0.08)', border: 'rgba(239,68,68,0.28)' },
+  cancelled: { label: 'Cancelado', color: '#6B6480', bg: '#F5F0FF',             border: '#E8E3F5' },
 };
 
 function StatusBadge({ status }: { status: ContractStatus }) {
@@ -36,37 +38,19 @@ function daysUntil(iso: string): number {
   return Math.ceil((end - now) / (1000 * 60 * 60 * 24));
 }
 
-function formatMXN(n: number): string {
-  return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(n);
-}
-
 function formatDate(iso: string): string {
   return new Date(iso + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 export default function AnnualContractsTab() {
-  const [contracts, setContracts] = useState<AnnualContract[] | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const { data: contracts, error: fetchError, mutate } =
+    useApi<AnnualContract[]>('/api/admin/annual-contracts', { key: 'contracts' });
+  const loadError = fetchError?.message ?? null;
+
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [sort, setSort] = useState<SortKey>('expiry');
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
-
-  async function load() {
-    setLoadError(null);
-    try {
-      const res = await fetch('/api/admin/annual-contracts', { cache: 'no-store' });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.message ?? json.error ?? 'Error cargando contratos');
-      setContracts(json.contracts ?? []);
-    } catch (e: any) {
-      setLoadError(e.message);
-      setContracts([]);
-    }
-  }
-
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { load(); }, []);
 
   const kpis = useMemo(() => {
     const list = contracts ?? [];
@@ -101,26 +85,28 @@ export default function AnnualContractsTab() {
   return (
     <div className="space-y-6 pt-4">
       {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <KpiCard label="Contratos activos" value={kpis.activeCount.toString()} accent="#10B981" />
-        <KpiCard label="Expiran en 60 días" value={kpis.soonCount.toString()} accent="#F59E0B" />
-        <KpiCard label={`Monto activo ${new Date().getFullYear()}`} value={formatMXN(kpis.totalYear)} accent="#8B5CF6" />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <KpiCard label="Contratos activos" value={kpis.activeCount.toString()} accent="#22C55E" icon={<CheckCircle2 size={16} />} />
+        <KpiCard label="Expiran en 60 días" value={kpis.soonCount.toString()} accent="#F59E0B" icon={<Clock size={16} />} hint="requieren renovación" />
+        <KpiCard label={`Monto activo ${new Date().getFullYear()}`} value={formatMoney(kpis.totalYear, { minDecimals: 0, maxDecimals: 0 })} accent="#6C3BFF" icon={<DollarSign size={16} />} hint="MXN · con IVA" />
       </div>
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[220px]">
-          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#9CA3AF' }} />
+          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#9B8FB5' }} />
           <input
             type="text"
-            placeholder="Buscar por cliente o folio..."
+            placeholder="Buscar por cliente o folio…"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full pl-9 pr-9 py-1.5 rounded-lg text-[13px] outline-none"
-            style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#111827' }}
+            className="w-full pl-10 pr-9 rounded-xl text-[13px] outline-none transition-shadow"
+            style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B', height: 38 }}
+            onFocus={e => { e.currentTarget.style.borderColor = '#6C3BFF'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(108,59,255,0.08)'; }}
+            onBlur={e => { e.currentTarget.style.borderColor = '#E8E3F5'; e.currentTarget.style.boxShadow = 'none'; }}
           />
           {search && (
-            <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: '#9CA3AF' }}>
+            <button onClick={() => setSearch('')} className="absolute right-3.5 top-1/2 -translate-y-1/2" style={{ color: '#9B8FB5' }}>
               <X size={13} />
             </button>
           )}
@@ -129,8 +115,8 @@ export default function AnnualContractsTab() {
         <select
           value={statusFilter}
           onChange={e => setStatusFilter(e.target.value as StatusFilter)}
-          className="px-2.5 py-1.5 rounded-lg text-[13px] outline-none"
-          style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#111827' }}
+          className="rounded-xl text-[13px] outline-none px-3.5"
+          style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B', height: 38 }}
         >
           <option value="all">Todos los estados</option>
           <option value="draft">Borrador</option>
@@ -142,8 +128,8 @@ export default function AnnualContractsTab() {
         <select
           value={sort}
           onChange={e => setSort(e.target.value as SortKey)}
-          className="px-2.5 py-1.5 rounded-lg text-[13px] outline-none"
-          style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#111827' }}
+          className="rounded-xl text-[13px] outline-none px-3.5"
+          style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B', height: 38 }}
         >
           <option value="expiry">Próximos a expirar</option>
           <option value="recent">Recientes</option>
@@ -153,22 +139,27 @@ export default function AnnualContractsTab() {
         <button
           type="button"
           onClick={() => setModalOpen(true)}
-          className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-opacity hover:opacity-90"
-          style={{ background: '#6C3BFF', color: '#FFFFFF' }}
+          className="ml-auto inline-flex items-center gap-2 rounded-xl text-[13px] font-semibold transition-all"
+          style={{
+            padding:    '10px 18px',
+            background: '#6C3BFF',
+            color:      '#ffffff',
+            boxShadow:  '0 2px 8px rgba(108,59,255,0.32)',
+          }}
         >
-          <Plus size={13} />
+          <Plus size={14} />
           Nuevo contrato
         </button>
       </div>
 
       {/* Table */}
       <div
-        className="rounded-xl overflow-hidden bg-white"
-        style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+        className="rounded-2xl overflow-hidden"
+        style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 3px rgba(15,5,34,0.04)' }}
       >
         <div className="overflow-x-auto">
           <table className="w-full text-[13px]">
-            <thead style={{ background: '#F9FAFB' }}>
+            <thead style={{ background: '#FAFAFB' }}>
               <tr>
                 <Th>Folio</Th>
                 <Th>Cliente</Th>
@@ -179,15 +170,15 @@ export default function AnnualContractsTab() {
               </tr>
             </thead>
             <tbody>
-              {contracts === null && (
-                <tr><td colSpan={6} className="px-4 py-10 text-center text-[13px]" style={{ color: '#6B7280' }}>Cargando contratos...</td></tr>
+              {contracts === undefined && !fetchError && (
+                <tr><td colSpan={6} className="px-4 py-10 text-center text-[13px]" style={{ color: '#6B6480' }}>Cargando contratos…</td></tr>
               )}
 
-              {contracts !== null && filtered.length === 0 && (
+              {contracts !== undefined && filtered.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-4 py-10 text-center">
-                    <FileText size={22} className="mx-auto mb-2" style={{ color: '#D1D5DB' }} />
-                    <div className="text-[13px]" style={{ color: '#6B7280' }}>
+                    <FileText size={22} className="mx-auto mb-2" style={{ color: '#B9B0CF' }} />
+                    <div className="text-[13px]" style={{ color: '#6B6480' }}>
                       {loadError ? loadError : (search || statusFilter !== 'all' ? 'Sin resultados para los filtros aplicados.' : 'Aún no hay contratos anuales. Crea el primero.')}
                     </div>
                   </td>
@@ -198,35 +189,35 @@ export default function AnnualContractsTab() {
                 const days = daysUntil(c.end_date);
                 const showWarning = c.status === 'active' && days <= 60 && days >= 0;
                 return (
-                  <tr key={c.id} style={{ borderTop: '1px solid #F3F4F6' }} className="hover:bg-gray-50">
+                  <tr key={c.id} style={{ borderTop: '1px solid #F0EBFA' }} className="transition-colors hover:bg-[#FAFAFB]">
                     <Td>
-                      <div className="font-mono text-[12px]" style={{ color: '#111827' }}>{c.contract_folio}</div>
+                      <div className="font-mono text-[12px] font-semibold" style={{ color: '#6C3BFF' }}>{c.contract_folio}</div>
                     </Td>
                     <Td>
-                      <div className="text-[13px]" style={{ color: '#111827' }}>{c.organization_email}</div>
+                      <div className="text-[13px] font-semibold" style={{ color: '#1A0A3B' }}>{c.organization_email}</div>
                     </Td>
                     <Td>
-                      <div className="text-[12px]" style={{ color: '#6B7280' }}>
+                      <div className="text-[12px]" style={{ color: '#6B6480' }}>
                         {formatDate(c.start_date)} → {formatDate(c.end_date)}
                       </div>
                       {showWarning && (
-                        <div className="flex items-center gap-1 mt-0.5 text-[11px]" style={{ color: '#F59E0B' }}>
+                        <div className="flex items-center gap-1 mt-0.5 text-[11px] font-semibold" style={{ color: '#B45309' }}>
                           <AlertTriangle size={10} />
                           Expira en {days} día{days === 1 ? '' : 's'}
                         </div>
                       )}
                     </Td>
                     <Td className="text-right">
-                      <div className="text-[13px] font-medium tabular-nums" style={{ color: '#111827' }}>{formatMXN(Number(c.amount_mxn))}</div>
+                      <div className="text-[14px] font-bold tabular-nums" style={{ color: '#1A0A3B' }}>{formatMoney(Number(c.amount_mxn), { minDecimals: 0, maxDecimals: 0 })}</div>
                     </Td>
                     <Td><StatusBadge status={c.status} /></Td>
                     <Td className="text-right">
                       <Link
                         href={`/admin/facturacion/${c.id}`}
-                        className="text-[12px] font-medium hover:underline"
+                        className="text-[12px] font-semibold hover:underline"
                         style={{ color: '#6C3BFF' }}
                       >
-                        Ver detalle
+                        Ver detalle →
                       </Link>
                     </Td>
                   </tr>
@@ -243,7 +234,7 @@ export default function AnnualContractsTab() {
           onCreated={() => {
             setModalOpen(false);
             toast.success('Contrato creado');
-            load();
+            mutate();
           }}
         />
       )}
@@ -251,14 +242,17 @@ export default function AnnualContractsTab() {
   );
 }
 
-function KpiCard({ label, value, accent }: { label: string; value: string; accent: string }) {
+function KpiCard({ label, value, accent, icon, hint }: { label: string; value: string; accent: string; icon: React.ReactNode; hint?: string }) {
   return (
-    <div
-      className="rounded-xl bg-white px-5 py-4"
-      style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
-    >
-      <p className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#9CA3AF' }}>{label}</p>
-      <p className="text-[28px] font-semibold leading-none tabular-nums mt-2" style={{ color: accent }}>{value}</p>
+    <div className="rounded-2xl transition-all" style={{ background: '#ffffff', border: '1px solid #E8E3F5', padding: '16px 18px', boxShadow: '0 1px 3px rgba(15,5,34,0.04)' }}>
+      <div className="flex items-center gap-2 mb-2">
+        <div className="flex items-center justify-center rounded-lg" style={{ background: `${accent}1A`, color: accent, width: 28, height: 28 }}>
+          {icon}
+        </div>
+        <p className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: '#6B6480' }}>{label}</p>
+      </div>
+      <p className="text-[24px] font-bold tracking-tight leading-none tabular-nums" style={{ color: '#1A0A3B' }}>{value}</p>
+      {hint && <p className="text-[11px] mt-1" style={{ color: '#9B8FB5' }}>{hint}</p>}
     </div>
   );
 }
@@ -266,8 +260,8 @@ function KpiCard({ label, value, accent }: { label: string; value: string; accen
 function Th({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
     <th
-      className={`text-left px-4 py-3 text-[11px] font-medium uppercase tracking-wider ${className}`}
-      style={{ color: '#6B7280' }}
+      className={`text-left px-4 py-3 text-[10px] font-bold uppercase tracking-[0.1em] ${className}`}
+      style={{ color: '#6B6480' }}
     >
       {children}
     </th>
@@ -275,5 +269,5 @@ function Th({ children, className = '' }: { children: React.ReactNode; className
 }
 
 function Td({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <td className={`px-4 py-2.5 ${className}`}>{children}</td>;
+  return <td className={`px-4 py-3 ${className}`}>{children}</td>;
 }
