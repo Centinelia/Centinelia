@@ -11,9 +11,10 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Loader2, ListTodo, Info, X } from 'lucide-react';
+import { Plus, Loader2, ListTodo } from 'lucide-react';
 import AgentMissionsWizard, { type MissionFormData } from './AgentMissionsWizard';
 import AgentMissionsCard,   { type AgentTask }       from './AgentMissionsCard';
+import EducationalTooltip from '@/components/portal/EducationalTooltip';
 
 interface Props {
   agentId:   string;
@@ -36,8 +37,6 @@ export default function AgentMissionsSection({ agentId, agentName, token }: Prop
   const [executingId,   setExecutingId]   = useState<string | null>(null);
   const [deactivatingId, setDeactivatingId] = useState<string | null>(null);
 
-  const [showTooltip, setShowTooltip] = useState(false);
-
   // ── Carga inicial ─────────────────────────────────────────────────────────
 
   const fetchTasks = useCallback(async () => {
@@ -56,19 +55,6 @@ export default function AgentMissionsSection({ agentId, agentName, token }: Prop
   }, [token, agentId]);
 
   useEffect(() => { fetchTasks(); }, [fetchTasks]);
-
-  // Tooltip primera visita
-  useEffect(() => {
-    try {
-      const seen = localStorage.getItem(TOOLTIP_KEY);
-      if (!seen) setShowTooltip(true);
-    } catch { /* SSR / incognito */ }
-  }, []);
-
-  function dismissTooltip() {
-    setShowTooltip(false);
-    try { localStorage.setItem(TOOLTIP_KEY, '1'); } catch { /* ok */ }
-  }
 
   // ── Mutaciones ────────────────────────────────────────────────────────────
 
@@ -190,28 +176,11 @@ export default function AgentMissionsSection({ agentId, agentName, token }: Prop
       </div>
 
       {/* Tooltip educativo de primera visita */}
-      {showTooltip && (
-        <div
-          className="flex items-start gap-3 p-4 rounded-xl relative"
-          style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.2)' }}
-        >
-          <Info size={16} style={{ color: '#6C3BFF', flexShrink: 0, marginTop: 1 }} />
-          <p className="text-sm leading-relaxed flex-1" style={{ color: '#4A3B6B' }}>
-            Las tareas son acciones que tu empleado puede ejecutar de forma autónoma: cobrar morosos
-            cada lunes, enviar resúmenes semanales, responder a frases específicas de clientes y más.
-            Configura cuándo, cómo y qué debe entregar.
-          </p>
-          <button
-            type="button"
-            onClick={dismissTooltip}
-            className="p-1 rounded-lg hover:opacity-60"
-            style={{ color: '#9B8FB5', flexShrink: 0 }}
-            aria-label="Cerrar sugerencia"
-          >
-            <X size={14} />
-          </button>
-        </div>
-      )}
+      <EducationalTooltip storageKey={TOOLTIP_KEY}>
+        Las tareas son acciones que tu empleado puede ejecutar de forma autónoma: cobrar morosos
+        cada lunes, enviar resúmenes semanales, responder a frases específicas de clientes y más.
+        Configura cuándo, cómo y qué debe entregar.
+      </EducationalTooltip>
 
       {/* Error de carga */}
       {error && !loading && (

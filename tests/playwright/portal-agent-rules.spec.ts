@@ -82,12 +82,21 @@ test.describe('Portal — Reglas del negocio', () => {
     const deactivateBtn = page.getByRole('button', { name: /desactivar/i }).first();
     await deactivateBtn.click();
 
-    // La sección debe actualizarse (no aparece el estado de carga eterno)
-    await page.waitForTimeout(2_000);
-
-    // Si había al menos 1 regla activa, la lista ahora debería tener una menos
-    // (o mostrar el mensaje de vacío si era la única)
+    // Esperar a que la UI actualice: o aparece vacío o cambia el conteo
     const emptyMsg = page.locator('[data-testid="empty-rules"]');
+    await Promise.race([
+      emptyMsg.waitFor({ state: 'visible', timeout: 8_000 }).catch(() => null),
+      page.waitForFunction(
+        ({ list, initial }) => {
+          const el = document.querySelector(list);
+          if (!el) return true;
+          return (el.querySelectorAll('[data-testid]').length ?? 0) < initial;
+        },
+        { list: '[data-testid="rules-list"]', initial: initialCount },
+        { timeout: 8_000 },
+      ).catch(() => null),
+    ]);
+
     const newCount = await rulesList.locator('[data-testid]').count().catch(() => 0);
 
     // O hay menos reglas activas o aparece el vacío

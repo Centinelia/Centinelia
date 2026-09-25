@@ -55,7 +55,7 @@ function triggerSummary(task: AgentTask): string {
       '0 9 15 * *':  'El día 15 de cada mes',
     };
     const cron = task.trigger_config?.cron as string | undefined;
-    return cron ? (cronMap[cron] ?? cron) : 'Calendario';
+    return cron ? (cronMap[cron] ?? 'Calendario personalizado') : 'Calendario';
   }
   if (task.trigger_type === 'phrase') {
     const phrases = task.trigger_config?.phrases as string[] | undefined;

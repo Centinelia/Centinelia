@@ -101,11 +101,21 @@ test.describe('Portal — Tareas de meerkat', () => {
     const deactivateBtn = page.getByRole('button', { name: /desactivar/i }).first();
     await deactivateBtn.click();
 
-    // Esperar actualización
-    await page.waitForTimeout(2_000);
-
-    // La lista debe tener una tarea menos o mostrar vacío
+    // Esperar a que la UI actualice: o aparece vacío o cambia el conteo
     const emptyMsg  = page.locator('[data-testid="empty-missions"]');
+    await Promise.race([
+      emptyMsg.waitFor({ state: 'visible', timeout: 8_000 }).catch(() => null),
+      page.waitForFunction(
+        ({ list, initial }) => {
+          const el = document.querySelector(list);
+          if (!el) return true;
+          return (el.querySelectorAll('[data-testid^="mission-card-"]').length ?? 0) < initial;
+        },
+        { list: '[data-testid="missions-list"]', initial: initialCount },
+        { timeout: 8_000 },
+      ).catch(() => null),
+    ]);
+
     const newCount  = await missionsList.locator('[data-testid^="mission-card-"]').count().catch(() => 0);
 
     const condition = (await emptyMsg.isVisible()) || newCount < initialCount;

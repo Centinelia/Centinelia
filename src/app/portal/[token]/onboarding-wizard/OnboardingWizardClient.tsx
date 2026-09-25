@@ -849,7 +849,7 @@ export default function OnboardingWizardClient({ token, agentId, agentName, agen
                 className="text-sm font-medium px-4 py-2.5 rounded-xl transition-opacity hover:opacity-70"
                 style={{ color: '#9B8FB5' }}
               >
-                Saltar por ahora
+                Saltar por ahora — Sin esto tu empleado va a operar sin contexto de tu negocio.
               </button>
             )}
           </div>

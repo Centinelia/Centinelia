@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Plus, ShieldCheck, Loader2, X } from 'lucide-react';
 import AgentRulesCard, { type AgentRule }  from './AgentRulesCard';
 import AgentRulesModal, { type RuleFormData } from './AgentRulesModal';
+import EducationalTooltip from '@/components/portal/EducationalTooltip';
 
 const LS_TOOLTIP_KEY = 'centinelia_rules_tooltip_seen';
 
@@ -20,23 +21,9 @@ export default function AgentRulesSection({ token }: Props) {
   const [saveError,   setSaveError]   = useState<string | null>(null);
   const [isSaving,    setIsSaving]    = useState(false);
   const [mutating,    setMutating]    = useState<Record<string, 'deactivating' | 'deleting' | null>>({});
-  const [showTooltip, setShowTooltip] = useState(false);
 
   // Mapa role -> display name para chips
   const [agentNamesMap, setAgentNamesMap] = useState<Record<string, string>>({});
-
-  // Tooltip educativo: primera vez
-  useEffect(() => {
-    try {
-      const seen = localStorage.getItem(LS_TOOLTIP_KEY);
-      if (!seen) setShowTooltip(true);
-    } catch { /* SSR */ }
-  }, []);
-
-  const dismissTooltip = () => {
-    setShowTooltip(false);
-    try { localStorage.setItem(LS_TOOLTIP_KEY, '1'); } catch { /* ok */ }
-  };
 
   const loadRules = useCallback(async () => {
     setLoading(true);
@@ -168,30 +155,9 @@ export default function AgentRulesSection({ token }: Props) {
       </p>
 
       {/* Tooltip educativo (primera visita) */}
-      {showTooltip && (
-        <div
-          className="flex items-start gap-3 p-3 rounded-xl"
-          style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.2)' }}
-        >
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold mb-1" style={{ color: '#6C3BFF' }}>
-              ¿Qué es una regla?
-            </p>
-            <p className="text-xs leading-relaxed" style={{ color: '#4A3B6B' }}>
-              Una regla es cómo opera tu negocio siempre. Todos tus empleados digitales las siguen en cada conversación, correo y llamada. Son distintas de las tareas, que son acciones concretas que el empleado realiza en ciertos momentos.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={dismissTooltip}
-            className="p-1 rounded flex-shrink-0 transition-opacity hover:opacity-60"
-            style={{ color: '#9B8FB5' }}
-            aria-label="Cerrar sugerencia"
-          >
-            <X size={14} />
-          </button>
-        </div>
-      )}
+      <EducationalTooltip storageKey={LS_TOOLTIP_KEY}>
+        Una regla es cómo opera tu negocio siempre. Todos tus empleados digitales las siguen en cada conversación, correo y llamada. Son distintas de las tareas, que son acciones concretas que el empleado realiza en ciertos momentos.
+      </EducationalTooltip>
 
       {/* Error de carga */}
       {error && (
