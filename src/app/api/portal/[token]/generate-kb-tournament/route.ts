@@ -66,10 +66,9 @@ export async function POST(req: NextRequest, { params }: Params) {
     portal_email: string | null;
     business_name: string | null;
     first_message: string | null;
-    transfer_rules: string | null;
     role_knowledge_base: string | null;
     role_learnings: string | null;
-  }>(token, 'id, portal_email, business_name, first_message, transfer_rules, role_knowledge_base, role_learnings', supabase);
+  }>(token, 'id, portal_email, business_name, first_message, role_knowledge_base, role_learnings', supabase);
   if (!agent) return NextResponse.json({ error: 'Agente no encontrado' }, { status: 404 });
 
   if (session.portalEmail && agent.portal_email && session.portalEmail !== agent.portal_email)
@@ -102,7 +101,6 @@ export async function POST(req: NextRequest, { params }: Params) {
   const hours          = org?.business_hours                || null;
   const existingKb     = org?.knowledge_base?.trim()        || null;
   const firstMessage   = (agent as any).first_message?.trim()        || null;
-  const transferRules  = (agent as any).transfer_rules?.trim()       || null;
   const existingRole   = (agent as any).role_knowledge_base?.trim()  || null;
   const roleLearnings  = (agent as any).role_learnings?.trim()       || null;
 
@@ -126,7 +124,6 @@ ${description    ? `- Descripción del negocio: ${description}` : ''}
 ${website        ? `- URL del sitio web: ${website}` : ''}
 ${hoursText      ? `- Horarios de atención:\n${hoursText}` : ''}
 ${firstMessage   ? `- Saludo actual del agente: "${firstMessage}"` : ''}
-${transferRules  ? `- Reglas de transferencia actuales: ${transferRules}` : ''}
 ${websiteContent ? `\nCONTENIDO EXTRAÍDO DEL SITIO WEB (fuente principal — usa estos datos reales):
 ---
 ${websiteContent.slice(0, 6000)}

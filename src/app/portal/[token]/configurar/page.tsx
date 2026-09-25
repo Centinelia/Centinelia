@@ -355,7 +355,6 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
         {(() => {
           const hasFirstMessage = !!((agent as any).first_message as string | null)?.trim();
           const hasRoleKb       = !!((agent as any).role_knowledge_base as string | null)?.trim();
-          const hasTransferRules = !!((agent as any).transfer_rules as string | null)?.trim();
           const needsEmail      = !isCoordinator && !connectedEmail;
 
           // Cada item incluye el tab correcto para que ConfigurarTabs lo abra
@@ -363,7 +362,6 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
           const pending = [
             !hasFirstMessage && hasVoice && { label: 'Configura el saludo de bienvenida',          tab: 'personalidad', anchor: 'llamadas' },
             !hasRoleKb       && !isCoordinator && { label: 'Redacta las instrucciones del puesto', tab: 'personalidad', anchor: 'rol'      },
-            !hasTransferRules && hasVoiceJornada && !!(agent as any).phone_number && { label: 'Define las reglas de transferencia', tab: 'personalidad', anchor: 'llamadas' },
             needsEmail       && { label: 'Conecta un correo para el empleado',                      tab: 'tools',        anchor: 'correo'   },
           ].filter(Boolean) as { label: string; tab: string; anchor: string }[];
 
@@ -473,7 +471,6 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
                       token={token}
                       agentId={agent.id as string}
                       initGreeting={(agent as any).first_message ?? ''}
-                      initTransferRules={(agent as any).transfer_rules ?? ''}
                     />
                   </Card>
                 </div>

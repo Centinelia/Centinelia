@@ -514,7 +514,7 @@ Si el cliente solicita hablar con una persona, la situación es urgente, o no pu
 2. Llama a la herramienta notificar_transferencia (incluye nombre del cliente, motivo y resumen breve).
 3. Una vez confirmada la notificación, llama a transferir_llamada para conectar la llamada en tiempo real.
 Si nadie contesta en la transferencia, ofrece tomar un mensaje y que alguien les llame de regreso.
-${agent.transfer_rules?.trim() ? '' : 'Transfiere solo cuando el cliente lo solicite explícitamente o cuando la situación sea urgente y no puedas resolverla.'}`);
+Transfiere solo cuando el cliente lo solicite explícitamente o cuando la situación sea urgente y no puedas resolverla.`);
   }
 
   // pedir_a_humano — paridad con email (F7). Sin este bloque el LLM ve la
@@ -734,11 +734,6 @@ Usa esta información como referencia complementaria. Si hay algún conflicto co
 ${agent.role_knowledge_base.trim()}
 
 Esta es tu base de conocimiento específica para tu función como ${agent.role}. Úsala cuando el cliente o una tarea requiera de esta especialización. Tiene prioridad sobre información general cuando el tema sea de tu rol.`);
-  }
-
-  // ── Custom transfer rules ─────────────────────────────────────────────────
-  if (agent.transfer_rules?.trim()) {
-    blocks.push(`REGLAS DE TRANSFERENCIA PERSONALIZADAS:\n${agent.transfer_rules.trim()}`);
   }
 
   // ── IT Helpdesk ───────────────────────────────────────────────────────────

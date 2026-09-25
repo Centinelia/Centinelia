@@ -143,6 +143,7 @@ export interface VoiceAgent {
   speech_style?: 'tu' | 'usted';        // trato al cliente: 'tu' (informal) | 'usted' (formal, default)
   missed_call_recovery?: boolean;       // devolver llamada automáticamente si queda sin contestar
   first_message?: string;          // primer mensaje del agente al contestar (personalizable)
+  /** @deprecated Migrado a agent_rules. Se mantiene para compat legacy. */
   transfer_rules?: string;         // reglas de cuándo transferir la llamada a un humano
   owner_passphrase?: string | null; // frase secreta para que el dueño/equipo se identifique desde cualquier teléfono
   google_review_url?: string;      // link de reseñas de Google del negocio

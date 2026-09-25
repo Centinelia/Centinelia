@@ -4,19 +4,17 @@ import { useState } from 'react';
 import { Check } from 'lucide-react';
 
 interface Props {
-  token:             string;
-  agentId?:          string;
-  initGreeting:      string;
-  initTransferRules: string;
+  token:        string;
+  agentId?:     string;
+  initGreeting: string;
 }
 
-export default function AgentCustomization({ token, agentId, initGreeting, initTransferRules }: Props) {
-  const [greeting,      setGreeting]      = useState(initGreeting);
-  const [transferRules, setTransferRules] = useState(initTransferRules);
-  const [saved,         setSaved]         = useState<'greeting' | 'rules' | null>(null);
-  const [saving,        setSaving]        = useState<'greeting' | 'rules' | null>(null);
+export default function AgentCustomization({ token, agentId, initGreeting }: Props) {
+  const [greeting, setGreeting] = useState(initGreeting);
+  const [saved,    setSaved]    = useState<'greeting' | null>(null);
+  const [saving,   setSaving]   = useState<'greeting' | null>(null);
 
-  async function save(field: 'first_message' | 'transfer_rules', value: string, key: 'greeting' | 'rules') {
+  async function save(field: 'first_message', value: string, key: 'greeting') {
     setSaving(key);
     try {
       await fetch(`/api/portal/${token}/settings`, {
@@ -62,36 +60,6 @@ export default function AgentCustomization({ token, agentId, initGreeting, initT
         <SaveIndicator active={saved === 'greeting'} saving={saving === 'greeting'} />
       </div>
 
-      <div>
-        <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--c-text-3)', marginBottom: 6 }}>
-          Reglas de transferencia
-        </label>
-        <p style={{ fontSize: 12, color: 'var(--c-text-3)', margin: '0 0 10px' }}>
-          Instrucciones personalizadas sobre cuándo y cómo transferir a un humano.
-        </p>
-        <textarea
-          value={transferRules}
-          onChange={e => setTransferRules(e.target.value)}
-          onBlur={() => save('transfer_rules', transferRules, 'rules')}
-          rows={4}
-          placeholder="Ej: Transfiere cuando el cliente mencione una queja o pida hablar con el gerente."
-          style={{
-            width:        '100%',
-            padding:      '10px 12px',
-            borderRadius: 10,
-            background:   'var(--c-surface-2)',
-            border:       '1px solid var(--c-border)',
-            color:        'var(--c-text)',
-            fontSize:     13,
-            outline:      'none',
-            resize:       'vertical',
-            fontFamily:   'inherit',
-            lineHeight:   1.6,
-            boxSizing:    'border-box',
-          }}
-        />
-        <SaveIndicator active={saved === 'rules'} saving={saving === 'rules'} />
-      </div>
     </div>
   );
 }
