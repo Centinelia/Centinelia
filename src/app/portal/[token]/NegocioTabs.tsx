@@ -37,6 +37,7 @@ const ANCHOR_TO_TAB: Record<string, string> = {
   'disponibilidad-diaria': 'operacion',
   'fichas-informativas':  'operacion',
   'perfiles-vivos':       'operacion',
+  'reglas-del-negocio':   'operacion',
   directorio:      'directorio',
   integraciones:   'integraciones',
 };

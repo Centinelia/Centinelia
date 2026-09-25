@@ -56,6 +56,7 @@ import DailyAvailabilityCard    from './DailyAvailabilityCard';
 import FichasInformativasSection from './FichasInformativasSection';
 import PerfilesVivosSection      from './PerfilesVivosSection';
 import NegocioTabs              from './NegocioTabs';
+import AgentRulesSection        from './AgentRulesSection';
 import DirectorioEditor         from './DirectorioEditor';
 import type { DirectoryPerson } from '@/lib/helpdesk/folio';
 import ContractTrackerSection   from './ContractTrackerSection';
@@ -1290,6 +1291,10 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
                   <div id="perfiles-vivos" style={{ scrollMarginTop: 80 }}>
                     <PerfilesVivosSection token={token} />
+                  </div>
+
+                  <div id="reglas-del-negocio" style={{ scrollMarginTop: 80 }}>
+                    <AgentRulesSection token={token} />
                   </div>
                 </>
 
