@@ -162,7 +162,7 @@ Si nadie contesta, ofrece que alguien le llame de regreso y toma sus datos.`);
     const rulesMeerkatRoleId = (f as { meerkat_role_id?: string }).meerkat_role_id ?? null;
     // Para outbound, el org features se pasa como parte del agent.features
     // (cargado por el caller via organizations.features).
-    const agentFeaturesForFlag = (agent as unknown as { org_features?: Record<string, unknown> }).org_features ?? f as Record<string, unknown>;
+    const agentFeaturesForFlag = agent.org_features ?? f as Record<string, unknown>;
     const missionsOn = isFeatureEnabled({ features: agentFeaturesForFlag }, 'agent_missions_enabled');
     if (rulesPortalEmail && rulesMeerkatRoleId && missionsOn) {
       try {

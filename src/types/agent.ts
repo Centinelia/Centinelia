@@ -198,6 +198,11 @@ export interface VoiceAgent {
   client_paused?: boolean | null;
   // Extended email branding
   brand_color_secondary?: string | null;
+  // Org-level feature flags (Fase 9). Cargado por el caller desde organizations.features.
+  // No es una columna de voice_agents; se adjunta en runtime por las rutas que
+  // necesitan flags de org (outbound-prompt-builder, whatsapp/prompt-builder).
+  org_features?: Record<string, unknown>;
+
   // Outbound role vive en features.outbound_role (JSONB), no como columna
   // WhatsApp capabilities (Fase 2)
   wa_phone_number?: string;        // número Twilio asignado para WhatsApp

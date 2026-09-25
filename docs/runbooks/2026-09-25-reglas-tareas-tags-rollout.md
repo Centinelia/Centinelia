@@ -4,15 +4,22 @@
 **Autor:** Centinelia Engineering
 **Feature branch mergeado:** `feat/reglas-tareas-tags`
 
-Documento no ejecutable. Define las fases de activacion, los comandos SQL de control,
-los criterios de avance/retroceso y las metricas de exito para el rollout del
+Documento no ejecutable. Define las fases de activación, los comandos SQL de control,
+los criterios de avance/retroceso y las métricas de éxito para el rollout del
 subsistema Reglas + Tareas + Fichas v2.
 
 ---
 
 ## Contexto
 
-Tres feature flags per-org en `organizations.features` (jsonb):
+Tres feature flags per-org en `organizations.features` (jsonb).
+
+> **Nota sobre `setFeatureFlag` programático:** Los comandos SQL de este runbook
+> son la forma atómica y preferida para activar flags en producción. La función
+> `setFeatureFlag` en código es para uso programático de baja frecuencia
+> (onboarding automático, tests de integración) y tiene una race condition teórica
+> de lectura-modificación-escritura en el cliente JS. Para activaciones manuales
+> de rollout, siempre usar SQL directo.
 
 | Flag | Activa |
 |------|--------|
@@ -26,18 +33,18 @@ Notas importantes:
 
 - El executor v1 narra sin ejecutar tools reales. El cliente debe saber esto antes
   de activar `agent_missions_enabled=true`.
-- Migracion de `transfer_rules` legacy (Fase 8) debe completarse con `--dry-run`
+- Migración de `transfer_rules` legacy (Fase 8) debe completarse con `--dry-run`
   antes de activar `agent_missions_enabled` en el primer cliente real.
-- Backfill de tags arranca automaticamente cuando se activa `retrieval_v2_enabled`:
+- Backfill de tags arranca automáticamente cuando se activa `retrieval_v2_enabled`:
   el cron `backfill-ficha-tags` procesa fichas legacy del org cada 10 min.
 
 ---
 
 ## Fases del rollout
 
-### Fase 0: Deploy dark (sin activacion)
+### Fase 0: Deploy dark (sin activación)
 
-**Duracion:** 24-48h tras merge a main.
+**Duración:** 24-48h tras merge a main.
 
 **Objetivo:** Verificar que los flujos existentes son identicos a antes. Cero regresion.
 
@@ -58,7 +65,7 @@ Notas importantes:
 
 ### Fase 1: Cuenta interna dev (Nazre + Beatriz)
 
-**Duracion:** 3-5 dias de prueba activa.
+**Duración:** 3-5 días de prueba activa.
 
 **Activar flags (SQL):**
 
@@ -85,7 +92,7 @@ WHERE portal_email = 'nazre20+centinelia-test@gmail.com';
 
 **Criterio para avanzar:**
 
-- 0 errores en ejecucion de tareas.
+- 0 errores en ejecución de tareas.
 - Reglas visibles en el prompt y respetadas en conversaciones de muestra.
 - Autotag >90% coherencia (revision manual de 30 fichas).
 - Sin incremento de costo > 20% en el periodo de prueba.
@@ -96,18 +103,18 @@ WHERE portal_email = 'nazre20+centinelia-test@gmail.com';
 
 ### Fase 2: Santiago NL (cliente inicial con volumen)
 
-**Duracion:** 48-72h de observacion post-activacion.
+**Duración:** 48-72h de observación post-activación.
 
 **Comunicacion previa al cliente:**
 
 Beatriz redacta un mensaje breve (correo o llamada) explicando la mejora en
-tono no tecnico. Ejemplo de tono:
+tono no técnico. Ejemplo de tono:
 
 > "Activamos una mejora en [nombre del empleado digital]: ahora puede seguir
-> reglas especificas de su negocio y ejecutar tareas programadas de forma
-> automatica. La informacion de tramites tambien tiene mejor organizacion."
+> reglas específicas de su negocio y ejecutar tareas programadas de forma
+> automática. La información de trámites también tiene mejor organización."
 
-No mencionar "IA", "flags", "embeddings" ni terminos tecnicos.
+No mencionar "IA", "flags", "embeddings" ni términos técnicos.
 
 **Activar flags (SQL):**
 
@@ -122,9 +129,9 @@ WHERE portal_email = '<portal_email de Santiago NL>';
 
 Nota: `rerank_enabled` se activa en Fase 4 o cuando el cliente tenga >100 fichas.
 
-**Post-activacion:**
+**Post-activación:**
 
-- El cron `backfill-ficha-tags` arranca automaticamente y procesa fichas legacy
+- El cron `backfill-ficha-tags` arranca automáticamente y procesa fichas legacy
   del org. Monitorear progreso via Nash `infra-alerts`.
 - Verificar que no hay llamadas de error en el webhook de Vapi durante las
   primeras 4h.
@@ -156,7 +163,7 @@ WHERE portal_email = '<portal_email de Santiago NL>';
 
 ### Fase 3: Tortilleria Estrella
 
-**Duracion:** 5-7 dias de observacion.
+**Duración:** 5-7 días de observación.
 
 **Activar flags (SQL):**
 
@@ -169,7 +176,7 @@ SET features = features || '{
 WHERE portal_email = 'servicioalcliente@tortillasestrella.com.mx';
 ```
 
-**Atencion especial:**
+**Atención especial:**
 
 - Nala y Neka son las dos empleadas digitales activas en este cliente.
 - Nala tiene flujo de facturacion critico. Monitorear errores en pipeline Nala
@@ -235,7 +242,7 @@ WHERE portal_email = '<portal_email>';
 ### Fase 5: Ship-complete
 
 **Condicion:** Todos los orgs activos tienen los flags encendidos y sin incidentes
-durante 14 dias.
+durante 14 días.
 
 **Acciones:**
 
@@ -251,11 +258,11 @@ durante 14 dias.
    );
    ```
 
-2. Los flags permanecen como kill switches por 60 dias adicionales. No eliminar
-   el codigo de gating hasta que pasen 60 dias sin incidentes.
+2. Los flags permanecen como kill switches por 60 días adicionales. No eliminar
+   el código de gating hasta que pasen 60 días sin incidentes.
 
 3. Programar la tarea de sunset del codigo legacy:
-   - Fecha tentativa: 60 dias post ship-complete.
+   - Fecha tentativa: 60 días post ship-complete.
    - Revisar si hay orgs con flags OFF y evaluar si ya no son necesarios.
 
 ---
@@ -270,7 +277,7 @@ SET features = features - 'agent_missions_enabled'
 WHERE portal_email = '<afectado>';
 ```
 
-**Efecto:** Instantaneo en la proxima llamada (TTL de cache de org features = proxima
+**Efecto:** Instantáneo en la próxima llamada (TTL de caché de org features = próxima
 request o 5 min). Los bloques de Reglas y Tareas desaparecen del prompt; el executor
 cancela tareas nuevas; el phrase-matcher retorna null.
 
@@ -282,8 +289,8 @@ SET features = features - 'retrieval_v2_enabled'
 WHERE portal_email = '<afectado>';
 ```
 
-**Efecto:** Instantaneo. Retrieval vuelve al path sin filtro por whitelist. Backfill
-se detiene automaticamente (el cron omite orgs con flag OFF).
+**Efecto:** Instantáneo. Retrieval vuelve al path sin filtro por whitelist. Backfill
+se detiene automáticamente (el cron omite orgs con flag OFF).
 
 ### Apagar `rerank_enabled` para un org
 
@@ -293,7 +300,7 @@ SET features = features - 'rerank_enabled'
 WHERE portal_email = '<afectado>';
 ```
 
-**Efecto:** Instantaneo. Rerank se salta; los resultados de retrieval se devuelven
+**Efecto:** Instantáneo. Rerank se salta; los resultados de retrieval se devuelven
 en orden de similaridad coseno sin reorden.
 
 ### Apagar todos los flags para un org
@@ -344,7 +351,7 @@ Para garantizar que la calidad no se degrada silenciosamente:
 
 **Set de eval curado:**
 
-- 20 queries reales por cliente activo con >30 dias de historia.
+- 20 queries reales por cliente activo con >30 días de historia.
 - Queries obtenidas de conversaciones reales (anonimizadas).
 - Baseline medido justo antes de Fase 4 (primer batch masivo).
 
@@ -375,7 +382,7 @@ Para garantizar que la calidad no se degrada silenciosamente:
    esto antes de activar `agent_missions_enabled=true` en cualquier cliente real.
 
 2. **Migracion de transfer_rules legacy** (Fase 8.1):
-   La migracion con `--dry-run` debe completarse antes del merge a main (Task 8.2).
+   La migración con `--dry-run` debe completarse antes del merge a main (Task 8.2).
    Activar `agent_missions_enabled` en un org que aun tiene `transfer_rules` no
    migradas genera duplicados de reglas. Verificar con:
    ```sql
@@ -383,7 +390,7 @@ Para garantizar que la calidad no se degrada silenciosamente:
    WHERE transfer_rules IS NOT NULL
      AND length(transfer_rules) > 5;
    ```
-   Si retorna > 0, correr el script de migracion primero.
+   Si retorna > 0, correr el script de migración primero.
 
 3. **Backfill autotag costo cero al cliente** (Global Constraint del plan):
    El backfill usa `bill_to = 'centinelia_migration'`. Verificar que el pool del

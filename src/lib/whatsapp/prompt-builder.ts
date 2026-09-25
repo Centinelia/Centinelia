@@ -151,7 +151,7 @@ Usa la herramienta guardar_lead con el campo servicio describiendo el pedido.`);
     const rulesPortalEmail = (agent.portal_email as string | null | undefined) ?? null;
     const rulesF = (agent.features ?? {}) as { meerkat_role_id?: string };
     const rulesMeerkatRoleId = rulesF.meerkat_role_id ?? null;
-    const waFeaturesForFlag = (agent as unknown as { org_features?: Record<string, unknown> }).org_features ?? (agent.features as Record<string, unknown> | null) ?? null;
+    const waFeaturesForFlag = agent.org_features ?? (agent.features as Record<string, unknown> | null) ?? null;
     const missionsOn = isFeatureEnabled({ features: waFeaturesForFlag }, 'agent_missions_enabled');
     if (rulesPortalEmail && rulesMeerkatRoleId && missionsOn) {
       try {
@@ -177,7 +177,7 @@ Usa la herramienta guardar_lead con el campo servicio describiendo el pedido.`);
   // Kill switch (Fase 9.2): si agent_missions_enabled=false, omitir bloque.
   {
     const tasksOwnerAgentId = agent.id as string | null | undefined;
-    const waFeaturesForTasks = (agent as unknown as { org_features?: Record<string, unknown> }).org_features ?? (agent.features as Record<string, unknown> | null) ?? null;
+    const waFeaturesForTasks = agent.org_features ?? (agent.features as Record<string, unknown> | null) ?? null;
     const missionsOnTasks = isFeatureEnabled({ features: waFeaturesForTasks }, 'agent_missions_enabled');
     if (tasksOwnerAgentId && missionsOnTasks) {
       try {
