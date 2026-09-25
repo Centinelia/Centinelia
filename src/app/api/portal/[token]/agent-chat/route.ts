@@ -47,6 +47,8 @@ import { parseToolOverrides, applyToolOverrides } from '@/lib/tools/tool-overrid
 import { resolveOrgPackContext, resolveActivePacks, meerkatActivePacks, TOOL_TO_PACK } from '@/lib/tools/packs';
 import { getOrgIndustry, INDUSTRIES_WITH_DAILY_AVAILABILITY } from '@/lib/industry';
 import { formatDailyAvailabilityForPrompt } from '@/lib/daily-availability';
+import { matchPhraseToTask } from '@/lib/agent-tasks/phrase-matcher';
+import { executeTask } from '@/lib/agent-tasks/executor';
 import {
   enhanceTextContent,
   enhanceSlidesContent,
@@ -2546,6 +2548,37 @@ ${context}`;
       let   llmCalls    = 0;
 
       try {
+        // ── Phrase task matcher (antes del LLM) ─────────────────────────────
+        // Si el último mensaje del usuario activa una tarea de tipo 'phrase',
+        // ejecutamos la tarea y respondemos con el resultado, sin pasar al LLM.
+        // Defensive: si el matcher o el executor fallan, continuamos con el flujo normal.
+        {
+          const lastUserContent = String(
+            (messages as { role: string; content: string }[])
+              .filter(m => m.role === 'user')
+              .at(-1)?.content ?? '',
+          ).trim();
+
+          if (lastUserContent && agent?.id) {
+            try {
+              const phraseMatch = await matchPhraseToTask(agent.id as string, lastUserContent);
+              if (phraseMatch) {
+                const taskResult = await executeTask({ taskId: phraseMatch.taskId, triggerSource: 'phrase' });
+                const statusMsg  = taskResult.status === 'success'
+                  ? 'La tarea fue ejecutada correctamente.'
+                  : taskResult.status === 'cancelled'
+                    ? 'La tarea no está disponible en este momento.'
+                    : 'Ocurrió un error al ejecutar la tarea.';
+                send(statusMsg);
+                controller.close();
+                return;
+              }
+            } catch (phraseErr) {
+              console.warn('[agent-chat] phrase matcher error (fallback to LLM):', phraseErr);
+            }
+          }
+        }
+
         let conversationMessages: Anthropic.MessageParam[] = (
           messages as { role: 'user' | 'assistant'; content: string }[]
         ).slice(-20);

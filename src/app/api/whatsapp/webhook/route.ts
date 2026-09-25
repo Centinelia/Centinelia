@@ -8,6 +8,8 @@ import type { WAMessage, WACapturedLead } from '@/types/whatsapp-agent';
 import type { VoiceAgent } from '@/types/agent';
 import { consumeAiOp, refundOps } from '@/lib/ai/ops-guard';
 import { withWebhookAuth } from '@/lib/webhooks/with-webhook-auth';
+import { matchPhraseToTask } from '@/lib/agent-tasks/phrase-matcher';
+import { executeTask } from '@/lib/agent-tasks/executor';
 
 export const dynamic = 'force-dynamic';
 
@@ -266,6 +268,27 @@ export const POST = withWebhookAuth('twilio', async (_req: NextRequest, { event,
     brandVoiceGuide = (org?.brand_voice_guide as string | null) ?? null;
   }
   const systemPrompt = await buildWASystemPrompt(agent, brandVoiceGuide);
+
+  // ── Phrase task matcher (antes del LLM) ──────────────────────────────────
+  // Si el mensaje del usuario activa una tarea de tipo 'phrase', ejecutamos la
+  // tarea y respondemos directamente. Defensive: si falla, flujo normal del LLM.
+  if (msgBody && agent?.id) {
+    try {
+      const phraseMatch = await matchPhraseToTask(agent.id as string, msgBody);
+      if (phraseMatch) {
+        const taskResult = await executeTask({ taskId: phraseMatch.taskId, triggerSource: 'phrase' });
+        const statusMsg  = taskResult.status === 'success'
+          ? 'Tu solicitud fue procesada correctamente.'
+          : taskResult.status === 'cancelled'
+            ? 'Este servicio no está disponible en este momento.'
+            : 'Ocurrió un error al procesar la solicitud.';
+        await sendWhatsApp(customerNumber, statusMsg, toRaw);
+        return new NextResponse('<?xml version="1.0"?><Response></Response>', { headers: { 'Content-Type': 'text/xml' } });
+      }
+    } catch (phraseErr) {
+      console.warn('[whatsapp-webhook] phrase matcher error (fallback to LLM):', phraseErr);
+    }
+  }
 
   let claudeReply = '';
   let capturedLead: WACapturedLead | null = null;
