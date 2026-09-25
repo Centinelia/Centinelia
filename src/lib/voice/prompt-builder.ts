@@ -8,6 +8,8 @@ import { renderTramitesSection } from '@/lib/tramites/prompt';
 import { getOrgIndustry } from '@/lib/industry';
 import { formatDailyAvailabilityForPrompt } from '@/lib/daily-availability';
 import { getCachedRulesForAgent } from '@/lib/agent-rules/cache';
+import { listTasksForAgent } from '@/lib/agent-tasks/service';
+import { describeTrigger } from '@/lib/agent-tasks/prompt-helpers';
 
 type SupabaseClient = ReturnType<typeof createAdminClient>;
 
@@ -668,6 +670,33 @@ Cuando hayas capturado datos del cliente durante la llamada (nombre, teléfono, 
       } catch (err) {
         // No romper el meerkat si las reglas fallan. Log y continuar.
         console.warn('[prompt-builder] getCachedRulesForAgent failed (voice):', err);
+      }
+    }
+  }
+
+  // ── Tareas que puede ejecutar este meerkat (Bloque 3 del spec) ─────────────
+  // Se inyectan después de las Reglas para que el meerkat sepa qué misiones
+  // tiene disponibles (tipo cron/phrase/manual) y pueda responder al usuario.
+  // Solo voice/whatsapp reciben este bloque. outbound NO (PAC-4).
+  // Si listTasksForAgent falla, warn log y sin bloque (mismo patrón que Reglas).
+  {
+    const tasksPortalEmail   = (agent.portal_email as string | null | undefined) ?? null;
+    const tasksOwnerAgentId  = agent.id as string | null | undefined;
+    if (tasksPortalEmail && tasksOwnerAgentId) {
+      try {
+        const agentTasks = await listTasksForAgent(tasksOwnerAgentId, { activeOnly: true });
+        if (agentTasks.length > 0) {
+          const tasksBlock = [
+            '## Tareas que puedes ejecutar',
+            ...agentTasks.map(t => {
+              const triggerDesc = describeTrigger(t.trigger_type, t.trigger_config);
+              return `- ${t.slug}: ${t.mission} (dispara: ${triggerDesc})`;
+            }),
+          ].join('\n');
+          blocks.push(tasksBlock);
+        }
+      } catch (err) {
+        console.warn('[prompt-builder] listTasksForAgent failed (voice):', err);
       }
     }
   }

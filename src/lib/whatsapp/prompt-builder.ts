@@ -1,5 +1,7 @@
 import type { VoiceAgent, BusinessHours } from '@/types/agent';
 import { getCachedRulesForAgent } from '@/lib/agent-rules/cache';
+import { listTasksForAgent } from '@/lib/agent-tasks/service';
+import { describeTrigger } from '@/lib/agent-tasks/prompt-helpers';
 
 export async function buildWASystemPrompt(agent: VoiceAgent, brandVoiceGuide?: string | null): Promise<string> {
   const agentName = agent.agent_name?.trim() || agent.business_name;
@@ -162,6 +164,29 @@ Usa la herramienta guardar_lead con el campo servicio describiendo el pedido.`);
         }
       } catch (err) {
         console.warn('[prompt-builder] getCachedRulesForAgent failed (whatsapp):', err);
+      }
+    }
+  }
+
+  // ── Tareas que puede ejecutar este meerkat (Bloque 3 del spec) ─────────────
+  // Solo voice/whatsapp reciben este bloque. outbound NO (PAC-4).
+  {
+    const tasksOwnerAgentId = agent.id as string | null | undefined;
+    if (tasksOwnerAgentId) {
+      try {
+        const agentTasks = await listTasksForAgent(tasksOwnerAgentId, { activeOnly: true });
+        if (agentTasks.length > 0) {
+          const tasksBlock = [
+            '## Tareas que puedes ejecutar',
+            ...agentTasks.map(t => {
+              const triggerDesc = describeTrigger(t.trigger_type, t.trigger_config);
+              return `- ${t.slug}: ${t.mission} (dispara: ${triggerDesc})`;
+            }),
+          ].join('\n');
+          blocks.push(tasksBlock);
+        }
+      } catch (err) {
+        console.warn('[prompt-builder] listTasksForAgent failed (whatsapp):', err);
       }
     }
   }
