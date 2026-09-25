@@ -100,7 +100,11 @@ export default function ClientesClient({
   };
 
   const toggle = (key: string) =>
-    setExpanded(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
+    setExpanded(prev => {
+      const n = new Set(prev);
+      if (n.has(key)) n.delete(key); else n.add(key);
+      return n;
+    });
 
   // clientKey = client.key (portal_email o fallback). Un cliente = un login compartido.
   const openCred = (clientKey: string, currentEmail: string | null) => {
@@ -339,7 +343,7 @@ export default function ClientesClient({
                     <span className="text-[12px] tabular-nums" style={{ color: '#6B6480' }}>
                       {acctUsed}/{acctIncluded} min
                     </span>
-                    <div className="w-20 h-1.5 rounded-full overflow-hidden" style={{ background: '#F3F4F6' }}>
+                    <div className="w-20 h-1.5 rounded-full overflow-hidden" style={{ background: '#F5F0FF' }}>
                       <div
                         className="h-full rounded-full transition-all"
                         style={{ width: `${Math.min(acctPct, 100)}%`, background: acctBarColor }}
@@ -379,14 +383,14 @@ export default function ClientesClient({
                   type="button"
                   onClick={e => {
                     e.stopPropagation();
-                    const isOpen = credOpen.has(client.key);
-                    isOpen ? closeCred(client.key) : openCred(client.key, client.portal_email);
+                    if (credOpen.has(client.key)) closeCred(client.key);
+                    else openCred(client.key, client.portal_email);
                   }}
                   className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-colors hover:bg-gray-50 flex-shrink-0"
                   style={{
                     background: credOpen.has(client.key) ? '#FFFBEB' : '#FFFFFF',
-                    color: credOpen.has(client.key) ? '#F59E0B' : (client.portal_email ? '#10B981' : '#6B7280'),
-                    border: `1px solid ${credOpen.has(client.key) ? '#FDE68A' : '#E5E7EB'}`,
+                    color: credOpen.has(client.key) ? '#F59E0B' : (client.portal_email ? '#10B981' : '#6B6480'),
+                    border: `1px solid ${credOpen.has(client.key) ? '#FDE68A' : '#E8E3F5'}`,
                   }}
                   title={client.portal_email ? `Editar acceso: ${client.portal_email}` : 'Sin acceso al portal'}
                 >
@@ -397,7 +401,7 @@ export default function ClientesClient({
                 <ChevronDown
                   size={15}
                   className="flex-shrink-0 transition-transform"
-                  style={{ color: '#9CA3AF', transform: open ? 'rotate(180deg)' : undefined }}
+                  style={{ color: '#9B8FB5', transform: open ? 'rotate(180deg)' : undefined }}
                 />
               </div>
 
@@ -418,7 +422,7 @@ export default function ClientesClient({
                     </p>
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                       <div>
-                        <label className="block text-[11px] uppercase tracking-wider font-medium mb-1" style={{ color: '#9CA3AF' }}>Email de acceso</label>
+                        <label className="block text-[11px] uppercase tracking-wider font-medium mb-1" style={{ color: '#9B8FB5' }}>Email de acceso</label>
                         <input
                           type="email"
                           value={form.email}
@@ -429,7 +433,7 @@ export default function ClientesClient({
                         />
                       </div>
                       <div>
-                        <label className="block text-[11px] uppercase tracking-wider font-medium mb-1" style={{ color: '#9CA3AF' }}>
+                        <label className="block text-[11px] uppercase tracking-wider font-medium mb-1" style={{ color: '#9B8FB5' }}>
                           {client.portal_email ? 'Nueva contraseña (vacío = sin cambio)' : 'Contraseña (mín. 8 caracteres)'}
                         </label>
                         <div className="relative">
@@ -445,7 +449,7 @@ export default function ClientesClient({
                             type="button"
                             onClick={() => updateForm(client.key, { showPw: !form.showPw })}
                             className="absolute right-2.5 top-1/2 -translate-y-1/2"
-                            style={{ color: '#9CA3AF' }}
+                            style={{ color: '#9B8FB5' }}
                           >
                             {form.showPw ? <EyeOff size={13} /> : <Eye size={13} />}
                           </button>
@@ -453,7 +457,7 @@ export default function ClientesClient({
                       </div>
                       {form.pw && (
                         <div className="sm:col-start-2">
-                          <label className="block text-[11px] uppercase tracking-wider font-medium mb-1" style={{ color: '#9CA3AF' }}>Confirmar contraseña</label>
+                          <label className="block text-[11px] uppercase tracking-wider font-medium mb-1" style={{ color: '#9B8FB5' }}>Confirmar contraseña</label>
                           <input
                             type={form.showPw ? 'text' : 'password'}
                             value={form.confirm}
@@ -491,14 +495,14 @@ export default function ClientesClient({
 
               {/* Expanded: agents */}
               {open && (
-                <div style={{ borderTop: '1px solid #F3F4F6' }}>
+                <div style={{ borderTop: '1px solid #F5F0FF' }}>
                   {client.agents.map((agent, i) => (
                     <div
                       key={agent.id}
                       className="flex items-center gap-3 px-5 py-3"
                       style={{
-                        borderTop: i > 0 ? '1px solid #F3F4F6' : undefined,
-                        background: '#F9FAFB',
+                        borderTop: i > 0 ? '1px solid #F5F0FF' : undefined,
+                        background: '#FAFAFB',
                       }}
                     >
                       <div
@@ -555,8 +559,8 @@ export default function ClientesClient({
 
                   {/* Pool de la cuenta: minutos + tareas en 2 columnas */}
                   {client.agents[0] && (
-                    <div className="px-5 py-5 flex flex-col gap-4" style={{ borderTop: '1px solid #F3F4F6' }}>
-                      <p className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#9CA3AF' }}>
+                    <div className="px-5 py-5 flex flex-col gap-4" style={{ borderTop: '1px solid #F5F0FF' }}>
+                      <p className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#9B8FB5' }}>
                         Pool de la cuenta
                       </p>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -582,7 +586,7 @@ export default function ClientesClient({
                   )}
 
                   {/* Agregar empresa */}
-                  <div className="px-5 py-3 flex justify-end" style={{ borderTop: '1px solid #F3F4F6' }}>
+                  <div className="px-5 py-3 flex justify-end" style={{ borderTop: '1px solid #F5F0FF' }}>
                     <Link
                       href={`/admin/agentes/nuevo?client_name=${encodeURIComponent(client.client_name)}&client_email=${encodeURIComponent(client.client_email ?? '')}&portal_email=${encodeURIComponent(client.portal_email ?? '')}`}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors hover:bg-gray-50"

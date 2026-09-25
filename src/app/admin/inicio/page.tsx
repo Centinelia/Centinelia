@@ -440,7 +440,7 @@ export default async function InicioPage() {
           label="Llamadas hoy"
           value={String(callsTodayN)}
           sub={callsDelta !== null ? `${callsDelta >= 0 ? '+' : ''}${callsDelta}% vs ayer` : 'sin datos ayer'}
-          subColor={callsDelta === null ? '#9CA3AF' : callsDelta >= 0 ? '#10B981' : '#EF4444'}
+          subColor={callsDelta === null ? '#9B8FB5' : callsDelta >= 0 ? '#10B981' : '#EF4444'}
           iconColor="#6C3BFF"
           iconBg="#F3F0FF"
         />
@@ -601,7 +601,7 @@ export default async function InicioPage() {
                 <MinutesRow label="Alerta"  count={minsWarning}  of={healthAgents.length} color="#B45309" hint="70 a 90% consumido" />
                 <MinutesRow label="Crítico" count={minsCritical} of={healthAgents.length} color="#B91C1C" hint="≥ 90% consumido" />
               </div>
-              <div className="mt-5 pt-4 flex justify-between text-[12px]" style={{ borderTop: '1px solid #F3F4F6', color: '#6B6480' }}>
+              <div className="mt-5 pt-4 flex justify-between text-[12px]" style={{ borderTop: '1px solid #F5F0FF', color: '#6B6480' }}>
                 <span>Minutos disponibles total</span>
                 <span className="font-semibold tabular-nums" style={{ color: '#1A0A3B' }}>
                   {totalRemaining.toLocaleString('es-MX')} min
@@ -626,10 +626,10 @@ export default async function InicioPage() {
           <div className="flex flex-col gap-2.5">
             <BillingRow label="Al corriente"    count={billing.activo}       color="#047857" />
             <BillingRow label="Pago fallido"    count={billing.pago_fallido} color="#B91C1C" />
-            <BillingRow label="Sin plan activo" count={billing.sin_plan}     color="#6B7280" />
-            <BillingRow label="Cancelados"      count={billing.cancelado}    color="#374151" />
+            <BillingRow label="Sin plan activo" count={billing.sin_plan}     color="#6B6480" />
+            <BillingRow label="Cancelados"      count={billing.cancelado}    color="#4A3B6B" />
           </div>
-          <div className="mt-5 pt-4 flex justify-between text-[12px]" style={{ borderTop: '1px solid #F3F4F6', color: '#6B6480' }}>
+          <div className="mt-5 pt-4 flex justify-between text-[12px]" style={{ borderTop: '1px solid #F5F0FF', color: '#6B6480' }}>
             <span>Total empleados registrados</span>
             <span className="font-semibold tabular-nums" style={{ color: '#1A0A3B' }}>{agentList.length}</span>
           </div>
@@ -661,7 +661,7 @@ function BillingRow({ label, count, color }: { label: string; count: number; col
     <div className="flex items-center gap-3">
       <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
       <span className="text-[13px] flex-1" style={{ color: '#4A3B6B' }}>{label}</span>
-      <span className="text-[13px] tabular-nums font-semibold" style={{ color: count > 0 ? color : '#9CA3AF' }}>
+      <span className="text-[13px] tabular-nums font-semibold" style={{ color: count > 0 ? color : '#9B8FB5' }}>
         {count}
       </span>
     </div>

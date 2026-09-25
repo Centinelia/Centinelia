@@ -28,7 +28,7 @@ interface Agent {
 const STATUS_STYLES: Record<string, { label: string; color: string; bg: string; icon: typeof CheckCircle2 }> = {
   activo:       { label: 'Activo',       color: '#4ade80', bg: 'rgba(74,222,128,0.1)',  icon: CheckCircle2 },
   pago_fallido: { label: 'Pago fallido', color: '#f87171', bg: 'rgba(248,113,113,0.1)', icon: AlertCircle },
-  cancelado:    { label: 'Cancelado',    color: '#6b7280', bg: 'rgba(107,114,128,0.1)', icon: XCircle },
+  cancelado:    { label: 'Cancelado',    color: '#6B6480', bg: 'rgba(107,114,128,0.1)', icon: XCircle },
   sin_plan:     { label: 'Sin plan',     color: '#facc15', bg: 'rgba(250,204,21,0.1)',  icon: Clock },
 };
 
@@ -78,16 +78,16 @@ function SelectMenu<T extends string>({
         type="button"
         onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-xs outline-none text-left"
-        style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }}
+        style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
       >
         <span className="truncate">{selected?.label}</span>
-        <ChevronDown size={10} className="flex-shrink-0 transition-transform" style={{ color: 'var(--c-text-3)', transform: open ? 'rotate(180deg)' : undefined }} />
+        <ChevronDown size={10} className="flex-shrink-0 transition-transform" style={{ color: '#6B6480', transform: open ? 'rotate(180deg)' : undefined }} />
       </button>
 
       {open && (
         <div
           className="absolute z-50 top-full mt-1 left-0 right-0 rounded-lg overflow-hidden shadow-xl"
-          style={{ background: 'var(--c-modal)', border: '1px solid var(--c-border-2)', minWidth: '160px' }}
+          style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', minWidth: '160px' }}
         >
           {options.map(o => (
             <button
@@ -96,14 +96,14 @@ function SelectMenu<T extends string>({
               onClick={() => { onChange(o.value); setOpen(false); }}
               className="w-full flex flex-col gap-0.5 px-3 py-2 text-left text-xs transition-colors"
               style={{
-                color:      'var(--c-text)',
+                color:      '#1A0A3B',
                 background: o.value === value ? 'rgba(108,59,255,0.1)' : 'transparent',
               }}
               onMouseEnter={e => { if (o.value !== value) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.07)'; }}
               onMouseLeave={e => { if (o.value !== value) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
             >
               <span className="font-medium">{o.label}</span>
-              {o.sub && <span style={{ color: 'var(--c-text-3)' }}>{o.sub}</span>}
+              {o.sub && <span style={{ color: '#6B6480' }}>{o.sub}</span>}
             </button>
           ))}
         </div>
@@ -176,7 +176,7 @@ function GenerateLinkButton({ agentId, agentName }: { agentId: string; agentName
     <div className="space-y-2">
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <div className="text-xs mb-1" style={{ color: 'var(--c-text-3)' }}>Plan (funcionalidades)</div>
+          <div className="text-xs mb-1" style={{ color: '#6B6480' }}>Plan (funcionalidades)</div>
           <SelectMenu
             value={featurePlan}
             onChange={v => { setFeaturePlan(v); setUrl(null); }}
@@ -184,7 +184,7 @@ function GenerateLinkButton({ agentId, agentName }: { agentId: string; agentName
           />
         </div>
         <div>
-          <div className="text-xs mb-1" style={{ color: 'var(--c-text-3)' }}>Minutos (mensualidad)</div>
+          <div className="text-xs mb-1" style={{ color: '#6B6480' }}>Minutos (mensualidad)</div>
           <SelectMenu
             value={minutesPlan}
             onChange={v => { setMinutesPlan(v); setUrl(null); }}
@@ -196,7 +196,7 @@ function GenerateLinkButton({ agentId, agentName }: { agentId: string; agentName
       {/* Price summary */}
       <div className="flex items-center justify-between rounded-lg px-3 py-2 text-xs"
         style={{ background: 'rgba(108,59,255,0.07)', border: '1px solid rgba(108,59,255,0.12)' }}>
-        <span style={{ color: 'var(--c-text-2)' }}>
+        <span style={{ color: '#4A3B6B' }}>
           Primer cobro: ${featureCfg.setupFee.toLocaleString('es-MX')} inst. + ${tierPrice.toLocaleString('es-MX')} mes
         </span>
         <span className="font-semibold" style={{ color: '#9B6DFF' }}>
@@ -225,7 +225,7 @@ function GenerateLinkButton({ agentId, agentName }: { agentId: string; agentName
           </a>
           <button onClick={handleCopy}
             className="shrink-0 p-1.5 rounded-lg transition-colors"
-            style={{ background: copied ? 'rgba(74,222,128,0.1)' : 'var(--c-input-bg)', color: copied ? '#4ade80' : 'var(--c-text-2)' }}>
+            style={{ background: copied ? 'rgba(74,222,128,0.1)' : '#FFFFFF', color: copied ? '#4ade80' : '#4A3B6B' }}>
             {copied ? <Check size={12} /> : <Copy size={12} />}
           </button>
         </div>
@@ -267,8 +267,8 @@ export default function BillingClient({ agents }: { agents: Agent[] }) {
   return (
     <div className="p-4 md:p-6 space-y-6">
       <div>
-        <h1 className="text-xl font-semibold" style={{ color: 'var(--c-text)' }}>Facturación</h1>
-        <p className="text-sm mt-0.5" style={{ color: 'var(--c-text-2)' }}>
+        <h1 className="text-xl font-semibold" style={{ color: '#1A0A3B' }}>Facturación</h1>
+        <p className="text-sm mt-0.5" style={{ color: '#4A3B6B' }}>
           Genera links de pago y gestiona suscripciones de clientes
         </p>
       </div>
@@ -282,9 +282,9 @@ export default function BillingClient({ agents }: { agents: Agent[] }) {
           { label: 'Sin plan',     value: noplanCount, color: '#facc15' },
         ].map(({ label, value, color }) => (
           <div key={label} className="rounded-xl p-4"
-            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+            style={{ background: '#FFFFFF', border: '1px solid #E8E3F5' }}>
             <div className="text-2xl font-bold" style={{ color }}>{value}</div>
-            <div className="text-xs mt-0.5" style={{ color: 'var(--c-text-2)' }}>{label}</div>
+            <div className="text-xs mt-0.5" style={{ color: '#4A3B6B' }}>{label}</div>
           </div>
         ))}
       </div>
@@ -292,19 +292,19 @@ export default function BillingClient({ agents }: { agents: Agent[] }) {
       {/* Search */}
       <div className="relative">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-          style={{ color: 'var(--c-text-3)' }} />
+          style={{ color: '#6B6480' }} />
         <input
           type="text"
           placeholder="Buscar por negocio o cliente…"
           value={search}
           onChange={e => setSearch(e.target.value)}
           className="w-full pl-9 pr-9 py-2.5 rounded-xl text-sm outline-none"
-          style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+          style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
         />
         {search && (
           <button onClick={() => setSearch('')}
             className="absolute right-3 top-1/2 -translate-y-1/2"
-            style={{ color: 'var(--c-text-3)' }}>
+            style={{ color: '#6B6480' }}>
             <X size={13} />
           </button>
         )}
@@ -323,19 +323,19 @@ export default function BillingClient({ agents }: { agents: Agent[] }) {
 
           return (
             <div key={agent.id} className="rounded-xl p-4 space-y-3"
-              style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+              style={{ background: '#FFFFFF', border: '1px solid #E8E3F5' }}>
               {/* Header */}
               <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div>
-                  <div className="font-medium text-sm" style={{ color: 'var(--c-text)' }}>
+                  <div className="font-medium text-sm" style={{ color: '#1A0A3B' }}>
                     {agent.client_name}
                     {agent.employee_count && agent.employee_count > 1 && (
-                      <span className="ml-2 text-xs font-normal" style={{ color: 'var(--c-text-3)' }}>
+                      <span className="ml-2 text-xs font-normal" style={{ color: '#6B6480' }}>
                         · {agent.employee_count} empleados
                       </span>
                     )}
                   </div>
-                  <div className="text-xs mt-0.5" style={{ color: 'var(--c-text-2)' }}>{agent.business_name}</div>
+                  <div className="text-xs mt-0.5" style={{ color: '#4A3B6B' }}>{agent.business_name}</div>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   {fCfg && (
@@ -346,7 +346,7 @@ export default function BillingClient({ agents }: { agents: Agent[] }) {
                   )}
                   {mCfg && (
                     <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-                      style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-2)' }}>
+                      style={{ background: '#FAFAFB', color: '#4A3B6B' }}>
                       {mCfg.label} · ${mCfg.mxn.toLocaleString('es-MX')}/mes
                     </span>
                   )}
@@ -359,18 +359,18 @@ export default function BillingClient({ agents }: { agents: Agent[] }) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {agent.minutes_included > 0 && (
                     <div className="space-y-1">
-                      <div className="flex justify-between text-xs" style={{ color: 'var(--c-text-2)' }}>
+                      <div className="flex justify-between text-xs" style={{ color: '#4A3B6B' }}>
                         <span className="flex items-center gap-1.5">
                           <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: '#0E7490' }} />
                           Minutos
                         </span>
                         <span className="tabular-nums">{agent.minutes_used} / {agent.minutes_included}</span>
                       </div>
-                      <div className="h-1.5 rounded-full" style={{ background: 'var(--c-border)' }}>
+                      <div className="h-1.5 rounded-full" style={{ background: '#E8E3F5' }}>
                         <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: barColor }} />
                       </div>
                       {agent.minutes_reset_date && (
-                        <div className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>
+                        <div className="text-[11px]" style={{ color: '#6B6480' }}>
                           Reinicia {new Date(agent.minutes_reset_date + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
                         </div>
                       )}
@@ -383,14 +383,14 @@ export default function BillingClient({ agents }: { agents: Agent[] }) {
                     const opsColor = opsPct > 90 ? '#EF4444' : opsPct > 70 ? '#F59E0B' : '#10B981';
                     return (
                       <div className="space-y-1">
-                        <div className="flex justify-between text-xs" style={{ color: 'var(--c-text-2)' }}>
+                        <div className="flex justify-between text-xs" style={{ color: '#4A3B6B' }}>
                           <span className="flex items-center gap-1.5">
                             <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: '#10B981' }} />
                             Tareas
                           </span>
                           <span className="tabular-nums">{opsUsed.toLocaleString('es-MX')} / {opsLimit.toLocaleString('es-MX')}</span>
                         </div>
-                        <div className="h-1.5 rounded-full" style={{ background: 'var(--c-border)' }}>
+                        <div className="h-1.5 rounded-full" style={{ background: '#E8E3F5' }}>
                           <div className="h-full rounded-full transition-all" style={{ width: `${opsPct}%`, background: opsColor }} />
                         </div>
                       </div>
@@ -400,17 +400,17 @@ export default function BillingClient({ agents }: { agents: Agent[] }) {
               )}
 
               {/* Generate link — collapsible */}
-              <div className="pt-1" style={{ borderTop: '1px solid var(--c-divider)' }}>
+              <div className="pt-1" style={{ borderTop: '1px solid #F0EBFA' }}>
                 <button
                   type="button"
                   onClick={() => toggleLink(agent.id)}
                   className="flex items-center gap-2 text-xs font-medium w-full text-left transition-opacity hover:opacity-80"
-                  style={{ color: linkOpen.has(agent.id) ? '#9B6DFF' : 'var(--c-text-2)' }}
+                  style={{ color: linkOpen.has(agent.id) ? '#9B6DFF' : '#4A3B6B' }}
                 >
                   <CreditCard size={12} />
                   Generar link de pago
                   <ChevronDown size={10} className="ml-auto transition-transform flex-shrink-0"
-                    style={{ transform: linkOpen.has(agent.id) ? 'rotate(180deg)' : undefined, color: 'var(--c-text-4)' }} />
+                    style={{ transform: linkOpen.has(agent.id) ? 'rotate(180deg)' : undefined, color: '#9B8FB5' }} />
                 </button>
                 {linkOpen.has(agent.id) && (
                   <div className="mt-3">
@@ -423,9 +423,9 @@ export default function BillingClient({ agents }: { agents: Agent[] }) {
         })}
 
         {filtered.length === 0 && (
-          <div className="text-center py-12 rounded-xl" style={{ border: '1px dashed var(--c-border)' }}>
-            <CreditCard size={32} className="mx-auto mb-3" style={{ color: 'var(--c-text-3)' }} />
-            <div className="text-sm" style={{ color: 'var(--c-text-2)' }}>
+          <div className="text-center py-12 rounded-xl" style={{ border: '1px dashed #E8E3F5' }}>
+            <CreditCard size={32} className="mx-auto mb-3" style={{ color: '#6B6480' }} />
+            <div className="text-sm" style={{ color: '#4A3B6B' }}>
               {search ? 'Sin resultados para esa búsqueda' : 'No hay agentes registrados'}
             </div>
           </div>

@@ -77,7 +77,7 @@ export default function MinutesAdjuster({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-[11px] font-semibold tracking-widest uppercase" style={{ color: '#9CA3AF' }}>Minutos</span>
+          <span className="text-[11px] font-semibold tracking-widest uppercase" style={{ color: '#9B8FB5' }}>Minutos</span>
           {isAccountPool && (
             <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: '#F3F0FF', color: '#7C3AED', border: '1px solid #DDD6FE' }}>
               Cuenta
@@ -97,7 +97,7 @@ export default function MinutesAdjuster({
           <span className="text-[24px] font-bold tabular-nums" style={{ color: barColor }}>{used}</span>
           <span className="text-[13px]" style={{ color: '#6B6480' }}>usados / {included} incluidos</span>
         </div>
-        <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: '#F3F4F6' }}>
+        <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: '#F5F0FF' }}>
           <div className="h-2 rounded-full transition-all" style={{ width: `${pct}%`, background: barColor }} />
         </div>
         <div className="flex justify-between mt-1.5 text-[12px]" style={{ color: '#6B6480' }}>
@@ -120,8 +120,8 @@ export default function MinutesAdjuster({
               className="flex items-center justify-center gap-1.5 py-2 rounded-lg text-[12px] font-semibold transition-all"
               style={{
                 background: action === a.id ? `${a.color}18` : '#FFFFFF',
-                border:     `1px solid ${action === a.id ? a.color : '#E5E7EB'}`,
-                color:      action === a.id ? a.color : '#6B7280',
+                border:     `1px solid ${action === a.id ? a.color : '#E8E3F5'}`,
+                color:      action === a.id ? a.color : '#6B6480',
               }}
             >
               {a.icon}
@@ -129,7 +129,7 @@ export default function MinutesAdjuster({
             </button>
           ))}
         </div>
-        <p className="text-[12px]" style={{ color: '#9CA3AF' }}>{activeAction.hint}</p>
+        <p className="text-[12px]" style={{ color: '#9B8FB5' }}>{activeAction.hint}</p>
       </div>
 
       {/* Amount + reason */}
@@ -188,8 +188,8 @@ export default function MinutesAdjuster({
           disabled={loading || !amount}
           className="flex items-center justify-center gap-2 py-2.5 rounded-lg text-[13px] font-semibold transition-all"
           style={{
-            background: amount ? activeAction.color : '#F3F4F6',
-            color:      amount ? '#FFFFFF' : '#9CA3AF',
+            background: amount ? activeAction.color : '#F5F0FF',
+            color:      amount ? '#FFFFFF' : '#9B8FB5',
             opacity:    loading ? 0.6 : 1,
             cursor:     amount ? 'pointer' : 'not-allowed',
           }}

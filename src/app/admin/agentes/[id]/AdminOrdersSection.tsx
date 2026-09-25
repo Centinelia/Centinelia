@@ -11,7 +11,7 @@ const STATUS_CONFIG: Record<OrderStatus, { label: string; color: string }> = {
   en_proceso: { label: 'En proceso', color: '#3b82f6' },
   listo:      { label: 'Listo',      color: '#f59e0b' },
   entregado:  { label: 'Entregado',  color: '#22c55e' },
-  cancelado:  { label: 'Cancelado',  color: '#6b7280' },
+  cancelado:  { label: 'Cancelado',  color: '#6B6480' },
 };
 
 interface Order {

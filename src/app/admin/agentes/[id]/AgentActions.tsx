@@ -58,7 +58,7 @@ export default function AgentActions({ agentId, active }: { agentId: string; act
         <button
           onClick={() => setConfirming(false)}
           className="p-1.5 rounded-lg shrink-0 transition-colors hover:bg-gray-100"
-          style={{ color: '#6B7280' }}
+          style={{ color: '#6B6480' }}
         >
           <X size={14} />
         </button>

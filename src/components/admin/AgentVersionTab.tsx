@@ -22,7 +22,7 @@ export function AgentVersionTab({ agentId, meerkatId, availableVersions, activeG
     return (
       <div
         className="rounded-lg p-4 text-sm"
-        style={{ border: '1px solid var(--c-border)', background: 'var(--c-surface-2)', color: 'var(--c-text-2)' }}
+        style={{ border: '1px solid #E8E3F5', background: '#FAFAFB', color: '#4A3B6B' }}
       >
         Este empleado no tiene un rol asignado. No aplica versionado.
       </div>
@@ -54,17 +54,17 @@ export function AgentVersionTab({ agentId, meerkatId, availableVersions, activeG
   return (
     <div
       className="rounded-lg p-4"
-      style={{ border: '1px solid var(--c-border)', background: 'var(--c-surface)' }}
+      style={{ border: '1px solid #E8E3F5', background: '#FFFFFF' }}
     >
       <div className="flex items-center gap-2 mb-2">
-        <GitBranch className="w-4 h-4" style={{ color: 'var(--c-text-3)' }} />
-        <h3 className="font-medium" style={{ color: 'var(--c-text)' }}>Versión del empleado</h3>
+        <GitBranch className="w-4 h-4" style={{ color: '#6B6480' }} />
+        <h3 className="font-medium" style={{ color: '#1A0A3B' }}>Versión del empleado</h3>
       </div>
 
-      <div className="text-sm mb-3" style={{ color: 'var(--c-text-2)' }}>
+      <div className="text-sm mb-3" style={{ color: '#4A3B6B' }}>
         <div>
-          <span className="font-medium" style={{ color: 'var(--c-text)' }}>{meerkatId.charAt(0).toUpperCase() + meerkatId.slice(1)}</span>
-          {' · '}Versión efectiva: <span className="font-medium" style={{ color: 'var(--c-text)' }}>v{effectiveVersion}</span>
+          <span className="font-medium" style={{ color: '#1A0A3B' }}>{meerkatId.charAt(0).toUpperCase() + meerkatId.slice(1)}</span>
+          {' · '}Versión efectiva: <span className="font-medium" style={{ color: '#1A0A3B' }}>v{effectiveVersion}</span>
           {pin != null && (
             <span
               className="ml-2 inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded"
@@ -75,7 +75,7 @@ export function AgentVersionTab({ agentId, meerkatId, availableVersions, activeG
           )}
         </div>
         {pin == null && (
-          <div className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
+          <div className="text-xs mt-1" style={{ color: '#6B6480' }}>
             Siguiendo la última versión global (v{activeGlobalVersion})
           </div>
         )}
@@ -96,7 +96,7 @@ export function AgentVersionTab({ agentId, meerkatId, availableVersions, activeG
               onClick={() => save(null)}
               disabled={submitting}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-50 disabled:opacity-40"
-              style={{ background: '#FFFFFF', color: '#374151', border: '1px solid #E5E7EB' }}
+              style={{ background: '#FFFFFF', color: '#4A3B6B', border: '1px solid #E8E3F5' }}
             >
               <PinOff className="w-3.5 h-3.5" /> Quitar pin
             </button>
@@ -110,7 +110,7 @@ export function AgentVersionTab({ agentId, meerkatId, availableVersions, activeG
             value={pending}
             onChange={e => setPending(Number(e.target.value))}
             className="rounded px-2 py-1 text-sm"
-            style={{ border: '1px solid var(--c-input-border)', background: 'var(--c-input-bg)', color: 'var(--c-text)' }}
+            style={{ border: '1px solid #E8E3F5', background: '#FFFFFF', color: '#1A0A3B' }}
           >
             {availableVersions.map(v => <option key={v} value={v}>v{v}</option>)}
           </select>
@@ -126,7 +126,7 @@ export function AgentVersionTab({ agentId, meerkatId, availableVersions, activeG
             onClick={() => { setEditing(false); setError(null); }}
             disabled={submitting}
             className="text-xs px-2 py-1 rounded hover:opacity-80 transition-opacity"
-            style={{ color: 'var(--c-text-2)' }}
+            style={{ color: '#4A3B6B' }}
           >
             Cancelar
           </button>

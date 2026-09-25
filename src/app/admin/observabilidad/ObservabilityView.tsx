@@ -57,14 +57,14 @@ export function ObservabilityView({ meerkatIds, flagKeys }: Props) {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-3 items-center">
-        <div className="flex gap-1 rounded-lg p-1" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+        <div className="flex gap-1 rounded-lg p-1" style={{ background: '#FFFFFF', border: '1px solid #E8E3F5' }}>
           {WINDOWS.map(w => (
             <button
               key={w.value}
               onClick={() => setWindow(w.value)}
               className="px-3 py-1.5 rounded-md text-sm transition-all"
               style={{
-                color: window === w.value ? '#FAFBFF' : 'var(--c-text-2)',
+                color: window === w.value ? '#FAFBFF' : '#4A3B6B',
                 background: window === w.value ? '#6C3BFF' : 'transparent',
                 fontWeight: window === w.value ? 600 : 400,
               }}
@@ -78,13 +78,13 @@ export function ObservabilityView({ meerkatIds, flagKeys }: Props) {
           value={flagKey}
           onChange={e => setFlagKey(e.target.value)}
           className="px-3 py-1.5 rounded-md text-sm"
-          style={{ background: 'var(--c-surface)', color: 'var(--c-text)', border: '1px solid var(--c-border)' }}
+          style={{ background: '#FFFFFF', color: '#1A0A3B', border: '1px solid #E8E3F5' }}
         >
           <option value="">Todos los flags</option>
           {flagKeys.map(k => <option key={k} value={k}>{k}</option>)}
         </select>
 
-        <label className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: 'var(--c-text-2)' }}>
+        <label className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: '#4A3B6B' }}>
           <input
             type="checkbox"
             checked={includeUnattr}
@@ -93,7 +93,7 @@ export function ObservabilityView({ meerkatIds, flagKeys }: Props) {
           Incluir sin atribución
         </label>
 
-        {pending && <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>cargando...</span>}
+        {pending && <span className="text-xs" style={{ color: '#6B6480' }}>cargando...</span>}
       </div>
 
       <div className="flex flex-wrap gap-1.5">
@@ -103,9 +103,9 @@ export function ObservabilityView({ meerkatIds, flagKeys }: Props) {
             onClick={() => toggleMeerkat(id)}
             className="px-3 py-1 rounded-full text-xs transition-all"
             style={{
-              background: selectedMeerkats.includes(id) ? '#6C3BFF' : 'var(--c-surface)',
-              color: selectedMeerkats.includes(id) ? '#FAFBFF' : 'var(--c-text-2)',
-              border: '1px solid var(--c-border)',
+              background: selectedMeerkats.includes(id) ? '#6C3BFF' : '#FFFFFF',
+              color: selectedMeerkats.includes(id) ? '#FAFBFF' : '#4A3B6B',
+              border: '1px solid #E8E3F5',
             }}
           >
             {capitalize(id)}
@@ -120,7 +120,7 @@ export function ObservabilityView({ meerkatIds, flagKeys }: Props) {
       )}
 
       {grouped.size === 0 && !pending && (
-        <div className="p-6 rounded-lg text-center text-sm" style={{ background: 'var(--c-surface)', color: 'var(--c-text-3)' }}>
+        <div className="p-6 rounded-lg text-center text-sm" style={{ background: '#FFFFFF', color: '#6B6480' }}>
           Sin datos en la ventana seleccionada.
         </div>
       )}
@@ -159,13 +159,13 @@ function Delta({ cur, prev, invert = false }: { cur: number | null; prev: number
 
 function MeerkatTable({ meerkatId, rows }: { meerkatId: string; rows: MeerkatObservabilityRow[] }) {
   return (
-    <div className="rounded-lg border overflow-hidden" style={{ borderColor: 'var(--c-border)', background: 'var(--c-surface)' }}>
-      <div className="px-4 py-2 font-semibold text-sm" style={{ color: 'var(--c-text)', borderBottom: '1px solid var(--c-border)' }}>
+    <div className="rounded-lg border overflow-hidden" style={{ borderColor: '#E8E3F5', background: '#FFFFFF' }}>
+      <div className="px-4 py-2 font-semibold text-sm" style={{ color: '#1A0A3B', borderBottom: '1px solid #E8E3F5' }}>
         {capitalize(meerkatId)}
       </div>
       <table className="w-full text-sm">
         <thead>
-          <tr style={{ color: 'var(--c-text-3)' }}>
+          <tr style={{ color: '#6B6480' }}>
             <th className="text-left px-4 py-2 font-normal">Versión</th>
             <th className="text-right px-4 py-2 font-normal">Calls</th>
             <th className="text-right px-4 py-2 font-normal">Autonomía</th>
@@ -180,7 +180,7 @@ function MeerkatTable({ meerkatId, rows }: { meerkatId: string; rows: MeerkatObs
             const prev = i > 0 ? rows[i - 1] : null;
             const label = r.meerkat_version == null ? 'sin atrib.' : `v${r.meerkat_version}`;
             return (
-              <tr key={label} style={{ borderTop: '1px solid var(--c-border)', color: 'var(--c-text)' }}>
+              <tr key={label} style={{ borderTop: '1px solid #E8E3F5', color: '#1A0A3B' }}>
                 <td className="px-4 py-2">{label}</td>
                 <td className="text-right px-4 py-2">{r.calls}</td>
                 <td className="text-right px-4 py-2">

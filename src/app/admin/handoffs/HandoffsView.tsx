@@ -171,16 +171,16 @@ export function HandoffsView() {
                 <Network size={15} style={{ color: '#6B6480' }} />
                 Handoffs reales
               </h2>
-              <span className="text-[12px] uppercase tracking-wider font-medium" style={{ color: '#9CA3AF' }}>
+              <span className="text-[12px] uppercase tracking-wider font-medium" style={{ color: '#9B8FB5' }}>
                 {data.pairs.length} pares
               </span>
             </div>
             <div className="rounded-xl overflow-hidden bg-white" style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}>
               {data.pairs.length === 0 && (
                 <div className="p-8 text-center">
-                  <Network size={20} style={{ color: '#D1D5DB', margin: '0 auto 8px' }} />
+                  <Network size={20} style={{ color: '#B9B0CF', margin: '0 auto 8px' }} />
                   <p className="text-[13px]" style={{ color: '#6B6480' }}>Sin handoffs registrados en el rango.</p>
-                  <p className="text-[12px] mt-1" style={{ color: '#9CA3AF' }}>
+                  <p className="text-[12px] mt-1" style={{ color: '#9B8FB5' }}>
                     Aparecerán cuando un meerkat consulte o delegue a otro por voz.
                   </p>
                 </div>
@@ -191,12 +191,12 @@ export function HandoffsView() {
                   <div
                     key={`${p.from}::${p.to}`}
                     className="flex items-center gap-3 px-5 py-3 text-[13px] transition-colors hover:bg-gray-50"
-                    style={{ borderTop: i > 0 ? '1px solid #F3F4F6' : undefined }}
+                    style={{ borderTop: i > 0 ? '1px solid #F5F0FF' : undefined }}
                   >
                     <MeerkatPill name={p.from} />
-                    <ArrowRight size={14} style={{ color: '#9CA3AF' }} />
+                    <ArrowRight size={14} style={{ color: '#9B8FB5' }} />
                     <MeerkatPill name={p.to} />
-                    <span className="flex-1 text-[12px] font-mono truncate" style={{ color: '#9CA3AF' }}>
+                    <span className="flex-1 text-[12px] font-mono truncate" style={{ color: '#9B8FB5' }}>
                       {Object.entries(p.by_tool).map(([t, n]) => `${t}: ${n}`).join(' · ')}
                     </span>
                     <span className="text-[12px] tabular-nums" style={{ color: '#6B6480' }}>
@@ -292,7 +292,7 @@ export function HandoffsView() {
             {data.edges.length === 0 && !newEdge && (
               <div className="rounded-xl p-8 text-center bg-white" style={{ border: '1px solid #E8E3F5' }}>
                 <p className="text-[13px]" style={{ color: '#6B6480' }}>Sin reglas configuradas.</p>
-                <p className="text-[12px] mt-1" style={{ color: '#9CA3AF' }}>
+                <p className="text-[12px] mt-1" style={{ color: '#9B8FB5' }}>
                   Por default todos los pares están permitidos. Crea una regla para restringir un flujo específico.
                 </p>
               </div>
@@ -310,9 +310,9 @@ export function HandoffsView() {
                 >
                   {e.enabled ? <Check size={14} style={{ color: '#10B981' }} /> : <Ban size={14} style={{ color: '#EF4444' }} />}
                   <MeerkatPill name={e.from_meerkat} />
-                  <ArrowRight size={12} style={{ color: '#9CA3AF' }} />
+                  <ArrowRight size={12} style={{ color: '#9B8FB5' }} />
                   <MeerkatPill name={e.to_meerkat} />
-                  <span className="text-[12px] px-2 py-0.5 rounded" style={{ background: '#F3F4F6', color: '#4B5563' }}>
+                  <span className="text-[12px] px-2 py-0.5 rounded" style={{ background: '#F5F0FF', color: '#4A3B6B' }}>
                     {e.tool_name ?? 'todos los tools'}
                   </span>
                   {e.reason && <span className="text-[12px] flex-1 truncate" style={{ color: '#6B6480' }}>· {e.reason}</span>}
@@ -331,7 +331,7 @@ export function HandoffsView() {
                   <button
                     onClick={() => deleteEdge(e.id)}
                     className="p-1 rounded"
-                    style={{ color: '#9CA3AF' }}
+                    style={{ color: '#9B8FB5' }}
                   >
                     <X size={13} />
                   </button>
@@ -346,13 +346,13 @@ export function HandoffsView() {
               <h2 className="text-[15px] font-semibold" style={{ color: '#1A0A3B' }}>
                 Handoffs recientes
               </h2>
-              <span className="text-[12px] uppercase tracking-wider font-medium" style={{ color: '#9CA3AF' }}>
+              <span className="text-[12px] uppercase tracking-wider font-medium" style={{ color: '#9B8FB5' }}>
                 {data.recent.length} rows
               </span>
             </div>
             <div className="rounded-xl overflow-hidden bg-white" style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}>
               {data.recent.length === 0 && (
-                <p className="p-6 text-[13px] text-center" style={{ color: '#9CA3AF' }}>Sin handoffs recientes.</p>
+                <p className="p-6 text-[13px] text-center" style={{ color: '#9B8FB5' }}>Sin handoffs recientes.</p>
               )}
               {data.recent.map((l, i) => (
                 <div
@@ -360,12 +360,12 @@ export function HandoffsView() {
                   className="grid gap-3 px-5 py-2.5 text-[13px] transition-colors hover:bg-gray-50 items-center"
                   style={{
                     gridTemplateColumns: '130px auto auto auto 1fr auto',
-                    borderTop: i > 0 ? '1px solid #F3F4F6' : undefined,
+                    borderTop: i > 0 ? '1px solid #F5F0FF' : undefined,
                   }}
                 >
-                  <span className="font-mono tabular-nums whitespace-nowrap" style={{ color: '#9CA3AF' }}>{fmt(l.handoff_at)}</span>
+                  <span className="font-mono tabular-nums whitespace-nowrap" style={{ color: '#9B8FB5' }}>{fmt(l.handoff_at)}</span>
                   <MeerkatPill name={l.from_meerkat} />
-                  <ArrowRight size={12} style={{ color: '#9CA3AF' }} />
+                  <ArrowRight size={12} style={{ color: '#9B8FB5' }} />
                   <MeerkatPill name={l.to_meerkat} />
                   <span className="text-[12px]" style={{ color: '#6B6480' }}>{l.tool_name}</span>
                   <span

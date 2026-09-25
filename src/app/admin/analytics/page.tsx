@@ -20,7 +20,7 @@ const OUTCOME_LABELS: Record<string, { label: string; color: string }> = {
   transferred:        { label: 'Transferidos', color: '#8B5CF6' },
   info_provided:      { label: 'Información',  color: '#6B6480' },
   escalated_whatsapp: { label: 'WhatsApp',     color: '#25D366' },
-  other:              { label: 'Otro',         color: '#4B5563' },
+  other:              { label: 'Otro',         color: '#4A3B6B' },
 };
 
 const PERIOD_OPTIONS = [
@@ -309,7 +309,7 @@ export default async function AnalyticsPage({ searchParams }: Props) {
                     <div
                       key={tier}
                       className="rounded-lg p-3 text-center"
-                      style={{ background: '#F9FAFB', border: '1px solid #E8E3F5' }}
+                      style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}
                     >
                       <div className="text-[11px] uppercase tracking-wider font-medium mb-1" style={{ color: '#9B8FB5' }}>{tier} · {minutes} min</div>
                       <div className="text-[22px] font-semibold leading-none tabular-nums" style={{ color: '#6C3BFF' }}>~{convs.toLocaleString('es-MX')}</div>
@@ -322,7 +322,7 @@ export default async function AnalyticsPage({ searchParams }: Props) {
           )}
         </div>
 
-        <div style={{ borderTop: '1px solid #F3F4F6', marginBottom: '1.25rem' }} />
+        <div style={{ borderTop: '1px solid #F5F0FF', marginBottom: '1.25rem' }} />
 
         {/* Ops → Tasks */}
         <div>
@@ -356,7 +356,7 @@ export default async function AnalyticsPage({ searchParams }: Props) {
                     <div
                       key={tier}
                       className="rounded-lg p-3 text-center"
-                      style={{ background: '#F9FAFB', border: '1px solid #E8E3F5' }}
+                      style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}
                     >
                       <div className="text-[11px] uppercase tracking-wider font-medium mb-1" style={{ color: '#9B8FB5' }}>{tier} · {opsLimit} tareas</div>
                       <div className="text-[22px] font-semibold leading-none tabular-nums" style={{ color: '#3B82F6' }}>
@@ -390,7 +390,7 @@ export default async function AnalyticsPage({ searchParams }: Props) {
                   title={`${label}: ${count} llamada${count !== 1 ? 's' : ''}`}
                   style={{
                     height: `${Math.max((count / maxChartCount) * 88, count > 0 ? 4 : 0)}px`,
-                    background: count > 0 ? '#6C3BFF' : '#F3F4F6',
+                    background: count > 0 ? '#6C3BFF' : '#F5F0FF',
                     minHeight: count > 0 ? '4px' : '2px',
                     cursor: 'default',
                   }}
@@ -417,7 +417,7 @@ export default async function AnalyticsPage({ searchParams }: Props) {
                   title={`${h}:00 · ${count} llamada${count !== 1 ? 's' : ''}`}
                   style={{
                     height: `${Math.max((count / maxHourCount) * 88, count > 0 ? 3 : 0)}px`,
-                    background: h === peakHour && count > 0 ? '#F59E0B' : count > 0 ? '#8B5CF6' : '#F3F4F6',
+                    background: h === peakHour && count > 0 ? '#F59E0B' : count > 0 ? '#8B5CF6' : '#F5F0FF',
                     minHeight: count > 0 ? '3px' : '1px',
                     cursor: 'default',
                   }}

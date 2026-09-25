@@ -119,17 +119,17 @@ export default function ConversacionalPage() {
   return (
     <div className="p-8 max-w-4xl mx-auto space-y-6">
       <div>
-        <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: '#111827' }}>
+        <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: '#1A0A3B' }}>
           Estilo conversacional
         </h1>
-        <p className="text-[13px] mt-1.5" style={{ color: '#6B7280' }}>
+        <p className="text-[13px] mt-1.5" style={{ color: '#6B6480' }}>
           Aprendizajes globales que se inyectan en el prompt de todos los empleados digitales de la plataforma.
         </p>
       </div>
 
       <div className="flex items-center justify-between flex-wrap gap-3">
         {/* Tabs */}
-        <div className="inline-flex gap-1 p-1 rounded-xl" style={{ background: '#F3F4F6', border: '1px solid #E5E7EB' }}>
+        <div className="inline-flex gap-1 p-1 rounded-xl" style={{ background: '#F5F0FF', border: '1px solid #E8E3F5' }}>
           {tabs.map(t => (
             <button
               key={t.key}
@@ -137,7 +137,7 @@ export default function ConversacionalPage() {
               className="px-3.5 py-1.5 rounded-lg text-[13px] font-medium transition-all"
               style={{
                 background: tab === t.key ? '#FFFFFF' : 'transparent',
-                color:      tab === t.key ? '#111827' : '#6B7280',
+                color:      tab === t.key ? '#1A0A3B' : '#6B6480',
                 boxShadow:  tab === t.key ? '0 1px 2px 0 rgb(0 0 0 / 0.05)' : 'none',
               }}
             >
@@ -158,21 +158,21 @@ export default function ConversacionalPage() {
       {loading ? (
         <div
           className="rounded-xl bg-white p-8 text-center"
-          style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+          style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
         >
-          <p className="text-[13px]" style={{ color: '#6B7280' }}>Cargando...</p>
+          <p className="text-[13px]" style={{ color: '#6B6480' }}>Cargando...</p>
         </div>
       ) : items.length === 0 ? (
         <div
           className="rounded-xl bg-white p-10 text-center"
-          style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+          style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
         >
-          <Sparkles size={20} style={{ color: '#D1D5DB', margin: '0 auto 8px' }} />
-          <p className="text-[13px]" style={{ color: '#6B7280' }}>
+          <Sparkles size={20} style={{ color: '#B9B0CF', margin: '0 auto 8px' }} />
+          <p className="text-[13px]" style={{ color: '#6B6480' }}>
             {tab === 'pending' ? 'No hay aprendizajes pendientes.' : 'Sin registros.'}
           </p>
           {tab === 'pending' && (
-            <p className="text-[12px] mt-1" style={{ color: '#9CA3AF' }}>
+            <p className="text-[12px] mt-1" style={{ color: '#9B8FB5' }}>
               Se generan automáticamente después de cada llamada con score CES bajo o igual a 2.
             </p>
           )}
@@ -185,7 +185,7 @@ export default function ConversacionalPage() {
               <div
                 key={item.id}
                 className="rounded-xl bg-white px-5 py-4"
-                style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+                style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
               >
                 <div className="flex items-start gap-3">
                   <div className="flex-1 min-w-0">
@@ -219,16 +219,16 @@ export default function ConversacionalPage() {
                         style={{
                           background: '#FFFFFF',
                           border: '1px solid #6C3BFF',
-                          color: '#111827',
+                          color: '#1A0A3B',
                         }}
                       />
                     ) : (
-                      <p className="text-[13px] leading-relaxed" style={{ color: '#374151' }}>
+                      <p className="text-[13px] leading-relaxed" style={{ color: '#4A3B6B' }}>
                         {item.body}
                       </p>
                     )}
 
-                    <p className="text-[12px] mt-2" style={{ color: '#6B7280' }}>
+                    <p className="text-[12px] mt-2" style={{ color: '#6B6480' }}>
                       {new Date(item.created_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
                       {item.source_count > 1 && ` · ${item.source_count} llamadas`}
                     </p>
@@ -249,7 +249,7 @@ export default function ConversacionalPage() {
                         <button
                           onClick={() => setEditing(null)}
                           className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
-                          style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#6B7280' }}
+                          style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#6B6480' }}
                           title="Cancelar"
                         >
                           <X size={14} />
@@ -301,7 +301,7 @@ export default function ConversacionalPage() {
                         <button
                           onClick={() => { setEditing(item.id); setEditBody(item.body); }}
                           className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
-                          style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#6B7280' }}
+                          style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#6B6480' }}
                           title="Editar"
                         >
                           <Pencil size={13} />
@@ -309,7 +309,7 @@ export default function ConversacionalPage() {
                         <button
                           onClick={() => remove(item.id)}
                           className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
-                          style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#6B7280' }}
+                          style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#6B6480' }}
                           title="Eliminar"
                         >
                           <Trash2 size={13} />

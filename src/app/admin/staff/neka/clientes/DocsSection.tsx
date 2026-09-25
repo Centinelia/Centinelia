@@ -112,31 +112,31 @@ export function DocsSection({ clienteId, initialDocs, onChange, onClienteUpdated
 
   return (
     <div className="mt-6">
-      <label className="block text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--c-text-4)' }}>
+      <label className="block text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: '#9B8FB5' }}>
         Documentos del cliente
       </label>
-      <p className="text-xs mb-3" style={{ color: 'var(--c-text-3)' }}>
+      <p className="text-xs mb-3" style={{ color: '#6B6480' }}>
         Sube la CSF y otros documentos. Neka toma los datos fiscales de los campos de arriba, no del PDF; estos archivos son respaldo y auditoría.
       </p>
 
       {/* Lista de docs existentes */}
       <div className="space-y-2 mb-4">
         {docs.length === 0 && (
-          <div className="rounded-lg p-4 text-center text-xs" style={{ background: 'var(--c-surface)', border: '1px dashed var(--c-border)', color: 'var(--c-text-3)' }}>
+          <div className="rounded-lg p-4 text-center text-xs" style={{ background: '#FFFFFF', border: '1px dashed #E8E3F5', color: '#6B6480' }}>
             Aún no hay documentos.
           </div>
         )}
         {docs.map(d => (
-          <div key={d.id} className="flex items-center gap-3 p-3 rounded-lg" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+          <div key={d.id} className="flex items-center gap-3 p-3 rounded-lg" style={{ background: '#FFFFFF', border: '1px solid #E8E3F5' }}>
             <FileText size={16} style={{ color: '#6C3BFF' }} />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>{d.label}</span>
+                <span className="text-sm font-medium truncate" style={{ color: '#1A0A3B' }}>{d.label}</span>
                 <span className="text-[10px] uppercase px-1.5 py-0.5 rounded font-semibold" style={{ background: 'rgba(108,59,255,0.08)', color: '#6C3BFF' }}>
                   {TIPO_LABEL[d.tipo]}
                 </span>
               </div>
-              <p className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>
+              <p className="text-[11px]" style={{ color: '#6B6480' }}>
                 {humanBytes(d.size_bytes)} · subido {new Date(d.uploaded_at).toLocaleDateString('es-MX')}
                 {d.uploaded_by && ` · ${d.uploaded_by}`}
               </p>

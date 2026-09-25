@@ -26,8 +26,8 @@ export default async function AprobacionesPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: '#111827' }}>Aprobaciones</h1>
-          <p className="text-[13px] mt-1.5" style={{ color: '#6B7280' }}>
+          <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: '#1A0A3B' }}>Aprobaciones</h1>
+          <p className="text-[13px] mt-1.5" style={{ color: '#6B6480' }}>
             Gate para acciones destructivas. {pending.length} pendiente{pending.length !== 1 ? 's' : ''}.
           </p>
         </div>

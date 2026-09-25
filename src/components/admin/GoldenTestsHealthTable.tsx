@@ -16,12 +16,12 @@ export function GoldenTestsHealthTable({ runs }: { runs: Run[] }) {
   return (
     <div
       className="rounded-lg overflow-hidden border"
-      style={{ borderColor: 'var(--c-border)', background: 'var(--c-surface)' }}
+      style={{ borderColor: '#E8E3F5', background: '#FFFFFF' }}
     >
       <table className="w-full text-sm">
         <thead
           className="text-xs uppercase tracking-wide"
-          style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-3)' }}
+          style={{ background: '#FAFAFB', color: '#6B6480' }}
         >
           <tr>
             <th className="text-left px-4 py-3">Meerkat</th>
@@ -32,23 +32,23 @@ export function GoldenTestsHealthTable({ runs }: { runs: Run[] }) {
             <th className="text-left px-4 py-3">Creado</th>
           </tr>
         </thead>
-        <tbody style={{ color: 'var(--c-text)' }}>
+        <tbody style={{ color: '#1A0A3B' }}>
           {runs.map(r => (
-            <tr key={r.id} className="border-t" style={{ borderColor: 'var(--c-divider)' }}>
+            <tr key={r.id} className="border-t" style={{ borderColor: '#F0EBFA' }}>
               <td className="px-4 py-3 font-medium">{r.meerkat_id}</td>
-              <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--c-text-2)' }}>
+              <td className="px-4 py-3 font-mono text-xs" style={{ color: '#4A3B6B' }}>
                 v[{r.versions.join(',')}]
               </td>
-              <td className="px-4 py-3 text-xs" style={{ color: 'var(--c-text-2)' }}>{r.trigger}</td>
+              <td className="px-4 py-3 text-xs" style={{ color: '#4A3B6B' }}>{r.trigger}</td>
               <td className="px-4 py-3">
                 <StatusBadge status={r.status} />
               </td>
-              <td className="px-4 py-3 text-xs" style={{ color: 'var(--c-text-2)' }}>
+              <td className="px-4 py-3 text-xs" style={{ color: '#4A3B6B' }}>
                 {r.completed_scenarios}/{r.total_scenarios}
                 {r.total_scenarios > 0 &&
                   ` (${Math.round((r.completed_scenarios / r.total_scenarios) * 100)}%)`}
               </td>
-              <td className="px-4 py-3 text-xs" style={{ color: 'var(--c-text-3)' }}>
+              <td className="px-4 py-3 text-xs" style={{ color: '#6B6480' }}>
                 {new Date(r.created_at).toLocaleString('es-MX')}
               </td>
             </tr>
@@ -58,7 +58,7 @@ export function GoldenTestsHealthTable({ runs }: { runs: Run[] }) {
               <td
                 colSpan={6}
                 className="px-4 py-8 text-center text-sm"
-                style={{ color: 'var(--c-text-3)' }}
+                style={{ color: '#6B6480' }}
               >
                 Sin runs aún.
               </td>
@@ -77,9 +77,9 @@ function StatusBadge({ status }: { status: string }) {
     failed:    { bg: 'rgba(239,68,68,0.15)',  color: '#f87171', border: 'rgba(239,68,68,0.4)'  },
   };
   const p = palette[status] ?? {
-    bg: 'var(--c-surface-2)',
-    color: 'var(--c-text-2)',
-    border: 'var(--c-border)',
+    bg: '#FAFAFB',
+    color: '#4A3B6B',
+    border: '#E8E3F5',
   };
   return (
     <span

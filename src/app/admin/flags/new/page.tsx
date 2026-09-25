@@ -23,7 +23,7 @@ export default async function NewFlagPage() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
-      <Link href="/admin/flags" className="inline-flex items-center gap-1.5 text-sm" style={{ color: 'var(--c-text-2)' }}>
+      <Link href="/admin/flags" className="inline-flex items-center gap-1.5 text-sm" style={{ color: '#4A3B6B' }}>
         <ArrowLeft size={14} /> Todos los flags
       </Link>
       <FlagEditor mode="create" />

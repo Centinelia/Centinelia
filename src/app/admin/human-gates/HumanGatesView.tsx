@@ -143,10 +143,10 @@ export function HumanGatesView() {
           {Object.keys(data.by_type).length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {Object.entries(data.by_type).map(([gt, dist]) => {
-                const accent = GATE_ACCENTS[gt] ?? '#6B7280';
+                const accent = GATE_ACCENTS[gt] ?? '#6B6480';
                 return (
                   <div key={gt} className="rounded-xl bg-white overflow-hidden" style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}>
-                    <div className="px-5 py-4" style={{ borderBottom: '1px solid #F3F4F6' }}>
+                    <div className="px-5 py-4" style={{ borderBottom: '1px solid #F5F0FF' }}>
                       <div className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: accent }} />
                         <span className="text-[14px] font-semibold" style={{ color: '#1A0A3B' }}>
@@ -158,7 +158,7 @@ export function HumanGatesView() {
                       {Object.entries(dist).map(([d, n]) => (
                         <div key={d} className="text-center rounded-lg py-2.5" style={{ background: decisionBg(d) }}>
                           <p className="text-[16px] font-semibold tabular-nums" style={{ color: decisionColor(d) }}>{n}</p>
-                          <p className="text-[10px] uppercase tracking-wide mt-0.5" style={{ color: '#9CA3AF' }}>{d}</p>
+                          <p className="text-[10px] uppercase tracking-wide mt-0.5" style={{ color: '#9B8FB5' }}>{d}</p>
                         </div>
                       ))}
                     </div>
@@ -174,16 +174,16 @@ export function HumanGatesView() {
               <h2 className="text-[15px] font-semibold" style={{ color: '#1A0A3B' }}>
                 Decisiones recientes
               </h2>
-              <span className="text-[12px] uppercase tracking-wider font-medium" style={{ color: '#9CA3AF' }}>
+              <span className="text-[12px] uppercase tracking-wider font-medium" style={{ color: '#9B8FB5' }}>
                 {data.decisions.length} rows
               </span>
             </div>
             <div className="rounded-xl overflow-hidden bg-white" style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}>
               {data.decisions.length === 0 && (
                 <div className="p-8 text-center">
-                  <ShieldCheck size={20} style={{ color: '#D1D5DB', margin: '0 auto 8px' }} />
+                  <ShieldCheck size={20} style={{ color: '#B9B0CF', margin: '0 auto 8px' }} />
                   <p className="text-sm" style={{ color: '#6B6480' }}>Sin decisiones en el rango seleccionado.</p>
-                  <p className="text-xs mt-1" style={{ color: '#9CA3AF' }}>
+                  <p className="text-xs mt-1" style={{ color: '#9B8FB5' }}>
                     Aparecerán cuando el dueño apruebe/rechace algo por email o portal.
                   </p>
                 </div>
@@ -197,15 +197,15 @@ export function HumanGatesView() {
                     className="grid gap-3 px-5 py-2.5 text-[13px] transition-colors hover:bg-gray-50 items-center"
                     style={{
                       gridTemplateColumns: '20px 130px 200px 90px 100px 1fr',
-                      borderTop: i > 0 ? '1px solid #F3F4F6' : undefined,
+                      borderTop: i > 0 ? '1px solid #F5F0FF' : undefined,
                     }}
                   >
                     <Icon size={14} style={{ color }} />
-                    <span className="font-mono tabular-nums whitespace-nowrap" style={{ color: '#9CA3AF' }}>{fmt(d.decided_at)}</span>
+                    <span className="font-mono tabular-nums whitespace-nowrap" style={{ color: '#9B8FB5' }}>{fmt(d.decided_at)}</span>
                     <GatePill gt={d.gate_type} />
                     <span className="font-medium" style={{ color }}>{d.decision}</span>
                     <span className="text-[12px]" style={{ color: '#6B6480' }}>{d.channel}</span>
-                    <span className="truncate" style={{ color: '#9CA3AF' }}>{d.reason ?? ''}</span>
+                    <span className="truncate" style={{ color: '#9B8FB5' }}>{d.reason ?? ''}</span>
                   </div>
                 );
               })}
@@ -220,7 +220,7 @@ export function HumanGatesView() {
 function KpiCard({ label, value, sub }: { label: string; value: number | string; sub?: string }) {
   return (
     <div className="rounded-xl bg-white px-5 py-4" style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}>
-      <p className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#9CA3AF' }}>{label}</p>
+      <p className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#9B8FB5' }}>{label}</p>
       <p className="text-[28px] font-semibold leading-none tabular-nums mt-2" style={{ color: '#1A0A3B' }}>{value}</p>
       {sub && <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>{sub}</p>}
     </div>
@@ -231,9 +231,9 @@ function BreakdownCard({ label, entries }: { label: string; entries: Record<stri
   const list = Object.entries(entries).sort((a, b) => b[1] - a[1]);
   return (
     <div className="rounded-xl bg-white px-5 py-4" style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}>
-      <p className="text-[11px] uppercase tracking-wider font-medium mb-3" style={{ color: '#9CA3AF' }}>{label}</p>
+      <p className="text-[11px] uppercase tracking-wider font-medium mb-3" style={{ color: '#9B8FB5' }}>{label}</p>
       {list.length === 0 ? (
-        <p className="text-[13px]" style={{ color: '#9CA3AF' }}>Sin datos</p>
+        <p className="text-[13px]" style={{ color: '#9B8FB5' }}>Sin datos</p>
       ) : (
         <div className="space-y-1.5">
           {list.map(([k, n]) => (
@@ -249,7 +249,7 @@ function BreakdownCard({ label, entries }: { label: string; entries: Record<stri
 }
 
 function GatePill({ gt }: { gt: string }) {
-  const color = GATE_ACCENTS[gt] ?? '#6B7280';
+  const color = GATE_ACCENTS[gt] ?? '#6B6480';
   return (
     <span
       className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[12px] font-medium w-fit"
@@ -262,10 +262,10 @@ function GatePill({ gt }: { gt: string }) {
 }
 
 function decisionColor(d: string): string {
-  return { approve: '#10B981', send: '#10B981', reject: '#EF4444', cancel: '#EF4444', edit: '#F59E0B' }[d] ?? '#6B7280';
+  return { approve: '#10B981', send: '#10B981', reject: '#EF4444', cancel: '#EF4444', edit: '#F59E0B' }[d] ?? '#6B6480';
 }
 function decisionBg(d: string): string {
-  return { approve: '#ECFDF5', send: '#ECFDF5', reject: '#FEF2F2', cancel: '#FEF2F2', edit: '#FFFBEB' }[d] ?? '#F9FAFB';
+  return { approve: '#ECFDF5', send: '#ECFDF5', reject: '#FEF2F2', cancel: '#FEF2F2', edit: '#FFFBEB' }[d] ?? '#FAFAFB';
 }
 function decisionIcon(d: string): typeof CheckCircle2 {
   return { approve: CheckCircle2, send: Send, reject: XCircle, cancel: Ban, edit: Edit3 }[d] ?? CheckCircle2;

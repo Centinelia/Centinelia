@@ -25,7 +25,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   useEffect(() => { setMounted(true); }, []);
 
   return (
-    <div className="flex overflow-hidden" style={{ height: '100dvh', background: 'var(--c-bg)', color: 'var(--c-text)' }}>
+    <div className="flex overflow-hidden" style={{ height: '100dvh', background: '#FAFAFB', color: '#1A0A3B' }}>
 
       {/* Mobile backdrop */}
       {open && (
@@ -79,7 +79,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           <button
             onClick={handleLogout}
             className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-opacity hover:opacity-70 w-full"
-            style={{ color: 'var(--c-text-3)' }}
+            style={{ color: '#6B6480' }}
           >
             <LogOut size={13} />
             Cerrar sesión
@@ -139,7 +139,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           </Link>
         </div>
 
-        <main className="flex-1 overflow-y-auto min-h-0" style={{ background: 'var(--c-bg)' }}>
+        <main className="flex-1 overflow-y-auto min-h-0" style={{ background: '#FAFAFB' }}>
           {children}
         </main>
       </div>

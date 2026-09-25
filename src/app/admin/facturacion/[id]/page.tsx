@@ -98,7 +98,7 @@ export default async function ContractDetailPage({ params }: Props) {
       <Link
         href="/admin/facturacion?tab=contratos"
         className="inline-flex items-center gap-1.5 text-sm hover:opacity-80 transition-opacity"
-        style={{ color: 'var(--c-text-2)' }}
+        style={{ color: '#4A3B6B' }}
       >
         <ArrowLeft size={14} />
         Contratos anuales
@@ -107,12 +107,12 @@ export default async function ContractDetailPage({ params }: Props) {
       {/* Header */}
       <div
         className="rounded-2xl p-5 space-y-3"
-        style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+        style={{ background: '#FFFFFF', border: '1px solid #E8E3F5' }}
       >
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-lg font-semibold font-mono" style={{ color: 'var(--c-text)' }}>{c.contract_folio}</h1>
+              <h1 className="text-lg font-semibold font-mono" style={{ color: '#1A0A3B' }}>{c.contract_folio}</h1>
               <span
                 className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
                 style={{ color: status.color, background: status.bg, border: `1px solid ${status.border}` }}
@@ -120,33 +120,33 @@ export default async function ContractDetailPage({ params }: Props) {
                 {status.label}
               </span>
             </div>
-            <div className="flex items-center gap-2 mt-1.5 text-sm" style={{ color: 'var(--c-text-2)' }}>
+            <div className="flex items-center gap-2 mt-1.5 text-sm" style={{ color: '#4A3B6B' }}>
               <User size={13} />
               <span>{org?.name ?? c.organization_email}</span>
-              {org?.name && <span style={{ color: 'var(--c-text-3)' }}>· {c.organization_email}</span>}
+              {org?.name && <span style={{ color: '#6B6480' }}>· {c.organization_email}</span>}
             </div>
           </div>
           <ContractDetailActions contract={c} />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2" style={{ borderTop: '1px solid var(--c-divider)' }}>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2" style={{ borderTop: '1px solid #F0EBFA' }}>
           <InfoBlock icon={<Calendar size={13} />} label="Vigencia">
-            <div className="text-sm" style={{ color: 'var(--c-text)' }}>
+            <div className="text-sm" style={{ color: '#1A0A3B' }}>
               {formatDate(c.start_date)} → {formatDate(c.end_date)}
             </div>
             {isActive && days >= 0 && (
-              <div className="text-xs mt-0.5" style={{ color: days <= 60 ? '#facc15' : 'var(--c-text-3)' }}>
+              <div className="text-xs mt-0.5" style={{ color: days <= 60 ? '#facc15' : '#6B6480' }}>
                 {days === 0 ? 'Último día' : `Faltan ${days} días`}
               </div>
             )}
           </InfoBlock>
           <InfoBlock icon={<Coins size={13} />} label="Monto anual">
-            <div className="text-sm" style={{ color: 'var(--c-text)' }}>{formatMXN(Number(c.amount_mxn))}</div>
-            <div className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>IVA incluido</div>
+            <div className="text-sm" style={{ color: '#1A0A3B' }}>{formatMXN(Number(c.amount_mxn))}</div>
+            <div className="text-xs mt-0.5" style={{ color: '#6B6480' }}>IVA incluido</div>
           </InfoBlock>
           <InfoBlock icon={<FileText size={13} />} label="CFDI">
-            <div className="text-sm font-mono" style={{ color: 'var(--c-text)' }}>{c.invoice_folio ?? 'Sin folio'}</div>
-            <div className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+            <div className="text-sm font-mono" style={{ color: '#1A0A3B' }}>{c.invoice_folio ?? 'Sin folio'}</div>
+            <div className="text-xs mt-0.5" style={{ color: '#6B6480' }}>
               Estado SPEI: {c.payment_status}
             </div>
           </InfoBlock>
@@ -156,7 +156,7 @@ export default async function ContractDetailPage({ params }: Props) {
       {/* Consumo del ciclo */}
       <Section title="Consumo del ciclo actual" subtitle={isCurrent && org?.pool_reset_date ? `Se reinicia el ${formatDate(org.pool_reset_date)}` : 'Solo se muestra para el contrato activo de la organización.'}>
         {!isCurrent ? (
-          <div className="text-sm" style={{ color: 'var(--c-text-2)' }}>
+          <div className="text-sm" style={{ color: '#4A3B6B' }}>
             Este contrato no es el ciclo activo de la organización.
           </div>
         ) : (
@@ -184,7 +184,7 @@ export default async function ContractDetailPage({ params }: Props) {
       {/* Empleados activos */}
       <Section title="Empleados en la organización" subtitle={agents.length === 0 ? undefined : `${agents.length} empleado${agents.length === 1 ? '' : 's'}`}>
         {agents.length === 0 ? (
-          <div className="text-sm" style={{ color: 'var(--c-text-2)' }}>
+          <div className="text-sm" style={{ color: '#4A3B6B' }}>
             No hay empleados registrados en esta organización.
           </div>
         ) : (
@@ -194,20 +194,20 @@ export default async function ContractDetailPage({ params }: Props) {
                 key={a.id}
                 href={`/admin/agentes/${a.id}`}
                 className="flex items-center gap-3 rounded-lg px-3 py-2.5 transition-opacity hover:opacity-90"
-                style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}
+                style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}
               >
                 <Bot size={16} style={{ color: '#9B6DFF' }} />
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm truncate" style={{ color: 'var(--c-text)' }}>{a.business_name}</div>
+                  <div className="text-sm truncate" style={{ color: '#1A0A3B' }}>{a.business_name}</div>
                   {a.agent_name && (
-                    <div className="text-xs truncate" style={{ color: 'var(--c-text-3)' }}>{a.agent_name}</div>
+                    <div className="text-xs truncate" style={{ color: '#6B6480' }}>{a.agent_name}</div>
                   )}
                 </div>
                 <span
                   className="text-xs px-2 py-0.5 rounded-full"
                   style={{
-                    color:      a.active ? '#4ade80' : 'var(--c-text-3)',
-                    background: a.active ? 'rgba(74,222,128,0.10)' : 'var(--c-surface)',
+                    color:      a.active ? '#4ade80' : '#6B6480',
+                    background: a.active ? 'rgba(74,222,128,0.10)' : '#FFFFFF',
                   }}
                 >
                   {a.active ? 'Activo' : 'Pausado'}
@@ -228,7 +228,7 @@ export default async function ContractDetailPage({ params }: Props) {
 
       {/* Timeline */}
       <Section title="Timeline">
-        <div className="space-y-2 text-sm" style={{ color: 'var(--c-text-2)' }}>
+        <div className="space-y-2 text-sm" style={{ color: '#4A3B6B' }}>
           <TimelineRow when={c.created_at} label={`Creado por ${c.created_by ?? 'admin'}`} />
           {c.payment_received_at && <TimelineRow when={c.payment_received_at} label="Pago SPEI registrado" />}
           {c.renewal_reminder_60d_sent && <TimelineRow when={null} label="Recordatorio 60 días enviado" />}
@@ -241,7 +241,7 @@ export default async function ContractDetailPage({ params }: Props) {
 
       {c.notes && (
         <Section title="Notas internas">
-          <div className="text-sm whitespace-pre-wrap" style={{ color: 'var(--c-text-2)' }}>{c.notes}</div>
+          <div className="text-sm whitespace-pre-wrap" style={{ color: '#4A3B6B' }}>{c.notes}</div>
         </Section>
       )}
     </div>
@@ -253,7 +253,7 @@ export default async function ContractDetailPage({ params }: Props) {
 function InfoBlock({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="flex items-center gap-1.5 text-xs mb-1" style={{ color: 'var(--c-text-3)' }}>
+      <div className="flex items-center gap-1.5 text-xs mb-1" style={{ color: '#6B6480' }}>
         {icon}
         {label}
       </div>
@@ -266,11 +266,11 @@ function Section({ title, subtitle, children }: { title: string; subtitle?: stri
   return (
     <div
       className="rounded-2xl p-5 space-y-3"
-      style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+      style={{ background: '#FFFFFF', border: '1px solid #E8E3F5' }}
     >
       <div>
-        <h2 className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>{title}</h2>
-        {subtitle && <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>{subtitle}</p>}
+        <h2 className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>{title}</h2>
+        {subtitle && <p className="text-xs mt-0.5" style={{ color: '#6B6480' }}>{subtitle}</p>}
       </div>
       {children}
     </div>
@@ -285,11 +285,11 @@ function PoolBar({
   const barColor = pct >= 90 ? '#f87171' : pct >= 70 ? '#facc15' : '#6C3BFF';
   return (
     <div>
-      <div className="flex items-center justify-between text-xs mb-1" style={{ color: 'var(--c-text-2)' }}>
+      <div className="flex items-center justify-between text-xs mb-1" style={{ color: '#4A3B6B' }}>
         <span>{label}</span>
         <span>{used.toLocaleString('es-MX')} / {pool.toLocaleString('es-MX')} {unitLabel}</span>
       </div>
-      <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
+      <div className="h-2 rounded-full overflow-hidden" style={{ background: '#E8E3F5' }}>
         <div className="h-full transition-all" style={{ width: `${pct}%`, background: barColor }} />
       </div>
       {overage > 0 && (
@@ -305,10 +305,10 @@ function DocRow({ label, href, placeholder }: { label: string; href: string | nu
   return (
     <div
       className="flex items-center justify-between rounded-lg px-3 py-2.5"
-      style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}
+      style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}
     >
-      <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--c-text)' }}>
-        <FileText size={14} style={{ color: 'var(--c-text-3)' }} />
+      <div className="flex items-center gap-2 text-sm" style={{ color: '#1A0A3B' }}>
+        <FileText size={14} style={{ color: '#6B6480' }} />
         {label}
       </div>
       {href ? (
@@ -323,7 +323,7 @@ function DocRow({ label, href, placeholder }: { label: string; href: string | nu
           Abrir
         </a>
       ) : (
-        <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>{placeholder ?? 'Sin archivo'}</span>
+        <span className="text-xs" style={{ color: '#6B6480' }}>{placeholder ?? 'Sin archivo'}</span>
       )}
     </div>
   );
@@ -332,10 +332,10 @@ function DocRow({ label, href, placeholder }: { label: string; href: string | nu
 function TimelineRow({ when, label }: { when: string | null; label: string }) {
   return (
     <div className="flex items-start gap-2">
-      <Clock size={12} className="mt-0.5" style={{ color: 'var(--c-text-3)' }} />
+      <Clock size={12} className="mt-0.5" style={{ color: '#6B6480' }} />
       <div>
-        <div style={{ color: 'var(--c-text)' }}>{label}</div>
-        {when && <div className="text-xs" style={{ color: 'var(--c-text-3)' }}>{new Date(when).toLocaleString('es-MX')}</div>}
+        <div style={{ color: '#1A0A3B' }}>{label}</div>
+        {when && <div className="text-xs" style={{ color: '#6B6480' }}>{new Date(when).toLocaleString('es-MX')}</div>}
       </div>
     </div>
   );

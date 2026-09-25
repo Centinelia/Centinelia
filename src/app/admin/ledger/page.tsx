@@ -150,8 +150,8 @@ export default async function LedgerPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: '#111827' }}>Ledger</h1>
-          <p className="text-[13px] mt-1.5" style={{ color: '#6B7280' }}>
+          <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: '#1A0A3B' }}>Ledger</h1>
+          <p className="text-[13px] mt-1.5" style={{ color: '#6B6480' }}>
             Día {daysElapsed} de {daysInMonth}. FX {FX} MXN/USD. Solo agentes activos con plan.
           </p>
         </div>
@@ -206,12 +206,12 @@ export default async function LedgerPage() {
           <AlertTriangle size={16} style={{ color: '#EF4444', flexShrink: 0, marginTop: 2 }} />
           <div className="flex-1">
             {nowLoss > 0 && (
-              <p className="text-[13px] font-semibold" style={{ color: '#111827' }}>
+              <p className="text-[13px] font-semibold" style={{ color: '#1A0A3B' }}>
                 {nowLoss} agente{nowLoss > 1 ? 's' : ''} en pérdida hoy.
               </p>
             )}
             {projLoss > 0 && (
-              <p className="text-[13px] mt-1" style={{ color: '#4B5563' }}>
+              <p className="text-[13px] mt-1" style={{ color: '#4A3B6B' }}>
                 {projLoss} agente{projLoss > 1 ? 's' : ''} más proyectado{projLoss > 1 ? 's' : ''} a pérdida al cierre del mes si mantiene el ritmo.
               </p>
             )}
@@ -223,18 +223,18 @@ export default async function LedgerPage() {
       {rows.length === 0 ? (
         <div
           className="p-8 text-center rounded-xl bg-white"
-          style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+          style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
         >
-          <p className="text-[13px]" style={{ color: '#6B7280' }}>Sin agentes activos con plan mensual.</p>
+          <p className="text-[13px]" style={{ color: '#6B6480' }}>Sin agentes activos con plan mensual.</p>
         </div>
       ) : (
         <div
           className="rounded-xl overflow-hidden bg-white"
-          style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+          style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
         >
           <div className="overflow-x-auto">
             <table className="w-full text-[13px]">
-              <thead style={{ background: '#F9FAFB' }}>
+              <thead style={{ background: '#FAFAFB' }}>
                 <tr>
                   <Th align="left">Agente</Th>
                   <Th>Plan</Th>
@@ -248,22 +248,22 @@ export default async function LedgerPage() {
               </thead>
               <tbody>
                 {rows.map((r, i) => (
-                  <tr key={r.agent.id} style={{ borderTop: i > 0 ? '1px solid #F3F4F6' : '1px solid #F3F4F6' }} className="hover:bg-gray-50">
-                    <td className="px-4 py-2.5" style={{ color: '#111827' }}>
+                  <tr key={r.agent.id} style={{ borderTop: i > 0 ? '1px solid #F5F0FF' : '1px solid #F5F0FF' }} className="hover:bg-gray-50">
+                    <td className="px-4 py-2.5" style={{ color: '#1A0A3B' }}>
                       <div className="font-medium">{r.agent.business_name}</div>
-                      <div className="text-[11px] mt-0.5" style={{ color: '#9CA3AF' }}>
+                      <div className="text-[11px] mt-0.5" style={{ color: '#9B8FB5' }}>
                         {r.agent.agent_name ?? '.'} · {r.agent.portal_email}
                       </div>
                     </td>
-                    <td className="px-4 py-2.5 text-center" style={{ color: '#4B5563' }}>
+                    <td className="px-4 py-2.5 text-center" style={{ color: '#4A3B6B' }}>
                       {r.agent.plan} / {r.agent.minutes_plan}
                     </td>
                     <td className="px-4 py-2.5 text-center">
-                      <div style={{ color: '#374151' }} className="tabular-nums">{Math.round(r.minutesPct * 100)}% min</div>
-                      <div className="text-[11px] tabular-nums" style={{ color: '#9CA3AF' }}>{Math.round(r.opsPct * 100)}% tareas</div>
+                      <div style={{ color: '#4A3B6B' }} className="tabular-nums">{Math.round(r.minutesPct * 100)}% min</div>
+                      <div className="text-[11px] tabular-nums" style={{ color: '#9B8FB5' }}>{Math.round(r.opsPct * 100)}% tareas</div>
                     </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums" style={{ color: '#374151' }}>{fmtMxn(r.revenueMxn)}</td>
-                    <td className="px-4 py-2.5 text-right tabular-nums" style={{ color: '#6B7280' }}>{fmtMxn(r.totalCostMxn)}</td>
+                    <td className="px-4 py-2.5 text-right tabular-nums" style={{ color: '#4A3B6B' }}>{fmtMxn(r.revenueMxn)}</td>
+                    <td className="px-4 py-2.5 text-right tabular-nums" style={{ color: '#6B6480' }}>{fmtMxn(r.totalCostMxn)}</td>
                     <td className="px-4 py-2.5 text-right tabular-nums font-semibold" style={{ color: marginColor(r.marginPct) }}>
                       {fmtMxn(r.marginMxn)}
                     </td>
@@ -281,12 +281,12 @@ export default async function LedgerPage() {
                   </tr>
                 ))}
                 {/* Totales */}
-                <tr style={{ background: '#F9FAFB', borderTop: '2px solid #E5E7EB' }}>
-                  <td className="px-4 py-3 font-semibold" style={{ color: '#111827' }}>Total</td>
+                <tr style={{ background: '#FAFAFB', borderTop: '2px solid #E8E3F5' }}>
+                  <td className="px-4 py-3 font-semibold" style={{ color: '#1A0A3B' }}>Total</td>
                   <td></td>
                   <td></td>
-                  <td className="px-4 py-3 text-right tabular-nums font-semibold" style={{ color: '#111827' }}>{fmtMxn(totalRevenue)}</td>
-                  <td className="px-4 py-3 text-right tabular-nums font-semibold" style={{ color: '#374151' }}>{fmtMxn(totalCost)}</td>
+                  <td className="px-4 py-3 text-right tabular-nums font-semibold" style={{ color: '#1A0A3B' }}>{fmtMxn(totalRevenue)}</td>
+                  <td className="px-4 py-3 text-right tabular-nums font-semibold" style={{ color: '#4A3B6B' }}>{fmtMxn(totalCost)}</td>
                   <td className="px-4 py-3 text-right tabular-nums font-bold" style={{ color: marginColor(totalMarginPct) }}>{fmtMxn(totalMargin)}</td>
                   <td className="px-4 py-3 text-right tabular-nums font-bold" style={{ color: marginColor(totalMarginPct) }}>{fmtPct(totalMarginPct)}</td>
                   <td className="px-4 py-3 text-right tabular-nums font-bold" style={{ color: marginColor(projTotalMarginPct) }}>{fmtPct(projTotalMarginPct)}</td>
@@ -300,14 +300,14 @@ export default async function LedgerPage() {
       {/* Assumptions */}
       <div
         className="p-4 rounded-xl flex items-start gap-3 bg-white"
-        style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+        style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
       >
-        <Info size={14} style={{ color: '#9CA3AF', flexShrink: 0, marginTop: 2 }} />
-        <div className="text-[12px]" style={{ color: '#6B7280', lineHeight: 1.7 }}>
-          <p className="text-[13px] font-semibold mb-1" style={{ color: '#111827' }}>Modelo de costos usado</p>
-          <p>Voz: <strong style={{ color: '#374151' }}>${VOICE_COST_USD_PER_MIN.toFixed(2)} USD/min</strong> incluye Vapi + Twilio + ElevenLabs + Deepgram (aprox promedio).</p>
-          <p>Claude: <strong style={{ color: '#374151' }}>${CLAUDE_COST_USD_PER_OP.toFixed(4)} USD por op</strong> (Haiku 4.5, con caching activo puede ser menos).</p>
-          <p>FX: <strong style={{ color: '#374151' }}>{FX} MXN/USD</strong> (env <code className="font-mono text-[11px]" style={{ color: '#4B5563' }}>CENTINELIA_FX_MXN_USD</code> para override).</p>
+        <Info size={14} style={{ color: '#9B8FB5', flexShrink: 0, marginTop: 2 }} />
+        <div className="text-[12px]" style={{ color: '#6B6480', lineHeight: 1.7 }}>
+          <p className="text-[13px] font-semibold mb-1" style={{ color: '#1A0A3B' }}>Modelo de costos usado</p>
+          <p>Voz: <strong style={{ color: '#4A3B6B' }}>${VOICE_COST_USD_PER_MIN.toFixed(2)} USD/min</strong> incluye Vapi + Twilio + ElevenLabs + Deepgram (aprox promedio).</p>
+          <p>Claude: <strong style={{ color: '#4A3B6B' }}>${CLAUDE_COST_USD_PER_OP.toFixed(4)} USD por op</strong> (Haiku 4.5, con caching activo puede ser menos).</p>
+          <p>FX: <strong style={{ color: '#4A3B6B' }}>{FX} MXN/USD</strong> (env <code className="font-mono text-[11px]" style={{ color: '#4A3B6B' }}>CENTINELIA_FX_MXN_USD</code> para override).</p>
           <p>Proyección: extrapolación lineal del ritmo actual hasta cerrar el mes ({daysInMonth} días).</p>
           <p className="mt-1">Los números son <em>estimaciones internas</em> para orientar decisiones. Cuando tengas datos reales de Vapi por agente los sustituimos.</p>
         </div>
@@ -320,7 +320,7 @@ function Th({ children, align = 'right' }: { children: React.ReactNode; align?: 
   return (
     <th
       className="px-4 py-3 text-[11px] font-medium uppercase tracking-wider"
-      style={{ color: '#6B7280', textAlign: align }}
+      style={{ color: '#6B6480', textAlign: align }}
     >
       {children}
     </th>
@@ -333,14 +333,14 @@ function SummaryCard({ icon, label, value, sub, color }: {
   return (
     <div
       className="rounded-xl bg-white px-5 py-4"
-      style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+      style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
     >
       <div className="flex items-center gap-2 mb-2">
         <span style={{ color }}>{icon}</span>
-        <p className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#9CA3AF' }}>{label}</p>
+        <p className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#9B8FB5' }}>{label}</p>
       </div>
-      <p className="text-[24px] font-semibold leading-none tabular-nums" style={{ color: '#111827' }}>{value}</p>
-      {sub && <p className="text-[12px] mt-1.5" style={{ color: '#6B7280' }}>{sub}</p>}
+      <p className="text-[24px] font-semibold leading-none tabular-nums" style={{ color: '#1A0A3B' }}>{value}</p>
+      {sub && <p className="text-[12px] mt-1.5" style={{ color: '#6B6480' }}>{sub}</p>}
     </div>
   );
 }

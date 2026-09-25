@@ -76,11 +76,11 @@ export function RecoveryView() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-2 text-[13px]">
           {loading ? (
-            <span style={{ color: '#6B7280' }}>Cargando…</span>
+            <span style={{ color: '#6B6480' }}>Cargando…</span>
           ) : (
             <>
-              <span style={{ color: '#374151' }}>{rules.length} reglas activas</span>
-              <span style={{ color: '#D1D5DB' }}>·</span>
+              <span style={{ color: '#4A3B6B' }}>{rules.length} reglas activas</span>
+              <span style={{ color: '#B9B0CF' }}>·</span>
               {totalStuck > 0 ? (
                 <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md font-medium" style={{ background: '#FFFBEB', color: '#B45309', border: '1px solid #FDE68A' }}>
                   <AlertTriangle size={12} />
@@ -100,7 +100,7 @@ export function RecoveryView() {
             onClick={loadDryRun}
             disabled={loading || running}
             className="inline-flex items-center gap-1.5 text-[13px] font-medium px-3 py-1.5 rounded-lg"
-            style={{ color: '#374151', border: '1px solid #E5E7EB', background: '#FFFFFF' }}
+            style={{ color: '#4A3B6B', border: '1px solid #E8E3F5', background: '#FFFFFF' }}
           >
             <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
             Actualizar
@@ -110,10 +110,10 @@ export function RecoveryView() {
             disabled={running || totalStuck === 0}
             className="inline-flex items-center gap-1.5 text-[13px] font-medium px-3 py-1.5 rounded-lg"
             style={{
-              color:      totalStuck > 0 ? '#FFFFFF' : '#9CA3AF',
-              background: totalStuck > 0 ? '#8B5CF6' : '#F3F4F6',
+              color:      totalStuck > 0 ? '#FFFFFF' : '#9B8FB5',
+              background: totalStuck > 0 ? '#8B5CF6' : '#F5F0FF',
               cursor:     totalStuck > 0 && !running ? 'pointer' : 'not-allowed',
-              border:     totalStuck > 0 ? 'none' : '1px solid #E5E7EB',
+              border:     totalStuck > 0 ? 'none' : '1px solid #E8E3F5',
             }}
           >
             <Play size={12} />
@@ -134,7 +134,7 @@ export function RecoveryView() {
             <CheckCircle2 size={14} />
             Última ejecución
           </p>
-          <p className="text-[12px] mt-1.5" style={{ color: '#374151' }}>
+          <p className="text-[12px] mt-1.5" style={{ color: '#4A3B6B' }}>
             <span className="tabular-nums font-medium">{lastRun.totalRecovered}</span> recovered ·{' '}
             <span className="tabular-nums font-medium">{lastRun.totalFailed}</span> failed ·{' '}
             <span className="tabular-nums font-medium">{lastRun.totalScanned}</span> scanned ·{' '}
@@ -161,35 +161,35 @@ export function RecoveryView() {
               key={rule.id}
               className="rounded-xl bg-white overflow-hidden"
               style={{
-                border: highlight ? '1px solid #FCD34D' : '1px solid #E5E7EB',
+                border: highlight ? '1px solid #FCD34D' : '1px solid #E8E3F5',
                 boxShadow: highlight ? '0 4px 12px -2px rgb(245 158 11 / 0.15)' : '0 1px 3px 0 rgb(0 0 0 / 0.05)',
               }}
             >
               <div className="px-5 py-4 flex items-start gap-3">
-                <div className="flex-shrink-0 p-2 rounded-lg" style={{ background: highlight ? '#FFFBEB' : '#F3F4F6' }}>
-                  <LifeBuoy size={16} style={{ color: highlight ? '#B45309' : '#6B7280' }} />
+                <div className="flex-shrink-0 p-2 rounded-lg" style={{ background: highlight ? '#FFFBEB' : '#F5F0FF' }}>
+                  <LifeBuoy size={16} style={{ color: highlight ? '#B45309' : '#6B6480' }} />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline justify-between gap-3">
-                    <p className="text-[13px] font-mono" style={{ color: '#111827' }}>{rule.id}</p>
+                    <p className="text-[13px] font-mono" style={{ color: '#1A0A3B' }}>{rule.id}</p>
                     <div className="text-right flex-shrink-0">
-                      <p className="text-[22px] font-semibold leading-none tabular-nums" style={{ color: highlight ? '#B45309' : '#9CA3AF' }}>
+                      <p className="text-[22px] font-semibold leading-none tabular-nums" style={{ color: highlight ? '#B45309' : '#9B8FB5' }}>
                         {rule.would_recover_now}
                       </p>
-                      <p className="text-[10px] uppercase tracking-wider mt-1" style={{ color: '#9CA3AF' }}>
+                      <p className="text-[10px] uppercase tracking-wider mt-1" style={{ color: '#9B8FB5' }}>
                         a recover
                       </p>
                     </div>
                   </div>
-                  <p className="text-[13px] mt-1.5" style={{ color: '#374151' }}>{rule.description}</p>
+                  <p className="text-[13px] mt-1.5" style={{ color: '#4A3B6B' }}>{rule.description}</p>
                   <div className="mt-3 flex flex-wrap gap-1.5 text-[11px]">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded font-medium" style={{ background: '#F3F4F6', color: '#4B5563' }}>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded font-medium" style={{ background: '#F5F0FF', color: '#4A3B6B' }}>
                       <span className="font-mono">{rule.source_table}</span>
                     </span>
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded font-medium" style={{ background: '#F3F4F6', color: '#4B5563' }}>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded font-medium" style={{ background: '#F5F0FF', color: '#4A3B6B' }}>
                       status = <span className="font-mono">{rule.stuck_status}</span>
                     </span>
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded font-medium" style={{ background: '#F3F4F6', color: '#4B5563' }}>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded font-medium" style={{ background: '#F5F0FF', color: '#4A3B6B' }}>
                       timeout {fmtMin(rule.stuck_after_min)}
                     </span>
                   </div>

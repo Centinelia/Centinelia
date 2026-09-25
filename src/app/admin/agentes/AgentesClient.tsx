@@ -190,7 +190,7 @@ export default function AgentesClient({
                   className="px-3 py-1 rounded-md text-[12px] font-medium transition-colors"
                   style={{
                     background: active ? '#6C3BFF' : 'transparent',
-                    color: active ? '#FFFFFF' : '#374151',
+                    color: active ? '#FFFFFF' : '#4A3B6B',
                   }}
                 >
                   {o.label}
@@ -217,8 +217,8 @@ export default function AgentesClient({
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium"
               style={{
                 background: '#FFFFFF',
-                border: `1px solid ${currentFilters.status ? '#6C3BFF' : '#E5E7EB'}`,
-                color: currentFilters.status ? '#6C3BFF' : '#374151',
+                border: `1px solid ${currentFilters.status ? '#6C3BFF' : '#E8E3F5'}`,
+                color: currentFilters.status ? '#6C3BFF' : '#4A3B6B',
               }}
             >
               Estatus: {STATUS_OPTS.find(o => o.value === currentFilters.status)?.label ?? 'Todos'}
@@ -235,7 +235,7 @@ export default function AgentesClient({
                     onClick={() => { navigate({ status: o.value }); setOpenDropdown(null); }}
                     className="w-full text-left px-4 py-2 text-[13px] transition-colors hover:bg-gray-50"
                     style={{
-                      color: currentFilters.status === o.value ? '#6C3BFF' : '#374151',
+                      color: currentFilters.status === o.value ? '#6C3BFF' : '#4A3B6B',
                       background: currentFilters.status === o.value ? '#F5F0FF' : 'transparent',
                       fontWeight: currentFilters.status === o.value ? 500 : 400,
                     }}

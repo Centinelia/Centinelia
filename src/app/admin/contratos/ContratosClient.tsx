@@ -74,8 +74,8 @@ export default function ContratosClient({ list, signedCount, pendingCount, custo
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
       <div>
-        <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: '#111827' }}>Contratos</h1>
-        <p className="text-[13px] mt-1.5" style={{ color: '#6B7280' }}>Gestión de contratos y propuestas por agente.</p>
+        <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: '#1A0A3B' }}>Contratos</h1>
+        <p className="text-[13px] mt-1.5" style={{ color: '#6B6480' }}>Gestión de contratos y propuestas por agente.</p>
       </div>
 
       {/* Summary */}
@@ -89,14 +89,14 @@ export default function ContratosClient({ list, signedCount, pendingCount, custo
       <div className="flex flex-col gap-3">
         {/* Search */}
         <div className="relative">
-          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#9CA3AF' }} />
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#9B8FB5' }} />
           <input
             type="text"
             placeholder="Buscar por negocio o cliente..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="w-full pl-9 pr-4 py-2 rounded-lg text-[13px] outline-none"
-            style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#111827' }}
+            style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
           />
         </div>
 
@@ -160,7 +160,7 @@ export default function ContratosClient({ list, signedCount, pendingCount, custo
         </div>
 
         {filtered.length !== list.length && (
-          <p className="text-[12px]" style={{ color: '#6B7280' }}>
+          <p className="text-[12px]" style={{ color: '#6B6480' }}>
             {filtered.length} de {list.length} contratos
           </p>
         )}
@@ -171,7 +171,7 @@ export default function ContratosClient({ list, signedCount, pendingCount, custo
         {filtered.map(agent => {
           const signed     = !!agent.contract_accepted_at;
           const hasCustom  = agent.has_custom;
-          const planColor  = PLAN_COLORS[agent.plan] ?? '#6B7280';
+          const planColor  = PLAN_COLORS[agent.plan] ?? '#6B6480';
           const signedDate = agent.contract_accepted_at
             ? new Date(agent.contract_accepted_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })
             : null;
@@ -180,7 +180,7 @@ export default function ContratosClient({ list, signedCount, pendingCount, custo
             <div
               key={agent.id}
               className="rounded-xl bg-white px-5 py-4 flex items-center gap-4"
-              style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+              style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
             >
               <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
                 style={{ background: signed ? '#ECFDF5' : '#FFFBEB', border: `1px solid ${signed ? '#A7F3D0' : '#FDE68A'}` }}>
@@ -189,7 +189,7 @@ export default function ContratosClient({ list, signedCount, pendingCount, custo
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[14px] font-semibold" style={{ color: '#111827' }}>{agent.business_name}</span>
+                  <span className="text-[14px] font-semibold" style={{ color: '#1A0A3B' }}>{agent.business_name}</span>
                   <span
                     className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[12px] font-medium"
                     style={{ background: `${planColor}14`, color: planColor, border: `1px solid ${planColor}30` }}
@@ -200,15 +200,15 @@ export default function ContratosClient({ list, signedCount, pendingCount, custo
                   <span
                     className="inline-flex items-center px-2 py-0.5 rounded-md text-[12px] font-medium"
                     style={{
-                      background: hasCustom ? '#F5F3FF' : '#F9FAFB',
-                      color: hasCustom ? '#8B5CF6' : '#6B7280',
-                      border: `1px solid ${hasCustom ? '#DDD6FE' : '#E5E7EB'}`,
+                      background: hasCustom ? '#F5F3FF' : '#FAFAFB',
+                      color: hasCustom ? '#8B5CF6' : '#6B6480',
+                      border: `1px solid ${hasCustom ? '#DDD6FE' : '#E8E3F5'}`,
                     }}
                   >
                     {hasCustom ? 'Personalizado' : 'Automático'}
                   </span>
                 </div>
-                <div className="text-[12px] mt-0.5" style={{ color: '#6B7280' }}>
+                <div className="text-[12px] mt-0.5" style={{ color: '#6B6480' }}>
                   {agent.client_name}
                   {agent.employee_count > 1 && (
                     <span> · {agent.employee_count} empleados</span>
@@ -225,7 +225,7 @@ export default function ContratosClient({ list, signedCount, pendingCount, custo
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-50"
-                    style={{ background: '#FFFFFF', color: '#374151', border: '1px solid #E5E7EB' }}
+                    style={{ background: '#FFFFFF', color: '#4A3B6B', border: '1px solid #E8E3F5' }}
                   >
                     <ExternalLink size={12} />
                     <span className="hidden sm:inline">Ver contrato</span>
@@ -247,10 +247,10 @@ export default function ContratosClient({ list, signedCount, pendingCount, custo
         {filtered.length === 0 && (
           <div
             className="text-center py-16 rounded-xl bg-white"
-            style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+            style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
           >
-            <FileText size={32} className="mx-auto mb-3" style={{ color: '#D1D5DB' }} />
-            <p className="text-[13px]" style={{ color: '#6B7280' }}>
+            <FileText size={32} className="mx-auto mb-3" style={{ color: '#B9B0CF' }} />
+            <p className="text-[13px]" style={{ color: '#6B6480' }}>
               {list.length === 0 ? 'Sin agentes configurados' : 'Sin resultados para estos filtros'}
             </p>
           </div>
@@ -264,9 +264,9 @@ function KpiCard({ label, value, accent }: { label: string; value: number; accen
   return (
     <div
       className="rounded-xl bg-white px-5 py-4"
-      style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+      style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
     >
-      <p className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#9CA3AF' }}>{label}</p>
+      <p className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#9B8FB5' }}>{label}</p>
       <p className="text-[28px] font-semibold leading-none tabular-nums mt-2" style={{ color: accent }}>{value}</p>
     </div>
   );
@@ -275,7 +275,7 @@ function KpiCard({ label, value, accent }: { label: string; value: number; accen
 function FilterGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-1.5">
-      <span className="text-[12px]" style={{ color: '#9CA3AF' }}>{label}:</span>
+      <span className="text-[12px]" style={{ color: '#9B8FB5' }}>{label}:</span>
       {children}
     </div>
   );
@@ -289,8 +289,8 @@ function Pill({ label, active, onClick, color }: { label: string; active: boolea
       className="px-2.5 py-1 rounded-md text-[12px] font-medium transition-colors"
       style={{
         background: active ? `${c}14` : '#FFFFFF',
-        color:      active ? c : '#6B7280',
-        border:     `1px solid ${active ? `${c}30` : '#E5E7EB'}`,
+        color:      active ? c : '#6B6480',
+        border:     `1px solid ${active ? `${c}30` : '#E8E3F5'}`,
       }}
     >
       {label}
@@ -317,8 +317,8 @@ function MobileDropdown({
         className="w-full flex items-center justify-between gap-1 px-3 py-2 rounded-lg text-[12px] font-medium"
         style={{
           background: active ? '#F5F3FF' : '#FFFFFF',
-          border: `1px solid ${active ? '#DDD6FE' : '#E5E7EB'}`,
-          color: active ? '#6C3BFF' : '#374151',
+          border: `1px solid ${active ? '#DDD6FE' : '#E8E3F5'}`,
+          color: active ? '#6C3BFF' : '#4A3B6B',
         }}
       >
         <span>{currentLabel}</span>
@@ -327,7 +327,7 @@ function MobileDropdown({
       {open && (
         <div
           className="absolute top-full left-0 mt-1 z-20 rounded-lg overflow-hidden min-w-[140px] bg-white"
-          style={{ border: '1px solid #E5E7EB', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+          style={{ border: '1px solid #E8E3F5', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
         >
           {options.map(([v, label]) => (
             <button
@@ -336,7 +336,7 @@ function MobileDropdown({
               onClick={() => onSelect(v)}
               className="w-full text-left px-3 py-2 text-[12px] transition-colors hover:bg-gray-50"
               style={{
-                color: value === v ? '#6C3BFF' : '#374151',
+                color: value === v ? '#6C3BFF' : '#4A3B6B',
                 background: value === v ? '#F5F3FF' : 'transparent',
               }}
             >

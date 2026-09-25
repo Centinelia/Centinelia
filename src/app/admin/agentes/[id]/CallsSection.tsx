@@ -10,7 +10,7 @@ const OUTCOME_LABELS: Record<string, { label: string; color: string }> = {
   appointment_booked: { label: 'Cita',        color: '#3b82f6' },
   order_taken:        { label: 'Pedido',      color: '#f59e0b' },
   transferred:        { label: 'Transferido', color: '#a855f7' },
-  info_provided:      { label: 'Información', color: '#6b7280' },
+  info_provided:      { label: 'Información', color: '#6B6480' },
   escalated_whatsapp: { label: 'WhatsApp',    color: '#25D366' },
   other:              { label: 'Otro',        color: '#4b5563' },
 };

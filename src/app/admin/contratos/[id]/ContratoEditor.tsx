@@ -42,13 +42,13 @@ export default function ContratoEditor({ agent }: { agent: Agent }) {
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <Link href="/admin/contratos"
-          className="p-2 rounded-lg hover:bg-[var(--c-surface-2)] transition-colors"
-          style={{ color: 'var(--c-text-2)' }}>
+          className="p-2 rounded-lg hover:bg-[#FAFAFB] transition-colors"
+          style={{ color: '#4A3B6B' }}>
           <ArrowLeft size={18} />
         </Link>
         <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--c-text)' }}>Contrato</h1>
-          <p className="text-sm mt-0.5" style={{ color: 'var(--c-text-2)' }}>
+          <h1 className="text-2xl font-bold" style={{ color: '#1A0A3B' }}>Contrato</h1>
+          <p className="text-sm mt-0.5" style={{ color: '#4A3B6B' }}>
             {agent.business_name} · {agent.client_name}
           </p>
         </div>
@@ -71,15 +71,15 @@ export default function ContratoEditor({ agent }: { agent: Agent }) {
 
         {/* Info box */}
         <div className="p-3 rounded-lg text-xs"
-          style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.15)', color: 'var(--c-text-2)' }}>
+          style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.15)', color: '#4A3B6B' }}>
           <span style={{ color: '#9B6DFF', fontWeight: 600 }}>Template automático activo.</span>
           {' '}Si dejas este campo vacío el contrato se genera automáticamente. Solo escribe aquí si necesitas personalizar para este cliente.
         </div>
 
         {/* Textarea */}
         <div>
-          <label className="block text-xs mb-1.5" style={{ color: 'var(--c-text-2)' }}>
-            Texto personalizado <span style={{ color: 'var(--c-text-4)' }}>(opcional)</span>
+          <label className="block text-xs mb-1.5" style={{ color: '#4A3B6B' }}>
+            Texto personalizado <span style={{ color: '#9B8FB5' }}>(opcional)</span>
           </label>
           <textarea
             value={text}
@@ -88,14 +88,14 @@ export default function ContratoEditor({ agent }: { agent: Agent }) {
             placeholder={'Escribe el contrato personalizado aquí...\n\nSi lo dejas vacío se usa el template automático de Centinelia.'}
             className="w-full rounded-xl p-3 text-sm resize-y outline-none"
             style={{
-              background:  'var(--c-input-bg)',
-              border:      '1px solid var(--c-input-border)',
-              color:       'var(--c-text)',
+              background:  '#FFFFFF',
+              border:      '1px solid #E8E3F5',
+              color:       '#1A0A3B',
               fontFamily:  'inherit',
               lineHeight:  1.6,
             }}
           />
-          <p className="text-xs mt-1" style={{ color: 'var(--c-text-4)' }}>
+          <p className="text-xs mt-1" style={{ color: '#9B8FB5' }}>
             {text.length} caracteres
           </p>
         </div>
@@ -124,7 +124,7 @@ export default function ContratoEditor({ agent }: { agent: Agent }) {
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-opacity hover:opacity-80"
-              style={{ background: 'var(--c-surface)', color: 'var(--c-text-2)', border: '1px solid var(--c-border)' }}
+              style={{ background: '#FFFFFF', color: '#4A3B6B', border: '1px solid #E8E3F5' }}
             >
               <ExternalLink size={13} /> Ver contrato
             </a>

@@ -12,8 +12,8 @@ function Field({ label, name, value, onChange, textarea, rows = 4, placeholder, 
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>{label}</label>
-      {hint && <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>{hint}</p>}
+      <label className="text-xs font-medium" style={{ color: '#4A3B6B' }}>{label}</label>
+      {hint && <p className="text-xs" style={{ color: '#6B6480' }}>{hint}</p>}
       {textarea ? (
         <textarea
           name={name}
@@ -22,7 +22,7 @@ function Field({ label, name, value, onChange, textarea, rows = 4, placeholder, 
           onChange={e => onChange(e.target.value)}
           placeholder={placeholder}
           className="w-full rounded-xl px-3 py-2.5 text-sm outline-none resize-y font-mono"
-          style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)', lineHeight: 1.6 }}
+          style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B', lineHeight: 1.6 }}
         />
       ) : (
         <input
@@ -31,7 +31,7 @@ function Field({ label, name, value, onChange, textarea, rows = 4, placeholder, 
           onChange={e => onChange(e.target.value)}
           placeholder={placeholder}
           className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-          style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }}
+          style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
         />
       )}
     </div>
@@ -103,18 +103,18 @@ export default function DemoAgentEditor({ agent }: { agent: VoiceAgent }) {
           <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: 'rgba(108,59,255,0.12)', color: '#9B6DFF' }}>
             Demo
           </span>
-          <span className="text-xs flex items-center gap-1" style={{ color: 'var(--c-text-3)' }}>
+          <span className="text-xs flex items-center gap-1" style={{ color: '#6B6480' }}>
             <Phone size={11} /> {agent.phone_number}
           </span>
         </div>
-        <h1 className="text-xl font-bold" style={{ color: 'var(--c-text)' }}>Agente demo</h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--c-text-3)' }}>
+        <h1 className="text-xl font-bold" style={{ color: '#1A0A3B' }}>Agente demo</h1>
+        <p className="text-sm mt-1" style={{ color: '#6B6480' }}>
           Configura cómo se comporta el agente durante presentaciones en vivo.
         </p>
       </div>
 
       {/* Fields */}
-      <div className="flex flex-col gap-5 rounded-2xl p-6" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+      <div className="flex flex-col gap-5 rounded-2xl p-6" style={{ background: '#FFFFFF', border: '1px solid #E8E3F5' }}>
         <Field
           label="Nombre del agente"
           name="agent_name"
@@ -143,15 +143,15 @@ export default function DemoAgentEditor({ agent }: { agent: VoiceAgent }) {
       </div>
 
       {/* Voice */}
-      <div className="flex flex-col gap-4 rounded-2xl p-6" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-        <h2 className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Voz del agente</h2>
+      <div className="flex flex-col gap-4 rounded-2xl p-6" style={{ background: '#FFFFFF', border: '1px solid #E8E3F5' }}>
+        <h2 className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>Voz del agente</h2>
         <VoiceSelector selected={voiceId} onChange={setVoiceId} />
       </div>
 
       {/* Knowledge base */}
-      <div className="flex flex-col gap-3 rounded-2xl p-6" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+      <div className="flex flex-col gap-3 rounded-2xl p-6" style={{ background: '#FFFFFF', border: '1px solid #E8E3F5' }}>
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Instrucciones de modo demo</h2>
+          <h2 className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>Instrucciones de modo demo</h2>
           <button
             type="button"
             onClick={handleApplyInstructions}
@@ -171,7 +171,7 @@ export default function DemoAgentEditor({ agent }: { agent: VoiceAgent }) {
             {applying ? 'Aplicando…' : applied ? 'Aplicado' : 'Restaurar instrucciones base'}
           </button>
         </div>
-        <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+        <p className="text-xs" style={{ color: '#6B6480' }}>
           Aquí va el contexto que le da al agente el comportamiento de demo: escucha a Nazre, adopta el papel que le indican, improvisa detalles del negocio.
         </p>
         <textarea
@@ -179,7 +179,7 @@ export default function DemoAgentEditor({ agent }: { agent: VoiceAgent }) {
           onChange={e => setKnowledgeBase(e.target.value)}
           rows={18}
           className="w-full rounded-xl px-3 py-2.5 text-sm outline-none resize-y font-mono"
-          style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)', lineHeight: 1.6 }}
+          style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B', lineHeight: 1.6 }}
           placeholder="Pega aquí las instrucciones de modo demo…"
         />
       </div>
@@ -198,7 +198,7 @@ export default function DemoAgentEditor({ agent }: { agent: VoiceAgent }) {
         <a
           href={`/admin/agentes/${agent.id}/editar`}
           className="flex items-center gap-1.5 text-xs transition-opacity hover:opacity-70"
-          style={{ color: 'var(--c-text-3)' }}
+          style={{ color: '#6B6480' }}
         >
           <ExternalLink size={12} /> Editar completo
         </a>

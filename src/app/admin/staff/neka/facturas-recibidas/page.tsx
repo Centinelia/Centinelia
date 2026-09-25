@@ -135,33 +135,33 @@ export default function FacturasRecibidasPage() {
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
-      <Link href="/admin/staff/neka" className="inline-flex items-center gap-1.5 text-xs mb-4 hover:opacity-70" style={{ color: 'var(--c-text-3)' }}>
+      <Link href="/admin/staff/neka" className="inline-flex items-center gap-1.5 text-xs mb-4 hover:opacity-70" style={{ color: '#6B6480' }}>
         <ArrowLeft size={12} /> Volver a Neka
       </Link>
 
       <header className="flex items-center gap-3 mb-6 flex-wrap">
         <Receipt size={20} style={{ color: '#15803d' }} />
         <div className="flex-1">
-          <h1 className="text-xl font-bold" style={{ color: 'var(--c-text)' }}>Facturas recibidas</h1>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+          <h1 className="text-xl font-bold" style={{ color: '#1A0A3B' }}>Facturas recibidas</h1>
+          <p className="text-xs mt-0.5" style={{ color: '#6B6480' }}>
             CFDIs que proveedores emiten a Centinelia. Neka parsea el XML automáticamente para extraer emisor, montos y UUID.
           </p>
         </div>
       </header>
 
-      <section className="rounded-xl p-4 mb-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+      <section className="rounded-xl p-4 mb-5" style={{ background: '#FFFFFF', border: '1px solid #E8E3F5' }}>
         <div className="flex items-center gap-2 mb-3">
           <Upload size={14} style={{ color: '#15803d' }} />
-          <h2 className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Subir factura recibida</h2>
+          <h2 className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>Subir factura recibida</h2>
         </div>
         <div className="grid grid-cols-2 gap-2 mb-2">
           <div>
-            <label className="text-[10px] block mb-1 uppercase font-bold tracking-widest" style={{ color: 'var(--c-text-4)' }}>XML</label>
-            <input ref={xmlRef} type="file" accept="application/xml,text/xml,.xml" className="w-full text-xs" style={{ color: 'var(--c-text-2)' }} />
+            <label className="text-[10px] block mb-1 uppercase font-bold tracking-widest" style={{ color: '#9B8FB5' }}>XML</label>
+            <input ref={xmlRef} type="file" accept="application/xml,text/xml,.xml" className="w-full text-xs" style={{ color: '#4A3B6B' }} />
           </div>
           <div>
-            <label className="text-[10px] block mb-1 uppercase font-bold tracking-widest" style={{ color: 'var(--c-text-4)' }}>PDF</label>
-            <input ref={pdfRef} type="file" accept="application/pdf,.pdf" className="w-full text-xs" style={{ color: 'var(--c-text-2)' }} />
+            <label className="text-[10px] block mb-1 uppercase font-bold tracking-widest" style={{ color: '#9B8FB5' }}>PDF</label>
+            <input ref={pdfRef} type="file" accept="application/pdf,.pdf" className="w-full text-xs" style={{ color: '#4A3B6B' }} />
           </div>
         </div>
         <div className="grid grid-cols-3 gap-2 mb-2">
@@ -169,12 +169,12 @@ export default function FacturasRecibidasPage() {
             value={uCategoria}
             onChange={e => setUCategoria(e.target.value)}
             className="px-2 py-1.5 rounded text-xs outline-none"
-            style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+            style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
           >
             <option value="">Categoría gasto…</option>
             {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
-          <label className="flex items-center gap-2 text-xs px-2" style={{ color: 'var(--c-text-2)' }}>
+          <label className="flex items-center gap-2 text-xs px-2" style={{ color: '#4A3B6B' }}>
             <input type="checkbox" checked={uDeducible} onChange={e => setUDeducible(e.target.checked)} />
             Deducible
           </label>
@@ -185,7 +185,7 @@ export default function FacturasRecibidasPage() {
             placeholder="Notas (opcional)"
             maxLength={200}
             className="px-2 py-1.5 rounded text-xs outline-none"
-            style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+            style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
           />
         </div>
         <button
@@ -199,17 +199,17 @@ export default function FacturasRecibidasPage() {
         </button>
       </section>
 
-      <section className="rounded-xl p-4 mb-4" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+      <section className="rounded-xl p-4 mb-4" style={{ background: '#FFFFFF', border: '1px solid #E8E3F5' }}>
         <div className="flex items-center gap-2 mb-3">
-          <Filter size={13} style={{ color: 'var(--c-text-3)' }} />
-          <h2 className="text-xs uppercase font-bold tracking-widest" style={{ color: 'var(--c-text-4)' }}>Filtros</h2>
+          <Filter size={13} style={{ color: '#6B6480' }} />
+          <h2 className="text-xs uppercase font-bold tracking-widest" style={{ color: '#9B8FB5' }}>Filtros</h2>
         </div>
         <div className="grid grid-cols-4 gap-2">
           <select
             value={deducibleFilter}
             onChange={e => setDeducibleFilter(e.target.value as 'todas' | 'true' | 'false')}
             className="px-2 py-1.5 rounded text-xs outline-none"
-            style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+            style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
           >
             <option value="todas">Todas</option>
             <option value="true">Solo deducibles</option>
@@ -220,7 +220,7 @@ export default function FacturasRecibidasPage() {
             value={fromFilter}
             onChange={e => setFromFilter(e.target.value)}
             className="px-2 py-1.5 rounded text-xs outline-none"
-            style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+            style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
             placeholder="Desde"
           />
           <input
@@ -228,7 +228,7 @@ export default function FacturasRecibidasPage() {
             value={toFilter}
             onChange={e => setToFilter(e.target.value)}
             className="px-2 py-1.5 rounded text-xs outline-none"
-            style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+            style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
           />
           <input
             type="text"
@@ -236,26 +236,26 @@ export default function FacturasRecibidasPage() {
             onChange={e => setRfcFilter(e.target.value)}
             placeholder="RFC emisor exacto"
             className="px-2 py-1.5 rounded text-xs outline-none uppercase"
-            style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+            style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
           />
         </div>
       </section>
 
-      <section className="rounded-xl overflow-hidden" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+      <section className="rounded-xl overflow-hidden" style={{ background: '#FFFFFF', border: '1px solid #E8E3F5' }}>
         {loading && (
-          <div className="p-4 text-center text-xs" style={{ color: 'var(--c-text-3)' }}>
+          <div className="p-4 text-center text-xs" style={{ color: '#6B6480' }}>
             <Loader2 size={13} className="inline animate-spin mr-1.5" /> Cargando…
           </div>
         )}
         {!loading && facturas.length === 0 && (
-          <div className="p-6 text-center text-xs" style={{ color: 'var(--c-text-3)' }}>
+          <div className="p-6 text-center text-xs" style={{ color: '#6B6480' }}>
             Sin facturas recibidas para estos filtros.
           </div>
         )}
         {!loading && facturas.length > 0 && (
           <table className="w-full text-xs">
             <thead>
-              <tr style={{ background: 'var(--c-input-bg)', color: 'var(--c-text-3)' }}>
+              <tr style={{ background: '#FFFFFF', color: '#6B6480' }}>
                 <th className="p-2 text-left uppercase tracking-widest">Fecha</th>
                 <th className="p-2 text-left uppercase tracking-widest">Emisor</th>
                 <th className="p-2 text-left uppercase tracking-widest">RFC</th>
@@ -267,12 +267,12 @@ export default function FacturasRecibidasPage() {
             </thead>
             <tbody>
               {facturas.map(f => (
-                <tr key={f.id} style={{ borderTop: '1px solid var(--c-border)' }}>
-                  <td className="p-2" style={{ color: 'var(--c-text-2)' }}>{fmtDate(f.fecha_emision)}</td>
-                  <td className="p-2 max-w-[240px] truncate" style={{ color: 'var(--c-text)' }} title={f.razon_social_emisor}>{f.razon_social_emisor}</td>
-                  <td className="p-2 font-mono" style={{ color: 'var(--c-text-3)' }}>{f.rfc_emisor}</td>
-                  <td className="p-2" style={{ color: 'var(--c-text-2)' }}>{f.categoria_gasto ?? '—'}</td>
-                  <td className="p-2 text-right font-medium" style={{ color: 'var(--c-text)' }}>${money(f.total)}</td>
+                <tr key={f.id} style={{ borderTop: '1px solid #E8E3F5' }}>
+                  <td className="p-2" style={{ color: '#4A3B6B' }}>{fmtDate(f.fecha_emision)}</td>
+                  <td className="p-2 max-w-[240px] truncate" style={{ color: '#1A0A3B' }} title={f.razon_social_emisor}>{f.razon_social_emisor}</td>
+                  <td className="p-2 font-mono" style={{ color: '#6B6480' }}>{f.rfc_emisor}</td>
+                  <td className="p-2" style={{ color: '#4A3B6B' }}>{f.categoria_gasto ?? '—'}</td>
+                  <td className="p-2 text-right font-medium" style={{ color: '#1A0A3B' }}>${money(f.total)}</td>
                   <td className="p-2 text-center">
                     {f.deducible
                       ? <CheckCircle2 size={13} className="inline" style={{ color: '#15803d' }} />
@@ -296,11 +296,11 @@ export default function FacturasRecibidasPage() {
               ))}
             </tbody>
             <tfoot>
-              <tr style={{ background: 'var(--c-input-bg)', borderTop: '2px solid var(--c-border)' }}>
-                <td colSpan={4} className="p-2 text-right font-semibold" style={{ color: 'var(--c-text-3)' }}>
+              <tr style={{ background: '#FFFFFF', borderTop: '2px solid #E8E3F5' }}>
+                <td colSpan={4} className="p-2 text-right font-semibold" style={{ color: '#6B6480' }}>
                   Totales ({facturas.length} facturas):
                 </td>
-                <td className="p-2 text-right font-bold" style={{ color: 'var(--c-text)' }}>
+                <td className="p-2 text-right font-bold" style={{ color: '#1A0A3B' }}>
                   Sub ${money(totales.subtotal)} · IVA ${money(totales.iva)} · <span style={{ color: '#15803d' }}>Total ${money(totales.total)}</span>
                 </td>
                 <td colSpan={2}></td>
@@ -361,40 +361,40 @@ function EditModal({ factura, onClose, onSaved }: { factura: FacturaRecibida; on
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={onClose}>
       <div
         className="rounded-2xl p-5 max-w-md w-full"
-        style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)' }}
+        style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}
         onClick={e => e.stopPropagation()}
       >
-        <h3 className="text-base font-bold mb-1" style={{ color: 'var(--c-text)' }}>Editar factura recibida</h3>
-        <p className="text-xs mb-4" style={{ color: 'var(--c-text-3)' }}>
+        <h3 className="text-base font-bold mb-1" style={{ color: '#1A0A3B' }}>Editar factura recibida</h3>
+        <p className="text-xs mb-4" style={{ color: '#6B6480' }}>
           {factura.razon_social_emisor} · <span className="font-mono">{factura.rfc_emisor}</span> · ${money(factura.total)}
         </p>
 
         <div className="space-y-3">
           <div>
-            <label className="block text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--c-text-4)' }}>Categoría gasto</label>
+            <label className="block text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: '#9B8FB5' }}>Categoría gasto</label>
             <select
               value={categoria}
               onChange={e => setCategoria(e.target.value)}
               className="w-full px-2 py-1.5 rounded text-sm outline-none"
-              style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+              style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
             >
               <option value="">Sin categoría</option>
               {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
-          <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--c-text-2)' }}>
+          <label className="flex items-center gap-2 text-sm" style={{ color: '#4A3B6B' }}>
             <input type="checkbox" checked={deducible} onChange={e => setDeducible(e.target.checked)} />
             Es deducible
           </label>
           <div>
-            <label className="block text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--c-text-4)' }}>Notas</label>
+            <label className="block text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: '#9B8FB5' }}>Notas</label>
             <textarea
               value={notas}
               onChange={e => setNotas(e.target.value)}
               rows={3}
               maxLength={500}
               className="w-full px-2 py-1.5 rounded text-sm outline-none"
-              style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+              style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
             />
           </div>
         </div>
@@ -408,7 +408,7 @@ function EditModal({ factura, onClose, onSaved }: { factura: FacturaRecibida; on
         )}
 
         <div className="flex justify-end gap-2 mt-5">
-          <button onClick={onClose} className="px-3 py-1.5 rounded-lg text-xs" style={{ color: 'var(--c-text-2)' }}>Cancelar</button>
+          <button onClick={onClose} className="px-3 py-1.5 rounded-lg text-xs" style={{ color: '#4A3B6B' }}>Cancelar</button>
           <button onClick={save} disabled={saving}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
             style={{ background: '#15803d' }}>

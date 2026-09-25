@@ -88,14 +88,14 @@ export function GraphView() {
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <p className="text-[13px]" style={{ color: '#6B7280' }}>
+        <p className="text-[13px]" style={{ color: '#6B6480' }}>
           {loading ? 'Cargando…' : `${summaries.length} state machines · ${feed.length} transiciones recientes`}
         </p>
         <button
           onClick={load}
           disabled={loading}
           className="inline-flex items-center gap-1.5 text-[13px] font-medium px-3 py-1.5 rounded-lg transition-colors"
-          style={{ color: '#374151', border: '1px solid #E5E7EB', background: '#FFFFFF' }}
+          style={{ color: '#4A3B6B', border: '1px solid #E8E3F5', background: '#FFFFFF' }}
         >
           <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
           Actualizar
@@ -123,23 +123,23 @@ export function GraphView() {
       {/* Feed cronológico */}
       <section>
         <div className="flex items-baseline justify-between mb-4">
-          <h2 className="text-[15px] font-semibold flex items-center gap-2" style={{ color: '#111827' }}>
-            <Activity size={15} style={{ color: '#6B7280' }} />
+          <h2 className="text-[15px] font-semibold flex items-center gap-2" style={{ color: '#1A0A3B' }}>
+            <Activity size={15} style={{ color: '#6B6480' }} />
             Últimas transiciones
           </h2>
-          <span className="text-[12px] uppercase tracking-wider font-medium" style={{ color: '#9CA3AF' }}>
+          <span className="text-[12px] uppercase tracking-wider font-medium" style={{ color: '#9B8FB5' }}>
             Cross-machine
           </span>
         </div>
 
-        <div className="rounded-xl overflow-hidden bg-white" style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}>
+        <div className="rounded-xl overflow-hidden bg-white" style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}>
           {collapsedFeed.length === 0 && !loading && (
             <div className="p-8 text-center">
-              <Activity size={20} style={{ color: '#D1D5DB', margin: '0 auto 8px' }} />
-              <p className="text-sm" style={{ color: '#6B7280' }}>
+              <Activity size={20} style={{ color: '#B9B0CF', margin: '0 auto 8px' }} />
+              <p className="text-sm" style={{ color: '#6B6480' }}>
                 Sin transiciones registradas todavía.
               </p>
-              <p className="text-xs mt-1" style={{ color: '#9CA3AF' }}>
+              <p className="text-xs mt-1" style={{ color: '#9B8FB5' }}>
                 Aparecerán en cuanto ocurra actividad en los state machines.
               </p>
             </div>
@@ -151,22 +151,22 @@ export function GraphView() {
                 className="grid gap-3 px-5 py-2.5 text-[13px] transition-colors hover:bg-gray-50"
                 style={{
                   gridTemplateColumns: '130px 140px 1fr 100px auto',
-                  borderTop: i > 0 ? '1px solid #F3F4F6' : undefined,
+                  borderTop: i > 0 ? '1px solid #F5F0FF' : undefined,
                 }}
               >
-                <span className="font-mono tabular-nums whitespace-nowrap" style={{ color: '#9CA3AF' }}>{fmt(row.at)}</span>
+                <span className="font-mono tabular-nums whitespace-nowrap" style={{ color: '#9B8FB5' }}>{fmt(row.at)}</span>
                 <MachinePill name={row.machine} label={row.machine_label} />
-                <span style={{ color: '#111827' }} className="truncate">
+                <span style={{ color: '#1A0A3B' }} className="truncate">
                   {row.count > 1 && <strong className="font-semibold">{row.count}× </strong>}
                   {row.from_status ? (
-                    <><span style={{ color: '#6B7280' }}>{row.from_status}</span> → <span>{row.to_status}</span></>
+                    <><span style={{ color: '#6B6480' }}>{row.from_status}</span> → <span>{row.to_status}</span></>
                   ) : (
                     <>→ <span>{row.to_status}</span></>
                   )}
-                  {row.reason && <span style={{ color: '#9CA3AF' }}> · {row.reason}</span>}
+                  {row.reason && <span style={{ color: '#9B8FB5' }}> · {row.reason}</span>}
                 </span>
-                <span className="text-[12px]" style={{ color: '#6B7280' }}>{row.actor}</span>
-                <ChevronRight size={14} style={{ color: '#D1D5DB' }} />
+                <span className="text-[12px]" style={{ color: '#6B6480' }}>{row.actor}</span>
+                <ChevronRight size={14} style={{ color: '#B9B0CF' }} />
               </div>
             ))}
           </div>
@@ -192,7 +192,7 @@ function collapseFeed(feed: FeedItem[]): CollapsedFeedRow[] {
 }
 
 function MachinePill({ name, label }: { name: string; label: string }) {
-  const color = MACHINE_ACCENTS[name] ?? '#6B7280';
+  const color = MACHINE_ACCENTS[name] ?? '#6B6480';
   return (
     <span
       className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[12px] font-medium w-fit"
@@ -207,7 +207,7 @@ function MachinePill({ name, label }: { name: string; label: string }) {
 function MachineCard({ m }: { m: StateMachineSummary }) {
   const sampled = Object.values(m.status_distribution).reduce((a, b) => a + b, 0);
   const total   = m.total_rows ?? sampled;
-  const accent  = MACHINE_ACCENTS[m.name] ?? '#6B7280';
+  const accent  = MACHINE_ACCENTS[m.name] ?? '#6B6480';
   const sortedStates = Object.entries(m.status_distribution).sort((a, b) => b[1] - a[1]);
 
   // Alertas: si failed/rejected supera 40% → badge
@@ -220,17 +220,17 @@ function MachineCard({ m }: { m: StateMachineSummary }) {
   return (
     <div
       className="rounded-xl bg-white overflow-hidden"
-      style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+      style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
     >
       {/* Header */}
       <div
         className="px-6 py-5 flex items-start justify-between gap-4"
-        style={{ borderBottom: total > 0 ? '1px solid #F3F4F6' : undefined }}
+        style={{ borderBottom: total > 0 ? '1px solid #F5F0FF' : undefined }}
       >
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: accent }} />
-            <h3 className="text-[15px] font-semibold tracking-tight" style={{ color: '#111827' }}>
+            <h3 className="text-[15px] font-semibold tracking-tight" style={{ color: '#1A0A3B' }}>
               {m.label}
             </h3>
             {hasAlert && (
@@ -249,21 +249,21 @@ function MachineCard({ m }: { m: StateMachineSummary }) {
               </span>
             )}
           </div>
-          <p className="text-[11px] mt-0.5 font-mono" style={{ color: '#9CA3AF' }}>{m.source_table}</p>
+          <p className="text-[11px] mt-0.5 font-mono" style={{ color: '#9B8FB5' }}>{m.source_table}</p>
         </div>
         <div className="text-right flex-shrink-0">
-          <p className="text-[28px] font-semibold leading-none tabular-nums" style={{ color: '#111827' }}>
+          <p className="text-[28px] font-semibold leading-none tabular-nums" style={{ color: '#1A0A3B' }}>
             {total.toLocaleString()}
           </p>
-          <p className="text-[11px] uppercase tracking-wider mt-1" style={{ color: '#9CA3AF' }}>items</p>
+          <p className="text-[11px] uppercase tracking-wider mt-1" style={{ color: '#9B8FB5' }}>items</p>
         </div>
       </div>
 
       {/* Body */}
       {isEmpty ? (
         <div className="px-6 py-8 text-center">
-          <p className="text-[13px]" style={{ color: '#6B7280' }}>Aún no hay actividad.</p>
-          <p className="text-[12px] mt-1" style={{ color: '#9CA3AF' }}>
+          <p className="text-[13px]" style={{ color: '#6B6480' }}>Aún no hay actividad.</p>
+          <p className="text-[12px] mt-1" style={{ color: '#9B8FB5' }}>
             {MACHINE_EMPTY_HINT[m.name] ?? 'Aparecerá cuando ocurra el primer evento.'}
           </p>
         </div>
@@ -277,12 +277,12 @@ function MachineCard({ m }: { m: StateMachineSummary }) {
               return (
                 <div key={state}>
                   <div className="flex items-baseline justify-between text-[12px] mb-1">
-                    <span className="font-medium" style={{ color: '#374151' }}>{state}</span>
-                    <span className="tabular-nums" style={{ color: '#9CA3AF' }}>
+                    <span className="font-medium" style={{ color: '#4A3B6B' }}>{state}</span>
+                    <span className="tabular-nums" style={{ color: '#9B8FB5' }}>
                       {count.toLocaleString()} · {pct.toFixed(1)}%
                     </span>
                   </div>
-                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: '#F3F4F6' }}>
+                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: '#F5F0FF' }}>
                     <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: color }} />
                   </div>
                 </div>
@@ -292,11 +292,11 @@ function MachineCard({ m }: { m: StateMachineSummary }) {
 
           {/* Terminal ratio prominente */}
           {m.terminal_ratio !== null && (
-            <div className="flex items-baseline justify-between py-3 px-3 rounded-lg mb-4" style={{ background: '#F9FAFB' }}>
-              <span className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#6B7280' }}>
+            <div className="flex items-baseline justify-between py-3 px-3 rounded-lg mb-4" style={{ background: '#FAFAFB' }}>
+              <span className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#6B6480' }}>
                 Terminal ratio
               </span>
-              <span className="text-[15px] font-semibold tabular-nums" style={{ color: '#111827' }}>
+              <span className="text-[15px] font-semibold tabular-nums" style={{ color: '#1A0A3B' }}>
                 {(m.terminal_ratio * 100).toFixed(1)}%
               </span>
             </div>
@@ -305,11 +305,11 @@ function MachineCard({ m }: { m: StateMachineSummary }) {
           {/* Últimas 24h */}
           <div>
             <div className="flex items-center justify-between text-[12px] mb-2.5">
-              <span className="flex items-center gap-1.5 uppercase tracking-wider font-medium" style={{ color: '#9CA3AF' }}>
+              <span className="flex items-center gap-1.5 uppercase tracking-wider font-medium" style={{ color: '#9B8FB5' }}>
                 <Clock size={11} />
                 Últimas 24h
               </span>
-              <span className="tabular-nums font-medium" style={{ color: '#374151' }}>
+              <span className="tabular-nums font-medium" style={{ color: '#4A3B6B' }}>
                 {m.transitions_24h} transiciones
               </span>
             </div>
@@ -319,10 +319,10 @@ function MachineCard({ m }: { m: StateMachineSummary }) {
                   <span
                     key={actor}
                     className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium"
-                    style={{ background: '#F3F4F6', color: '#4B5563' }}
+                    style={{ background: '#F5F0FF', color: '#4A3B6B' }}
                   >
                     {actor}
-                    <span className="tabular-nums" style={{ color: '#9CA3AF' }}>· {count}</span>
+                    <span className="tabular-nums" style={{ color: '#9B8FB5' }}>· {count}</span>
                   </span>
                 ))}
               </div>
@@ -330,8 +330,8 @@ function MachineCard({ m }: { m: StateMachineSummary }) {
             {m.top_reasons.length > 0 && (
               <div className="space-y-0.5 text-[12px]">
                 {m.top_reasons.slice(0, 3).map(r => (
-                  <div key={r.reason} className="flex items-baseline gap-2" style={{ color: '#6B7280' }}>
-                    <span className="tabular-nums font-medium" style={{ color: '#374151', minWidth: '24px' }}>
+                  <div key={r.reason} className="flex items-baseline gap-2" style={{ color: '#6B6480' }}>
+                    <span className="tabular-nums font-medium" style={{ color: '#4A3B6B', minWidth: '24px' }}>
                       {r.count}×
                     </span>
                     <span className="font-mono text-[11px]">{r.reason}</span>
@@ -352,9 +352,9 @@ function stateColor(state: string): string {
   if (['pending', 'pendiente', 'calling', 'in_progress', 'en_proceso'].includes(s))    return '#8B5CF6';
   if (['failed', 'rejected', 'cancelled', 'cancelado', 'rechazado'].includes(s))       return '#EF4444';
   if (['awaiting_plan_approval', 'info_requested', 'no_answer', 'escalated'].includes(s)) return '#F59E0B';
-  if (['skipped', 'archived', 'dnc'].includes(s))                                       return '#9CA3AF';
+  if (['skipped', 'archived', 'dnc'].includes(s))                                       return '#9B8FB5';
   if (s === 'partial')                                                                  return '#F97316';
-  return '#6B7280';
+  return '#6B6480';
 }
 
 function fmt(iso: string): string {

@@ -347,8 +347,8 @@ export default function AgentDetailClient({
               helper="El resto de la info del negocio (nombre, descripcion, horario) se administra desde el editor de cliente."
             />
             {agent.vapi_agent_id && (
-              <div style={{ borderTop: '1px solid #F3F4F6', paddingTop: 12, marginTop: 6 }}>
-                <p className="text-[11px] uppercase tracking-wider font-medium mb-1" style={{ color: '#9CA3AF' }}>
+              <div style={{ borderTop: '1px solid #F5F0FF', paddingTop: 12, marginTop: 6 }}>
+                <p className="text-[11px] uppercase tracking-wider font-medium mb-1" style={{ color: '#9B8FB5' }}>
                   Agent ID
                 </p>
                 <div className="flex items-center gap-2">
@@ -368,7 +368,7 @@ export default function AgentDetailClient({
       {dirty && (
         <div
           className="flex items-center justify-end gap-2 pt-4 mt-2"
-          style={{ borderTop: '1px solid #E5E7EB' }}
+          style={{ borderTop: '1px solid #E8E3F5' }}
         >
           {savedMsg && (
             <span
@@ -402,7 +402,7 @@ export default function AgentDetailClient({
       {!dirty && savedMsg && (
         <div
           className="flex items-center justify-end pt-4 mt-2"
-          style={{ borderTop: '1px solid #E5E7EB' }}
+          style={{ borderTop: '1px solid #E8E3F5' }}
         >
           <span
             className="text-[12px]"
@@ -426,8 +426,8 @@ function Card({ title, subtitle, icon, children }: {
       className="rounded-xl bg-white overflow-hidden"
       style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
     >
-      <div className="px-5 py-3.5" style={{ borderBottom: '1px solid #F3F4F6' }}>
-        <h2 className="text-[11px] uppercase tracking-wider font-medium flex items-center gap-1.5" style={{ color: '#9CA3AF' }}>
+      <div className="px-5 py-3.5" style={{ borderBottom: '1px solid #F5F0FF' }}>
+        <h2 className="text-[11px] uppercase tracking-wider font-medium flex items-center gap-1.5" style={{ color: '#9B8FB5' }}>
           {icon}
           {title}
         </h2>
@@ -478,8 +478,8 @@ function FieldTextarea({ value, onChange, rows, placeholder }: {
       className="w-full text-[13px] px-3 py-2 rounded-lg outline-none transition-colors focus:border-[#6C3BFF]"
       style={{
         background: '#FFFFFF',
-        border:     '1px solid #E5E7EB',
-        color:      '#111827',
+        border:     '1px solid #E8E3F5',
+        color:      '#1A0A3B',
         resize:     'vertical',
         fontFamily: 'inherit',
       }}
@@ -494,7 +494,7 @@ function Toggle({ on, size = 'md' }: { on: boolean; size?: 'md' | 'sm' }) {
   return (
     <div
       className="rounded-full transition-colors relative flex-shrink-0"
-      style={{ width: w, height: h, background: on ? '#6C3BFF' : '#E5E7EB' }}
+      style={{ width: w, height: h, background: on ? '#6C3BFF' : '#E8E3F5' }}
     >
       <span
         className="absolute rounded-full bg-white transition-all"
@@ -512,12 +512,12 @@ function FeatureToggleRow({ label, desc, active, onToggle }: {
       className="flex items-center justify-between p-3 rounded-lg cursor-pointer select-none transition-colors hover:bg-gray-50"
       style={{
         background: active ? '#FAFAFF' : '#FFFFFF',
-        border:     `1px solid ${active ? '#E9E1FF' : '#E5E7EB'}`,
+        border:     `1px solid ${active ? '#E9E1FF' : '#E8E3F5'}`,
       }}
       onClick={onToggle}
     >
       <div className="flex-1 min-w-0 mr-3">
-        <p className="text-[13px] font-medium" style={{ color: active ? '#111827' : '#6B7280' }}>{label}</p>
+        <p className="text-[13px] font-medium" style={{ color: active ? '#1A0A3B' : '#6B6480' }}>{label}</p>
         <p className="text-[12px] mt-0.5" style={{ color: '#6B6480' }}>{desc}</p>
       </div>
       <Toggle on={active} />
@@ -564,9 +564,9 @@ function OpenPill({ open }: { open: boolean }) {
     <span
       className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[12px] font-medium"
       style={{
-        background: open ? '#EFF6FF' : '#F9FAFB',
-        color:      open ? '#1D4ED8' : '#6B7280',
-        border:     `1px solid ${open ? '#BFDBFE' : '#E5E7EB'}`,
+        background: open ? '#EFF6FF' : '#FAFAFB',
+        color:      open ? '#1D4ED8' : '#6B6480',
+        border:     `1px solid ${open ? '#BFDBFE' : '#E8E3F5'}`,
       }}
     >
       <Clock size={10} />
@@ -582,7 +582,7 @@ const JORNADA_COLORS: Record<string, { bg: string; fg: string; border: string; l
 };
 
 function JornadaPill({ jornada }: { jornada: string }) {
-  const c = JORNADA_COLORS[jornada] ?? { bg: '#F3F4F6', fg: '#4B5563', border: '#E5E7EB', label: jornada };
+  const c = JORNADA_COLORS[jornada] ?? { bg: '#F5F0FF', fg: '#4A3B6B', border: '#E8E3F5', label: jornada };
   return (
     <span
       className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[12px] font-medium"

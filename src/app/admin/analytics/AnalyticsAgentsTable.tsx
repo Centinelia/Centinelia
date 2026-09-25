@@ -65,7 +65,7 @@ export default function AnalyticsAgentsTable({ rows }: { rows: AgentRow[] }) {
   };
 
   const tierMeta   = tier   !== 'todos' ? PLAN_META[tier]   : null;
-  const statusDot  = status === 'activos' ? '#10B981' : status === 'pausados' ? '#6B7280' : null;
+  const statusDot  = status === 'activos' ? '#10B981' : status === 'pausados' ? '#6B6480' : null;
   const statusLbl  = status === 'activos' ? 'Activos' : status === 'pausados' ? 'Pausados' : 'Estado';
 
   if (rows.length === 0) {
@@ -78,7 +78,7 @@ export default function AnalyticsAgentsTable({ rows }: { rows: AgentRow[] }) {
       <div className="flex flex-col gap-2">
         {/* Search */}
         <div className="relative">
-          <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: '#9CA3AF' }} />
+          <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: '#9B8FB5' }} />
           <input
             type="text"
             placeholder="Buscar empleado..."
@@ -99,8 +99,8 @@ export default function AnalyticsAgentsTable({ rows }: { rows: AgentRow[] }) {
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[12px] font-medium transition-colors"
               style={{
                 background: tierMeta ? `${tierMeta.color}14` : '#FFFFFF',
-                color:      tierMeta ? tierMeta.color : '#374151',
-                border: `1px solid ${tierMeta ? tierMeta.color + '30' : '#E5E7EB'}`,
+                color:      tierMeta ? tierMeta.color : '#4A3B6B',
+                border: `1px solid ${tierMeta ? tierMeta.color + '30' : '#E8E3F5'}`,
               }}
             >
               {tierMeta ? tierMeta.label : 'Tier'}
@@ -121,7 +121,7 @@ export default function AnalyticsAgentsTable({ rows }: { rows: AgentRow[] }) {
                     className="flex items-center px-2.5 py-1 rounded-md text-[12px] font-medium transition-colors"
                     style={{
                       background: tier === key ? (color ?? '#6C3BFF') : 'transparent',
-                      color:      tier === key ? '#FFFFFF' : (color ?? '#374151'),
+                      color:      tier === key ? '#FFFFFF' : (color ?? '#4A3B6B'),
                     }}
                   >
                     {label}
@@ -138,8 +138,8 @@ export default function AnalyticsAgentsTable({ rows }: { rows: AgentRow[] }) {
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[12px] font-medium transition-colors"
               style={{
                 background: statusDot ? `${statusDot}14` : '#FFFFFF',
-                color:      statusDot ? statusDot : '#374151',
-                border: `1px solid ${statusDot ? statusDot + '30' : '#E5E7EB'}`,
+                color:      statusDot ? statusDot : '#4A3B6B',
+                border: `1px solid ${statusDot ? statusDot + '30' : '#E8E3F5'}`,
               }}
             >
               {statusDot && <span className="w-1.5 h-1.5 rounded-full" style={{ background: statusDot }} />}
@@ -154,7 +154,7 @@ export default function AnalyticsAgentsTable({ rows }: { rows: AgentRow[] }) {
                 {([
                   { key: 'todos',    label: `Todos`,                          dot: undefined },
                   { key: 'activos',  label: `Activos (${counts.activos})`,    dot: '#10B981' },
-                  { key: 'pausados', label: `Pausados (${counts.pausados})`,  dot: '#6B7280' },
+                  { key: 'pausados', label: `Pausados (${counts.pausados})`,  dot: '#6B6480' },
                 ] as { key: StatusFilter; label: string; dot?: string }[]).map(({ key, label, dot }) => (
                   <button
                     key={key}
@@ -162,7 +162,7 @@ export default function AnalyticsAgentsTable({ rows }: { rows: AgentRow[] }) {
                     className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[12px] font-medium transition-colors"
                     style={{
                       background: status === key ? (dot ?? '#6C3BFF') : 'transparent',
-                      color:      status === key ? '#FFFFFF' : '#374151',
+                      color:      status === key ? '#FFFFFF' : '#4A3B6B',
                     }}
                   >
                     {dot && <span className="w-1.5 h-1.5 rounded-full" style={{ background: status === key ? '#FFFFFF' : dot }} />}
@@ -196,7 +196,7 @@ export default function AnalyticsAgentsTable({ rows }: { rows: AgentRow[] }) {
                     <div className="flex items-center gap-2 min-w-0">
                       <span
                         className="w-2 h-2 rounded-full flex-shrink-0"
-                        style={{ background: row.active ? '#10B981' : '#6B7280' }}
+                        style={{ background: row.active ? '#10B981' : '#6B6480' }}
                         title={row.active ? 'Activo' : 'Pausado'}
                       />
                       <Bot size={12} style={{ color: '#7C3AED' }} className="flex-shrink-0" />
@@ -215,7 +215,7 @@ export default function AnalyticsAgentsTable({ rows }: { rows: AgentRow[] }) {
                           {role.rol}
                         </span>
                       )}
-                      <span className="text-[12px] truncate" style={{ color: '#9CA3AF' }}>
+                      <span className="text-[12px] truncate" style={{ color: '#9B8FB5' }}>
                         {row.business_name}
                       </span>
                     </div>
@@ -247,8 +247,8 @@ export default function AnalyticsAgentsTable({ rows }: { rows: AgentRow[] }) {
 function Stat({ label, value, color }: { label: string; value: string | number; color?: string }) {
   return (
     <div>
-      <div className="text-[13px] font-medium tabular-nums" style={{ color: color ?? '#111827' }}>{value}</div>
-      <div style={{ color: '#9CA3AF', fontSize: '10px' }} className="uppercase tracking-wider mt-0.5">{label}</div>
+      <div className="text-[13px] font-medium tabular-nums" style={{ color: color ?? '#1A0A3B' }}>{value}</div>
+      <div style={{ color: '#9B8FB5', fontSize: '10px' }} className="uppercase tracking-wider mt-0.5">{label}</div>
     </div>
   );
 }

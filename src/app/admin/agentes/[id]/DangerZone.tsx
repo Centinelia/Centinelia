@@ -110,7 +110,7 @@ export default function DangerZone({ agentId, displayName }: Props) {
                   type="button"
                   onClick={() => setShowPw(v => !v)}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2"
-                  style={{ color: '#9CA3AF' }}
+                  style={{ color: '#9B8FB5' }}
                 >
                   {showPw ? <EyeOff size={13} /> : <Eye size={13} />}
                 </button>

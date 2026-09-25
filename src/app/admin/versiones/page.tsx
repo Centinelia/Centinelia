@@ -80,10 +80,11 @@ async function DeploysTab() {
   const agentCounts = new Map<string, number>();
   const pinnedCounts = new Map<string, number>();
   for (const a of agents ?? []) {
-    const mId = (a.features as any)?.meerkat_role_id;
+    const features = (a.features as Record<string, unknown> | null) ?? {};
+    const mId = features.meerkat_role_id as string | undefined;
     if (!mId) continue;
     agentCounts.set(mId, (agentCounts.get(mId) ?? 0) + 1);
-    if ((a.features as any)?.pinned_meerkat_version != null) {
+    if (features.pinned_meerkat_version != null) {
       pinnedCounts.set(mId, (pinnedCounts.get(mId) ?? 0) + 1);
     }
   }
@@ -123,7 +124,7 @@ async function DeploysTab() {
     <>
       <p className="text-[12px]" style={{ color: '#6B6480' }}>
         El rollout real por organización se controla con flags (ver{' '}
-        <a href="/admin/flags" className="font-semibold" style={{ color: '#6C3BFF' }}>Feature flags</a>).
+        <Link href="/admin/flags" className="font-semibold" style={{ color: '#6C3BFF' }}>Feature flags</Link>).
         &ldquo;Rollout activo&rdquo; muestra los flags meerkat.&lt;id&gt;.v&lt;n&gt; existentes;
         &ldquo;Fallback&rdquo; muestra la versión legacy que reciben los agentes sin flag aplicable.
       </p>
@@ -141,6 +142,7 @@ async function HealthTab() {
     .order('created_at', { ascending: false })
     .limit(20);
 
+  // eslint-disable-next-line react-hooks/purity -- Server Component: Date.now() es request-scoped, no dispara re-renders client-side.
   const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const { data: recent24h } = await supabase
     .from('golden_test_scenario_runs')

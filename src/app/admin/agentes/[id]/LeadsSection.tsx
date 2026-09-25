@@ -23,7 +23,7 @@ const STATUSES = [
   { value: 'nuevo',      label: 'Nuevo',      color: '#9B6DFF' },
   { value: 'contactado', label: 'Contactado', color: '#3b82f6' },
   { value: 'cerrado',    label: 'Cerrado',    color: '#22c55e' },
-  { value: 'perdido',    label: 'Perdido',    color: '#6b7280' },
+  { value: 'perdido',    label: 'Perdido',    color: '#6B6480' },
 ];
 
 export default function LeadsSection({ initialLeads }: { initialLeads: Lead[] }) {

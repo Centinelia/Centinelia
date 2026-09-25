@@ -59,7 +59,7 @@ function ActionButton({
     ? { background: '#6C3BFF', color: '#FAFBFF' }
     : variant === 'danger'
       ? { background: 'rgba(248,113,113,0.10)', color: '#f87171', border: '1px solid rgba(248,113,113,0.30)' }
-      : { background: 'var(--c-surface-2)', color: 'var(--c-text)', border: '1px solid var(--c-border)' };
+      : { background: '#FAFAFB', color: '#1A0A3B', border: '1px solid #E8E3F5' };
 
   return (
     <button
@@ -101,20 +101,20 @@ function ModalShell({
     >
       <div
         className="w-full max-w-xl rounded-2xl my-8"
-        style={{ background: 'var(--c-modal)', border: '1px solid var(--c-border-2)' }}
+        style={{ background: '#FFFFFF', border: '1px solid #E8E3F5' }}
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--c-divider)' }}>
+        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid #F0EBFA' }}>
           <div>
-            <h2 className="text-base font-semibold" style={{ color: 'var(--c-text)' }}>{title}</h2>
-            {subtitle && <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-2)' }}>{subtitle}</p>}
+            <h2 className="text-base font-semibold" style={{ color: '#1A0A3B' }}>{title}</h2>
+            {subtitle && <p className="text-xs mt-0.5" style={{ color: '#4A3B6B' }}>{subtitle}</p>}
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg transition-colors hover:opacity-80" style={{ color: 'var(--c-text-2)' }}>
+          <button onClick={onClose} className="p-1.5 rounded-lg transition-colors hover:opacity-80" style={{ color: '#4A3B6B' }}>
             <X size={18} />
           </button>
         </div>
         <div className="p-5 space-y-4">{children}</div>
-        <div className="flex items-center justify-end gap-2 px-5 py-4" style={{ borderTop: '1px solid var(--c-divider)' }}>
+        <div className="flex items-center justify-end gap-2 px-5 py-4" style={{ borderTop: '1px solid #F0EBFA' }}>
           {footer}
         </div>
       </div>
@@ -123,7 +123,7 @@ function ModalShell({
 }
 
 function Label({ children }: { children: React.ReactNode }) {
-  return <label className="block text-xs font-medium mb-1" style={{ color: 'var(--c-text-2)' }}>{children}</label>;
+  return <label className="block text-xs font-medium mb-1" style={{ color: '#4A3B6B' }}>{children}</label>;
 }
 
 function Input({
@@ -141,7 +141,7 @@ function Input({
       onChange={e => onChange(e.target.value)}
       placeholder={placeholder}
       className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-      style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }}
+      style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
     />
   );
 }
@@ -208,7 +208,7 @@ function EditModal({ contract, onClose, onSaved }: { contract: AnnualContract; o
       footer={
         <>
           <button onClick={onClose} disabled={saving} className="px-3 py-2 rounded-lg text-sm transition-opacity hover:opacity-80 disabled:opacity-40"
-            style={{ background: 'var(--c-surface-2)', color: 'var(--c-text)', border: '1px solid var(--c-border)' }}>
+            style={{ background: '#FAFAFB', color: '#1A0A3B', border: '1px solid #E8E3F5' }}>
             Cancelar
           </button>
           <button onClick={save} disabled={saving} className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-40"
@@ -255,7 +255,7 @@ function EditModal({ contract, onClose, onSaved }: { contract: AnnualContract; o
           onChange={e => setNotes(e.target.value)}
           rows={3}
           className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-          style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }}
+          style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
         />
       </div>
     </ModalShell>
@@ -316,7 +316,7 @@ function RenewModal({ contract, onClose, onCreated }: { contract: AnnualContract
       footer={
         <>
           <button onClick={onClose} disabled={saving} className="px-3 py-2 rounded-lg text-sm transition-opacity hover:opacity-80 disabled:opacity-40"
-            style={{ background: 'var(--c-surface-2)', color: 'var(--c-text)', border: '1px solid var(--c-border)' }}>
+            style={{ background: '#FAFAFB', color: '#1A0A3B', border: '1px solid #E8E3F5' }}>
             Cancelar
           </button>
           <button onClick={submit} disabled={saving} className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-40"
@@ -396,7 +396,7 @@ function CancelModal({ contract, onClose, onCancelled }: { contract: AnnualContr
       footer={
         <>
           <button onClick={onClose} disabled={saving} className="px-3 py-2 rounded-lg text-sm transition-opacity hover:opacity-80 disabled:opacity-40"
-            style={{ background: 'var(--c-surface-2)', color: 'var(--c-text)', border: '1px solid var(--c-border)' }}>
+            style={{ background: '#FAFAFB', color: '#1A0A3B', border: '1px solid #E8E3F5' }}>
             Regresar
           </button>
           <button onClick={submit} disabled={saving} className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-40"
@@ -416,7 +416,7 @@ function CancelModal({ contract, onClose, onCancelled }: { contract: AnnualContr
           rows={4}
           placeholder="Cliente pidió cancelar por reestructura interna…"
           className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-          style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }}
+          style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
         />
       </div>
     </ModalShell>

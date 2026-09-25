@@ -61,8 +61,8 @@ export default function ConocimientoPage() {
           <BookOpen size={18} style={{ color: '#9B6DFF' }} />
         </div>
         <div>
-          <h1 className="text-xl font-bold" style={{ color: 'var(--c-text)' }}>Base de conocimiento</h1>
-          <p className="text-sm mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+          <h1 className="text-xl font-bold" style={{ color: '#1A0A3B' }}>Base de conocimiento</h1>
+          <p className="text-sm mt-0.5" style={{ color: '#6B6480' }}>
             Información extra que los bots de chat usan para responder mejor
           </p>
         </div>
@@ -76,9 +76,9 @@ export default function ConocimientoPage() {
             onClick={() => setTab(t)}
             className="px-4 py-1.5 rounded-lg text-sm font-medium transition-all"
             style={{
-              background: tab === t ? '#6C3BFF' : 'var(--c-surface)',
-              color:      tab === t ? '#fff'     : 'var(--c-text-3)',
-              border:     `1px solid ${tab === t ? '#6C3BFF' : 'var(--c-border)'}`,
+              background: tab === t ? '#6C3BFF' : '#FFFFFF',
+              color:      tab === t ? '#fff'     : '#6B6480',
+              border:     `1px solid ${tab === t ? '#6C3BFF' : '#E8E3F5'}`,
             }}
           >
             {TAB_LABELS[t]}
@@ -86,12 +86,12 @@ export default function ConocimientoPage() {
         ))}
       </div>
 
-      <div className="rounded-2xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-        <p className="text-xs mb-3" style={{ color: 'var(--c-text-3)' }}>
+      <div className="rounded-2xl p-5" style={{ background: '#FFFFFF', border: '1px solid #E8E3F5' }}>
+        <p className="text-xs mb-3" style={{ color: '#6B6480' }}>
           Este texto se agrega al contexto del bot. Úsalo para información específica, promociones vigentes, casos de éxito, FAQs o cualquier detalle que no esté en el prompt base.
         </p>
         {loading ? (
-          <div className="h-48 rounded-xl animate-pulse" style={{ background: 'var(--c-input-bg)' }} />
+          <div className="h-48 rounded-xl animate-pulse" style={{ background: '#FFFFFF' }} />
         ) : (
           <textarea
             value={values[currentKey as keyof typeof values]}
@@ -100,9 +100,9 @@ export default function ConocimientoPage() {
             rows={12}
             className="w-full rounded-xl p-3 text-sm resize-y focus:outline-none"
             style={{
-              background: 'var(--c-input-bg)',
-              border:     '1px solid var(--c-border)',
-              color:      'var(--c-text)',
+              background: '#FFFFFF',
+              border:     '1px solid #E8E3F5',
+              color:      '#1A0A3B',
               fontFamily: 'inherit',
               lineHeight: 1.6,
             }}
@@ -110,7 +110,7 @@ export default function ConocimientoPage() {
         )}
 
         <div className="flex items-center justify-between mt-3">
-          <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>
+          <p className="text-xs" style={{ color: '#9B8FB5' }}>
             {values[currentKey as keyof typeof values]?.length ?? 0} caracteres
           </p>
           <button
@@ -134,7 +134,7 @@ export default function ConocimientoPage() {
 
       <div className="mt-4 rounded-xl p-4" style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.15)' }}>
         <p className="text-xs font-semibold mb-1" style={{ color: '#9B6DFF' }}>¿Cómo funciona?</p>
-        <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+        <p className="text-xs" style={{ color: '#6B6480' }}>
           El bot base ya tiene la información general de Centinelia: planes, precios, funcionalidades y manejo de objeciones.
           Lo que escribas aquí se añade encima de ese contexto, útil para promociones temporales, preguntas frecuentes específicas o casos de éxito.
         </p>

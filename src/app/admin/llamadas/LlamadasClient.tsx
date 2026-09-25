@@ -34,7 +34,7 @@ const OUTCOMES: { value: string; label: string; color?: string }[] = [
   { value: 'transferred',          label: 'Transferido',  color: '#8B5CF6' },
   { value: 'info_provided',        label: 'Información',  color: '#6B6480' },
   { value: 'escalated_whatsapp',   label: 'WhatsApp',     color: '#25D366' },
-  { value: 'other',                label: 'Otro',         color: '#4B5563' },
+  { value: 'other',                label: 'Otro',         color: '#4A3B6B' },
 ];
 
 const OUTCOME_MAP = Object.fromEntries(OUTCOMES.map(o => [o.value, o]));
@@ -102,7 +102,7 @@ function AgentCombobox({
         <Phone
           size={13}
           className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-          style={{ color: '#9CA3AF' }}
+          style={{ color: '#9B8FB5' }}
         />
         <input
           ref={inputRef}
@@ -158,7 +158,7 @@ function AgentCombobox({
 
 function OutcomeBadge({ outcome }: { outcome: string }) {
   const o = OUTCOME_MAP[outcome] ?? OUTCOME_MAP.other;
-  const c = o?.color ?? '#4B5563';
+  const c = o?.color ?? '#4A3B6B';
   return (
     <span
       className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[12px] font-medium flex-shrink-0"
@@ -178,7 +178,7 @@ function CopyButton({ text, title }: { text: string; title?: string }) {
       onClick={async () => { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
       title={title ?? 'Copiar'}
       className="p-1 rounded transition-colors hover:bg-gray-100"
-      style={{ color: copied ? '#10B981' : '#6B7280' }}
+      style={{ color: copied ? '#10B981' : '#6B6480' }}
     >
       {copied ? <Check size={12} /> : <Copy size={12} />}
     </button>
@@ -219,7 +219,7 @@ function FlatCallRow({ call, agentName, timezone }: { call: VoiceCall; agentName
           <span className="text-[12px] tabular-nums hidden sm:block" style={{ color: '#4A3B6B' }}>
             {Math.ceil(call.duration_seconds / 60)} min
           </span>
-          <span className="text-[12px] hidden md:block tabular-nums" style={{ color: '#9CA3AF' }}>
+          <span className="text-[12px] hidden md:block tabular-nums" style={{ color: '#9B8FB5' }}>
             {new Date(call.created_at).toLocaleString('es-MX', {
               timeZone: timezone,
               month: 'short', day: 'numeric',
@@ -228,25 +228,25 @@ function FlatCallRow({ call, agentName, timezone }: { call: VoiceCall; agentName
           </span>
           {hasDetails && (
             open
-              ? <ChevronUp  size={13} style={{ color: '#9CA3AF' }} />
-              : <ChevronDown size={13} style={{ color: '#9CA3AF' }} />
+              ? <ChevronUp  size={13} style={{ color: '#9B8FB5' }} />
+              : <ChevronDown size={13} style={{ color: '#9B8FB5' }} />
           )}
         </div>
       </div>
 
       {/* Expanded details */}
       {open && hasDetails && (
-        <div className="px-4 pb-4 flex flex-col gap-3" style={{ borderTop: '1px solid #F3F4F6' }}>
+        <div className="px-4 pb-4 flex flex-col gap-3" style={{ borderTop: '1px solid #F5F0FF' }}>
           {call.summary && (
             <div className="pt-3">
-              <div className="text-[11px] uppercase tracking-wider font-medium mb-1.5" style={{ color: '#9CA3AF' }}>Resumen</div>
+              <div className="text-[11px] uppercase tracking-wider font-medium mb-1.5" style={{ color: '#9B8FB5' }}>Resumen</div>
               <p className="text-[12px] leading-relaxed" style={{ color: '#4A3B6B' }}>{call.summary}</p>
             </div>
           )}
 
           {call.recording_url && (
             <div>
-              <div className="text-[11px] uppercase tracking-wider font-medium mb-1.5" style={{ color: '#9CA3AF' }}>Grabación</div>
+              <div className="text-[11px] uppercase tracking-wider font-medium mb-1.5" style={{ color: '#9B8FB5' }}>Grabación</div>
               <div className="flex items-center gap-2">
                 <audio controls src={`/api/admin/recording/${call.id}`} className="w-full h-8" style={{ accentColor: '#8B5CF6' }} />
                 <a
@@ -266,7 +266,7 @@ function FlatCallRow({ call, agentName, timezone }: { call: VoiceCall; agentName
           {call.transcript && (
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <div className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#9CA3AF' }}>Transcripción</div>
+                <div className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#9B8FB5' }}>Transcripción</div>
                 <CopyButton text={call.transcript} title="Copiar transcripción" />
               </div>
               <TranscriptView transcript={call.transcript} agentName={agentName} maxHeight={192} />
@@ -324,7 +324,7 @@ export default function LlamadasClient({
             <Search
               size={13}
               className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-              style={{ color: '#9CA3AF' }}
+              style={{ color: '#9B8FB5' }}
             />
             <input
               value={phoneInput}
@@ -360,8 +360,8 @@ export default function LlamadasClient({
                 className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[12px] font-medium transition-all whitespace-nowrap"
                 style={{
                   background: active ? `${c}14` : '#FFFFFF',
-                  color:      active ? c        : '#6B7280',
-                  border:     `1px solid ${active ? `${c}30` : '#E5E7EB'}`,
+                  color:      active ? c        : '#6B6480',
+                  border:     `1px solid ${active ? `${c}30` : '#E8E3F5'}`,
                 }}
               >
                 {o.label}
@@ -395,7 +395,7 @@ export default function LlamadasClient({
           className="p-12 rounded-xl text-center bg-white"
           style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
         >
-          <Phone size={28} className="mx-auto mb-3" style={{ color: '#D1D5DB' }} />
+          <Phone size={28} className="mx-auto mb-3" style={{ color: '#B9B0CF' }} />
           <p className="text-[13px]" style={{ color: '#6B6480' }}>
             {hasFilters ? 'Sin resultados para los filtros aplicados' : 'Sin llamadas registradas aún'}
           </p>
