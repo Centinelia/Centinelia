@@ -288,6 +288,10 @@
     {
       "path": "/api/cron/purge-expired-media",
       "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/agent-tasks-scheduler",
+      "schedule": "*/5 * * * *"
     }
   ]
 }
