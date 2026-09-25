@@ -21,6 +21,8 @@ import {
   notifyConsumptionAnomaly,
   detectPlatformOutboundDrift,
   notifyOutboundDrift,
+  detectAutotagBackfillIssues,
+  type AutotagBackfillIssue,
   type PortalAnomaly,
   type OutboundDrift,
 } from '@/lib/ops/consumption-audit';
@@ -394,6 +396,45 @@ export async function runNashMonitor(): Promise<NashRunResult> {
     }
   } catch (err) {
     console.error('[nash-monitor] drift detection outer failed', err);
+  }
+
+  // 2c) Autotag backfill monitoring (Task 6.4): detecta stalls, error spikes, y
+  // fichas pending atascadas. Throttled a 1x/hora (reutiliza el throttle de
+  // anomalías — mismo intervalo). No cuenta como "señal para el LLM loop" en v1
+  // para no incrementar el costo de Nash; solo inserta notification_events
+  // que el daily-digest del owner entregará.
+  let autotagIssues: AutotagBackfillIssue[] = [];
+  try {
+    autotagIssues = await detectAutotagBackfillIssues();
+    if (autotagIssues.length > 0) {
+      // Insertar en platform_incidents para seguimiento
+      for (const issue of autotagIssues) {
+        if (!issue.urgent) continue; // Solo alertar inmediatamente los urgentes
+        const sourceId = `autotag_backfill:${issue.kind}:${issue.portal_email ?? 'global'}`;
+        // Dedup por source_id en platform_incidents
+        const { count: existing } = await supabase
+          .from('platform_incidents')
+          .select('id', { count: 'exact', head: true })
+          .eq('source', 'nash_self_discovery')
+          .eq('source_id', sourceId)
+          .in('status', ['open', 'in_progress', 'sent_to_claude_code']);
+        if ((existing ?? 0) === 0) {
+          const insertResult = supabase.from('platform_incidents').insert({
+            title:       `Autotag backfill: ${issue.kind}`,
+            description: issue.detail,
+            priority:    issue.urgent ? 'high' : 'low',
+            source:      'nash_self_discovery',
+            source_id:   sourceId,
+            status:      'open',
+          });
+          await insertResult.then(undefined, (e: unknown) => {
+            console.warn('[nash-monitor] No se pudo insertar incident autotag', e);
+          });
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[nash-monitor] autotag backfill detection failed', err);
   }
 
   // 3) Anti-waste probe: skip LLM loop si no hay señales nuevas desde la

@@ -133,16 +133,16 @@ export async function backfillFichaTags(): Promise<BackfillResult> {
         console.error('[backfill-ficha-tags] Error en ficha', fichaId, msg);
 
         // Mover a pending para retry
-        await supabase
+        const pendingUpdate = supabase
           .from('fichas_informativas')
           .update({
             autotag_status: 'pending',
             updated_at:     new Date().toISOString(),
           })
-          .eq('id', fichaId)
-          .catch((e: unknown) => {
-            console.warn('[backfill-ficha-tags] No se pudo actualizar pending en ficha', fichaId, e);
-          });
+          .eq('id', fichaId);
+        await pendingUpdate.then(undefined, (e: unknown) => {
+          console.warn('[backfill-ficha-tags] No se pudo actualizar pending en ficha', fichaId, e);
+        });
 
         fichasError++;
       }

@@ -126,7 +126,8 @@ export async function autotagFicha(
  */
 export function parseAutotagResponse(rawText: string): AutotagResult {
   // Extraer JSON del texto (puede tener whitespace o texto extra)
-  const jsonMatch = rawText.match(/\{[^}]*"tags"\s*:\s*\[[^\]]*\][^}]*\}/s);
+  // eslint-disable-next-line prefer-regex-literals
+  const jsonMatch = rawText.match(new RegExp('\\{[^}]*"tags"\\s*:\\s*\\[[^\\]]*\\][^}]*\\}'));
   if (!jsonMatch) {
     console.warn('[autotag] JSON no encontrado en respuesta:', rawText.slice(0, 200));
     return { tags: ['politicas'], status: 'done' };

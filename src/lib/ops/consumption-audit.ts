@@ -408,3 +408,111 @@ export async function notifyOutboundDrift(
   });
   return { inserted: true };
 }
+
+// ─── Autotag backfill monitoring (Task 6.4) ──────────────────────────────────
+
+export interface AutotagBackfillIssue {
+  kind:         'stall' | 'error_spike' | 'pending_stuck' | 'coverage_low';
+  portal_email: string | null;  // null para issues globales (error_spike, pending_stuck)
+  detail:       string;
+  /** true si necesita accion inmediata */
+  urgent:       boolean;
+}
+
+/**
+ * Detecta problemas con el backfill de autotag de fichas informativas.
+ *
+ * 4 checks (hourly, llamado desde nash-runner):
+ * 1. coverage_low: % done < 90% en org con retrieval_v2_enabled=true.
+ * 2. error_spike: count('error') > 10 global.
+ * 3. pending_stuck: count(pending, updated_at < 1h) > 20 global.
+ * 4. stall: count('untagged_legacy') > 10 en org con flag activo.
+ */
+export async function detectAutotagBackfillIssues(): Promise<AutotagBackfillIssue[]> {
+  const supabase = createAdminClient();
+  const issues: AutotagBackfillIssue[] = [];
+
+  // Check 2: error_spike global
+  const { count: errorCount } = await supabase
+    .from('fichas_informativas')
+    .select('id', { count: 'exact', head: true })
+    .eq('autotag_status', 'error');
+
+  if ((errorCount ?? 0) > 10) {
+    issues.push({
+      kind:         'error_spike',
+      portal_email: null,
+      detail:       `${errorCount} fichas con autotag_status='error'. Posible prompt malo, enum insuficiente, o problema con Anthropic.`,
+      urgent:       true,
+    });
+  }
+
+  // Check 3: pending_stuck global
+  const stuckThreshold = new Date(Date.now() - 60 * 60_000).toISOString();
+  const { count: pendingStuckCount } = await supabase
+    .from('fichas_informativas')
+    .select('id', { count: 'exact', head: true })
+    .eq('autotag_status', 'pending')
+    .lt('updated_at', stuckThreshold);
+
+  if ((pendingStuckCount ?? 0) > 20) {
+    issues.push({
+      kind:         'pending_stuck',
+      portal_email: null,
+      detail:       `${pendingStuckCount} fichas pendientes con updated_at > 1h. El retry cron (autotag-retry) puede no estar corriendo o estar saturado.`,
+      urgent:       true,
+    });
+  }
+
+  // Checks 1 y 4: por org con retrieval_v2_enabled=true
+  const { data: orgs } = await supabase
+    .from('organizations')
+    .select('portal_email, features')
+    .filter('features->>retrieval_v2_enabled', 'eq', 'true');
+
+  const eligibleOrgs = (orgs ?? []).filter(o => {
+    const f = (o.features as Record<string, unknown> | null) ?? {};
+    return f.retrieval_v2_enabled === true;
+  });
+
+  for (const org of eligibleOrgs) {
+    const portalEmail = org.portal_email as string;
+
+    const { data: statusCounts } = await supabase
+      .from('fichas_informativas')
+      .select('autotag_status')
+      .eq('portal_email', portalEmail);
+
+    const counts = (statusCounts ?? []).reduce<Record<string, number>>((acc, row) => {
+      const s = row.autotag_status as string;
+      acc[s] = (acc[s] ?? 0) + 1;
+      return acc;
+    }, {});
+
+    const total          = Object.values(counts).reduce((a, b) => a + b, 0);
+    const done           = counts['done'] ?? 0;
+    const untaggedLegacy = counts['untagged_legacy'] ?? 0;
+
+    // Check 1: coverage < 90%
+    if (total > 0 && done / total < 0.9 && untaggedLegacy > 0) {
+      issues.push({
+        kind:         'coverage_low',
+        portal_email: portalEmail,
+        detail:       `Org ${portalEmail}: ${Math.round(done/total*100)}% fichas con autotag (${done}/${total}). ${untaggedLegacy} fichas legacy sin procesar.`,
+        urgent:       false,
+      });
+    }
+
+    // Check 4: stall (untagged_legacy no baja)
+    if (untaggedLegacy > 10) {
+      issues.push({
+        kind:         'stall',
+        portal_email: portalEmail,
+        detail:       `Org ${portalEmail}: ${untaggedLegacy} fichas con autotag_status='untagged_legacy' pendientes de backfill.`,
+        urgent:       false,
+      });
+    }
+  }
+
+  return issues;
+}

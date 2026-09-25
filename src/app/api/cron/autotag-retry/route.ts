@@ -112,7 +112,7 @@ export async function GET(req: NextRequest) {
           metadata: { ...metadata, autotag_retries: newRetries, last_autotag_error: msg },
         })
         .eq('id', fichaId)
-        .catch((updateErr: unknown) => {
+        .then(undefined, (updateErr: unknown) => {
           console.warn('[autotag-retry] No se pudo actualizar metadata tras error', fichaId, updateErr);
         });
 
