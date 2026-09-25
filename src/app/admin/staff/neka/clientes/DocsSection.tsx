@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { FileText, Upload, Download, Trash2, Loader2, AlertCircle, Sparkles } from 'lucide-react';
+import { FileText, Upload, Download, Trash2, Loader2, Sparkles } from 'lucide-react';
 import type { ClienteDoc, DocTipo } from '@/lib/billing/centinelia-clientes';
 import type { CsfExtractedFields } from '@/lib/billing/csf-parser';
+import OficinaModal from '@/app/portal/[token]/oficina/OficinaModal';
 
 const TIPO_LABEL: Record<DocTipo, string> = {
   csf:              'CSF',
@@ -172,56 +173,54 @@ export function DocsSection({ clienteId, initialDocs, onChange, onClienteUpdated
       </div>
 
       {/* Uploader */}
-      <div className="rounded-xl p-3 space-y-2" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-        <div className="grid grid-cols-3 gap-2">
-          <select
-            value={tipo}
-            onChange={e => setTipo(e.target.value as DocTipo)}
-            className="px-2 py-1.5 rounded text-xs outline-none"
-            style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
-          >
-            {TIPO_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
-          <input
-            type="text"
-            value={label}
-            onChange={e => setLabel(e.target.value)}
-            placeholder='Ej. "CSF 2026"'
-            maxLength={120}
-            className="col-span-2 px-2 py-1.5 rounded text-xs outline-none"
-            style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
-          />
+      <div className="rounded-2xl flex flex-col gap-3" style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', padding: '16px 18px' }}>
+        <div className="grid grid-cols-3 gap-3">
+          <OficinaModal.Field label="Tipo">
+            <OficinaModal.Select value={tipo} onChange={e => setTipo(e.target.value as DocTipo)}>
+              {TIPO_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </OficinaModal.Select>
+          </OficinaModal.Field>
+          <div className="col-span-2">
+            <OficinaModal.Field label="Nombre del documento">
+              <OficinaModal.Input
+                value={label}
+                onChange={e => setLabel(e.target.value)}
+                placeholder='Ej. "CSF 2026"'
+                maxLength={120}
+              />
+            </OficinaModal.Field>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="application/pdf,image/jpeg,image/png,image/webp"
-            className="flex-1 text-xs"
-            style={{ color: 'var(--c-text-2)' }}
-          />
+        <div className="flex items-end gap-2">
+          <div className="flex-1">
+            <OficinaModal.Field label="Archivo" hint="PDF, JPG, PNG o WEBP · máx. 10 MB">
+              <OficinaModal.FileInput
+                inputRef={fileInputRef}
+                accept="application/pdf,image/jpeg,image/png,image/webp"
+                placeholder="Selecciona un archivo…"
+              />
+            </OficinaModal.Field>
+          </div>
           <button
             onClick={upload}
             disabled={uploading}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-            style={{ background: '#6C3BFF' }}
+            className="inline-flex items-center gap-2 rounded-xl text-[13px] font-semibold transition-all shrink-0"
+            style={{
+              padding:    '9px 18px',
+              height:     40,
+              background: uploading ? '#B9A8E8' : '#6C3BFF',
+              color:      '#ffffff',
+              boxShadow:  uploading ? 'none' : '0 2px 8px rgba(108,59,255,0.32)',
+              cursor:     uploading ? 'not-allowed' : 'pointer',
+            }}
           >
-            {uploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
-            Subir
+            {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+            Subir documento
           </button>
         </div>
-        <p className="text-[10px]" style={{ color: 'var(--c-text-4)' }}>
-          PDF, JPG, PNG o WEBP. Máximo 10 MB.
-        </p>
       </div>
 
-      {error && (
-        <div className="rounded-lg p-2 text-xs flex items-start gap-2 mt-2"
-             style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', color: '#b91c1c' }}>
-          <AlertCircle size={12} className="mt-0.5 flex-shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
+      {error && <div className="mt-3"><OficinaModal.Alert tone="danger">{error}</OficinaModal.Alert></div>}
 
       {extracted && (
         <ExtractedFieldsModal
@@ -280,62 +279,43 @@ function ExtractedFieldsModal({ fields, clienteId, onClose, onApplied }: Extract
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={onClose}>
-      <div
-        className="rounded-2xl p-5 max-w-md w-full max-h-[90vh] overflow-y-auto"
-        style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)' }}
-        onClick={e => e.stopPropagation()}
-      >
-        <h3 className="text-base font-bold mb-1 flex items-center gap-2" style={{ color: 'var(--c-text)' }}>
-          <Sparkles size={16} style={{ color: '#a16207' }} />
-          Datos detectados en la CSF
-        </h3>
-        <p className="text-xs mb-4" style={{ color: 'var(--c-text-3)' }}>
-          Revisa antes de aplicar. Los campos que dejes desmarcados no se tocan.
-        </p>
-
-        <div className="space-y-3">
-          <ExtractedRow apply={applyRfc} setApply={setApplyRfc} label="RFC" detected={fields.rfc}>
-            <input value={rfc} onChange={e => setRfc(e.target.value)} className="w-full px-2 py-1 rounded text-sm outline-none uppercase"
-                   style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }} />
-          </ExtractedRow>
-          <ExtractedRow apply={applyRazon} setApply={setApplyRazon} label="Razón social" detected={fields.razon_social}>
-            <input value={razonSocial} onChange={e => setRazon(e.target.value)} className="w-full px-2 py-1 rounded text-sm outline-none"
-                   style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }} />
-          </ExtractedRow>
-          <ExtractedRow apply={applyRegimen} setApply={setApplyRegimen}
-            label={`Régimen fiscal${fields.regimen_label ? ` (${fields.regimen_label})` : ''}`}
-            detected={fields.regimen_fiscal}
-          >
-            <input value={regimen} onChange={e => setRegimen(e.target.value)} className="w-full px-2 py-1 rounded text-sm outline-none"
-                   placeholder="601, 612, 626..."
-                   style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }} />
-          </ExtractedRow>
-          <ExtractedRow apply={applyCp} setApply={setApplyCp} label="Código postal" detected={fields.cp}>
-            <input value={cp} onChange={e => setCp(e.target.value)} className="w-full px-2 py-1 rounded text-sm outline-none"
-                   style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }} />
-          </ExtractedRow>
-        </div>
-
-        {err && (
-          <div className="rounded-lg p-2 text-xs flex items-start gap-2 mt-3"
-               style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', color: '#b91c1c' }}>
-            <AlertCircle size={12} className="mt-0.5 flex-shrink-0" />
-            <span>{err}</span>
-          </div>
-        )}
-
-        <div className="flex justify-end gap-2 mt-5">
-          <button onClick={onClose} className="px-3 py-1.5 rounded-lg text-xs" style={{ color: 'var(--c-text-2)' }}>Cancelar</button>
-          <button onClick={apply} disabled={saving}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-            style={{ background: '#a16207' }}>
-            {saving ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+    <OficinaModal
+      open
+      onClose={onClose}
+      size="md"
+      eyebrow="Auto-extracción"
+      title="Datos detectados en la CSF"
+      description="Revisa cada campo antes de aplicar. Los que dejes desmarcados no se tocan."
+      footer={
+        <>
+          <OficinaModal.SecondaryAction onClick={onClose} disabled={saving}>Cancelar</OficinaModal.SecondaryAction>
+          <OficinaModal.PrimaryAction onClick={apply} loading={saving}>
+            <Sparkles size={13} />
             Aplicar al cliente
-          </button>
-        </div>
+          </OficinaModal.PrimaryAction>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-3.5">
+        <ExtractedRow apply={applyRfc} setApply={setApplyRfc} label="RFC" detected={fields.rfc}>
+          <OficinaModal.Input value={rfc} onChange={e => setRfc(e.target.value)} style={{ textTransform: 'uppercase' }} />
+        </ExtractedRow>
+        <ExtractedRow apply={applyRazon} setApply={setApplyRazon} label="Razón social" detected={fields.razon_social}>
+          <OficinaModal.Input value={razonSocial} onChange={e => setRazon(e.target.value)} />
+        </ExtractedRow>
+        <ExtractedRow apply={applyRegimen} setApply={setApplyRegimen}
+          label={`Régimen fiscal${fields.regimen_label ? ` (${fields.regimen_label})` : ''}`}
+          detected={fields.regimen_fiscal}
+        >
+          <OficinaModal.Input value={regimen} onChange={e => setRegimen(e.target.value)} placeholder="601, 612, 626…" />
+        </ExtractedRow>
+        <ExtractedRow apply={applyCp} setApply={setApplyCp} label="Código postal" detected={fields.cp}>
+          <OficinaModal.Input value={cp} onChange={e => setCp(e.target.value)} />
+        </ExtractedRow>
+
+        {err && <OficinaModal.Alert tone="danger">{err}</OficinaModal.Alert>}
       </div>
-    </div>
+    </OficinaModal>
   );
 }
 
@@ -349,14 +329,15 @@ function ExtractedRow({
   children: React.ReactNode;
 }) {
   return (
-    <div>
-      <label className="flex items-center gap-2 mb-1 cursor-pointer">
-        <input type="checkbox" checked={apply} onChange={e => setApply(e.target.checked)} disabled={!detected} />
-        <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: detected ? 'var(--c-text-2)' : 'var(--c-text-4)' }}>
-          {label} {!detected && '(no detectado)'}
+    <div className="rounded-xl" style={{ background: apply ? '#F5F0FF' : '#FAFAFB', border: `1px solid ${apply ? '#E8E3F5' : '#F0EBFA'}`, padding: '12px 14px', transition: 'background 0.15s, border-color 0.15s' }}>
+      <label className="flex items-center gap-2 mb-2 cursor-pointer">
+        <input type="checkbox" checked={apply} onChange={e => setApply(e.target.checked)} disabled={!detected} style={{ accentColor: '#6C3BFF' }} />
+        <span className="text-[11px] font-bold uppercase tracking-[0.1em]" style={{ color: detected ? '#6B6480' : '#B9B0CF' }}>
+          {label}
+          {!detected && <span className="ml-1.5 font-normal normal-case tracking-normal" style={{ color: '#9B8FB5' }}>(no detectado)</span>}
         </span>
       </label>
-      <div style={{ opacity: apply ? 1 : 0.5 }}>{children}</div>
+      <div style={{ opacity: apply ? 1 : 0.5, pointerEvents: apply ? 'auto' : 'none' }}>{children}</div>
     </div>
   );
 }

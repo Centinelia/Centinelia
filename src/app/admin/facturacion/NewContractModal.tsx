@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { X, AlertCircle, Loader2, Check } from 'lucide-react';
+import { Check, Loader2 } from 'lucide-react';
 import type { CreateAnnualContractInput } from '@/types/annual-contract';
+import OficinaModal from '@/app/portal/[token]/oficina/OficinaModal';
 
 interface OrgOption {
   portal_email:       string;
@@ -80,8 +81,8 @@ export default function NewContractModal({ onClose, onCreated }: Props) {
         throw new Error(json.message ?? json.error ?? 'Error creando el contrato');
       }
       onCreated();
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setSubmitting(null);
     }
@@ -90,172 +91,89 @@ export default function NewContractModal({ onClose, onCreated }: Props) {
   const hasStripeConflict = org?.billing_model === 'stripe';
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 bg-black/50"
-      onClick={() => !submitting && onClose()}
-    >
-      <div
-        className="w-full max-w-2xl rounded-xl my-8 bg-white overflow-hidden"
-        style={{ border: '1px solid #E5E7EB', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }}
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid #F3F4F6' }}>
-          <div>
-            <h2 className="text-[15px] font-semibold" style={{ color: '#111827' }}>Nuevo contrato anual</h2>
-            <p className="text-[12px] mt-0.5" style={{ color: '#6B7280' }}>
-              Guarda como borrador para editar después, o actívalo para arrancar el pool prepagado.
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            disabled={!!submitting}
-            className="p-1.5 rounded-lg transition-colors hover:bg-gray-100"
-            style={{ color: '#6B7280' }}
-          >
-            <X size={18} />
-          </button>
-        </div>
-
-        <div className="p-6 space-y-4">
-          {error && (
-            <div
-              className="flex items-start gap-2 rounded-lg px-3 py-2 text-[13px]"
-              style={{ background: '#FEF2F2', color: '#B91C1C', border: '1px solid #FECACA' }}
-            >
-              <AlertCircle size={14} className="mt-0.5 flex-shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          <div>
-            <Label>Cliente</Label>
-            <OrgAutocomplete value={org} onChange={setOrg} />
-            {hasStripeConflict && (
-              <p className="text-[12px] mt-1.5" style={{ color: '#B45309' }}>
-                Este cliente hoy paga por Stripe. Al activar el contrato dejará de cobrarse por tarjeta.
-              </p>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <Label>Folio del contrato</Label>
-              <Input value={contractFolio} onChange={setContractFolio} placeholder="CTR-2026-0001" />
-            </div>
-            <div>
-              <Label>Folio CFDI (opcional)</Label>
-              <Input value={invoiceFolio} onChange={setInvoiceFolio} placeholder="A-4523" />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <Label>Vigencia: inicio</Label>
-              <Input type="date" value={startDate} onChange={setStartDate} />
-            </div>
-            <div>
-              <Label>Vigencia: fin</Label>
-              <Input type="date" value={endDate} onChange={setEndDate} />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <Label>Monto MXN (IVA incluido)</Label>
-              <Input type="number" value={amountMxn} onChange={setAmountMxn} placeholder="180000" />
-            </div>
-            <div>
-              <Label>Empleados incluidos (informativo)</Label>
-              <Input type="number" value={includedEmployees} onChange={setIncludedEmployees} placeholder="3" />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <Label>Pool mensual: minutos</Label>
-              <Input type="number" value={monthlyMinutes} onChange={setMonthlyMinutes} placeholder="12000" />
-            </div>
-            <div>
-              <Label>Pool mensual: tareas</Label>
-              <Input type="number" value={monthlyOps} onChange={setMonthlyOps} placeholder="500" />
-            </div>
-          </div>
-
-          <div>
-            <Label>Fecha SPEI recibido (opcional)</Label>
-            <Input type="date" value={paymentReceivedAt} onChange={setPaymentReceivedAt} />
-          </div>
-
-          <div>
-            <Label>Notas internas (opcional)</Label>
-            <textarea
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              rows={3}
-              placeholder="Detalles de la negociación, contacto interno, etc."
-              className="w-full px-3 py-2 rounded-lg text-[13px] outline-none"
-              style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#111827' }}
-            />
-          </div>
-        </div>
-
-        <div className="flex items-center justify-end gap-2 px-6 py-4" style={{ borderTop: '1px solid #F3F4F6', background: '#F9FAFB' }}>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={!!submitting}
-            className="px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-50 disabled:opacity-40"
-            style={{ background: '#FFFFFF', color: '#374151', border: '1px solid #E5E7EB' }}
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={() => submit(false)}
-            disabled={!!submitting}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-50 disabled:opacity-40"
-            style={{ background: '#FFFFFF', color: '#374151', border: '1px solid #E5E7EB' }}
-          >
-            {submitting === 'draft' ? <Loader2 size={13} className="animate-spin" /> : null}
+    <OficinaModal
+      open
+      onClose={() => !submitting && onClose()}
+      size="xl"
+      dismissOnOverlay={!submitting}
+      eyebrow="Contrato anual"
+      title="Nuevo contrato anual"
+      description="Guarda como borrador para editar después, o actívalo para arrancar el pool prepagado."
+      footer={
+        <>
+          <OficinaModal.SecondaryAction onClick={onClose} disabled={!!submitting}>Cancelar</OficinaModal.SecondaryAction>
+          <OficinaModal.SecondaryAction onClick={() => submit(false)} disabled={!!submitting} loading={submitting === 'draft'}>
             Guardar como borrador
-          </button>
-          <button
-            type="button"
-            onClick={() => submit(true)}
-            disabled={!!submitting}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-opacity hover:opacity-90 disabled:opacity-40"
-            style={{ background: '#6C3BFF', color: '#FFFFFF' }}
-          >
-            {submitting === 'activate' ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
-            Activar
-          </button>
+          </OficinaModal.SecondaryAction>
+          <OficinaModal.PrimaryAction onClick={() => submit(true)} disabled={!!submitting} loading={submitting === 'activate'}>
+            <Check size={13} />
+            Activar contrato
+          </OficinaModal.PrimaryAction>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        {error && <OficinaModal.Alert tone="danger">{error}</OficinaModal.Alert>}
+
+        <OficinaModal.Field label="Cliente">
+          <OrgAutocomplete value={org} onChange={setOrg} />
+        </OficinaModal.Field>
+        {hasStripeConflict && (
+          <OficinaModal.Alert tone="warning">
+            Este cliente hoy paga por Stripe. Al activar el contrato dejará de cobrarse por tarjeta.
+          </OficinaModal.Alert>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <OficinaModal.Field label="Folio del contrato">
+            <OficinaModal.Input value={contractFolio} onChange={e => setContractFolio(e.target.value)} placeholder="CTR-2026-0001" />
+          </OficinaModal.Field>
+          <OficinaModal.Field label="Folio CFDI" hint="opcional">
+            <OficinaModal.Input value={invoiceFolio} onChange={e => setInvoiceFolio(e.target.value)} placeholder="A-4523" />
+          </OficinaModal.Field>
         </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <OficinaModal.Field label="Vigencia: inicio">
+            <OficinaModal.Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+          </OficinaModal.Field>
+          <OficinaModal.Field label="Vigencia: fin">
+            <OficinaModal.Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+          </OficinaModal.Field>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <OficinaModal.Field label="Monto MXN" hint="IVA incluido">
+            <OficinaModal.Input type="number" value={amountMxn} onChange={e => setAmountMxn(e.target.value)} placeholder="180000" />
+          </OficinaModal.Field>
+          <OficinaModal.Field label="Empleados incluidos" hint="informativo">
+            <OficinaModal.Input type="number" value={includedEmployees} onChange={e => setIncludedEmployees(e.target.value)} placeholder="3" />
+          </OficinaModal.Field>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <OficinaModal.Field label="Pool mensual: minutos">
+            <OficinaModal.Input type="number" value={monthlyMinutes} onChange={e => setMonthlyMinutes(e.target.value)} placeholder="12000" />
+          </OficinaModal.Field>
+          <OficinaModal.Field label="Pool mensual: tareas">
+            <OficinaModal.Input type="number" value={monthlyOps} onChange={e => setMonthlyOps(e.target.value)} placeholder="500" />
+          </OficinaModal.Field>
+        </div>
+
+        <OficinaModal.Field label="Fecha SPEI recibido" hint="opcional">
+          <OficinaModal.Input type="date" value={paymentReceivedAt} onChange={e => setPaymentReceivedAt(e.target.value)} />
+        </OficinaModal.Field>
+
+        <OficinaModal.Field label="Notas internas" hint="opcional">
+          <OficinaModal.Textarea
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+            rows={3}
+            placeholder="Detalles de la negociación, contacto interno, etc."
+          />
+        </OficinaModal.Field>
       </div>
-    </div>
-  );
-}
-
-function Label({ children }: { children: React.ReactNode }) {
-  return <label className="block text-[12px] font-medium mb-1.5" style={{ color: '#374151' }}>{children}</label>;
-}
-
-function Input({
-  value, onChange, type = 'text', placeholder,
-}: {
-  value:       string;
-  onChange:    (v: string) => void;
-  type?:       string;
-  placeholder?: string;
-}) {
-  return (
-    <input
-      type={type}
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      placeholder={placeholder}
-      className="w-full px-3 py-2 rounded-lg text-[13px] outline-none"
-      style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#111827' }}
-    />
+    </OficinaModal>
   );
 }
 
@@ -301,44 +219,54 @@ function OrgAutocomplete({ value, onChange }: { value: OrgOption | null; onChang
 
   return (
     <div ref={boxRef} className="relative">
-      <input
+      <OficinaModal.Input
         type="text"
         value={open ? query : label}
         onFocus={() => { setOpen(true); setQuery(''); }}
         onChange={e => { setQuery(e.target.value); setOpen(true); }}
-        placeholder="Buscar por correo o nombre del cliente..."
-        className="w-full px-3 py-2 rounded-lg text-[13px] outline-none"
-        style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#111827' }}
+        placeholder="Buscar por correo o nombre del cliente…"
       />
       {open && (
         <div
-          className="absolute z-50 top-full mt-1 left-0 right-0 rounded-lg overflow-hidden max-h-72 overflow-y-auto bg-white"
-          style={{ border: '1px solid #E5E7EB', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+          className="absolute z-50 top-full mt-2 left-0 right-0 rounded-xl overflow-hidden max-h-72 overflow-y-auto"
+          style={{
+            background: '#ffffff',
+            border:     '1px solid #E8E3F5',
+            boxShadow:  '0 12px 32px rgba(15,5,34,0.12), 0 4px 12px rgba(15,5,34,0.08)',
+          }}
         >
           {loading && (
-            <div className="px-3 py-2 text-[12px]" style={{ color: '#6B7280' }}>Buscando...</div>
+            <div className="px-4 py-3 text-[13px] flex items-center gap-2" style={{ color: '#6B6480' }}>
+              <Loader2 size={13} className="animate-spin" style={{ color: '#6C3BFF' }} />
+              Buscando…
+            </div>
           )}
           {!loading && options.length === 0 && (
-            <div className="px-3 py-2 text-[12px]" style={{ color: '#6B7280' }}>Sin resultados.</div>
+            <div className="px-4 py-3 text-[13px]" style={{ color: '#9B8FB5' }}>Sin resultados.</div>
           )}
-          {!loading && options.map((o, i) => (
-            <button
-              key={o.portal_email}
-              type="button"
-              onClick={() => { onChange(o); setOpen(false); }}
-              className="w-full flex flex-col gap-0.5 px-3 py-2 text-left text-[13px] transition-colors hover:bg-gray-50"
-              style={{
-                background: value?.portal_email === o.portal_email ? '#F5F3FF' : 'transparent',
-                borderTop: i > 0 ? '1px solid #F3F4F6' : undefined,
-              }}
-            >
-              <span className="font-medium" style={{ color: '#111827' }}>{o.name ?? o.portal_email}</span>
-              <span className="text-[12px]" style={{ color: '#6B7280' }}>
-                {o.portal_email}
-                {o.billing_model && o.billing_model !== 'stripe' ? ` · ${o.billing_model}` : ''}
-              </span>
-            </button>
-          ))}
+          {!loading && options.map((o, i) => {
+            const selected = value?.portal_email === o.portal_email;
+            return (
+              <button
+                key={o.portal_email}
+                type="button"
+                onClick={() => { onChange(o); setOpen(false); }}
+                className="w-full flex flex-col gap-0.5 px-4 py-2.5 text-left text-[13px] transition-colors"
+                style={{
+                  background: selected ? '#F5F0FF' : 'transparent',
+                  borderTop:  i > 0 ? '1px solid #F0EBFA' : undefined,
+                }}
+                onMouseEnter={e => { if (!selected) (e.currentTarget as HTMLElement).style.background = '#FAFAFB'; }}
+                onMouseLeave={e => { if (!selected) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+              >
+                <span className="font-semibold" style={{ color: '#1A0A3B' }}>{o.name ?? o.portal_email}</span>
+                <span className="text-[12px]" style={{ color: '#6B6480' }}>
+                  {o.portal_email}
+                  {o.billing_model && o.billing_model !== 'stripe' ? ` · ${o.billing_model}` : ''}
+                </span>
+              </button>
+            );
+          })}
         </div>
       )}
     </div>

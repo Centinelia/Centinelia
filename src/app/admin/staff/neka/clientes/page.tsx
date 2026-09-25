@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Plus, User, Calendar, Pause, Play, Edit3, Loader2, AlertCircle, FileText } from 'lucide-react';
 import type { ClienteDoc } from '@/lib/billing/centinelia-clientes';
 import { DocsSection } from './DocsSection';
 import { FacturasSection } from './FacturasSection';
+import OficinaModal from '@/app/portal/[token]/oficina/OficinaModal';
 
 interface Cliente {
   id: string;
@@ -38,7 +39,7 @@ export default function ClientesNekaPage() {
   const [showForm, setShowForm]   = useState(false);
   const [editing, setEditing]     = useState<Cliente | null>(null);
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch('/api/admin/staff/neka/clientes');
@@ -47,10 +48,10 @@ export default function ClientesNekaPage() {
       else setClientes(data.clientes ?? []);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
-  };
+  }, []);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { refresh(); }, []);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- `refresh` dispara setLoading; patrón "fetch on mount + manual refresh" no calza con la regla React 19 sin migrar a SWR/TanStack Query.
+  useEffect(() => { refresh(); }, [refresh]);
 
   const togglePause = async (c: Cliente) => {
     await fetch(`/api/admin/staff/neka/clientes/${c.id}`, {
@@ -86,8 +87,13 @@ export default function ClientesNekaPage() {
         </div>
         <button
           onClick={() => { setEditing(null); setShowForm(true); }}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90"
-          style={{ background: '#a16207', color: '#fff' }}
+          className="inline-flex items-center gap-2 rounded-xl text-[13px] font-semibold transition-all"
+          style={{
+            padding:    '9px 18px',
+            background: '#6C3BFF',
+            color:      '#ffffff',
+            boxShadow:  '0 2px 8px rgba(108,59,255,0.32)',
+          }}
         >
           <Plus size={14} />
           Nuevo cliente
@@ -296,137 +302,143 @@ function ClienteForm({ initial, onClose, onSaved }: { initial: Cliente | null; o
     setF({ ...f, conceptos: f.conceptos.map((c, idx) => idx === i ? { ...c, ...patch } : c) });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={onClose}>
-      <div
-        className="rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-        style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)' }}
-        onClick={e => e.stopPropagation()}
-      >
-        <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--c-text)' }}>
-          {initial ? 'Editar cliente' : 'Nuevo cliente'}
-        </h2>
+    <OficinaModal
+      open
+      onClose={onClose}
+      size="xl"
+      eyebrow={initial ? 'Editar cliente' : 'Nuevo cliente'}
+      title={initial?.razon_social || (initial ? 'Editar cliente' : 'Nuevo cliente de facturación')}
+      description={initial
+        ? 'Actualiza datos fiscales, conceptos, documentos o facturas emitidas.'
+        : 'Neka usará estos datos para timbrar automáticamente cada ciclo.'}
+      footer={
+        <>
+          <OficinaModal.SecondaryAction onClick={onClose} disabled={saving}>Cancelar</OficinaModal.SecondaryAction>
+          <OficinaModal.PrimaryAction onClick={submit} loading={saving}>
+            {initial ? 'Guardar cambios' : 'Crear cliente'}
+          </OficinaModal.PrimaryAction>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-5">
+        {/* Sección: Datos fiscales */}
+        <section className="grid grid-cols-2 gap-3">
+          <OficinaModal.Field label="RFC">
+            <OficinaModal.Input value={f.rfc} onChange={e => setF({ ...f, rfc: e.target.value })} placeholder="TEN010518AL3" style={{ textTransform: 'uppercase' }} />
+          </OficinaModal.Field>
+          <OficinaModal.Field label="CP">
+            <OficinaModal.Input value={f.cp} onChange={e => setF({ ...f, cp: e.target.value })} placeholder="66470" />
+          </OficinaModal.Field>
+          <OficinaModal.Field label="Razón social" className="col-span-2">
+            <OficinaModal.Input value={f.razon_social} onChange={e => setF({ ...f, razon_social: e.target.value })} placeholder="TORTILLAS ESTRELLA DEL NORTE" />
+          </OficinaModal.Field>
+          <OficinaModal.Field label="Régimen fiscal">
+            <OficinaModal.Input value={f.regimen_fiscal} onChange={e => setF({ ...f, regimen_fiscal: e.target.value })} placeholder="601" />
+          </OficinaModal.Field>
+          <OficinaModal.Field label="Uso CFDI">
+            <OficinaModal.Input value={f.uso_cfdi_default} onChange={e => setF({ ...f, uso_cfdi_default: e.target.value })} placeholder="G03" />
+          </OficinaModal.Field>
+          <OficinaModal.Field label="Correo de facturación" className="col-span-2">
+            <OficinaModal.Input value={f.correo_facturacion} onChange={e => setF({ ...f, correo_facturacion: e.target.value })} placeholder="facturacion@cliente.com" type="email" />
+          </OficinaModal.Field>
+          <OficinaModal.Field label="Contacto" hint="opcional" className="col-span-2">
+            <OficinaModal.Input value={f.nombre_contacto} onChange={e => setF({ ...f, nombre_contacto: e.target.value })} placeholder="Nombre del contable" />
+          </OficinaModal.Field>
+        </section>
 
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="RFC">
-            <input value={f.rfc} onChange={e => setF({ ...f, rfc: e.target.value })} placeholder="TEN010518AL3" className={inputClass} style={{ textTransform: 'uppercase' }} />
-          </Field>
-          <Field label="CP">
-            <input value={f.cp} onChange={e => setF({ ...f, cp: e.target.value })} placeholder="66470" className={inputClass} />
-          </Field>
-          <Field label="Razón social" className="col-span-2">
-            <input value={f.razon_social} onChange={e => setF({ ...f, razon_social: e.target.value })} placeholder="TORTILLAS ESTRELLA DEL NORTE" className={inputClass} />
-          </Field>
-          <Field label="Régimen fiscal">
-            <input value={f.regimen_fiscal} onChange={e => setF({ ...f, regimen_fiscal: e.target.value })} placeholder="601" className={inputClass} />
-          </Field>
-          <Field label="Uso CFDI">
-            <input value={f.uso_cfdi_default} onChange={e => setF({ ...f, uso_cfdi_default: e.target.value })} placeholder="G03" className={inputClass} />
-          </Field>
-          <Field label="Correo facturación" className="col-span-2">
-            <input value={f.correo_facturacion} onChange={e => setF({ ...f, correo_facturacion: e.target.value })} placeholder="facturacion@cliente.com" className={inputClass} />
-          </Field>
-          <Field label="Contacto (opcional)" className="col-span-2">
-            <input value={f.nombre_contacto} onChange={e => setF({ ...f, nombre_contacto: e.target.value })} placeholder="Nombre del contable" className={inputClass} />
-          </Field>
+        {/* Divider */}
+        <div style={{ height: 1, background: '#F0EBFA' }} />
 
-          <Field label="Periodicidad">
-            <select value={f.periodicidad} onChange={e => setF({ ...f, periodicidad: e.target.value as Cliente['periodicidad'] })} className={inputClass}>
+        {/* Sección: Ciclo y pagos */}
+        <section className="grid grid-cols-2 gap-3">
+          <OficinaModal.Field label="Periodicidad">
+            <OficinaModal.Select value={f.periodicidad} onChange={e => setF({ ...f, periodicidad: e.target.value as Cliente['periodicidad'] })}>
               <option value="monthly">Mensual</option>
               <option value="biweekly">Quincenal</option>
               <option value="weekly">Semanal</option>
               <option value="annual">Anual</option>
-            </select>
-          </Field>
-          <Field label="Próxima facturación">
-            <input type="date" value={f.fecha_proxima_facturacion} onChange={e => setF({ ...f, fecha_proxima_facturacion: e.target.value })} className={inputClass} />
-          </Field>
-          <Field label="Método de pago">
-            <select value={f.metodo_pago_default} onChange={e => setF({ ...f, metodo_pago_default: e.target.value as 'PUE' | 'PPD' })} className={inputClass}>
+            </OficinaModal.Select>
+          </OficinaModal.Field>
+          <OficinaModal.Field label="Próxima facturación">
+            <OficinaModal.Input type="date" value={f.fecha_proxima_facturacion} onChange={e => setF({ ...f, fecha_proxima_facturacion: e.target.value })} />
+          </OficinaModal.Field>
+          <OficinaModal.Field label="Método de pago">
+            <OficinaModal.Select value={f.metodo_pago_default} onChange={e => setF({ ...f, metodo_pago_default: e.target.value as 'PUE' | 'PPD' })}>
               <option value="PPD">PPD (parcialidades / diferido)</option>
               <option value="PUE">PUE (una sola exhibición)</option>
-            </select>
-          </Field>
-          <Field label="Forma de pago">
-            <input value={f.forma_pago_default} onChange={e => setF({ ...f, forma_pago_default: e.target.value })} placeholder="99" className={inputClass} />
-          </Field>
+            </OficinaModal.Select>
+          </OficinaModal.Field>
+          <OficinaModal.Field label="Forma de pago" hint="clave SAT">
+            <OficinaModal.Input value={f.forma_pago_default} onChange={e => setF({ ...f, forma_pago_default: e.target.value })} placeholder="99" />
+          </OficinaModal.Field>
+          <OficinaModal.Field label="Notas internas" hint="opcional" className="col-span-2">
+            <OficinaModal.Textarea value={f.notas} onChange={e => setF({ ...f, notas: e.target.value })} rows={2} />
+          </OficinaModal.Field>
+        </section>
 
-          <Field label="Notas" className="col-span-2">
-            <textarea value={f.notas} onChange={e => setF({ ...f, notas: e.target.value })} rows={2} className={inputClass} />
-          </Field>
-        </div>
+        {/* Divider */}
+        <div style={{ height: 1, background: '#F0EBFA' }} />
 
-        <div className="mt-5">
-          <label className="block text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--c-text-4)' }}>
-            Conceptos a facturar cada ciclo
-          </label>
-          <div className="space-y-2">
+        {/* Sección: Conceptos */}
+        <section className="flex flex-col gap-2.5">
+          <div className="flex items-baseline justify-between">
+            <label className="text-[11px] font-bold uppercase tracking-[0.1em]" style={{ color: '#6B6480' }}>
+              Conceptos a facturar cada ciclo
+            </label>
+            <button
+              type="button"
+              onClick={addConcepto}
+              className="text-[12px] font-semibold transition-colors"
+              style={{ color: '#6C3BFF' }}
+            >
+              + Agregar concepto
+            </button>
+          </div>
+          <div className="flex flex-col gap-2">
             {f.conceptos.map((c, i) => (
-              <div key={i} className="grid grid-cols-12 gap-2 items-center">
-                <input value={c.descripcion} onChange={e => updateConcepto(i, { descripcion: e.target.value })} placeholder="Descripción" className={inputClass + ' col-span-6'} />
-                <input value={c.valor_unitario} onChange={e => updateConcepto(i, { valor_unitario: e.target.value })} placeholder="Precio" type="number" step="0.01" className={inputClass + ' col-span-2'} />
-                <input value={c.cantidad} onChange={e => updateConcepto(i, { cantidad: e.target.value })} placeholder="Cant" type="number" className={inputClass + ' col-span-1'} />
-                <label className="flex items-center gap-1 text-xs col-span-2" style={{ color: 'var(--c-text-2)' }}>
-                  <input type="checkbox" checked={c.con_iva} onChange={e => updateConcepto(i, { con_iva: e.target.checked })} />
+              <div key={i} className="grid grid-cols-12 gap-2 items-center rounded-xl" style={{ background: '#FAFAFB', border: '1px solid #F0EBFA', padding: '10px' }}>
+                <div className="col-span-6"><OficinaModal.Input value={c.descripcion} onChange={e => updateConcepto(i, { descripcion: e.target.value })} placeholder="Descripción" /></div>
+                <div className="col-span-2"><OficinaModal.Input value={c.valor_unitario} onChange={e => updateConcepto(i, { valor_unitario: e.target.value })} placeholder="Precio" type="number" step="0.01" /></div>
+                <div className="col-span-1"><OficinaModal.Input value={c.cantidad} onChange={e => updateConcepto(i, { cantidad: e.target.value })} placeholder="Cant" type="number" /></div>
+                <label className="flex items-center gap-1.5 text-[12px] col-span-2 cursor-pointer" style={{ color: '#6B6480' }}>
+                  <input type="checkbox" checked={c.con_iva} onChange={e => updateConcepto(i, { con_iva: e.target.checked })} style={{ accentColor: '#6C3BFF' }} />
                   IVA
                 </label>
-                <button onClick={() => rmConcepto(i)} className="text-xs col-span-1 hover:opacity-70" style={{ color: '#b91c1c' }}>×</button>
+                <button
+                  type="button"
+                  onClick={() => rmConcepto(i)}
+                  className="col-span-1 flex items-center justify-center rounded-lg transition-colors hover:opacity-70"
+                  style={{ background: 'rgba(239,68,68,0.06)', color: '#B91C1C', width: 32, height: 32, marginLeft: 'auto' }}
+                  aria-label="Quitar concepto"
+                >
+                  ×
+                </button>
               </div>
             ))}
-            <button onClick={addConcepto} className="text-xs" style={{ color: '#6C3BFF' }}>+ Agregar concepto</button>
           </div>
-        </div>
+        </section>
 
-        <label className="flex items-center gap-2 text-xs mt-4 cursor-pointer" style={{ color: 'var(--c-text-2)' }}>
-          <input type="checkbox" checked={f.activo} onChange={e => setF({ ...f, activo: e.target.checked })} />
-          Cliente activo (Nala factura automáticamente en su fecha)
+        {/* Activo toggle */}
+        <label className="flex items-center gap-2 text-[13px] cursor-pointer rounded-xl" style={{ padding: '10px 14px', background: '#FAFAFB', border: '1px solid #F0EBFA', color: '#1A0A3B' }}>
+          <input type="checkbox" checked={f.activo} onChange={e => setF({ ...f, activo: e.target.checked })} style={{ accentColor: '#6C3BFF' }} />
+          Cliente activo <span style={{ color: '#6B6480' }}>· Neka factura automáticamente en su fecha</span>
         </label>
 
         {initial && (
-          <DocsSection
-            clienteId={initial.id}
-            initialDocs={initial.docs ?? []}
-            onClienteUpdated={onSaved}
-          />
+          <>
+            <div style={{ height: 1, background: '#F0EBFA' }} />
+            <DocsSection
+              clienteId={initial.id}
+              initialDocs={initial.docs ?? []}
+              onClienteUpdated={onSaved}
+            />
+            <div style={{ height: 1, background: '#F0EBFA' }} />
+            <FacturasSection clienteId={initial.id} />
+          </>
         )}
 
-        {initial && (
-          <FacturasSection clienteId={initial.id} />
-        )}
-
-        {error && (
-          <div className="rounded-lg p-3 text-xs flex items-start gap-2 mt-4"
-               style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', color: '#b91c1c' }}>
-            <AlertCircle size={12} className="mt-0.5 flex-shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
-
-        <div className="flex justify-end gap-2 mt-6">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm" style={{ color: 'var(--c-text-2)' }}>Cancelar</button>
-          <button
-            onClick={submit}
-            disabled={saving}
-            className="px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-            style={{ background: '#a16207' }}
-          >
-            {saving ? 'Guardando…' : (initial ? 'Guardar cambios' : 'Crear cliente')}
-          </button>
-        </div>
+        {error && <OficinaModal.Alert tone="danger">{error}</OficinaModal.Alert>}
       </div>
-    </div>
-  );
-}
-
-const inputClass = 'w-full px-3 py-2 rounded-lg text-sm outline-none';
-function Field({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
-  return (
-    <div className={className}>
-      <label className="block text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--c-text-4)' }}>
-        {label}
-      </label>
-      <div style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-border)', borderRadius: 8 }}>
-        {children}
-      </div>
-    </div>
+    </OficinaModal>
   );
 }

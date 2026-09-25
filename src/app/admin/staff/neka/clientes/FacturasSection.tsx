@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { FileText, Upload, Download, Loader2, AlertCircle, CheckCircle2, Clock, Receipt } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { FileText, Upload, Download, Loader2, CheckCircle2, Clock, Receipt } from 'lucide-react';
+import OficinaModal from '@/app/portal/[token]/oficina/OficinaModal';
 
 interface Factura {
   id:                    string;
@@ -53,7 +54,7 @@ export function FacturasSection({ clienteId }: FacturasSectionProps) {
 
   const [repFor, setRepFor] = useState<Factura | null>(null);
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     setLoading(true);
     try {
       const res  = await fetch(`/api/admin/staff/neka/clientes/${clienteId}/facturas`);
@@ -65,10 +66,10 @@ export function FacturasSection({ clienteId }: FacturasSectionProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [clienteId]);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { refresh(); }, [clienteId]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- `refresh` dispara setLoading; patrón "fetch on mount + manual refresh" no calza con la regla React 19 sin migrar a SWR/TanStack Query.
+  useEffect(() => { refresh(); }, [refresh]);
 
   const upload = async () => {
     const xml = xmlInputRef.current?.files?.[0];
@@ -262,50 +263,52 @@ export function FacturasSection({ clienteId }: FacturasSectionProps) {
         })}
       </div>
 
-      <div className="rounded-xl p-3 space-y-2" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-        <p className="text-[11px] font-semibold" style={{ color: 'var(--c-text-2)' }}>Subir factura ya timbrada</p>
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className="text-[10px] block mb-1" style={{ color: 'var(--c-text-3)' }}>XML</label>
-            <input ref={xmlInputRef} type="file" accept="application/xml,text/xml,.xml" className="w-full text-xs" style={{ color: 'var(--c-text-2)' }} />
-          </div>
-          <div>
-            <label className="text-[10px] block mb-1" style={{ color: 'var(--c-text-3)' }}>PDF</label>
-            <input ref={pdfInputRef} type="file" accept="application/pdf,.pdf" className="w-full text-xs" style={{ color: 'var(--c-text-2)' }} />
-          </div>
+      <div className="rounded-2xl flex flex-col gap-3" style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', padding: '16px 18px' }}>
+        <div>
+          <p className="text-[13px] font-semibold" style={{ color: '#1A0A3B' }}>Subir factura ya timbrada</p>
+          <p className="text-[12px] mt-0.5" style={{ color: '#6B6480' }}>
+            Neka parsea el XML para extraer UUID, montos, método de pago y uso CFDI.
+          </p>
         </div>
-        <div className="flex items-center gap-2">
-          <input
-            type="text"
-            value={cicloKey}
-            onChange={e => setCicloKey(e.target.value)}
-            placeholder='Ciclo (opcional): "2026-09"'
-            maxLength={20}
-            className="flex-1 px-2 py-1.5 rounded text-xs outline-none"
-            style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
-          />
+        <div className="grid grid-cols-2 gap-3">
+          <OficinaModal.Field label="XML del CFDI">
+            <OficinaModal.FileInput inputRef={xmlInputRef} accept="application/xml,text/xml,.xml" placeholder="Selecciona XML…" />
+          </OficinaModal.Field>
+          <OficinaModal.Field label="PDF del CFDI">
+            <OficinaModal.FileInput inputRef={pdfInputRef} accept="application/pdf,.pdf" placeholder="Selecciona PDF…" />
+          </OficinaModal.Field>
+        </div>
+        <div className="flex items-end gap-2">
+          <div className="flex-1">
+            <OficinaModal.Field label="Ciclo" hint="opcional">
+              <OficinaModal.Input
+                value={cicloKey}
+                onChange={e => setCicloKey(e.target.value)}
+                placeholder='2026-09'
+                maxLength={20}
+              />
+            </OficinaModal.Field>
+          </div>
           <button
             onClick={upload}
             disabled={uploading}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-            style={{ background: '#6C3BFF' }}
+            className="inline-flex items-center gap-2 rounded-xl text-[13px] font-semibold transition-all shrink-0"
+            style={{
+              padding:    '9px 18px',
+              height:     40,
+              background: uploading ? '#B9A8E8' : '#6C3BFF',
+              color:      '#ffffff',
+              boxShadow:  uploading ? 'none' : '0 2px 8px rgba(108,59,255,0.32)',
+              cursor:     uploading ? 'not-allowed' : 'pointer',
+            }}
           >
-            {uploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
-            Registrar
+            {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+            Registrar factura
           </button>
         </div>
-        <p className="text-[10px]" style={{ color: 'var(--c-text-4)' }}>
-          Neka parsea el XML para extraer UUID, montos, método de pago y uso CFDI.
-        </p>
       </div>
 
-      {error && (
-        <div className="rounded-lg p-2 text-xs flex items-start gap-2 mt-2"
-             style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', color: '#b91c1c' }}>
-          <AlertCircle size={12} className="mt-0.5 flex-shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
+      {error && <div className="mt-3"><OficinaModal.Alert tone="danger">{error}</OficinaModal.Alert></div>}
 
       {repFor && (
         <RepUploadModal
@@ -329,70 +332,59 @@ interface RepUploadModalProps {
 }
 
 function RepUploadModal({ factura, onClose, onSubmit }: RepUploadModalProps) {
-  const xmlRef = useRef<HTMLInputElement>(null);
-  const pdfRef = useRef<HTMLInputElement>(null);
+  const [xmlFile, setXmlFile] = useState<File | null>(null);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const submit = async () => {
-    const xml = xmlRef.current?.files?.[0];
-    const pdf = pdfRef.current?.files?.[0];
-    if (!xml) { setErr('Selecciona el XML del REP'); return; }
-    if (!pdf) { setErr('Selecciona el PDF del REP'); return; }
+    if (!xmlFile) { setErr('Selecciona el XML del REP'); return; }
+    if (!pdfFile) { setErr('Selecciona el PDF del REP'); return; }
     setErr(null); setSubmitting(true);
-    const result = await onSubmit(xml, pdf);
+    const result = await onSubmit(xmlFile, pdfFile);
     setSubmitting(false);
     if (!result.ok) setErr(result.error ?? 'Error al subir REP');
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={onClose}>
-      <div
-        className="rounded-2xl p-5 max-w-md w-full"
-        style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)' }}
-        onClick={e => e.stopPropagation()}
-      >
-        <h3 className="text-base font-bold mb-1 flex items-center gap-2" style={{ color: 'var(--c-text)' }}>
-          <Receipt size={16} style={{ color: '#a16207' }} />
-          Subir Complemento de Pago
-        </h3>
-        <p className="text-xs mb-4" style={{ color: 'var(--c-text-3)' }}>
-          REP para la factura <span className="font-mono">{shortUuid(factura.cfdi_uuid)}</span>. Selecciona el XML y el PDF del REP ya timbrado en el portal.
-        </p>
-
-        <div className="space-y-3">
-          <div>
-            <label className="block text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--c-text-4)' }}>
-              XML del REP
-            </label>
-            <input ref={xmlRef} type="file" accept="application/xml,text/xml,.xml" className="w-full text-xs" style={{ color: 'var(--c-text-2)' }} />
-          </div>
-          <div>
-            <label className="block text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--c-text-4)' }}>
-              PDF del REP
-            </label>
-            <input ref={pdfRef} type="file" accept="application/pdf,.pdf" className="w-full text-xs" style={{ color: 'var(--c-text-2)' }} />
-          </div>
-        </div>
-
-        {err && (
-          <div className="rounded-lg p-2 text-xs flex items-start gap-2 mt-3"
-               style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', color: '#b91c1c' }}>
-            <AlertCircle size={12} className="mt-0.5 flex-shrink-0" />
-            <span>{err}</span>
-          </div>
-        )}
-
-        <div className="flex justify-end gap-2 mt-5">
-          <button onClick={onClose} className="px-3 py-1.5 rounded-lg text-xs" style={{ color: 'var(--c-text-2)' }}>Cancelar</button>
-          <button onClick={submit} disabled={submitting}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-            style={{ background: '#a16207' }}>
-            {submitting ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+    <OficinaModal
+      open
+      onClose={onClose}
+      size="md"
+      eyebrow="Complemento de pago"
+      title="Subir REP timbrado"
+      description={`REP para la factura ${shortUuid(factura.cfdi_uuid)} — sube el XML y el PDF ya timbrados en el portal del PAC.`}
+      footer={
+        <>
+          <OficinaModal.SecondaryAction onClick={onClose} disabled={submitting}>Cancelar</OficinaModal.SecondaryAction>
+          <OficinaModal.PrimaryAction onClick={submit} loading={submitting}>
             Subir REP
-          </button>
+          </OficinaModal.PrimaryAction>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        {/* Info card de la factura padre */}
+        <div className="flex items-center gap-3 rounded-xl" style={{ background: '#FAFAFB', border: '1px solid #F0EBFA', padding: '12px 14px' }}>
+          <div className="flex items-center justify-center rounded-lg" style={{ background: 'rgba(108,59,255,0.10)', width: 36, height: 36 }}>
+            <Receipt size={16} style={{ color: '#6C3BFF' }} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[12px] font-semibold uppercase tracking-[0.1em]" style={{ color: '#9B6DFF' }}>Factura de origen</p>
+            <p className="text-[14px] font-mono truncate" style={{ color: '#1A0A3B' }}>{shortUuid(factura.cfdi_uuid)}</p>
+          </div>
         </div>
+
+        <OficinaModal.Field label="XML del REP">
+          <OficinaModal.FileInput accept="application/xml,text/xml,.xml" placeholder="Selecciona el XML del complemento…" onChange={setXmlFile} />
+        </OficinaModal.Field>
+
+        <OficinaModal.Field label="PDF del REP">
+          <OficinaModal.FileInput accept="application/pdf,.pdf" placeholder="Selecciona el PDF del complemento…" onChange={setPdfFile} />
+        </OficinaModal.Field>
+
+        {err && <OficinaModal.Alert tone="danger">{err}</OficinaModal.Alert>}
       </div>
-    </div>
+    </OficinaModal>
   );
 }
