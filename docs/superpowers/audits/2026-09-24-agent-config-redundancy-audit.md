@@ -145,30 +145,40 @@ Los tres archivos existen exactamente como el spec los describe.
 
 ## Consolidado para hard delete inline
 
-Lista concreta de ubicaciones a limpiar en Task 8.2:
+> **ACTUALIZADO 2026-09-25** — Fase 8 MODIFICADA (NO DROP COLUMN) ejecutada en commits `e9a6ad5f` (Task 8.1) y `1dd12af7` (Task 8.2). Estado final documentado abajo.
 
-- **Columna SQL a `DROP COLUMN`:**
-  - [ ] `voice_agents.transfer_rules` (text)
+Lista concreta de ubicaciones limpiadas en Task 8.2 (Fase 8 modificada):
 
-- **Tipo TypeScript a actualizar:**
-  - [ ] `src/types/agent.ts:146` — eliminar propiedad `transfer_rules?: string` del tipo `VoiceAgent`
+- **Columna SQL:**
+  - [x] **PRESERVADA INTENCIONALMENTE** — `voice_agents.transfer_rules` NO se hace DROP. Safety net para rollback sin migration reversa.
 
-- **Componente UI a limpiar:**
-  - [ ] `src/app/portal/[token]/AgentCustomization.tsx:65-94` — eliminar sección "Reglas de transferencia" (div completo con label, descripción, textarea y SaveIndicator)
-  - [ ] `src/app/portal/[token]/AgentCustomization.tsx:19` — simplificar tipo del parámetro `field` quitando `'transfer_rules'`
-  - [ ] `src/app/portal/[token]/configurar/page.tsx:357` — eliminar lógica `hasTransferRules`
-  - [ ] `src/app/portal/[token]/configurar/page.tsx:475` — eliminar prop `initTransferRules`
+- **Tipo TypeScript:**
+  - [x] `src/types/agent.ts:147` — propiedad marcada `@deprecated`, conservada para compat legacy (Opción B).
 
-- **Endpoints a limpiar:**
-  - [ ] `src/app/api/portal/[token]/settings/route.ts:65` — eliminar `'transfer_rules'` de la lista `allowed`
-  - [ ] `src/app/api/portal/[token]/generate-kb/route.ts:35,38,91,116` — eliminar declaración de tipo, campo del SELECT, variable `transferRules` y su uso en el prompt
-  - [ ] `src/app/api/portal/[token]/generate-kb-tournament/route.ts:69,72,105,129` — ídem para el torneo
+- **Componente UI:**
+  - [x] `src/app/portal/[token]/AgentCustomization.tsx` — sección "Reglas de transferencia" eliminada. Props `initTransferRules` y estado `transferRules` eliminados.
+  - [x] `src/app/portal/[token]/configurar/page.tsx` — eliminada lógica `hasTransferRules` y prop `initTransferRules`.
+
+- **Endpoints:**
+  - [x] **PRESERVADO INTENCIONALMENTE** — `src/app/api/portal/[token]/settings/route.ts:65` mantiene `'transfer_rules'` en lista `allowed` para compat con clientes API externos.
+  - [x] `src/app/api/portal/[token]/generate-kb/route.ts` — eliminado del SELECT, de la variable local y del prompt de generación.
+  - [x] `src/app/api/portal/[token]/generate-kb-tournament/route.ts` — ídem.
 
 - **Lecturas en runtime (prompt builder):**
-  - [ ] `src/lib/voice/prompt-builder.ts:514` — eliminar lógica condicional que usa `transfer_rules` para el default de transferencia
-  - [ ] `src/lib/voice/prompt-builder.ts:681-682` — eliminar bloque que inyecta `REGLAS DE TRANSFERENCIA PERSONALIZADAS`
+  - [x] `src/lib/voice/prompt-builder.ts` — eliminada lógica condicional con `transfer_rules` en bloque TRANSFERENCIA INTELIGENTE (ahora usa default genérico siempre). Eliminado bloque `REGLAS DE TRANSFERENCIA PERSONALIZADAS`.
 
-**Nota:** Los builders de outbound (`outbound-prompt-builder.ts`) y WhatsApp (`whatsapp/prompt-builder.ts`) **no tienen references** a `transfer_rules`. Solo el builder canónico de voice lo usa.
+**Resultado final de grep `transfer_rules` en `src/`:**
+
+```
+src/app/api/portal/[token]/settings/route.ts:65   (PRESERVADO — compat API legacy)
+src/types/agent.ts:147                             (PRESERVADO — tipo @deprecated)
+```
+
+Cero referencias en prompt builders, KB generators, UI components, ni otros archivos de runtime.
+
+**Script de migración:** `scripts/migrate-legacy-transfer-rules.ts` + tests en `tests/scripts/migrate-legacy-transfer-rules.test.ts` (15 unit tests verdes). Pendiente que el controller corra `pnpm tsx scripts/migrate-legacy-transfer-rules.ts --dry-run` antes del run real.
+
+**Nota:** Los builders de outbound (`outbound-prompt-builder.ts`) y WhatsApp (`whatsapp/prompt-builder.ts`) no tenían referencias a `transfer_rules` desde el inicio. Confirmado.
 
 ---
 
