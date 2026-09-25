@@ -17,10 +17,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock del módulo supabase/admin ANTES de importar el módulo bajo test.
 const mockFrom = vi.fn();
+const mockRpc = vi.fn();
 
 vi.mock('@/lib/supabase/admin', () => ({
   createAdminClient: () => ({
     from: mockFrom,
+    rpc: mockRpc,
   }),
 }));
 
@@ -34,16 +36,13 @@ import {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /**
- * Construye una cadena de mocks para tsvectorFallback:
- * from().select().eq().textSearch().limit()
+ * Configura el mock del RPC tsvector_search_fichas_chunks para tsvectorFallback.
+ * La función ahora llama directamente a supabase.rpc() en lugar de encadenar
+ * .from().select().eq().textSearch().limit().
  */
-function mockTsvectorChain(result: { data: unknown; error: unknown }) {
-  const limitFn = vi.fn().mockResolvedValue(result);
-  const textSearchFn = vi.fn().mockReturnValue({ limit: limitFn });
-  const eqFn = vi.fn().mockReturnValue({ textSearch: textSearchFn });
-  const selectFn = vi.fn().mockReturnValue({ eq: eqFn });
-  mockFrom.mockReturnValue({ select: selectFn });
-  return { selectFn, eqFn, textSearchFn, limitFn };
+function mockTsvectorRpc(result: { data: unknown; error: unknown }) {
+  mockRpc.mockResolvedValue(result);
+  return { mockRpc };
 }
 
 /**
@@ -69,32 +68,47 @@ describe('tsvectorFallback', () => {
   it('retorna [] sin llamar Supabase cuando query es vacía', async () => {
     const result = await tsvectorFallback('org@test.com', '   ', 15);
     expect(result).toEqual([]);
-    expect(mockFrom).not.toHaveBeenCalled();
+    expect(mockRpc).not.toHaveBeenCalled();
   });
 
   it('retorna [] sin llamar Supabase cuando query es string vacío', async () => {
     const result = await tsvectorFallback('org@test.com', '', 15);
     expect(result).toEqual([]);
-    expect(mockFrom).not.toHaveBeenCalled();
+    expect(mockRpc).not.toHaveBeenCalled();
+  });
+
+  it('llama al RPC con los parámetros correctos', async () => {
+    mockTsvectorRpc({ data: [], error: null });
+
+    await tsvectorFallback('org@test.com', 'impuesto predial', 10);
+
+    expect(mockRpc).toHaveBeenCalledWith('tsvector_search_fichas_chunks', {
+      p_portal_email: 'org@test.com',
+      p_query:        'impuesto predial',
+      p_limit:        10,
+    });
   });
 
   it('mapea resultados correctamente incluyendo titulo de la relacion', async () => {
+    // El RPC devuelve filas planas (no relaciones anidadas) con rank incluido
     const dbRows = [
       {
-        id: 'chunk-1',
-        content: 'Texto sobre impuesto predial',
+        id:       'chunk-1',
+        content:  'Texto sobre impuesto predial',
         ficha_id: 'ficha-1',
-        fichas_informativas: { titulo: 'Predial municipal', portal_email: 'org@test.com' },
+        titulo:   'Predial municipal',
+        rank:     0.85,
       },
       {
-        id: 'chunk-2',
-        content: 'Texto sobre licencias de construcción',
+        id:       'chunk-2',
+        content:  'Texto sobre licencias de construcción',
         ficha_id: 'ficha-2',
-        fichas_informativas: { titulo: 'Licencias', portal_email: 'org@test.com' },
+        titulo:   'Licencias',
+        rank:     0.60,
       },
     ];
 
-    mockTsvectorChain({ data: dbRows, error: null });
+    mockTsvectorRpc({ data: dbRows, error: null });
 
     const result = await tsvectorFallback('org@test.com', 'impuesto predial', 15);
 
@@ -113,8 +127,27 @@ describe('tsvectorFallback', () => {
     });
   });
 
+  it('maneja titulo undefined cuando el RPC devuelve null', async () => {
+    const dbRows = [
+      {
+        id:       'chunk-3',
+        content:  'Contenido sin titulo',
+        ficha_id: 'ficha-3',
+        titulo:   null,
+        rank:     0.40,
+      },
+    ];
+
+    mockTsvectorRpc({ data: dbRows, error: null });
+
+    const result = await tsvectorFallback('org@test.com', 'consulta', 15);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].titulo).toBeUndefined();
+  });
+
   it('retorna [] y emite console.warn cuando Supabase devuelve error', async () => {
-    mockTsvectorChain({ data: null, error: { message: 'text search config not found' } });
+    mockTsvectorRpc({ data: null, error: { message: 'text search config not found' } });
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const result = await tsvectorFallback('org@test.com', 'predial', 15);
@@ -128,8 +161,7 @@ describe('tsvectorFallback', () => {
   });
 
   it('retorna [] y emite console.warn cuando el client lanza excepción', async () => {
-    // Hacer que createAdminClient().from() lance
-    mockFrom.mockImplementation(() => {
+    mockRpc.mockImplementation(() => {
       throw new Error('connection refused');
     });
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});

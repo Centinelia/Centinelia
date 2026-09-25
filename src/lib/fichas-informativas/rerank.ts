@@ -135,14 +135,21 @@ Devuelve SOLO el JSON: {"ids": ["id_1", "id_2", ...]}`;
   let response: Anthropic.Message | null = null;
 
   try {
-    response = await getClient().messages.create({
-      model:      RERANK_MODEL,
-      max_tokens: 256,
-      messages: [{ role: 'user', content: userPrompt }],
-      system: systemPrompt,
-    });
+    // timeout: 5000 ms — si Haiku demora más, el SDK lanza APIError con código ETIMEDOUT.
+    // Esto evita que un Haiku lento exceda el timeout de Vercel (30s) sin que el
+    // catch handler pueda actuar. El SDK 0.116.0 acepta timeout en RequestOptions
+    // (segundo argumento de messages.create).
+    response = await getClient().messages.create(
+      {
+        model:      RERANK_MODEL,
+        max_tokens: 256,
+        messages: [{ role: 'user', content: userPrompt }],
+        system: systemPrompt,
+      },
+      { timeout: 5000 },
+    );
 
-    void logLlmCall({
+    logLlmCall({
       source:      RERANK_SOURCE,
       model:       RERANK_MODEL,
       usage: {
@@ -151,16 +158,16 @@ Devuelve SOLO el JSON: {"ids": ["id_1", "id_2", ...]}`;
       },
       portalEmail: portalEmail ?? null,
       latencyMs:   Date.now() - t0,
-    });
+    }).catch((err: unknown) => console.error('[rerank] logLlmCall failed:', err));
   } catch (err) {
-    void logLlmCall({
+    logLlmCall({
       source:      RERANK_SOURCE,
       model:       RERANK_MODEL,
       usage:       { input_tokens: 0, output_tokens: 0 },
       portalEmail: portalEmail ?? null,
       latencyMs:   Date.now() - t0,
       error:       err instanceof Error ? err.message : String(err),
-    });
+    }).catch((logErr: unknown) => console.error('[rerank] logLlmCall failed:', logErr));
     console.warn('[rerank] Haiku failed, returning original order:', err);
     return fallbackOrder(candidates);
   }

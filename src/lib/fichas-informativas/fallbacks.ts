@@ -27,7 +27,11 @@ export interface FallbackFichaChunk {
 /**
  * Full-text search sobre fichas_informativas_chunks usando tsvector de Postgres.
  * Usa el diccionario 'spanish' y plainto_tsquery para aceptar frases naturales.
- * Ordena por ts_rank descendente.
+ * Ordena por ts_rank descendente (via RPC tsvector_search_fichas_chunks).
+ *
+ * Usamos RPC en lugar del .textSearch() del SDK Supabase JS porque ese método
+ * no expone ordering por ts_rank, devolviendo resultados en orden arbitrario.
+ * El RPC aplica ORDER BY ts_rank DESC internamente.
  *
  * Activado cuando: embedText() falla (OpenAI down, timeout, cuota).
  */
@@ -41,31 +45,22 @@ export async function tsvectorFallback(
   const supabase = createAdminClient();
 
   try {
-    // Full-text search en chunks: JOIN con fichas_informativas para portal_email scope
-    // y para obtener titulo.
-    // Nota: plainto_tsquery es más tolerante que to_tsquery (no requiere operadores &/|).
-    const { data, error } = await supabase
-      .from('fichas_informativas_chunks')
-      .select(`
-        id,
-        content,
-        ficha_id,
-        fichas_informativas!inner(titulo, portal_email)
-      `)
-      .eq('fichas_informativas.portal_email', portalEmail)
-      .textSearch('content', query, { language: 'spanish', type: 'plain' })
-      .limit(limit);
+    const { data, error } = await supabase.rpc('tsvector_search_fichas_chunks', {
+      p_portal_email: portalEmail,
+      p_query:        query,
+      p_limit:        limit,
+    });
 
     if (error) {
       console.warn('[retrieval] tsvector_fallback query error:', { query, error: error.message });
       return [];
     }
 
-    return (data ?? []).map((row) => ({
+    return (data ?? []).map((row: { id: string; content: string; ficha_id: string; titulo?: string }) => ({
       id:       row.id,
       content:  row.content,
       ficha_id: row.ficha_id,
-      titulo:   (row as unknown as { fichas_informativas: { titulo?: string } }).fichas_informativas?.titulo,
+      titulo:   row.titulo ?? undefined,
     }));
   } catch (err) {
     console.warn('[retrieval] tsvector_fallback exception:', { query, error: err instanceof Error ? err.message : String(err) });

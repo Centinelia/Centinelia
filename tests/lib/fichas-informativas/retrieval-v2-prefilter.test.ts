@@ -1,5 +1,5 @@
 /**
- * Tests de integración para el retrieval v2 con pre-filtro por whitelist.
+ * Tests unitarios para el retrieval v2 con pre-filtro por whitelist.
  *
  * Valida:
  *   1. Backward compat: sin meerkatRoleId, comportamiento idéntico al anterior.
@@ -8,13 +8,13 @@
  *   4. Fichas con tag '_untagged_' siempre son candidatas.
  *   5. Fichas con autotag_status 'pending' son EXCLUIDAS del pre-filtro.
  *
- * Nota: estos tests mockean Supabase — no insertan en DB real.
- * assertNotProdOrAllowed() se llama de todas formas por convención,
- * en caso de que se integren con DB en el futuro.
+ * Nota: estos tests mockean Supabase completamente — no insertan en DB real.
+ * No requieren assertNotProdOrAllowed() porque no hay riesgo de tocar producción.
+ * Para un test de integración real contra Supabase, ver:
+ *   tests/integration/retrieval-v2-prefilter-live.test.ts
  */
 
-import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
-import { assertNotProdOrAllowed } from '@/lib/test-helpers/prod-guard';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Mock supabase admin ANTES de importar search
 vi.mock('@/lib/supabase/admin', () => {
@@ -107,10 +107,6 @@ const CHUNK_HIT = {
 };
 
 describe('searchFichas v2 — pre-filtro por whitelist', () => {
-  beforeAll(async () => {
-    await assertNotProdOrAllowed();
-  });
-
   beforeEach(() => {
     process.env.MOCK_EMBEDDINGS = '1';
     mock.__state.hitsToReturn = [];
