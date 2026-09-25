@@ -16,6 +16,7 @@ const TAB_DEFS = [
   { value: 'tools',        label: 'Herramientas' },
   { value: 'autonomia',    label: 'Autonomía y Avisos' },
   { value: 'bitacora',     label: 'Bitácora' },
+  { value: 'tareas',       label: 'Tareas' },
 ] as const;
 
 // Retrocompat: legacy ?tab=knowledge / ?tab=voz / ?tab=rol / ?tab=horarios / ?tab=marca

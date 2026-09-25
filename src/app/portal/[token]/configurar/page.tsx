@@ -40,6 +40,7 @@ import { BriefDelDiaSection } from './BriefDelDiaSection';
 import { BrandTemplateSection } from './BrandTemplateSection';
 import ToolOverridesSection from './ToolOverridesSection';
 import ConfigurarTabs from './ConfigurarTabs';
+import AgentMissionsSection from '../AgentMissionsSection';
 import { TemplateUploader } from '../oficina/bitacora/TemplateUploader';
 import { DeliveryConfig } from '../oficina/bitacora/DeliveryConfig';
 import { BITACORA_TEMPLATE_UPLOAD_TASKS } from '@/app/api/portal/[token]/oficina/bitacora/template-upload/route';
@@ -869,7 +870,7 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
 
             </div>
 
-            {/* 5to tab: Bitácora — plantilla custom y envío automático per-empleado */}
+            {/* Tab 5: Bitácora — plantilla custom y envío automático per-empleado */}
             <div className="flex flex-col gap-5">
               <TemplateUploader
                 token={token}
@@ -883,6 +884,15 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
                 initial={(agent.bitacora_weekly_config as any) ?? {
                   enabled: false, day_of_week: 6, hour: 14, recipients: [], include_monthly_last_saturday: true,
                 }}
+              />
+            </div>
+
+            {/* Tab 6: Tareas — misiones autónomas per-empleado (MAPS wizard) */}
+            <div className="flex flex-col gap-5">
+              <AgentMissionsSection
+                agentId={agent.id as string}
+                agentName={agentName}
+                token={token}
               />
             </div>
 
