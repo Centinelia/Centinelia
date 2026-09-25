@@ -12,6 +12,7 @@
  */
 
 import { createAdminClient } from '@/lib/supabase/admin';
+import { CronExpressionParser } from 'cron-parser';
 
 export interface CreateTaskInput {
   portalEmail: string;
@@ -32,19 +33,21 @@ export type ValidationResult =
 const SLUG_RE = /^[a-z0-9_]+$/;
 
 /**
- * Valida una expresión cron con regex simple.
- * Acepta expresiones de 5 campos separados por espacio.
- * Nota: cron-parser no está en package.json. Se usa regex como fallback documentado.
- * Para validación robusta, considera agregar cron-parser a dependencias.
+ * Valida una expresión cron usando cron-parser.
+ * Retorna { ok: true } si es válida, o { ok: false, error: string } si no.
+ * Fix C2: reemplaza el regex fallback con parse real para evitar que expresiones
+ * como "0 9 5 * *" (día 5 de cada mes) pasen como válidas pero el scheduler
+ * recalcule next_run_at = ahora+5min en lugar del intervalo correcto.
  */
-function isValidCronExpression(expr: string): boolean {
-  if (typeof expr !== 'string') return false;
-  // 5 campos: minuto hora día-mes mes día-semana
-  // Acepta números, *, /, -, ,
-  const cronFieldRe = /^(\*|[0-9,\-/*]+)$/;
-  const parts = expr.trim().split(/\s+/);
-  if (parts.length !== 5) return false;
-  return parts.every(p => cronFieldRe.test(p));
+function validateCronExpression(expr: string): { ok: true } | { ok: false; error: string } {
+  if (typeof expr !== 'string') return { ok: false, error: 'La expresión cron debe ser un string' };
+  try {
+    CronExpressionParser.parse(expr.trim(), { tz: 'America/Monterrey' });
+    return { ok: true };
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: `Cron inválido: ${detail}` };
+  }
 }
 
 /**
@@ -98,8 +101,9 @@ export async function validateCreateTaskInput(
     if (typeof cronExpr !== 'string' || !cronExpr.trim()) {
       return { ok: false, error: 'trigger_config.cron es obligatorio para tareas de tipo cron' };
     }
-    if (!isValidCronExpression(cronExpr)) {
-      return { ok: false, error: `Expresión cron inválida: "${cronExpr}". Use formato: minuto hora día-mes mes día-semana` };
+    const cronCheck = validateCronExpression(cronExpr);
+    if (!cronCheck.ok) {
+      return { ok: false, error: cronCheck.error };
     }
   } else if (input.trigger_type === 'phrase') {
     const phrases = input.trigger_config?.phrases;

@@ -16,6 +16,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { validateCreateTaskInput, type CreateTaskInput } from './validation';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
+import { CronExpressionParser } from 'cron-parser';
 
 export interface AgentTask {
   id: string;
@@ -34,14 +35,24 @@ export interface AgentTask {
 }
 
 /**
- * Calcula el próximo next_run_at aproximado para una expresión cron.
- * Implementación básica: incrementa 1 minuto desde now como punto de inicio
- * para que el scheduler la procese pronto. Para producción real se recomienda
- * agregar cron-parser para cálculo exacto.
+ * Calcula el próximo next_run_at exacto para una expresión cron usando cron-parser.
+ * Fix C2: reemplaza la aproximación "ahora + 1 min" con el intervalo real del cron.
+ * Si la expresión es inválida (no debería llegar aquí si pasó validación), usa fallback.
  */
-function computeNextRunAt(): string {
-  const next = new Date(Date.now() + 60_000); // 1 minuto desde ahora
-  return next.toISOString();
+function computeNextRunAt(cronExpr?: string, timezone?: string): string {
+  if (cronExpr) {
+    try {
+      const interval = CronExpressionParser.parse(cronExpr, {
+        tz: timezone ?? 'America/Monterrey',
+      });
+      return interval.next().toISOString() ?? new Date(Date.now() + 60_000).toISOString();
+    } catch {
+      // Fallback si el cron es inválido (no debería ocurrir tras validación)
+      console.warn('[agent-tasks/service] computeNextRunAt cron-parser falló, usando fallback 1min');
+    }
+  }
+  // Fallback: 1 minuto desde ahora (solo si no se pasó expresión cron)
+  return new Date(Date.now() + 60_000).toISOString();
 }
 
 /**
@@ -54,10 +65,13 @@ export async function createTask(input: CreateTaskInput): Promise<AgentTask> {
 
   const supabase = createAdminClient();
 
-  // Para cron: asegurar que trigger_config tenga next_run_at
+  // Para cron: asegurar que trigger_config tenga next_run_at calculado con cron-parser.
+  // Fix C2: calcula el siguiente disparo real (no "ahora + 1 min").
   let triggerConfig = { ...input.trigger_config };
   if (input.trigger_type === 'cron' && !triggerConfig.next_run_at) {
-    triggerConfig = { ...triggerConfig, next_run_at: computeNextRunAt() };
+    const cronExpr  = triggerConfig.cron as string | undefined;
+    const timezone  = triggerConfig.timezone as string | undefined;
+    triggerConfig   = { ...triggerConfig, next_run_at: computeNextRunAt(cronExpr, timezone) };
   }
 
   const { data, error } = await supabase

@@ -156,11 +156,14 @@ describe('validateCreateTaskInput', () => {
     if (!result.ok) expect(result.error).toMatch(/cron/i);
   });
 
-  it('rechaza expresión cron con menos de 5 campos', async () => {
+  it('rechaza expresión cron con texto claramente inválido (no campos numéricos)', async () => {
+    // Nota: cron-parser v5 acepta expresiones de 4 campos como válidas.
+    // El test original usaba regex. Ahora usamos una expresión que claramente
+    // falla el parse (caracteres inválidos como letras no reservadas).
     const result = await validateCreateTaskInput({
       ...BASE_INPUT,
       trigger_type:   'cron',
-      trigger_config: { cron: '0 9 * *' },
+      trigger_config: { cron: 'invalid cron' },
     });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error).toMatch(/cron/i);

@@ -18,6 +18,19 @@ vi.mock('@/lib/agent-tasks/validation', () => ({
   validateCreateTaskInput: vi.fn(),
 }));
 
+// Mock cron-parser para evitar dependencia de zona horaria en tests unitarios.
+// computeNextRunAt en service.ts usa CronExpressionParser.parse — mockeamos para
+// devolver una fecha fija y hacer el test determinístico.
+vi.mock('cron-parser', () => ({
+  CronExpressionParser: {
+    parse: vi.fn().mockReturnValue({
+      next: vi.fn().mockReturnValue({
+        toISOString: vi.fn().mockReturnValue('2026-10-05T15:00:00.000Z'),
+      }),
+    }),
+  },
+}));
+
 vi.mock('@/lib/ai/ops-guard', () => ({
   consumeAiOp: vi.fn().mockResolvedValue({ ok: true, used: 1, limit: 300 }),
 }));
@@ -64,7 +77,7 @@ const TASK_ROW = {
 
 // Helper que construye una cadena de query de Supabase simulada
 function buildChain(returnValue: { data: unknown; error: null | { message: string } }) {
-  const chain: Record<string, jest.Mock | unknown> = {};
+  const chain: Record<string, ReturnType<typeof vi.fn> | unknown> = {};
   const methods = ['insert', 'update', 'delete', 'select', 'eq', 'order', 'limit'];
   for (const m of methods) {
     chain[m] = vi.fn().mockReturnThis();

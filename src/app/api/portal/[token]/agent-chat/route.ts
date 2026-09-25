@@ -2564,11 +2564,17 @@ ${context}`;
               const phraseMatch = await matchPhraseToTask(agent.id as string, lastUserContent);
               if (phraseMatch) {
                 const taskResult = await executeTask({ taskId: phraseMatch.taskId, triggerSource: 'phrase' });
-                const statusMsg  = taskResult.status === 'success'
-                  ? 'La tarea fue ejecutada correctamente.'
-                  : taskResult.status === 'cancelled'
-                    ? 'La tarea no está disponible en este momento.'
-                    : 'Ocurrió un error al ejecutar la tarea.';
+                let statusMsg: string;
+                if (taskResult.status === 'narrated' && taskResult.narrative) {
+                  // Fix I3: devolver la narrativa del executor v1 al usuario con contexto claro.
+                  statusMsg = `Preparé el plan para la tarea. Aún estamos afinando la ejecución automática, revisa el borrador en el portal.\n\n${taskResult.narrative}`;
+                } else if (taskResult.status === 'success') {
+                  statusMsg = 'La tarea fue ejecutada correctamente.';
+                } else if (taskResult.status === 'cancelled') {
+                  statusMsg = 'La tarea no está disponible en este momento.';
+                } else {
+                  statusMsg = 'Ocurrió un error al ejecutar la tarea.';
+                }
                 send(statusMsg);
                 controller.close();
                 return;

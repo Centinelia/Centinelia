@@ -1,18 +1,26 @@
 /**
  * Executor de tareas programadas (agent_tasks).
  *
- * Flujo:
+ * Flujo v1 (sin tool calling real):
  * 1. Carga la tarea + agente + org.
  * 2. Verifica feature flag agent_missions_enabled (default OFF = no ejecutar).
  * 3. Inserta agent_task_runs con status='running'.
  * 4. Verifica pool disponible (consumeAiOp falla si no hay ops).
  * 5. Cobra 1 op de arranque (task_execution_start).
  * 6. Invoca Claude Sonnet con contexto de la tarea + reglas del meerkat.
- * 7. Cobra N ops de acciones en un solo batched-consume (task_action).
- * 8. Actualiza el run con status final y ledger_ops total.
+ * 7. Marca el run como status='narrated' — NO cobra task_action ops.
+ *    El LLM produce un plan narrativo pero no ejecuta tools reales.
+ *    La narrativa se guarda en metadata.narrative para debugging.
  *
- * Review Focus #5: pool_exhausted → cancelled, 0 ops cobrados.
- * feedback_batched_consume_multi_io: N side-effects → 1 cobro count=N.
+ * IMPORTANTE (Sección 8.2 spec v1): El executor v1 no tiene tool calling real.
+ * Claude responde en texto libre describiendo qué haría, pero no ejecuta nada.
+ * Por este motivo el status final es 'narrated' (no 'success'), y NO se cobran
+ * ops de task_action — solo el 1 op de task_execution_start que consumió tokens.
+ * El refactor a v2 con tool calling real está pendiente como Fase 3 v2.
+ *
+ * Review Fix C1: no cobra task_action por keywords en texto libre (era ficticio).
+ * Review Fix I4: pool agotado mid-run marca 'error', no success silencioso.
+ * feedback_batched_consume_multi_io: N side-effects → 1 cobro count=N (v2).
  * feedback_anthropic_debe_loggearse: logLlmCall siempre.
  *
  * Ver spec Sección 4.6 y 8.2.
@@ -28,7 +36,9 @@ const anthropic = new Anthropic();
 
 export interface ExecuteTaskResult {
   runId: string;
-  status: 'success' | 'error' | 'cancelled';
+  status: 'success' | 'error' | 'cancelled' | 'narrated';
+  /** Narrativa del LLM cuando status='narrated' (executor v1 sin tool calling). */
+  narrative?: string;
 }
 
 /**
@@ -105,14 +115,30 @@ export async function executeTask(input: {
   const runId = runRow.id as string;
 
   // Helper para actualizar el run al final
-  async function finalizeRun(status: 'success' | 'error' | 'cancelled', ledgerOps: number, errorMessage?: string) {
+  async function finalizeRun(
+    status: 'success' | 'error' | 'cancelled' | 'narrated',
+    ledgerOps: number,
+    opts?: { errorMessage?: string; narrative?: string },
+  ) {
+    const metaUpdate = opts?.narrative
+      ? await (async () => {
+          const { data: current } = await supabase
+            .from('agent_task_runs')
+            .select('metadata')
+            .eq('id', runId)
+            .maybeSingle();
+          return { ...((current?.metadata as Record<string, unknown>) ?? {}), narrative: opts.narrative };
+        })()
+      : undefined;
+
     await supabase
       .from('agent_task_runs')
       .update({
         status,
-        ledger_ops:   ledgerOps,
-        finished_at:  new Date().toISOString(),
-        error_message: errorMessage ?? null,
+        ledger_ops:    ledgerOps,
+        finished_at:   new Date().toISOString(),
+        error_message: opts?.errorMessage ?? null,
+        ...(metaUpdate ? { metadata: metaUpdate } : {}),
       })
       .eq('id', runId);
   }
@@ -128,7 +154,7 @@ export async function executeTask(input: {
 
   if (!startOp.ok) {
     // Pool agotado — cancelar sin cobrar más ops
-    await finalizeRun('cancelled', 0, 'pool_exhausted');
+    await finalizeRun('cancelled', 0, { errorMessage: 'pool_exhausted' });
     return { runId, status: 'cancelled' };
   }
 
@@ -148,23 +174,27 @@ export async function executeTask(input: {
     }
   }
 
+  // En v1 el executor no tiene tool calling real. El prompt es honesto al respecto:
+  // pedimos al LLM que narre el plan, no que simule haber ejecutado tools.
   const systemPrompt = [
-    `Estás ejecutando la tarea programada "${taskRow.slug as string}".`,
+    `Estás revisando la tarea programada "${taskRow.slug as string}".`,
     '',
     `Misión: ${taskRow.mission as string}`,
     taskRow.parameters ? `\nInstrucciones adicionales:\n${taskRow.parameters as string}` : '',
     `\nEntregable esperado: ${taskRow.deliverable as string}`,
     rulesText,
     '',
-    'Ejecuta la misión siguiendo las instrucciones. Si necesitas tomar acciones (enviar correo, registrar datos, etc.), hazlo con las herramientas disponibles. Al finalizar, reporta qué acciones tomaste.',
+    'Nota: en esta versión del sistema no tienes herramientas disponibles para ejecutar acciones directamente.',
+    'Describe detalladamente qué pasos realizarías para completar la misión, qué información necesitarías y cuál sería el entregable esperado.',
+    'Sé específico y práctico. Este plan se guardará como referencia para la ejecución manual o para el refactor a ejecución automática.',
   ].join('\n');
 
   // 6. Invocar Claude Sonnet con logLlmCall
+  // En v1 el LLM solo narra el plan (no ejecuta tools). NO cobrar task_action ops.
   const __llmStart = Date.now();
   const __llmModel = 'claude-sonnet-4-6';
   let response: Anthropic.Message | null = null;
   let llmError: string | undefined;
-  let sideEffectsCount = 0;
 
   try {
     response = await anthropic.messages.create({
@@ -173,7 +203,7 @@ export async function executeTask(input: {
       system:     systemPrompt,
       messages: [{
         role:    'user',
-        content: `Ejecuta la tarea "${taskRow.slug as string}" ahora. Disparada por: ${triggerSource}. Fecha/hora: ${new Date().toISOString()}.`,
+        content: `Revisa la tarea "${taskRow.slug as string}". Disparada por: ${triggerSource}. Fecha/hora: ${new Date().toISOString()}.`,
       }],
     });
 
@@ -186,18 +216,6 @@ export async function executeTask(input: {
       latencyMs:  Date.now() - __llmStart,
       meta:       { task_id: taskId, run_id: runId, trigger_source: triggerSource },
     });
-
-    // Contar side-effects mencionados en la respuesta del LLM
-    // En v1 no hay tool calling — el LLM responde en texto.
-    // Si la respuesta menciona acciones tomadas, contamos como 1 side-effect.
-    const responseText = response.content
-      .filter(b => b.type === 'text')
-      .map(b => (b as Anthropic.TextBlock).text)
-      .join('');
-
-    // Heurística simple para v1: cada acción mencionada = 1 side effect
-    const actionKeywords = ['envié', 'registré', 'guardé', 'creé', 'actualicé', 'notifiqué', 'generé'];
-    sideEffectsCount = actionKeywords.filter(kw => responseText.toLowerCase().includes(kw)).length;
 
   } catch (err) {
     llmError = err instanceof Error ? err.message : String(err);
@@ -213,28 +231,28 @@ export async function executeTask(input: {
     });
 
     // LLM falló: cobrar solo el arranque (ya cobrado), marcar error
-    await finalizeRun('error', 1, `LLM error: ${llmError}`);
+    await finalizeRun('error', 1, { errorMessage: `LLM error: ${llmError}` });
     return { runId, status: 'error' };
   }
 
-  // 7. Cobrar N ops de acciones en un solo batched-consume
-  let totalOps = 1; // 1 ya cobrado en arranque
-  if (sideEffectsCount > 0) {
-    const actionOp = await consumeAiOp(ownerAgentId, sideEffectsCount, {
-      source:       'task_action',
-      reference_id: taskId,
-      label:        `Acciones de tarea: ${taskRow.slug as string}`,
-      context:      JSON.stringify({ run_id: runId, action_count: sideEffectsCount }),
-    });
-    if (actionOp.ok) {
-      totalOps += sideEffectsCount;
-    } else {
-      // Pool agotado a mitad — cobrar lo que se pudo, marcar run con advertencia
-      console.warn('[executor] Pool agotado al cobrar acciones del task', taskId);
-    }
-  }
+  // 7. Ejecutar acciones del pool: NOTA v1 — no cobra task_action.
+  // Fix C1: eliminar heurística de keywords para cobrar por acciones ficticias.
+  // El pool mid-run guard (I4) sigue presente para robustez cuando se implemente v2.
+  // En v1 totalOps = 1 (solo el arranque cobrado arriba).
+  const totalOps = 1;
 
-  // 8. Marcar run como success
-  await finalizeRun('success', totalOps);
-  return { runId, status: 'success' };
+  // 8. Extraer narrativa del LLM y marcar run como 'narrated' (no 'success').
+  // status='narrated' = el LLM describió un plan pero no ejecutó tools reales.
+  const narrativeText = (response.content ?? [])
+    .filter(b => b.type === 'text')
+    .map(b => (b as Anthropic.TextBlock).text)
+    .join('');
+
+  // Warning claro en logs para debugging y para que el refactor v2 sea fácil de rastrear.
+  console.warn(
+    `[executor] Executor v1: LLM narro plan pero no ejecuto tools. Refactor pendiente Fase 3 v2. task=${taskId} run=${runId}`,
+  );
+
+  await finalizeRun('narrated', totalOps, { narrative: narrativeText.slice(0, 4000) });
+  return { runId, status: 'narrated', narrative: narrativeText };
 }
