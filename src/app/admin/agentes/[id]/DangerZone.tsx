@@ -80,7 +80,7 @@ export default function DangerZone({ agentId, displayName }: Props) {
             </div>
 
             <div>
-              <label className="block text-[12px] font-medium mb-1.5" style={{ color: '#374151' }}>
+              <label className="block text-[12px] font-medium mb-1.5" style={{ color: '#4A3B6B' }}>
                 Escribe el nombre exacto del empleado para confirmar
               </label>
               <input
@@ -89,12 +89,12 @@ export default function DangerZone({ agentId, displayName }: Props) {
                 onChange={e => setNameCheck(e.target.value)}
                 placeholder={displayName}
                 className="w-full text-[13px] px-3 py-2 rounded-lg outline-none focus:border-[#EF4444]"
-                style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#111827' }}
+                style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
               />
             </div>
 
             <div>
-              <label className="block text-[12px] font-medium mb-1.5" style={{ color: '#374151' }}>
+              <label className="block text-[12px] font-medium mb-1.5" style={{ color: '#4A3B6B' }}>
                 Contraseña de administrador
               </label>
               <div className="relative">
@@ -104,7 +104,7 @@ export default function DangerZone({ agentId, displayName }: Props) {
                   onChange={e => setPassword(e.target.value)}
                   placeholder="Contraseña que solo el encargado sabe"
                   className="w-full text-[13px] px-3 py-2 pr-9 rounded-lg outline-none focus:border-[#EF4444]"
-                  style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#111827' }}
+                  style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
                 />
                 <button
                   type="button"
@@ -141,7 +141,7 @@ export default function DangerZone({ agentId, displayName }: Props) {
                 type="button"
                 onClick={() => { setStep('idle'); setPassword(''); setNameCheck(''); setError(null); }}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-50"
-                style={{ background: '#FFFFFF', color: '#374151', border: '1px solid #E5E7EB' }}
+                style={{ background: '#FFFFFF', color: '#4A3B6B', border: '1px solid #E8E3F5' }}
               >
                 <X size={13} /> Cancelar
               </button>

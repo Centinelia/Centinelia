@@ -63,13 +63,13 @@ export default function LeadsSection({ initialLeads }: { initialLeads: Lead[] })
 
   return (
     <>
-      <div className="p-5 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-        <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+      <div className="p-5 rounded-xl" style={{ background: '#FFFFFF', border: '1px solid #E8E3F5' }}>
+        <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: '#6B6480' }}>
           Leads recientes ({leads.length})
         </h2>
 
         {leads.length === 0 ? (
-          <p className="text-xs py-6 text-center leading-relaxed" style={{ color: 'var(--c-text-4)' }}>
+          <p className="text-xs py-6 text-center leading-relaxed" style={{ color: '#9B8FB5' }}>
             Sin leads — se registran automáticamente al terminar una llamada
           </p>
         ) : (
@@ -81,19 +81,19 @@ export default function LeadsSection({ initialLeads }: { initialLeads: Lead[] })
 
               return (
                 <div key={lead.id} className="px-3 py-2.5 rounded-lg group"
-                  style={{ background: 'var(--c-surface-2)', border: `1px solid ${isDeleting ? 'rgba(239,68,68,0.4)' : 'var(--c-border)'}` }}>
+                  style={{ background: '#FAFAFB', border: `1px solid ${isDeleting ? 'rgba(239,68,68,0.4)' : '#E8E3F5'}` }}>
 
                   {isDeleting ? (
                     /* Inline delete confirmation */
                     <div className="flex items-center justify-between gap-3">
-                      <p className="text-xs font-medium" style={{ color: 'var(--c-text)' }}>
+                      <p className="text-xs font-medium" style={{ color: '#1A0A3B' }}>
                         ¿Eliminar lead <span style={{ color: '#ef4444' }}>{lead.nombre ?? 'Sin nombre'}</span>? Esta acción no se puede deshacer.
                       </p>
                       <div className="flex gap-1.5 flex-shrink-0">
                         <button
                           onClick={() => setDeletingId(null)}
                           className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium"
-                          style={{ background: 'var(--c-surface)', color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }}>
+                          style={{ background: '#FFFFFF', color: '#6B6480', border: '1px solid #E8E3F5' }}>
                           <X size={11} /> Cancelar
                         </button>
                         <button
@@ -108,7 +108,7 @@ export default function LeadsSection({ initialLeads }: { initialLeads: Lead[] })
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-medium" style={{ color: 'var(--c-text)' }}>{lead.nombre ?? 'Sin nombre'}</span>
+                          <span className="text-sm font-medium" style={{ color: '#1A0A3B' }}>{lead.nombre ?? 'Sin nombre'}</span>
                           <button
                             title="Click para cambiar estado"
                             onClick={() => {
@@ -121,12 +121,12 @@ export default function LeadsSection({ initialLeads }: { initialLeads: Lead[] })
                           >
                             {statusInfo.label}
                           </button>
-                          <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+                          <span className="text-xs" style={{ color: '#6B6480' }}>
                             {new Date(lead.created_at).toLocaleDateString('es-MX')}
                           </span>
                         </div>
                         {lead.negocio && (
-                          <div className="text-xs mt-0.5" style={{ color: 'var(--c-text-2)' }}>
+                          <div className="text-xs mt-0.5" style={{ color: '#4A3B6B' }}>
                             {lead.negocio}{lead.giro ? ` · ${lead.giro}` : ''}
                           </div>
                         )}
@@ -135,22 +135,22 @@ export default function LeadsSection({ initialLeads }: { initialLeads: Lead[] })
                         )}
                         <div className="flex gap-3 mt-1 flex-wrap">
                           {lead.presupuesto && (
-                            <span className="text-xs inline-flex items-center gap-1" style={{ color: 'var(--c-text-3)' }}>
+                            <span className="text-xs inline-flex items-center gap-1" style={{ color: '#6B6480' }}>
                               <DollarSign size={11} /> {lead.presupuesto}
                             </span>
                           )}
                           {lead.timeline && (
-                            <span className="text-xs inline-flex items-center gap-1" style={{ color: 'var(--c-text-3)' }}>
+                            <span className="text-xs inline-flex items-center gap-1" style={{ color: '#6B6480' }}>
                               <Calendar size={11} /> {lead.timeline}
                             </span>
                           )}
                           {lead.whatsapp && (
-                            <span className="text-xs inline-flex items-center gap-1" style={{ color: 'var(--c-text-3)' }}>
+                            <span className="text-xs inline-flex items-center gap-1" style={{ color: '#6B6480' }}>
                               <Smartphone size={11} /> {lead.whatsapp}
                             </span>
                           )}
                           {lead.email && (
-                            <span className="text-xs inline-flex items-center gap-1" style={{ color: 'var(--c-text-3)' }}>
+                            <span className="text-xs inline-flex items-center gap-1" style={{ color: '#6B6480' }}>
                               <Mail size={11} /> {lead.email}
                             </span>
                           )}
@@ -159,14 +159,14 @@ export default function LeadsSection({ initialLeads }: { initialLeads: Lead[] })
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                         <button onClick={() => setEditing(lead)}
                           title="Editar lead"
-                          className="p-1.5 rounded-lg hover:bg-[var(--c-surface-2)] transition-colors"
-                          style={{ color: 'var(--c-text-2)' }}>
+                          className="p-1.5 rounded-lg hover:bg-[#FAFAFB] transition-colors"
+                          style={{ color: '#4A3B6B' }}>
                           <Pencil size={13} />
                         </button>
                         <button onClick={() => setDeletingId(lead.id)}
                           title="Eliminar lead"
                           className="p-1.5 rounded-lg hover:bg-red-500/20 transition-colors"
-                          style={{ color: 'var(--c-text-2)' }}>
+                          style={{ color: '#4A3B6B' }}>
                           <Trash2 size={13} />
                         </button>
                       </div>

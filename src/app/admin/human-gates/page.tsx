@@ -9,9 +9,10 @@ export default async function HumanGatesPage() {
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
       <div>
-        <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: '#111827' }}>Decisiones humanas</h1>
-        <p className="text-[13px] mt-1.5" style={{ color: '#6B7280' }}>
-          Ledger unificado de cada aprobación, rechazo o edición que los dueños hicieron. Cross-entidad.
+        <p className="text-[10px] font-bold uppercase tracking-[0.16em] mb-1" style={{ color: '#9B6DFF' }}>Auditoría</p>
+        <h1 className="text-[28px] font-bold leading-tight tracking-tight" style={{ color: '#1A0A3B' }}>Decisiones humanas</h1>
+        <p className="text-[13px] mt-1.5 max-w-2xl" style={{ color: '#6B6480' }}>
+          Ledger unificado de cada aprobación, rechazo o edición que los dueños hicieron desde el portal. Cross-entidad.
         </p>
       </div>
       <HumanGatesView />

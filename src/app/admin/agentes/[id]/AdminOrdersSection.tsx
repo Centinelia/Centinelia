@@ -72,7 +72,7 @@ export default function AdminOrdersSection({ initialOrders, token }: { initialOr
 
   if (orders.length === 0) {
     return (
-      <p className="text-xs py-6 text-center" style={{ color: 'var(--c-text-4)' }}>
+      <p className="text-xs py-6 text-center" style={{ color: '#9B8FB5' }}>
         Sin pedidos registrados aún
       </p>
     );
@@ -86,16 +86,16 @@ export default function AdminOrdersSection({ initialOrders, token }: { initialOr
           const sc = STATUS_CONFIG[status] ?? STATUS_CONFIG.nuevo;
           return (
             <div key={order.id} className="px-3 py-2.5 rounded-lg group"
-              style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
+              style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-medium" style={{ color: 'var(--c-text)' }}>{order.nombre ?? 'Sin nombre'}</span>
+                    <span className="text-sm font-medium" style={{ color: '#1A0A3B' }}>{order.nombre ?? 'Sin nombre'}</span>
                     {order.telefono && (
-                      <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>· {order.telefono}</span>
+                      <span className="text-xs" style={{ color: '#6B6480' }}>· {order.telefono}</span>
                     )}
                     <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full"
-                      style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-2)' }}>
+                      style={{ background: '#FAFAFB', color: '#4A3B6B' }}>
                       {order.tipo === 'entrega' ? <Truck size={9} /> : <Store size={9} />}
                       {order.tipo === 'entrega' ? 'Entrega' : 'Recoger'}
                     </span>
@@ -110,14 +110,14 @@ export default function AdminOrdersSection({ initialOrders, token }: { initialOr
                       ))}
                     </select>
                   </div>
-                  <p className="text-sm mt-1 font-medium" style={{ color: 'var(--c-text)' }}>{order.items}</p>
+                  <p className="text-sm mt-1 font-medium" style={{ color: '#1A0A3B' }}>{order.items}</p>
                   {order.direccion && (
-                    <p className="text-xs mt-0.5 inline-flex items-center gap-1" style={{ color: 'var(--c-text-2)' }}>
+                    <p className="text-xs mt-0.5 inline-flex items-center gap-1" style={{ color: '#4A3B6B' }}>
                       <MapPin size={11} /> {order.direccion}
                     </p>
                   )}
                   {order.notas && (
-                    <p className="text-xs mt-0.5 inline-flex items-center gap-1" style={{ color: 'var(--c-text-2)' }}>
+                    <p className="text-xs mt-0.5 inline-flex items-center gap-1" style={{ color: '#4A3B6B' }}>
                       <StickyNote size={11} /> {order.notas}
                     </p>
                   )}
@@ -125,11 +125,11 @@ export default function AdminOrdersSection({ initialOrders, token }: { initialOr
                 <div className="flex items-center gap-1.5 flex-shrink-0">
                   <button
                     onClick={() => { setEditing(order); setEditForm({ ...order }); }}
-                    className="p-1.5 rounded-lg hover:bg-[var(--c-surface-2)] transition-colors opacity-0 group-hover:opacity-100"
-                    style={{ color: 'var(--c-text-2)' }}>
+                    className="p-1.5 rounded-lg hover:bg-[#FAFAFB] transition-colors opacity-0 group-hover:opacity-100"
+                    style={{ color: '#4A3B6B' }}>
                     <Pencil size={12} />
                   </button>
-                  <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>
+                  <span className="text-xs" style={{ color: '#9B8FB5' }}>
                     {new Date(order.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
@@ -144,31 +144,31 @@ export default function AdminOrdersSection({ initialOrders, token }: { initialOr
           style={{ background: 'rgba(0,0,0,0.75)' }}
           onClick={e => { if (e.target === e.currentTarget) setEditing(null); }}>
           <div className="w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
-            style={{ background: 'var(--c-modal)', border: '1px solid var(--c-border-2)' }}>
+            style={{ background: '#FFFFFF', border: '1px solid #E8E3F5' }}>
             <div className="flex items-center justify-between px-5 py-4"
-              style={{ borderBottom: '1px solid var(--c-border)' }}>
-              <h3 className="font-semibold text-sm" style={{ color: 'var(--c-text)' }}>Editar pedido</h3>
-              <button onClick={() => setEditing(null)} className="p-1 rounded-lg hover:bg-[var(--c-surface-2)]"
-                style={{ color: 'var(--c-text-2)' }}>
+              style={{ borderBottom: '1px solid #E8E3F5' }}>
+              <h3 className="font-semibold text-sm" style={{ color: '#1A0A3B' }}>Editar pedido</h3>
+              <button onClick={() => setEditing(null)} className="p-1 rounded-lg hover:bg-[#FAFAFB]"
+                style={{ color: '#4A3B6B' }}>
                 <X size={16} />
               </button>
             </div>
             <div className="p-5 flex flex-col gap-3 max-h-[60vh] overflow-y-auto">
               {EDIT_FIELDS.map(([key, label]) => (
                 <div key={key}>
-                  <label className="block text-xs font-medium mb-1" style={{ color: 'var(--c-text-2)' }}>{label}</label>
+                  <label className="block text-xs font-medium mb-1" style={{ color: '#4A3B6B' }}>{label}</label>
                   <input
                     value={(editForm[key] as string) ?? ''}
                     onChange={e => setEditForm(f => ({ ...f, [key]: e.target.value }))}
                     className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-                    style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }} />
+                    style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }} />
                 </div>
               ))}
             </div>
-            <div className="flex gap-2 px-5 py-4" style={{ borderTop: '1px solid var(--c-border)' }}>
+            <div className="flex gap-2 px-5 py-4" style={{ borderTop: '1px solid #E8E3F5' }}>
               <button onClick={() => setEditing(null)} disabled={saving}
                 className="flex-1 py-2 rounded-lg text-sm font-medium"
-                style={{ background: 'var(--c-input-bg)', color: 'var(--c-text-2)' }}>
+                style={{ background: '#FFFFFF', color: '#4A3B6B' }}>
                 Cancelar
               </button>
               <button onClick={saveEdit} disabled={saving}

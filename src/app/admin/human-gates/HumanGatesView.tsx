@@ -88,8 +88,8 @@ export function HumanGatesView() {
 
   const selectStyle = {
     background: '#FFFFFF',
-    border: '1px solid #E5E7EB',
-    color: '#111827',
+    border: '1px solid #E8E3F5',
+    color: '#1A0A3B',
     padding: '6px 10px',
     borderRadius: '8px',
     fontSize: '13px',
@@ -100,13 +100,13 @@ export function HumanGatesView() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-3 items-center">
           <label className="flex items-center gap-2 text-[13px]">
-            <span style={{ color: '#6B7280' }}>Ventana</span>
+            <span style={{ color: '#6B6480' }}>Ventana</span>
             <select value={win} onChange={e => setWin(e.target.value as Window)} style={selectStyle}>
               {WINDOWS.map(w => <option key={w.key} value={w.key}>{w.label}</option>)}
             </select>
           </label>
           <label className="flex items-center gap-2 text-[13px]">
-            <span style={{ color: '#6B7280' }}>Tipo</span>
+            <span style={{ color: '#6B6480' }}>Tipo</span>
             <select value={type} onChange={e => setType(e.target.value)} style={selectStyle}>
               <option value="">Todos</option>
               {Object.entries(GATE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -117,7 +117,7 @@ export function HumanGatesView() {
           onClick={load}
           disabled={loading}
           className="inline-flex items-center gap-1.5 text-[13px] font-medium px-3 py-1.5 rounded-lg"
-          style={{ color: '#374151', border: '1px solid #E5E7EB', background: '#FFFFFF' }}
+          style={{ color: '#4A3B6B', border: '1px solid #E8E3F5', background: '#FFFFFF' }}
         >
           <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
           Actualizar
@@ -145,11 +145,11 @@ export function HumanGatesView() {
               {Object.entries(data.by_type).map(([gt, dist]) => {
                 const accent = GATE_ACCENTS[gt] ?? '#6B7280';
                 return (
-                  <div key={gt} className="rounded-xl bg-white overflow-hidden" style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}>
+                  <div key={gt} className="rounded-xl bg-white overflow-hidden" style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}>
                     <div className="px-5 py-4" style={{ borderBottom: '1px solid #F3F4F6' }}>
                       <div className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: accent }} />
-                        <span className="text-[14px] font-semibold" style={{ color: '#111827' }}>
+                        <span className="text-[14px] font-semibold" style={{ color: '#1A0A3B' }}>
                           {GATE_LABELS[gt] ?? gt}
                         </span>
                       </div>
@@ -171,18 +171,18 @@ export function HumanGatesView() {
           {/* Feed */}
           <section>
             <div className="flex items-baseline justify-between mb-4">
-              <h2 className="text-[15px] font-semibold" style={{ color: '#111827' }}>
+              <h2 className="text-[15px] font-semibold" style={{ color: '#1A0A3B' }}>
                 Decisiones recientes
               </h2>
               <span className="text-[12px] uppercase tracking-wider font-medium" style={{ color: '#9CA3AF' }}>
                 {data.decisions.length} rows
               </span>
             </div>
-            <div className="rounded-xl overflow-hidden bg-white" style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}>
+            <div className="rounded-xl overflow-hidden bg-white" style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}>
               {data.decisions.length === 0 && (
                 <div className="p-8 text-center">
                   <ShieldCheck size={20} style={{ color: '#D1D5DB', margin: '0 auto 8px' }} />
-                  <p className="text-sm" style={{ color: '#6B7280' }}>Sin decisiones en el rango seleccionado.</p>
+                  <p className="text-sm" style={{ color: '#6B6480' }}>Sin decisiones en el rango seleccionado.</p>
                   <p className="text-xs mt-1" style={{ color: '#9CA3AF' }}>
                     Aparecerán cuando el dueño apruebe/rechace algo por email o portal.
                   </p>
@@ -204,7 +204,7 @@ export function HumanGatesView() {
                     <span className="font-mono tabular-nums whitespace-nowrap" style={{ color: '#9CA3AF' }}>{fmt(d.decided_at)}</span>
                     <GatePill gt={d.gate_type} />
                     <span className="font-medium" style={{ color }}>{d.decision}</span>
-                    <span className="text-[12px]" style={{ color: '#6B7280' }}>{d.channel}</span>
+                    <span className="text-[12px]" style={{ color: '#6B6480' }}>{d.channel}</span>
                     <span className="truncate" style={{ color: '#9CA3AF' }}>{d.reason ?? ''}</span>
                   </div>
                 );
@@ -219,10 +219,10 @@ export function HumanGatesView() {
 
 function KpiCard({ label, value, sub }: { label: string; value: number | string; sub?: string }) {
   return (
-    <div className="rounded-xl bg-white px-5 py-4" style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}>
+    <div className="rounded-xl bg-white px-5 py-4" style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}>
       <p className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#9CA3AF' }}>{label}</p>
-      <p className="text-[28px] font-semibold leading-none tabular-nums mt-2" style={{ color: '#111827' }}>{value}</p>
-      {sub && <p className="text-[12px] mt-1" style={{ color: '#6B7280' }}>{sub}</p>}
+      <p className="text-[28px] font-semibold leading-none tabular-nums mt-2" style={{ color: '#1A0A3B' }}>{value}</p>
+      {sub && <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>{sub}</p>}
     </div>
   );
 }
@@ -230,7 +230,7 @@ function KpiCard({ label, value, sub }: { label: string; value: number | string;
 function BreakdownCard({ label, entries }: { label: string; entries: Record<string, number> }) {
   const list = Object.entries(entries).sort((a, b) => b[1] - a[1]);
   return (
-    <div className="rounded-xl bg-white px-5 py-4" style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}>
+    <div className="rounded-xl bg-white px-5 py-4" style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}>
       <p className="text-[11px] uppercase tracking-wider font-medium mb-3" style={{ color: '#9CA3AF' }}>{label}</p>
       {list.length === 0 ? (
         <p className="text-[13px]" style={{ color: '#9CA3AF' }}>Sin datos</p>
@@ -238,8 +238,8 @@ function BreakdownCard({ label, entries }: { label: string; entries: Record<stri
         <div className="space-y-1.5">
           {list.map(([k, n]) => (
             <div key={k} className="flex justify-between text-[13px]">
-              <span style={{ color: '#374151' }}>{k}</span>
-              <span className="tabular-nums font-medium" style={{ color: '#111827' }}>{n}</span>
+              <span style={{ color: '#4A3B6B' }}>{k}</span>
+              <span className="tabular-nums font-medium" style={{ color: '#1A0A3B' }}>{n}</span>
             </div>
           ))}
         </div>

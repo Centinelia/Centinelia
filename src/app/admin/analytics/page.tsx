@@ -18,7 +18,7 @@ const OUTCOME_LABELS: Record<string, { label: string; color: string }> = {
   appointment_booked: { label: 'Citas',        color: '#3B82F6' },
   order_taken:        { label: 'Pedidos',      color: '#F59E0B' },
   transferred:        { label: 'Transferidos', color: '#8B5CF6' },
-  info_provided:      { label: 'Información',  color: '#6B7280' },
+  info_provided:      { label: 'Información',  color: '#6B6480' },
   escalated_whatsapp: { label: 'WhatsApp',     color: '#25D366' },
   other:              { label: 'Otro',         color: '#4B5563' },
 };
@@ -207,7 +207,7 @@ export default async function AnalyticsPage({ searchParams }: Props) {
   const csvHref = `/api/admin/analytics/export${period ? `?period=${period}` : ''}`;
 
   const cardStyle: React.CSSProperties = {
-    border: '1px solid #E5E7EB',
+    border: '1px solid #E8E3F5',
     boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)',
   };
 
@@ -217,17 +217,19 @@ export default async function AnalyticsPage({ searchParams }: Props) {
       <div>
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
-            <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: '#111827' }}>Analytics</h1>
-            <p className="text-[13px] mt-1.5" style={{ color: '#6B7280' }}>
-              Métricas de llamadas, leads y capacidad del negocio.
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] mb-1" style={{ color: '#9B6DFF' }}>Métricas</p>
+            <h1 className="text-[28px] font-bold leading-tight tracking-tight" style={{ color: '#1A0A3B' }}>Analytics</h1>
+            <p className="text-[13px] mt-1.5 max-w-2xl" style={{ color: '#6B6480' }}>
+              Métricas de llamadas, leads y capacidad del negocio. Filtra por periodo o exporta a CSV.
             </p>
           </div>
-          <div className="text-right shrink-0">
-            <div className="text-[28px] font-semibold leading-none tabular-nums" style={{ color: '#10B981' }}>
-              ${mrr.toLocaleString('es-MX')}{' '}
-              <span className="text-[15px] font-normal" style={{ color: '#6B7280' }}>MXN</span>
-            </div>
-            <div className="text-[12px] mt-1" style={{ color: '#6B7280' }}>MRR estimado · {activeAgentsCount} activos</div>
+          <div className="rounded-2xl text-right shrink-0" style={{ background: '#ffffff', border: '1px solid #E8E3F5', padding: '14px 18px', boxShadow: '0 1px 3px rgba(15,5,34,0.04)' }}>
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: '#9B6DFF' }}>MRR estimado</p>
+            <p className="text-[28px] font-bold leading-none tabular-nums mt-1" style={{ color: '#22C55E' }}>
+              ${mrr.toLocaleString('es-MX')}
+              <span className="text-[14px] font-semibold ml-1" style={{ color: '#6B6480' }}>MXN</span>
+            </p>
+            <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>{activeAgentsCount} empleado{activeAgentsCount !== 1 ? 's' : ''} activo{activeAgentsCount !== 1 ? 's' : ''}</p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -237,11 +239,13 @@ export default async function AnalyticsPage({ searchParams }: Props) {
               <Link
                 key={param}
                 href={param ? `/admin/analytics?period=${param}` : '/admin/analytics'}
-                className="px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors"
+                className="rounded-xl text-[13px] font-semibold transition-all"
                 style={{
-                  background: active ? '#6C3BFF' : '#FFFFFF',
-                  color: active ? '#FFFFFF' : '#374151',
-                  border: `1px solid ${active ? '#6C3BFF' : '#E5E7EB'}`,
+                  padding:    '8px 14px',
+                  background: active ? '#6C3BFF' : '#ffffff',
+                  color:      active ? '#ffffff' : '#6B6480',
+                  border:     `1px solid ${active ? '#6C3BFF' : '#E8E3F5'}`,
+                  boxShadow:  active ? '0 2px 8px rgba(108,59,255,0.32)' : 'none',
                 }}
               >
                 {label}
@@ -250,26 +254,26 @@ export default async function AnalyticsPage({ searchParams }: Props) {
           })}
           <a
             href={csvHref}
-            className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-50"
-            style={{ background: '#FFFFFF', color: '#374151', border: '1px solid #E5E7EB' }}
+            className="ml-auto inline-flex items-center gap-2 rounded-xl text-[13px] font-semibold transition-colors"
+            style={{ padding: '8px 14px', background: '#F5F0FF', color: '#6C3BFF', border: '1px solid #E8E3F5' }}
           >
             <Download size={13} />
-            CSV
+            Exportar CSV
           </a>
         </div>
       </div>
 
       {/* KPI cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard icon={<Phone size={13} />}       label="Total llamadas"     value={totalCalls.toString()} color="#6C3BFF" />
-        <KpiCard icon={<Clock size={13} />}       label="Duración promedio"  value={`${Math.floor(avgDuration / 60)}m ${avgDuration % 60}s`} color="#8B5CF6" />
-        <KpiCard icon={<Users size={13} />}       label="Leads generados"    value={totalLeads.toString()} color="#10B981" />
-        <KpiCard icon={<TrendingUp size={13} />}  label="Tasa de conversión" value={`${conversionRate}%`} color="#F59E0B" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiCard icon={<Phone size={16} />}       label="Total llamadas"     value={totalCalls.toString()} color="#6C3BFF" />
+        <KpiCard icon={<Clock size={16} />}       label="Duración promedio"  value={`${Math.floor(avgDuration / 60)}m ${avgDuration % 60}s`} color="#9B6DFF" />
+        <KpiCard icon={<Users size={16} />}       label="Leads generados"    value={totalLeads.toString()} color="#22C55E" />
+        <KpiCard icon={<TrendingUp size={16} />}  label="Tasa de conversión" value={`${conversionRate}%`} color="#F59E0B" />
       </div>
 
       {/* Capacity projection */}
       <div className="rounded-xl bg-white px-6 py-5" style={cardStyle}>
-        <h2 className="text-[15px] font-semibold mb-4" style={{ color: '#111827' }}>
+        <h2 className="text-[15px] font-semibold mb-4" style={{ color: '#1A0A3B' }}>
           Capacidad proyectada
         </h2>
 
@@ -284,12 +288,12 @@ export default async function AnalyticsPage({ searchParams }: Props) {
             </span>
           </div>
           {avgDuration === 0 ? (
-            <p className="text-[13px]" style={{ color: '#6B7280' }}>Sin llamadas registradas en el periodo. Acumula datos para ver la proyección.</p>
+            <p className="text-[13px]" style={{ color: '#6B6480' }}>Sin llamadas registradas en el periodo. Acumula datos para ver la proyección.</p>
           ) : (
             <>
-              <p className="text-[13px] mb-3" style={{ color: '#374151' }}>
+              <p className="text-[13px] mb-3" style={{ color: '#4A3B6B' }}>
                 Duración promedio:{' '}
-                <strong style={{ color: '#111827' }}>
+                <strong style={{ color: '#1A0A3B' }}>
                   {Math.floor(avgDuration / 60)}m {avgDuration % 60}s
                 </strong>
                 {' · '}{totalCalls} llamada{totalCalls !== 1 ? 's' : ''} ({period ? `últimos ${period} días` : 'últimos 12 meses'})
@@ -305,11 +309,11 @@ export default async function AnalyticsPage({ searchParams }: Props) {
                     <div
                       key={tier}
                       className="rounded-lg p-3 text-center"
-                      style={{ background: '#F9FAFB', border: '1px solid #E5E7EB' }}
+                      style={{ background: '#F9FAFB', border: '1px solid #E8E3F5' }}
                     >
-                      <div className="text-[11px] uppercase tracking-wider font-medium mb-1" style={{ color: '#9CA3AF' }}>{tier} · {minutes} min</div>
+                      <div className="text-[11px] uppercase tracking-wider font-medium mb-1" style={{ color: '#9B8FB5' }}>{tier} · {minutes} min</div>
                       <div className="text-[22px] font-semibold leading-none tabular-nums" style={{ color: '#6C3BFF' }}>~{convs.toLocaleString('es-MX')}</div>
-                      <div className="text-[12px] mt-1" style={{ color: '#6B7280' }}>conversaciones/mes</div>
+                      <div className="text-[12px] mt-1" style={{ color: '#6B6480' }}>conversaciones/mes</div>
                     </div>
                   );
                 })}
@@ -331,12 +335,12 @@ export default async function AnalyticsPage({ searchParams }: Props) {
             </span>
           </div>
           {totalOps === 0 ? (
-            <p className="text-[13px]" style={{ color: '#6B7280' }}>Sin tareas registradas en el periodo. Activa empleados de oficina para acumular datos.</p>
+            <p className="text-[13px]" style={{ color: '#6B6480' }}>Sin tareas registradas en el periodo. Activa empleados de oficina para acumular datos.</p>
           ) : (
             <>
-              <p className="text-[13px] mb-3" style={{ color: '#374151' }}>
+              <p className="text-[13px] mb-3" style={{ color: '#4A3B6B' }}>
                 Promedio actual:{' '}
-                <strong style={{ color: '#111827' }}>
+                <strong style={{ color: '#1A0A3B' }}>
                   {avgOpsPerDay < 1 ? avgOpsPerDay.toFixed(2) : avgOpsPerDay.toFixed(1)} tareas/día
                 </strong>
                 {' · '}{totalOps.toLocaleString('es-MX')} tareas en {period ? `${period} días` : 'últimos 12 meses'}
@@ -352,13 +356,13 @@ export default async function AnalyticsPage({ searchParams }: Props) {
                     <div
                       key={tier}
                       className="rounded-lg p-3 text-center"
-                      style={{ background: '#F9FAFB', border: '1px solid #E5E7EB' }}
+                      style={{ background: '#F9FAFB', border: '1px solid #E8E3F5' }}
                     >
-                      <div className="text-[11px] uppercase tracking-wider font-medium mb-1" style={{ color: '#9CA3AF' }}>{tier} · {opsLimit} tareas</div>
+                      <div className="text-[11px] uppercase tracking-wider font-medium mb-1" style={{ color: '#9B8FB5' }}>{tier} · {opsLimit} tareas</div>
                       <div className="text-[22px] font-semibold leading-none tabular-nums" style={{ color: '#3B82F6' }}>
                         ~{tasksPerMonth < opsLimit ? tasksPerMonth.toLocaleString('es-MX') : opsLimit.toLocaleString('es-MX')}
                       </div>
-                      <div className="text-[12px] mt-1" style={{ color: '#6B7280' }}>
+                      <div className="text-[12px] mt-1" style={{ color: '#6B6480' }}>
                         {tasksPerMonth >= opsLimit
                           ? 'límite alcanzado en 30 días'
                           : `tareas/mes · sobran ${(opsLimit - tasksPerMonth).toLocaleString('es-MX')} tareas`}
@@ -375,7 +379,7 @@ export default async function AnalyticsPage({ searchParams }: Props) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Calls chart */}
         <div className="rounded-xl bg-white px-6 py-5" style={cardStyle}>
-          <h2 className="text-[11px] uppercase tracking-wider font-medium mb-4" style={{ color: '#9CA3AF' }}>
+          <h2 className="text-[11px] uppercase tracking-wider font-medium mb-4" style={{ color: '#9B8FB5' }}>
             {chartTitle}
           </h2>
           <div className="flex items-end gap-1 h-24">
@@ -391,7 +395,7 @@ export default async function AnalyticsPage({ searchParams }: Props) {
                     cursor: 'default',
                   }}
                 />
-                <span className="truncate w-full text-center tabular-nums" style={{ color: '#9CA3AF', fontSize: '10px' }}>
+                <span className="truncate w-full text-center tabular-nums" style={{ color: '#9B8FB5', fontSize: '10px' }}>
                   {label}
                 </span>
               </div>
@@ -401,7 +405,7 @@ export default async function AnalyticsPage({ searchParams }: Props) {
 
         {/* Peak hours */}
         <div className="rounded-xl bg-white px-6 py-5" style={cardStyle}>
-          <h2 className="text-[11px] uppercase tracking-wider font-medium mb-4" style={{ color: '#9CA3AF' }}>
+          <h2 className="text-[11px] uppercase tracking-wider font-medium mb-4" style={{ color: '#9B8FB5' }}>
             Horas pico
             {totalCalls > 0 && <span className="ml-2 font-medium normal-case" style={{ color: '#F59E0B' }}>pico: {peakHour}:00</span>}
           </h2>
@@ -422,9 +426,9 @@ export default async function AnalyticsPage({ searchParams }: Props) {
             ))}
           </div>
           <div className="flex justify-between mt-1">
-            <span className="tabular-nums" style={{ color: '#9CA3AF', fontSize: '10px' }}>0h</span>
-            <span className="tabular-nums" style={{ color: '#9CA3AF', fontSize: '10px' }}>12h</span>
-            <span className="tabular-nums" style={{ color: '#9CA3AF', fontSize: '10px' }}>23h</span>
+            <span className="tabular-nums" style={{ color: '#9B8FB5', fontSize: '10px' }}>0h</span>
+            <span className="tabular-nums" style={{ color: '#9B8FB5', fontSize: '10px' }}>12h</span>
+            <span className="tabular-nums" style={{ color: '#9B8FB5', fontSize: '10px' }}>23h</span>
           </div>
         </div>
       </div>
@@ -432,11 +436,11 @@ export default async function AnalyticsPage({ searchParams }: Props) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Outcome distribution */}
         <div className="rounded-xl bg-white px-6 py-5" style={cardStyle}>
-          <h2 className="text-[11px] uppercase tracking-wider font-medium mb-4" style={{ color: '#9CA3AF' }}>
+          <h2 className="text-[11px] uppercase tracking-wider font-medium mb-4" style={{ color: '#9B8FB5' }}>
             Resultados
           </h2>
           {totalCalls === 0 ? (
-            <p className="text-[13px] py-4 text-center" style={{ color: '#6B7280' }}>Sin datos aún</p>
+            <p className="text-[13px] py-4 text-center" style={{ color: '#6B6480' }}>Sin datos aún</p>
           ) : (
             <div className="flex flex-col gap-2.5">
               {Object.entries(outcomeCounts)
@@ -448,11 +452,11 @@ export default async function AnalyticsPage({ searchParams }: Props) {
                     <div key={outcome}>
                       <div className="flex justify-between mb-1">
                         <span className="text-[12px] font-medium" style={{ color: info.color }}>{info.label}</span>
-                        <span className="text-[12px] tabular-nums" style={{ color: '#9CA3AF' }}>
+                        <span className="text-[12px] tabular-nums" style={{ color: '#9B8FB5' }}>
                           {count} · {pct}%
                         </span>
                       </div>
-                      <div className="w-full h-1.5 rounded-full" style={{ background: '#F3F4F6' }}>
+                      <div className="w-full h-1.5 rounded-full" style={{ background: '#F5F0FF' }}>
                         <div className="h-1.5 rounded-full" style={{ width: `${pct}%`, background: info.color }} />
                       </div>
                     </div>
@@ -464,7 +468,7 @@ export default async function AnalyticsPage({ searchParams }: Props) {
 
         {/* Per-agent performance */}
         <div className="rounded-xl bg-white px-6 py-5" style={cardStyle}>
-          <h2 className="text-[11px] uppercase tracking-wider font-medium mb-4" style={{ color: '#9CA3AF' }}>
+          <h2 className="text-[11px] uppercase tracking-wider font-medium mb-4" style={{ color: '#9B8FB5' }}>
             Por empleado
           </h2>
           <AnalyticsAgentsTable rows={agentRows} />
@@ -477,14 +481,16 @@ export default async function AnalyticsPage({ searchParams }: Props) {
 function KpiCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: string; color: string }) {
   return (
     <div
-      className="rounded-xl bg-white px-5 py-4"
-      style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+      className="rounded-2xl transition-all"
+      style={{ background: '#ffffff', border: '1px solid #E8E3F5', padding: '16px 18px', boxShadow: '0 1px 3px rgba(15,5,34,0.04)' }}
     >
       <div className="flex items-center gap-2 mb-2">
-        <span style={{ color }}>{icon}</span>
-        <p className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#9CA3AF' }}>{label}</p>
+        <div className="flex items-center justify-center rounded-lg" style={{ background: `${color}1A`, color, width: 28, height: 28 }}>
+          {icon}
+        </div>
+        <p className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: '#6B6480' }}>{label}</p>
       </div>
-      <div className="text-[28px] font-semibold leading-none tabular-nums" style={{ color: '#111827' }}>{value}</div>
+      <div className="text-[24px] font-bold leading-none tabular-nums tracking-tight" style={{ color: '#1A0A3B' }}>{value}</div>
     </div>
   );
 }

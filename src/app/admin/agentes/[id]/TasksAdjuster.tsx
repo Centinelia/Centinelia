@@ -71,7 +71,7 @@ export default function TasksAdjuster({
   return (
     <div
       className="p-5 rounded-xl flex flex-col gap-5 bg-white"
-      style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+      style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
     >
 
       {/* Header */}
@@ -95,12 +95,12 @@ export default function TasksAdjuster({
       <div>
         <div className="flex items-baseline gap-1.5 mb-2">
           <span className="text-[24px] font-bold tabular-nums" style={{ color: barColor }}>{used}</span>
-          <span className="text-[13px]" style={{ color: '#6B7280' }}>usadas / {included} incluidas</span>
+          <span className="text-[13px]" style={{ color: '#6B6480' }}>usadas / {included} incluidas</span>
         </div>
         <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: '#F3F4F6' }}>
           <div className="h-2 rounded-full transition-all" style={{ width: `${pct}%`, background: barColor }} />
         </div>
-        <div className="flex justify-between mt-1.5 text-[12px]" style={{ color: '#6B7280' }}>
+        <div className="flex justify-between mt-1.5 text-[12px]" style={{ color: '#6B6480' }}>
           <span>{Math.round(pct)}% consumido</span>
           <span style={{ color: available > 0 ? '#10B981' : '#EF4444', fontWeight: 600 }}>
             {available} disponibles
@@ -110,7 +110,7 @@ export default function TasksAdjuster({
 
       {/* Action selector */}
       <div className="flex flex-col gap-2">
-        <span className="text-[12px]" style={{ color: '#6B7280' }}>Tipo de ajuste</span>
+        <span className="text-[12px]" style={{ color: '#6B6480' }}>Tipo de ajuste</span>
         <div className="grid grid-cols-3 gap-1.5">
           {ACTIONS.map(a => (
             <button
@@ -134,7 +134,7 @@ export default function TasksAdjuster({
 
       {/* Amount + reason */}
       <div className="flex flex-col gap-2">
-        <label className="text-[12px]" style={{ color: '#6B7280' }}>{amountLabel}</label>
+        <label className="text-[12px]" style={{ color: '#6B6480' }}>{amountLabel}</label>
         <input
           type="number"
           min={0}
@@ -142,23 +142,23 @@ export default function TasksAdjuster({
           onChange={e => setAmount(e.target.value)}
           placeholder={action === 'set_used' ? String(used) : '0'}
           className="rounded-lg px-3 py-2 text-[13px] outline-none w-full"
-          style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#111827' }}
+          style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
         />
-        <label className="text-[12px]" style={{ color: '#6B7280' }}>Razón (aparece en el historial del cliente)</label>
+        <label className="text-[12px]" style={{ color: '#6B6480' }}>Razón (aparece en el historial del cliente)</label>
         <input
           type="text"
           value={reason}
           onChange={e => setReason(e.target.value)}
           placeholder="Ej: Compensación por error del sistema"
           className="rounded-lg px-3 py-2 text-[13px] outline-none w-full"
-          style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#111827' }}
+          style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
         />
       </div>
 
       {/* Submit / Confirm */}
       {confirming ? (
         <div className="rounded-lg p-3 flex flex-col gap-2.5" style={{ background: `${activeAction.color}12`, border: `1px solid ${activeAction.color}40` }}>
-          <p className="text-[12px] font-medium text-center" style={{ color: '#111827' }}>
+          <p className="text-[12px] font-medium text-center" style={{ color: '#1A0A3B' }}>
             ¿Confirmar {activeAction.label.toLowerCase()} <strong>{amount} tareas</strong>
             {action !== 'set_used' ? ' a este cliente?' : ' de uso?'}
           </p>
@@ -167,7 +167,7 @@ export default function TasksAdjuster({
               type="button"
               onClick={() => setConfirming(false)}
               className="flex-1 py-2 rounded-lg text-[12px] font-semibold transition-all"
-              style={{ background: '#FFFFFF', color: '#374151', border: '1px solid #E5E7EB' }}
+              style={{ background: '#FFFFFF', color: '#4A3B6B', border: '1px solid #E8E3F5' }}
             >
               Cancelar
             </button>

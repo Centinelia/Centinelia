@@ -69,7 +69,7 @@ export default function AnalyticsAgentsTable({ rows }: { rows: AgentRow[] }) {
   const statusLbl  = status === 'activos' ? 'Activos' : status === 'pausados' ? 'Pausados' : 'Estado';
 
   if (rows.length === 0) {
-    return <p className="text-[13px] py-4 text-center" style={{ color: '#6B7280' }}>Sin empleados</p>;
+    return <p className="text-[13px] py-4 text-center" style={{ color: '#6B6480' }}>Sin empleados</p>;
   }
 
   return (
@@ -85,7 +85,7 @@ export default function AnalyticsAgentsTable({ rows }: { rows: AgentRow[] }) {
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="w-full pl-7 pr-3 py-1.5 rounded-lg text-[12px] outline-none"
-            style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#111827' }}
+            style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
           />
         </div>
 
@@ -109,7 +109,7 @@ export default function AnalyticsAgentsTable({ rows }: { rows: AgentRow[] }) {
             {tierOpen && (
               <div
                 className="flex gap-1 flex-wrap p-1 rounded-lg bg-white"
-                style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+                style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
               >
                 {([
                   { key: 'todos',    label: `Todos (${rows.length})`,                color: undefined },
@@ -149,7 +149,7 @@ export default function AnalyticsAgentsTable({ rows }: { rows: AgentRow[] }) {
             {statOpen && (
               <div
                 className="flex gap-1 flex-wrap p-1 rounded-lg bg-white"
-                style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+                style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
               >
                 {([
                   { key: 'todos',    label: `Todos`,                          dot: undefined },
@@ -178,7 +178,7 @@ export default function AnalyticsAgentsTable({ rows }: { rows: AgentRow[] }) {
 
       {/* Agent rows */}
       {filtered.length === 0 ? (
-        <p className="text-[12px] py-3 text-center" style={{ color: '#6B7280' }}>Sin resultados</p>
+        <p className="text-[12px] py-3 text-center" style={{ color: '#6B6480' }}>Sin resultados</p>
       ) : (
         <>
           <div className="flex flex-col gap-1.5">
@@ -190,7 +190,7 @@ export default function AnalyticsAgentsTable({ rows }: { rows: AgentRow[] }) {
                   key={row.id}
                   href={`/admin/agentes/${row.id}`}
                   className="flex flex-col gap-1.5 px-3 py-2.5 rounded-lg transition-colors hover:bg-gray-50"
-                  style={{ background: '#FFFFFF', border: '1px solid #E5E7EB' }}
+                  style={{ background: '#FFFFFF', border: '1px solid #E8E3F5' }}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
@@ -200,7 +200,7 @@ export default function AnalyticsAgentsTable({ rows }: { rows: AgentRow[] }) {
                         title={row.active ? 'Activo' : 'Pausado'}
                       />
                       <Bot size={12} style={{ color: '#7C3AED' }} className="flex-shrink-0" />
-                      <span className="text-[13px] font-medium truncate" style={{ color: '#111827' }}>
+                      <span className="text-[13px] font-medium truncate" style={{ color: '#1A0A3B' }}>
                         {displayName}
                       </span>
                       {role && (
@@ -221,7 +221,7 @@ export default function AnalyticsAgentsTable({ rows }: { rows: AgentRow[] }) {
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       {row.mxn > 0 && (
-                        <span className="text-[12px] tabular-nums" style={{ color: '#6B7280' }}>
+                        <span className="text-[12px] tabular-nums" style={{ color: '#6B6480' }}>
                           ${row.mxn.toLocaleString('es-MX')}
                         </span>
                       )}

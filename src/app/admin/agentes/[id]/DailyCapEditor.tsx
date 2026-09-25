@@ -37,12 +37,12 @@ export default function DailyCapEditor({
   };
 
   return (
-    <div className="p-5 rounded-xl flex flex-col gap-4" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+    <div className="p-5 rounded-xl flex flex-col gap-4" style={{ background: '#FFFFFF', border: '1px solid #E8E3F5' }}>
 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Shield size={13} style={{ color: 'var(--c-text-3)' }} />
-          <span className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+          <Shield size={13} style={{ color: '#6B6480' }} />
+          <span className="text-xs font-semibold tracking-widest uppercase" style={{ color: '#6B6480' }}>
             Protección de gasto diario
           </span>
         </div>
@@ -53,21 +53,21 @@ export default function DailyCapEditor({
         )}
       </div>
 
-      <p className="text-xs" style={{ color: 'var(--c-text-3)', lineHeight: 1.55 }}>
+      <p className="text-xs" style={{ color: '#6B6480', lineHeight: 1.55 }}>
         Cuando se activa, el agente rechaza llamadas con un mensaje corto una vez que la cuenta supere el cap del día.
         Útil contra picos anómalos, bots o loops accidentales. Los owners nunca son bloqueados.
       </p>
 
       {/* Toggle */}
       <div className="flex items-center justify-between gap-3">
-        <span className="text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>
+        <span className="text-xs font-medium" style={{ color: '#4A3B6B' }}>
           Activar cap diario
         </span>
         <button
           type="button"
           onClick={() => setEnabled(v => !v)}
           className="relative w-10 h-6 rounded-full transition-colors flex-shrink-0"
-          style={{ background: enabled ? '#6C3BFF' : 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}
+          style={{ background: enabled ? '#6C3BFF' : '#FAFAFB', border: '1px solid #E8E3F5' }}
         >
           <span
             className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full transition-transform"
@@ -78,7 +78,7 @@ export default function DailyCapEditor({
 
       {enabled && (
         <div className="flex flex-col gap-2">
-          <label className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+          <label className="text-xs" style={{ color: '#6B6480' }}>
             Máximo de minutos/día para toda la cuenta
           </label>
           <div className="flex gap-2">
@@ -89,18 +89,18 @@ export default function DailyCapEditor({
               onChange={e => setCap(e.target.value)}
               placeholder={String(suggested)}
               className="flex-1 rounded-lg px-3 py-2 text-sm outline-none"
-              style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }}
+              style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
             />
             <button
               type="button"
               onClick={() => setCap(String(suggested))}
               className="px-3 py-2 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-              style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }}
+              style={{ background: '#FAFAFB', color: '#6B6480', border: '1px solid #E8E3F5' }}
             >
               Sugerido {suggested}
             </button>
           </div>
-          <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>
+          <p className="text-xs" style={{ color: '#9B8FB5' }}>
             Sugerido = mensual ÷ 5. Ajusta según el patrón real del cliente.
           </p>
         </div>
