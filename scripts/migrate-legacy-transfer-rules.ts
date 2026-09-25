@@ -94,7 +94,7 @@ Responde SOLO con JSON válido en este formato exacto:
   });
 
   // logLlmCall obligatorio (enforced por pnpm lint)
-  void logLlmCall({
+  logLlmCall({
     source:      'migrate_transfer_rules',
     model:       SONNET_MODEL,
     usage:       message.usage,
@@ -102,7 +102,7 @@ Responde SOLO con JSON válido en este formato exacto:
     portalEmail: portalEmail,
     latencyMs:   Date.now() - __t,
     meta:        { script: 'migrate-legacy-transfer-rules' },
-  });
+  }).catch(err => console.error('[migrate] logLlmCall failed:', err));
 
   const raw = message.content[0];
   if (raw.type !== 'text') throw new Error('Respuesta inesperada de Sonnet: no es texto');
@@ -149,14 +149,20 @@ export async function migrateAgent(
   agent: AgentRow,
   dryRun: boolean,
 ): Promise<MigrationResult> {
+  // Guard defensivo: portal_email nulo causaría FK violation silenciosa en agent_rules.
+  if (!agent.portal_email) {
+    console.warn(`[migration] Skipping agent ${agent.id}: null portal_email`);
+    return { agentId: agent.id, portalEmail: null, meerkatRoleId: null, status: 'skipped_no_role' };
+  }
+
   const meerkatRoleId = (agent.features?.meerkat_role_id as string | undefined) ?? null;
 
   if (!meerkatRoleId) {
-    console.warn(`[skip] agent ${agent.id} (${agent.portal_email ?? 'sin email'}) sin meerkat_role_id`);
+    console.warn(`[skip] agent ${agent.id} (${agent.portal_email}) sin meerkat_role_id`);
     return { agentId: agent.id, portalEmail: agent.portal_email, meerkatRoleId: null, status: 'skipped_no_role' };
   }
 
-  const portalEmail = agent.portal_email ?? '';
+  const portalEmail = agent.portal_email;
   const regla = agent.transfer_rules.trim();
 
   // Verificar idempotencia (si ya existe, skip)
@@ -224,12 +230,12 @@ export async function runMigration(opts?: {
 
   console.log(`[migrate-legacy-transfer-rules] modo=${dryRun ? 'DRY-RUN' : 'REAL'}${filterEmail ? ` filtro=${filterEmail}` : ''}`);
 
-  // Query agents con transfer_rules
+  // Query agents con transfer_rules no nulos. El filtro real de longitud
+  // se aplica en JS para evitar la comparación lexicográfica engañosa (.gt).
   let query = supabase
     .from('voice_agents')
     .select('id, portal_email, transfer_rules, features')
-    .not('transfer_rules', 'is', null)
-    .gt('transfer_rules', '     '); // length > 5 aprox (trim en código)
+    .not('transfer_rules', 'is', null);
 
   if (filterEmail) {
     query = query.eq('portal_email', filterEmail);
@@ -239,7 +245,7 @@ export async function runMigration(opts?: {
   if (error) throw new Error(`Query voice_agents error: ${error.message}`);
 
   const rows = (agents ?? []) as AgentRow[];
-  // Filtro adicional por trimmed length > 5
+  // Filtrar en código: trimmed length > 5 (descarta strings en blanco o muy cortos)
   const eligibleRows = rows.filter(a => a.transfer_rules?.trim().length > 5);
 
   console.log(`[migrate-legacy-transfer-rules] agentes elegibles: ${eligibleRows.length}`);
