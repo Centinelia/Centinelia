@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { FileText, Upload, Trash2, Edit2, Check, X, Loader2, Link as LinkIcon, Mail, Phone, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import TagSuggestionsChips from './TagSuggestionsChips';
 
 const PAGE_SIZE = 20;
 
@@ -24,6 +25,8 @@ interface Ficha {
   chunks_count:          number;
   parsed_at:             string;
   updated_at:            string;
+  /** Etiquetas de clasificación asignadas por autotag o manualmente */
+  tags?:                 string[];
 }
 
 interface Props {
@@ -38,8 +41,10 @@ export default function FichasInformativasSection({ token }: Props) {
   const [mode,     setMode]     = useState<Mode>('stuffed');
   const [loading,  setLoading]  = useState(true);
   const [uploading,setUploading]= useState(false);
-  const [msg,      setMsg]      = useState<string | null>(null);
-  const [error,    setError]    = useState<string | null>(null);
+  const [msg,        setMsg]        = useState<string | null>(null);
+  const [error,      setError]      = useState<string | null>(null);
+  /** Ficha recién subida con etiquetas sugeridas — se muestra temporalmente */
+  const [newFichaId, setNewFichaId] = useState<{ id: string; tags: string[] } | null>(null);
   const [query,    setQuery]    = useState('');
   const [page,     setPage]     = useState(0);
 
@@ -75,6 +80,12 @@ export default function FichasInformativasSection({ token }: Props) {
       }
       const autoMsg = data.auto_activated ? ' Las fichas quedaron activas automáticamente.' : '';
       setMsg(`Ficha "${data.titulo}" cargada con ${data.chunks_count} secciones.${autoMsg}`);
+      // Si el response incluye etiquetas sugeridas, guardar para mostrar chips
+      if (data.id && Array.isArray(data.tags) && data.tags.length > 0) {
+        setNewFichaId({ id: data.id as string, tags: data.tags as string[] });
+      } else {
+        setNewFichaId(null);
+      }
       await loadFichas();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al subir la ficha');
@@ -168,9 +179,21 @@ export default function FichasInformativasSection({ token }: Props) {
       </div>
 
       {msg && (
-        <div className="text-sm p-3 rounded-lg flex items-center gap-2" style={{ background: '#F0FDF4', color: '#166534', border: '1px solid #BBF7D0' }}>
-          <Check size={16} />
-          <span>{msg}</span>
+        <div className="flex flex-col gap-2 p-3 rounded-lg" style={{ background: '#F0FDF4', color: '#166534', border: '1px solid #BBF7D0' }}>
+          <div className="flex items-center gap-2 text-sm">
+            <Check size={16} />
+            <span>{msg}</span>
+          </div>
+          {newFichaId && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-medium" style={{ color: '#166534' }}>Etiquetas:</span>
+              <TagSuggestionsChips
+                token={token}
+                fichaId={newFichaId.id}
+                initialTags={newFichaId.tags}
+              />
+            </div>
+          )}
         </div>
       )}
       {error && (
@@ -368,6 +391,14 @@ function FichaCard({ ficha, token, onDelete, onEdited }: { ficha: Ficha; token: 
               {ficha.plazo_respuesta && (<span>Plazo: {ficha.plazo_respuesta}</span>)}
             </div>
           )}
+          {/* Etiquetas de clasificación */}
+          <div className="mt-1">
+            <TagSuggestionsChips
+              token={token}
+              fichaId={ficha.id}
+              initialTags={ficha.tags ?? []}
+            />
+          </div>
         </div>
       )}
 
