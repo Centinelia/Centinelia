@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   Search, ChevronDown, Settings, KeyRound,
-  Eye, EyeOff, Check, X, Plus, Users, Pencil, Bot, AlertTriangle, BarChart3,
+  Eye, EyeOff, Check, X, Plus, Users, Pencil, Bot, AlertTriangle, BarChart3, UserCheck, Building2,
 } from 'lucide-react';
 import MinutesAdjuster from '../agentes/[id]/MinutesAdjuster';
 import TasksAdjuster from '../agentes/[id]/TasksAdjuster';
@@ -154,8 +154,10 @@ export default function ClientesClient({
 
   const inputStyle: React.CSSProperties = {
     background: '#FFFFFF',
-    border: '1px solid #E5E7EB',
-    color: '#111827',
+    border: '1px solid #E8E3F5',
+    color: '#1A0A3B',
+    height: 40,
+    borderRadius: 12,
   };
 
   return (
@@ -163,37 +165,51 @@ export default function ClientesClient({
 
       {/* Header */}
       <div>
-        <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: '#111827' }}>Clientes</h1>
-        <p className="text-[13px] mt-1.5" style={{ color: '#6B7280' }}>
-          {totalCount} cliente{totalCount !== 1 ? 's' : ''} · {totalAgents} empleado{totalAgents !== 1 ? 's' : ''} · {totalActive} activo{totalActive !== 1 ? 's' : ''}
+        <p className="text-[10px] font-bold uppercase tracking-[0.16em] mb-1" style={{ color: '#9B6DFF' }}>Cartera</p>
+        <h1 className="text-[28px] font-bold leading-tight tracking-tight" style={{ color: '#1A0A3B' }}>
+          Clientes
+        </h1>
+        <p className="text-[13px] mt-1.5 max-w-2xl" style={{ color: '#6B6480' }}>
+          Cada cliente puede tener varios empleados. Expande el card para gestionar credenciales del portal, ajustar cupos de minutos y tareas, o entrar al detalle de cada empleado.
         </p>
       </div>
+
+      {/* Stats */}
+      {!currentSearch && clients.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <ClientesStatCard label="Clientes totales" value={totalCount.toLocaleString('es-MX')} accent="#6C3BFF" icon={<Building2 size={16} />} />
+          <ClientesStatCard label="Empleados totales" value={totalAgents.toLocaleString('es-MX')} accent="#9B6DFF" icon={<Users size={16} />} />
+          <ClientesStatCard label="Empleados activos" value={totalActive.toLocaleString('es-MX')} accent="#22C55E" icon={<UserCheck size={16} />} hint={`${totalAgents - totalActive} pausados`} />
+        </div>
+      )}
 
       {/* Search */}
       <div className="flex gap-2">
         <div className="relative flex-1">
           <Search
             size={14}
-            className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-            style={{ color: '#9CA3AF' }}
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+            style={{ color: '#9B8FB5' }}
           />
           <input
             type="text"
-            placeholder="Buscar por cliente, email o negocio... (Enter)"
+            placeholder="Buscar por cliente, email o negocio…"
             value={searchInput}
             onChange={e => setSearchInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && commitSearch()}
             onBlur={commitSearch}
             disabled={pending}
-            className="w-full pl-9 pr-4 py-2 rounded-lg text-[13px] outline-none"
+            className="w-full pl-10 pr-4 text-[13px] outline-none transition-shadow"
             style={inputStyle}
+            onFocus={e => { e.currentTarget.style.borderColor = '#6C3BFF'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(108,59,255,0.08)'; }}
+            onBlurCapture={e => { e.currentTarget.style.borderColor = '#E8E3F5'; e.currentTarget.style.boxShadow = 'none'; }}
           />
         </div>
         {currentSearch && (
           <button
             onClick={clearSearch}
-            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-50"
-            style={{ color: '#374151', border: '1px solid #E5E7EB', background: '#FFFFFF' }}
+            className="inline-flex items-center gap-1.5 rounded-xl text-[13px] font-semibold transition-colors"
+            style={{ padding: '9px 14px', color: '#6B6480', border: '1px solid #E8E3F5', background: '#FFFFFF' }}
           >
             <X size={12} /> Limpiar
           </button>
@@ -202,7 +218,7 @@ export default function ClientesClient({
 
       {/* Result count when searching */}
       {currentSearch && (
-        <p className="text-[12px]" style={{ color: '#6B7280' }}>
+        <p className="text-[12px]" style={{ color: '#6B6480' }}>
           {totalCount} resultado{totalCount !== 1 ? 's' : ''} para &ldquo;{currentSearch}&rdquo;
           {totalPages > 1 && ` · página ${page} de ${totalPages}`}
         </p>
@@ -213,10 +229,10 @@ export default function ClientesClient({
         {clients.length === 0 ? (
           <div
             className="text-center py-16 rounded-xl bg-white"
-            style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+            style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
           >
-            <Users size={36} className="mx-auto mb-3" style={{ color: '#D1D5DB' }} />
-            <p className="text-[13px]" style={{ color: '#6B7280' }}>
+            <Users size={36} className="mx-auto mb-3" style={{ color: '#B9B0CF' }} />
+            <p className="text-[13px]" style={{ color: '#6B6480' }}>
               {currentSearch ? 'Sin resultados para esa búsqueda' : 'Sin clientes registrados'}
             </p>
           </div>
@@ -236,7 +252,7 @@ export default function ClientesClient({
             <div
               key={client.key}
               className="rounded-xl overflow-hidden bg-white"
-              style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+              style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
             >
 
               {/* Client header row */}
@@ -254,7 +270,7 @@ export default function ClientesClient({
                 <div className="flex-1 min-w-0 text-left">
                   {/* Línea 1: nombre del contacto + serial + alerta pago fallido */}
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[14px] font-semibold" style={{ color: '#111827' }}>
+                    <span className="text-[14px] font-semibold" style={{ color: '#1A0A3B' }}>
                       {client.client_name}
                     </span>
                     {client.serial && (
@@ -278,13 +294,13 @@ export default function ClientesClient({
                     )}
                   </div>
                   {/* Línea 2: empresa + counts consolidados */}
-                  <div className="flex items-center gap-1.5 mt-0.5 text-[12px] flex-wrap" style={{ color: '#6B7280' }}>
+                  <div className="flex items-center gap-1.5 mt-0.5 text-[12px] flex-wrap" style={{ color: '#6B6480' }}>
                     {client.business_name && (
                       <>
-                        <span className="font-medium truncate" style={{ color: '#374151' }}>
+                        <span className="font-medium truncate" style={{ color: '#4A3B6B' }}>
                           {client.business_name}
                         </span>
-                        <span style={{ color: '#D1D5DB' }}>·</span>
+                        <span style={{ color: '#B9B0CF' }}>·</span>
                       </>
                     )}
                     <span className="inline-flex items-center gap-1 tabular-nums">
@@ -292,7 +308,7 @@ export default function ClientesClient({
                     </span>
                     {activeCount > 0 && (
                       <>
-                        <span style={{ color: '#D1D5DB' }}>·</span>
+                        <span style={{ color: '#B9B0CF' }}>·</span>
                         <span className="tabular-nums" style={{ color: '#10B981' }}>
                           {activeCount} activo{activeCount > 1 ? 's' : ''}
                         </span>
@@ -300,7 +316,7 @@ export default function ClientesClient({
                     )}
                     {failedCount > 0 && (
                       <>
-                        <span style={{ color: '#D1D5DB' }}>·</span>
+                        <span style={{ color: '#B9B0CF' }}>·</span>
                         <span className="tabular-nums" style={{ color: '#B91C1C' }}>
                           {failedCount} pago fallido
                         </span>
@@ -308,8 +324,8 @@ export default function ClientesClient({
                     )}
                     {pausedCount > 0 && (
                       <>
-                        <span style={{ color: '#D1D5DB' }}>·</span>
-                        <span className="tabular-nums" style={{ color: '#6B7280' }}>
+                        <span style={{ color: '#B9B0CF' }}>·</span>
+                        <span className="tabular-nums" style={{ color: '#6B6480' }}>
                           {pausedCount} pausado{pausedCount > 1 ? 's' : ''}
                         </span>
                       </>
@@ -320,7 +336,7 @@ export default function ClientesClient({
                 {/* Account minutes mini-bar */}
                 {acctIncluded != null && acctIncluded > 0 && (
                   <div className="hidden sm:flex flex-col items-end gap-1 mr-1 flex-shrink-0">
-                    <span className="text-[12px] tabular-nums" style={{ color: '#6B7280' }}>
+                    <span className="text-[12px] tabular-nums" style={{ color: '#6B6480' }}>
                       {acctUsed}/{acctIncluded} min
                     </span>
                     <div className="w-20 h-1.5 rounded-full overflow-hidden" style={{ background: '#F3F4F6' }}>
@@ -337,7 +353,7 @@ export default function ClientesClient({
                   href={`/admin/clientes/${encodeURIComponent(client.key)}/editar`}
                   onClick={e => e.stopPropagation()}
                   className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-colors hover:bg-gray-50 flex-shrink-0"
-                  style={{ background: '#FFFFFF', color: '#374151', border: '1px solid #E5E7EB' }}
+                  style={{ background: '#FFFFFF', color: '#4A3B6B', border: '1px solid #E8E3F5' }}
                   title="Editar datos del cliente"
                 >
                   <Pencil size={11} />
@@ -350,7 +366,7 @@ export default function ClientesClient({
                     href={`/admin/consumo/${encodeURIComponent(client.portal_email)}`}
                     onClick={e => e.stopPropagation()}
                     className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-colors hover:bg-gray-50 flex-shrink-0"
-                    style={{ background: '#FFFFFF', color: '#6C3BFF', border: '1px solid #E5E7EB' }}
+                    style={{ background: '#FFFFFF', color: '#6C3BFF', border: '1px solid #E8E3F5' }}
                     title="Ver consumo detallado con filtros de fecha + export CSV"
                   >
                     <BarChart3 size={11} />
@@ -394,9 +410,9 @@ export default function ClientesClient({
                     className="px-5 py-4 flex flex-col gap-3"
                     style={{ background: '#FFFBEB', borderTop: '1px solid #FDE68A' }}
                   >
-                    <p className="text-[12px] font-semibold" style={{ color: '#374151' }}>
+                    <p className="text-[12px] font-semibold" style={{ color: '#4A3B6B' }}>
                       Acceso al portal.{' '}
-                      <span style={{ color: '#6B7280', fontWeight: 400 }}>
+                      <span style={{ color: '#6B6480', fontWeight: 400 }}>
                         Aplica a los {client.agents.length} empleado{client.agents.length !== 1 ? 's' : ''} de este cliente.
                       </span>
                     </p>
@@ -464,7 +480,7 @@ export default function ClientesClient({
                       <button
                         onClick={() => closeCred(client.key)}
                         className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors hover:bg-gray-50"
-                        style={{ background: '#FFFFFF', color: '#374151', border: '1px solid #E5E7EB' }}
+                        style={{ background: '#FFFFFF', color: '#4A3B6B', border: '1px solid #E8E3F5' }}
                       >
                         <X size={12} /> Cancelar
                       </button>
@@ -492,7 +508,7 @@ export default function ClientesClient({
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-[13px] font-medium flex items-center gap-1" style={{ color: '#111827' }}>
+                          <span className="text-[13px] font-medium flex items-center gap-1" style={{ color: '#1A0A3B' }}>
                             <Bot size={11} style={{ color: '#7C3AED' }} />
                             {agent.agent_name?.trim() || agent.business_name}
                           </span>
@@ -570,7 +586,7 @@ export default function ClientesClient({
                     <Link
                       href={`/admin/agentes/nuevo?client_name=${encodeURIComponent(client.client_name)}&client_email=${encodeURIComponent(client.client_email ?? '')}&portal_email=${encodeURIComponent(client.portal_email ?? '')}`}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors hover:bg-gray-50"
-                      style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#6C3BFF' }}
+                      style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#6C3BFF' }}
                     >
                       <Plus size={11} /> Agregar empresa
                     </Link>
@@ -588,6 +604,23 @@ export default function ClientesClient({
         disabled={pending}
         onNavigate={p => navigate(currentSearch, p)}
       />
+    </div>
+  );
+}
+
+// ─── Stats Card ──────────────────────────────────────────────────────────────
+
+function ClientesStatCard({ label, value, accent, icon, hint }: { label: string; value: string; accent: string; icon: React.ReactNode; hint?: string }) {
+  return (
+    <div className="rounded-2xl transition-all" style={{ background: '#ffffff', border: '1px solid #E8E3F5', padding: '16px 18px', boxShadow: '0 1px 3px rgba(15,5,34,0.04)' }}>
+      <div className="flex items-center gap-2 mb-2">
+        <div className="flex items-center justify-center rounded-lg" style={{ background: `${accent}1A`, color: accent, width: 28, height: 28 }}>
+          {icon}
+        </div>
+        <p className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: '#6B6480' }}>{label}</p>
+      </div>
+      <p className="text-[24px] font-bold tracking-tight leading-none" style={{ color: '#1A0A3B' }}>{value}</p>
+      {hint && <p className="text-[11px] mt-1" style={{ color: '#9B8FB5' }}>{hint}</p>}
     </div>
   );
 }

@@ -211,7 +211,7 @@ export function SoporteView() {
   return (
     <div>
       <div className="mb-4 flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex gap-1 p-1 rounded-xl w-fit" style={{ background: 'var(--c-surface-2)' }}>
+        <div className="flex gap-1 p-1 rounded-xl w-fit" style={{ background: '#FAFAFB' }}>
           {(Object.keys(GROUP_LABELS) as Group[]).map(g => (
             <button
               key={g}
@@ -219,7 +219,7 @@ export function SoporteView() {
               className="px-4 py-1.5 rounded-lg text-sm font-medium transition-all"
               style={{
                 background: group === g ? NASH_COLOR : 'transparent',
-                color:      group === g ? '#fff' : 'var(--c-text-3)',
+                color:      group === g ? '#fff' : '#6B6480',
               }}
             >
               {GROUP_LABELS[g]}
@@ -231,7 +231,7 @@ export function SoporteView() {
           <button
             onClick={() => load()}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-            style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-3)' }}
+            style={{ background: '#FAFAFB', color: '#6B6480' }}
           >
             <RefreshCw size={12} /> Refrescar
           </button>
@@ -261,9 +261,9 @@ export function SoporteView() {
       )}
 
       {loading ? (
-        <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Cargando...</p>
+        <p className="text-sm" style={{ color: '#6B6480' }}>Cargando...</p>
       ) : filteredItems.length === 0 ? (
-        <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>
+        <p className="text-sm" style={{ color: '#6B6480' }}>
           {filtersActive
             ? 'Ningún incidente coincide con los filtros. Ajusta o limpia los filtros.'
             : group === 'open'
@@ -296,9 +296,9 @@ function NashToggleControl({
     return (
       <div
         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
-        style={{ background: 'rgba(148,163,184,0.15)', color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }}
+        style={{ background: 'rgba(148,163,184,0.15)', color: '#6B6480', border: '1px solid #E8E3F5' }}
       >
-        <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: 'var(--c-text-4)' }} />
+        <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: '#9B8FB5' }} />
         Nash: cargando…
       </div>
     );
@@ -306,7 +306,7 @@ function NashToggleControl({
 
   const statusColor = enabled ? '#22c55e' : '#94a3b8';
   const statusBg    = enabled ? 'rgba(34,197,94,0.12)' : 'rgba(148,163,184,0.15)';
-  const statusBrd   = enabled ? 'rgba(34,197,94,0.30)' : 'var(--c-border)';
+  const statusBrd   = enabled ? 'rgba(34,197,94,0.30)' : '#E8E3F5';
   const statusText  = enabled ? 'Nash activo' : 'Nash pausado';
   const actionText  = enabled ? 'Pausar Nash' : 'Reanudar Nash';
   const ActionIcon  = enabled ? Pause : Play;
@@ -325,9 +325,9 @@ function NashToggleControl({
         disabled={busy}
         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50"
         style={{
-          background: enabled ? 'var(--c-surface-2)' : NASH_COLOR,
-          color:      enabled ? 'var(--c-text-2)'  : '#fff',
-          border:     enabled ? '1px solid var(--c-border)' : 'none',
+          background: enabled ? '#FAFAFB' : NASH_COLOR,
+          color:      enabled ? '#4A3B6B'  : '#fff',
+          border:     enabled ? '1px solid #E8E3F5' : 'none',
         }}
         title={enabled ? 'Detener el cron de Nash (deja de procesar incidentes)' : 'Reanudar el cron de Nash (cada 10 min)'}
       >
@@ -359,22 +359,22 @@ function FilterBar({
   return (
     <div
       className="mb-4 p-3 rounded-xl flex flex-wrap items-center gap-3"
-      style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+      style={{ background: '#FFFFFF', border: '1px solid #E8E3F5' }}
     >
       <div className="flex items-center gap-2 flex-1 min-w-[240px]">
-        <Search size={14} style={{ color: 'var(--c-text-4)' }} />
+        <Search size={14} style={{ color: '#9B8FB5' }} />
         <input
           type="text"
           value={search}
           onChange={e => onSearchChange(e.target.value)}
           placeholder="Buscar por empresa, correo, token, meerkat, título…"
           className="flex-1 px-2 py-1 rounded-md text-xs outline-none"
-          style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+          style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
         />
       </div>
 
       <div className="flex items-center gap-1.5 flex-wrap">
-        <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>Origen:</span>
+        <span className="text-xs" style={{ color: '#6B6480' }}>Origen:</span>
         {ALL_SOURCES.map(s => {
           const active = sourceFilter.has(s);
           const Icon = SOURCE_ICON[s];
@@ -384,9 +384,9 @@ function FilterBar({
               onClick={() => onToggleSource(s)}
               className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full transition-all"
               style={{
-                background: active ? `${NASH_COLOR}20` : 'var(--c-surface-2)',
-                color:      active ? NASH_COLOR : 'var(--c-text-3)',
-                border:     `1px solid ${active ? `${NASH_COLOR}50` : 'var(--c-border)'}`,
+                background: active ? `${NASH_COLOR}20` : '#FAFAFB',
+                color:      active ? NASH_COLOR : '#6B6480',
+                border:     `1px solid ${active ? `${NASH_COLOR}50` : '#E8E3F5'}`,
               }}
             >
               <Icon size={10} /> {SOURCE_LABEL[s]}
@@ -395,13 +395,13 @@ function FilterBar({
         })}
       </div>
 
-      <div className="ml-auto flex items-center gap-2 text-xs" style={{ color: 'var(--c-text-3)' }}>
+      <div className="ml-auto flex items-center gap-2 text-xs" style={{ color: '#6B6480' }}>
         <span>{visibleCount} de {totalCount}</span>
         {filtersActive && (
           <button
             onClick={onClear}
             className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md"
-            style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-2)' }}
+            style={{ background: '#FAFAFB', color: '#4A3B6B' }}
           >
             <X size={10} /> Limpiar
           </button>
@@ -435,12 +435,12 @@ function UnprocessedSection({
         <button
           onClick={onRefresh}
           className="flex items-center gap-1 px-2 py-1 rounded-md text-xs"
-          style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-3)' }}
+          style={{ background: '#FAFAFB', color: '#6B6480' }}
         >
           <RefreshCw size={10} /> Refrescar
         </button>
       </div>
-      <p className="text-xs mb-3" style={{ color: 'var(--c-text-3)' }}>
+      <p className="text-xs mb-3" style={{ color: '#6B6480' }}>
         Estos reportes ya entraron pero Nash todavía no los convirtió en incidentes. Si Nash está activo, aparecerán en el listado principal en la próxima corrida (cada 10 min).
       </p>
       <div className="flex flex-col gap-2">
@@ -456,7 +456,7 @@ function UnprocessedCard({ report, portalMeta }: { report: UnprocessedReport; po
   return (
     <div
       className="rounded-lg p-3"
-      style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+      style={{ background: '#FFFFFF', border: '1px solid #E8E3F5' }}
     >
       <div className="flex items-center gap-2 mb-1 flex-wrap">
         {clientLabel && (
@@ -470,15 +470,15 @@ function UnprocessedCard({ report, portalMeta }: { report: UnprocessedReport; po
         )}
         <span
           className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full"
-          style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-3)' }}
+          style={{ background: '#FAFAFB', color: '#6B6480' }}
         >
           {report.tipo}
         </span>
-        <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>
+        <span className="text-xs" style={{ color: '#9B8FB5' }}>
           {new Date(report.created_at).toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
         </span>
       </div>
-      <p className="text-xs whitespace-pre-wrap" style={{ color: 'var(--c-text-2)' }}>{report.descripcion}</p>
+      <p className="text-xs whitespace-pre-wrap" style={{ color: '#4A3B6B' }}>{report.descripcion}</p>
     </div>
   );
 }
@@ -507,7 +507,7 @@ function IncidentCard({ item, portalMeta, onChange }: { item: Incident; portalMe
   return (
     <div
       className="rounded-xl p-4"
-      style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+      style={{ background: '#FFFFFF', border: '1px solid #E8E3F5' }}
     >
       <div className="flex items-start gap-3">
         <div className="flex-1 min-w-0">
@@ -529,7 +529,7 @@ function IncidentCard({ item, portalMeta, onChange }: { item: Incident; portalMe
             </span>
             <span
               className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full"
-              style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-3)' }}
+              style={{ background: '#FAFAFB', color: '#6B6480' }}
             >
               <SIcon size={11} /> {SOURCE_LABEL[item.source]}
             </span>
@@ -539,13 +539,13 @@ function IncidentCard({ item, portalMeta, onChange }: { item: Incident; portalMe
             >
               → {item.assigned_to === 'nash' ? 'Nash' : item.assigned_to === 'claude_code' ? 'Claude Code' : 'Owner'}
             </span>
-            <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>{item.status}</span>
+            <span className="text-xs" style={{ color: '#9B8FB5' }}>{item.status}</span>
           </div>
 
-          <p className="text-sm font-medium" style={{ color: 'var(--c-text)' }}>{item.title}</p>
-          <p className="text-xs mt-1 whitespace-pre-wrap" style={{ color: 'var(--c-text-3)' }}>{item.description}</p>
+          <p className="text-sm font-medium" style={{ color: '#1A0A3B' }}>{item.title}</p>
+          <p className="text-xs mt-1 whitespace-pre-wrap" style={{ color: '#6B6480' }}>{item.description}</p>
 
-          <div className="text-xs mt-3 flex flex-wrap gap-x-4 gap-y-1" style={{ color: 'var(--c-text-4)' }}>
+          <div className="text-xs mt-3 flex flex-wrap gap-x-4 gap-y-1" style={{ color: '#9B8FB5' }}>
             <span>Creado: {new Date(item.created_at).toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
             {item.github_issue_url && (
               <a href={item.github_issue_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1" style={{ color: NASH_COLOR }}>
@@ -557,7 +557,7 @@ function IncidentCard({ item, portalMeta, onChange }: { item: Incident; portalMe
           {item.resolution && (
             <div className="mt-3 px-3 py-2 rounded-lg" style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.2)' }}>
               <p className="text-xs font-semibold mb-1" style={{ color: '#22c55e' }}>Resolución</p>
-              <p className="text-xs whitespace-pre-wrap" style={{ color: 'var(--c-text-2)' }}>{item.resolution}</p>
+              <p className="text-xs whitespace-pre-wrap" style={{ color: '#4A3B6B' }}>{item.resolution}</p>
             </div>
           )}
         </div>
@@ -620,46 +620,46 @@ function NewIncidentModal({ onClose, onCreated }: { onClose: () => void; onCreat
     >
       <div
         className="w-full max-w-lg rounded-2xl p-6"
-        style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+        style={{ background: '#FFFFFF', border: '1px solid #E8E3F5' }}
         onClick={e => e.stopPropagation()}
       >
-        <h2 className="text-lg font-bold mb-1" style={{ color: 'var(--c-text)' }}>Crear incidente para Nash</h2>
-        <p className="text-xs mb-4" style={{ color: 'var(--c-text-3)' }}>
+        <h2 className="text-lg font-bold mb-1" style={{ color: '#1A0A3B' }}>Crear incidente para Nash</h2>
+        <p className="text-xs mb-4" style={{ color: '#6B6480' }}>
           Usa esto para pedirle a Nash que investigue algo. Nash tomará el incidente en la próxima corrida y decidirá si escalar a Claude Code o resolverlo él mismo.
         </p>
 
         <div className="flex flex-col gap-3">
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>Título</span>
+            <span className="text-xs font-medium" style={{ color: '#4A3B6B' }}>Título</span>
             <input
               value={title}
               onChange={e => setTitle(e.target.value)}
               className="px-3 py-2 rounded-lg text-sm"
-              style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+              style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
               placeholder="Ej: bandeja de studio@pneuma no procesa correos desde ayer"
             />
           </label>
 
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>Descripción</span>
+            <span className="text-xs font-medium" style={{ color: '#4A3B6B' }}>Descripción</span>
             <textarea
               value={desc}
               onChange={e => setDesc(e.target.value)}
               rows={4}
               className="px-3 py-2 rounded-lg text-sm"
-              style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+              style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
               placeholder="Contexto, evidencia, links a logs, pasos para reproducir, etc."
             />
           </label>
 
           <div className="grid grid-cols-2 gap-3">
             <label className="flex flex-col gap-1">
-              <span className="text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>Prioridad</span>
+              <span className="text-xs font-medium" style={{ color: '#4A3B6B' }}>Prioridad</span>
               <select
                 value={priority}
                 onChange={e => setPriority(e.target.value as Priority)}
                 className="px-3 py-2 rounded-lg text-sm"
-                style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+                style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
               >
                 <option value="low">Baja</option>
                 <option value="med">Media</option>
@@ -669,12 +669,12 @@ function NewIncidentModal({ onClose, onCreated }: { onClose: () => void; onCreat
             </label>
 
             <label className="flex flex-col gap-1">
-              <span className="text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>Portal afectado (opcional)</span>
+              <span className="text-xs font-medium" style={{ color: '#4A3B6B' }}>Portal afectado (opcional)</span>
               <input
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 className="px-3 py-2 rounded-lg text-sm"
-                style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+                style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
                 placeholder="cliente@dominio.com"
               />
             </label>
@@ -689,7 +689,7 @@ function NewIncidentModal({ onClose, onCreated }: { onClose: () => void; onCreat
           <button
             onClick={onClose}
             className="px-4 py-2 rounded-lg text-sm"
-            style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-3)' }}
+            style={{ background: '#FAFAFB', color: '#6B6480' }}
           >
             Cancelar
           </button>

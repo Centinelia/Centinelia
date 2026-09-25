@@ -63,19 +63,19 @@ function AgentRowItem({ agent }: { agent: AgentRow }) {
     <Link
       href={`/admin/agentes/${agent.id}`}
       className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white transition-colors hover:bg-gray-50"
-      style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+      style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
     >
       {/* Active indicator */}
       <div className="flex-shrink-0">
         {agent.active
           ? <CheckCircle2 size={14} style={{ color: '#10B981' }} />
-          : <XCircle      size={14} style={{ color: '#6B7280' }} />}
+          : <XCircle      size={14} style={{ color: '#6B6480' }} />}
       </div>
 
       {/* Business + client */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
-          <span className="text-[13px] font-semibold truncate" style={{ color: '#111827' }}>
+          <span className="text-[13px] font-semibold truncate" style={{ color: '#1A0A3B' }}>
             {agent.business_name}
           </span>
           {agent.billing_status === 'pago_fallido' && (
@@ -84,12 +84,12 @@ function AgentRowItem({ agent }: { agent: AgentRow }) {
             </span>
           )}
         </div>
-        <div className="text-[12px] mt-0.5 truncate" style={{ color: '#6B7280' }}>
+        <div className="text-[12px] mt-0.5 truncate" style={{ color: '#6B6480' }}>
           {agent.client_name}{agent.phone_number ? ` · ${agent.phone_number}` : ''}
         </div>
       </div>
 
-      <ArrowRight size={12} className="flex-shrink-0" style={{ color: '#9CA3AF' }} />
+      <ArrowRight size={12} className="flex-shrink-0" style={{ color: '#9B8FB5' }} />
     </Link>
   );
 }
@@ -149,7 +149,7 @@ export default function AgentesClient({
             <Search
               size={13}
               className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-              style={{ color: '#9CA3AF' }}
+              style={{ color: '#9B8FB5' }}
             />
             <input
               value={searchInput}
@@ -159,7 +159,7 @@ export default function AgentesClient({
               placeholder="Buscar por negocio, cliente o número... (Enter)"
               disabled={pending}
               className="w-full pl-8 pr-3 py-2 rounded-lg text-[13px] outline-none"
-              style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#111827' }}
+              style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
             />
           </div>
 
@@ -168,7 +168,7 @@ export default function AgentesClient({
             onChange={e => navigate({ sort: e.target.value })}
             disabled={pending}
             className="px-2.5 py-1.5 rounded-lg text-[13px] outline-none cursor-pointer"
-            style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#111827' }}
+            style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
           >
             {SORT_OPTS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
@@ -178,7 +178,7 @@ export default function AgentesClient({
         <div className="hidden sm:flex items-center gap-2 flex-wrap">
           <div
             className="inline-flex gap-1 p-1 rounded-lg"
-            style={{ background: '#FFFFFF', border: '1px solid #E5E7EB' }}
+            style={{ background: '#FFFFFF', border: '1px solid #E8E3F5' }}
           >
             {STATUS_OPTS.map(o => {
               const active = currentFilters.status === o.value;
@@ -202,7 +202,7 @@ export default function AgentesClient({
             <button
               onClick={clearAll}
               className="inline-flex items-center gap-1 ml-auto text-[12px] font-medium px-2.5 py-1 rounded-lg transition-colors hover:bg-gray-50"
-              style={{ color: '#374151', border: '1px solid #E5E7EB', background: '#FFFFFF' }}
+              style={{ color: '#4A3B6B', border: '1px solid #E8E3F5', background: '#FFFFFF' }}
             >
               <X size={11} /> Limpiar filtros
             </button>
@@ -227,7 +227,7 @@ export default function AgentesClient({
             {openDropdown === 'status' && (
               <div
                 className="absolute top-full left-0 mt-1 rounded-lg overflow-hidden z-50 min-w-[140px] bg-white"
-                style={{ border: '1px solid #E5E7EB', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.08)' }}
+                style={{ border: '1px solid #E8E3F5', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.08)' }}
               >
                 {STATUS_OPTS.map(o => (
                   <button
@@ -251,7 +251,7 @@ export default function AgentesClient({
             <button
               onClick={clearAll}
               className="inline-flex items-center gap-1 ml-auto text-[12px] font-medium px-2.5 py-1 rounded-lg"
-              style={{ color: '#374151', border: '1px solid #E5E7EB', background: '#FFFFFF' }}
+              style={{ color: '#4A3B6B', border: '1px solid #E8E3F5', background: '#FFFFFF' }}
             >
               <X size={11} /> Limpiar
             </button>
@@ -259,7 +259,7 @@ export default function AgentesClient({
         </div>
 
         {/* Result count */}
-        <p className="text-[12px]" style={{ color: '#6B7280' }}>
+        <p className="text-[12px]" style={{ color: '#6B6480' }}>
           {hasFilters
             ? `${totalCount.toLocaleString('es-MX')} resultado${totalCount !== 1 ? 's' : ''}`
             : `${totalCount.toLocaleString('es-MX')} empleado${totalCount !== 1 ? 's' : ''} en total`}
@@ -271,9 +271,9 @@ export default function AgentesClient({
       {agents.length === 0 ? (
         <div
           className="p-12 rounded-xl text-center bg-white"
-          style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+          style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
         >
-          <p className="text-[13px]" style={{ color: '#6B7280' }}>
+          <p className="text-[13px]" style={{ color: '#6B6480' }}>
             {hasFilters ? 'Sin resultados para los filtros aplicados' : 'Sin empleados configurados'}
           </p>
         </div>

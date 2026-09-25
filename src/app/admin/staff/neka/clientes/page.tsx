@@ -257,7 +257,7 @@ function ClienteCard({ cliente: c, onEdit, onTogglePause }: { cliente: Cliente; 
       {/* Metadata grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3" style={{ padding: '0 18px 14px' }}>
         <MetaItem icon={<Mail size={12} />} label="Facturación" value={c.correo_facturacion} />
-        <MetaItem icon={<MapPin size={12} />} label="Ubicación" value={`CP ${c.cp} · régimen ${c.regimen_fiscal}`} />
+        <MetaItem icon={<MapPin size={12} />} label="Código postal" value={c.cp} />
         <MetaItem icon={<Calendar size={12} />} label="Próxima factura" value={fmtFecha(c.fecha_proxima_facturacion)} accent />
       </div>
 

@@ -61,35 +61,43 @@ export default async function AgentesPage({ searchParams }: Props) {
     <div className="p-8 max-w-7xl mx-auto space-y-6">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: '#111827' }}>Empleados</h1>
-          <p className="text-[13px] mt-1.5" style={{ color: '#6B7280' }}>
-            {totalCount.toLocaleString('es-MX')} empleado{totalCount !== 1 ? 's' : ''} en total
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] mb-1" style={{ color: '#9B6DFF' }}>Roster</p>
+          <h1 className="text-[28px] font-bold leading-tight tracking-tight" style={{ color: '#1A0A3B' }}>
+            Empleados
+          </h1>
+          <p className="text-[13px] mt-1.5" style={{ color: '#6B6480' }}>
+            {totalCount.toLocaleString('es-MX')} empleado{totalCount !== 1 ? 's' : ''} en total. Meerkats client-facing (Nia, Nara, Noah, Nico, Neo, Naia, Nova) e internos (Nox, Niva, Neka, Nash).
           </p>
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">
           <Link
             href="/admin/demo"
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-50"
-            style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#374151' }}
+            className="inline-flex items-center gap-2 rounded-xl text-[13px] font-semibold transition-colors"
+            style={{ padding: '9px 14px', background: '#F5F0FF', color: '#6C3BFF', border: '1px solid #E8E3F5' }}
           >
             <Bot size={13} />
             <span>Demo</span>
           </Link>
           <Link
             href="/admin/demo-personalizado"
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-50"
-            style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#374151' }}
+            className="inline-flex items-center gap-2 rounded-xl text-[13px] font-semibold transition-colors"
+            style={{ padding: '9px 14px', background: '#F5F0FF', color: '#6C3BFF', border: '1px solid #E8E3F5' }}
           >
             <Bot size={13} />
             <span>Demo personalizado</span>
           </Link>
           <Link
             href="/admin/agentes/nuevo"
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-[13px] font-medium"
-            style={{ background: '#6C3BFF', color: '#FFFFFF' }}
+            className="inline-flex items-center gap-2 rounded-xl text-[13px] font-semibold transition-all"
+            style={{
+              padding:    '10px 18px',
+              background: '#6C3BFF',
+              color:      '#ffffff',
+              boxShadow:  '0 2px 8px rgba(108,59,255,0.32)',
+            }}
           >
-            <Plus size={13} />
+            <Plus size={14} />
             <span className="hidden sm:inline">Nuevo empleado</span>
           </Link>
         </div>
