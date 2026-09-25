@@ -116,7 +116,7 @@ export function SaldosCalculator() {
                     className="px-2 py-1.5 rounded-md text-sm"
                     style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
                   >
-                    <option value="voice">Voz + Oficina (Nia/Noah/Sofia/etc)</option>
+                    <option value="voice">Voz + Oficina (Nia/Noah/Nara/etc)</option>
                     <option value="coordinator">Coordinador (Nox/Niva, solo ops)</option>
                   </select>
                 </label>

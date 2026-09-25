@@ -166,7 +166,7 @@ export function FlagEditor({ flag, mode }: { flag?: FlagRow; mode: Mode }) {
           type="text"
           value={description}
           onChange={e => setDescription(e.target.value)}
-          placeholder="Rollout v2 de nia"
+          placeholder="Rollout v2 de Nia"
           className="w-full px-3 py-2 rounded-lg text-sm"
           style={{ background: '#FFFFFF', color: '#1A0A3B', border: '1px solid #E8E3F5' }}
         />
