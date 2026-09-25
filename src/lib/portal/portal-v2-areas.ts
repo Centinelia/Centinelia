@@ -88,6 +88,7 @@ export function buildPortalNav(input: BuildNavInput): NavGroup[] {
       { label: 'Horario de atención',             anchor: 'horarios' },
       { label: 'Tu CRM en Google Sheets',         anchor: 'sheets-crm' },
       { label: 'Reglas del negocio',              anchor: 'reglas-del-negocio' },
+      { label: 'Tareas del equipo',               href: `/portal/${t}/configurar?tab=tareas` },
       { label: 'Personas de la organización',     anchor: 'directorio' },
       { label: 'Integraciones',                   anchor: 'integraciones' },
     ],
