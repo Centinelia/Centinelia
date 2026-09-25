@@ -12,6 +12,7 @@ import { getOrgIndustry, INDUSTRIES_WITH_DAILY_AVAILABILITY } from '@/lib/indust
 import { parseToolOverrides } from '@/lib/tools/tool-overrides';
 import { resolveOrgPackContext, resolveActivePacks, meerkatActivePacks, TOOL_TO_PACK } from '@/lib/tools/packs';
 import { MEERKAT_ROLES } from '@/lib/portal/meerkat-roles';
+import { normalizeToE164 } from '@/lib/leads/dedup';
 
 const VAPI_URL = 'https://api.vapi.ai';
 const VAPI_KEY = process.env.VAPI_API_KEY!;
@@ -343,9 +344,15 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
 
     case 'notificar_transferencia': return { type: 'function', function: { name: 'notificar_transferencia', description: 'Notifica al equipo por WhatsApp que viene una transferencia. Llama a esta herramienta PRIMERO, luego usa transferir_llamada.', parameters: { type: 'object', properties: { nombre: { type: 'string', description: 'Nombre del cliente' }, motivo: { type: 'string', description: 'Motivo de la transferencia' }, resumen: { type: 'string', description: 'Resumen breve de la conversación' } }, required: ['motivo'] } }, server: server('notificar-transferencia') };
 
-    case 'transferir_llamada':
+    case 'transferir_llamada': {
       if (!agent.transfer_number) return null;
-      return { type: 'transferCall', function: { name: 'transferir_llamada', description: 'Transfiere la llamada en tiempo real al equipo. Úsala DESPUÉS de notificar_transferencia cuando el cliente quiera hablar con un humano.', parameters: { type: 'object', properties: {} } }, destinations: [{ type: 'number', number: agent.transfer_number, message: 'Un momento por favor, te estoy comunicando con el equipo.' }], messages: [{ type: 'request-start', content: 'Claro, con mucho gusto te comunico con el equipo ahora mismo.' }] };
+      // Normalizar a E.164 antes de pasarlo a Vapi. Vapi rechaza transferencias
+      // con 400 si el numero no tiene + y codigo de pais. transfer_number puede
+      // venir guardado como "8112803360" (10 digitos) si el dueño lo capturó
+      // sin prefijo desde el portal -- normalizeToE164 lo convierte a +528112803360.
+      const destNumber = normalizeToE164(agent.transfer_number);
+      return { type: 'transferCall', function: { name: 'transferir_llamada', description: 'Transfiere la llamada en tiempo real al equipo. Úsala DESPUÉS de notificar_transferencia cuando el cliente quiera hablar con un humano.', parameters: { type: 'object', properties: {} } }, destinations: [{ type: 'number', number: destNumber, message: 'Un momento por favor, te estoy comunicando con el equipo.' }], messages: [{ type: 'request-start', content: 'Claro, con mucho gusto te comunico con el equipo ahora mismo.' }] };
+    }
 
     case 'registrar_encuesta': return { type: 'function', function: { name: 'registrar_encuesta', description: 'Registra las respuestas capturadas de una encuesta de satisfacción. Llámala en cuanto tengas al menos una respuesta y el cliente se vaya a despedir, o cuando hayas recabado todas. Puedes haber recopilado las respuestas a lo largo de toda la conversación o al final; lo que importa es registrarlas antes de cerrar la llamada.', parameters: { type: 'object', properties: { survey_id: { type: 'string', description: 'ID de la encuesta activa (proporcionado en el prompt).' }, respuestas: { type: 'array', description: 'Lista de respuestas, una por pregunta.', items: { type: 'object', properties: { orden: { type: 'number', description: 'Número de orden de la pregunta (1, 2, 3…).' }, valor: { type: 'string', description: 'Respuesta del cliente.' } }, required: ['orden', 'valor'] } }, caller_number: { type: 'string', description: 'Número del llamante (opcional).' }, call_id: { type: 'string', description: 'ID de la llamada Vapi (opcional).' } }, required: ['survey_id', 'respuestas'] } }, server: server('registrar-encuesta') };
 
@@ -1387,7 +1394,11 @@ async function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], pee
            })()
         || '9Godp7dNohUvXk6qp0gS',
       model: cfg.voiceModel ?? 'eleven_turbo_v2_5',
-      stability: 0.35,
+      // stability 0.50: sube desde 0.35 para reducir variabilidad en el stream
+      // de audio (voz entrecortada observada en demo Santiago NL 2026-09-24).
+      // 0.50 mantiene naturalidad (el rango recomendado para voces neutrales
+      // estables es 0.50-0.70) sin perder el caracter de la voz.
+      stability: 0.50,
       similarityBoost: 0.75,
       style: 0.40,
       speed: cfg.speed,
@@ -1461,15 +1472,28 @@ async function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], pee
         endpointing: 150,
       };
     })(),
+    // Interrupcion por ruido ambiental (demo Santiago NL 2026-09-24).
+    // Sin startSpeakingPlan Vapi interrumpia el discurso ante cualquier
+    // ruido corto (teclado, ventilador, eco). Con waitSeconds=0.6 espera
+    // 600 ms antes de asumir que el usuario empezo a hablar; smartEndpointing
+    // usa un modelo ML para distinguir fin de frase real de artefacto de audio.
+    // numWordsToInterruptAssistant=3 requiere 3 palabras completas del usuario
+    // para cortar al meerkat -- evita cortes por monosilabos ("mm", "si", "ok")
+    // o ruidos que Deepgram transcribe como palabra suelta.
+    startSpeakingPlan: {
+      waitSeconds:            0.6,
+      smartEndpointingEnabled: true,
+    },
+    numWordsToInterruptAssistant: 3,
     backgroundSound: 'office',
     backchannelingEnabled: true,
     backgroundDenoisingEnabled: true,
-    // 15s: si no hay audio (ni del asistente ni del llamante) durante este
+    // 25s: si no hay audio (ni del asistente ni del llamante) durante este
     // tiempo, Vapi corta la llamada. Es la red de seguridad cuando el LLM
-    // dice una despedida no canónica que endCallPhrases no matchea
+    // dice una despedida no canonica que endCallPhrases no matchea
     // ("cualquier cosa me escribes", "take care", "gracias por la llamada").
-    // Antes 30s → daba tiempo a Sofia a reiniciar con "¿todavía estás ahí?".
-    // Antes 15s → Sofia se colgaba cuando encadenaba consultar_agente
+    // Antes 30s daba tiempo a Sofia a reiniciar con "Sigues ahi?".
+    // Antes 15s Sofia se colgaba cuando encadenaba consultar_agente
     // (p50 7s) + delegar_tarea (p50 16s) porque el silencio acumulado
     // durante los tool calls consecutivos superaba el timeout. Ver
     // /admin/observabilidad/tools para latencias reales.

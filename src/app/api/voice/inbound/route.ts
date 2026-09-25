@@ -7,6 +7,7 @@ import { VAPI_MAX_CALL_SECONDS, VAPI_VOICE_MAX_TOKENS } from '@/lib/constants';
 import { MEERKAT_TOOL_ACCESS } from '@/lib/creativity/meerkat-gates';
 import { sheetsTools } from '@/lib/tools/definitions/sheets';
 import { hasAnyMapping } from '@/lib/services/sheets';
+import { normalizeToE164 } from '@/lib/leads/dedup';
 
 // Vapi calls this endpoint when a call comes in on an assigned phone number.
 // We respond with the agent configuration (system prompt + tools) for this caller.
@@ -571,10 +572,20 @@ Esta llamada proviene de ${memberName}, ${memberRole} de ${typedAgent.business_n
         numWords: 3,
         voiceSeconds: 0.2,
       },
+      // Alineado con sync.ts: evita interrupciones por ruido corto y requiere
+      // 3 palabras del llamante para cortar al asistente.
+      startSpeakingPlan: {
+        waitSeconds:             0.6,
+        smartEndpointingEnabled: true,
+      },
+      numWordsToInterruptAssistant: 3,
       backgroundSound: 'office',
       backchannelingEnabled: true,
       backgroundDenoisingEnabled: true,
-      silenceTimeoutSeconds: 10,
+      // 25s alineado con sync.ts. Antes 10s: owner calls con tool chains largas
+      // (consultar_agente + delegar_tarea) podian exceder el timeout durante
+      // el silencio de procesamiento.
+      silenceTimeoutSeconds: 25,
       maxDurationSeconds: VAPI_MAX_CALL_SECONDS,
       artifactPlan: {
         recordingEnabled: true,
@@ -801,6 +812,10 @@ async function buildTools(agent: VoiceAgent, qbConnected = false, orgCalendar: O
     });
 
     if (agent.transfer_number) {
+      // Normalizar a E.164: Vapi rechaza transferencias con 400 si el numero
+      // no lleva + y codigo de pais. transfer_number puede estar guardado sin
+      // prefijo (10 digitos MX) -- normalizeToE164 lo corrige al vuelo.
+      const transferDest = normalizeToE164(agent.transfer_number);
       tools.push({
         type: 'transferCall',
         function: {
@@ -810,7 +825,7 @@ async function buildTools(agent: VoiceAgent, qbConnected = false, orgCalendar: O
         },
         destinations: [{
           type: 'number',
-          number: agent.transfer_number,
+          number: transferDest,
           message: 'Un momento por favor, te estoy comunicando con el equipo.',
         }],
         messages: [{
