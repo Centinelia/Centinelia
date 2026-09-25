@@ -147,10 +147,11 @@ describe('agent-rules service', () => {
       applies_to:  [],
     });
 
+    // Fase 7: service.ts usa `reason` (nuevo campo preferido) en vez de `source` (alias legacy).
     expect(mockConsumeAiOp).toHaveBeenCalledWith(
       expect.any(String),
       1,
-      expect.objectContaining({ source: 'rule_setup' }),
+      expect.objectContaining({ reason: 'rule_setup' }),
     );
   });
 

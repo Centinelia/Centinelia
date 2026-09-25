@@ -32,7 +32,16 @@ function delay(ms: number): Promise<void> {
 export interface BackfillResult {
   orgs_processed:   number;
   fichas_processed: number;
+  /** Fichas que fallaron con error genuino (autotag retorna status='error'). */
   fichas_error:     number;
+  /**
+   * Fase 7 I-2 fix: fichas que expiraron timeout (autotag retorna status='pending').
+   * Se mandan al retry cron igual que errores, pero se cuentan por separado para
+   * que el drift detector pueda distinguir "fallo de autotag" de "lentitud de Anthropic".
+   * Un spike en fichas_timeout indica throttling o rate limit en Anthropic.
+   * Un spike en fichas_error indica prompt malo, enum insuficiente, o respuesta malformada.
+   */
+  fichas_timeout:   number;
   orgs_skipped:     number;
 }
 
@@ -65,11 +74,12 @@ export async function backfillFichaTags(): Promise<BackfillResult> {
   const totalOrgs = (allOrgs ?? []).length;
 
   if (eligibleOrgs.length === 0) {
-    return { orgs_processed: 0, fichas_processed: 0, fichas_error: 0, orgs_skipped: totalOrgs };
+    return { orgs_processed: 0, fichas_processed: 0, fichas_error: 0, fichas_timeout: 0, orgs_skipped: totalOrgs };
   }
 
   let fichasProcessed = 0;
   let fichasError     = 0;
+  let fichasTimeout   = 0;   // Fase 7 I-2: timeout separado de error
   let orgsProcessed   = 0;
 
   for (const org of eligibleOrgs) {
@@ -112,7 +122,9 @@ export async function backfillFichaTags(): Promise<BackfillResult> {
             .eq('id', fichaId);
           fichasProcessed++;
         } else if (result.status === 'error') {
-          // Mover a 'pending' para que el retry cron lo atrape
+          // Error genuino de autotag (prompt malo, enum insuficiente, respuesta malformada).
+          // Mover a 'pending' para que el retry cron lo atrape.
+          // Contado en fichas_error (Fase 7 I-2: separado de timeout).
           await supabase
             .from('fichas_informativas')
             .update({
@@ -122,7 +134,10 @@ export async function backfillFichaTags(): Promise<BackfillResult> {
             .eq('id', fichaId);
           fichasError++;
         } else {
-          // status='pending' (timeout) → también lo toma el retry cron
+          // status='pending' → timeout de Anthropic (lentitud o rate limit).
+          // También se manda al retry cron, pero se cuenta en fichas_timeout (no fichas_error).
+          // Fase 7 I-2 fix: separar para que drift detector pueda distinguir
+          // "fallo de autotag" de "throttling de Anthropic".
           await supabase
             .from('fichas_informativas')
             .update({
@@ -130,7 +145,7 @@ export async function backfillFichaTags(): Promise<BackfillResult> {
               updated_at:     new Date().toISOString(),
             })
             .eq('id', fichaId);
-          fichasError++;
+          fichasTimeout++;
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -160,6 +175,7 @@ export async function backfillFichaTags(): Promise<BackfillResult> {
     orgs_processed:   orgsProcessed,
     fichas_processed: fichasProcessed,
     fichas_error:     fichasError,
+    fichas_timeout:   fichasTimeout,   // Fase 7 I-2: timeout separado de error
     orgs_skipped:     totalOrgs - orgsProcessed,
   };
 }

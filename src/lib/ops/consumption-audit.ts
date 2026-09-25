@@ -409,6 +409,158 @@ export async function notifyOutboundDrift(
   return { inserted: true };
 }
 
+// ─── Task-action orphan detection (Fase 7 Task 7.2) ─────────────────────────
+//
+// Un `task_action` sin su `task_execution_start` correlacionado = bug de cobro.
+// En v1 el executor no cobra task_action (solo task_execution_start), pero en
+// v2 se cobrarán. Este check garantiza que cuando se implemente v2, cualquier
+// task_action cobrado sin arranque correspondiente se detecte de inmediato.
+//
+// Correlacion: ambas filas comparten run_id embebido en ai_ops_log.context
+// como JSON (patrón del executor: JSON.stringify({ run_id, trigger_source })).
+//
+// Fuente de datos: ai_ops_log (columna source, context).
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface TaskActionOrphan {
+  /** run_id que tiene task_action pero no task_execution_start. */
+  run_id:         string;
+  /** Cantidad de task_action rows huérfanos para este run_id. */
+  orphan_count:   number;
+  /** portal_email inferido del primer row huérfano (puede ser null). */
+  portal_email:   string | null;
+  /** agent_id del primer row huérfano (puede ser null). */
+  agent_id:       string | null;
+}
+
+/**
+ * Detecta run_ids que tienen cobros `task_action` en ai_ops_log pero NO tienen
+ * un `task_execution_start` correspondiente con el mismo run_id.
+ *
+ * Esto indica un bug de cobro: el executor cobró acciones sin haber registrado
+ * el arranque (ej. crash entre paso 3 y paso 5 del executor, o double-charge).
+ *
+ * Lookback por defecto: 48h (más amplio que el hourly para no perder runs lentos).
+ * Resultado vacío = estado sano (ningún orphan detectado).
+ */
+export async function detectTaskActionOrphans(
+  hoursBack = 48,
+): Promise<TaskActionOrphan[]> {
+  const supabase = createAdminClient();
+  const since    = new Date(Date.now() - hoursBack * 3_600_000).toISOString();
+
+  // Traer todos los rows de ai_ops_log con source='task_action' en la ventana.
+  // El context contiene JSON con run_id (si el executor lo puso correctamente).
+  const { data: actionRows } = await supabase
+    .from('ai_ops_log')
+    .select('agent_id, portal_email, context, created_at')
+    .eq('source', 'task_action')
+    .gte('created_at', since);
+
+  if (!actionRows || actionRows.length === 0) return [];
+
+  // Extraer run_ids de los task_action rows.
+  // context puede ser string JSON o null.
+  const actionByRunId = new Map<string, { portal_email: string | null; agent_id: string | null; count: number }>();
+  for (const row of actionRows) {
+    let runId: string | null = null;
+    if (row.context) {
+      try {
+        const parsed = JSON.parse(row.context as string);
+        runId = (parsed?.run_id as string | null) ?? null;
+      } catch { /* context mal formado — ignorar */ }
+    }
+    if (!runId) continue;   // sin run_id en context = no podemos correlacionar
+
+    if (!actionByRunId.has(runId)) {
+      actionByRunId.set(runId, {
+        portal_email: (row.portal_email as string | null) ?? null,
+        agent_id:     (row.agent_id as string | null) ?? null,
+        count:        0,
+      });
+    }
+    actionByRunId.get(runId)!.count += 1;
+  }
+
+  if (actionByRunId.size === 0) return [];
+
+  // Traer rows de task_execution_start en la misma ventana (+ buffer).
+  // Buffer de 5 minutos antes para no perder starts justo en el límite.
+  const bufferedSince = new Date(Date.now() - hoursBack * 3_600_000 - 5 * 60_000).toISOString();
+  const { data: startRows } = await supabase
+    .from('ai_ops_log')
+    .select('context')
+    .eq('source', 'task_execution_start')
+    .gte('created_at', bufferedSince);
+
+  // Construir set de run_ids con start confirmado.
+  const confirmedStarts = new Set<string>();
+  for (const row of startRows ?? []) {
+    if (row.context) {
+      try {
+        const parsed = JSON.parse(row.context as string);
+        const runId = (parsed?.run_id as string | null) ?? null;
+        if (runId) confirmedStarts.add(runId);
+      } catch { /* noop */ }
+    }
+  }
+
+  // Los orphans son task_action con run_id NO en confirmedStarts.
+  const orphans: TaskActionOrphan[] = [];
+  for (const [runId, info] of actionByRunId) {
+    if (!confirmedStarts.has(runId)) {
+      orphans.push({
+        run_id:       runId,
+        orphan_count: info.count,
+        portal_email: info.portal_email,
+        agent_id:     info.agent_id,
+      });
+    }
+  }
+
+  return orphans;
+}
+
+/**
+ * Registra orphans de task_action como notification_event (kind='task_action_orphan').
+ * Dedup: 1 evento por (portal_email, run_id) por dia.
+ */
+export async function notifyTaskActionOrphans(
+  orphans: TaskActionOrphan[],
+): Promise<{ inserted: number }> {
+  if (orphans.length === 0) return { inserted: 0 };
+  const supabase = createAdminClient();
+  const todayStart = new Date(); todayStart.setUTCHours(0, 0, 0, 0);
+  let inserted = 0;
+
+  for (const orphan of orphans) {
+    // Dedup: ya notificamos este run_id hoy?
+    const { count } = await supabase
+      .from('notification_events')
+      .select('id', { count: 'exact', head: true })
+      .eq('kind', 'task_action_orphan')
+      .contains('payload', { run_id: orphan.run_id })
+      .gte('created_at', todayStart.toISOString());
+
+    if ((count ?? 0) > 0) continue;
+
+    await supabase.from('notification_events').insert({
+      portal_email: orphan.portal_email,
+      kind:         'task_action_orphan',
+      urgent:       true,   // siempre urgente: indica bug de cobro
+      payload: {
+        run_id:       orphan.run_id,
+        orphan_count: orphan.orphan_count,
+        agent_id:     orphan.agent_id,
+        detected_at:  new Date().toISOString(),
+      },
+    });
+    inserted++;
+  }
+
+  return { inserted };
+}
+
 // ─── Autotag backfill monitoring (Task 6.4) ──────────────────────────────────
 
 export interface AutotagBackfillIssue {
