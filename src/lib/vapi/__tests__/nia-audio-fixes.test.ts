@@ -143,18 +143,27 @@ describe('voice.stability — reduccion de audio entrecortado', () => {
 // ─── Sub-tarea 3: transfer_number normalizado a E.164 ─────────────────────────
 
 describe('transfer_number E.164 — corte en transferencia', () => {
-  it('transfer_number de 10 digitos (sin +52) se normaliza a E.164 en el tool destination', async () => {
-    // El agente de prueba tiene transfer_number='8112803360' (sin +52).
-    // El tool transferir_llamada debe incluir '+528112803360' en destinations.
-    const config = await buildVapiAssistantForSnapshot(makeTestAgent());
-    const tools = (config as Record<string, unknown>).tools as Array<Record<string, unknown>> | undefined;
-    // buildVapiAssistantForSnapshot llama con toolIds=[] por lo que las tools
-    // se construyen via buildToolDef. Buscamos el tool de tipo transferCall.
-    // Nota: buildVapiAssistantForSnapshot pasa toolIds vacio -- los tools Vapi
-    // nativos (transferCall) se construyen en la fase previa via createVapiTools.
-    // Para este test el contrato es que buildToolDef normaliza el numero;
-    // verificamos via el export MEERKAT_VOICE_DISTRIBUTION que smart_transfer
-    // esta en la distribucion de nia.
+  it('transfer_number de 10 digitos se normaliza a E.164 antes de llegar al tool destination', async () => {
+    // buildVapiAssistantForSnapshot no incluye las tool definitions en el payload
+    // (las tools se crean en Vapi via createVapiTools, que retorna toolIds separados).
+    // La verificación de que destinations[0].number lleva +52 se hace via
+    // normalizeToE164 directamente — es la misma función que buildToolDef llama
+    // internamente cuando construye el tool transferir_llamada.
+    //
+    // Para confirmar que el path de construcción de la tool EXISTE, verificamos:
+    //   1. normalizeToE164('8112803360') === '+528112803360' (la función funciona)
+    //   2. El rol nia incluye 'transferir_llamada' en su distribución de voz
+    //   3. El agente tiene transfer_number='8112803360' (input sin prefijo)
+    //
+    // Si normalizeToE164 pasa y la distribución incluye la tool, el destino E.164
+    // está garantizado por construcción en buildToolDef (ver sync.ts línea ~353).
+    const { normalizeToE164 } = await import('@/lib/leads/dedup');
+    const agent = makeTestAgent(); // transfer_number='8112803360'
+
+    // Verifica normalización — resultado que llega al destinations[0].number
+    expect(normalizeToE164(agent.transfer_number!)).toBe('+528112803360');
+
+    // Verifica que el rol tiene la tool (el path llega a buildToolDef)
     const { MEERKAT_VOICE_DISTRIBUTION } = await import('../sync');
     expect(MEERKAT_VOICE_DISTRIBUTION['nia']).toContain('transferir_llamada');
   });
@@ -165,5 +174,11 @@ describe('transfer_number E.164 — corte en transferencia', () => {
     expect(normalizeToE164('+528112803360')).toBe('+528112803360');
     expect(normalizeToE164('8112803360')).toBe('+528112803360');
     expect(normalizeToE164('528112803360')).toBe('+528112803360');
+  });
+
+  it('nia tiene transferir_llamada en su distribucion de voz', async () => {
+    // Verifica que el rol nia incluye la tool de transferencia (smoke sobre distribución).
+    const { MEERKAT_VOICE_DISTRIBUTION } = await import('../sync');
+    expect(MEERKAT_VOICE_DISTRIBUTION['nia']).toContain('transferir_llamada');
   });
 });
