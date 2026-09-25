@@ -159,13 +159,20 @@ export async function ingestFicha(pdfBuffer: Buffer, opts: IngestOpts): Promise<
   let finalTags: string[] = [];
   let autotagStatus = 'pending';
 
-  if (opts.enableAutotag !== false && (opts.tags !== undefined || opts.enableAutotag === true)) {
-    if (opts.tags && opts.tags.length > 0) {
-      // El cliente ya aprobó/modificó los chips → manual_override.
-      finalTags      = opts.tags;
-      autotagStatus  = 'manual_override';
+  // C1 fix: el autotag solo corre si el caller LO PIDE explícito.
+  // Sin esta guarda, cualquier script que llame ingestFicha() sin el flag
+  // corría Sonnet silenciosamente (opts.tags podía ser undefined y la
+  // condición anterior pasaba de todas formas).
+  if (opts.enableAutotag === true) {
+    if (opts.tags !== undefined) {
+      // C2 fix: la PRESENCIA de opts.tags = intención explícita del cliente,
+      // independientemente de si el array está vacío o no.
+      // opts.tags = []  → el cliente deseleccionó todos los chips → manual_override válido.
+      // opts.tags = ['x'] → el cliente aprobó chips → manual_override.
+      finalTags     = opts.tags;
+      autotagStatus = 'manual_override';
     } else {
-      // Correr autotag síncrono. Texto disponible: raw_text del parsed.
+      // Cliente NO envió tags → correr autotag síncrono.
       const autotagText = parsed.rawText ?? parsed.titulo ?? '';
       const autotagResult = await autotagFicha(portalEmail, autotagText);
       finalTags     = autotagResult.tags;

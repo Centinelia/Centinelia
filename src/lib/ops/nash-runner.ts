@@ -442,7 +442,11 @@ export async function runNashMonitor(): Promise<NashRunResult> {
   // fuerza el loop aunque el probe diga que no hay trabajo. Nota: solo si
   // hubo anomalías NUEVAS (no notificadas esta semana) forzamos el loop.
   // Anomalías ya notificadas no vuelven a disparar Nash.
-  if (features.nash_probe_bypass !== true && newAnomalies.length === 0 && newDriftCount === 0) {
+  // C3 fix: issues urgentes de autotag también abren el loop (error_spike,
+  // pending_stuck). Sin este check, Nash insertaba platform_incidents pero
+  // nunca los narraba ni escalaba porque el probe los ignoraba.
+  const urgentAutotagCount = autotagIssues.filter(i => i.urgent).length;
+  if (features.nash_probe_bypass !== true && newAnomalies.length === 0 && newDriftCount === 0 && urgentAutotagCount === 0) {
     const lastRunAt = await getNashLastRunAt(supabase);
     const since = lastRunAt
       ? new Date(Math.max(lastRunAt.getTime(), Date.now() - NASH_MAX_LOOKBACK_MS))

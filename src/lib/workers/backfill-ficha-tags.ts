@@ -43,25 +43,29 @@ export interface BackfillResult {
 export async function backfillFichaTags(): Promise<BackfillResult> {
   const supabase = createAdminClient();
 
-  // 1. Obtener orgs con retrieval_v2_enabled=true
-  // La columna features es jsonb. Buscamos el campo 'retrieval_v2_enabled'=true.
-  const { data: orgs, error: orgsErr } = await supabase
+  // I4 fix: traemos TODOS los orgs primero para poder contar cuantos tienen
+  // el flag OFF (orgs_skipped). La query anterior solo traía los orgs con
+  // retrieval_v2_enabled=true, entonces (orgs.length - orgsProcessed) ≈ 0
+  // y la métrica de skipped siempre salía incorrecta.
+  const { data: allOrgs, error: orgsErr } = await supabase
     .from('organizations')
-    .select('portal_email, features')
-    .filter('features->>retrieval_v2_enabled', 'eq', 'true');
+    .select('portal_email, features');
 
   if (orgsErr) {
     console.error('[backfill-ficha-tags] Error al consultar orgs:', orgsErr.message);
     throw orgsErr;
   }
 
-  const eligibleOrgs = (orgs ?? []).filter(o => {
+  // Filtrar en JS (doble filtro para manejar cast string vs boolean en jsonb).
+  const eligibleOrgs = (allOrgs ?? []).filter(o => {
     const features = (o.features as Record<string, unknown> | null) ?? {};
     return features.retrieval_v2_enabled === true;
   });
 
+  const totalOrgs = (allOrgs ?? []).length;
+
   if (eligibleOrgs.length === 0) {
-    return { orgs_processed: 0, fichas_processed: 0, fichas_error: 0, orgs_skipped: (orgs ?? []).length };
+    return { orgs_processed: 0, fichas_processed: 0, fichas_error: 0, orgs_skipped: totalOrgs };
   }
 
   let fichasProcessed = 0;
@@ -156,6 +160,6 @@ export async function backfillFichaTags(): Promise<BackfillResult> {
     orgs_processed:   orgsProcessed,
     fichas_processed: fichasProcessed,
     fichas_error:     fichasError,
-    orgs_skipped:     (orgs ?? []).length - orgsProcessed,
+    orgs_skipped:     totalOrgs - orgsProcessed,
   };
 }

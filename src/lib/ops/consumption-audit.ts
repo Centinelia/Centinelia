@@ -478,16 +478,25 @@ export async function detectAutotagBackfillIssues(): Promise<AutotagBackfillIssu
   for (const org of eligibleOrgs) {
     const portalEmail = org.portal_email as string;
 
-    const { data: statusCounts } = await supabase
-      .from('fichas_informativas')
-      .select('autotag_status')
-      .eq('portal_email', portalEmail);
-
-    const counts = (statusCounts ?? []).reduce<Record<string, number>>((acc, row) => {
-      const s = row.autotag_status as string;
-      acc[s] = (acc[s] ?? 0) + 1;
-      return acc;
-    }, {});
+    // C4 fix: en lugar de traer TODAS las filas del org (full scan potencialmente
+    // enorme), hacemos 5 queries pequeñas con head:true (solo devuelven el count,
+    // no descargan data). Usa el partial index (portal_email, autotag_status)
+    // cuando el planner lo elige. Trade-off aceptable: 5 queries vs 1 query grande
+    // para orgs con >100 fichas.
+    const statuses = ['done', 'pending', 'manual_override', 'untagged_legacy', 'error'] as const;
+    const countResults = await Promise.all(
+      statuses.map(status =>
+        supabase
+          .from('fichas_informativas')
+          .select('id', { count: 'exact', head: true })
+          .eq('portal_email', portalEmail)
+          .eq('autotag_status', status),
+      ),
+    );
+    const counts: Record<string, number> = {};
+    for (let i = 0; i < statuses.length; i++) {
+      counts[statuses[i]] = countResults[i].count ?? 0;
+    }
 
     const total          = Object.values(counts).reduce((a, b) => a + b, 0);
     const done           = counts['done'] ?? 0;
@@ -504,13 +513,26 @@ export async function detectAutotagBackfillIssues(): Promise<AutotagBackfillIssu
     }
 
     // Check 4: stall (untagged_legacy no baja)
+    // I3 fix: solo alertar si hay fichas legacy que llevan >7 días sin procesar.
+    // Sin este filtro, al activar retrieval_v2_enabled por primera vez dispara
+    // la alerta inmediatamente antes de que el backfill cron tenga oportunidad
+    // de correr. El filtro de 7 días evita falsos positivos en orgs recién activados.
     if (untaggedLegacy > 10) {
-      issues.push({
-        kind:         'stall',
-        portal_email: portalEmail,
-        detail:       `Org ${portalEmail}: ${untaggedLegacy} fichas con autotag_status='untagged_legacy' pendientes de backfill.`,
-        urgent:       false,
-      });
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const { count: staleCount } = await supabase
+        .from('fichas_informativas')
+        .select('id', { count: 'exact', head: true })
+        .eq('portal_email', portalEmail)
+        .eq('autotag_status', 'untagged_legacy')
+        .lt('updated_at', sevenDaysAgo);
+      if ((staleCount ?? 0) > 10) {
+        issues.push({
+          kind:         'stall',
+          portal_email: portalEmail,
+          detail:       `Org ${portalEmail}: ${staleCount} fichas con autotag_status='untagged_legacy' sin procesar por mas de 7 dias.`,
+          urgent:       false,
+        });
+      }
     }
   }
 
