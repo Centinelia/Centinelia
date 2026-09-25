@@ -292,6 +292,10 @@
     {
       "path": "/api/cron/agent-tasks-scheduler",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/autotag-retry",
+      "schedule": "*/5 * * * *"
     }
   ]
 }
