@@ -40,6 +40,15 @@ const NIA_CONFIGS: MeerkatConfigVersions = {
   // 1.05. 0.98 alinea con Nelia (rol equivalente) sin volverla acelerada. Todo
   // lo demas identico a v3 (Flash v2.5 + nova-3 + Haiku 4.5 conservados).
   4: { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.36, maxTokens: 400, speed: 0.98, minChars: 25, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-3' },
+  // v5 2026-09-26: Haiku -> Sonnet 4.6 tras 4 llamadas fallidas del test de memoria
+  // en demo Santiago. Con Haiku 4.5, aun con el bloque MEMORIA agresivo al 5.7% del
+  // prompt (top-3 bloques) y ejemplos explicitos de comportamiento prohibido, Nia
+  // NO llamaba buscar_cliente y respondia "no encuentro registros" simulando busqueda.
+  // Sonnet 4.6 sigue instrucciones densas mejor (mismo issue que sufrio Nelia v1 con
+  // Haiku antes de saltar a Sonnet en v2, documentado ahi). maxTokens subido a 400 se
+  // mantiene, temperature igual. Costo +: Sonnet ~5x Haiku por token, pero prompt cache
+  // Anthropic recupera ~90% en turnos posteriores del mismo call. Solo cambia model.
+  5: { provider: 'anthropic', model: 'claude-sonnet-4-6',           temperature: 0.36, maxTokens: 400, speed: 0.98, minChars: 25, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-3' },
 };
 
 const NOAH_CONFIGS: MeerkatConfigVersions = {
