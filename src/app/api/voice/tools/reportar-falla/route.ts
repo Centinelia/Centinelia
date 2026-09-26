@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireVapiAuth } from '@/lib/vapi/auth';
 import { sendEmail, bugReportHtml } from '@/lib/email/send';
+import { extractToolCall, toolResponse } from '@/lib/voice/tool-response';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -10,15 +11,15 @@ export async function POST(req: NextRequest) {
   const agent_id = searchParams.get('agent_id');
 
   const body  = await req.json();
-  const args  = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
+  const { toolCallId, args } = extractToolCall(body);
   const { tipo, descripcion, contexto } = args as {
-    tipo:        string;
-    descripcion: string;
-    contexto?:   string;
+    tipo?:        string;
+    descripcion?: string;
+    contexto?:    string;
   };
 
   if (!agent_id || !descripcion?.trim()) {
-    return NextResponse.json({ result: 'Reporte no enviado por falta de información.' });
+    return toolResponse(toolCallId, 'Reporte no enviado por falta de información.');
   }
 
   const supabase = createAdminClient();
@@ -46,5 +47,5 @@ export async function POST(req: NextRequest) {
     }),
   });
 
-  return NextResponse.json({ result: 'Reporte enviado al equipo de Centinelia. Gracias por notificarnos.' });
+  return toolResponse(toolCallId, 'Reporte enviado al equipo de Centinelia. Gracias por notificarnos.');
 }

@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { requireVapiAuth } from '@/lib/vapi/auth';
 import { traceVoiceCall } from '@/lib/observability/voice-trace';
 import { upsertOutboundContactWithDedup } from '@/lib/leads/dedup';
+import { extractToolCall, toolResponse } from '@/lib/voice/tool-response';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -10,17 +11,16 @@ export async function POST(req: NextRequest) {
   const agent_id = searchParams.get('agent_id');
 
   const body = await req.json();
-  const args = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
+  const { toolCallId, args, sessionId } = extractToolCall(body);
   const { nombre, telefono, motivo, scheduled_at } = args as {
     nombre?: string; telefono?: string; motivo?: string; scheduled_at?: string;
   };
   const startedAt = Date.now();
-  const sessionId = (body.message?.call?.id as string) ?? null;
 
-  if (!agent_id) return NextResponse.json({ result: 'Error de configuración.' });
+  if (!agent_id) return toolResponse(toolCallId, 'Error de configuración.');
   const telefonoTrim = telefono?.trim();
   if (!telefonoTrim) {
-    return NextResponse.json({ result: 'Necesito el teléfono del contacto para agregarlo a la lista.' });
+    return toolResponse(toolCallId, 'Necesito el teléfono del contacto para agregarlo a la lista.');
   }
 
   const supabase = createAdminClient();
@@ -44,13 +44,13 @@ export async function POST(req: NextRequest) {
     const resultMsg = upsert.action === 'updated'
       ? 'Ya tenía este contacto en la lista de salientes, actualicé sus datos.'
       : 'Contacto agregado a la lista de salientes. Se le llamará después.';
-    return NextResponse.json({ result: resultMsg });
+    return toolResponse(toolCallId, resultMsg);
   } catch {
     traceVoiceCall({
       toolName: 'crear_contacto_saliente', agentId: agent_id, sessionId, input: args,
       result: { ok: false },
       startedAt,
     });
-    return NextResponse.json({ result: 'No pude agregar el contacto a la lista, intento de nuevo en un momento.' });
+    return toolResponse(toolCallId, 'No pude agregar el contacto a la lista, intento de nuevo en un momento.');
   }
 }

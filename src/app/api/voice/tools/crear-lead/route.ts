@@ -6,6 +6,7 @@ import { traceVoiceCall } from '@/lib/observability/voice-trace';
 import { syncLeadToSheets } from '@/lib/services/sheets';
 import { upsertLeadWithDedup } from '@/lib/leads/dedup';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
+import { extractToolCall, toolResponse } from '@/lib/voice/tool-response';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -13,12 +14,14 @@ export async function POST(req: NextRequest) {
   const agent_id = searchParams.get('agent_id');
 
   const body = await req.json();
-  const args = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
-  const { nombre, negocio, giro, servicio, presupuesto, timeline, email, whatsapp } = args;
+  const { toolCallId, args, sessionId } = extractToolCall(body);
+  const { nombre, negocio, giro, servicio, presupuesto, timeline, email, whatsapp } = args as {
+    nombre?: string; negocio?: string; giro?: string; servicio?: string;
+    presupuesto?: string; timeline?: string; email?: string; whatsapp?: string;
+  };
   const startedAt = Date.now();
-  const sessionId = (body.message?.call?.id as string) ?? null;
 
-  if (!agent_id) return NextResponse.json({ result: 'Error de configuración.' });
+  if (!agent_id) return toolResponse(toolCallId, 'Error de configuración.');
 
   const supabase = createAdminClient();
 
@@ -48,7 +51,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (agent?.portal_email) {
-    void syncLeadToSheets(agent.portal_email, agent_id, args);
+    void syncLeadToSheets(agent.portal_email, agent_id, args as Record<string, string | undefined>);
   }
 
   // Solo notifica al equipo cuando es lead nuevo. Si es update (mismo prospecto
@@ -83,5 +86,5 @@ export async function POST(req: NextRequest) {
   const resultMsg = upsert.action === 'updated'
     ? 'Ya tenías registrado este contacto hace unos minutos, actualicé sus datos.'
     : 'Lead registrado correctamente. Le haremos llegar información pronto.';
-  return NextResponse.json({ result: resultMsg });
+  return toolResponse(toolCallId, resultMsg);
 }

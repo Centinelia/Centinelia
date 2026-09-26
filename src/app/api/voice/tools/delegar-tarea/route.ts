@@ -447,12 +447,7 @@ export async function POST(req: NextRequest) {
   });
   if (!delegationClaim.claimed) {
     const msg = formatDuplicateReportMessage(delegationClaim);
-    return NextResponse.json({
-      ok:                  false,
-      deduped:             true,
-      message:             msg,
-      already_claimed_by:  delegationClaim.alreadyClaimedBy,
-    });
+    return NextResponse.json({ results: [{ toolCallId, result: msg }] });
   }
 
   // Hidrata knowledge_base org-level. client_email vive en voice_agents;
