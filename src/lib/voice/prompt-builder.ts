@@ -624,19 +624,27 @@ El sistema registra el pedido automáticamente al terminar la llamada.`);
   }
 
   if (f.client_memory) {
-    blocks.push(`MEMORIA DE CLIENTE (uso obligatorio al inicio de cada llamada):
+    blocks.push(`MEMORIA DE CLIENTE (uso obligatorio en cada llamada):
 
-1. Antes o durante el saludo, llama la tool "buscar_cliente" SIN pasarle argumentos. La tool detecta automáticamente el número del llamante en línea y devuelve su historial (llamadas previas, nombre conocido, motivo de última conversación).
+1. En tu PRIMER turno del modelo en la llamada (justo después de que el ciudadano diga algo), llama la tool "buscar_cliente" sin argumentos. La tool detecta automáticamente el número del ciudadano en línea porque el sistema se lo pasa. TÚ no necesitas saber ni preguntar su teléfono.
 
-2. Si buscar_cliente devuelve found=true:
-   - Si trae "Nombre: X", salúdale por ese nombre y NO le vuelvas a preguntar cómo se llama.
-   - Si trae "Última llamada: ..." o "Ha llamado N veces", menciónalo brevemente en el saludo para que la persona se sienta reconocida. Ejemplo: "Hola [nombre], qué gusto saludarle de nuevo. Veo que hablamos hace poco por [tema breve]. ¿En qué le puedo ayudar hoy?" Adapta el tema al motivo de la última llamada listada.
+2. Interpretación del resultado (CRÍTICO, léelo despacio):
 
-3. Si buscar_cliente devuelve found=false (no encontró registros previos), saluda normal como a un llamante nuevo. Puedes preguntar su nombre si es necesario para la solicitud.
+   - Si el resultado empieza con "Nombre: X" y contiene "Ha llamado N veces": encontraste al ciudadano en el sistema. Tienes su nombre y su historial. NO le preguntes su nombre otra vez. NO le digas "no tengo su número guardado" ni "no encuentro registro" ni "puede que haya hablado con otro compañero". El sistema SÍ tiene su número (por eso la tool devolvió resultado). Confía en la tool.
 
-4. Si en este contexto también hay un bloque "CONTEXTO DEL LLAMANTE" (inyectado por el sistema), úsalo igual: es información redundante pero confirma lo mismo. Nunca contradigas lo que ya sabes.
+   - Si el resultado dice "No encontré registros previos", entonces es un ciudadano nuevo. Salúdale sin asumir historial.
 
-NUNCA le digas al ciudadano que "no encuentro registro" o "no tengo historial" hasta después de haber llamado buscar_cliente en esta misma llamada. La tool es la fuente de verdad.`);
+3. Cómo usar el historial en el saludo (found=true):
+
+   Menciona brevemente que ya han hablado antes para que la persona se sienta reconocida. Adapta el tema al RESUMEN MÁS RELEVANTE del historial reciente, no necesariamente al primero listado (algunas llamadas listadas pueden ser cortas o truncas, elige la que tenga contenido sustancial). Ejemplo:
+
+   "Hola [nombre], qué gusto saludarle de nuevo. Veo que estuvimos hablando del [tema del summary más rico]. ¿En qué le puedo ayudar hoy?"
+
+4. Si el ciudadano te dice "hace rato hablamos" o "ya tienes mi número" y la tool devolvió found=true: confirma sin dudar. "Sí, aquí lo tengo. Estuvimos viendo [tema]." NUNCA respondas con dudas cuando la tool ya confirmó identidad.
+
+5. Si un bloque "CONTEXTO DEL LLAMANTE" también aparece en el prompt (inyectado por el sistema), es la misma información. Nunca contradigas ambas fuentes.
+
+Regla dura: si buscar_cliente devuelve found=true, el sistema SÍ TIENE el número del ciudadano. Nunca digas lo contrario.`);
   }
 
 

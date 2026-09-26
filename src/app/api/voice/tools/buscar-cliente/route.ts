@@ -34,11 +34,12 @@ export async function POST(req: NextRequest) {
 
   const [callsRes, leadsRes, ordersRes, apptsRes] = await Promise.all([
     supabase.from('voice_calls')
-      .select('caller_number, summary, outcome, created_at')
+      .select('caller_number, summary, outcome, duration_seconds, created_at')
       .eq('agent_id', agent_id)
       .ilike('caller_number', `%${phoneCriterion}%`)
       .not('summary', 'is', null)
       .neq('outcome', 'unanswered')
+      .gte('duration_seconds', 30) // Excluye llamadas <30s: no tienen contenido util y confunden al modelo
       .order('created_at', { ascending: false })
       .limit(5),
     supabase.from('leads_voice')
@@ -98,14 +99,18 @@ export async function POST(req: NextRequest) {
   if (lead?.email)   parts.push(`Email: ${lead.email}`);
 
   if (calls.length > 0) {
-    const lastCall = calls[0];
     const { data: agentRow } = await supabase.from('voice_agents').select('timezone').eq('id', agent_id).single();
     const tz = agentRow?.timezone ?? 'America/Monterrey';
-    const lastDate = new Date(lastCall.created_at).toLocaleDateString('es-MX', {
-      timeZone: tz, day: 'numeric', month: 'long', year: 'numeric',
-    });
-    parts.push(`Ha llamado ${calls.length} vez${calls.length > 1 ? 'es' : ''}. Última vez: ${lastDate}.`);
-    if (lastCall.summary) parts.push(`Última llamada: ${lastCall.summary}`);
+    const veces = calls.length === 1 ? 'vez' : 'veces';
+    parts.push(`Ha llamado ${calls.length} ${veces} en total. Historial reciente:`);
+    // Devolvemos hasta 3 llamadas para que el modelo tenga contexto sobre DE QUE se hablo,
+    // no solo la ultima (que puede ser una llamada trunca sin contenido util).
+    for (const c of calls.slice(0, 3)) {
+      const date = new Date(c.created_at).toLocaleDateString('es-MX', {
+        timeZone: tz, day: 'numeric', month: 'long',
+      });
+      parts.push(`• ${date}: ${c.summary}`);
+    }
   }
 
   const pendingAppts = appts.filter((a: any) => a.status === 'confirmada');
