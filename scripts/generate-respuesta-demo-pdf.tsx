@@ -34,7 +34,7 @@ const BRAND: BrandKit = {
   phone:          null,
   website:        'centinelia.mx',
   address:        null,
-  footerText:     'Empleados digitales para PyMEs · centinelia.mx',
+  footerText:     'Empleados digitales',
 };
 
 /**
