@@ -182,8 +182,14 @@ export async function POST(req: NextRequest) {
       }
 
       callerName = lead?.nombre ?? '';
+      const hasHistory = history.length > 0;
       if (callerName) {
-        callerContext = `\n\nCONTEXTO DEL LLAMANTE (${phoneNumber}):\n${parts.join('\n')}\nNO preguntes su nombre, ya lo sabes. Salúdale por su nombre de pila y continúa la conversación naturalmente.`;
+        const historyHint = hasHistory
+          ? ` Si hay interacciones previas listadas arriba, menciona brevemente en el saludo que ya han hablado antes para que se sienta reconocido. Ejemplo: "Hola ${callerName}, qué gusto saludarle de nuevo. Veo que hablamos hace poco por [tema breve]. ¿En qué puedo ayudarle hoy?" Adapta el tema a la interacción más reciente listada.`
+          : '';
+        callerContext = `\n\nCONTEXTO DEL LLAMANTE (${phoneNumber}):\n${parts.join('\n')}\nNO preguntes su nombre, ya lo sabes. Salúdale por su nombre de pila y continúa la conversación naturalmente.${historyHint}`;
+      } else if (hasHistory) {
+        callerContext = `\n\nCONTEXTO DEL LLAMANTE (${phoneNumber}):\n${parts.join('\n')}\nYa habías hablado antes con este número. Saluda cordialmente y menciona brevemente en el saludo que ya se habían comunicado, para que la persona se sienta reconocida. Ejemplo: "Hola, qué gusto saludarle de nuevo. Veo que hablamos hace poco por [tema breve]. ¿En qué puedo ayudarle hoy?" Adapta el tema a la interacción más reciente listada. Puedes preguntarle su nombre si es necesario para la solicitud.`;
       } else {
         callerContext = `\n\nCONTEXTO DEL LLAMANTE (${phoneNumber}):\n${parts.join('\n')}\nSaluda cordialmente. Puedes preguntarle su nombre si es necesario para la solicitud.`;
       }
