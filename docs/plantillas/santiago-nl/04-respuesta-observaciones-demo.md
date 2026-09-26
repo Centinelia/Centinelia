@@ -1,6 +1,5 @@
 # Respuesta al Informe de Observaciones · Nia, Municipio de Santiago Nuevo León
 
-**Para:** Iván, contacto del Municipio de Santiago NL.
 **Referencia:** Informe de Observaciones y Oportunidades de Mejora en la Atención Telefónica (evaluación de demo).
 **Fecha de respuesta:** 26 de septiembre de 2026
 **Equipo:** Centinelia
