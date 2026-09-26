@@ -89,6 +89,20 @@ export async function POST(req: NextRequest) {
   }
 
   const __t = Date.now();
+  // DEBUG temporal: cuantos tools llegan y la ultima interaccion.
+  const __toolsCount = params.tools?.length ?? 0;
+  const __lastUserMsg = [...params.messages].reverse().find((m: {role: string}) => m.role === 'user');
+  const __lastUserPreview = typeof __lastUserMsg?.content === 'string'
+    ? (__lastUserMsg.content as string).slice(0, 120)
+    : JSON.stringify(__lastUserMsg?.content ?? null).slice(0, 120);
+  console.log('[voice/llm] req', {
+    model: params.model,
+    tools_count: __toolsCount,
+    tool_names: (params.tools ?? []).map((t: {name?: string}) => t.name).slice(0, 20),
+    tool_choice: params.tool_choice,
+    messages_count: params.messages.length,
+    last_user: __lastUserPreview,
+  });
   const stream = anthropic.messages.stream({
     model:       params.model,
     max_tokens:  params.max_tokens,
@@ -108,7 +122,27 @@ export async function POST(req: NextRequest) {
         }
         try {
           const finalMsg = await stream.finalMessage();
-          void logLlmCall({ source: 'voice_llm', model: params.model, usage: finalMsg.usage, latencyMs: Date.now() - __t });
+          const respText = finalMsg.content
+            .filter((b: {type: string}) => b.type === 'text')
+            .map((b: {text?: string}) => b.text ?? '').join(' ').slice(0, 200);
+          const toolUses = finalMsg.content
+            .filter((b: {type: string}) => b.type === 'tool_use')
+            .map((b: {name?: string; input?: unknown}) => ({ name: b.name, input: b.input }));
+          void logLlmCall({
+            source: 'voice_llm',
+            model: params.model,
+            usage: finalMsg.usage,
+            latencyMs: Date.now() - __t,
+            meta: {
+              tools_count:  __toolsCount,
+              tool_names:   (params.tools ?? []).map((t: {name?: string}) => t.name).slice(0, 20),
+              tool_choice:  params.tool_choice ?? null,
+              last_user:    __lastUserPreview,
+              stop_reason:  finalMsg.stop_reason,
+              tool_uses:    toolUses,
+              resp_preview: respText,
+            },
+          });
         } catch { /* ignore usage capture errors */ }
       } catch (err) {
         void logLlmCall({ source: 'voice_llm', model: params.model, usage: { input_tokens: 0, output_tokens: 0 }, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err) });
