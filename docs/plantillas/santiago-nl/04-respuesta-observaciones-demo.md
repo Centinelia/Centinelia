@@ -64,22 +64,6 @@ Nia ya está reconociendo llamadas previas del mismo número telefónico para Sa
 
 **En producción:** este mismo mecanismo consulta también, si el municipio lo autoriza, la base de datos ciudadana oficial (ejemplo: sistema de expedientes, CRM municipal). Esa integración adicional se define en la fase de puesta en marcha.
 
-### 1.5 Aceleración al dictar números
-
-**Observación:** Al dictar números de teléfono, extensiones o folios, Nia los pronuncia notoriamente más rápido que el resto de su discurso, dificultando que el ciudadano los anote.
-
-**Respuesta:** Regla de operación insertada.
-
-Nia tiene ahora una regla explícita para dictar cualquier número al ciudadano (teléfono, extensión, folio, monto):
-
-- Teléfonos de diez dígitos: se dictan en grupos de dos o tres con pausa entre grupos. Ejemplo: "81, 12, 34, 56, 78" u "811, 234, 56, 78".
-- Extensiones cortas: pausa a partir de tres dígitos.
-- Folios y códigos alfanuméricos: siempre carácter por carácter con pausa.
-- Montos en pesos: se dicen en palabras completas (ejemplo: "mil doscientos cincuenta pesos con cincuenta centavos"), no dígito por dígito.
-- Si el ciudadano pide que Nia repita un número, ella lo dice más despacio la segunda vez, con la misma estructura de grupos.
-
-Esta regla aplica en cada llamada, tanto en demo como en producción.
-
 ### 2.1 Errores de interpretación (asignación de nombres incorrectos)
 
 **Observación:** Presenta fallas en la comprensión del contexto. Por ejemplo, asigna nombres incorrectos al usuario sin que este los haya proporcionado.
@@ -166,7 +150,6 @@ Con esta regla activa, Nia sostiene la restricción durante toda la llamada. Al 
 | 1.2 | Voz entrecortada y silencios | Ajustado con seguimiento | Ajuste técnico + monitoreo |
 | 1.3 | Corte al pedir transferencia | Esperado en demo · resuelto en producción | Ajuste E.164 aplicado. Enrutamiento real requiere conmutador municipal |
 | 1.4 | Persistencia entre llamadas | Activado en demo | Funcionalidad viva desde el 26 de septiembre |
-| 1.5 | Aceleración al dictar números | Resuelto | Regla de operación insertada |
 | 2.1 | Nombres incorrectos al usuario | Resuelto | Regla de operación insertada |
 | 2.2 | Servidor público por primer nombre | Cobertura parcial | Directorio oficial del municipio |
 | 2.3 | Solicitudes fuera de alcance | Cobertura parcial | Lista oficial de servicios no municipales |
@@ -196,7 +179,7 @@ Cada documento entregado se procesa e incorpora al conocimiento de Nia en pocos 
 
 Las observaciones se agrupan en tres categorías:
 
-- **Resueltas en demo y en producción por igual:** 1.1, 1.2, 1.5, 2.1, 4.1. Son ajustes técnicos y reglas de operación que ya viven en el servicio y aplican en cada llamada.
+- **Resueltas en demo y en producción por igual:** 1.1, 1.2, 2.1, 4.1. Son ajustes técnicos y reglas de operación que ya viven en el servicio y aplican en cada llamada.
 - **Esperadas en demo, resueltas en producción:** 1.3 y parte de 3.2. Involucran una acción física de Nia contra el conmutador telefónico del municipio, que en el demo no está conectado. La lógica de decisión de Nia es correcta hoy; el enrutamiento real de la llamada se completa una vez integrado el conmutador en producción.
 - **Dependen de información oficial del municipio:** 1.4 (activada, con margen para integrar CRM municipal), 2.2, 2.3, 3.1 y parte de 3.2. Nia responde con lo que sabe. Para responder con la certeza de un empleado experimentado necesita la documentación oficial completa del municipio.
 
