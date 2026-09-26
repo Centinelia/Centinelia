@@ -661,7 +661,7 @@ Cuando hayas capturado datos del cliente durante la llamada (nombre, teléfono, 
   {
     const rulesPortalEmail = (agent.portal_email as string | null | undefined) ?? null;
     const rulesMeerkatRoleId = meerkatRoleId ?? null;
-    const featuresForFlag = orgFeaturesRow ?? (agent.features as Record<string, unknown> | null) ?? null;
+    const featuresForFlag = orgFeaturesRow ?? (agent.features as unknown as Record<string, unknown> | null) ?? null;
     const missionsOn = isFeatureEnabled({ features: featuresForFlag }, 'agent_missions_enabled');
     if (rulesPortalEmail && rulesMeerkatRoleId && missionsOn) {
       try {
@@ -693,7 +693,7 @@ Cuando hayas capturado datos del cliente durante la llamada (nombre, teléfono, 
   {
     const tasksPortalEmail   = (agent.portal_email as string | null | undefined) ?? null;
     const tasksOwnerAgentId  = agent.id as string | null | undefined;
-    const featuresForTaskFlag = orgFeaturesRow ?? (agent.features as Record<string, unknown> | null) ?? null;
+    const featuresForTaskFlag = orgFeaturesRow ?? (agent.features as unknown as Record<string, unknown> | null) ?? null;
     const missionsOnTasks = isFeatureEnabled({ features: featuresForTaskFlag }, 'agent_missions_enabled');
     if (tasksPortalEmail && tasksOwnerAgentId && missionsOnTasks) {
       try {
