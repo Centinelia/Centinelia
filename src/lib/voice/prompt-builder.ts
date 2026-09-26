@@ -624,11 +624,19 @@ El sistema registra el pedido automáticamente al terminar la llamada.`);
   }
 
   if (f.client_memory) {
-    blocks.push(`MEMORIA DE CLIENTE:
-Si en este contexto hay un bloque "CONTEXTO DEL LLAMANTE", úsalo, ya tienes el nombre y el historial del cliente, NO vuelvas a preguntar su nombre.
-Si NO hay contexto del llamante y el cliente se identifica, usa buscar_cliente (con su nombre o teléfono) para ver sus interacciones anteriores.
-Personaliza la conversación con lo que sabes: última visita, pedidos frecuentes, motivos previos de llamada.
-Esto hace que el cliente se sienta reconocido y valorado.`);
+    blocks.push(`MEMORIA DE CLIENTE (uso obligatorio al inicio de cada llamada):
+
+1. Antes o durante el saludo, llama la tool "buscar_cliente" SIN pasarle argumentos. La tool detecta automáticamente el número del llamante en línea y devuelve su historial (llamadas previas, nombre conocido, motivo de última conversación).
+
+2. Si buscar_cliente devuelve found=true:
+   - Si trae "Nombre: X", salúdale por ese nombre y NO le vuelvas a preguntar cómo se llama.
+   - Si trae "Última llamada: ..." o "Ha llamado N veces", menciónalo brevemente en el saludo para que la persona se sienta reconocida. Ejemplo: "Hola [nombre], qué gusto saludarle de nuevo. Veo que hablamos hace poco por [tema breve]. ¿En qué le puedo ayudar hoy?" Adapta el tema al motivo de la última llamada listada.
+
+3. Si buscar_cliente devuelve found=false (no encontró registros previos), saluda normal como a un llamante nuevo. Puedes preguntar su nombre si es necesario para la solicitud.
+
+4. Si en este contexto también hay un bloque "CONTEXTO DEL LLAMANTE" (inyectado por el sistema), úsalo igual: es información redundante pero confirma lo mismo. Nunca contradigas lo que ya sabes.
+
+NUNCA le digas al ciudadano que "no encuentro registro" o "no tengo historial" hasta después de haber llamado buscar_cliente en esta misma llamada. La tool es la fuente de verdad.`);
   }
 
 

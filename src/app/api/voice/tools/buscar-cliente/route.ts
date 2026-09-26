@@ -14,35 +14,61 @@ export async function POST(req: NextRequest) {
   const startedAt = Date.now();
   const sessionId = (body.message?.call?.id as string) ?? null;
 
+  // Vapi no le pasa el numero del llamante al modelo, pero SI viene en el body del webhook.
+  // Usamos ese numero como criterio automatico ademas del identificador que el modelo dio.
+  // Asi aunque Nia llame buscar_cliente(identificador='Nash Reanzar') sin saber su telefono,
+  // la tool encuentra las llamadas previas del mismo numero.
+  const callerPhoneRaw: string = body.message?.call?.customer?.number ?? body.message?.customer?.number ?? '';
+  const callerPhoneNorm = callerPhoneRaw.replace(/\D/g, '').slice(-10);
+
   if (!agent_id) return NextResponse.json({ result: 'Error de configuración.' });
-  if (!identificador) return NextResponse.json({ result: 'Necesito que me indiques qué cliente buscar.' });
+  if (!identificador && !callerPhoneNorm) return NextResponse.json({ result: 'Necesito que me indiques qué cliente buscar.' });
 
   const supabase = createAdminClient();
-  const normId   = identificador.replace(/\D/g, '');
+  const idOrEmpty = identificador ?? '';
+  const normId    = idOrEmpty.replace(/\D/g, '');
+  // Phone que usaremos como criterio primario: el del caller si vino, si no el que dio el modelo.
+  const phoneCriterion = callerPhoneNorm || normId || idOrEmpty;
+  // Texto para busqueda por nombre: lo que el modelo dio, si no es puros digitos.
+  const nameCriterion  = idOrEmpty && !/^\d+$/.test(idOrEmpty) ? idOrEmpty : '';
 
   const [callsRes, leadsRes, ordersRes, apptsRes] = await Promise.all([
     supabase.from('voice_calls')
       .select('caller_number, summary, outcome, created_at')
       .eq('agent_id', agent_id)
-      .ilike('caller_number', `%${normId || identificador}%`)
+      .ilike('caller_number', `%${phoneCriterion}%`)
+      .not('summary', 'is', null)
+      .neq('outcome', 'unanswered')
       .order('created_at', { ascending: false })
       .limit(5),
     supabase.from('leads_voice')
       .select('nombre, negocio, servicio, email, whatsapp, created_at')
       .eq('agent_id', agent_id)
-      .or(`nombre.ilike.%${identificador}%,whatsapp.ilike.%${normId || identificador}%`)
+      .or(
+        nameCriterion
+          ? `nombre.ilike.%${nameCriterion}%,whatsapp.ilike.%${phoneCriterion}%`
+          : `whatsapp.ilike.%${phoneCriterion}%`
+      )
       .order('created_at', { ascending: false })
       .limit(3),
     supabase.from('orders_voice')
       .select('nombre, items, status, created_at')
       .eq('agent_id', agent_id)
-      .or(`nombre.ilike.%${identificador}%,telefono.ilike.%${normId || identificador}%`)
+      .or(
+        nameCriterion
+          ? `nombre.ilike.%${nameCriterion}%,telefono.ilike.%${phoneCriterion}%`
+          : `telefono.ilike.%${phoneCriterion}%`
+      )
       .order('created_at', { ascending: false })
       .limit(3),
     supabase.from('appointments_voice')
       .select('nombre, servicio, fecha, hora, status, created_at')
       .eq('agent_id', agent_id)
-      .or(`nombre.ilike.%${identificador}%,telefono.ilike.%${normId || identificador}%`)
+      .or(
+        nameCriterion
+          ? `nombre.ilike.%${nameCriterion}%,telefono.ilike.%${phoneCriterion}%`
+          : `telefono.ilike.%${phoneCriterion}%`
+      )
       .order('created_at', { ascending: false })
       .limit(3),
   ]);

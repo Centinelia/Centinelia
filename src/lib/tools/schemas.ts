@@ -334,13 +334,13 @@ export const TOOL_SCHEMAS: Record<string, ToolSchema> = {
   // 14. buscar_cliente — chat version won (description mentions calls/leads/pedidos/citas)
   buscar_cliente: {
     name: 'buscar_cliente',
-    description: 'Busca el historial de un cliente por nombre, teléfono o email. Muestra llamadas, leads, pedidos y citas anteriores. Úsala cuando el dueño quiera consultar el historial de un cliente.',
+    description: 'Busca el historial de un cliente (llamadas previas, leads, pedidos, citas). En canal voz, si el llamante ya está en línea, la tool detecta su número automáticamente aunque no le pases identificador: úsala así al inicio de la llamada para saber si has hablado antes con esa persona. También puedes pasarle un identificador (nombre, teléfono o email) si el dueño te pide consultar el historial de alguien más.',
     input_schema: {
       type: 'object' as const,
       properties: {
-        identificador: { type: 'string', description: 'Nombre completo, número de teléfono o email del cliente a buscar' },
+        identificador: { type: 'string', description: 'Opcional. Nombre completo, número de teléfono o email del cliente. En voz puedes omitirlo si quieres consultar el historial del propio llamante en línea.' },
       },
-      required: ['identificador'],
+      required: [],
     },
     channels: ['voice', 'chat', 'email'],
     voiceServerPath: 'buscar-cliente',
