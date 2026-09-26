@@ -39,9 +39,9 @@ export async function POST(req: NextRequest) {
       .ilike('caller_number', `%${phoneCriterion}%`)
       .not('summary', 'is', null)
       .neq('outcome', 'unanswered')
-      .gte('duration_seconds', 30) // Excluye llamadas <30s: no tienen contenido util y confunden al modelo
+      .gte('duration_seconds', 30) // Excluye llamadas <30s: no tienen contenido util
       .order('created_at', { ascending: false })
-      .limit(5),
+      .limit(10),
     supabase.from('leads_voice')
       .select('nombre, negocio, servicio, email, whatsapp, created_at')
       .eq('agent_id', agent_id)
@@ -102,10 +102,15 @@ export async function POST(req: NextRequest) {
     const { data: agentRow } = await supabase.from('voice_agents').select('timezone').eq('id', agent_id).single();
     const tz = agentRow?.timezone ?? 'America/Monterrey';
     const veces = calls.length === 1 ? 'vez' : 'veces';
-    parts.push(`Ha llamado ${calls.length} ${veces} en total. Historial reciente:`);
-    // Devolvemos hasta 3 llamadas para que el modelo tenga contexto sobre DE QUE se hablo,
-    // no solo la ultima (que puede ser una llamada trunca sin contenido util).
-    for (const c of calls.slice(0, 3)) {
+    parts.push(`Ha llamado ${calls.length} ${veces} en total. Conversaciones más sustanciales:`);
+    // Priorizamos por DURACION descendente (llamadas mas largas = mas contenido)
+    // y solo entre las 10 mas recientes. Esto evita que summaries auto-referenciales
+    // de llamadas fallidas cortas ("cliente colgo frustrado porque agente no encontro
+    // registro") dominen y creen loops donde el agente lee su propio fracaso.
+    const bySignificance = [...calls].sort(
+      (a, b) => (b.duration_seconds ?? 0) - (a.duration_seconds ?? 0),
+    );
+    for (const c of bySignificance.slice(0, 3)) {
       const date = new Date(c.created_at).toLocaleDateString('es-MX', {
         timeZone: tz, day: 'numeric', month: 'long',
       });
