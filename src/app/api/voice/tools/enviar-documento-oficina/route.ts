@@ -13,11 +13,10 @@ import { sendOfficeDocumentByEmail } from '@/lib/documents/ops-docs-search';
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const agent_id = new URL(req.url).searchParams.get('agent_id');
-  if (!agent_id) return NextResponse.json({ result: 'Error: agent_id requerido' });
-
   const body = await req.json();
   const args = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
-  const toolCallId = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.id ?? 'call_1';
+  const toolCallId = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.id ?? '';
+  if (!agent_id) return NextResponse.json({ results: [{ toolCallId, result: 'Error: agent_id requerido' }] });
   const parsed = (typeof args === 'string' ? JSON.parse(args) : args) as {
     document_id?: string; to?: string; subject?: string; body?: string;
   };
