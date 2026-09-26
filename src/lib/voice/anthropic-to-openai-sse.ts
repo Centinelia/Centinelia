@@ -47,6 +47,7 @@ export async function* anthropicToOpenAISse(
     toolIndex?: number;
     toolId?:   string;
     toolName?: string;
+    argsEmitted?: boolean;
   }
   const blocks: Record<number, BlockState> = {};
   let toolCallCounter = 0;
@@ -104,6 +105,7 @@ export async function* anthropicToOpenAISse(
             choices: [{ index: 0, delta: { content: event.delta.text }, finish_reason: null }],
           });
         } else if (event.delta.type === 'input_json_delta' && st.kind === 'tool_use') {
+          st.argsEmitted = true;
           yield sseEvent({
             ...base,
             choices: [{
@@ -122,7 +124,28 @@ export async function* anthropicToOpenAISse(
       }
 
       case 'content_block_stop': {
-        // Nada que emitir per se; el finish_reason viene en message_delta.
+        // Si el bloque era tool_use con input={} (sin argumentos que streamear),
+        // Anthropic NO emite input_json_delta. Vapi entonces recibe arguments=''
+        // (del content_block_start), falla al parsear JSON, y le devuelve al modelo
+        // "No result returned". Fix: emitir un delta final con arguments='{}' para
+        // que Vapi pueda parsear y ejecutar la tool contra su server URL.
+        const idxStop = event.index;
+        const stStop  = blocks[idxStop];
+        if (stStop?.kind === 'tool_use' && !stStop.argsEmitted) {
+          yield sseEvent({
+            ...base,
+            choices: [{
+              index: 0,
+              delta: {
+                tool_calls: [{
+                  index:    stStop.toolIndex!,
+                  function: { arguments: '{}' },
+                }],
+              },
+              finish_reason: null,
+            }],
+          });
+        }
         break;
       }
 
