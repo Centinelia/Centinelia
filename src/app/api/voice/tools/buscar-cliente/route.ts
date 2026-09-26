@@ -9,10 +9,25 @@ export async function POST(req: NextRequest) {
   const agent_id = searchParams.get('agent_id');
 
   const body = await req.json();
-  const args = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
-  const { identificador } = args;
+  const toolCall = (body.message?.toolCallList ?? body.toolCallList)?.[0] ?? null;
+  const toolCallId: string = toolCall?.id ?? '';
+  const rawArgs = toolCall?.function?.arguments ?? body;
+  const args: Record<string, unknown> = typeof rawArgs === 'string'
+    ? (() => { try { return JSON.parse(rawArgs || '{}'); } catch { return {}; } })()
+    : (rawArgs ?? {});
+  const identificador: string | undefined = typeof args.identificador === 'string' ? args.identificador : undefined;
   const startedAt = Date.now();
   const sessionId = (body.message?.call?.id as string) ?? null;
+
+  // Vapi custom-llm mode espera respuesta en formato { results: [{ toolCallId, result }] }.
+  // Sin ese wrap, Vapi le pasa al modelo "No result returned" aunque el server responda 200.
+  // Fallback al formato flat si no viene toolCallId (backwards-compat con paths viejos).
+  const wrap = (result: string, found?: boolean, nombre?: string | null) => {
+    if (toolCallId) {
+      return NextResponse.json({ results: [{ toolCallId, result }] });
+    }
+    return NextResponse.json({ result, ...(found !== undefined ? { found } : {}), ...(nombre !== undefined ? { nombre } : {}) });
+  };
 
   // Vapi no le pasa el numero del llamante al modelo, pero SI viene en el body del webhook.
   // Usamos ese numero como criterio automatico ademas del identificador que el modelo dio.
@@ -21,8 +36,8 @@ export async function POST(req: NextRequest) {
   const callerPhoneRaw: string = body.message?.call?.customer?.number ?? body.message?.customer?.number ?? '';
   const callerPhoneNorm = callerPhoneRaw.replace(/\D/g, '').slice(-10);
 
-  if (!agent_id) return NextResponse.json({ result: 'Error de configuración.' });
-  if (!identificador && !callerPhoneNorm) return NextResponse.json({ result: 'Necesito que me indiques qué cliente buscar.' });
+  if (!agent_id) return wrap('Error de configuración.');
+  if (!identificador && !callerPhoneNorm) return wrap('Necesito que me indiques qué cliente buscar.');
 
   const supabase = createAdminClient();
   const idOrEmpty = identificador ?? '';
@@ -84,10 +99,7 @@ export async function POST(req: NextRequest) {
       toolName: 'buscar_cliente', agentId: agent_id, sessionId, input: args,
       result: { ok: true, found: false }, startedAt,
     });
-    return NextResponse.json({
-      result: 'No encontré registros previos de ese cliente. ¿Le puedo ayudar como cliente nuevo?',
-      found: false,
-    });
+    return wrap('No encontré registros previos de ese cliente. ¿Le puedo ayudar como cliente nuevo?', false, null);
   }
 
   const parts: string[] = [];
@@ -135,9 +147,5 @@ export async function POST(req: NextRequest) {
     result: { ok: true, found: true, nombre: lead?.nombre ?? null, calls: calls.length, leads: leads.length, orders: orders.length, appts: appts.length },
     startedAt,
   });
-  return NextResponse.json({
-    result: msg,
-    found: true,
-    nombre: lead?.nombre ?? null,
-  });
+  return wrap(msg, true, lead?.nombre ?? null);
 }
