@@ -1,4 +1,4 @@
-# Respuesta al Informe de Observaciones — Nia, Municipio de Santiago Nuevo León
+# Respuesta al Informe de Observaciones · Nia, Municipio de Santiago Nuevo León
 
 **Referencia:** Informe de Observaciones y Oportunidades de Mejora en la Atención Telefónica (evaluación de demo).
 **Fecha de respuesta:** 26 de septiembre de 2026
@@ -118,7 +118,7 @@ Mientras tanto, con la regla insertada sobre transferencias verificadas y con la
 
 Nia tiene ahora la regla: **"Al transferir, siempre menciona primero el departamento y la persona antes que la extensión. Formato correcto: 'Te voy a transferir con [Departamento], con [Nombre de la persona si lo tienes], extensión [número].' Nunca digas solo el número de extensión sin el contexto del departamento."**
 
-**Cobertura parcial en el demo actual:** Nia dirá el departamento correctamente porque las fichas oficiales cargadas contienen el nombre del área. Para decir también el nombre de la persona que atenderá, requiere el directorio del municipio (punto 2.2 arriba). Sin ese directorio, Nia mencionará "con la Secretaría de Finanzas y Tesorería Municipal, extensión [número]" — correcto y suficiente para orientar al ciudadano, pero sin el nombre específico de quien contestará.
+**Cobertura parcial en el demo actual:** Nia dirá el departamento correctamente porque las fichas oficiales cargadas contienen el nombre del área. Para decir también el nombre de la persona que atenderá, requiere el directorio del municipio (punto 2.2 arriba). Sin ese directorio, Nia mencionará "con la Secretaría de Finanzas y Tesorería Municipal, extensión [número]", correcto y suficiente para orientar al ciudadano, pero sin el nombre específico de quien contestará.
 
 ---
 

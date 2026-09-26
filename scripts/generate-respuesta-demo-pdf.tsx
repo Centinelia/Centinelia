@@ -20,9 +20,15 @@ import type { BrandKit } from '@/lib/brand/kit';
 const INPUT_PATH  = path.resolve('docs/plantillas/santiago-nl/04-respuesta-observaciones-demo.md');
 const OUTPUT_PATH = path.resolve('docs/plantillas/santiago-nl/04-respuesta-observaciones-demo.pdf');
 
+// Carga logo como data URI para que react-pdf lo embeba sin fetch remoto.
+const LOGO_PATH = path.resolve('public/logo.png');
+const LOGO_DATA_URI = fs.existsSync(LOGO_PATH)
+  ? `data:image/png;base64,${fs.readFileSync(LOGO_PATH).toString('base64')}`
+  : null;
+
 const BRAND: BrandKit = {
   businessName:   'Centinelia',
-  logoUrl:        null,
+  logoUrl:        LOGO_DATA_URI,
   color:          '#6C3BFF',
   colorSecondary: '#1A0A3B',
   phone:          null,
