@@ -34,6 +34,12 @@ const NIA_CONFIGS: MeerkatConfigVersions = {
   // Turbo y ya vive en 6 meerkats (Nara, Naia, Neo, Nova, Nox, Niva) sin issues.
   // Solo cambia voiceModel; todo lo demas identico a v2.
   3: { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.36, maxTokens: 400, speed: 0.91, minChars: 25, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-3' },
+  // v4 2026-09-26: speed 0.91 -> 0.98 tras feedback demo Nia Municipio Santiago:
+  // "muy lenta como con flojera". Comparativa del roster: Nia era la mas lenta
+  // (0.91) contra Nelia recepcionista atencion cliente (0.98), Noah 1.00, Nova/Neo
+  // 1.05. 0.98 alinea con Nelia (rol equivalente) sin volverla acelerada. Todo
+  // lo demas identico a v3 (Flash v2.5 + nova-3 + Haiku 4.5 conservados).
+  4: { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.36, maxTokens: 400, speed: 0.98, minChars: 25, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-3' },
 };
 
 const NOAH_CONFIGS: MeerkatConfigVersions = {
