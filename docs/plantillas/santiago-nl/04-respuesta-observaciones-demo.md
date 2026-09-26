@@ -16,6 +16,8 @@ Agradecemos las observaciones detalladas del equipo del municipio tras las prueb
 
 **Nota importante sobre el alcance del demo:** las pruebas se realizaron con la información pública que ofrece el portal del municipio de Santiago NL (fichas oficiales de trámites descargables). Un demo permite validar que la tecnología funciona con la información que tiene disponible. Para producción, la calidad de las respuestas de Nia depende directamente de la información oficial y completa que se le comparta. Un empleado nuevo, humano o digital, no puede responder con certeza sobre trámites, servidores públicos o procesos internos si no cuenta con esa información documentada.
 
+**Diferencia clave entre demo y producción, aplicable a varios de los puntos siguientes:** algunas observaciones reflejan acciones que Nia intenta ejecutar contra sistemas reales del municipio (el conmutador telefónico, la base de datos de ciudadanos, la agenda de servidores públicos, el sistema de tickets). En el demo Nia no está conectada a esos sistemas. Por eso ciertas acciones se comportan como si fallaran (una transferencia se corta, un dato no se guarda, una consulta interna no encuentra resultado), aunque la lógica de decisión de Nia sea correcta. En producción, con las integraciones ya instaladas contra los sistemas del municipio, esas acciones se completan de extremo a extremo. En cada punto se aclara qué parte de la observación es propia del demo y qué parte queda resuelta en producción.
+
 ---
 
 ## 1. Estabilidad Técnica y Comportamiento del Sistema
@@ -42,23 +44,41 @@ Si el entrecortado persiste después de estos ajustes, se investigará como prob
 
 **Observación:** Se registró la finalización abrupta de la llamada por parte del agente digital al momento de solicitar una transferencia de línea.
 
-**Respuesta:** Ajuste técnico aplicado.
+**Respuesta:** Comportamiento esperado en demo. Ajuste técnico aplicado para producción.
 
-Se identificó que el número al que Nia intenta transferir se guardaba sin el prefijo internacional (+52). Ahora todos los números se normalizan automáticamente al formato E.164 (`+528112803360`) antes de solicitar la transferencia. Esto previene el rechazo por parte del proveedor telefónico que causaba el corte de llamada.
+**Aclaración sobre el demo:** en las pruebas, la finalización de la llamada al pedir una transferencia es el comportamiento correcto y esperado, no una falla. Nia no está conectada al conmutador telefónico del municipio, por lo tanto no hay a dónde transferir realmente. Cuando Nia dice "te voy a transferir con...", termina la llamada porque no hay línea de destino que la reciba. Ese cierre es señal de que Nia tomó bien la decisión de transferir, ejecutó el paso técnico y el sistema no tenía a quién entregar la llamada.
+
+**Ajuste aplicado igual, aplicable a producción:** de manera adicional se detectó que el número al que Nia entrega la transferencia se guardaba sin el prefijo internacional (+52). Se corrigió para que todos los números se normalicen al formato E.164 (`+528112803360`) antes de solicitar la transferencia. Este ajuste previene un rechazo específico del proveedor telefónico que existiría también en producción si el número quedaba sin prefijo.
+
+**En producción, con la integración al conmutador del municipio (interconexión IP, SIP trunk o desvío de línea, según lo que use el municipio),** la llamada del ciudadano se enruta al servidor público correspondiente sin cortarse. La integración se define y valida en la fase de puesta en marcha del servicio.
 
 ### 1.4 Falta de persistencia de datos entre llamadas
 
 **Observación:** Si la llamada se interrumpe y el usuario vuelve a comunicarse, el sistema no conserva el historial ni la información previa del ciudadano.
 
-**Respuesta:** Funcionalidad disponible, activable por solicitud.
+**Respuesta:** Funcionalidad activada el 26 de septiembre de 2026.
 
-Nia tiene la capacidad técnica de recordar llamadas previas del mismo número telefónico. Esta funcionalidad (llamada "memoria del cliente") no viene activa por defecto porque implica que Nia consulta la base de datos del municipio en cada llamada. Se puede activar para Santiago NL si se confirma que es un comportamiento deseado. Con esta activación, Nia podría decir por ejemplo: "veo que la semana pasada llamó por el mismo tema, ¿quiere continuar con lo que quedó pendiente?"
+Nia ya está reconociendo llamadas previas del mismo número telefónico para Santiago NL. En cada llamada consulta el historial de interacciones anteriores y personaliza la conversación con lo que sabe del ciudadano: motivo previo de llamada, temas tratados, resumen de la última interacción.
 
-**Requiere confirmación del municipio.** La activación se realiza en minutos una vez confirmada.
+**Aclaración sobre el demo:** para que Nia reconozca a un ciudadano como "conocido" necesita que ese mismo número telefónico haya llamado antes al menos una vez y que la primera llamada haya generado un resumen. Al probar por primera vez desde un número que Nia nunca ha visto, ella saluda como a un ciudadano nuevo, que es el comportamiento correcto. A partir de la segunda llamada del mismo número, Nia usa el contexto previo.
 
----
+**En producción:** este mismo mecanismo consulta también, si el municipio lo autoriza, la base de datos ciudadana oficial (ejemplo: sistema de expedientes, CRM municipal). Esa integración adicional se define en la fase de puesta en marcha.
 
-## 2. Comprensión del Lenguaje y Contexto
+### 1.5 Aceleración al dictar números
+
+**Observación:** Al dictar números de teléfono, extensiones o folios, Nia los pronuncia notoriamente más rápido que el resto de su discurso, dificultando que el ciudadano los anote.
+
+**Respuesta:** Regla de operación insertada.
+
+Nia tiene ahora una regla explícita para dictar cualquier número al ciudadano (teléfono, extensión, folio, monto):
+
+- Teléfonos de diez dígitos: se dictan en grupos de dos o tres con pausa entre grupos. Ejemplo: "81, 12, 34, 56, 78" u "811, 234, 56, 78".
+- Extensiones cortas: pausa a partir de tres dígitos.
+- Folios y códigos alfanuméricos: siempre carácter por carácter con pausa.
+- Montos en pesos: se dicen en palabras completas (ejemplo: "mil doscientos cincuenta pesos con cincuenta centavos"), no dígito por dígito.
+- Si el ciudadano pide que Nia repita un número, ella lo dice más despacio la segunda vez, con la misma estructura de grupos.
+
+Esta regla aplica en cada llamada, tanto en demo como en producción.
 
 ### 2.1 Errores de interpretación (asignación de nombres incorrectos)
 
@@ -120,6 +140,8 @@ Nia tiene ahora la regla: **"Al transferir, siempre menciona primero el departam
 
 **Cobertura parcial en el demo actual:** Nia dirá el departamento correctamente porque las fichas oficiales cargadas contienen el nombre del área. Para decir también el nombre de la persona que atenderá, requiere el directorio del municipio (punto 2.2 arriba). Sin ese directorio, Nia mencionará "con la Secretaría de Finanzas y Tesorería Municipal, extensión [número]", correcto y suficiente para orientar al ciudadano, pero sin el nombre específico de quien contestará.
 
+**Aclaración sobre la transferencia en sí:** como se explica en el punto 1.3, en el demo la transferencia telefónica no se completa técnicamente porque Nia no está conectada al conmutador del municipio. Lo que se puede validar en las pruebas de demo es que Nia dice correctamente el departamento, la persona (cuando el directorio lo permite) y la extensión, y que toma bien la decisión de a dónde transferir. El enrutamiento real de la línea al servidor público se completa en producción con la integración al conmutador municipal.
+
 ---
 
 ## 4. Adherencia a Reglas de Convivencia y Flujo de Diálogo
@@ -142,13 +164,14 @@ Con esta regla activa, Nia sostiene la restricción durante toda la llamada. Al 
 |---|---|---|---|
 | 1.1 | Interrupción por ruido ambiental | Resuelto | Ajuste técnico aplicado |
 | 1.2 | Voz entrecortada y silencios | Ajustado con seguimiento | Ajuste técnico + monitoreo |
-| 1.3 | Corte al pedir transferencia | Resuelto | Ajuste técnico aplicado |
-| 1.4 | Persistencia entre llamadas | Disponible | Confirmación del municipio para activar |
+| 1.3 | Corte al pedir transferencia | Esperado en demo · resuelto en producción | Ajuste E.164 aplicado. Enrutamiento real requiere conmutador municipal |
+| 1.4 | Persistencia entre llamadas | Activado en demo | Funcionalidad viva desde el 26 de septiembre |
+| 1.5 | Aceleración al dictar números | Resuelto | Regla de operación insertada |
 | 2.1 | Nombres incorrectos al usuario | Resuelto | Regla de operación insertada |
 | 2.2 | Servidor público por primer nombre | Cobertura parcial | Directorio oficial del municipio |
 | 2.3 | Solicitudes fuera de alcance | Cobertura parcial | Lista oficial de servicios no municipales |
 | 3.1 | Multas mal orientadas a Tesorería | Cobertura parcial | Aclaración oficial de áreas municipales |
-| 3.2 | Transferencias sin departamento | Cobertura parcial | Directorio oficial del municipio |
+| 3.2 | Transferencias sin departamento | Cobertura parcial en demo · completo en producción | Directorio oficial + conmutador municipal |
 | 4.1 | Palabras que el usuario pidió no usar | Resuelto | Regla de operación insertada |
 
 ---
@@ -171,9 +194,13 @@ Cada documento entregado se procesa e incorpora al conocimiento de Nia en pocos 
 
 ## Consideración final
 
-Los ajustes técnicos (Sección 1) y las reglas de operación (2.1, 2.3, 3.2, 4.1) resuelven completamente los problemas relacionados con **cómo se comporta Nia**. Lo que resta para producción es **con qué información responde Nia**. El demo actual funciona con la información pública que ofrece el portal del municipio. Para dar el servicio completo con la certeza de un empleado experimentado, Nia necesita la información oficial y completa que solo el municipio posee.
+Las observaciones se agrupan en tres categorías:
 
-Un demo es una prueba de que la tecnología funciona con la información que tiene disponible. Con la información oficial completa, Nia responderá con la misma precisión que un empleado con toda la documentación del municipio a la mano.
+- **Resueltas en demo y en producción por igual:** 1.1, 1.2, 1.5, 2.1, 4.1. Son ajustes técnicos y reglas de operación que ya viven en el servicio y aplican en cada llamada.
+- **Esperadas en demo, resueltas en producción:** 1.3 y parte de 3.2. Involucran una acción física de Nia contra el conmutador telefónico del municipio, que en el demo no está conectado. La lógica de decisión de Nia es correcta hoy; el enrutamiento real de la llamada se completa una vez integrado el conmutador en producción.
+- **Dependen de información oficial del municipio:** 1.4 (activada, con margen para integrar CRM municipal), 2.2, 2.3, 3.1 y parte de 3.2. Nia responde con lo que sabe. Para responder con la certeza de un empleado experimentado necesita la documentación oficial completa del municipio.
+
+Un demo es una prueba de que la tecnología funciona con la información que tiene disponible. Con la información oficial completa y las integraciones a los sistemas del municipio, Nia responderá con la misma precisión que un empleado con toda la documentación a la mano y transferirá al servidor público correspondiente en cada consulta.
 
 Quedamos a la orden para agendar la carga de la información adicional una vez que el equipo del municipio la tenga lista.
 
