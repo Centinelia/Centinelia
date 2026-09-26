@@ -217,8 +217,9 @@ export async function ingestFicha(pdfBuffer: Buffer, opts: IngestOpts): Promise<
   // Solo cobra si viene agentId — scripts internos / seeds pasan sin agentId y no cobran.
   if (opts.agentId) {
     await consumeAiOp(opts.agentId, 1, {
-      source: 'ingest_ficha_informativa',
-      label:  `Ficha subida: ${parsed.titulo}`,
+      source:  'ingest_ficha_informativa',
+      ficha_id: fichaRow.id,
+      label:   `Ficha subida: ${parsed.titulo}`,
     });
   }
 

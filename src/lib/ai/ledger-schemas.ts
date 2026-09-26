@@ -42,6 +42,10 @@ export const LEDGER_REASONS = {
     description: 'Creación de ficha informativa',
     metadata: ['ficha_id'],
   },
+  ingest_ficha_informativa: {
+    description: 'Ficha informativa cargada al portal',
+    metadata: ['ficha_id'],
+  },
   ficha_retrieval: {
     description: 'Retrieval de fichas en runtime',
     metadata: ['ficha_ids'],
