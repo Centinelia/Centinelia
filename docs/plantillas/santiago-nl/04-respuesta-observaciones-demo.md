@@ -1,5 +1,6 @@
 # Respuesta al Informe de Observaciones · Nia, Municipio de Santiago Nuevo León
 
+**Para:** Iván, contacto del Municipio de Santiago NL.
 **Referencia:** Informe de Observaciones y Oportunidades de Mejora en la Atención Telefónica (evaluación de demo).
 **Fecha de respuesta:** 26 de septiembre de 2026
 **Equipo:** Centinelia
@@ -17,6 +18,8 @@ Agradecemos las observaciones detalladas del equipo del municipio tras las prueb
 **Nota importante sobre el alcance del demo:** las pruebas se realizaron con la información pública que ofrece el portal del municipio de Santiago NL (fichas oficiales de trámites descargables). Un demo permite validar que la tecnología funciona con la información que tiene disponible. Para producción, la calidad de las respuestas de Nia depende directamente de la información oficial y completa que se le comparta. Un empleado nuevo, humano o digital, no puede responder con certeza sobre trámites, servidores públicos o procesos internos si no cuenta con esa información documentada.
 
 **Diferencia clave entre demo y producción, aplicable a varios de los puntos siguientes:** algunas observaciones reflejan acciones que Nia intenta ejecutar contra sistemas reales del municipio (el conmutador telefónico, la base de datos de ciudadanos, la agenda de servidores públicos, el sistema de tickets). En el demo Nia no está conectada a esos sistemas. Por eso ciertas acciones se comportan como si fallaran (una transferencia se corta, un dato no se guarda, una consulta interna no encuentra resultado), aunque la lógica de decisión de Nia sea correcta. En producción, con las integraciones ya instaladas contra los sistemas del municipio, esas acciones se completan de extremo a extremo. En cada punto se aclara qué parte de la observación es propia del demo y qué parte queda resuelta en producción.
+
+**Sobre la información con la que responde Nia (corolario importante):** Nia solo puede responder con precisión sobre temas de los que tenga documentación oficial cargada. Igual que un servidor público nuevo, si no le compartimos el directorio del municipio no puede saber que la ingeniera de obras es "Cynthia Meléndez", y si no le compartimos la guía de derivación no puede saber que las aclaraciones de multas de tránsito van al área de Tránsito Municipal en lugar de Tesorería. Esa información no está disponible públicamente en el portal `santiago.gob.mx/servicios`, por lo tanto Centinelia no la tiene y no puede inferirla. La sección **"Documentos que el Municipio necesita compartir con Centinelia"** al final de este documento enumera exactamente qué falta. Sin esos documentos, Nia va a responder honestamente que no tiene la información — no la va a inventar. Con esos documentos cargados, Nia responde con la misma precisión que un servidor público experimentado.
 
 ---
 
@@ -159,19 +162,65 @@ Con esta regla activa, Nia sostiene la restricción durante toda la llamada. Al 
 
 ---
 
-## Solicitud al equipo del municipio
+## Documentos que el Municipio necesita compartir con Centinelia
 
-Para llevar a Nia a su capacidad máxima en Santiago NL y cerrar completamente todas las observaciones, se solicita al municipio compartir los siguientes documentos oficiales:
+Estas cuatro piezas de información son la única razón por la que Nia responde hoy con menos precisión de la que podría. No están publicadas en el portal `santiago.gob.mx/servicios` y no se pueden inferir sin el aporte del propio municipio. Con ellas cargadas, las observaciones 2.2, 2.3, 3.1 y 3.2 quedan completamente cerradas.
 
-1. **Directorio de servidores públicos**: nombre completo, puesto, área, extensión, correo institucional y horario de atención. Puede ser un archivo consolidado o uno por servidor.
+### 1. Directorio oficial de servidores públicos
 
-2. **Lista de servicios que no son competencia municipal**: para que Nia oriente al organismo correcto (federal, estatal, privado) en lugar de intentar transferir internamente.
+**Qué necesitamos:** listado de servidores del municipio con estos campos por persona:
 
-3. **Guía de derivación por tipo de consulta**: por ejemplo, "consultas de multas van a Tránsito Municipal, pago de multas va a Tesorería". Cualquier proceso interno del municipio que aclare a qué área dirigir cada tipo de duda ciudadana.
+- Nombre completo (y apodos o formas coloquiales por las que los ciudadanos suelen preguntarles, si aplica).
+- Puesto exacto.
+- Área o dirección a la que pertenece.
+- Extensión telefónica.
+- Correo institucional.
+- Horario de atención al público.
 
-4. **Cualquier ficha informativa adicional** de trámites o servicios frecuentes que no estén publicados en el portal `santiago.gob.mx/servicios`.
+**Por qué es indispensable:** sin este directorio Nia no puede resolver referencias como "el ingeniero de obras", "María de tesorería" o "el señor Pérez" a la persona correcta. Con él, Nia transfiere con el nombre y la extensión exactos, y confirma horarios en la misma llamada.
 
-Cada documento entregado se procesa e incorpora al conocimiento de Nia en pocos minutos. Los que estén en formato PDF se pueden subir directamente sin conversión.
+**Formato:** un solo archivo consolidado (Excel, PDF o Word) es ideal. Uno por servidor también funciona.
+
+### 2. Lista de servicios que NO son competencia del Municipio
+
+**Qué necesitamos:** lista de trámites o consultas que los ciudadanos frecuentemente piden al Municipio pero que en realidad se resuelven en otras dependencias, con la referencia de a dónde derivarlos. Ejemplos que suelen entrar:
+
+- CURP → Renapo (federal).
+- Licencia de conducir → Tránsito estatal.
+- Servicio de agua potable → Servicios de Agua y Drenaje de Monterrey (SADM).
+- Pasaporte → Secretaría de Relaciones Exteriores.
+- Cualquier otro que el municipio detecte con frecuencia.
+
+**Por qué es indispensable:** sin esta lista, Nia intenta orientar dentro del municipio consultas que no le corresponden, o pide disculpas sin poder redirigir. Con la lista, Nia dice al ciudadano exactamente a qué organismo llamar y le ahorra la llamada perdida.
+
+**Formato:** tabla simple con dos columnas — "trámite / consulta" y "organismo responsable + datos de contacto si los tienen".
+
+### 3. Guía de derivación interna por tipo de consulta
+
+**Qué necesitamos:** para los trámites que sí son competencia municipal pero que involucran a varias áreas, la aclaración de qué área atiende cada tipo de consulta. Ejemplo del caso concreto observado en las pruebas:
+
+- Consulta o aclaración de multas de tránsito → **Tránsito Municipal**.
+- Pago de multa de tránsito una vez conocido el monto → **Tesorería Municipal**.
+
+Otros casos donde suele haber ambigüedad y necesitamos la aclaración oficial: predial, permisos de construcción, licencias comerciales, quejas ciudadanas.
+
+**Por qué es indispensable:** las fichas públicas del portal describen el trámite formal pero no distinguen entre "consulta" y "pago" ni entre áreas que colaboran en un mismo proceso. Sin esta guía, Nia orienta con la mejor información disponible pero puede mandar al ciudadano al área equivocada.
+
+**Formato:** tabla o documento con la aclaración por trámite o por tipo de consulta.
+
+### 4. Fichas informativas adicionales de trámites frecuentes
+
+**Qué necesitamos:** cualquier trámite o servicio municipal que se atiende con frecuencia pero **no está publicado** en `santiago.gob.mx/servicios`. Si internamente hay un instructivo, procedimiento, checklist o folleto que se usa en ventanilla y no está en el portal, ese material es exactamente lo que necesitamos.
+
+**Por qué es indispensable:** los trámites publicados en el portal ya están cargados en el conocimiento de Nia. Los que no están publicados, Nia no los conoce y responderá "no tengo esa información".
+
+**Formato:** los PDFs que el municipio ya use internamente se pueden subir directamente sin conversión. Word o Excel también funcionan.
+
+---
+
+**Tiempo de incorporación por Centinelia:** cada documento recibido se procesa e incorpora al conocimiento de Nia en pocos minutos por parte de nuestro equipo. No se requiere tiempo adicional del municipio más allá de compartirnos los archivos.
+
+**Compromiso de expectativas hasta que lleguen:** mientras no tengamos estos documentos, Nia va a responder honestamente que no tiene la información sobre los temas que dependen de ellos (nombres de servidores, servicios fuera de alcance, derivación fina entre áreas). No inventará datos y no confirmará transferencias a áreas equivocadas. Es preferible que el ciudadano escuche "voy a orientarle mejor con la información oficial actualizada" a que reciba una respuesta imprecisa.
 
 ---
 
