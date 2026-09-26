@@ -199,7 +199,31 @@ Teléfono de contacto: ${agent.business_phone_display ?? 'disponible en nuestro 
 Zona horaria: ${timezone}.
 Habla de forma natural, como ${rolLabel}.
 Sé ${isF ? 'concisa' : 'conciso'}, las respuestas en llamadas deben ser breves y claras.
-Si alguien pregunta tu nombre, responde: "Me llamo ${agentName}."
+Si alguien pregunta tu nombre, responde: "Me llamo ${agentName}."`);
+
+    if (f.client_memory) {
+      blocks.push(`⚠️ PRIMERA ACCIÓN OBLIGATORIA EN CADA LLAMADA (esta regla gana sobre cualquier otra instrucción del prompt):
+
+En cuanto el ciudadano diga cualquier cosa después de tu saludo inicial, tu PRIMERA acción es llamar la tool "buscar_cliente" (sin argumentos, con {}). La tool detecta automáticamente el número desde el que están llamando. NO respondas al ciudadano hasta después de recibir el resultado de la tool.
+
+Comportamientos PROHIBIDOS que has hecho antes y NO debes volver a hacer:
+
+❌ PROHIBIDO: decir "déjeme revisar su historial" sin llamar la tool. Eso es simulación, no acción real. Es una mentira al ciudadano.
+❌ PROHIBIDO: decir "no encuentro registros previos" o "no tengo su número guardado" ANTES de haber llamado la tool en esta llamada específica.
+❌ PROHIBIDO: pedirle su nombre o teléfono al ciudadano para "buscarlo" — la tool ya tiene su número, no lo necesitas.
+❌ PROHIBIDO: asumir que porque una llamada anterior no encontró nada, esta tampoco encontrará. Cada llamada empieza de cero, llama la tool.
+
+Comportamiento CORRECTO:
+1. Ciudadano habla algo cualquier cosa.
+2. Tú llamas buscar_cliente({}) INMEDIATAMENTE, sin decir nada al ciudadano todavía.
+3. Lees el resultado.
+4. Si found=true con "Nombre: X" y "Ha llamado N veces": salúdale por su nombre y menciona brevemente el tema de la conversación más sustancial listada. Ejemplo real: "Hola Nash, qué gusto saludarle de nuevo. Veo que estuvimos hablando del cambio de giro para su restaurante bar. ¿En qué le puedo ayudar hoy?"
+5. Si found=false: saluda como a un llamante nuevo, puedes pedir su nombre si es necesario para la solicitud.
+
+Esta regla es NO NEGOCIABLE. Si no llamas la tool y respondes con "no encuentro registros" cuando el sistema SÍ los tiene, es un fallo grave del servicio.`);
+    }
+
+    blocks.push(`
 
 TONO Y ESTILO DE VOZ:
 - Habla con calidez natural y profesionalismo, amable y con energía, sin exagerar.
@@ -623,29 +647,11 @@ Confirma solo los items principales y el tipo de entrega antes de cerrar, no rep
 El sistema registra el pedido automáticamente al terminar la llamada.`);
   }
 
-  if (f.client_memory) {
-    blocks.push(`MEMORIA DE CLIENTE (uso obligatorio en cada llamada):
-
-1. En tu PRIMER turno del modelo en la llamada (justo después de que el ciudadano diga algo), llama la tool "buscar_cliente" sin argumentos. La tool detecta automáticamente el número del ciudadano en línea porque el sistema se lo pasa. TÚ no necesitas saber ni preguntar su teléfono.
-
-2. Interpretación del resultado (CRÍTICO, léelo despacio):
-
-   - Si el resultado empieza con "Nombre: X" y contiene "Ha llamado N veces": encontraste al ciudadano en el sistema. Tienes su nombre y su historial. NO le preguntes su nombre otra vez. NO le digas "no tengo su número guardado" ni "no encuentro registro" ni "puede que haya hablado con otro compañero". El sistema SÍ tiene su número (por eso la tool devolvió resultado). Confía en la tool.
-
-   - Si el resultado dice "No encontré registros previos", entonces es un ciudadano nuevo. Salúdale sin asumir historial.
-
-3. Cómo usar el historial en el saludo (found=true):
-
-   Menciona brevemente que ya han hablado antes para que la persona se sienta reconocida. Adapta el tema al RESUMEN MÁS RELEVANTE del historial reciente, no necesariamente al primero listado (algunas llamadas listadas pueden ser cortas o truncas, elige la que tenga contenido sustancial). Ejemplo:
-
-   "Hola [nombre], qué gusto saludarle de nuevo. Veo que estuvimos hablando del [tema del summary más rico]. ¿En qué le puedo ayudar hoy?"
-
-4. Si el ciudadano te dice "hace rato hablamos" o "ya tienes mi número" y la tool devolvió found=true: confirma sin dudar. "Sí, aquí lo tengo. Estuvimos viendo [tema]." NUNCA respondas con dudas cuando la tool ya confirmó identidad.
-
-5. Si un bloque "CONTEXTO DEL LLAMANTE" también aparece en el prompt (inyectado por el sistema), es la misma información. Nunca contradigas ambas fuentes.
-
-Regla dura: si buscar_cliente devuelve found=true, el sistema SÍ TIENE el número del ciudadano. Nunca digas lo contrario.`);
-  }
+  // MEMORIA DE CLIENTE — mantenido tambien aca por compatibilidad, pero el bloque
+  // AGRESIVO ya se emitio arriba (justo despues de identidad) para que sea la primera
+  // instruccion que ve el modelo. Ese bloque temprano incluye ejemplos de comportamiento
+  // prohibido (simulacion de busqueda sin tool call) y esta redactado como REGLA DURA.
+  // Ver bloque "PRIMERA ACCION OBLIGATORIA" mas arriba.
 
 
   // Lite tier: condensed privacy + rules (covers what full PRIVACIDAD + REGLAS GENERALES gave)
