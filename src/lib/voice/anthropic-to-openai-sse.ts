@@ -69,7 +69,14 @@ export async function* anthropicToOpenAISse(
           blocks[idx] = { kind: 'text' };
         } else if (block.type === 'tool_use') {
           const toolIndex = toolCallCounter++;
-          blocks[idx] = { kind: 'tool_use', toolIndex, toolId: block.id, toolName: block.name };
+          // Convertir el ID de formato Anthropic (toolu_...) a formato OpenAI (call_...)
+          // porque Vapi es OpenAI-compat y puede rechazar/mal-mapear IDs Anthropic
+          // al hacer el matching tool_call_id <-> tool_result_id, resultando en
+          // "No result returned" al modelo aun cuando la tool ejecuto exitoso.
+          const openaiCompatId = block.id.startsWith('toolu_')
+            ? `call_${block.id.slice(6)}`
+            : block.id;
+          blocks[idx] = { kind: 'tool_use', toolIndex, toolId: openaiCompatId, toolName: block.name };
           // Vapi (OpenAI-compat) espera anunciar el tool_call al abrir el bloque
           yield sseEvent({
             ...base,
@@ -78,7 +85,7 @@ export async function* anthropicToOpenAISse(
               delta: {
                 tool_calls: [{
                   index:    toolIndex,
-                  id:       block.id,
+                  id:       openaiCompatId,
                   type:     'function',
                   function: { name: block.name, arguments: '' },
                 }],
