@@ -18,7 +18,7 @@ Agradecemos las observaciones detalladas del equipo del municipio tras las prueb
 
 **Diferencia clave entre demo y producción, aplicable a varios de los puntos siguientes:** algunas observaciones reflejan acciones que Nia intenta ejecutar contra sistemas reales del municipio (el conmutador telefónico, la base de datos de ciudadanos, la agenda de servidores públicos, el sistema de tickets). En el demo Nia no está conectada a esos sistemas. Por eso ciertas acciones se comportan como si fallaran (una transferencia se corta, un dato no se guarda, una consulta interna no encuentra resultado), aunque la lógica de decisión de Nia sea correcta. En producción, con las integraciones ya instaladas contra los sistemas del municipio, esas acciones se completan de extremo a extremo. En cada punto se aclara qué parte de la observación es propia del demo y qué parte queda resuelta en producción.
 
-**Sobre la información con la que responde Nia (corolario importante):** Nia solo puede responder con precisión sobre temas de los que tenga documentación oficial cargada. Igual que un servidor público nuevo, si no le compartimos el directorio del municipio no puede saber que la ingeniera de obras es "Cynthia Meléndez", y si no le compartimos la guía de derivación no puede saber que las aclaraciones de multas de tránsito van al área de Tránsito Municipal en lugar de Tesorería. Esa información no está disponible públicamente en el portal `santiago.gob.mx/servicios`, por lo tanto Centinelia no la tiene y no puede inferirla. La sección **"Documentos que el Municipio necesita compartir con Centinelia"** al final de este documento enumera exactamente qué falta. Sin esos documentos, Nia va a responder honestamente que no tiene la información — no la va a inventar. Con esos documentos cargados, Nia responde con la misma precisión que un servidor público experimentado.
+**Sobre la información con la que responde Nia (corolario importante y aplicable a la mayoría de las observaciones):** Nia solo puede responder con precisión sobre temas de los que tenga documentación oficial cargada. Igual que un servidor público nuevo, si no le compartimos el directorio del municipio no puede resolver "el ingeniero de obras" a la persona real (aunque el nombre completo aparezca en alguna ficha), y si no le compartimos la guía de derivación no puede saber que las aclaraciones de multas van a Tránsito Municipal mientras que el pago va a Tesorería. Esa información no está disponible públicamente en el portal `santiago.gob.mx/servicios`, por lo tanto Centinelia no la tiene y no puede inferirla. La sección **"Documentos que el Municipio necesita compartir con Centinelia"** al final de este documento enumera exactamente qué falta. Sin esos documentos, Nia va a responder honestamente que no tiene la información — no la va a inventar ni la va a improvisar. Con esos documentos cargados, responde con la misma precisión que un servidor público experimentado.
 
 ---
 
@@ -80,13 +80,13 @@ Esta regla se aplica en cada llamada y en cada turno de la conversación. Si Nia
 
 **Observación:** Si el usuario consulta por un servidor público utilizando únicamente su primer nombre, el agente no lo reconoce; requiere el nombre completo.
 
-**Respuesta:** Requiere información oficial del municipio.
+**Respuesta:** Limitación esperada del demo. Requiere información oficial del municipio.
 
-Para que Nia reconozca a un servidor público por cualquier variante que use el ciudadano (primer nombre, apellido, tratamiento informal como "el señor Pérez"), se necesita cargar un directorio oficial con los nombres completos, puestos, áreas, extensiones y las variantes de referencia comunes.
+Este no es un fallo del producto: es que Nia hoy solo conoce a los servidores públicos que aparecen mencionados en las fichas oficiales del portal (donde suele venir solo el nombre completo del titular de un trámite). No tiene un directorio interno del municipio con las variantes por las que la ciudadanía suele referirse a cada persona (primer nombre, apellido, tratamiento informal como "el señor Pérez", "el ingeniero de obras", "María de tesorería"). Sin ese directorio, Nia no puede relacionar esas referencias coloquiales con la persona correcta, aunque el nombre completo de esa persona sí aparezca en alguna ficha.
 
-**Este directorio no está disponible en el portal público del municipio.** Se solicita al equipo del municipio compartir la lista oficial actualizada para incorporarla como ficha informativa. Con esa información cargada, Nia podrá resolver referencias como "el ingeniero de obras" o "María de tesorería" a la persona correcta.
+Un servidor público humano que recién ingresa al municipio también necesita ese directorio para atender llamadas con soltura. La diferencia es que Nia lo consume en segundos una vez cargado.
 
-**Formato recomendado del directorio:** una lista con nombre completo, puesto, área, extensión, correo institucional y horario de atención. Un archivo por servidor o un directorio consolidado.
+Con el directorio del municipio cargado en Nia (ver "Documentos que el Municipio necesita compartir con Centinelia" al final), esta observación queda completamente cerrada.
 
 ### 2.3 Aceptación de solicitudes fuera del alcance municipal
 
@@ -106,15 +106,15 @@ Nia tiene ahora la regla explícita: **"Antes de confirmar cualquier transferenc
 
 **Observación:** Orienta de forma errónea al ciudadano hacia la Tesorería para consultar detalles o aclaraciones sobre multas de tránsito, omitiendo que dicha área únicamente procesa el cobro del trámite.
 
-**Respuesta:** Ficha oficial cargada. Nia ahora consulta la información correcta.
+**Respuesta:** Limitación esperada del demo por información pública incompleta.
 
-Se cargó al conocimiento de Nia la ficha oficial `TS-SFT-ING-01 Pago y Aplicación de Descuento en Multas de Tránsito` descargada del portal del municipio. Esta ficha describe el proceso oficial de multas.
+Nia atiende hoy con la única ficha oficial que el portal municipal publica sobre multas de tránsito: `TS-SFT-ING-01 Pago y Aplicación de Descuento en Multas de Tránsito`. Esa ficha documenta el proceso de **pago**, no la aclaración. En ningún lugar del portal público se especifica que las **consultas y aclaraciones** de una multa se atienden en Tránsito Municipal y solo el **cobro final** en Tesorería.
 
-**Consideración importante:** el portal público del municipio no distingue explícitamente entre "consultas y aclaraciones de multas" (que corresponden al área de Tránsito Municipal) y "pago de la multa una vez conocido el monto" (que corresponde a Tesorería). La ficha oficial documenta el pago, no la aclaración.
+Nia no puede inferir esa separación sin que el municipio la documente. Con la información pública actual, hasta un servidor público nuevo que solo leyera el portal cometería exactamente el mismo error de orientación.
 
-**Para prevenir completamente esta mala orientación** se necesita información oficial adicional que aclare a qué área específica dirigir cada tipo de consulta ciudadana. Esta información no está en la ficha pública actual.
+La solución no es una regla técnica; es que el municipio comparta con Centinelia la **guía de derivación por tipo de consulta** (ver documento 3 en la sección final). Con esa guía cargada, Nia distinguirá "el ciudadano quiere aclarar una multa" (área de Tránsito) de "el ciudadano ya conoce el monto y quiere pagarla" (Tesorería), y orientará correctamente en cada caso.
 
-Mientras tanto, con la regla insertada sobre transferencias verificadas y con la ficha oficial cargada, Nia ya no orientará a Tesorería para "aclarar" nada, solo para pagos confirmados. Si el ciudadano tiene dudas sobre la multa, Nia le dirá que necesita más información para dirigirlo correctamente en lugar de mandarlo al lugar equivocado.
+Mientras esa guía llega, Nia ya está instruida para no confirmar transferencias sobre trámites de los que no tenga información oficial suficiente; en esos casos prefiere pedir más detalle al ciudadano en lugar de mandarlo a un área equivocada.
 
 ### 3.2 Transferencias incompletas (extensión sin departamento ni persona)
 
@@ -136,11 +136,13 @@ Nia tiene ahora la regla: **"Al transferir, siempre menciona primero el departam
 
 **Observación:** A pesar de que el usuario indica explícitamente no utilizar ciertas palabras o términos no deseados, el agente vuelve a emplearlos de forma recurrente durante la interacción.
 
-**Respuesta:** Regla de operación insertada.
+**Respuesta:** Se configura desde el portal de administración, no pidiéndolo por teléfono en la llamada.
 
-Nia tiene ahora la regla: **"Respeta las palabras o términos que el usuario pida no usar durante la llamada. Si el usuario dice 'no me digas X' o 'no uses la palabra Y', no la vuelvas a usar en el resto de la conversación. Esta restricción vive solo durante la llamada actual y se olvida al final."**
+Las palabras o términos que Nia nunca debe usar (nombres competidores, lenguaje coloquial no deseado, siglas internas, cualquier vocabulario que el municipio quiera restringir) se cargan una sola vez en el portal de administración de Nia en la sección de reglas de lenguaje. A partir de esa configuración, Nia respeta esas restricciones en **todas** las llamadas de manera permanente, sin depender de que el ciudadano las pida en cada conversación.
 
-Con esta regla activa, Nia sostiene la restricción durante toda la llamada. Al finalizar la llamada, la restricción se olvida para no afectar interacciones futuras con otros ciudadanos que no tengan esa preferencia.
+Pedir en tiempo real durante una llamada "no uses la palabra X" es el mecanismo menos confiable: depende de la memoria conversacional del turno actual y de que el ciudadano encuentre la palabra correcta al momento. No es la forma pensada para configurar restricciones de vocabulario del servicio.
+
+**Para producción:** compárte con Centinelia el listado de palabras o términos a evitar y los dejamos configurados. Nia jamás los usará en llamadas subsecuentes.
 
 ---
 
@@ -157,7 +159,7 @@ Con esta regla activa, Nia sostiene la restricción durante toda la llamada. Al 
 | 2.3 | Solicitudes fuera de alcance | Cobertura parcial | Lista oficial de servicios no municipales |
 | 3.1 | Multas mal orientadas a Tesorería | Cobertura parcial | Aclaración oficial de áreas municipales |
 | 3.2 | Transferencias sin departamento | Cobertura parcial en demo · completo en producción | Directorio oficial + conmutador municipal |
-| 4.1 | Palabras que el usuario pidió no usar | Resuelto | Regla de operación insertada |
+| 4.1 | Palabras que el usuario pidió no usar | Se configura en portal | Listado de términos vetados a compartir con Centinelia |
 
 ---
 
@@ -215,6 +217,14 @@ Otros casos donde suele haber ambigüedad y necesitamos la aclaración oficial: 
 
 **Formato:** los PDFs que el municipio ya use internamente se pueden subir directamente sin conversión. Word o Excel también funcionan.
 
+### 5. Listado de vocabulario a evitar (opcional pero recomendado)
+
+**Qué necesitamos:** cualquier palabra, sigla, coloquialismo, referencia a competidores o vocabulario que el municipio prefiera que Nia nunca use al hablar con ciudadanos.
+
+**Por qué:** es la forma correcta de configurar restricciones de lenguaje, en lugar de esperar que el ciudadano las pida turno a turno durante una llamada. Una vez cargadas, aplican de manera permanente en todas las llamadas.
+
+**Formato:** una lista simple en un correo o Word. Ejemplo: "no digas 'reclamo', usa 'queja ciudadana'; no menciones a otros municipios; no digas 'inspector', usa 'personal de verificación'".
+
 ---
 
 **Tiempo de incorporación por Centinelia:** cada documento recibido se procesa e incorpora al conocimiento de Nia en pocos minutos por parte de nuestro equipo. No se requiere tiempo adicional del municipio más allá de compartirnos los archivos.
@@ -225,11 +235,11 @@ Otros casos donde suele haber ambigüedad y necesitamos la aclaración oficial: 
 
 ## Consideración final
 
-Las observaciones se agrupan en tres categorías:
+Las observaciones se agrupan en tres categorías, y la mayoría son limitaciones esperadas del formato demo, no fallos del producto:
 
-- **Resueltas en demo y en producción por igual:** 1.1, 1.2, 2.1, 4.1. Son ajustes técnicos y reglas de operación que ya viven en el servicio y aplican en cada llamada.
+- **Resueltas en demo y en producción por igual:** 1.1, 1.2, 2.1. Son ajustes técnicos y reglas de operación que ya viven en el servicio y aplican en cada llamada.
 - **Esperadas en demo, resueltas en producción:** 1.3 y parte de 3.2. Involucran una acción física de Nia contra el conmutador telefónico del municipio, que en el demo no está conectado. La lógica de decisión de Nia es correcta hoy; el enrutamiento real de la llamada se completa una vez integrado el conmutador en producción.
-- **Dependen de información oficial del municipio:** 1.4 (activada, con margen para integrar CRM municipal), 2.2, 2.3, 3.1 y parte de 3.2. Nia responde con lo que sabe. Para responder con la certeza de un empleado experimentado necesita la documentación oficial completa del municipio.
+- **Dependen de información o configuración que solo el municipio puede compartir:** 1.4 (activada, con margen para integrar CRM municipal), 2.2, 2.3, 3.1, 3.2 en su parte de directorio, y 4.1. Nia responde con lo que sabe. Sin el directorio de servidores, la guía de derivación, la lista de servicios no municipales y el vocabulario vetado, no puede responder con la precisión de un servidor público experimentado. Estos documentos no están en el portal público, por lo tanto Centinelia no puede inferirlos.
 
 Un demo es una prueba de que la tecnología funciona con la información que tiene disponible. Con la información oficial completa y las integraciones a los sistemas del municipio, Nia responderá con la misma precisión que un empleado con toda la documentación a la mano y transferirá al servidor público correspondiente en cada consulta.
 
