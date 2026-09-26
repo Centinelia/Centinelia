@@ -150,7 +150,7 @@ export default function ClientEditForm({
         <Link
           href="/admin/clientes"
           className="inline-flex items-center gap-1.5 text-[13px] font-medium transition-colors hover:opacity-80"
-          style={{ color: '#6B7280' }}
+          style={{ color: '#6B6480' }}
         >
           <ArrowLeft size={14} /> Clientes
         </Link>
@@ -158,10 +158,10 @@ export default function ClientEditForm({
 
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: '#111827' }}>
+        <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: '#1A0A3B' }}>
           Editar cliente
         </h1>
-        <p className="text-[13px] mt-1.5" style={{ color: '#6B7280' }}>
+        <p className="text-[13px] mt-1.5" style={{ color: '#6B6480' }}>
           {displayName} · {agents.length} empleado{agents.length !== 1 ? 's' : ''}
         </p>
       </div>
@@ -208,12 +208,12 @@ export default function ClientEditForm({
                   className="flex flex-col gap-0.5 px-4 py-3 rounded-lg text-left transition-all"
                   style={{
                     background: active ? '#F3F0FF' : '#FFFFFF',
-                    border:     active ? '1px solid #6C3BFF' : '1px solid #E5E7EB',
-                    color:      active ? '#4C1D95' : '#111827',
+                    border:     active ? '1px solid #6C3BFF' : '1px solid #E8E3F5',
+                    color:      active ? '#4C1D95' : '#1A0A3B',
                   }}
                 >
                   <span className="text-[13px] font-semibold">{opt.label}</span>
-                  <span className="text-[12px]" style={{ color: active ? '#7C3AED' : '#6B7280' }}>{opt.desc}</span>
+                  <span className="text-[12px]" style={{ color: active ? '#7C3AED' : '#6B6480' }}>{opt.desc}</span>
                 </button>
               );
             })}
@@ -225,7 +225,7 @@ export default function ClientEditForm({
                 subtitle="Habilita herramientas especificas de esta industria (opcional).">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <button onClick={() => setIndustry('')}
-                style={{ background: industry === '' ? '#F3F0FF' : '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: 6, padding: 12, textAlign: 'left' }}>
+                style={{ background: industry === '' ? '#F3F0FF' : '#FFFFFF', border: '1px solid #E8E3F5', borderRadius: 6, padding: 12, textAlign: 'left' }}>
                 Ninguna
               </button>
               {INDUSTRIES.map(opt => {
@@ -233,7 +233,7 @@ export default function ClientEditForm({
                 const label = opt.charAt(0).toUpperCase() + opt.slice(1);
                 return (
                   <button key={opt} onClick={() => setIndustry(opt)}
-                    style={{ background: active ? '#F3F0FF' : '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: 6, padding: 12, textAlign: 'left' }}>
+                    style={{ background: active ? '#F3F0FF' : '#FFFFFF', border: '1px solid #E8E3F5', borderRadius: 6, padding: 12, textAlign: 'left' }}>
                     {label}
                   </button>
                 );
@@ -259,7 +259,7 @@ export default function ClientEditForm({
             placeholder="A que se dedica el negocio, tono y datos que el empleado debe mencionar"
           />
           <div>
-            <label className="block text-[12px] font-medium mb-1.5" style={{ color: '#374151' }}>
+            <label className="block text-[12px] font-medium mb-1.5" style={{ color: '#4A3B6B' }}>
               <span className="inline-flex items-center gap-1"><Globe size={11} /> Sitio web</span>
             </label>
             <input
@@ -267,7 +267,7 @@ export default function ClientEditForm({
               onChange={e => setBusinessWebsite(e.target.value)}
               placeholder="https://negocio.com"
               className="w-full text-[13px] px-3 py-2 outline-none transition-colors focus:border-[#6C3BFF] rounded-lg"
-              style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#111827' }}
+              style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
             />
           </div>
           <FieldInput
@@ -289,7 +289,7 @@ export default function ClientEditForm({
         <Card title="Ubicacion y horario" icon={<MapPin size={13} />}
               subtitle="Zona horaria y horario de atencion del cliente.">
           <div>
-            <label className="block text-[12px] font-medium mb-1.5" style={{ color: '#374151' }}>
+            <label className="block text-[12px] font-medium mb-1.5" style={{ color: '#4A3B6B' }}>
               Zona horaria
             </label>
             <div className="relative" ref={tzRef}>
@@ -297,15 +297,15 @@ export default function ClientEditForm({
                 type="button"
                 onClick={() => setTzOpen(o => !o)}
                 className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-[13px] transition-colors focus:border-[#6C3BFF]"
-                style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#111827' }}
+                style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
               >
                 <span>{MEXICO_TIMEZONES.find(tz => tz.value === timezone)?.label ?? timezone}</span>
-                <ChevronDown size={14} style={{ color: '#6B7280', flexShrink: 0 }} />
+                <ChevronDown size={14} style={{ color: '#6B6480', flexShrink: 0 }} />
               </button>
               {tzOpen && (
                 <div
                   className="absolute top-full left-0 right-0 mt-1 rounded-lg overflow-hidden z-50"
-                  style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', boxShadow: '0 8px 24px rgba(0,0,0,0.08)' }}
+                  style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', boxShadow: '0 8px 24px rgba(0,0,0,0.08)' }}
                 >
                   {MEXICO_TIMEZONES.map(tz => (
                     <button
@@ -314,7 +314,7 @@ export default function ClientEditForm({
                       onClick={() => { setTimezone(tz.value); setTzOpen(false); }}
                       className="w-full text-left px-4 py-2 text-[13px] transition-colors hover:bg-gray-50"
                       style={{
-                        color:      timezone === tz.value ? '#6C3BFF' : '#374151',
+                        color:      timezone === tz.value ? '#6C3BFF' : '#4A3B6B',
                         background: timezone === tz.value ? '#F3F0FF' : 'transparent',
                         fontWeight: timezone === tz.value ? 500 : 400,
                       }}
@@ -336,12 +336,12 @@ export default function ClientEditForm({
 
           <div
             className="flex items-center justify-between p-3 rounded-lg cursor-pointer select-none transition-colors hover:bg-gray-50 mt-1"
-            style={{ background: '#FFFFFF', border: '1px solid #E5E7EB' }}
+            style={{ background: '#FFFFFF', border: '1px solid #E8E3F5' }}
             onClick={() => setHoursEnabled(v => !v)}
           >
             <div>
-              <p className="text-[13px] font-medium" style={{ color: '#111827' }}>Horario definido</p>
-              <p className="text-[12px] mt-0.5" style={{ color: '#6B7280' }}>
+              <p className="text-[13px] font-medium" style={{ color: '#1A0A3B' }}>Horario definido</p>
+              <p className="text-[12px] mt-0.5" style={{ color: '#6B6480' }}>
                 Los empleados solo contestan en el horario configurado
               </p>
             </div>
@@ -349,21 +349,21 @@ export default function ClientEditForm({
           </div>
 
           {hoursEnabled && (
-            <div className="rounded-lg overflow-hidden mt-1" style={{ border: '1px solid #E5E7EB' }}>
+            <div className="rounded-lg overflow-hidden mt-1" style={{ border: '1px solid #E8E3F5' }}>
               {DAYS.map(({ key, label }, i) => {
                 const s: DaySchedule = businessHours[key] ?? { open: false };
                 return (
                   <div
                     key={key}
                     className="flex items-center gap-3 px-4 py-2.5"
-                    style={{ background: '#FFFFFF', borderTop: i > 0 ? '1px solid #F3F4F6' : undefined }}
+                    style={{ background: '#FFFFFF', borderTop: i > 0 ? '1px solid #F5F0FF' : undefined }}
                   >
                     <div
                       className="flex items-center gap-2 w-32 flex-shrink-0 cursor-pointer select-none"
                       onClick={() => setBusinessHours(h => ({ ...h, [key]: { ...s, open: !s.open } }))}
                     >
                       <Toggle on={s.open} size="sm" />
-                      <span className="text-[13px]" style={{ color: s.open ? '#111827' : '#9CA3AF' }}>{label}</span>
+                      <span className="text-[13px]" style={{ color: s.open ? '#1A0A3B' : '#9B8FB5' }}>{label}</span>
                     </div>
                     {s.open ? (
                       <div className="flex items-center gap-2">
@@ -378,9 +378,9 @@ export default function ClientEditForm({
                             setBusinessHours(h => ({ ...h, [key]: { ...s, from: v } }));
                           }}
                           className="rounded-md px-2 py-1 text-[13px] outline-none w-16 text-center tabular-nums"
-                          style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#111827' }}
+                          style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
                         />
-                        <span className="text-[13px]" style={{ color: '#9CA3AF' }}>a</span>
+                        <span className="text-[13px]" style={{ color: '#9B8FB5' }}>a</span>
                         <input
                           type="text"
                           maxLength={5}
@@ -392,11 +392,11 @@ export default function ClientEditForm({
                             setBusinessHours(h => ({ ...h, [key]: { ...s, to: v } }));
                           }}
                           className="rounded-md px-2 py-1 text-[13px] outline-none w-16 text-center tabular-nums"
-                          style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#111827' }}
+                          style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
                         />
                       </div>
                     ) : (
-                      <span className="text-[12px]" style={{ color: '#9CA3AF' }}>Cerrado</span>
+                      <span className="text-[12px]" style={{ color: '#9B8FB5' }}>Cerrado</span>
                     )}
                   </div>
                 );
@@ -408,7 +408,7 @@ export default function ClientEditForm({
         {/* Botones al final del formulario, no sticky (no estorban al llenar campos abajo) */}
         <div
           className="flex items-center justify-end gap-2 pt-4 mt-2"
-          style={{ borderTop: '1px solid #E5E7EB' }}
+          style={{ borderTop: '1px solid #E8E3F5' }}
         >
           {savedMsg && (
             <span
@@ -422,7 +422,7 @@ export default function ClientEditForm({
             type="button"
             onClick={() => router.back()}
             className="inline-flex items-center px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-50"
-            style={{ background: '#FFFFFF', color: '#374151', border: '1px solid #E5E7EB' }}
+            style={{ background: '#FFFFFF', color: '#4A3B6B', border: '1px solid #E8E3F5' }}
           >
             Cancelar
           </button>
@@ -457,15 +457,15 @@ function Card({ title, subtitle, icon, children }: {
   return (
     <div
       className="rounded-xl bg-white overflow-hidden"
-      style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+      style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
     >
-      <div className="px-5 py-3.5" style={{ borderBottom: '1px solid #F3F4F6' }}>
-        <h2 className="text-[11px] uppercase tracking-wider font-medium flex items-center gap-1.5" style={{ color: '#9CA3AF' }}>
+      <div className="px-5 py-3.5" style={{ borderBottom: '1px solid #F5F0FF' }}>
+        <h2 className="text-[11px] uppercase tracking-wider font-medium flex items-center gap-1.5" style={{ color: '#9B8FB5' }}>
           {icon}
           {title}
         </h2>
         {subtitle && (
-          <p className="text-[12px] mt-1" style={{ color: '#6B7280' }}>{subtitle}</p>
+          <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>{subtitle}</p>
         )}
       </div>
       <div className="px-5 py-4 flex flex-col gap-3">
@@ -481,10 +481,10 @@ function FieldInput({ label, value, onChange, placeholder, helper, textarea, row
 }) {
   const base: React.CSSProperties = {
     background:  '#FFFFFF',
-    border:      '1px solid #E5E7EB',
+    border:      '1px solid #E8E3F5',
     borderRadius: 8,
     padding:     '8px 12px',
-    color:       '#111827',
+    color:       '#1A0A3B',
     fontSize:    13,
     width:       '100%',
     outline:     'none',
@@ -492,7 +492,7 @@ function FieldInput({ label, value, onChange, placeholder, helper, textarea, row
   return (
     <div>
       {label && (
-        <label className="block text-[12px] font-medium mb-1.5" style={{ color: '#374151' }}>
+        <label className="block text-[12px] font-medium mb-1.5" style={{ color: '#4A3B6B' }}>
           {label}
         </label>
       )}
@@ -514,7 +514,7 @@ function FieldInput({ label, value, onChange, placeholder, helper, textarea, row
           style={base}
         />
       )}
-      {helper && <p className="text-[12px] mt-1" style={{ color: '#6B7280' }}>{helper}</p>}
+      {helper && <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>{helper}</p>}
     </div>
   );
 }
@@ -526,7 +526,7 @@ function Toggle({ on, size = 'md' }: { on: boolean; size?: 'md' | 'sm' }) {
   return (
     <div
       className="rounded-full transition-colors relative flex-shrink-0"
-      style={{ width: w, height: h, background: on ? '#6C3BFF' : '#E5E7EB' }}
+      style={{ width: w, height: h, background: on ? '#6C3BFF' : '#E8E3F5' }}
     >
       <span
         className="absolute rounded-full bg-white transition-all"

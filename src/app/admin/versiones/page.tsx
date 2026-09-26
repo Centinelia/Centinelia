@@ -7,6 +7,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { MEERKAT_CONFIGS } from '@/lib/vapi/meerkat-configs';
 import { VersionesTable } from '@/components/admin/VersionesTable';
 import { GoldenTestsHealthTable } from '@/components/admin/GoldenTestsHealthTable';
+import { Play, AlertOctagon, DollarSign } from 'lucide-react';
 
 type TabKey = 'deploys' | 'health';
 
@@ -28,25 +29,25 @@ export default async function VersionesPage({ searchParams }: Props) {
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
       <div>
-        <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: '#111827' }}>
+        <p className="text-[10px] font-bold uppercase tracking-[0.16em] mb-1" style={{ color: '#9B6DFF' }}>Meerkats · Rollouts</p>
+        <h1 className="text-[28px] font-bold leading-tight tracking-tight" style={{ color: '#1A0A3B' }}>
           Versiones de meerkats
         </h1>
-        <p className="text-[13px] mt-1.5" style={{ color: '#6B7280' }}>
-          Rollouts activos y salud de las golden tests.
+        <p className="text-[13px] mt-1.5 max-w-2xl" style={{ color: '#6B6480' }}>
+          Rollouts activos por meerkat, versiones fijadas por cliente, y salud de las golden tests en las últimas 24 horas.
         </p>
       </div>
 
-      <nav className="flex items-center gap-1" style={{ borderBottom: '1px solid #E5E7EB' }}>
+      <nav className="flex items-center gap-1" style={{ borderBottom: '1px solid #E8E3F5' }}>
         {TABS.map(t => {
           const active = tab === t.key;
           return (
             <Link
               key={t.key}
               href={`/admin/versiones?tab=${t.key}`}
-              className="px-3 py-2 text-[13px] transition-colors"
+              className="px-4 py-2.5 text-[13px] font-semibold transition-colors"
               style={{
-                color:        active ? '#6C3BFF' : '#6B7280',
-                fontWeight:   active ? 600 : 500,
+                color:        active ? '#6C3BFF' : '#6B6480',
                 borderBottom: active ? '2px solid #6C3BFF' : '2px solid transparent',
                 marginBottom: '-1px',
               }}
@@ -79,10 +80,11 @@ async function DeploysTab() {
   const agentCounts = new Map<string, number>();
   const pinnedCounts = new Map<string, number>();
   for (const a of agents ?? []) {
-    const mId = (a.features as any)?.meerkat_role_id;
+    const features = (a.features as Record<string, unknown> | null) ?? {};
+    const mId = features.meerkat_role_id as string | undefined;
     if (!mId) continue;
     agentCounts.set(mId, (agentCounts.get(mId) ?? 0) + 1);
-    if ((a.features as any)?.pinned_meerkat_version != null) {
+    if (features.pinned_meerkat_version != null) {
       pinnedCounts.set(mId, (pinnedCounts.get(mId) ?? 0) + 1);
     }
   }
@@ -120,9 +122,9 @@ async function DeploysTab() {
 
   return (
     <>
-      <p className="text-[12px]" style={{ color: '#6B7280' }}>
+      <p className="text-[12px]" style={{ color: '#6B6480' }}>
         El rollout real por organización se controla con flags (ver{' '}
-        <a href="/admin/flags" className="font-medium" style={{ color: '#6C3BFF' }}>Feature flags</a>).
+        <Link href="/admin/flags" className="font-semibold" style={{ color: '#6C3BFF' }}>Feature flags</Link>).
         &ldquo;Rollout activo&rdquo; muestra los flags meerkat.&lt;id&gt;.v&lt;n&gt; existentes;
         &ldquo;Fallback&rdquo; muestra la versión legacy que reciben los agentes sin flag aplicable.
       </p>
@@ -140,6 +142,7 @@ async function HealthTab() {
     .order('created_at', { ascending: false })
     .limit(20);
 
+  // eslint-disable-next-line react-hooks/purity -- Server Component: Date.now() es request-scoped, no dispara re-renders client-side.
   const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const { data: recent24h } = await supabase
     .from('golden_test_scenario_runs')
@@ -153,37 +156,49 @@ async function HealthTab() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <HealthCard label="Scenario runs 24h" value={String(total24h)} />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <HealthCard label="Scenario runs 24h" value={String(total24h)} accent="#6C3BFF" icon={<Play size={16} />} />
         <HealthCard
           label="Fallos técnicos 24h"
           value={`${failed24h} (${(failRate * 100).toFixed(1)}%)`}
+          accent={failRate > 0.10 ? '#B45309' : '#22C55E'}
+          icon={<AlertOctagon size={16} />}
           warn={failRate > 0.10}
         />
-        <HealthCard label="Costo 24h" value={`$${cost24h.toFixed(2)}`} />
+        <HealthCard
+          label="Costo 24h"
+          value={cost24h.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 })}
+          accent="#9B6DFF"
+          icon={<DollarSign size={16} />}
+          hint="Anthropic tokens · USD"
+        />
       </div>
       <GoldenTestsHealthTable runs={recentRuns ?? []} />
     </div>
   );
 }
 
-function HealthCard({ label, value, warn }: { label: string; value: string; warn?: boolean }) {
+function HealthCard({ label, value, accent, icon, warn, hint }: { label: string; value: string; accent: string; icon: React.ReactNode; warn?: boolean; hint?: string }) {
   return (
     <div
-      className="rounded-xl bg-white px-5 py-4"
+      className="rounded-2xl transition-all"
       style={{
-        border:    warn ? '1px solid #FDE68A' : '1px solid #E5E7EB',
-        background: warn ? '#FFFBEB' : '#FFFFFF',
-        boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)',
+        background: warn ? '#FFFBEB' : '#ffffff',
+        border:     warn ? '1px solid rgba(180,83,9,0.25)' : '1px solid #E8E3F5',
+        padding:    '16px 18px',
+        boxShadow:  '0 1px 3px rgba(15,5,34,0.04)',
       }}
     >
-      <p className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#9CA3AF' }}>{label}</p>
-      <p
-        className="text-[28px] font-semibold leading-none tabular-nums mt-2"
-        style={{ color: warn ? '#B45309' : '#111827' }}
-      >
+      <div className="flex items-center gap-2 mb-2">
+        <div className="flex items-center justify-center rounded-lg" style={{ background: `${accent}1A`, color: accent, width: 28, height: 28 }}>
+          {icon}
+        </div>
+        <p className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: '#6B6480' }}>{label}</p>
+      </div>
+      <p className="text-[24px] font-bold tracking-tight leading-none tabular-nums" style={{ color: warn ? '#B45309' : '#1A0A3B' }}>
         {value}
       </p>
+      {hint && <p className="text-[11px] mt-1" style={{ color: '#9B8FB5' }}>{hint}</p>}
     </div>
   );
 }

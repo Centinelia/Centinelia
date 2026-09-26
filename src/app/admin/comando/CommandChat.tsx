@@ -26,14 +26,14 @@ function renderInline(text: string): React.ReactNode[] {
   const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
   parts.forEach((p, i) => {
     if (p.startsWith('**') && p.endsWith('**')) {
-      nodes.push(<strong key={i} style={{ color: '#111827' }}>{p.slice(2, -2)}</strong>);
+      nodes.push(<strong key={i} style={{ color: '#1A0A3B' }}>{p.slice(2, -2)}</strong>);
     } else if (p.startsWith('`') && p.endsWith('`')) {
       nodes.push(
         <code
           key={i}
           style={{
-            background: '#F3F4F6',
-            color: '#111827',
+            background: '#F5F0FF',
+            color: '#1A0A3B',
             padding: '1px 5px',
             borderRadius: 4,
             fontSize: 12,
@@ -52,7 +52,7 @@ function renderInline(text: string): React.ReactNode[] {
 
 function Markdown({ text }: { text: string }) {
   return (
-    <div style={{ whiteSpace: 'pre-wrap', color: '#374151', lineHeight: 1.6, fontSize: 13 }}>
+    <div style={{ whiteSpace: 'pre-wrap', color: '#4A3B6B', lineHeight: 1.6, fontSize: 13 }}>
       {text.split('\n').map((line, i) => (
         <div key={i}>{renderInline(line) || <>&nbsp;</>}</div>
       ))}
@@ -154,11 +154,11 @@ export default function CommandChat() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F9FAFB', color: '#111827', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', background: '#FAFAFB', color: '#1A0A3B', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
       <header
         style={{
-          borderBottom: '1px solid #E5E7EB',
+          borderBottom: '1px solid #E8E3F5',
           background: '#FFFFFF',
           padding: '14px 24px',
           display: 'flex',
@@ -168,16 +168,16 @@ export default function CommandChat() {
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <Terminal size={18} style={{ color: '#6C3BFF' }} />
-          <span style={{ fontWeight: 600, fontSize: 15, color: '#111827' }}>Comando</span>
-          <span style={{ color: '#6B7280', fontSize: 12 }}>determinístico, cero tokens si matchea</span>
+          <span style={{ fontWeight: 600, fontSize: 15, color: '#1A0A3B' }}>Comando</span>
+          <span style={{ color: '#6B6480', fontSize: 12 }}>determinístico, cero tokens si matchea</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <button
             onClick={clearHistory}
             style={{
               background: '#FFFFFF',
-              border: '1px solid #E5E7EB',
-              color: '#374151',
+              border: '1px solid #E8E3F5',
+              color: '#4A3B6B',
               fontSize: 12,
               fontWeight: 500,
               padding: '6px 12px',
@@ -189,7 +189,7 @@ export default function CommandChat() {
           </button>
           <a
             href="/admin/dashboard"
-            style={{ color: '#6B7280', fontSize: 13, textDecoration: 'none' }}
+            style={{ color: '#6B6480', fontSize: 13, textDecoration: 'none' }}
           >
             ← Dashboard
           </a>
@@ -209,12 +209,12 @@ export default function CommandChat() {
         }}
       >
         {entries.length === 0 && (
-          <div style={{ textAlign: 'center', color: '#6B7280', marginTop: 60, fontSize: 13 }}>
+          <div style={{ textAlign: 'center', color: '#6B6480', marginTop: 60, fontSize: 13 }}>
             Empieza escribiendo{' '}
             <code
               style={{
-                background: '#F3F4F6',
-                color: '#111827',
+                background: '#F5F0FF',
+                color: '#1A0A3B',
                 padding: '2px 6px',
                 borderRadius: 4,
                 fontFamily: 'ui-monospace, monospace',
@@ -230,11 +230,11 @@ export default function CommandChat() {
             {e.input && (
               <div style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
                 <span style={{ color: '#6C3BFF', fontFamily: 'ui-monospace, monospace', fontSize: 13 }}>&gt;</span>
-                <span style={{ color: '#111827', fontFamily: 'ui-monospace, monospace', fontSize: 13 }}>{e.input}</span>
+                <span style={{ color: '#1A0A3B', fontFamily: 'ui-monospace, monospace', fontSize: 13 }}>{e.input}</span>
               </div>
             )}
             {e.trace && (
-              <div style={{ paddingLeft: 22, color: '#9CA3AF', fontSize: 11, fontFamily: 'ui-monospace, monospace' }}>
+              <div style={{ paddingLeft: 22, color: '#9B8FB5', fontSize: 11, fontFamily: 'ui-monospace, monospace' }}>
                 parse: {e.trace}{typeof e.ms === 'number' ? ` · ${e.ms}ms` : ''}
               </div>
             )}
@@ -258,7 +258,7 @@ export default function CommandChat() {
           </div>
         ))}
         {running && (
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', color: '#6B7280', fontSize: 12 }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', color: '#6B6480', fontSize: 12 }}>
             <Loader2 size={13} className="animate-spin" /> Ejecutando...
           </div>
         )}
@@ -267,7 +267,7 @@ export default function CommandChat() {
       {/* Input */}
       <div
         style={{
-          borderTop: '1px solid #E5E7EB',
+          borderTop: '1px solid #E8E3F5',
           background: '#FFFFFF',
           padding: 16,
         }}
@@ -286,10 +286,10 @@ export default function CommandChat() {
               style={{
                 width:          '100%',
                 background:     '#FFFFFF',
-                border:         '1px solid #E5E7EB',
+                border:         '1px solid #E8E3F5',
                 borderRadius:   12,
                 padding:        '12px 44px 12px 14px',
-                color:          '#111827',
+                color:          '#1A0A3B',
                 fontFamily:     'ui-monospace, monospace',
                 fontSize:       13,
                 resize:         'none',
@@ -322,7 +322,7 @@ export default function CommandChat() {
             </button>
           </div>
         </div>
-        <div style={{ marginTop: 8, color: '#9CA3AF', fontSize: 11, display: 'flex', gap: 12 }}>
+        <div style={{ marginTop: 8, color: '#9B8FB5', fontSize: 11, display: 'flex', gap: 12 }}>
           <span>
             <ChevronUp size={11} style={{ display: 'inline', verticalAlign: 'middle' }} /> historial
           </span>

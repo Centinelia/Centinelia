@@ -396,17 +396,23 @@ export default async function InicioPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: '#111827' }}>Inicio</h1>
-          <p className="text-[13px] mt-1.5" style={{ color: '#6B7280' }}>
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] mb-1" style={{ color: '#9B6DFF' }}>Panel principal</p>
+          <h1 className="text-[28px] font-bold leading-tight tracking-tight" style={{ color: '#1A0A3B' }}>Inicio</h1>
+          <p className="text-[13px] mt-1.5" style={{ color: '#6B6480' }}>
             {new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}
           </p>
         </div>
         <Link
           href="/admin/comando"
-          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-[13px] font-medium"
-          style={{ background: '#6C3BFF', color: '#FFFFFF' }}
+          className="inline-flex items-center gap-2 rounded-xl text-[13px] font-semibold transition-all"
+          style={{
+            padding:    '10px 18px',
+            background: '#6C3BFF',
+            color:      '#ffffff',
+            boxShadow:  '0 2px 8px rgba(108,59,255,0.32)',
+          }}
         >
-          <Terminal size={13} />
+          <Terminal size={14} />
           Comando
         </Link>
       </div>
@@ -434,7 +440,7 @@ export default async function InicioPage() {
           label="Llamadas hoy"
           value={String(callsTodayN)}
           sub={callsDelta !== null ? `${callsDelta >= 0 ? '+' : ''}${callsDelta}% vs ayer` : 'sin datos ayer'}
-          subColor={callsDelta === null ? '#9CA3AF' : callsDelta >= 0 ? '#10B981' : '#EF4444'}
+          subColor={callsDelta === null ? '#9B8FB5' : callsDelta >= 0 ? '#10B981' : '#EF4444'}
           iconColor="#6C3BFF"
           iconBg="#F3F0FF"
         />
@@ -451,7 +457,7 @@ export default async function InicioPage() {
 
       {/* Consolidated alerts */}
       <section className="space-y-4">
-        <h2 className="text-[15px] font-semibold" style={{ color: '#111827' }}>
+        <h2 className="text-[15px] font-semibold" style={{ color: '#1A0A3B' }}>
           Alertas
         </h2>
 
@@ -462,8 +468,8 @@ export default async function InicioPage() {
           >
             <CheckCircle2 size={18} style={{ color: '#10B981' }} />
             <div>
-              <p className="text-[13px] font-semibold" style={{ color: '#111827' }}>Todo tranquilo</p>
-              <p className="text-[12px] mt-0.5" style={{ color: '#6B7280' }}>
+              <p className="text-[13px] font-semibold" style={{ color: '#1A0A3B' }}>Todo tranquilo</p>
+              <p className="text-[12px] mt-0.5" style={{ color: '#6B6480' }}>
                 Sin acciones pendientes ni riesgos abiertos.
               </p>
             </div>
@@ -477,7 +483,7 @@ export default async function InicioPage() {
                   <AlertTriangle size={15} style={{ color: sevColor[r.severity], flexShrink: 0 }} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="text-[13px] font-semibold" style={{ color: '#111827' }}>{r.label}</p>
+                      <p className="text-[13px] font-semibold" style={{ color: '#1A0A3B' }}>{r.label}</p>
                       {typeof r.count === 'number' && (
                         <span
                           className="text-[11px] font-semibold px-2 py-0.5 rounded-md tabular-nums"
@@ -487,9 +493,9 @@ export default async function InicioPage() {
                         </span>
                       )}
                     </div>
-                    <p className="text-[12px] mt-0.5 truncate" style={{ color: '#6B7280' }}>{r.sub}</p>
+                    <p className="text-[12px] mt-0.5 truncate" style={{ color: '#6B6480' }}>{r.sub}</p>
                   </div>
-                  {r.href && <ArrowRight size={14} style={{ color: '#9CA3AF', flexShrink: 0 }} />}
+                  {r.href && <ArrowRight size={14} style={{ color: '#9B8FB5', flexShrink: 0 }} />}
                 </>
               );
               const baseClass = 'flex items-center gap-3 px-4 py-3 rounded-xl';
@@ -536,7 +542,7 @@ export default async function InicioPage() {
 
       {/* Infra mini */}
       <section className="space-y-4">
-        <h2 className="text-[15px] font-semibold" style={{ color: '#111827' }}>
+        <h2 className="text-[15px] font-semibold" style={{ color: '#1A0A3B' }}>
           Infraestructura
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -576,18 +582,18 @@ export default async function InicioPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div
           className="rounded-xl bg-white px-6 py-5"
-          style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+          style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
         >
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#9CA3AF' }}>
+            <h2 className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#9B8FB5' }}>
               Salud de minutos
             </h2>
-            <Link href="/admin/clientes" className="text-[12px] font-medium transition-colors hover:text-[#6C3BFF]" style={{ color: '#6B7280' }}>
+            <Link href="/admin/clientes" className="text-[12px] font-medium transition-colors hover:text-[#6C3BFF]" style={{ color: '#6B6480' }}>
               Ver clientes →
             </Link>
           </div>
           {healthAgents.length === 0 ? (
-            <p className="text-[13px] py-4 text-center" style={{ color: '#9CA3AF' }}>Sin cuentas activas con plan de minutos</p>
+            <p className="text-[13px] py-4 text-center" style={{ color: '#9B8FB5' }}>Sin cuentas activas con plan de minutos</p>
           ) : (
             <>
               <div className="flex flex-col gap-2.5">
@@ -595,9 +601,9 @@ export default async function InicioPage() {
                 <MinutesRow label="Alerta"  count={minsWarning}  of={healthAgents.length} color="#B45309" hint="70 a 90% consumido" />
                 <MinutesRow label="Crítico" count={minsCritical} of={healthAgents.length} color="#B91C1C" hint="≥ 90% consumido" />
               </div>
-              <div className="mt-5 pt-4 flex justify-between text-[12px]" style={{ borderTop: '1px solid #F3F4F6', color: '#6B7280' }}>
+              <div className="mt-5 pt-4 flex justify-between text-[12px]" style={{ borderTop: '1px solid #F5F0FF', color: '#6B6480' }}>
                 <span>Minutos disponibles total</span>
-                <span className="font-semibold tabular-nums" style={{ color: '#111827' }}>
+                <span className="font-semibold tabular-nums" style={{ color: '#1A0A3B' }}>
                   {totalRemaining.toLocaleString('es-MX')} min
                 </span>
               </div>
@@ -607,25 +613,25 @@ export default async function InicioPage() {
 
         <div
           className="rounded-xl bg-white px-6 py-5"
-          style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+          style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
         >
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#9CA3AF' }}>
+            <h2 className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#9B8FB5' }}>
               Estado de facturación
             </h2>
-            <Link href="/admin/facturacion" className="text-[12px] font-medium transition-colors hover:text-[#6C3BFF]" style={{ color: '#6B7280' }}>
+            <Link href="/admin/facturacion" className="text-[12px] font-medium transition-colors hover:text-[#6C3BFF]" style={{ color: '#6B6480' }}>
               Ver facturación →
             </Link>
           </div>
           <div className="flex flex-col gap-2.5">
             <BillingRow label="Al corriente"    count={billing.activo}       color="#047857" />
             <BillingRow label="Pago fallido"    count={billing.pago_fallido} color="#B91C1C" />
-            <BillingRow label="Sin plan activo" count={billing.sin_plan}     color="#6B7280" />
-            <BillingRow label="Cancelados"      count={billing.cancelado}    color="#374151" />
+            <BillingRow label="Sin plan activo" count={billing.sin_plan}     color="#6B6480" />
+            <BillingRow label="Cancelados"      count={billing.cancelado}    color="#4A3B6B" />
           </div>
-          <div className="mt-5 pt-4 flex justify-between text-[12px]" style={{ borderTop: '1px solid #F3F4F6', color: '#6B7280' }}>
+          <div className="mt-5 pt-4 flex justify-between text-[12px]" style={{ borderTop: '1px solid #F5F0FF', color: '#6B6480' }}>
             <span>Total empleados registrados</span>
-            <span className="font-semibold tabular-nums" style={{ color: '#111827' }}>{agentList.length}</span>
+            <span className="font-semibold tabular-nums" style={{ color: '#1A0A3B' }}>{agentList.length}</span>
           </div>
         </div>
       </div>
@@ -640,11 +646,11 @@ function MinutesRow({ label, count, of: total, color, hint }: {
   return (
     <div className="flex items-center gap-3">
       <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
-      <span className="text-[13px] flex-1" style={{ color: '#374151' }}>
-        {label} <span style={{ color: '#9CA3AF' }}>· {hint}</span>
+      <span className="text-[13px] flex-1" style={{ color: '#4A3B6B' }}>
+        {label} <span style={{ color: '#9B8FB5' }}>· {hint}</span>
       </span>
       <span className="text-[13px] tabular-nums font-semibold" style={{ color }}>
-        {count} <span className="font-normal" style={{ color: '#9CA3AF' }}>({pct}%)</span>
+        {count} <span className="font-normal" style={{ color: '#9B8FB5' }}>({pct}%)</span>
       </span>
     </div>
   );
@@ -654,8 +660,8 @@ function BillingRow({ label, count, color }: { label: string; count: number; col
   return (
     <div className="flex items-center gap-3">
       <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
-      <span className="text-[13px] flex-1" style={{ color: '#374151' }}>{label}</span>
-      <span className="text-[13px] tabular-nums font-semibold" style={{ color: count > 0 ? color : '#9CA3AF' }}>
+      <span className="text-[13px] flex-1" style={{ color: '#4A3B6B' }}>{label}</span>
+      <span className="text-[13px] tabular-nums font-semibold" style={{ color: count > 0 ? color : '#9B8FB5' }}>
         {count}
       </span>
     </div>
@@ -673,8 +679,8 @@ function KpiCard({ icon, label, value, sub, iconColor, iconBg, subColor }: {
 }) {
   return (
     <div
-      className="rounded-xl bg-white px-5 py-4 overflow-hidden"
-      style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+      className="rounded-2xl overflow-hidden transition-all"
+      style={{ background: '#ffffff', border: '1px solid #E8E3F5', padding: '16px 18px', boxShadow: '0 1px 3px rgba(15,5,34,0.04)' }}
     >
       <div className="flex items-center gap-2 mb-2">
         <span
@@ -683,11 +689,11 @@ function KpiCard({ icon, label, value, sub, iconColor, iconBg, subColor }: {
         >
           {icon}
         </span>
-        <p className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#6B7280' }}>{label}</p>
+        <p className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: '#6B6480' }}>{label}</p>
       </div>
-      <div className="text-[28px] font-semibold leading-none tabular-nums" style={{ color: '#111827' }}>{value}</div>
+      <div className="text-[24px] font-bold leading-none tabular-nums tracking-tight" style={{ color: '#1A0A3B' }}>{value}</div>
       {sub && (
-        <div className="text-[12px] mt-2 font-medium" style={{ color: subColor ?? '#6B7280' }}>{sub}</div>
+        <div className="text-[12px] mt-2 font-semibold" style={{ color: subColor ?? '#6B6480' }}>{sub}</div>
       )}
     </div>
   );
@@ -704,11 +710,11 @@ function InfraMini({ icon, label, value, unit, danger, warn, hint, iconColor, ic
   iconColor: string;
   iconBg: string;
 }) {
-  const valueColor = danger ? '#EF4444' : '#111827';
+  const valueColor = danger ? '#B91C1C' : '#1A0A3B';
   return (
     <div
-      className="rounded-xl bg-white px-5 py-4 overflow-hidden"
-      style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+      className="rounded-2xl overflow-hidden transition-all"
+      style={{ background: '#ffffff', border: '1px solid #E8E3F5', padding: '16px 18px', boxShadow: '0 1px 3px rgba(15,5,34,0.04)' }}
     >
       <div className="flex items-center gap-2 mb-2">
         <span
@@ -717,17 +723,17 @@ function InfraMini({ icon, label, value, unit, danger, warn, hint, iconColor, ic
         >
           {icon}
         </span>
-        <p className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#6B7280' }}>{label}</p>
+        <p className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: '#6B6480' }}>{label}</p>
       </div>
-      <p className="text-[24px] font-semibold leading-none tabular-nums" style={{ color: valueColor }}>
+      <p className="text-[22px] font-bold leading-none tabular-nums tracking-tight" style={{ color: valueColor }}>
         {value}
-        {unit && <span className="text-[13px] font-normal ml-1" style={{ color: '#6B7280' }}>{unit}</span>}
+        {unit && <span className="text-[13px] font-semibold ml-1" style={{ color: '#6B6480' }}>{unit}</span>}
       </p>
       {hint && (
-        <p className="text-[12px] mt-2" style={{ color: '#6B7280' }}>{hint}</p>
+        <p className="text-[12px] mt-2" style={{ color: '#6B6480' }}>{hint}</p>
       )}
       {(danger || warn) && (
-        <p className="text-[12px] mt-1 flex items-center gap-1" style={{ color: danger ? '#EF4444' : '#F59E0B' }}>
+        <p className="text-[12px] mt-1 flex items-center gap-1 font-semibold" style={{ color: danger ? '#B91C1C' : '#B45309' }}>
           <AlertTriangle size={11} />
           {danger ? 'Requiere atención' : 'Cerca del límite'}
         </p>

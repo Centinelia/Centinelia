@@ -98,10 +98,10 @@ export function FlagEditor({ flag, mode }: { flag?: FlagRow; mode: Mode }) {
   };
 
   return (
-    <div className="space-y-4 rounded-lg p-6" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+    <div className="space-y-4 rounded-lg p-6" style={{ background: '#FFFFFF', border: '1px solid #E8E3F5' }}>
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 space-y-1">
-          <label className="block text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>flag_key</label>
+          <label className="block text-xs font-medium" style={{ color: '#4A3B6B' }}>flag_key</label>
           <input
             type="text"
             value={flagKey}
@@ -110,9 +110,9 @@ export function FlagEditor({ flag, mode }: { flag?: FlagRow; mode: Mode }) {
             placeholder="meerkat.nia.v2"
             className="w-full px-3 py-2 rounded-lg text-sm font-mono"
             style={{
-              background: mode === 'edit' ? 'var(--c-surface-2)' : 'var(--c-surface)',
-              color:      'var(--c-text)',
-              border:     '1px solid var(--c-border)',
+              background: mode === 'edit' ? '#FAFAFB' : '#FFFFFF',
+              color:      '#1A0A3B',
+              border:     '1px solid #E8E3F5',
             }}
           />
         </div>
@@ -141,7 +141,7 @@ export function FlagEditor({ flag, mode }: { flag?: FlagRow; mode: Mode }) {
               onClick={onDelete}
               disabled={pending}
               className="px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5"
-              style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-2)', border: '1px solid var(--c-border)' }}
+              style={{ background: '#FAFAFB', color: '#4A3B6B', border: '1px solid #E8E3F5' }}
             >
               <Trash2 size={14} /> Borrar
             </button>
@@ -161,19 +161,19 @@ export function FlagEditor({ flag, mode }: { flag?: FlagRow; mode: Mode }) {
       )}
 
       <div className="space-y-1">
-        <label className="block text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>Descripción</label>
+        <label className="block text-xs font-medium" style={{ color: '#4A3B6B' }}>Descripción</label>
         <input
           type="text"
           value={description}
           onChange={e => setDescription(e.target.value)}
-          placeholder="Rollout v2 de nia"
+          placeholder="Rollout v2 de Nia"
           className="w-full px-3 py-2 rounded-lg text-sm"
-          style={{ background: 'var(--c-surface)', color: 'var(--c-text)', border: '1px solid var(--c-border)' }}
+          style={{ background: '#FFFFFF', color: '#1A0A3B', border: '1px solid #E8E3F5' }}
         />
       </div>
 
       <div className="space-y-1">
-        <label className="block text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>
+        <label className="block text-xs font-medium" style={{ color: '#4A3B6B' }}>
           rollout_pct: <span className="font-mono">{rolloutPct}</span>
         </label>
         <input
@@ -189,29 +189,29 @@ export function FlagEditor({ flag, mode }: { flag?: FlagRow; mode: Mode }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-1">
-          <label className="block text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>Allowlist (portal_email por línea)</label>
+          <label className="block text-xs font-medium" style={{ color: '#4A3B6B' }}>Allowlist (portal_email por línea)</label>
           <textarea
             value={allowlist}
             onChange={e => setAllowlist(e.target.value)}
             rows={5}
             placeholder={'nazre@gmail.com\nsergio@example.com'}
             className="w-full px-3 py-2 rounded-lg text-sm font-mono"
-            style={{ background: 'var(--c-surface)', color: 'var(--c-text)', border: '1px solid var(--c-border)' }}
+            style={{ background: '#FFFFFF', color: '#1A0A3B', border: '1px solid #E8E3F5' }}
           />
         </div>
         <div className="space-y-1">
-          <label className="block text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>Denylist (portal_email por línea)</label>
+          <label className="block text-xs font-medium" style={{ color: '#4A3B6B' }}>Denylist (portal_email por línea)</label>
           <textarea
             value={denylist}
             onChange={e => setDenylist(e.target.value)}
             rows={5}
             className="w-full px-3 py-2 rounded-lg text-sm font-mono"
-            style={{ background: 'var(--c-surface)', color: 'var(--c-text)', border: '1px solid var(--c-border)' }}
+            style={{ background: '#FFFFFF', color: '#1A0A3B', border: '1px solid #E8E3F5' }}
           />
         </div>
       </div>
 
-      <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--c-text)' }}>
+      <label className="flex items-center gap-2 text-sm" style={{ color: '#1A0A3B' }}>
         <input type="checkbox" checked={defaultOn} onChange={e => setDefaultOn(e.target.checked)} />
         default_on (usar cuando no hay org email, ej. webhook anónimo)
       </label>
@@ -227,7 +227,7 @@ export function FlagEditor({ flag, mode }: { flag?: FlagRow; mode: Mode }) {
           onClick={onPreview}
           disabled={pending || !flagKey.trim()}
           className="px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 disabled:opacity-50"
-          style={{ background: 'var(--c-surface-2)', color: 'var(--c-text)', border: '1px solid var(--c-border)' }}
+          style={{ background: '#FAFAFB', color: '#1A0A3B', border: '1px solid #E8E3F5' }}
         >
           <Eye size={14} /> Preview (dry-run)
         </button>
@@ -242,20 +242,20 @@ export function FlagEditor({ flag, mode }: { flag?: FlagRow; mode: Mode }) {
       </div>
 
       {preview && (
-        <div className="rounded-lg p-4 space-y-2" style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
-          <div className="text-sm font-medium" style={{ color: 'var(--c-text)' }}>
+        <div className="rounded-lg p-4 space-y-2" style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
+          <div className="text-sm font-medium" style={{ color: '#1A0A3B' }}>
             Preview: {preview.counts.orgs_on} on, {preview.counts.orgs_off} off
           </div>
-          <div className="text-xs" style={{ color: 'var(--c-text-2)' }}>
+          <div className="text-xs" style={{ color: '#4A3B6B' }}>
             via hash: {preview.counts.orgs_via_hash}, via allowlist: {preview.counts.orgs_via_allowlist}, via denylist: {preview.counts.orgs_via_denylist}
           </div>
           {preview.sample_on.length > 0 && (
-            <div className="text-xs" style={{ color: 'var(--c-text-2)' }}>
+            <div className="text-xs" style={{ color: '#4A3B6B' }}>
               Sample on: <span className="font-mono">{preview.sample_on.join(', ')}</span>
             </div>
           )}
           {preview.sample_off.length > 0 && (
-            <div className="text-xs" style={{ color: 'var(--c-text-2)' }}>
+            <div className="text-xs" style={{ color: '#4A3B6B' }}>
               Sample off: <span className="font-mono">{preview.sample_off.join(', ')}</span>
             </div>
           )}

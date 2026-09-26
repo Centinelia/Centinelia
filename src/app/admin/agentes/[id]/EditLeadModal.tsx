@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X } from 'lucide-react';
+import OficinaModal from '@/app/portal/[token]/oficina/OficinaModal';
 
 interface Lead {
   id: string;
@@ -24,6 +24,7 @@ interface Props {
 
 export default function EditLeadModal({ lead, onClose, onSaved }: Props) {
   const [saving, setSaving] = useState(false);
+  const [error, setError]   = useState<string | null>(null);
   const [form, setForm] = useState({
     nombre:      lead.nombre      ?? '',
     negocio:     lead.negocio     ?? '',
@@ -37,75 +38,80 @@ export default function EditLeadModal({ lead, onClose, onSaved }: Props) {
 
   const handleSave = async () => {
     setSaving(true);
-    const res = await fetch(`/api/admin/leads/${lead.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    });
-    if (res.ok) {
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/leads/${lead.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? 'Error al guardar');
+        return;
+      }
       const updated = await res.json();
       onSaved(updated);
-    } else {
-      alert('Error al guardar');
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
       setSaving(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.7)' }}
-      onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="w-full max-w-md rounded-2xl p-6 flex flex-col gap-4"
-        style={{ background: 'var(--c-modal)', border: '1px solid var(--c-border-2)' }}>
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold" style={{ color: 'var(--c-text)' }}>Editar lead</h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[var(--c-surface-2)] transition-colors"
-            style={{ color: 'var(--c-text-2)' }}>
-            <X size={16} />
-          </button>
+    <OficinaModal
+      open
+      onClose={onClose}
+      size="md"
+      eyebrow="Lead"
+      title={form.nombre || form.negocio || 'Editar lead'}
+      description="Actualiza los datos del prospecto capturados por el empleado."
+      footer={
+        <>
+          <OficinaModal.SecondaryAction onClick={onClose} disabled={saving}>Cancelar</OficinaModal.SecondaryAction>
+          <OficinaModal.PrimaryAction onClick={handleSave} loading={saving}>Guardar cambios</OficinaModal.PrimaryAction>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-3.5">
+        <OficinaModal.Field label="Nombre del contacto">
+          <OficinaModal.Input value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))} placeholder="Juan Pérez" />
+        </OficinaModal.Field>
+
+        <div className="grid grid-cols-2 gap-3">
+          <OficinaModal.Field label="Negocio">
+            <OficinaModal.Input value={form.negocio} onChange={e => setForm(f => ({ ...f, negocio: e.target.value }))} placeholder="Tortillas Estrella" />
+          </OficinaModal.Field>
+          <OficinaModal.Field label="Giro">
+            <OficinaModal.Input value={form.giro} onChange={e => setForm(f => ({ ...f, giro: e.target.value }))} placeholder="Alimentos" />
+          </OficinaModal.Field>
         </div>
 
-        <div className="flex flex-col gap-3">
-          <Field label="Nombre" value={form.nombre} onChange={v => setForm(f => ({ ...f, nombre: v }))} />
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Negocio" value={form.negocio} onChange={v => setForm(f => ({ ...f, negocio: v }))} />
-            <Field label="Giro" value={form.giro} onChange={v => setForm(f => ({ ...f, giro: v }))} />
-          </div>
-          <Field label="Servicio" value={form.servicio} onChange={v => setForm(f => ({ ...f, servicio: v }))} />
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Presupuesto" value={form.presupuesto} onChange={v => setForm(f => ({ ...f, presupuesto: v }))} />
-            <Field label="Para cuándo" value={form.timeline} onChange={v => setForm(f => ({ ...f, timeline: v }))} />
-          </div>
-          <Field label="Email" value={form.email} onChange={v => setForm(f => ({ ...f, email: v }))} />
-          <Field label="WhatsApp" value={form.whatsapp} onChange={v => setForm(f => ({ ...f, whatsapp: v }))} />
+        <OficinaModal.Field label="Servicio de interés">
+          <OficinaModal.Input value={form.servicio} onChange={e => setForm(f => ({ ...f, servicio: e.target.value }))} placeholder="Recepcionista IA" />
+        </OficinaModal.Field>
+
+        <div className="grid grid-cols-2 gap-3">
+          <OficinaModal.Field label="Presupuesto">
+            <OficinaModal.Input value={form.presupuesto} onChange={e => setForm(f => ({ ...f, presupuesto: e.target.value }))} placeholder="$5,000 - $10,000" />
+          </OficinaModal.Field>
+          <OficinaModal.Field label="Para cuándo">
+            <OficinaModal.Input value={form.timeline} onChange={e => setForm(f => ({ ...f, timeline: e.target.value }))} placeholder="Este mes" />
+          </OficinaModal.Field>
         </div>
 
-        <div className="flex gap-3 mt-1">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors"
-            style={{ background: 'var(--c-input-bg)', color: 'var(--c-text-2)' }}>
-            Cancelar
-          </button>
-          <button onClick={handleSave} disabled={saving}
-            className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-opacity"
-            style={{ background: '#6C3BFF', color: '#FAFBFF', opacity: saving ? 0.6 : 1 }}>
-            {saving ? 'Guardando…' : 'Guardar'}
-          </button>
+        <div className="grid grid-cols-2 gap-3">
+          <OficinaModal.Field label="Email">
+            <OficinaModal.Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="juan@negocio.com" />
+          </OficinaModal.Field>
+          <OficinaModal.Field label="WhatsApp">
+            <OficinaModal.Input value={form.whatsapp} onChange={e => setForm(f => ({ ...f, whatsapp: e.target.value }))} placeholder="+52 81 1234 5678" />
+          </OficinaModal.Field>
         </div>
+
+        {error && <OficinaModal.Alert tone="danger">{error}</OficinaModal.Alert>}
       </div>
-    </div>
-  );
-}
-
-function Field({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
-  return (
-    <div>
-      <label className="block text-xs mb-1" style={{ color: 'var(--c-text-2)' }}>{label}</label>
-      <input
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-        style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }}
-      />
-    </div>
+    </OficinaModal>
   );
 }

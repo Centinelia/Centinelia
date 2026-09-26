@@ -65,11 +65,11 @@ export default function AnalyticsAgentsTable({ rows }: { rows: AgentRow[] }) {
   };
 
   const tierMeta   = tier   !== 'todos' ? PLAN_META[tier]   : null;
-  const statusDot  = status === 'activos' ? '#10B981' : status === 'pausados' ? '#6B7280' : null;
+  const statusDot  = status === 'activos' ? '#10B981' : status === 'pausados' ? '#6B6480' : null;
   const statusLbl  = status === 'activos' ? 'Activos' : status === 'pausados' ? 'Pausados' : 'Estado';
 
   if (rows.length === 0) {
-    return <p className="text-[13px] py-4 text-center" style={{ color: '#6B7280' }}>Sin empleados</p>;
+    return <p className="text-[13px] py-4 text-center" style={{ color: '#6B6480' }}>Sin empleados</p>;
   }
 
   return (
@@ -78,14 +78,14 @@ export default function AnalyticsAgentsTable({ rows }: { rows: AgentRow[] }) {
       <div className="flex flex-col gap-2">
         {/* Search */}
         <div className="relative">
-          <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: '#9CA3AF' }} />
+          <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: '#9B8FB5' }} />
           <input
             type="text"
             placeholder="Buscar empleado..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="w-full pl-7 pr-3 py-1.5 rounded-lg text-[12px] outline-none"
-            style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#111827' }}
+            style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
           />
         </div>
 
@@ -99,8 +99,8 @@ export default function AnalyticsAgentsTable({ rows }: { rows: AgentRow[] }) {
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[12px] font-medium transition-colors"
               style={{
                 background: tierMeta ? `${tierMeta.color}14` : '#FFFFFF',
-                color:      tierMeta ? tierMeta.color : '#374151',
-                border: `1px solid ${tierMeta ? tierMeta.color + '30' : '#E5E7EB'}`,
+                color:      tierMeta ? tierMeta.color : '#4A3B6B',
+                border: `1px solid ${tierMeta ? tierMeta.color + '30' : '#E8E3F5'}`,
               }}
             >
               {tierMeta ? tierMeta.label : 'Tier'}
@@ -109,7 +109,7 @@ export default function AnalyticsAgentsTable({ rows }: { rows: AgentRow[] }) {
             {tierOpen && (
               <div
                 className="flex gap-1 flex-wrap p-1 rounded-lg bg-white"
-                style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+                style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
               >
                 {([
                   { key: 'todos',    label: `Todos (${rows.length})`,                color: undefined },
@@ -121,7 +121,7 @@ export default function AnalyticsAgentsTable({ rows }: { rows: AgentRow[] }) {
                     className="flex items-center px-2.5 py-1 rounded-md text-[12px] font-medium transition-colors"
                     style={{
                       background: tier === key ? (color ?? '#6C3BFF') : 'transparent',
-                      color:      tier === key ? '#FFFFFF' : (color ?? '#374151'),
+                      color:      tier === key ? '#FFFFFF' : (color ?? '#4A3B6B'),
                     }}
                   >
                     {label}
@@ -138,8 +138,8 @@ export default function AnalyticsAgentsTable({ rows }: { rows: AgentRow[] }) {
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[12px] font-medium transition-colors"
               style={{
                 background: statusDot ? `${statusDot}14` : '#FFFFFF',
-                color:      statusDot ? statusDot : '#374151',
-                border: `1px solid ${statusDot ? statusDot + '30' : '#E5E7EB'}`,
+                color:      statusDot ? statusDot : '#4A3B6B',
+                border: `1px solid ${statusDot ? statusDot + '30' : '#E8E3F5'}`,
               }}
             >
               {statusDot && <span className="w-1.5 h-1.5 rounded-full" style={{ background: statusDot }} />}
@@ -149,12 +149,12 @@ export default function AnalyticsAgentsTable({ rows }: { rows: AgentRow[] }) {
             {statOpen && (
               <div
                 className="flex gap-1 flex-wrap p-1 rounded-lg bg-white"
-                style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+                style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
               >
                 {([
                   { key: 'todos',    label: `Todos`,                          dot: undefined },
                   { key: 'activos',  label: `Activos (${counts.activos})`,    dot: '#10B981' },
-                  { key: 'pausados', label: `Pausados (${counts.pausados})`,  dot: '#6B7280' },
+                  { key: 'pausados', label: `Pausados (${counts.pausados})`,  dot: '#6B6480' },
                 ] as { key: StatusFilter; label: string; dot?: string }[]).map(({ key, label, dot }) => (
                   <button
                     key={key}
@@ -162,7 +162,7 @@ export default function AnalyticsAgentsTable({ rows }: { rows: AgentRow[] }) {
                     className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[12px] font-medium transition-colors"
                     style={{
                       background: status === key ? (dot ?? '#6C3BFF') : 'transparent',
-                      color:      status === key ? '#FFFFFF' : '#374151',
+                      color:      status === key ? '#FFFFFF' : '#4A3B6B',
                     }}
                   >
                     {dot && <span className="w-1.5 h-1.5 rounded-full" style={{ background: status === key ? '#FFFFFF' : dot }} />}
@@ -178,7 +178,7 @@ export default function AnalyticsAgentsTable({ rows }: { rows: AgentRow[] }) {
 
       {/* Agent rows */}
       {filtered.length === 0 ? (
-        <p className="text-[12px] py-3 text-center" style={{ color: '#6B7280' }}>Sin resultados</p>
+        <p className="text-[12px] py-3 text-center" style={{ color: '#6B6480' }}>Sin resultados</p>
       ) : (
         <>
           <div className="flex flex-col gap-1.5">
@@ -190,17 +190,17 @@ export default function AnalyticsAgentsTable({ rows }: { rows: AgentRow[] }) {
                   key={row.id}
                   href={`/admin/agentes/${row.id}`}
                   className="flex flex-col gap-1.5 px-3 py-2.5 rounded-lg transition-colors hover:bg-gray-50"
-                  style={{ background: '#FFFFFF', border: '1px solid #E5E7EB' }}
+                  style={{ background: '#FFFFFF', border: '1px solid #E8E3F5' }}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
                       <span
                         className="w-2 h-2 rounded-full flex-shrink-0"
-                        style={{ background: row.active ? '#10B981' : '#6B7280' }}
+                        style={{ background: row.active ? '#10B981' : '#6B6480' }}
                         title={row.active ? 'Activo' : 'Pausado'}
                       />
                       <Bot size={12} style={{ color: '#7C3AED' }} className="flex-shrink-0" />
-                      <span className="text-[13px] font-medium truncate" style={{ color: '#111827' }}>
+                      <span className="text-[13px] font-medium truncate" style={{ color: '#1A0A3B' }}>
                         {displayName}
                       </span>
                       {role && (
@@ -215,13 +215,13 @@ export default function AnalyticsAgentsTable({ rows }: { rows: AgentRow[] }) {
                           {role.rol}
                         </span>
                       )}
-                      <span className="text-[12px] truncate" style={{ color: '#9CA3AF' }}>
+                      <span className="text-[12px] truncate" style={{ color: '#9B8FB5' }}>
                         {row.business_name}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       {row.mxn > 0 && (
-                        <span className="text-[12px] tabular-nums" style={{ color: '#6B7280' }}>
+                        <span className="text-[12px] tabular-nums" style={{ color: '#6B6480' }}>
                           ${row.mxn.toLocaleString('es-MX')}
                         </span>
                       )}
@@ -247,8 +247,8 @@ export default function AnalyticsAgentsTable({ rows }: { rows: AgentRow[] }) {
 function Stat({ label, value, color }: { label: string; value: string | number; color?: string }) {
   return (
     <div>
-      <div className="text-[13px] font-medium tabular-nums" style={{ color: color ?? '#111827' }}>{value}</div>
-      <div style={{ color: '#9CA3AF', fontSize: '10px' }} className="uppercase tracking-wider mt-0.5">{label}</div>
+      <div className="text-[13px] font-medium tabular-nums" style={{ color: color ?? '#1A0A3B' }}>{value}</div>
+      <div style={{ color: '#9B8FB5', fontSize: '10px' }} className="uppercase tracking-wider mt-0.5">{label}</div>
     </div>
   );
 }

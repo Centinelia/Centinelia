@@ -36,7 +36,7 @@ export function GateVerdictPanel({ meerkat_id, target_version }: Props) {
   }, [meerkat_id, target_version]);
 
   if (loading) return (
-    <div className="text-xs py-3" style={{ color: 'var(--c-text-3)' }}>
+    <div className="text-xs py-3" style={{ color: '#6B6480' }}>
       <Loader2 className="w-4 h-4 animate-spin inline mr-2" />
       Cargando golden tests...
     </div>
@@ -49,12 +49,12 @@ export function GateVerdictPanel({ meerkat_id, target_version }: Props) {
   return (
     <div
       className="rounded-lg p-3 space-y-2"
-      style={{ border: '1px solid var(--c-border)', background: 'var(--c-surface-2)' }}
+      style={{ border: '1px solid #E8E3F5', background: '#FAFAFB' }}
     >
       <div className="flex items-center gap-2">
         <VerdictBadge verdict={verdict} />
         {delta != null && (
-          <span className="text-xs font-mono" style={{ color: 'var(--c-text-2)' }}>
+          <span className="text-xs font-mono" style={{ color: '#4A3B6B' }}>
             {'Δ'} {delta > 0 ? '+' : ''}{delta.toFixed(2)}
           </span>
         )}
@@ -62,29 +62,29 @@ export function GateVerdictPanel({ meerkat_id, target_version }: Props) {
 
       <div className="grid grid-cols-2 gap-3 text-xs">
         <div>
-          <div style={{ color: 'var(--c-text-3)' }}>Activa (v{active?.version ?? '?'})</div>
-          <div className="font-mono" style={{ color: 'var(--c-text)' }}>
+          <div style={{ color: '#6B6480' }}>Activa (v{active?.version ?? '?'})</div>
+          <div className="font-mono" style={{ color: '#1A0A3B' }}>
             {active ? active.median.toFixed(2) : '--'}
-            {active && <span style={{ color: 'var(--c-text-4)' }}> ({active.scenarios_scored} esc.)</span>}
+            {active && <span style={{ color: '#9B8FB5' }}> ({active.scenarios_scored} esc.)</span>}
           </div>
         </div>
         <div>
-          <div style={{ color: 'var(--c-text-3)' }}>Objetivo (v{target.version})</div>
-          <div className="font-mono" style={{ color: 'var(--c-text)' }}>
+          <div style={{ color: '#6B6480' }}>Objetivo (v{target.version})</div>
+          <div className="font-mono" style={{ color: '#1A0A3B' }}>
             {target.median != null ? target.median.toFixed(2) : '--'}
-            <span style={{ color: 'var(--c-text-4)' }}> ({target.scenarios_scored} esc.)</span>
+            <span style={{ color: '#9B8FB5' }}> ({target.scenarios_scored} esc.)</span>
           </div>
         </div>
       </div>
 
       {(target.run_status === 'running' || target.run_status === 'queued') && (
-        <div className="text-xs pt-1" style={{ color: 'var(--c-text-2)', borderTop: '1px solid var(--c-divider)' }}>
+        <div className="text-xs pt-1" style={{ color: '#4A3B6B', borderTop: '1px solid #F0EBFA' }}>
           Tests en curso: {Math.round(target.progress * 100)}%
         </div>
       )}
 
       {verdict === 'incomplete' && target.run_status === 'none' && (
-        <div className="text-xs pt-1" style={{ color: '#fbbf24', borderTop: '1px solid var(--c-divider)' }}>
+        <div className="text-xs pt-1" style={{ color: '#fbbf24', borderTop: '1px solid #F0EBFA' }}>
           No hay baseline para esta versión. Correr golden tests primero para tener veredicto.
         </div>
       )}
@@ -97,7 +97,7 @@ function VerdictBadge({ verdict }: { verdict: GateVerdict }) {
     pass:       { icon: <CheckCircle2 className="w-4 h-4" />, label: 'Pasa',             bg: 'rgba(16,185,129,0.15)',  color: '#34d399', borderColor: 'rgba(16,185,129,0.4)' },
     warn:       { icon: <AlertTriangle className="w-4 h-4" />, label: 'Degradación leve', bg: 'rgba(251,191,36,0.15)', color: '#fbbf24', borderColor: 'rgba(251,191,36,0.4)' },
     fail:       { icon: <XCircle className="w-4 h-4" />,       label: 'Falla',            bg: 'rgba(239,68,68,0.15)',  color: '#f87171', borderColor: 'rgba(239,68,68,0.4)'  },
-    incomplete: { icon: <Loader2 className="w-4 h-4" />,       label: 'Sin veredicto',    bg: 'var(--c-surface-2)',   color: 'var(--c-text-2)', borderColor: 'var(--c-border)' },
+    incomplete: { icon: <Loader2 className="w-4 h-4" />,       label: 'Sin veredicto',    bg: '#FAFAFB',   color: '#4A3B6B', borderColor: '#E8E3F5' },
   };
   const c = cfg[verdict];
   return (

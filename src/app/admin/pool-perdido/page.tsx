@@ -123,23 +123,23 @@ export default async function PoolPerdidoPage({ searchParams }: Props) {
     <div className="p-8 max-w-7xl mx-auto space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: '#111827' }}>
+        <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: '#1A0A3B' }}>
           Pool perdido
         </h1>
-        <p className="text-[13px] mt-1.5" style={{ color: '#6B7280' }}>
+        <p className="text-[13px] mt-1.5" style={{ color: '#6B6480' }}>
           Saldo descartado por cap de rollover o no consumido al vencer un contrato anual.
         </p>
       </div>
 
       {/* Tab strip */}
-      <div className="flex gap-0 border-b" style={{ borderColor: '#E5E7EB' }}>
+      <div className="flex gap-0 border-b" style={{ borderColor: '#E8E3F5' }}>
         {TABS.map(t => (
           <Link
             key={t.id}
             href={`/admin/pool-perdido?tab=${t.id}`}
             className="px-4 py-2.5 text-[13px] font-medium whitespace-nowrap transition-colors"
             style={{
-              color: tab === t.id ? '#111827' : '#6B7280',
+              color: tab === t.id ? '#1A0A3B' : '#6B6480',
               borderBottom: tab === t.id ? '2px solid #6C3BFF' : '2px solid transparent',
               marginBottom: '-1px',
             }}
@@ -175,21 +175,21 @@ export default async function PoolPerdidoPage({ searchParams }: Props) {
       {aggRows.length === 0 ? (
         <div
           className="p-10 text-center rounded-xl bg-white"
-          style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+          style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
         >
-          <RotateCcw size={20} style={{ color: '#D1D5DB', margin: '0 auto 12px' }} />
-          <p className="text-[13px]" style={{ color: '#6B7280' }}>
+          <RotateCcw size={20} style={{ color: '#B9B0CF', margin: '0 auto 12px' }} />
+          <p className="text-[13px]" style={{ color: '#6B6480' }}>
             Sin eventos de pérdida en esta categoria.
           </p>
         </div>
       ) : (
         <div
           className="rounded-xl overflow-hidden bg-white"
-          style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+          style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
         >
           <div className="overflow-x-auto">
             <table className="w-full text-[13px]">
-              <thead style={{ background: '#F9FAFB' }}>
+              <thead style={{ background: '#FAFAFB' }}>
                 <tr>
                   <Th align="left">Cuenta</Th>
                   <Th align="right">Total perdido</Th>
@@ -207,14 +207,14 @@ export default async function PoolPerdidoPage({ searchParams }: Props) {
                   />
                 ))}
                 {/* Totales */}
-                <tr style={{ background: '#F9FAFB', borderTop: '2px solid #E5E7EB' }}>
-                  <td className="px-4 py-3 font-semibold" style={{ color: '#111827' }}>
+                <tr style={{ background: '#FAFAFB', borderTop: '2px solid #E8E3F5' }}>
+                  <td className="px-4 py-3 font-semibold" style={{ color: '#1A0A3B' }}>
                     Total: {totalAccounts} cuenta{totalAccounts !== 1 ? 's' : ''}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums font-bold" style={{ color: '#EF4444' }}>
                     {fmtAmount(totalLost, unit)}
                   </td>
-                  <td className="px-4 py-3 text-right tabular-nums font-semibold" style={{ color: '#374151' }}>
+                  <td className="px-4 py-3 text-right tabular-nums font-semibold" style={{ color: '#4A3B6B' }}>
                     {totalEvents}
                   </td>
                   <td />
@@ -228,16 +228,16 @@ export default async function PoolPerdidoPage({ searchParams }: Props) {
       {/* Detail table — last 50 raw events */}
       {rows.length > 0 && (
         <div className="space-y-2">
-          <p className="text-[12px] font-medium uppercase tracking-wider" style={{ color: '#9CA3AF' }}>
+          <p className="text-[12px] font-medium uppercase tracking-wider" style={{ color: '#9B8FB5' }}>
             Ultimos eventos ({Math.min(rows.length, 50)} de {rows.length})
           </p>
           <div
             className="rounded-xl overflow-hidden bg-white"
-            style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+            style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
           >
             <div className="overflow-x-auto">
               <table className="w-full text-[13px]">
-                <thead style={{ background: '#F9FAFB' }}>
+                <thead style={{ background: '#FAFAFB' }}>
                   <tr>
                     <Th align="left">Cuenta</Th>
                     <Th align="right">Monto</Th>
@@ -249,17 +249,17 @@ export default async function PoolPerdidoPage({ searchParams }: Props) {
                   {rows.slice(0, 50).map((r, i) => (
                     <tr
                       key={`${r.portal_email}-${r.created_at}-${i}`}
-                      style={{ borderTop: '1px solid #F3F4F6' }}
+                      style={{ borderTop: '1px solid #F5F0FF' }}
                       className="hover:bg-gray-50"
                     >
-                      <td className="px-4 py-2.5" style={{ color: '#374151' }}>{r.portal_email}</td>
+                      <td className="px-4 py-2.5" style={{ color: '#4A3B6B' }}>{r.portal_email}</td>
                       <td className="px-4 py-2.5 text-right tabular-nums font-medium" style={{ color: '#EF4444' }}>
                         {fmtAmount(r.amount, unit)}
                       </td>
-                      <td className="px-4 py-2.5 max-w-xs truncate" style={{ color: '#6B7280' }}>
+                      <td className="px-4 py-2.5 max-w-xs truncate" style={{ color: '#6B6480' }}>
                         {r.description ?? '-'}
                       </td>
-                      <td className="px-4 py-2.5 text-right tabular-nums" style={{ color: '#9CA3AF' }}>
+                      <td className="px-4 py-2.5 text-right tabular-nums" style={{ color: '#9B8FB5' }}>
                         {fmtDate(r.created_at)}
                       </td>
                     </tr>
@@ -274,21 +274,21 @@ export default async function PoolPerdidoPage({ searchParams }: Props) {
       {/* Info footer */}
       <div
         className="p-4 rounded-xl flex items-start gap-3 bg-white"
-        style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+        style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
       >
-        <Info size={14} style={{ color: '#9CA3AF', flexShrink: 0, marginTop: 2 }} />
-        <div className="text-[12px] space-y-1" style={{ color: '#6B7280', lineHeight: 1.7 }}>
-          <p className="text-[13px] font-semibold" style={{ color: '#111827' }}>Como se genera este pool</p>
+        <Info size={14} style={{ color: '#9B8FB5', flexShrink: 0, marginTop: 2 }} />
+        <div className="text-[12px] space-y-1" style={{ color: '#6B6480', lineHeight: 1.7 }}>
+          <p className="text-[13px] font-semibold" style={{ color: '#1A0A3B' }}>Como se genera este pool</p>
           <p>
-            <strong style={{ color: '#374151' }}>Minutos (rollover cap):</strong>{' '}
+            <strong style={{ color: '#4A3B6B' }}>Minutos (rollover cap):</strong>{' '}
             Al renovarse el plan mensual, los minutos que exceden el cap de rollover se descartan y quedan registrados con kind=&apos;rollover_cap&apos; en minutes_ledger (valor negativo).
           </p>
           <p>
-            <strong style={{ color: '#374151' }}>Tareas (rollover cap):</strong>{' '}
+            <strong style={{ color: '#4A3B6B' }}>Tareas (rollover cap):</strong>{' '}
             Lo mismo para tareas en ops_ledger. Se aplica el mismo cap de saldo maximal de rollover.
           </p>
           <p>
-            <strong style={{ color: '#374151' }}>Tareas (no consumidas · anual):</strong>{' '}
+            <strong style={{ color: '#4A3B6B' }}>Tareas (no consumidas · anual):</strong>{' '}
             Al vencer un contrato anual, las tareas acumuladas no consumidas se registran con kind=&apos;unused_forfeited&apos; en ops_ledger.
           </p>
         </div>
@@ -301,7 +301,7 @@ function Th({ children, align = 'right' }: { children: React.ReactNode; align?: 
   return (
     <th
       className="px-4 py-3 text-[11px] font-medium uppercase tracking-wider"
-      style={{ color: '#6B7280', textAlign: align }}
+      style={{ color: '#6B6480', textAlign: align }}
     >
       {children}
     </th>
@@ -318,14 +318,14 @@ function SummaryCard({ icon, label, value, sub, color }: {
   return (
     <div
       className="rounded-xl bg-white px-5 py-4"
-      style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+      style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
     >
       <div className="flex items-center gap-2 mb-2">
         <span style={{ color }}>{icon}</span>
-        <p className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#9CA3AF' }}>{label}</p>
+        <p className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#9B8FB5' }}>{label}</p>
       </div>
-      <p className="text-[24px] font-semibold leading-none tabular-nums" style={{ color: '#111827' }}>{value}</p>
-      {sub && <p className="text-[12px] mt-1.5" style={{ color: '#6B7280' }}>{sub}</p>}
+      <p className="text-[24px] font-semibold leading-none tabular-nums" style={{ color: '#1A0A3B' }}>{value}</p>
+      {sub && <p className="text-[12px] mt-1.5" style={{ color: '#6B6480' }}>{sub}</p>}
     </div>
   );
 }
@@ -333,17 +333,17 @@ function SummaryCard({ icon, label, value, sub, color }: {
 function AggregatedRow({ row, unit, index }: { row: AggRow; unit: string; index: number }) {
   return (
     <tr
-      style={{ borderTop: index > 0 ? '1px solid #F3F4F6' : '1px solid #F3F4F6' }}
+      style={{ borderTop: index > 0 ? '1px solid #F5F0FF' : '1px solid #F5F0FF' }}
       className="hover:bg-gray-50"
     >
-      <td className="px-4 py-2.5" style={{ color: '#111827' }}>{row.portal_email}</td>
+      <td className="px-4 py-2.5" style={{ color: '#1A0A3B' }}>{row.portal_email}</td>
       <td className="px-4 py-2.5 text-right tabular-nums font-semibold" style={{ color: '#EF4444' }}>
         {fmtAmount(row.total, unit)}
       </td>
-      <td className="px-4 py-2.5 text-right tabular-nums" style={{ color: '#6B7280' }}>
+      <td className="px-4 py-2.5 text-right tabular-nums" style={{ color: '#6B6480' }}>
         {row.count}
       </td>
-      <td className="px-4 py-2.5 text-right tabular-nums" style={{ color: '#9CA3AF' }}>
+      <td className="px-4 py-2.5 text-right tabular-nums" style={{ color: '#9B8FB5' }}>
         {fmtDate(row.last_at)}
       </td>
     </tr>

@@ -30,15 +30,16 @@ export default async function FacturacionPage({ searchParams }: Props) {
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
       <div>
-        <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: '#111827' }}>Facturación</h1>
-        <p className="text-[13px] mt-1.5" style={{ color: '#6B7280' }}>
-          Suscripciones Stripe, contratos anuales prepagados y facturas emitidas.
+        <p className="text-[10px] font-bold uppercase tracking-[0.16em] mb-1" style={{ color: '#9B6DFF' }}>Ingresos</p>
+        <h1 className="text-[28px] font-bold leading-tight tracking-tight" style={{ color: '#1A0A3B' }}>Facturación</h1>
+        <p className="text-[13px] mt-1.5 max-w-2xl" style={{ color: '#6B6480' }}>
+          Suscripciones Stripe, contratos anuales prepagados y facturas emitidas a los clientes de Centinelia.
         </p>
       </div>
 
       <nav
         className="flex items-center gap-1"
-        style={{ borderBottom: '1px solid #E5E7EB' }}
+        style={{ borderBottom: '1px solid #E8E3F5' }}
       >
         {TABS.map(t => {
           const active = tab === t.key;
@@ -46,10 +47,9 @@ export default async function FacturacionPage({ searchParams }: Props) {
             <Link
               key={t.key}
               href={`/admin/facturacion?tab=${t.key}`}
-              className="px-3 py-2 text-[13px] transition-colors"
+              className="px-4 py-2.5 text-[13px] font-semibold transition-colors"
               style={{
-                color:        active ? '#6C3BFF' : '#6B7280',
-                fontWeight:   active ? 600 : 500,
+                color:        active ? '#6C3BFF' : '#6B6480',
                 borderBottom: active ? '2px solid #6C3BFF' : '2px solid transparent',
                 marginBottom: '-1px',
               }}

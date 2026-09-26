@@ -10,13 +10,13 @@ export default async function DemoPage() {
   if (!agentId) {
     return (
       <div className="p-8 max-w-lg">
-        <h1 className="text-xl font-bold mb-3" style={{ color: 'var(--c-text)' }}>Agente demo</h1>
+        <h1 className="text-xl font-bold mb-3" style={{ color: '#1A0A3B' }}>Agente demo</h1>
         <div className="rounded-xl p-5" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)' }}>
           <p className="text-sm font-medium mb-2" style={{ color: '#f59e0b' }}>Falta configurar el ID del agente demo</p>
-          <p className="text-sm" style={{ color: 'var(--c-text-2)' }}>
-            Agrega la variable de entorno <code className="px-1 rounded" style={{ background: 'var(--c-surface)', fontFamily: 'monospace' }}>DEMO_AGENT_ID</code> con el UUID del agente demo en Supabase.
+          <p className="text-sm" style={{ color: '#4A3B6B' }}>
+            Agrega la variable de entorno <code className="px-1 rounded" style={{ background: '#FFFFFF', fontFamily: 'monospace' }}>DEMO_AGENT_ID</code> con el UUID del agente demo en Supabase.
           </p>
-          <p className="text-xs mt-3" style={{ color: 'var(--c-text-3)' }}>
+          <p className="text-xs mt-3" style={{ color: '#6B6480' }}>
             Encuéntralo en la URL al editar el agente: <code style={{ fontFamily: 'monospace' }}>/admin/agentes/&#123;uuid&#125;/editar</code>
           </p>
         </div>

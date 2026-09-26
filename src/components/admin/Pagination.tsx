@@ -28,12 +28,12 @@ export function pageNumbers(current: number, total: number): Array<number | '...
 export function Pagination({ page, totalPages, onNavigate, disabled }: Props) {
   if (totalPages <= 1) return null;
   return (
-    <div className="flex items-center justify-between mt-5 pt-4 gap-2" style={{ borderTop: '1px solid #E5E7EB' }}>
+    <div className="flex items-center justify-between mt-5 pt-4 gap-2" style={{ borderTop: '1px solid #E8E3F5' }}>
       <button
         onClick={() => onNavigate(page - 1)}
         disabled={page <= 1 || disabled}
         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-50 disabled:opacity-30 flex-shrink-0"
-        style={{ background: '#FFFFFF', color: '#374151', border: '1px solid #E5E7EB' }}
+        style={{ background: '#FFFFFF', color: '#4A3B6B', border: '1px solid #E8E3F5' }}
       >
         <ChevronLeft size={13} /> <span className="hidden sm:inline">Anterior</span>
       </button>
@@ -41,7 +41,7 @@ export function Pagination({ page, totalPages, onNavigate, disabled }: Props) {
       <div className="flex items-center gap-1 flex-wrap justify-center">
         {pageNumbers(page, totalPages).map((p, i) => (
           p === '...' ? (
-            <span key={`e${i}`} className="px-2 py-1 text-[13px]" style={{ color: '#9CA3AF' }}>…</span>
+            <span key={`e${i}`} className="px-2 py-1 text-[13px]" style={{ color: '#9B8FB5' }}>…</span>
           ) : (
             <button
               key={p}
@@ -51,7 +51,7 @@ export function Pagination({ page, totalPages, onNavigate, disabled }: Props) {
               style={
                 p === page
                   ? { background: '#6C3BFF', color: '#FAFBFF', border: '1px solid #6C3BFF' }
-                  : { background: '#FFFFFF', color: '#374151', border: '1px solid #E5E7EB' }
+                  : { background: '#FFFFFF', color: '#4A3B6B', border: '1px solid #E8E3F5' }
               }
             >
               {p}
@@ -64,7 +64,7 @@ export function Pagination({ page, totalPages, onNavigate, disabled }: Props) {
         onClick={() => onNavigate(page + 1)}
         disabled={page >= totalPages || disabled}
         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-50 disabled:opacity-30 flex-shrink-0"
-        style={{ background: '#FFFFFF', color: '#374151', border: '1px solid #E5E7EB' }}
+        style={{ background: '#FFFFFF', color: '#4A3B6B', border: '1px solid #E8E3F5' }}
       >
         <span className="hidden sm:inline">Siguiente</span> <ChevronRight size={13} />
       </button>

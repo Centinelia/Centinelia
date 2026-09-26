@@ -179,15 +179,15 @@ export default function NuevoEmpleadoPage() {
   if (!template) {
     return (
       <div className="p-4 md:p-8 max-w-3xl">
-        <h1 className="text-2xl font-bold mb-2" style={{ color: 'var(--c-text)' }}>Nuevo empleado</h1>
+        <h1 className="text-2xl font-bold mb-2" style={{ color: '#1A0A3B' }}>Nuevo empleado</h1>
         {isExistingClient ? (
           <div className="mb-6 px-4 py-3 rounded-xl text-sm flex flex-wrap items-center gap-2"
             style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.2)', color: '#9B6DFF' }}>
-            Nueva empresa para <strong style={{ color: 'var(--c-text)' }}>{prefillClientName}</strong>
-            <span style={{ color: 'var(--c-text-3)', fontWeight: 400 }}>· acceso portal heredado automáticamente</span>
+            Nueva empresa para <strong style={{ color: '#1A0A3B' }}>{prefillClientName}</strong>
+            <span style={{ color: '#6B6480', fontWeight: 400 }}>· acceso portal heredado automáticamente</span>
           </div>
         ) : (
-          <p className="text-sm mb-8" style={{ color: 'var(--c-text-2)' }}>
+          <p className="text-sm mb-8" style={{ color: '#4A3B6B' }}>
             Elige el tipo de negocio para pre-configurar las funcionalidades correctas.
           </p>
         )}
@@ -199,13 +199,13 @@ export default function NuevoEmpleadoPage() {
                 key={tpl.id}
                 onClick={() => handleTemplateSelect(tpl.id)}
                 className="p-4 sm:p-5 rounded-xl text-left transition-all hover:scale-[1.02]"
-                style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+                style={{ background: '#FFFFFF', border: '1px solid #E8E3F5' }}
               >
                 <div className="mb-3 w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'rgba(108,59,255,0.1)' }}>
                   <Icon size={18} style={{ color: '#9B6DFF' }} />
                 </div>
-                <div className="font-semibold text-sm mb-1" style={{ color: 'var(--c-text)' }}>{tpl.label}</div>
-                <div className="text-xs" style={{ color: 'var(--c-text-2)' }}>{tpl.description}</div>
+                <div className="font-semibold text-sm mb-1" style={{ color: '#1A0A3B' }}>{tpl.label}</div>
+                <div className="text-xs" style={{ color: '#4A3B6B' }}>{tpl.description}</div>
                 <div className="mt-3 flex flex-wrap gap-1">
                   {Object.entries(tpl.features)
                     .filter(([, v]) => v)
@@ -240,7 +240,7 @@ export default function NuevoEmpleadoPage() {
         <button
           onClick={() => setTemplate(null)}
           className="text-xs px-3 py-2 rounded-lg transition-colors flex-shrink-0"
-          style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-2)', border: '1px solid var(--c-border)' }}
+          style={{ background: '#FAFAFB', color: '#4A3B6B', border: '1px solid #E8E3F5' }}
         >
           ← Cambiar
         </button>
@@ -255,8 +255,8 @@ export default function NuevoEmpleadoPage() {
             );
           })()}
           <div className="min-w-0">
-            <h1 className="text-lg font-bold truncate" style={{ color: 'var(--c-text)' }}>{selectedTpl?.label}</h1>
-            <p className="text-xs truncate" style={{ color: 'var(--c-text-2)' }}>{selectedTpl?.description}</p>
+            <h1 className="text-lg font-bold truncate" style={{ color: '#1A0A3B' }}>{selectedTpl?.label}</h1>
+            <p className="text-xs truncate" style={{ color: '#4A3B6B' }}>{selectedTpl?.description}</p>
           </div>
         </div>
       </div>
@@ -270,13 +270,13 @@ export default function NuevoEmpleadoPage() {
       )}
 
       {/* Tab nav */}
-      <div className="flex gap-1 p-1 rounded-xl mb-6" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+      <div className="flex gap-1 p-1 rounded-xl mb-6" style={{ background: '#FFFFFF', border: '1px solid #E8E3F5' }}>
         {FORM_TABS.map(t => (
           <button key={t.id} type="button" onClick={() => { setFormTab(t.id as Tab); setErrors([]); }}
             className="flex-1 py-2 rounded-lg text-xs font-medium transition-all"
             style={{
               background: formTab === t.id ? '#6C3BFF' : 'transparent',
-              color: formTab === t.id ? '#fff' : 'var(--c-text-3)',
+              color: formTab === t.id ? '#fff' : '#6B6480',
             }}>
             {t.label}
           </button>
@@ -291,7 +291,7 @@ export default function NuevoEmpleadoPage() {
           <Section title="Cliente">
             {isExistingClient && (
               <div className="px-3 py-2 rounded-lg text-xs"
-                style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.15)', color: 'var(--c-text-3)' }}>
+                style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.15)', color: '#6B6480' }}>
                 Cliente existente · campos bloqueados
               </div>
             )}
@@ -336,7 +336,7 @@ export default function NuevoEmpleadoPage() {
           </Section>
 
           <Section title="Base de conocimiento del negocio">
-            <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-2)' }}>
+            <p className="text-xs leading-relaxed" style={{ color: '#4A3B6B' }}>
               {selectedTpl?.id === 'restaurante' && 'Pega aquí el menú completo con precios, horarios y preguntas frecuentes.'}
               {selectedTpl?.id === 'consultorio' && 'Pega aquí los servicios, médicos disponibles, precios y preguntas frecuentes.'}
               {selectedTpl?.id === 'estetica'    && 'Pega aquí el catálogo de servicios con precios y preguntas frecuentes.'}
@@ -356,7 +356,7 @@ export default function NuevoEmpleadoPage() {
         <div className={formTab !== 'funciones' ? 'hidden' : 'flex flex-col gap-5'}>
 
           <Section title="Llamadas entrantes">
-            <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--c-border)' }}>
+            <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #E8E3F5' }}>
               {VOICE_FEATURE_KEYS.map((key, i) => {
                 const on = features[key] as boolean;
                 return (
@@ -364,20 +364,20 @@ export default function NuevoEmpleadoPage() {
                     className="flex items-start gap-3 px-4 py-3 cursor-pointer"
                     onClick={() => toggleFeature(key)}
                     style={{
-                      background: 'var(--c-surface)',
-                      borderBottom: i < VOICE_FEATURE_KEYS.length - 1 ? '1px solid var(--c-border)' : undefined,
+                      background: '#FFFFFF',
+                      borderBottom: i < VOICE_FEATURE_KEYS.length - 1 ? '1px solid #E8E3F5' : undefined,
                     }}>
                     <div className="w-9 h-5 rounded-full transition-colors relative flex-shrink-0 mt-0.5"
-                      style={{ background: on ? '#6C3BFF' : 'var(--c-border-2)' }}>
+                      style={{ background: on ? '#6C3BFF' : '#E8E3F5' }}>
                       <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all"
                         style={{ left: on ? '1.125rem' : '0.125rem' }} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium" style={{ color: on ? 'var(--c-text)' : 'var(--c-text-3)' }}>
+                      <p className="text-sm font-medium" style={{ color: on ? '#1A0A3B' : '#6B6480' }}>
                         {FEATURE_LABELS[key]}
                       </p>
                       {FEATURE_DESCRIPTIONS[key] && (
-                        <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>{FEATURE_DESCRIPTIONS[key]}</p>
+                        <p className="text-xs mt-0.5" style={{ color: '#6B6480' }}>{FEATURE_DESCRIPTIONS[key]}</p>
                       )}
                     </div>
                   </div>
@@ -387,25 +387,25 @@ export default function NuevoEmpleadoPage() {
           </Section>
 
           <Section title="Llamadas salientes">
-            <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--c-border)' }}>
+            <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #E8E3F5' }}>
               {(['outbound_calls'] as (keyof AgentFeatures)[]).map((key) => {
                 const on = features[key] as boolean;
                 return (
                   <div key={key}
                     className="flex items-start gap-3 px-4 py-3 cursor-pointer"
                     onClick={() => toggleFeature(key)}
-                    style={{ background: 'var(--c-surface)' }}>
+                    style={{ background: '#FFFFFF' }}>
                     <div className="w-9 h-5 rounded-full transition-colors relative flex-shrink-0 mt-0.5"
-                      style={{ background: on ? '#6C3BFF' : 'var(--c-border-2)' }}>
+                      style={{ background: on ? '#6C3BFF' : '#E8E3F5' }}>
                       <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all"
                         style={{ left: on ? '1.125rem' : '0.125rem' }} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium" style={{ color: on ? 'var(--c-text)' : 'var(--c-text-3)' }}>
+                      <p className="text-sm font-medium" style={{ color: on ? '#1A0A3B' : '#6B6480' }}>
                         {FEATURE_LABELS[key]}
                       </p>
                       {FEATURE_DESCRIPTIONS[key] && (
-                        <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>{FEATURE_DESCRIPTIONS[key]}</p>
+                        <p className="text-xs mt-0.5" style={{ color: '#6B6480' }}>{FEATURE_DESCRIPTIONS[key]}</p>
                       )}
                     </div>
                   </div>
@@ -430,16 +430,16 @@ export default function NuevoEmpleadoPage() {
 function TimezoneSelect() {
   return (
     <div>
-      <label className="block text-xs mb-1.5" style={{ color: 'var(--c-text-2)' }}>Zona horaria</label>
+      <label className="block text-xs mb-1.5" style={{ color: '#4A3B6B' }}>Zona horaria</label>
       <select
         name="timezone"
         defaultValue="America/Monterrey"
         style={{
-          background: 'var(--c-input-bg)',
-          border: '1px solid var(--c-input-border)',
+          background: '#FFFFFF',
+          border: '1px solid #E8E3F5',
           borderRadius: 8,
           padding: '8px 12px',
-          color: 'var(--c-text)',
+          color: '#1A0A3B',
           fontSize: 14,
           width: '100%',
           outline: 'none',
@@ -458,7 +458,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   return (
     <div>
       <h2 className="text-xs font-semibold mb-3 tracking-widest uppercase"
-        style={{ color: 'var(--c-text-3)' }}>{title}</h2>
+        style={{ color: '#6B6480' }}>{title}</h2>
       <div className="flex flex-col gap-3">{children}</div>
     </div>
   );
@@ -470,11 +470,11 @@ function Field({ label, name, required, placeholder, textarea, rows, disabled, d
   readOnly?: boolean; helper?: string;
 }) {
   const base: React.CSSProperties = {
-    background: readOnly ? 'var(--c-surface-2)' : disabled ? 'var(--c-surface)' : 'var(--c-input-bg)',
-    border: '1px solid var(--c-input-border)',
+    background: readOnly ? '#FAFAFB' : disabled ? '#FFFFFF' : '#FFFFFF',
+    border: '1px solid #E8E3F5',
     borderRadius: 8,
     padding: '10px 12px',
-    color: 'var(--c-text)',
+    color: '#1A0A3B',
     fontSize: 14,
     width: '100%',
     outline: 'none',
@@ -482,7 +482,7 @@ function Field({ label, name, required, placeholder, textarea, rows, disabled, d
   };
   return (
     <div>
-      <label className="block text-xs mb-1.5" style={{ color: 'var(--c-text-2)' }}>
+      <label className="block text-xs mb-1.5" style={{ color: '#4A3B6B' }}>
         {label}{required && <span style={{ color: '#9B6DFF' }}> *</span>}
       </label>
       {textarea
@@ -494,7 +494,7 @@ function Field({ label, name, required, placeholder, textarea, rows, disabled, d
             style={base} />
       }
       {helper && (
-        <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>{helper}</p>
+        <p className="text-xs mt-1" style={{ color: '#6B6480' }}>{helper}</p>
       )}
     </div>
   );

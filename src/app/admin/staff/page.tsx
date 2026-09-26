@@ -38,21 +38,14 @@ export default async function StaffPage() {
 
   return (
     <div className="p-8 max-w-6xl mx-auto">
-      <header className="flex items-center gap-3 mb-8">
-        <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center"
-          style={{ background: 'rgba(108,59,255,0.12)' }}
-        >
-          <Sparkles size={18} style={{ color: '#6C3BFF' }} />
-        </div>
-        <div>
-          <h1 className="text-xl font-bold" style={{ color: 'var(--c-text)' }}>
-            Staff interno de Centinelia
-          </h1>
-          <p className="text-sm mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-            Meerkats que trabajan para Centinelia como empresa (no para clientes externos).
-          </p>
-        </div>
+      <header className="mb-8">
+        <p className="text-[10px] font-bold uppercase tracking-[0.16em] mb-1" style={{ color: '#9B6DFF' }}>Roster interno</p>
+        <h1 className="text-[28px] font-bold leading-tight tracking-tight" style={{ color: '#1A0A3B' }}>
+          Staff interno de Centinelia
+        </h1>
+        <p className="text-[13px] mt-1.5 max-w-2xl" style={{ color: '#6B6480' }}>
+          Meerkats que trabajan para Centinelia como empresa (no para clientes externos). Nash vigila la plataforma; Neka timbra CFDIs propios.
+        </p>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -62,7 +55,7 @@ export default async function StaffPage() {
             <article
               key={role.id}
               className="rounded-2xl p-5"
-              style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+              style={{ background: '#FFFFFF', border: '1px solid #E8E3F5' }}
             >
               <div className="flex items-start gap-4 mb-4">
                 {role.imagen ? (
@@ -97,9 +90,9 @@ export default async function StaffPage() {
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold" style={{ color: 'var(--c-text)' }}>{role.nombre}</h3>
+                  <h3 className="font-semibold" style={{ color: '#1A0A3B' }}>{role.nombre}</h3>
                   <p className="text-xs font-medium" style={{ color: role.color }}>{role.rol}</p>
-                  <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>{role.descripcion}</p>
+                  <p className="text-xs mt-1" style={{ color: '#6B6480' }}>{role.descripcion}</p>
                 </div>
                 {status?.configHref && (
                   <Link
@@ -121,7 +114,7 @@ export default async function StaffPage() {
                         <span
                           key={c}
                           className="text-[11px] px-2 py-0.5 rounded"
-                          style={{ background: 'rgba(108,59,255,0.08)', color: 'var(--c-text-2)' }}
+                          style={{ background: 'rgba(108,59,255,0.08)', color: '#4A3B6B' }}
                         >
                           {c}
                         </span>
@@ -135,7 +128,7 @@ export default async function StaffPage() {
                         <li
                           key={f}
                           className="text-xs flex items-start gap-1.5"
-                          style={{ color: 'var(--c-text-2)' }}
+                          style={{ color: '#4A3B6B' }}
                         >
                           <Sparkles size={11} className="mt-0.5 flex-shrink-0" style={{ color: role.color }} />
                           <span>{f}</span>
@@ -148,7 +141,7 @@ export default async function StaffPage() {
                     <MeerkatSection label="Notas">
                       <ul className="space-y-1">
                         {status.notas.map((n, i) => (
-                          <li key={i} className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+                          <li key={i} className="text-xs" style={{ color: '#6B6480' }}>
                             · {n}
                           </li>
                         ))}
@@ -178,8 +171,8 @@ export default async function StaffPage() {
         style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.25)' }}
       >
         <ShieldAlert size={16} className="mt-0.5 flex-shrink-0" style={{ color: '#b45309' }} />
-        <div className="text-xs" style={{ color: 'var(--c-text-2)' }}>
-          <p className="font-semibold mb-1" style={{ color: 'var(--c-text)' }}>Pendiente Fase 2b de Nala</p>
+        <div className="text-xs" style={{ color: '#4A3B6B' }}>
+          <p className="font-semibold mb-1" style={{ color: '#1A0A3B' }}>Pendiente Fase 2b de Nala</p>
           <ul className="space-y-1">
             <li>· Routing de emails entrantes en <code>hola@centinelia.mx</code> hacia Nala cuando el asunto/cuerpo sea fiscal.</li>
             <li>· UI chat interno para invocar Nala manual desde admin.</li>
@@ -191,14 +184,14 @@ export default async function StaffPage() {
 
       <aside
         className="mt-4 rounded-lg p-3 flex items-center gap-2 text-xs"
-        style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.15)', color: 'var(--c-text-3)' }}
+        style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.15)', color: '#6B6480' }}
       >
         <Terminal size={13} style={{ color: '#6C3BFF' }} />
         <span>
           Mientras la UI se termina, timbras CFDIs con{' '}
-          <code style={{ color: 'var(--c-text)' }}>scripts/facturama-emitir-ingreso.ts</code>{' '}
+          <code style={{ color: '#1A0A3B' }}>scripts/facturama-emitir-ingreso.ts</code>{' '}
           y REPs con{' '}
-          <code style={{ color: 'var(--c-text)' }}>scripts/facturama-emitir-rep.ts</code>.
+          <code style={{ color: '#1A0A3B' }}>scripts/facturama-emitir-rep.ts</code>.
         </span>
       </aside>
     </div>
@@ -210,7 +203,7 @@ function MeerkatSection({ label, children }: { label: string; children: React.Re
     <div>
       <p
         className="text-[10px] font-bold uppercase tracking-widest mb-1.5"
-        style={{ color: 'var(--c-text-4)' }}
+        style={{ color: '#9B8FB5' }}
       >
         {label}
       </p>

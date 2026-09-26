@@ -31,8 +31,9 @@
  * - Focus trap básico (return focus al trigger cuando cierra)
  */
 
-import { useEffect, useRef } from 'react';
-import { X, Loader2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { X, Loader2, AlertCircle } from 'lucide-react';
+import { formatMoney, parseMoney } from '@/lib/format/money';
 
 // ─── Public props ─────────────────────────────────────────────────────────────
 
@@ -206,13 +207,14 @@ OficinaModal.PrimaryAction = function PrimaryAction({ onClick, disabled, loading
   );
 };
 
-OficinaModal.SecondaryAction = function SecondaryAction({ onClick, disabled, children, type = 'button' }: ActionProps) {
+OficinaModal.SecondaryAction = function SecondaryAction({ onClick, disabled, loading, children, type = 'button' }: ActionProps) {
+  const isBusy = disabled || loading;
   return (
     <button
       type={type}
       onClick={onClick}
-      disabled={disabled}
-      className="rounded-xl transition-colors"
+      disabled={isBusy}
+      className="inline-flex items-center gap-2 rounded-xl transition-colors"
       style={{
         padding:      '9px 16px',
         background:   '#ffffff',
@@ -220,24 +222,232 @@ OficinaModal.SecondaryAction = function SecondaryAction({ onClick, disabled, chi
         fontSize:     13,
         fontWeight:   600,
         border:       '1px solid #E8E3F5',
-        cursor:       disabled ? 'not-allowed' : 'pointer',
+        cursor:       isBusy ? 'not-allowed' : 'pointer',
+        opacity:      isBusy && !loading ? 0.5 : 1,
       }}
-      onMouseEnter={e => { if (!disabled) { (e.currentTarget as HTMLElement).style.background = '#F5F0FF'; (e.currentTarget as HTMLElement).style.color = '#1A0A3B'; } }}
+      onMouseEnter={e => { if (!isBusy) { (e.currentTarget as HTMLElement).style.background = '#F5F0FF'; (e.currentTarget as HTMLElement).style.color = '#1A0A3B'; } }}
       onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = '#ffffff'; (e.currentTarget as HTMLElement).style.color = '#6B6480'; }}
     >
+      {loading && <Loader2 size={13} className="animate-spin" />}
       {children}
     </button>
   );
 };
 
-OficinaModal.Field = function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+OficinaModal.Field = function Field({ label, hint, children, className }: { label: string; hint?: string; children: React.ReactNode; className?: string }) {
   return (
-    <div className="flex flex-col gap-2">
+    <div className={`flex flex-col gap-2 ${className ?? ''}`}>
       <label className="text-[11px] font-bold uppercase tracking-[0.1em]" style={{ color: '#6B6480' }}>
         {label}
         {hint && <span className="ml-1.5 font-normal normal-case tracking-normal" style={{ color: '#9B8FB5' }}>({hint})</span>}
       </label>
       {children}
+    </div>
+  );
+};
+
+// ─── Focus ring helper para inputs/textarea/select ────────────────────────────
+
+const INPUT_BASE_STYLE: React.CSSProperties = {
+  background:  '#ffffff',
+  border:      '1px solid #E8E3F5',
+  color:       '#1A0A3B',
+  fontFamily:  'inherit',
+  transition:  'border-color 0.15s, box-shadow 0.15s',
+};
+
+function applyFocusRing(el: HTMLElement) {
+  el.style.borderColor = '#6C3BFF';
+  el.style.boxShadow   = '0 0 0 3px rgba(108,59,255,0.08)';
+}
+function clearFocusRing(el: HTMLElement) {
+  el.style.borderColor = '#E8E3F5';
+  el.style.boxShadow   = 'none';
+}
+
+// ─── Input compound ───────────────────────────────────────────────────────────
+
+type InputProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, 'style'> & { style?: React.CSSProperties };
+
+OficinaModal.Input = function Input(props: InputProps) {
+  const { className, style, onFocus, onBlur, ...rest } = props;
+  return (
+    <input
+      {...rest}
+      className={`w-full px-3.5 rounded-xl text-[14px] outline-none ${className ?? ''}`}
+      style={{ ...INPUT_BASE_STYLE, height: 40, ...style }}
+      onFocus={e => { applyFocusRing(e.currentTarget); onFocus?.(e); }}
+      onBlur={e  => { clearFocusRing(e.currentTarget); onBlur?.(e); }}
+    />
+  );
+};
+
+// ─── Textarea compound ────────────────────────────────────────────────────────
+
+type TextareaProps = Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, 'style'> & { style?: React.CSSProperties };
+
+OficinaModal.Textarea = function Textarea(props: TextareaProps) {
+  const { className, style, onFocus, onBlur, rows = 3, ...rest } = props;
+  return (
+    <textarea
+      {...rest}
+      rows={rows}
+      className={`w-full px-3.5 py-2.5 rounded-xl text-[14px] leading-relaxed outline-none resize-y ${className ?? ''}`}
+      style={{ ...INPUT_BASE_STYLE, ...style }}
+      onFocus={e => { applyFocusRing(e.currentTarget); onFocus?.(e); }}
+      onBlur={e  => { clearFocusRing(e.currentTarget); onBlur?.(e); }}
+    />
+  );
+};
+
+// ─── Select compound ──────────────────────────────────────────────────────────
+
+type SelectProps = Omit<React.SelectHTMLAttributes<HTMLSelectElement>, 'style'> & { style?: React.CSSProperties };
+
+OficinaModal.Select = function Select(props: SelectProps) {
+  const { className, style, onFocus, onBlur, children, ...rest } = props;
+  return (
+    <select
+      {...rest}
+      className={`w-full px-3.5 rounded-xl text-[14px] outline-none appearance-none cursor-pointer ${className ?? ''}`}
+      style={{
+        ...INPUT_BASE_STYLE,
+        height:             40,
+        backgroundImage:    "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B6480' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\")",
+        backgroundRepeat:   'no-repeat',
+        backgroundPosition: 'right 14px center',
+        paddingRight:       36,
+        ...style,
+      }}
+      onFocus={e => { applyFocusRing(e.currentTarget); onFocus?.(e); }}
+      onBlur={e  => { clearFocusRing(e.currentTarget); onBlur?.(e); }}
+    >
+      {children}
+    </select>
+  );
+};
+
+// ─── MoneyInput compound ──────────────────────────────────────────────────────
+//
+// Input de dinero premium: muestra "$1,234.56" cuando NO tiene focus, edita
+// como número plano cuando SÍ. onChange devuelve string plano (sin formato)
+// para que el consumer lo maneje con Number()/parseMoney().
+
+type MoneyInputProps = {
+  value:         string;
+  onChange:      (v: string) => void;
+  placeholder?:  string;
+  disabled?:     boolean;
+};
+
+OficinaModal.MoneyInput = function MoneyInput({ value, onChange, placeholder = '0.00', disabled }: MoneyInputProps) {
+  const [focused, setFocused] = useState(false);
+  const hasValue = value !== '' && !Number.isNaN(Number(value));
+
+  // Idle: mostrar formateado. Focus: valor plano editable.
+  const display = focused ? value : (hasValue ? formatMoney(value, { symbol: false }) : '');
+
+  return (
+    <div className="relative">
+      <span
+        className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[14px] font-semibold pointer-events-none select-none"
+        style={{ color: hasValue || focused ? '#6C3BFF' : '#9B8FB5' }}
+      >
+        $
+      </span>
+      <input
+        type="text"
+        inputMode="decimal"
+        value={display}
+        onChange={e => {
+          // Aceptar solo dígitos, punto y coma. Al parsear final quitamos la coma.
+          const raw = e.target.value.replace(/[^\d.,]/g, '').replace(/,/g, '');
+          onChange(raw);
+        }}
+        onFocus={e => { setFocused(true); applyFocusRing(e.currentTarget); }}
+        onBlur={e  => {
+          setFocused(false);
+          clearFocusRing(e.currentTarget);
+          // Normalize on blur: si es parseable, guardar el número limpio como string
+          if (value) {
+            const parsed = parseMoney(value);
+            if (Number.isFinite(parsed)) onChange(String(parsed));
+          }
+        }}
+        placeholder={placeholder}
+        disabled={disabled}
+        className="w-full pr-3.5 rounded-xl text-[14px] outline-none"
+        style={{ ...INPUT_BASE_STYLE, height: 40, paddingLeft: 28 }}
+      />
+    </div>
+  );
+};
+
+// ─── FileInput compound ───────────────────────────────────────────────────────
+
+type FileInputProps = {
+  inputRef?:  React.RefObject<HTMLInputElement | null>;
+  accept?:    string;
+  onChange?:  (file: File | null) => void;
+  disabled?:  boolean;
+  placeholder?: string;
+};
+
+OficinaModal.FileInput = function FileInput({ inputRef, accept, onChange, disabled, placeholder = 'Selecciona un archivo…' }: FileInputProps) {
+  const localRef = useRef<HTMLInputElement | null>(null);
+  const ref = inputRef ?? localRef;
+  const [fileName, setFileName] = useState<string | null>(null);
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={() => ref.current?.click()}
+        disabled={disabled}
+        className="rounded-xl text-[13px] font-semibold transition-colors shrink-0"
+        style={{
+          padding:    '9px 14px',
+          background: '#F5F0FF',
+          color:      '#6C3BFF',
+          border:     '1px solid #E8E3F5',
+          cursor:     disabled ? 'not-allowed' : 'pointer',
+          opacity:    disabled ? 0.5 : 1,
+        }}
+      >
+        Elegir archivo
+      </button>
+      <span className="text-[13px] truncate flex-1" style={{ color: fileName ? '#1A0A3B' : '#9B8FB5' }}>
+        {fileName ?? placeholder}
+      </span>
+      <input
+        ref={ref}
+        type="file"
+        accept={accept}
+        onChange={e => {
+          const f = e.target.files?.[0] ?? null;
+          setFileName(f?.name ?? null);
+          onChange?.(f);
+        }}
+        className="hidden"
+      />
+    </div>
+  );
+};
+
+// ─── Alert compound ───────────────────────────────────────────────────────────
+
+OficinaModal.Alert = function Alert({ tone = 'danger', children }: { tone?: 'danger' | 'warning' | 'info'; children: React.ReactNode }) {
+  const palette = {
+    danger:  { bg: 'rgba(239,68,68,0.06)',  border: 'rgba(239,68,68,0.28)',  text: '#B91C1C', icon: '#EF4444' },
+    warning: { bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.28)', text: '#92400E', icon: '#B45309' },
+    info:    { bg: 'rgba(108,59,255,0.06)', border: 'rgba(108,59,255,0.24)', text: '#4A25B8', icon: '#6C3BFF' },
+  }[tone];
+  return (
+    <div
+      className="flex items-start gap-2.5 rounded-xl text-[13px] leading-relaxed"
+      style={{ background: palette.bg, border: `1px solid ${palette.border}`, color: palette.text, padding: '10px 12px' }}
+    >
+      <AlertCircle size={14} className="mt-0.5 flex-shrink-0" style={{ color: palette.icon }} />
+      <span>{children}</span>
     </div>
   );
 };

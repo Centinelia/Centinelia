@@ -91,7 +91,7 @@ export function InventoryView() {
   useEffect(() => { load(); }, [load]);
 
   if (loading || !data) {
-    return <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Cargando…</p>;
+    return <p className="text-sm" style={{ color: '#6B6480' }}>Cargando…</p>;
   }
 
   const totalRecommended = PLATFORM_ORDER.reduce((sum, p) => sum + data.platforms[p].recommended_topup, 0);
@@ -102,7 +102,7 @@ export function InventoryView() {
       <div className="rounded-xl p-5" style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.25)' }}>
         <div className="flex items-center gap-2 mb-3">
           <TrendingUp size={16} style={{ color: '#6C3BFF' }} />
-          <h2 className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Proyección del próximo mes</h2>
+          <h2 className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>Proyección del próximo mes</h2>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Metric label="Empleados activos con plan" value={String(data.projection.active_agents)} />
@@ -131,13 +131,13 @@ export function InventoryView() {
               <div
                 key={a.agent_id}
                 className="rounded-lg p-3 flex flex-wrap items-center justify-between gap-3"
-                style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+                style={{ background: '#FFFFFF', border: '1px solid #E8E3F5' }}
               >
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>
-                    {a.business_name ?? '(sin nombre)'} {a.agent_name && <span style={{ color: 'var(--c-text-3)' }}>· {a.agent_name}</span>}
+                  <p className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>
+                    {a.business_name ?? '(sin nombre)'} {a.agent_name && <span style={{ color: '#6B6480' }}>· {a.agent_name}</span>}
                   </p>
-                  <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>{a.portal_email ?? '(sin email)'}</p>
+                  <p className="text-xs" style={{ color: '#6B6480' }}>{a.portal_email ?? '(sin email)'}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-bold" style={{ color: a.days_remaining !== null && a.days_remaining <= 1 ? '#F87171' : '#F59E0B' }}>
@@ -147,14 +147,14 @@ export function InventoryView() {
                         ? 'gracia vence hoy'
                         : `${a.days_remaining} día${a.days_remaining === 1 ? '' : 's'} de gracia`}
                   </p>
-                  <p className="text-[11px]" style={{ color: 'var(--c-text-4)' }}>
+                  <p className="text-[11px]" style={{ color: '#9B8FB5' }}>
                     consumo si regresa: {a.minutes > 0 && <>{a.minutes} min </>}{a.aiOps > 0 && <>+ {a.aiOps} ops</>}
                   </p>
                 </div>
               </div>
             ))}
           </div>
-          <p className="px-5 pb-4 text-xs" style={{ color: 'var(--c-text-3)' }}>
+          <p className="px-5 pb-4 text-xs" style={{ color: '#6B6480' }}>
             Estos empleados no están contados en la proyección de arriba porque su pago falló. Si pagan mid-month, se van a agregar al pool automáticamente — considera reservar buffer extra si crees que van a regularizar.
           </p>
         </div>
@@ -174,19 +174,19 @@ export function InventoryView() {
       </div>
 
       {/* Historial reciente */}
-      <div className="rounded-xl overflow-hidden" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-        <div className="px-5 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid var(--c-border)' }}>
-          <h2 className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Historial reciente (últimas 30 recargas)</h2>
-          <button onClick={load} className="text-xs flex items-center gap-1" style={{ color: 'var(--c-text-3)' }}>
+      <div className="rounded-xl overflow-hidden" style={{ background: '#FFFFFF', border: '1px solid #E8E3F5' }}>
+        <div className="px-5 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid #E8E3F5' }}>
+          <h2 className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>Historial reciente (últimas 30 recargas)</h2>
+          <button onClick={load} className="text-xs flex items-center gap-1" style={{ color: '#6B6480' }}>
             <RefreshCw size={12} /> Refrescar
           </button>
         </div>
         {data.topups_recent.length === 0 ? (
-          <p className="p-5 text-sm" style={{ color: 'var(--c-text-3)' }}>Aún no hay recargas registradas.</p>
+          <p className="p-5 text-sm" style={{ color: '#6B6480' }}>Aún no hay recargas registradas.</p>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-3)' }}>
+              <tr style={{ background: '#FAFAFB', color: '#6B6480' }}>
                 <th className="text-left px-4 py-2 text-xs font-semibold">Fecha</th>
                 <th className="text-left px-4 py-2 text-xs font-semibold">Plataforma</th>
                 <th className="text-right px-4 py-2 text-xs font-semibold">Monto</th>
@@ -195,11 +195,11 @@ export function InventoryView() {
             </thead>
             <tbody>
               {data.topups_recent.map(t => (
-                <tr key={t.id} style={{ borderTop: '1px solid var(--c-border)' }}>
-                  <td className="px-4 py-2 text-xs" style={{ color: 'var(--c-text-2)' }}>{fmtDate(t.topped_up_at)}</td>
-                  <td className="px-4 py-2 text-xs" style={{ color: 'var(--c-text)' }}>{PLATFORM_META[t.platform]?.label ?? t.platform}</td>
-                  <td className="px-4 py-2 text-xs text-right font-semibold" style={{ color: 'var(--c-text)' }}>{fmtUsd(Number(t.amount_usd))}</td>
-                  <td className="px-4 py-2 text-xs" style={{ color: 'var(--c-text-3)' }}>{t.notes ?? '·'}</td>
+                <tr key={t.id} style={{ borderTop: '1px solid #E8E3F5' }}>
+                  <td className="px-4 py-2 text-xs" style={{ color: '#4A3B6B' }}>{fmtDate(t.topped_up_at)}</td>
+                  <td className="px-4 py-2 text-xs" style={{ color: '#1A0A3B' }}>{PLATFORM_META[t.platform]?.label ?? t.platform}</td>
+                  <td className="px-4 py-2 text-xs text-right font-semibold" style={{ color: '#1A0A3B' }}>{fmtUsd(Number(t.amount_usd))}</td>
+                  <td className="px-4 py-2 text-xs" style={{ color: '#6B6480' }}>{t.notes ?? '·'}</td>
                 </tr>
               ))}
             </tbody>
@@ -213,9 +213,9 @@ export function InventoryView() {
 function Metric({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: string }) {
   return (
     <div>
-      <p className="text-[10px] uppercase font-bold tracking-wider mb-1" style={{ color: 'var(--c-text-3)' }}>{label}</p>
-      <p className="text-xl font-bold" style={{ color: accent ?? 'var(--c-text)' }}>{value}</p>
-      {sub && <p className="text-[11px] mt-0.5" style={{ color: 'var(--c-text-4)' }}>{sub}</p>}
+      <p className="text-[10px] uppercase font-bold tracking-wider mb-1" style={{ color: '#6B6480' }}>{label}</p>
+      <p className="text-xl font-bold" style={{ color: accent ?? '#1A0A3B' }}>{value}</p>
+      {sub && <p className="text-[11px] mt-0.5" style={{ color: '#9B8FB5' }}>{sub}</p>}
     </div>
   );
 }
@@ -273,27 +273,27 @@ function PlatformCard({ platform, state, topupsThisMonth, onChange }: {
   };
 
   return (
-    <div className="rounded-xl overflow-hidden" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+    <div className="rounded-xl overflow-hidden" style={{ background: '#FFFFFF', border: '1px solid #E8E3F5' }}>
       {/* Header */}
-      <div className="px-5 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid var(--c-border)' }}>
+      <div className="px-5 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid #E8E3F5' }}>
         <div className="flex items-center gap-2">
           <Package size={16} style={{ color: '#6C3BFF' }} />
-          <span className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>{meta.label}</span>
+          <span className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>{meta.label}</span>
           <a href={meta.url} target="_blank" rel="noreferrer" className="text-xs flex items-center gap-1" style={{ color: '#6C3BFF' }}>
             dashboard <ExternalLink size={10} />
           </a>
         </div>
-        <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>{meta.hint}</span>
+        <span className="text-xs" style={{ color: '#9B8FB5' }}>{meta.hint}</span>
       </div>
 
       {/* Body */}
       <div className="p-5 grid grid-cols-1 md:grid-cols-3 gap-5">
         {/* Saldo actual */}
         <div>
-          <p className="text-[10px] uppercase font-bold tracking-wider mb-1" style={{ color: 'var(--c-text-3)' }}>Saldo actual</p>
+          <p className="text-[10px] uppercase font-bold tracking-wider mb-1" style={{ color: '#6B6480' }}>Saldo actual</p>
           {editingBalance ? (
             <div className="flex items-center gap-2">
-              <span className="text-sm" style={{ color: 'var(--c-text-3)' }}>$</span>
+              <span className="text-sm" style={{ color: '#6B6480' }}>$</span>
               <input
                 type="number"
                 step="0.01"
@@ -301,33 +301,33 @@ function PlatformCard({ platform, state, topupsThisMonth, onChange }: {
                 value={balanceInput}
                 onChange={e => setBalanceInput(e.target.value)}
                 className="w-20 px-2 py-1 rounded-md text-sm"
-                style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+                style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
                 autoFocus
               />
               <button onClick={saveBalance} disabled={saving} className="text-xs px-2 py-1 rounded-md font-semibold" style={{ background: '#22c55e', color: '#fff' }}>OK</button>
-              <button onClick={() => { setEditingBalance(false); setBalanceInput(state.balance.toFixed(2)); }} className="text-xs px-2 py-1 rounded-md" style={{ color: 'var(--c-text-3)' }}>Cancelar</button>
+              <button onClick={() => { setEditingBalance(false); setBalanceInput(state.balance.toFixed(2)); }} className="text-xs px-2 py-1 rounded-md" style={{ color: '#6B6480' }}>Cancelar</button>
             </div>
           ) : (
             <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold" style={{ color: 'var(--c-text)' }}>{fmtUsd(state.balance)}</span>
+              <span className="text-2xl font-bold" style={{ color: '#1A0A3B' }}>{fmtUsd(state.balance)}</span>
               <button onClick={() => setEditingBalance(true)} className="text-xs" style={{ color: '#6C3BFF' }}>editar</button>
             </div>
           )}
-          <p className="text-[11px] mt-1" style={{ color: 'var(--c-text-4)' }}>
+          <p className="text-[11px] mt-1" style={{ color: '#9B8FB5' }}>
             actualizado: {fmtDate(state.balance_updated_at)}
           </p>
         </div>
 
         {/* Consumo proyectado */}
         <div>
-          <p className="text-[10px] uppercase font-bold tracking-wider mb-1" style={{ color: 'var(--c-text-3)' }}>Consumo proyectado / mes</p>
-          <p className="text-2xl font-bold" style={{ color: 'var(--c-text)' }}>{fmtUsd(state.projected_monthly)}</p>
-          <p className="text-[11px] mt-1" style={{ color: 'var(--c-text-4)' }}>basado en empleados activos</p>
+          <p className="text-[10px] uppercase font-bold tracking-wider mb-1" style={{ color: '#6B6480' }}>Consumo proyectado / mes</p>
+          <p className="text-2xl font-bold" style={{ color: '#1A0A3B' }}>{fmtUsd(state.projected_monthly)}</p>
+          <p className="text-[11px] mt-1" style={{ color: '#9B8FB5' }}>basado en empleados activos</p>
         </div>
 
         {/* Falta cargar */}
         <div>
-          <p className="text-[10px] uppercase font-bold tracking-wider mb-1" style={{ color: 'var(--c-text-3)' }}>
+          <p className="text-[10px] uppercase font-bold tracking-wider mb-1" style={{ color: '#6B6480' }}>
             Falta cargar (con +30% buffer)
           </p>
           <div className="flex items-baseline gap-2">
@@ -344,14 +344,14 @@ function PlatformCard({ platform, state, topupsThisMonth, onChange }: {
               </span>
             )}
           </div>
-          <p className="text-[11px] mt-1" style={{ color: 'var(--c-text-4)' }}>≈ {fmtMxn(state.recommended_topup * MXN_PER_USD)}</p>
+          <p className="text-[11px] mt-1" style={{ color: '#9B8FB5' }}>≈ {fmtMxn(state.recommended_topup * MXN_PER_USD)}</p>
         </div>
       </div>
 
       {/* Footer: log de este mes + botón registrar */}
-      <div className="px-5 py-3 flex flex-wrap items-center justify-between gap-3" style={{ background: 'var(--c-surface-2)', borderTop: '1px solid var(--c-border)' }}>
-        <div className="text-xs" style={{ color: 'var(--c-text-3)' }}>
-          Cargado este mes: <b style={{ color: 'var(--c-text)' }}>{fmtUsd(state.topped_up_this_month)}</b>
+      <div className="px-5 py-3 flex flex-wrap items-center justify-between gap-3" style={{ background: '#FAFAFB', borderTop: '1px solid #E8E3F5' }}>
+        <div className="text-xs" style={{ color: '#6B6480' }}>
+          Cargado este mes: <b style={{ color: '#1A0A3B' }}>{fmtUsd(state.topped_up_this_month)}</b>
           {topupsThisMonth.length > 0 && <> · {topupsThisMonth.length} recarga{topupsThisMonth.length === 1 ? '' : 's'}</>}
         </div>
         <button
@@ -365,9 +365,9 @@ function PlatformCard({ platform, state, topupsThisMonth, onChange }: {
 
       {/* Panel expandible: registrar recarga */}
       {showTopup && (
-        <div className="p-5 flex flex-wrap items-end gap-3" style={{ background: 'rgba(108,59,255,0.04)', borderTop: '1px solid var(--c-border)' }}>
+        <div className="p-5 flex flex-wrap items-end gap-3" style={{ background: 'rgba(108,59,255,0.04)', borderTop: '1px solid #E8E3F5' }}>
           <label className="flex flex-col gap-1">
-            <span className="text-[10px] uppercase font-bold tracking-wider" style={{ color: 'var(--c-text-3)' }}>Monto USD</span>
+            <span className="text-[10px] uppercase font-bold tracking-wider" style={{ color: '#6B6480' }}>Monto USD</span>
             <input
               type="number"
               step="0.01"
@@ -376,17 +376,17 @@ function PlatformCard({ platform, state, topupsThisMonth, onChange }: {
               onChange={e => setTopupAmount(e.target.value)}
               placeholder="50.00"
               className="w-28 px-2 py-1.5 rounded-md text-sm"
-              style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+              style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
             />
           </label>
           <label className="flex flex-col gap-1 flex-1 min-w-[180px]">
-            <span className="text-[10px] uppercase font-bold tracking-wider" style={{ color: 'var(--c-text-3)' }}>Notas (opcional)</span>
+            <span className="text-[10px] uppercase font-bold tracking-wider" style={{ color: '#6B6480' }}>Notas (opcional)</span>
             <input
               value={topupNotes}
               onChange={e => setTopupNotes(e.target.value)}
               placeholder="Ej: recarga previa a AC Proyectos"
               className="px-2 py-1.5 rounded-md text-sm"
-              style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+              style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
             />
           </label>
           <button
@@ -400,7 +400,7 @@ function PlatformCard({ platform, state, topupsThisMonth, onChange }: {
           <button
             onClick={() => { setShowTopup(false); setTopupAmount(''); setTopupNotes(''); }}
             className="text-xs px-3 py-2 rounded-md"
-            style={{ color: 'var(--c-text-3)' }}
+            style={{ color: '#6B6480' }}
           >
             Cancelar
           </button>

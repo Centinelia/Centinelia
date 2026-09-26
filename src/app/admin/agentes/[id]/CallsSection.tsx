@@ -10,7 +10,7 @@ const OUTCOME_LABELS: Record<string, { label: string; color: string }> = {
   appointment_booked: { label: 'Cita',        color: '#3b82f6' },
   order_taken:        { label: 'Pedido',      color: '#f59e0b' },
   transferred:        { label: 'Transferido', color: '#a855f7' },
-  info_provided:      { label: 'Información', color: '#6b7280' },
+  info_provided:      { label: 'Información', color: '#6B6480' },
   escalated_whatsapp: { label: 'WhatsApp',    color: '#25D366' },
   other:              { label: 'Otro',        color: '#4b5563' },
 };
@@ -36,8 +36,8 @@ function CopyTranscriptButton({ text }: { text: string }) {
     <button
       onClick={handleCopy}
       title={copied ? 'Copiado' : 'Copiar transcripción'}
-      className="p-1 rounded transition-colors hover:bg-[var(--c-surface-2)]"
-      style={{ color: copied ? '#22c55e' : 'var(--c-text-3)' }}
+      className="p-1 rounded transition-colors hover:bg-[#FAFAFB]"
+      style={{ color: copied ? '#22c55e' : '#6B6480' }}
     >
       {copied ? <Check size={12} /> : <Copy size={12} />}
     </button>
@@ -49,14 +49,14 @@ function CallRow({ call, timezone, agentName }: { call: VoiceCall; timezone: str
   const hasDetails = call.summary || call.transcript || call.recording_url;
 
   return (
-    <div className="rounded-lg overflow-hidden" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+    <div className="rounded-lg overflow-hidden" style={{ background: '#FFFFFF', border: '1px solid #E8E3F5' }}>
       <div
         className={`flex items-center justify-between px-3 py-2.5 ${hasDetails ? 'cursor-pointer select-none' : ''}`}
         onClick={() => hasDetails && setOpen(o => !o)}
       >
         <div>
-          <div className="text-sm" style={{ color: 'var(--c-text)' }}>{call.caller_number || 'Desconocido'}</div>
-          <div className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+          <div className="text-sm" style={{ color: '#1A0A3B' }}>{call.caller_number || 'Desconocido'}</div>
+          <div className="text-xs mt-0.5" style={{ color: '#6B6480' }}>
             {new Date(call.created_at).toLocaleString('es-MX', { timeZone: timezone ?? 'America/Monterrey' })}
           </div>
         </div>
@@ -72,29 +72,29 @@ function CallRow({ call, timezone, agentName }: { call: VoiceCall; timezone: str
             </span>
           )}
           <OutcomeBadge outcome={call.outcome} />
-          <span className="text-xs tabular-nums" style={{ color: 'var(--c-text-2)' }}>
+          <span className="text-xs tabular-nums" style={{ color: '#4A3B6B' }}>
             {Math.ceil(call.duration_seconds / 60)} min
           </span>
           {hasDetails && (
             open
-              ? <ChevronUp size={14} style={{ color: 'var(--c-text-3)' }} />
-              : <ChevronDown size={14} style={{ color: 'var(--c-text-3)' }} />
+              ? <ChevronUp size={14} style={{ color: '#6B6480' }} />
+              : <ChevronDown size={14} style={{ color: '#6B6480' }} />
           )}
         </div>
       </div>
 
       {open && hasDetails && (
-        <div className="px-3 pb-3 flex flex-col gap-3" style={{ borderTop: '1px solid var(--c-divider)' }}>
+        <div className="px-3 pb-3 flex flex-col gap-3" style={{ borderTop: '1px solid #F0EBFA' }}>
           {call.summary && (
             <div className="pt-3">
-              <div className="text-xs font-semibold mb-1.5 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Resumen</div>
-              <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-2)' }}>{call.summary}</p>
+              <div className="text-xs font-semibold mb-1.5 tracking-widest uppercase" style={{ color: '#6B6480' }}>Resumen</div>
+              <p className="text-xs leading-relaxed" style={{ color: '#4A3B6B' }}>{call.summary}</p>
             </div>
           )}
 
           {call.recording_url && (
             <div>
-              <div className="text-xs font-semibold mb-1.5 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Grabación</div>
+              <div className="text-xs font-semibold mb-1.5 tracking-widest uppercase" style={{ color: '#6B6480' }}>Grabación</div>
               <div className="flex items-center gap-2">
                 <audio
                   controls
@@ -107,8 +107,8 @@ function CallRow({ call, timezone, agentName }: { call: VoiceCall; timezone: str
                   target="_blank"
                   rel="noopener noreferrer"
                   title="Abrir en nueva pestaña"
-                  className="flex-shrink-0 p-1.5 rounded hover:bg-[var(--c-surface-2)] transition-colors"
-                  style={{ color: 'var(--c-text-2)' }}
+                  className="flex-shrink-0 p-1.5 rounded hover:bg-[#FAFAFB] transition-colors"
+                  style={{ color: '#4A3B6B' }}
                 >
                   <ExternalLink size={13} />
                 </a>
@@ -119,7 +119,7 @@ function CallRow({ call, timezone, agentName }: { call: VoiceCall; timezone: str
           {call.transcript && (
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <div className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Transcripción</div>
+                <div className="text-xs font-semibold tracking-widest uppercase" style={{ color: '#6B6480' }}>Transcripción</div>
                 <CopyTranscriptButton text={call.transcript} />
               </div>
               <TranscriptView transcript={call.transcript} agentName={agentName} maxHeight={192} />
@@ -133,12 +133,12 @@ function CallRow({ call, timezone, agentName }: { call: VoiceCall; timezone: str
 
 export default function CallsSection({ calls, timezone, agentName }: { calls: VoiceCall[]; timezone: string; agentName?: string }) {
   return (
-    <div className="p-5 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-      <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+    <div className="p-5 rounded-xl" style={{ background: '#FFFFFF', border: '1px solid #E8E3F5' }}>
+      <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: '#6B6480' }}>
         Llamadas recientes ({calls.length})
       </h2>
       {calls.length === 0 ? (
-        <p className="text-xs py-6 text-center leading-relaxed" style={{ color: 'var(--c-text-4)' }}>
+        <p className="text-xs py-6 text-center leading-relaxed" style={{ color: '#9B8FB5' }}>
           Sin llamadas aún — aparecen aquí automáticamente cuando el agente atienda su primera llamada
         </p>
       ) : (

@@ -16,7 +16,7 @@ export default function CopyButton({ text }: { text: string }) {
     <button
       onClick={handle}
       className="p-1 rounded transition-colors flex-shrink-0 hover:bg-gray-100"
-      style={{ color: copied ? '#10B981' : '#6B7280' }}
+      style={{ color: copied ? '#10B981' : '#6B6480' }}
       title="Copiar"
     >
       {copied ? <Check size={12} /> : <Copy size={12} />}

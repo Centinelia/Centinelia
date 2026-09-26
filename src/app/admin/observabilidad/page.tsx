@@ -14,15 +14,15 @@ export default async function ObservabilityPage() {
   const meerkatIds = Object.keys(MEERKAT_CONFIGS).sort();
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6" style={{ color: 'var(--c-text)' }}>
+    <div className="p-8 max-w-7xl mx-auto space-y-6" style={{ color: '#1A0A3B' }}>
       <div>
-        <h1 className="text-2xl font-semibold" style={{ color: 'var(--c-text)' }}>Observabilidad segmentada</h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--c-text-2)' }}>
+        <h1 className="text-2xl font-semibold" style={{ color: '#1A0A3B' }}>Observabilidad segmentada</h1>
+        <p className="text-sm mt-1" style={{ color: '#4A3B6B' }}>
           Métricas de producción rebanadas por versión de empleado y flags activos.
         </p>
         <div className="mt-3 flex gap-2 text-sm">
           <a href="/admin/observabilidad" className="px-3 py-1.5 rounded" style={{ background: 'rgba(108,59,255,0.12)', color: '#9B6DFF', fontWeight: 600 }}>Llamadas por versión</a>
-          <a href="/admin/observabilidad/tools" className="px-3 py-1.5 rounded" style={{ color: 'var(--c-text-2)' }}>Tools</a>
+          <a href="/admin/observabilidad/tools" className="px-3 py-1.5 rounded" style={{ color: '#4A3B6B' }}>Tools</a>
         </div>
       </div>
       <ObservabilityView meerkatIds={meerkatIds} flagKeys={flagKeys.sort()} />

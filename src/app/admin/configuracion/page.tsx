@@ -58,8 +58,8 @@ export default function ConfiguracionPage() {
     <div className="p-8 max-w-3xl mx-auto space-y-8">
 
       <div>
-        <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: '#111827' }}>Configuración</h1>
-        <p className="text-[13px] mt-1.5" style={{ color: '#6B7280' }}>
+        <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: '#1A0A3B' }}>Configuración</h1>
+        <p className="text-[13px] mt-1.5" style={{ color: '#6B6480' }}>
           Ajustes globales de la plataforma.
         </p>
       </div>
@@ -68,31 +68,31 @@ export default function ConfiguracionPage() {
       <Link
         href="/admin/conversacional"
         className="flex items-center gap-3 rounded-xl bg-white px-5 py-4 transition-colors hover:bg-gray-50"
-        style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+        style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
       >
         <div className="flex-shrink-0 p-2 rounded-lg" style={{ background: '#F3F0FF' }}>
           <Sparkles size={16} style={{ color: '#7C3AED' }} />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-[14px] font-semibold" style={{ color: '#111827' }}>Estilo conversacional</p>
-          <p className="text-[12px] mt-0.5" style={{ color: '#6B7280' }}>
+          <p className="text-[14px] font-semibold" style={{ color: '#1A0A3B' }}>Estilo conversacional</p>
+          <p className="text-[12px] mt-0.5" style={{ color: '#6B6480' }}>
             Ajusta tono y muletillas de los empleados en voz.
           </p>
         </div>
-        <ChevronRight size={16} style={{ color: '#9CA3AF' }} />
+        <ChevronRight size={16} style={{ color: '#9B8FB5' }} />
       </Link>
 
       {/* ── Sección: Base de conocimiento ── */}
       <section>
         <div className="flex items-center gap-2 mb-4">
           <BookOpen size={15} style={{ color: '#7C3AED' }} />
-          <h2 className="text-[11px] font-semibold tracking-widest uppercase" style={{ color: '#9CA3AF' }}>
+          <h2 className="text-[11px] font-semibold tracking-widest uppercase" style={{ color: '#9B8FB5' }}>
             Base de conocimiento
           </h2>
         </div>
 
-        <div className="rounded-xl p-5 bg-white" style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}>
-          <p className="text-[12px] mb-4" style={{ color: '#6B7280' }}>
+        <div className="rounded-xl p-5 bg-white" style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}>
+          <p className="text-[12px] mb-4" style={{ color: '#6B6480' }}>
             Información extra que los bots de chat de la landing y el portal del cliente usan para responder mejor. El bot base ya tiene la información general de Centinelia; escribe aquí solo lo adicional: promociones temporales, casos de éxito, FAQs específicas.
           </p>
 
@@ -105,8 +105,8 @@ export default function ConfiguracionPage() {
                 className="px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all"
                 style={{
                   background: tab === t ? '#6C3BFF' : '#FFFFFF',
-                  color:      tab === t ? '#FAFBFF'  : '#374151',
-                  border:     `1px solid ${tab === t ? '#6C3BFF' : '#E5E7EB'}`,
+                  color:      tab === t ? '#FAFBFF'  : '#4A3B6B',
+                  border:     `1px solid ${tab === t ? '#6C3BFF' : '#E8E3F5'}`,
                 }}
               >
                 {TAB_LABELS[t]}
@@ -115,7 +115,7 @@ export default function ConfiguracionPage() {
           </div>
 
           {loading ? (
-            <div className="h-48 rounded-xl animate-pulse" style={{ background: '#F3F4F6' }} />
+            <div className="h-48 rounded-xl animate-pulse" style={{ background: '#F5F0FF' }} />
           ) : (
             <textarea
               value={values[currentKey as keyof typeof values]}
@@ -125,8 +125,8 @@ export default function ConfiguracionPage() {
               className="w-full rounded-lg p-3 text-[13px] resize-y focus:outline-none"
               style={{
                 background: '#FFFFFF',
-                border:     '1px solid #E5E7EB',
-                color:      '#111827',
+                border:     '1px solid #E8E3F5',
+                color:      '#1A0A3B',
                 fontFamily: 'inherit',
                 lineHeight: 1.6,
               }}
@@ -134,7 +134,7 @@ export default function ConfiguracionPage() {
           )}
 
           <div className="flex items-center justify-between mt-3">
-            <p className="text-[11px]" style={{ color: '#9CA3AF' }}>
+            <p className="text-[11px]" style={{ color: '#9B8FB5' }}>
               {values[currentKey as keyof typeof values]?.length ?? 0} caracteres
             </p>
             <button

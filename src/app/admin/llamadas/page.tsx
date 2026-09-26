@@ -47,9 +47,10 @@ export default async function LlamadasPage({ searchParams }: Props) {
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
       <div>
-        <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: '#111827' }}>Llamadas</h1>
-        <p className="text-[13px] mt-1.5" style={{ color: '#6B7280' }}>
-          {totalCount.toLocaleString('es-MX')} llamada{totalCount !== 1 ? 's' : ''} en total
+        <p className="text-[10px] font-bold uppercase tracking-[0.16em] mb-1" style={{ color: '#9B6DFF' }}>Bitácora</p>
+        <h1 className="text-[28px] font-bold leading-tight tracking-tight" style={{ color: '#1A0A3B' }}>Llamadas</h1>
+        <p className="text-[13px] mt-1.5" style={{ color: '#6B6480' }}>
+          {totalCount.toLocaleString('es-MX')} llamada{totalCount !== 1 ? 's' : ''} en total. Filtra por empleado, resultado o buscar por número.
         </p>
       </div>
 

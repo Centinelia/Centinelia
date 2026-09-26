@@ -85,29 +85,29 @@ export function ActivateVersionModal({ row, onClose, onSuccess }: Props) {
       className="fixed inset-0 flex items-center justify-center z-50 p-4"
       style={{ background: 'rgba(0,0,0,0.6)' }}
     >
-      <div className="rounded-lg shadow-xl max-w-md w-full" style={{ background: 'var(--c-modal)' }}>
+      <div className="rounded-lg shadow-xl max-w-md w-full" style={{ background: '#FFFFFF' }}>
         <div
           className="p-4 flex items-center justify-between"
-          style={{ borderBottom: '1px solid var(--c-border)' }}
+          style={{ borderBottom: '1px solid #E8E3F5' }}
         >
-          <h2 className="font-semibold" style={{ color: 'var(--c-text)' }}>Activar versión: {row.meerkat_id}</h2>
+          <h2 className="font-semibold" style={{ color: '#1A0A3B' }}>Activar versión: {row.meerkat_id}</h2>
           <button
             onClick={onClose}
             className="hover:opacity-80 transition-opacity"
-            style={{ color: 'var(--c-text-4)' }}
+            style={{ color: '#9B8FB5' }}
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         <div className="p-4 space-y-4">
-          <div className="text-sm" style={{ color: 'var(--c-text-2)' }}>
-            <div>Versión activa actual: <span className="font-medium" style={{ color: 'var(--c-text)' }}>v{row.active_version}</span></div>
+          <div className="text-sm" style={{ color: '#4A3B6B' }}>
+            <div>Versión activa actual: <span className="font-medium" style={{ color: '#1A0A3B' }}>v{row.active_version}</span></div>
             <div>Última activación: {new Date(row.activated_at).toLocaleString('es-MX')}</div>
           </div>
 
           <div>
-            <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--c-text-2)' }}>Nueva versión</label>
+            <label className="text-xs font-medium mb-1 block" style={{ color: '#4A3B6B' }}>Nueva versión</label>
             <select
               value={selectedVersion}
               onChange={e => {
@@ -116,7 +116,7 @@ export function ActivateVersionModal({ row, onClose, onSuccess }: Props) {
                 setVerdict(null);
               }}
               className="w-full rounded px-2 py-1.5 text-sm"
-              style={{ border: '1px solid var(--c-input-border)', background: 'var(--c-input-bg)', color: 'var(--c-text)' }}
+              style={{ border: '1px solid #E8E3F5', background: '#FFFFFF', color: '#1A0A3B' }}
             >
               {otherVersions.map(v => (
                 <option key={v} value={v}>v{v}</option>
@@ -128,29 +128,29 @@ export function ActivateVersionModal({ row, onClose, onSuccess }: Props) {
 
           <div
             className="text-sm rounded p-3"
-            style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-2)' }}
+            style={{ background: '#FAFAFB', color: '#4A3B6B' }}
           >
-            <div>Agentes que veran el cambio: <span className="font-medium" style={{ color: 'var(--c-text)' }}>{affectedAgents}</span></div>
+            <div>Agentes que veran el cambio: <span className="font-medium" style={{ color: '#1A0A3B' }}>{affectedAgents}</span></div>
             {row.pinned_count > 0 && (
-              <div className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
+              <div className="text-xs mt-1" style={{ color: '#6B6480' }}>
                 {row.pinned_count} agente(s) protegidos por pin — no reciben el cambio.
               </div>
             )}
           </div>
 
           <div>
-            <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--c-text-2)' }}>Motivo (opcional)</label>
+            <label className="text-xs font-medium mb-1 block" style={{ color: '#4A3B6B' }}>Motivo (opcional)</label>
             <input
               value={reason}
               onChange={e => setReason(e.target.value)}
               placeholder="ej. rollback por score bajo"
               className="w-full rounded px-2 py-1.5 text-sm"
-              style={{ border: '1px solid var(--c-input-border)', background: 'var(--c-input-bg)', color: 'var(--c-text)' }}
+              style={{ border: '1px solid #E8E3F5', background: '#FFFFFF', color: '#1A0A3B' }}
             />
           </div>
 
           <div className="space-y-1">
-            <label className="block text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>
+            <label className="block text-xs font-medium" style={{ color: '#4A3B6B' }}>
               Rollout inicial: <span className="font-mono">{initialPct}%</span>
             </label>
             <input
@@ -162,21 +162,21 @@ export function ActivateVersionModal({ row, onClose, onSuccess }: Props) {
               onChange={e => setInitialPct(parseInt(e.target.value, 10))}
               className="w-full"
             />
-            <p className="text-xs" style={{ color: 'var(--c-text-2)' }}>
+            <p className="text-xs" style={{ color: '#4A3B6B' }}>
               Despues puedes subirlo desde /admin/flags cuando estes a gusto.
             </p>
           </div>
 
           <div className="space-y-1">
-            <label className="block text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>Allowlist (portal_email por linea)</label>
+            <label className="block text-xs font-medium" style={{ color: '#4A3B6B' }}>Allowlist (portal_email por linea)</label>
             <textarea
               value={allowlistText}
               onChange={e => setAllowlistText(e.target.value)}
               rows={3}
               className="w-full px-3 py-2 rounded-lg text-sm font-mono"
-              style={{ background: 'var(--c-surface)', color: 'var(--c-text)', border: '1px solid var(--c-border)' }}
+              style={{ background: '#FFFFFF', color: '#1A0A3B', border: '1px solid #E8E3F5' }}
             />
-            <p className="text-xs" style={{ color: 'var(--c-text-2)' }}>
+            <p className="text-xs" style={{ color: '#4A3B6B' }}>
               Estas orgs siempre reciben la nueva version aunque el hash caiga off. Util para dogfooding.
             </p>
           </div>
@@ -192,7 +192,7 @@ export function ActivateVersionModal({ row, onClose, onSuccess }: Props) {
                 placeholder="ej. rollback urgente por incidente. Se que degrada."
                 rows={3}
                 className="w-full rounded px-2 py-1.5 text-sm"
-                style={{ border: '1px solid rgba(239,68,68,0.5)', background: 'var(--c-input-bg)', color: 'var(--c-text)' }}
+                style={{ border: '1px solid rgba(239,68,68,0.5)', background: '#FFFFFF', color: '#1A0A3B' }}
               />
             </div>
           )}
@@ -209,13 +209,13 @@ export function ActivateVersionModal({ row, onClose, onSuccess }: Props) {
 
         <div
           className="p-4 flex justify-end gap-2"
-          style={{ borderTop: '1px solid var(--c-border)' }}
+          style={{ borderTop: '1px solid #E8E3F5' }}
         >
           <button
             onClick={onClose}
             disabled={submitting}
             className="px-3 py-1.5 text-sm rounded hover:opacity-80 transition-opacity"
-            style={{ color: 'var(--c-text-2)' }}
+            style={{ color: '#4A3B6B' }}
           >
             Cancelar
           </button>

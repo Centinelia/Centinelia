@@ -32,9 +32,9 @@ const OUTCOMES: { value: string; label: string; color?: string }[] = [
   { value: 'appointment_booked',   label: 'Cita',         color: '#3B82F6' },
   { value: 'order_taken',          label: 'Pedido',       color: '#F59E0B' },
   { value: 'transferred',          label: 'Transferido',  color: '#8B5CF6' },
-  { value: 'info_provided',        label: 'Información',  color: '#6B7280' },
+  { value: 'info_provided',        label: 'Información',  color: '#6B6480' },
   { value: 'escalated_whatsapp',   label: 'WhatsApp',     color: '#25D366' },
-  { value: 'other',                label: 'Otro',         color: '#4B5563' },
+  { value: 'other',                label: 'Otro',         color: '#4A3B6B' },
 ];
 
 const OUTCOME_MAP = Object.fromEntries(OUTCOMES.map(o => [o.value, o]));
@@ -102,7 +102,7 @@ function AgentCombobox({
         <Phone
           size={13}
           className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-          style={{ color: '#9CA3AF' }}
+          style={{ color: '#9B8FB5' }}
         />
         <input
           ref={inputRef}
@@ -112,7 +112,7 @@ function AgentCombobox({
           placeholder="Filtrar por empleado..."
           disabled={pending}
           className="w-full pl-8 pr-3 py-2 rounded-lg text-[13px] outline-none"
-          style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#111827' }}
+          style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
         />
       </div>
 
@@ -120,7 +120,7 @@ function AgentCombobox({
         <div
           className="absolute z-50 top-full mt-1.5 left-0 right-0 rounded-lg overflow-hidden bg-white"
           style={{
-            border: '1px solid #E5E7EB',
+            border: '1px solid #E8E3F5',
             boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.08)',
             minWidth: '200px',
           }}
@@ -130,7 +130,7 @@ function AgentCombobox({
               key={a.id}
               onClick={() => { onSelect(a.id); setQuery(''); setOpen(false); }}
               className="w-full text-left px-3 py-2.5 text-[13px] transition-colors hover:bg-gray-50"
-              style={{ color: '#111827' }}
+              style={{ color: '#1A0A3B' }}
             >
               {a.business_name}
             </button>
@@ -142,9 +142,9 @@ function AgentCombobox({
         <div
           className="absolute z-50 top-full mt-1.5 left-0 right-0 rounded-lg bg-white px-3 py-3 text-[12px]"
           style={{
-            border: '1px solid #E5E7EB',
+            border: '1px solid #E8E3F5',
             boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.08)',
-            color: '#6B7280',
+            color: '#6B6480',
           }}
         >
           Sin resultados para &ldquo;{query}&rdquo;
@@ -158,7 +158,7 @@ function AgentCombobox({
 
 function OutcomeBadge({ outcome }: { outcome: string }) {
   const o = OUTCOME_MAP[outcome] ?? OUTCOME_MAP.other;
-  const c = o?.color ?? '#4B5563';
+  const c = o?.color ?? '#4A3B6B';
   return (
     <span
       className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[12px] font-medium flex-shrink-0"
@@ -178,7 +178,7 @@ function CopyButton({ text, title }: { text: string; title?: string }) {
       onClick={async () => { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
       title={title ?? 'Copiar'}
       className="p-1 rounded transition-colors hover:bg-gray-100"
-      style={{ color: copied ? '#10B981' : '#6B7280' }}
+      style={{ color: copied ? '#10B981' : '#6B6480' }}
     >
       {copied ? <Check size={12} /> : <Copy size={12} />}
     </button>
@@ -194,7 +194,7 @@ function FlatCallRow({ call, agentName, timezone }: { call: VoiceCall; agentName
   return (
     <div
       className="rounded-xl overflow-hidden bg-white"
-      style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+      style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
     >
       {/* Row header */}
       <div
@@ -203,10 +203,10 @@ function FlatCallRow({ call, agentName, timezone }: { call: VoiceCall; agentName
       >
         {/* Caller + agent */}
         <div className="flex-1 min-w-0">
-          <div className="text-[13px] font-medium truncate" style={{ color: '#111827' }}>
+          <div className="text-[13px] font-medium truncate" style={{ color: '#1A0A3B' }}>
             {call.caller_number || 'Desconocido'}
           </div>
-          <div className="text-[12px] truncate mt-0.5" style={{ color: '#6B7280' }}>
+          <div className="text-[12px] truncate mt-0.5" style={{ color: '#6B6480' }}>
             {agentName}
           </div>
         </div>
@@ -216,10 +216,10 @@ function FlatCallRow({ call, agentName, timezone }: { call: VoiceCall; agentName
           {call.recording_url && <span title="Tiene grabación"><Mic size={12} style={{ color: '#8B5CF6' }} /></span>}
           {call.transcript    && <span title="Tiene transcripción"><FileText size={12} style={{ color: '#3B82F6' }} /></span>}
           <OutcomeBadge outcome={call.outcome} />
-          <span className="text-[12px] tabular-nums hidden sm:block" style={{ color: '#374151' }}>
+          <span className="text-[12px] tabular-nums hidden sm:block" style={{ color: '#4A3B6B' }}>
             {Math.ceil(call.duration_seconds / 60)} min
           </span>
-          <span className="text-[12px] hidden md:block tabular-nums" style={{ color: '#9CA3AF' }}>
+          <span className="text-[12px] hidden md:block tabular-nums" style={{ color: '#9B8FB5' }}>
             {new Date(call.created_at).toLocaleString('es-MX', {
               timeZone: timezone,
               month: 'short', day: 'numeric',
@@ -228,25 +228,25 @@ function FlatCallRow({ call, agentName, timezone }: { call: VoiceCall; agentName
           </span>
           {hasDetails && (
             open
-              ? <ChevronUp  size={13} style={{ color: '#9CA3AF' }} />
-              : <ChevronDown size={13} style={{ color: '#9CA3AF' }} />
+              ? <ChevronUp  size={13} style={{ color: '#9B8FB5' }} />
+              : <ChevronDown size={13} style={{ color: '#9B8FB5' }} />
           )}
         </div>
       </div>
 
       {/* Expanded details */}
       {open && hasDetails && (
-        <div className="px-4 pb-4 flex flex-col gap-3" style={{ borderTop: '1px solid #F3F4F6' }}>
+        <div className="px-4 pb-4 flex flex-col gap-3" style={{ borderTop: '1px solid #F5F0FF' }}>
           {call.summary && (
             <div className="pt-3">
-              <div className="text-[11px] uppercase tracking-wider font-medium mb-1.5" style={{ color: '#9CA3AF' }}>Resumen</div>
-              <p className="text-[12px] leading-relaxed" style={{ color: '#374151' }}>{call.summary}</p>
+              <div className="text-[11px] uppercase tracking-wider font-medium mb-1.5" style={{ color: '#9B8FB5' }}>Resumen</div>
+              <p className="text-[12px] leading-relaxed" style={{ color: '#4A3B6B' }}>{call.summary}</p>
             </div>
           )}
 
           {call.recording_url && (
             <div>
-              <div className="text-[11px] uppercase tracking-wider font-medium mb-1.5" style={{ color: '#9CA3AF' }}>Grabación</div>
+              <div className="text-[11px] uppercase tracking-wider font-medium mb-1.5" style={{ color: '#9B8FB5' }}>Grabación</div>
               <div className="flex items-center gap-2">
                 <audio controls src={`/api/admin/recording/${call.id}`} className="w-full h-8" style={{ accentColor: '#8B5CF6' }} />
                 <a
@@ -255,7 +255,7 @@ function FlatCallRow({ call, agentName, timezone }: { call: VoiceCall; agentName
                   rel="noopener noreferrer"
                   title="Abrir en nueva pestaña"
                   className="flex-shrink-0 p-1.5 rounded hover:bg-gray-100 transition-colors"
-                  style={{ color: '#374151' }}
+                  style={{ color: '#4A3B6B' }}
                 >
                   <ExternalLink size={13} />
                 </a>
@@ -266,7 +266,7 @@ function FlatCallRow({ call, agentName, timezone }: { call: VoiceCall; agentName
           {call.transcript && (
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <div className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#9CA3AF' }}>Transcripción</div>
+                <div className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#9B8FB5' }}>Transcripción</div>
                 <CopyButton text={call.transcript} title="Copiar transcripción" />
               </div>
               <TranscriptView transcript={call.transcript} agentName={agentName} maxHeight={192} />
@@ -324,7 +324,7 @@ export default function LlamadasClient({
             <Search
               size={13}
               className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-              style={{ color: '#9CA3AF' }}
+              style={{ color: '#9B8FB5' }}
             />
             <input
               value={phoneInput}
@@ -333,7 +333,7 @@ export default function LlamadasClient({
               onBlur={commitSearch}
               placeholder="Buscar por número... (Enter)"
               className="w-full pl-8 pr-3 py-2 rounded-lg text-[13px] outline-none"
-              style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#111827' }}
+              style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
             />
           </div>
 
@@ -360,8 +360,8 @@ export default function LlamadasClient({
                 className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[12px] font-medium transition-all whitespace-nowrap"
                 style={{
                   background: active ? `${c}14` : '#FFFFFF',
-                  color:      active ? c        : '#6B7280',
-                  border:     `1px solid ${active ? `${c}30` : '#E5E7EB'}`,
+                  color:      active ? c        : '#6B6480',
+                  border:     `1px solid ${active ? `${c}30` : '#E8E3F5'}`,
                 }}
               >
                 {o.label}
@@ -373,7 +373,7 @@ export default function LlamadasClient({
             <button
               onClick={clearAll}
               className="inline-flex items-center gap-1 ml-auto text-[12px] font-medium px-2.5 py-1 rounded-lg transition-colors hover:bg-gray-50"
-              style={{ color: '#374151', border: '1px solid #E5E7EB', background: '#FFFFFF' }}
+              style={{ color: '#4A3B6B', border: '1px solid #E8E3F5', background: '#FFFFFF' }}
             >
               <X size={11} /> Limpiar filtros
             </button>
@@ -381,7 +381,7 @@ export default function LlamadasClient({
         </div>
 
         {/* Result count */}
-        <p className="text-[12px]" style={{ color: '#6B7280' }}>
+        <p className="text-[12px]" style={{ color: '#6B6480' }}>
           {hasFilters
             ? `${totalCount.toLocaleString('es-MX')} resultado${totalCount !== 1 ? 's' : ''}`
             : `${totalCount.toLocaleString('es-MX')} llamada${totalCount !== 1 ? 's' : ''} en total`}
@@ -393,10 +393,10 @@ export default function LlamadasClient({
       {calls.length === 0 ? (
         <div
           className="p-12 rounded-xl text-center bg-white"
-          style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+          style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
         >
-          <Phone size={28} className="mx-auto mb-3" style={{ color: '#D1D5DB' }} />
-          <p className="text-[13px]" style={{ color: '#6B7280' }}>
+          <Phone size={28} className="mx-auto mb-3" style={{ color: '#B9B0CF' }} />
+          <p className="text-[13px]" style={{ color: '#6B6480' }}>
             {hasFilters ? 'Sin resultados para los filtros aplicados' : 'Sin llamadas registradas aún'}
           </p>
         </div>

@@ -85,21 +85,21 @@ export default function ApprovalsClient({ initialPending, initialDecided }: Prop
       {/* Pendientes */}
       <section>
         <div className="flex items-baseline justify-between mb-4">
-          <h2 className="text-[15px] font-semibold" style={{ color: '#111827' }}>
+          <h2 className="text-[15px] font-semibold" style={{ color: '#1A0A3B' }}>
             Pendientes
           </h2>
-          <span className="text-[12px] uppercase tracking-wider font-medium" style={{ color: '#9CA3AF' }}>
+          <span className="text-[12px] uppercase tracking-wider font-medium" style={{ color: '#9B8FB5' }}>
             {pending.length}
           </span>
         </div>
         {pending.length === 0 ? (
           <div
             className="p-8 text-center rounded-xl bg-white"
-            style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+            style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
           >
             <CheckCircle2 size={20} style={{ color: '#10B981', margin: '0 auto 8px' }} />
-            <p className="text-[13px]" style={{ color: '#374151' }}>Sin aprobaciones pendientes.</p>
-            <p className="text-[12px] mt-1" style={{ color: '#9CA3AF' }}>
+            <p className="text-[13px]" style={{ color: '#4A3B6B' }}>Sin aprobaciones pendientes.</p>
+            <p className="text-[12px] mt-1" style={{ color: '#9B8FB5' }}>
               Aparecerán aquí cuando alguien solicite una acción destructiva.
             </p>
           </div>
@@ -117,22 +117,22 @@ export default function ApprovalsClient({ initialPending, initialDecided }: Prop
           className="flex items-center gap-2 mb-4 transition-opacity hover:opacity-80"
           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
         >
-          <h2 className="text-[15px] font-semibold" style={{ color: '#111827' }}>
+          <h2 className="text-[15px] font-semibold" style={{ color: '#1A0A3B' }}>
             Historial
           </h2>
-          <span className="text-[12px] uppercase tracking-wider font-medium" style={{ color: '#9CA3AF' }}>
+          <span className="text-[12px] uppercase tracking-wider font-medium" style={{ color: '#9B8FB5' }}>
             {decided.length}
           </span>
-          {showHistory ? <ChevronUp size={14} style={{ color: '#6B7280' }} /> : <ChevronDown size={14} style={{ color: '#6B7280' }} />}
+          {showHistory ? <ChevronUp size={14} style={{ color: '#6B6480' }} /> : <ChevronDown size={14} style={{ color: '#6B6480' }} />}
         </button>
         {showHistory && (
           <div
             className="rounded-xl overflow-hidden bg-white"
-            style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+            style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
           >
             {decided.length === 0 ? (
               <div className="p-8 text-center">
-                <p className="text-[13px]" style={{ color: '#6B7280' }}>Sin decisiones aún.</p>
+                <p className="text-[13px]" style={{ color: '#6B6480' }}>Sin decisiones aún.</p>
               </div>
             ) : (
               decided.map((a, i) => <DecidedRow key={a.id} approval={a} isFirst={i === 0} />)
@@ -146,14 +146,14 @@ export default function ApprovalsClient({ initialPending, initialDecided }: Prop
 
 function ApprovalCard({ approval, onDecide, busy }: { approval: Approval; onDecide: (id: string, approve: boolean) => void; busy: boolean }) {
   const label = TYPE_LABEL[approval.type] ?? approval.type;
-  const color = TYPE_COLOR[approval.type] ?? '#6B7280';
+  const color = TYPE_COLOR[approval.type] ?? '#6B6480';
   const anyFailed = approval.checks.some(c => !c.passed);
 
   return (
     <div
       className="rounded-xl bg-white overflow-hidden"
       style={{
-        border: `1px solid ${anyFailed ? '#FECACA' : '#E5E7EB'}`,
+        border: `1px solid ${anyFailed ? '#FECACA' : '#E8E3F5'}`,
         boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)',
       }}
     >
@@ -170,19 +170,19 @@ function ApprovalCard({ approval, onDecide, busy }: { approval: Approval; onDeci
                 {label}
               </span>
               {approval.amount != null && (
-                <span className="text-[15px] font-semibold tabular-nums" style={{ color: '#111827' }}>
+                <span className="text-[15px] font-semibold tabular-nums" style={{ color: '#1A0A3B' }}>
                   {approval.amount}
                 </span>
               )}
             </div>
-            <p className="text-[14px] font-semibold" style={{ color: '#111827' }}>{approval.title}</p>
+            <p className="text-[14px] font-semibold" style={{ color: '#1A0A3B' }}>{approval.title}</p>
             {approval.target_email && (
-              <p className="text-[12px] mt-0.5" style={{ color: '#6B7280' }}>
+              <p className="text-[12px] mt-0.5" style={{ color: '#6B6480' }}>
                 {approval.target_email}
               </p>
             )}
           </div>
-          <div className="flex items-center gap-1 text-[12px] flex-shrink-0" style={{ color: '#9CA3AF' }}>
+          <div className="flex items-center gap-1 text-[12px] flex-shrink-0" style={{ color: '#9B8FB5' }}>
             <Clock size={11} />
             {relativeTime(approval.created_at)}
           </div>
@@ -192,7 +192,7 @@ function ApprovalCard({ approval, onDecide, busy }: { approval: Approval; onDeci
         {approval.rationale && (
           <div
             className="mb-3 px-3 py-2 rounded-lg text-[12px]"
-            style={{ background: '#F9FAFB', color: '#4B5563' }}
+            style={{ background: '#FAFAFB', color: '#4A3B6B' }}
           >
             {approval.rationale}
           </div>
@@ -228,8 +228,8 @@ function ApprovalCard({ approval, onDecide, busy }: { approval: Approval; onDeci
             className="flex items-center justify-center gap-1.5 py-2 px-4 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-50"
             style={{
               background: '#FFFFFF',
-              color:      '#374151',
-              border:     '1px solid #E5E7EB',
+              color:      '#4A3B6B',
+              border:     '1px solid #E8E3F5',
               cursor:     busy ? 'not-allowed' : 'pointer',
               opacity:    busy ? 0.5 : 1,
             }}
@@ -245,13 +245,13 @@ function ApprovalCard({ approval, onDecide, busy }: { approval: Approval; onDeci
 
 function CheckRow({ check }: { check: PolicyCheck }) {
   return (
-    <div className="flex items-start gap-2 text-[12px]" style={{ color: '#4B5563' }}>
+    <div className="flex items-start gap-2 text-[12px]" style={{ color: '#4A3B6B' }}>
       {check.passed
         ? <CheckCircle2 size={12} style={{ color: '#10B981', flexShrink: 0, marginTop: 2 }} />
         : <XCircle    size={12} style={{ color: '#EF4444', flexShrink: 0, marginTop: 2 }} />}
       <div>
-        <span className="font-mono text-[11px]" style={{ color: '#9CA3AF' }}>{check.name}</span>
-        <span style={{ color: '#9CA3AF' }}> · </span>
+        <span className="font-mono text-[11px]" style={{ color: '#9B8FB5' }}>{check.name}</span>
+        <span style={{ color: '#9B8FB5' }}> · </span>
         <span>{check.detail}</span>
       </div>
     </div>
@@ -267,18 +267,18 @@ function DecidedRow({ approval, isFirst }: { approval: Approval; isFirst: boolea
       className="grid gap-3 px-5 py-2.5 text-[13px] transition-colors hover:bg-gray-50 items-center"
       style={{
         gridTemplateColumns: '20px 1fr auto',
-        borderTop: !isFirst ? '1px solid #F3F4F6' : undefined,
+        borderTop: !isFirst ? '1px solid #F5F0FF' : undefined,
       }}
     >
       {isApproved
         ? <CheckCircle2 size={14} style={{ color, flexShrink: 0 }} />
         : <XCircle    size={14} style={{ color, flexShrink: 0 }} />}
       <div className="min-w-0 truncate">
-        <span className="font-medium" style={{ color: '#111827' }}>{label}</span>
-        <span className="mx-1.5" style={{ color: '#D1D5DB' }}>·</span>
-        <span style={{ color: '#6B7280' }}>{approval.title}</span>
+        <span className="font-medium" style={{ color: '#1A0A3B' }}>{label}</span>
+        <span className="mx-1.5" style={{ color: '#B9B0CF' }}>·</span>
+        <span style={{ color: '#6B6480' }}>{approval.title}</span>
       </div>
-      <div className="text-[12px] flex-shrink-0" style={{ color: '#9CA3AF' }}>
+      <div className="text-[12px] flex-shrink-0" style={{ color: '#9B8FB5' }}>
         {isApproved ? 'aprobado' : 'rechazado'} {relativeTime(approval.decided_at)}
       </div>
     </div>

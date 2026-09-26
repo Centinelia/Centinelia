@@ -114,17 +114,17 @@ export default function NekaTestEmailPage() {
       <Link
         href="/admin/staff/neka"
         className="inline-flex items-center gap-1.5 text-xs mb-4 hover:opacity-70 transition-opacity"
-        style={{ color: 'var(--c-text-3)' }}
+        style={{ color: '#6B6480' }}
       >
         <ArrowLeft size={12} />
         Volver a config
       </Link>
 
       <header className="mb-6">
-        <h1 className="text-xl font-bold" style={{ color: 'var(--c-text)' }}>
+        <h1 className="text-xl font-bold" style={{ color: '#1A0A3B' }}>
           Probar procesamiento de correo
         </h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--c-text-3)' }}>
+        <p className="text-sm mt-1" style={{ color: '#6B6480' }}>
           Simula un correo entrante a hola@centinelia.mx. Neka clasifica si es fiscal, y si sí, ejecuta sus tools.
           Los correos no-fiscales no los toca (retorna <code>skipped</code>).
         </p>
@@ -134,9 +134,9 @@ export default function NekaTestEmailPage() {
         {/* Input */}
         <section
           className="rounded-2xl p-5"
-          style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+          style={{ background: '#FFFFFF', border: '1px solid #E8E3F5' }}
         >
-          <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--c-text)' }}>
+          <h2 className="text-sm font-semibold mb-3" style={{ color: '#1A0A3B' }}>
             Correo entrante
           </h2>
 
@@ -154,7 +154,7 @@ export default function NekaTestEmailPage() {
                 onChange={e => setFrom(e.target.value)}
                 placeholder="cliente@dominio.com"
                 className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-                style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+                style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
               />
             </Field>
             <Field label="Asunto">
@@ -164,7 +164,7 @@ export default function NekaTestEmailPage() {
                 onChange={e => setSubject(e.target.value)}
                 placeholder="Necesito factura / Comprobante SPEI / etc"
                 className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-                style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+                style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
               />
             </Field>
             <Field label="Cuerpo">
@@ -174,14 +174,14 @@ export default function NekaTestEmailPage() {
                 rows={10}
                 placeholder="Contenido del correo…"
                 className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-y"
-                style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)', fontFamily: 'inherit', lineHeight: 1.5 }}
+                style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B', fontFamily: 'inherit', lineHeight: 1.5 }}
               />
             </Field>
           </div>
 
           {/* Options */}
-          <div className="mt-4 pt-4 space-y-2" style={{ borderTop: '1px solid var(--c-border)' }}>
-            <label className="flex items-center gap-2 text-xs cursor-pointer" style={{ color: 'var(--c-text-2)' }}>
+          <div className="mt-4 pt-4 space-y-2" style={{ borderTop: '1px solid #E8E3F5' }}>
+            <label className="flex items-center gap-2 text-xs cursor-pointer" style={{ color: '#4A3B6B' }}>
               <input
                 type="radio"
                 checked={mode === 'process'}
@@ -189,7 +189,7 @@ export default function NekaTestEmailPage() {
               />
               <span>Procesar completo (Neka ejecuta tools + genera respuesta)</span>
             </label>
-            <label className="flex items-center gap-2 text-xs cursor-pointer" style={{ color: 'var(--c-text-2)' }}>
+            <label className="flex items-center gap-2 text-xs cursor-pointer" style={{ color: '#4A3B6B' }}>
               <input
                 type="radio"
                 checked={mode === 'classify'}
@@ -198,7 +198,7 @@ export default function NekaTestEmailPage() {
               <span>Solo clasificar (¿es fiscal o no?)</span>
             </label>
             {mode === 'process' && (
-              <label className="flex items-center gap-2 text-xs cursor-pointer pt-1" style={{ color: 'var(--c-text-2)' }}>
+              <label className="flex items-center gap-2 text-xs cursor-pointer pt-1" style={{ color: '#4A3B6B' }}>
                 <input
                   type="checkbox"
                   checked={sendReply}
@@ -225,18 +225,18 @@ export default function NekaTestEmailPage() {
         {/* Output */}
         <section
           className="rounded-2xl p-5"
-          style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+          style={{ background: '#FFFFFF', border: '1px solid #E8E3F5' }}
         >
-          <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--c-text)' }}>Resultado</h2>
+          <h2 className="text-sm font-semibold mb-3" style={{ color: '#1A0A3B' }}>Resultado</h2>
 
           {!result && !error && !loading && (
-            <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+            <p className="text-xs" style={{ color: '#6B6480' }}>
               Aún no has procesado nada. Pega un correo (o usa un preset) y dale a Procesar.
             </p>
           )}
 
           {loading && (
-            <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--c-text-3)' }}>
+            <div className="flex items-center gap-2 text-xs" style={{ color: '#6B6480' }}>
               <Loader2 size={12} className="animate-spin" />
               Corriendo…
             </div>
@@ -264,7 +264,7 @@ export default function NekaTestEmailPage() {
                 <>
                   {result.events && result.events.length > 0 && (
                     <div>
-                      <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--c-text-4)' }}>
+                      <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: '#9B8FB5' }}>
                         Ejecución
                       </p>
                       <div className="space-y-2">
@@ -274,7 +274,7 @@ export default function NekaTestEmailPage() {
                   )}
                   {result.replyText && (
                     <div>
-                      <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--c-text-4)' }}>
+                      <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: '#9B8FB5' }}>
                         Respuesta a {isProcess(result) ? 'remitente' : ''}
                         {result.replySent && (
                           <span className="ml-2 text-[10px] inline-flex items-center gap-1" style={{ color: '#15803d' }}>
@@ -289,7 +289,7 @@ export default function NekaTestEmailPage() {
                       </p>
                       <div
                         className="rounded-lg p-3 text-xs whitespace-pre-wrap"
-                        style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.2)', color: 'var(--c-text)' }}
+                        style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.2)', color: '#1A0A3B' }}
                       >
                         {result.replyText}
                       </div>
@@ -300,7 +300,7 @@ export default function NekaTestEmailPage() {
 
               {isProcess(result) && !result.fiscal && (
                 <div className="rounded-lg p-3 text-xs flex items-start gap-2"
-                     style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.2)', color: 'var(--c-text-2)' }}>
+                     style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.2)', color: '#4A3B6B' }}>
                   <Filter size={12} className="mt-0.5 flex-shrink-0" style={{ color: '#6C3BFF' }} />
                   <span>Correo <strong>no fiscal</strong>. Neka no lo toca.</span>
                 </div>
@@ -316,7 +316,7 @@ export default function NekaTestEmailPage() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--c-text-4)' }}>
+      <label className="block text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: '#9B8FB5' }}>
         {label}
       </label>
       {children}
@@ -343,7 +343,7 @@ function ClassificationBox({ r }: { r: ClassifyResult }) {
       style={{
         background: r.fiscal ? 'rgba(34,197,94,0.08)' : 'rgba(108,59,255,0.06)',
         border: `1px solid ${r.fiscal ? 'rgba(34,197,94,0.3)' : 'rgba(108,59,255,0.2)'}`,
-        color: 'var(--c-text-2)',
+        color: '#4A3B6B',
       }}
     >
       <div className="flex items-center gap-2 mb-1">
@@ -357,7 +357,7 @@ function ClassificationBox({ r }: { r: ClassifyResult }) {
       </div>
       <p>{r.reason}</p>
       {r.matchedKeywords.length > 0 && (
-        <p className="mt-1 text-[10px]" style={{ color: 'var(--c-text-3)' }}>
+        <p className="mt-1 text-[10px]" style={{ color: '#6B6480' }}>
           Keywords: {r.matchedKeywords.slice(0, 8).join(', ')}
           {r.matchedKeywords.length > 8 ? ` +${r.matchedKeywords.length - 8}` : ''}
         </p>
@@ -369,7 +369,7 @@ function ClassificationBox({ r }: { r: ClassifyResult }) {
 function EventBubble({ ev }: { ev: ProcessEvent }) {
   if (ev.kind === 'text' && ev.text) {
     return (
-      <div className="rounded-lg p-2.5 text-xs" style={{ background: 'rgba(0,0,0,0.03)', color: 'var(--c-text-2)' }}>
+      <div className="rounded-lg p-2.5 text-xs" style={{ background: 'rgba(0,0,0,0.03)', color: '#4A3B6B' }}>
         {ev.text}
       </div>
     );
@@ -377,12 +377,12 @@ function EventBubble({ ev }: { ev: ProcessEvent }) {
   if (ev.kind === 'tool_call' && ev.name) {
     return (
       <div className="rounded-lg p-2.5 text-[11px] flex items-start gap-2"
-           style={{ background: 'rgba(108,59,255,0.06)', border: '1px dashed rgba(108,59,255,0.35)', color: 'var(--c-text-2)' }}>
+           style={{ background: 'rgba(108,59,255,0.06)', border: '1px dashed rgba(108,59,255,0.35)', color: '#4A3B6B' }}>
         <Wrench size={11} className="mt-0.5 flex-shrink-0" style={{ color: '#6C3BFF' }} />
         <div className="min-w-0 flex-1">
           <p className="font-semibold" style={{ color: '#6C3BFF' }}>Tool: <code>{ev.name}</code></p>
           <details className="mt-1">
-            <summary className="cursor-pointer" style={{ color: 'var(--c-text-3)' }}>ver payload</summary>
+            <summary className="cursor-pointer" style={{ color: '#6B6480' }}>ver payload</summary>
             <pre className="text-[10px] mt-1 overflow-x-auto p-2 rounded" style={{ background: 'rgba(0,0,0,0.05)' }}>{JSON.stringify(ev.input, null, 2)}</pre>
           </details>
         </div>
@@ -397,7 +397,7 @@ function EventBubble({ ev }: { ev: ProcessEvent }) {
            style={{
              background: ok ? 'rgba(34,197,94,0.06)' : 'rgba(239,68,68,0.06)',
              border: `1px solid ${ok ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
-             color: 'var(--c-text-2)',
+             color: '#4A3B6B',
            }}>
         {ok
           ? <CheckCircle2 size={11} className="mt-0.5 flex-shrink-0" style={{ color: '#15803d' }} />
@@ -409,7 +409,7 @@ function EventBubble({ ev }: { ev: ProcessEvent }) {
           </p>
           {uuid && <p className="font-mono text-[10px] mt-0.5">UUID: {uuid}</p>}
           <details className="mt-1">
-            <summary className="cursor-pointer" style={{ color: 'var(--c-text-3)' }}>ver detalle</summary>
+            <summary className="cursor-pointer" style={{ color: '#6B6480' }}>ver detalle</summary>
             <pre className="text-[10px] mt-1 overflow-x-auto p-2 rounded" style={{ background: 'rgba(0,0,0,0.05)' }}>{JSON.stringify(ev.result, null, 2)}</pre>
           </details>
         </div>

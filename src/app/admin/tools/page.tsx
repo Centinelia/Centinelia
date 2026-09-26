@@ -15,7 +15,7 @@ const CHANNEL_COLORS: Record<string, { bg: string; fg: string; border: string }>
 };
 
 function ChannelPill({ channel }: { channel: string }) {
-  const c = CHANNEL_COLORS[channel] ?? { bg: '#F3F4F6', fg: '#4B5563', border: '#E5E7EB' };
+  const c = CHANNEL_COLORS[channel] ?? { bg: '#F5F0FF', fg: '#4A3B6B', border: '#E8E3F5' };
   return (
     <span
       className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium"
@@ -38,10 +38,10 @@ export default async function ToolsRegistryPage() {
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
       <div>
-        <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: '#111827' }}>
+        <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: '#1A0A3B' }}>
           Tools registry
         </h1>
-        <p className="text-[13px] mt-1.5" style={{ color: '#6B7280' }}>
+        <p className="text-[13px] mt-1.5" style={{ color: '#6B6480' }}>
           {TOOL_REGISTRY.length} tools. Fuente de verdad para debugging y documentación.
         </p>
       </div>
@@ -67,28 +67,28 @@ export default async function ToolsRegistryPage() {
       {Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b)).map(([cat, tools]) => (
         <section key={cat}>
           <div className="flex items-baseline justify-between mb-3">
-            <h2 className="text-[15px] font-semibold" style={{ color: '#111827' }}>
+            <h2 className="text-[15px] font-semibold" style={{ color: '#1A0A3B' }}>
               {cat}
             </h2>
-            <span className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#9CA3AF' }}>
+            <span className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#9B8FB5' }}>
               {tools.length} tool{tools.length !== 1 ? 's' : ''}
             </span>
           </div>
           <div
             className="rounded-xl overflow-hidden bg-white"
-            style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+            style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
           >
             <table className="w-full text-[13px]">
-              <thead style={{ background: '#F9FAFB' }}>
+              <thead style={{ background: '#FAFAFB' }}>
                 <tr>
-                  <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wider font-medium" style={{ color: '#6B7280' }}>Tool</th>
-                  <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wider font-medium" style={{ color: '#6B7280' }}>Descripción</th>
-                  <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wider font-medium" style={{ color: '#6B7280' }}>Canales</th>
-                  <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wider font-medium" style={{ color: '#6B7280' }}>Meerkats</th>
-                  <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wider font-medium" style={{ color: '#6B7280' }}>Feature</th>
-                  <th className="text-right px-4 py-3 text-[11px] uppercase tracking-wider font-medium" style={{ color: '#6B7280' }}>Retries</th>
-                  <th className="text-right px-4 py-3 text-[11px] uppercase tracking-wider font-medium" style={{ color: '#6B7280' }}>Timeout</th>
-                  <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wider font-medium" style={{ color: '#6B7280' }}>Verify</th>
+                  <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wider font-medium" style={{ color: '#6B6480' }}>Tool</th>
+                  <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wider font-medium" style={{ color: '#6B6480' }}>Descripción</th>
+                  <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wider font-medium" style={{ color: '#6B6480' }}>Canales</th>
+                  <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wider font-medium" style={{ color: '#6B6480' }}>Meerkats</th>
+                  <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wider font-medium" style={{ color: '#6B6480' }}>Feature</th>
+                  <th className="text-right px-4 py-3 text-[11px] uppercase tracking-wider font-medium" style={{ color: '#6B6480' }}>Retries</th>
+                  <th className="text-right px-4 py-3 text-[11px] uppercase tracking-wider font-medium" style={{ color: '#6B6480' }}>Timeout</th>
+                  <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wider font-medium" style={{ color: '#6B6480' }}>Verify</th>
                 </tr>
               </thead>
               <tbody>
@@ -96,11 +96,11 @@ export default async function ToolsRegistryPage() {
                   <tr
                     key={t.name}
                     className="transition-colors hover:bg-gray-50"
-                    style={{ borderTop: i > 0 ? '1px solid #F3F4F6' : undefined }}
+                    style={{ borderTop: i > 0 ? '1px solid #F5F0FF' : undefined }}
                   >
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-1.5">
-                        <span className="font-mono text-[13px] font-medium" style={{ color: '#111827' }}>{t.name}</span>
+                        <span className="font-mono text-[13px] font-medium" style={{ color: '#1A0A3B' }}>{t.name}</span>
                         {t.destructive && (
                           <span
                             className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide"
@@ -112,7 +112,7 @@ export default async function ToolsRegistryPage() {
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-2.5" style={{ color: '#4B5563' }}>{t.description}</td>
+                    <td className="px-4 py-2.5" style={{ color: '#4A3B6B' }}>{t.description}</td>
                     <td className="px-4 py-2.5">
                       <span className="inline-flex flex-wrap gap-1">
                         {t.channels.map(ch => (
@@ -120,24 +120,24 @@ export default async function ToolsRegistryPage() {
                         ))}
                       </span>
                     </td>
-                    <td className="px-4 py-2.5 text-[12px]" style={{ color: '#6B7280' }}>
-                      {t.gatedByRole?.join(', ') ?? <span style={{ color: '#9CA3AF' }}>—</span>}
+                    <td className="px-4 py-2.5 text-[12px]" style={{ color: '#6B6480' }}>
+                      {t.gatedByRole?.join(', ') ?? <span style={{ color: '#9B8FB5' }}>—</span>}
                     </td>
                     <td className="px-4 py-2.5 text-[12px]">
                       {t.gatedByFeature ? (
                         <code
                           className="font-mono text-[11px] px-1.5 py-0.5 rounded"
-                          style={{ background: '#F3F4F6', color: '#111827' }}
+                          style={{ background: '#F5F0FF', color: '#1A0A3B' }}
                         >
                           {t.gatedByFeature}
                         </code>
                       ) : (
-                        <span style={{ color: '#9CA3AF' }}>—</span>
+                        <span style={{ color: '#9B8FB5' }}>—</span>
                       )}
                     </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums" style={{ color: '#111827' }}>{t.policy.maxAttempts}</td>
-                    <td className="px-4 py-2.5 text-right tabular-nums" style={{ color: '#111827' }}>{(t.policy.timeoutMs / 1000).toFixed(0)}s</td>
-                    <td className="px-4 py-2.5 text-[12px]" style={{ color: '#6B7280' }}>{t.policy.verifyStrategy}</td>
+                    <td className="px-4 py-2.5 text-right tabular-nums" style={{ color: '#1A0A3B' }}>{t.policy.maxAttempts}</td>
+                    <td className="px-4 py-2.5 text-right tabular-nums" style={{ color: '#1A0A3B' }}>{(t.policy.timeoutMs / 1000).toFixed(0)}s</td>
+                    <td className="px-4 py-2.5 text-[12px]" style={{ color: '#6B6480' }}>{t.policy.verifyStrategy}</td>
                   </tr>
                 ))}
               </tbody>
@@ -146,8 +146,8 @@ export default async function ToolsRegistryPage() {
         </section>
       ))}
 
-      <p className="text-[12px] flex items-center gap-1.5" style={{ color: '#6B7280' }}>
-        <Wrench size={12} style={{ color: '#9CA3AF' }} />
+      <p className="text-[12px] flex items-center gap-1.5" style={{ color: '#6B6480' }}>
+        <Wrench size={12} style={{ color: '#9B8FB5' }} />
         Las tools marcadas <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide" style={{ background: '#FEF2F2', color: '#B91C1C', border: '1px solid #FECACA' }}>destructive</span> tienen side effects externos y pasan por verifier antes de ejecutarse cuando aplica.
       </p>
     </div>

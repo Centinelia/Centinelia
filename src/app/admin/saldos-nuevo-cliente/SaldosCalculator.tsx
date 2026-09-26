@@ -85,9 +85,9 @@ export function SaldosCalculator() {
   return (
     <div className="flex flex-col gap-6">
       {/* Formulario de agentes */}
-      <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+      <div className="rounded-xl p-5" style={{ background: '#FFFFFF', border: '1px solid #E8E3F5' }}>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Empleados que contrató el cliente</h2>
+          <h2 className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>Empleados que contrató el cliente</h2>
           <button
             onClick={addAgent}
             className="text-xs px-3 py-1.5 rounded-lg font-semibold"
@@ -104,31 +104,31 @@ export function SaldosCalculator() {
               <div
                 key={spec.id}
                 className="rounded-lg p-3 flex flex-wrap items-end gap-3"
-                style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}
+                style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}
               >
-                <span className="text-xs font-semibold w-6" style={{ color: 'var(--c-text-3)' }}>#{idx + 1}</span>
+                <span className="text-xs font-semibold w-6" style={{ color: '#6B6480' }}>#{idx + 1}</span>
 
                 <label className="flex flex-col gap-1">
-                  <span className="text-[10px] uppercase font-bold tracking-wider" style={{ color: 'var(--c-text-3)' }}>Tipo</span>
+                  <span className="text-[10px] uppercase font-bold tracking-wider" style={{ color: '#6B6480' }}>Tipo</span>
                   <select
                     value={spec.kind}
                     onChange={e => updateAgent(spec.id, { kind: e.target.value as Kind })}
                     className="px-2 py-1.5 rounded-md text-sm"
-                    style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+                    style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
                   >
-                    <option value="voice">Voz + Oficina (Nia/Noah/Sofia/etc)</option>
+                    <option value="voice">Voz + Oficina (Nia/Noah/Nara/etc)</option>
                     <option value="coordinator">Coordinador (Nox/Niva, solo ops)</option>
                   </select>
                 </label>
 
                 {spec.kind === 'voice' && (
                   <label className="flex flex-col gap-1">
-                    <span className="text-[10px] uppercase font-bold tracking-wider" style={{ color: 'var(--c-text-3)' }}>Jornada</span>
+                    <span className="text-[10px] uppercase font-bold tracking-wider" style={{ color: '#6B6480' }}>Jornada</span>
                     <select
                       value={spec.jornada}
                       onChange={e => updateAgent(spec.id, { jornada: e.target.value as JornadaType })}
                       className="px-2 py-1.5 rounded-md text-sm"
-                      style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+                      style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
                     >
                       {(Object.keys(JORNADA_LABELS) as JornadaType[]).map(j => (
                         <option key={j} value={j}>{JORNADA_LABELS[j]}</option>
@@ -138,12 +138,12 @@ export function SaldosCalculator() {
                 )}
 
                 <label className="flex flex-col gap-1">
-                  <span className="text-[10px] uppercase font-bold tracking-wider" style={{ color: 'var(--c-text-3)' }}>Tier</span>
+                  <span className="text-[10px] uppercase font-bold tracking-wider" style={{ color: '#6B6480' }}>Tier</span>
                   <select
                     value={spec.tier}
                     onChange={e => updateAgent(spec.id, { tier: e.target.value as MinutesTier })}
                     className="px-2 py-1.5 rounded-md text-sm"
-                    style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+                    style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
                   >
                     {TIER_ORDER.map(t => (
                       <option key={t} value={t}>
@@ -155,7 +155,7 @@ export function SaldosCalculator() {
                   </select>
                 </label>
 
-                <div className="text-xs flex-1 min-w-[180px]" style={{ color: 'var(--c-text-3)' }}>
+                <div className="text-xs flex-1 min-w-[180px]" style={{ color: '#6B6480' }}>
                   → {alloc.minutes > 0 && <><b>{alloc.minutes}</b> min </>}
                   {alloc.aiOps > 0 && <><b>{alloc.aiOps}</b> ops</>}
                 </div>
@@ -174,21 +174,21 @@ export function SaldosCalculator() {
           })}
         </div>
 
-        <p className="text-xs mt-3" style={{ color: 'var(--c-text-4)' }}>
-          Total: <b style={{ color: 'var(--c-text-2)' }}>{totals.totalMinutes} min</b> + <b style={{ color: 'var(--c-text-2)' }}>{totals.totalOps} ops</b> al mes (pool compartido de la organización).
+        <p className="text-xs mt-3" style={{ color: '#9B8FB5' }}>
+          Total: <b style={{ color: '#4A3B6B' }}>{totals.totalMinutes} min</b> + <b style={{ color: '#4A3B6B' }}>{totals.totalOps} ops</b> al mes (pool compartido de la organización).
         </p>
       </div>
 
       {/* Recomendación de saldos */}
-      <div className="rounded-xl overflow-hidden" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-        <div className="px-5 py-4" style={{ background: 'rgba(108,59,255,0.08)', borderBottom: '1px solid var(--c-border)' }}>
-          <h2 className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Saldo recomendado para el primer mes</h2>
-          <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
+      <div className="rounded-xl overflow-hidden" style={{ background: '#FFFFFF', border: '1px solid #E8E3F5' }}>
+        <div className="px-5 py-4" style={{ background: 'rgba(108,59,255,0.08)', borderBottom: '1px solid #E8E3F5' }}>
+          <h2 className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>Saldo recomendado para el primer mes</h2>
+          <p className="text-xs mt-1" style={{ color: '#6B6480' }}>
             Incluye buffer del 30% sobre consumo estimado. Cheat sheet para agregar en cada dashboard.
           </p>
         </div>
 
-        <div className="divide-y" style={{ borderColor: 'var(--c-border)' }}>
+        <div className="divide-y" style={{ borderColor: '#E8E3F5' }}>
           <PlatformRow
             name="Vapi"
             dashboardUrl="https://dashboard.vapi.ai/org/billing"
@@ -212,11 +212,11 @@ export function SaldosCalculator() {
           />
         </div>
 
-        <div className="px-5 py-4 flex flex-wrap items-baseline justify-between gap-4" style={{ borderTop: '1px solid var(--c-border)', background: 'rgba(108,59,255,0.05)' }}>
-          <span className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>TOTAL a agregar</span>
+        <div className="px-5 py-4 flex flex-wrap items-baseline justify-between gap-4" style={{ borderTop: '1px solid #E8E3F5', background: 'rgba(108,59,255,0.05)' }}>
+          <span className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>TOTAL a agregar</span>
           <div className="flex flex-col items-end">
             <span className="text-2xl font-bold" style={{ color: '#6C3BFF' }}>{fmtUsd(totals.total)}</span>
-            <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>≈ {fmtMxn(totals.total * MXN_PER_USD)} (TC {MXN_PER_USD})</span>
+            <span className="text-xs" style={{ color: '#6B6480' }}>≈ {fmtMxn(totals.total * MXN_PER_USD)} (TC {MXN_PER_USD})</span>
           </div>
         </div>
       </div>
@@ -224,7 +224,7 @@ export function SaldosCalculator() {
       {/* Notas */}
       <div className="rounded-xl p-4 flex gap-3" style={{ background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.25)' }}>
         <Info size={16} className="flex-shrink-0 mt-0.5" style={{ color: '#3b82f6' }} />
-        <div className="text-xs leading-relaxed" style={{ color: 'var(--c-text-2)' }}>
+        <div className="text-xs leading-relaxed" style={{ color: '#4A3B6B' }}>
           <p className="mb-2">
             <b>Costos unitarios (agosto 2026):</b> Vapi $0.06/min (incluye STT+TTS+LLM+platform), Twilio $0.02/min avg MX,
             Anthropic $0.05/op. Buffer +30% para picos del primer mes.
@@ -254,7 +254,7 @@ function PlatformRow({ name, dashboardUrl, usdRaw, usd, note }: {
     <div className="px-5 py-4 flex flex-wrap items-center gap-4">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>{name}</span>
+          <span className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>{name}</span>
           <a
             href={dashboardUrl}
             target="_blank"
@@ -265,11 +265,11 @@ function PlatformRow({ name, dashboardUrl, usdRaw, usd, note }: {
             dashboard <ExternalLink size={10} />
           </a>
         </div>
-        <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>{note}</p>
+        <p className="text-xs" style={{ color: '#6B6480' }}>{note}</p>
       </div>
       <div className="flex flex-col items-end">
-        <span className="text-lg font-bold" style={{ color: 'var(--c-text)' }}>{fmtUsd(usd)}</span>
-        <span className="text-[11px]" style={{ color: 'var(--c-text-4)' }}>consumo est. {fmtUsd(usdRaw)} + 30%</span>
+        <span className="text-lg font-bold" style={{ color: '#1A0A3B' }}>{fmtUsd(usd)}</span>
+        <span className="text-[11px]" style={{ color: '#9B8FB5' }}>consumo est. {fmtUsd(usdRaw)} + 30%</span>
       </div>
     </div>
   );

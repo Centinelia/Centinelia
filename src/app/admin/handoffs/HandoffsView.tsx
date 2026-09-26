@@ -45,8 +45,8 @@ const MEERKATS = ['nia', 'noah', 'nico', 'nara', 'nelia', 'neo', 'nova', 'naia',
 
 const selectStyle = {
   background: '#FFFFFF',
-  border: '1px solid #E5E7EB',
-  color: '#111827',
+  border: '1px solid #E8E3F5',
+  color: '#1A0A3B',
   padding: '6px 10px',
   borderRadius: '8px',
   fontSize: '13px',
@@ -138,7 +138,7 @@ export function HandoffsView() {
     <div className="space-y-8">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <label className="flex items-center gap-2 text-[13px]">
-          <span style={{ color: '#6B7280' }}>Ventana</span>
+          <span style={{ color: '#6B6480' }}>Ventana</span>
           <select value={win} onChange={e => setWin(e.target.value as Window)} style={selectStyle}>
             <option value="24h">24 horas</option>
             <option value="7d">7 días</option>
@@ -149,7 +149,7 @@ export function HandoffsView() {
           onClick={load}
           disabled={loading}
           className="inline-flex items-center gap-1.5 text-[13px] font-medium px-3 py-1.5 rounded-lg"
-          style={{ color: '#374151', border: '1px solid #E5E7EB', background: '#FFFFFF' }}
+          style={{ color: '#4A3B6B', border: '1px solid #E8E3F5', background: '#FFFFFF' }}
         >
           <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
           Actualizar
@@ -167,20 +167,20 @@ export function HandoffsView() {
           {/* Pares reales */}
           <section>
             <div className="flex items-baseline justify-between mb-4">
-              <h2 className="text-[15px] font-semibold flex items-center gap-2" style={{ color: '#111827' }}>
-                <Network size={15} style={{ color: '#6B7280' }} />
+              <h2 className="text-[15px] font-semibold flex items-center gap-2" style={{ color: '#1A0A3B' }}>
+                <Network size={15} style={{ color: '#6B6480' }} />
                 Handoffs reales
               </h2>
-              <span className="text-[12px] uppercase tracking-wider font-medium" style={{ color: '#9CA3AF' }}>
+              <span className="text-[12px] uppercase tracking-wider font-medium" style={{ color: '#9B8FB5' }}>
                 {data.pairs.length} pares
               </span>
             </div>
-            <div className="rounded-xl overflow-hidden bg-white" style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}>
+            <div className="rounded-xl overflow-hidden bg-white" style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}>
               {data.pairs.length === 0 && (
                 <div className="p-8 text-center">
-                  <Network size={20} style={{ color: '#D1D5DB', margin: '0 auto 8px' }} />
-                  <p className="text-[13px]" style={{ color: '#6B7280' }}>Sin handoffs registrados en el rango.</p>
-                  <p className="text-[12px] mt-1" style={{ color: '#9CA3AF' }}>
+                  <Network size={20} style={{ color: '#B9B0CF', margin: '0 auto 8px' }} />
+                  <p className="text-[13px]" style={{ color: '#6B6480' }}>Sin handoffs registrados en el rango.</p>
+                  <p className="text-[12px] mt-1" style={{ color: '#9B8FB5' }}>
                     Aparecerán cuando un meerkat consulte o delegue a otro por voz.
                   </p>
                 </div>
@@ -191,15 +191,15 @@ export function HandoffsView() {
                   <div
                     key={`${p.from}::${p.to}`}
                     className="flex items-center gap-3 px-5 py-3 text-[13px] transition-colors hover:bg-gray-50"
-                    style={{ borderTop: i > 0 ? '1px solid #F3F4F6' : undefined }}
+                    style={{ borderTop: i > 0 ? '1px solid #F5F0FF' : undefined }}
                   >
                     <MeerkatPill name={p.from} />
-                    <ArrowRight size={14} style={{ color: '#9CA3AF' }} />
+                    <ArrowRight size={14} style={{ color: '#9B8FB5' }} />
                     <MeerkatPill name={p.to} />
-                    <span className="flex-1 text-[12px] font-mono truncate" style={{ color: '#9CA3AF' }}>
+                    <span className="flex-1 text-[12px] font-mono truncate" style={{ color: '#9B8FB5' }}>
                       {Object.entries(p.by_tool).map(([t, n]) => `${t}: ${n}`).join(' · ')}
                     </span>
-                    <span className="text-[12px] tabular-nums" style={{ color: '#6B7280' }}>
+                    <span className="text-[12px] tabular-nums" style={{ color: '#6B6480' }}>
                       <span className="inline-flex items-center gap-0.5" style={{ color: '#10B981' }}>
                         {p.success}<Check size={11} strokeWidth={3} />
                       </span>{' '}
@@ -228,7 +228,7 @@ export function HandoffsView() {
           {/* Edges declarativos */}
           <section>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-[15px] font-semibold flex items-center gap-2" style={{ color: '#111827' }}>
+              <h2 className="text-[15px] font-semibold flex items-center gap-2" style={{ color: '#1A0A3B' }}>
                 Reglas de handoff
               </h2>
               <button
@@ -242,7 +242,7 @@ export function HandoffsView() {
             </div>
 
             {newEdge && (
-              <div className="rounded-xl bg-white p-5 mb-3" style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}>
+              <div className="rounded-xl bg-white p-5 mb-3" style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-[13px]">
                   <select value={newEdge.from} onChange={e => setNewEdge({ ...newEdge, from: e.target.value })} style={selectStyle}>
                     <option value="">De…</option>
@@ -257,7 +257,7 @@ export function HandoffsView() {
                     <option value="consultar_agente">consultar_agente</option>
                     <option value="delegar_tarea">delegar_tarea</option>
                   </select>
-                  <label className="flex items-center gap-1.5" style={{ color: '#374151' }}>
+                  <label className="flex items-center gap-1.5" style={{ color: '#4A3B6B' }}>
                     <input type="checkbox" checked={newEdge.enabled} onChange={e => setNewEdge({ ...newEdge, enabled: e.target.checked })} />
                     Habilitado
                   </label>
@@ -268,13 +268,13 @@ export function HandoffsView() {
                   value={newEdge.reason}
                   onChange={e => setNewEdge({ ...newEdge, reason: e.target.value })}
                   className="w-full mt-3 px-3 py-2 text-[13px] rounded-lg"
-                  style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#111827' }}
+                  style={{ background: '#FFFFFF', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
                 />
                 <div className="mt-3 flex gap-2 justify-end">
                   <button
                     onClick={() => setNewEdge(null)}
                     className="text-[13px] font-medium px-3 py-1.5 rounded-lg"
-                    style={{ color: '#6B7280', border: '1px solid #E5E7EB', background: '#FFFFFF' }}
+                    style={{ color: '#6B6480', border: '1px solid #E8E3F5', background: '#FFFFFF' }}
                   >
                     Cancelar
                   </button>
@@ -290,9 +290,9 @@ export function HandoffsView() {
             )}
 
             {data.edges.length === 0 && !newEdge && (
-              <div className="rounded-xl p-8 text-center bg-white" style={{ border: '1px solid #E5E7EB' }}>
-                <p className="text-[13px]" style={{ color: '#6B7280' }}>Sin reglas configuradas.</p>
-                <p className="text-[12px] mt-1" style={{ color: '#9CA3AF' }}>
+              <div className="rounded-xl p-8 text-center bg-white" style={{ border: '1px solid #E8E3F5' }}>
+                <p className="text-[13px]" style={{ color: '#6B6480' }}>Sin reglas configuradas.</p>
+                <p className="text-[12px] mt-1" style={{ color: '#9B8FB5' }}>
                   Por default todos los pares están permitidos. Crea una regla para restringir un flujo específico.
                 </p>
               </div>
@@ -310,12 +310,12 @@ export function HandoffsView() {
                 >
                   {e.enabled ? <Check size={14} style={{ color: '#10B981' }} /> : <Ban size={14} style={{ color: '#EF4444' }} />}
                   <MeerkatPill name={e.from_meerkat} />
-                  <ArrowRight size={12} style={{ color: '#9CA3AF' }} />
+                  <ArrowRight size={12} style={{ color: '#9B8FB5' }} />
                   <MeerkatPill name={e.to_meerkat} />
-                  <span className="text-[12px] px-2 py-0.5 rounded" style={{ background: '#F3F4F6', color: '#4B5563' }}>
+                  <span className="text-[12px] px-2 py-0.5 rounded" style={{ background: '#F5F0FF', color: '#4A3B6B' }}>
                     {e.tool_name ?? 'todos los tools'}
                   </span>
-                  {e.reason && <span className="text-[12px] flex-1 truncate" style={{ color: '#6B7280' }}>· {e.reason}</span>}
+                  {e.reason && <span className="text-[12px] flex-1 truncate" style={{ color: '#6B6480' }}>· {e.reason}</span>}
                   {!e.reason && <span className="flex-1" />}
                   <button
                     onClick={() => toggleEdge(e)}
@@ -331,7 +331,7 @@ export function HandoffsView() {
                   <button
                     onClick={() => deleteEdge(e.id)}
                     className="p-1 rounded"
-                    style={{ color: '#9CA3AF' }}
+                    style={{ color: '#9B8FB5' }}
                   >
                     <X size={13} />
                   </button>
@@ -343,16 +343,16 @@ export function HandoffsView() {
           {/* Recent */}
           <section>
             <div className="flex items-baseline justify-between mb-4">
-              <h2 className="text-[15px] font-semibold" style={{ color: '#111827' }}>
+              <h2 className="text-[15px] font-semibold" style={{ color: '#1A0A3B' }}>
                 Handoffs recientes
               </h2>
-              <span className="text-[12px] uppercase tracking-wider font-medium" style={{ color: '#9CA3AF' }}>
+              <span className="text-[12px] uppercase tracking-wider font-medium" style={{ color: '#9B8FB5' }}>
                 {data.recent.length} rows
               </span>
             </div>
-            <div className="rounded-xl overflow-hidden bg-white" style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}>
+            <div className="rounded-xl overflow-hidden bg-white" style={{ border: '1px solid #E8E3F5', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}>
               {data.recent.length === 0 && (
-                <p className="p-6 text-[13px] text-center" style={{ color: '#9CA3AF' }}>Sin handoffs recientes.</p>
+                <p className="p-6 text-[13px] text-center" style={{ color: '#9B8FB5' }}>Sin handoffs recientes.</p>
               )}
               {data.recent.map((l, i) => (
                 <div
@@ -360,14 +360,14 @@ export function HandoffsView() {
                   className="grid gap-3 px-5 py-2.5 text-[13px] transition-colors hover:bg-gray-50 items-center"
                   style={{
                     gridTemplateColumns: '130px auto auto auto 1fr auto',
-                    borderTop: i > 0 ? '1px solid #F3F4F6' : undefined,
+                    borderTop: i > 0 ? '1px solid #F5F0FF' : undefined,
                   }}
                 >
-                  <span className="font-mono tabular-nums whitespace-nowrap" style={{ color: '#9CA3AF' }}>{fmt(l.handoff_at)}</span>
+                  <span className="font-mono tabular-nums whitespace-nowrap" style={{ color: '#9B8FB5' }}>{fmt(l.handoff_at)}</span>
                   <MeerkatPill name={l.from_meerkat} />
-                  <ArrowRight size={12} style={{ color: '#9CA3AF' }} />
+                  <ArrowRight size={12} style={{ color: '#9B8FB5' }} />
                   <MeerkatPill name={l.to_meerkat} />
-                  <span className="text-[12px]" style={{ color: '#6B7280' }}>{l.tool_name}</span>
+                  <span className="text-[12px]" style={{ color: '#6B6480' }}>{l.tool_name}</span>
                   <span
                     className="text-[11px] font-medium px-2 py-0.5 rounded-md uppercase tracking-wide"
                     style={{
