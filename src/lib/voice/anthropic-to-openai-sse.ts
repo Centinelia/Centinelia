@@ -105,20 +105,26 @@ export async function* anthropicToOpenAISse(
             choices: [{ index: 0, delta: { content: event.delta.text }, finish_reason: null }],
           });
         } else if (event.delta.type === 'input_json_delta' && st.kind === 'tool_use') {
-          st.argsEmitted = true;
-          yield sseEvent({
-            ...base,
-            choices: [{
-              index: 0,
-              delta: {
-                tool_calls: [{
-                  index:    st.toolIndex!,
-                  function: { arguments: event.delta.partial_json },
-                }],
-              },
-              finish_reason: null,
-            }],
-          });
+          // Anthropic emite input_json_delta con partial_json='' incluso para
+          // tool_use con input vacio {}. NO lo tratamos como args emitidos,
+          // porque un partial vacio no aporta nada y dispararia el "No result"
+          // en Vapi al parsear ''. Solo marcamos argsEmitted si hay contenido real.
+          if (event.delta.partial_json.length > 0) {
+            st.argsEmitted = true;
+            yield sseEvent({
+              ...base,
+              choices: [{
+                index: 0,
+                delta: {
+                  tool_calls: [{
+                    index:    st.toolIndex!,
+                    function: { arguments: event.delta.partial_json },
+                  }],
+                },
+                finish_reason: null,
+              }],
+            });
+          }
         }
         break;
       }
