@@ -122,12 +122,15 @@ export async function POST(req: NextRequest) {
         }
         try {
           const finalMsg = await stream.finalMessage();
-          const respText = finalMsg.content
-            .filter((b: {type: string}) => b.type === 'text')
-            .map((b: {text?: string}) => b.text ?? '').join(' ').slice(0, 200);
-          const toolUses = finalMsg.content
-            .filter((b: {type: string}) => b.type === 'tool_use')
-            .map((b: {name?: string; input?: unknown}) => ({ name: b.name, input: b.input }));
+          const contentBlocks = finalMsg.content as unknown as Array<{ type: string; text?: string; name?: string; input?: unknown }>;
+          const respText = contentBlocks
+            .filter((b) => b.type === 'text')
+            .map((b) => b.text ?? '')
+            .join(' ')
+            .slice(0, 200);
+          const toolUses = contentBlocks
+            .filter((b) => b.type === 'tool_use')
+            .map((b) => ({ name: b.name, input: b.input }));
           void logLlmCall({
             source: 'voice_llm',
             model: params.model,
