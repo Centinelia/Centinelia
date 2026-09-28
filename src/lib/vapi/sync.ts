@@ -1137,12 +1137,32 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
   // para que el check roleTools.includes() siga funcionando como 2da guarda.
   const EXTRA_GATED_TOOLS = new Set(['actualizar_disponibilidad_diaria']);
 
+  // Gates que aplican ANTES de buildToolDef (skip tool completamente para este agente).
+  // A diferencia del fallback dentro del if(!def), estos ejecutan aunque buildToolDef
+  // devuelva un def valido. Bug: el commit b60d0f1a agrego meefi al fallback pero el
+  // case dinamico en buildToolDef devuelve def valido, asi que el fallback nunca
+  // corria y las 7 meefi tools se registraban en Vapi de Nelias no-Meefi. Verificado
+  // 2026-09-28 en Tortilleria (28 toolIds en Vapi, 7 eran meefi).
+  const PRE_BUILD_GATES: Record<string, (a: VoiceAgent) => boolean> = {
+    meefi_lookup_user_account:      (a) => !isMeefiOrg(a),
+    meefi_send_password_reset_link: (a) => !isMeefiOrg(a),
+    meefi_check_transfer_status:    (a) => !isMeefiOrg(a),
+    meefi_initiate_2fa_recovery:    (a) => !isMeefiOrg(a),
+    meefi_capture_bug_report:       (a) => !isMeefiOrg(a),
+    meefi_escalate_to_human:        (a) => !isMeefiOrg(a),
+    meefi_search_help_center:       (a) => !isMeefiOrg(a),
+  };
+
   if (roleTools) {
     // Role-based: preset + base universal (5 tools que todos reciben).
     // Merge dedup para permitir presets que expliciten universales si necesitan.
     const merged = Array.from(new Set([...UNIVERSAL_VOICE_TOOLS, ...roleTools]));
     for (const toolName of merged) {
       if (EXTRA_GATED_TOOLS.has(toolName)) continue; // handled below with extra gates
+
+      // Pre-build gates: skip tool completa para este agente (no aplica el negocio).
+      const preGate = PRE_BUILD_GATES[toolName];
+      if (preGate && preGate(agent)) continue;
 
       // Guardrail: si la tool está en el preset voz pero registry.ts la declara
       // como chat/email-only, no la mandamos a Vapi (no hay handler voice).
@@ -1161,16 +1181,6 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
         // transfer_number porque Nelia escala vía correo, no por transferencia.
         const RUNTIME_GATED: Record<string, (a: VoiceAgent) => boolean> = {
           transferir_llamada: (a) => !a.transfer_number,
-          // Meefi tools solo aplican al org Meefi. Todos los demás Nelia (Tortillería,
-          // futuros clientes) heredan las 7 en el preset pero sin backend real. Gate
-          // por portal_email para no registrarlas en Vapi de orgs que no las usan.
-          meefi_lookup_user_account:      (a) => !isMeefiOrg(a),
-          meefi_send_password_reset_link: (a) => !isMeefiOrg(a),
-          meefi_check_transfer_status:    (a) => !isMeefiOrg(a),
-          meefi_initiate_2fa_recovery:    (a) => !isMeefiOrg(a),
-          meefi_capture_bug_report:       (a) => !isMeefiOrg(a),
-          meefi_escalate_to_human:        (a) => !isMeefiOrg(a),
-          meefi_search_help_center:       (a) => !isMeefiOrg(a),
         };
         const gate = RUNTIME_GATED[toolName];
         if (gate && gate(agent)) {
