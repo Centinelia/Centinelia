@@ -33,6 +33,7 @@ interface Factura {
 
 type EstadoFilter  = 'todas' | 'pagadas' | 'sin_pago' | 'sin_rep' | 'con_rep';
 type TipoFilter    = 'todas' | 'PUE' | 'PPD';
+type Tab           = 'facturas' | 'reps';
 
 const PAGE_SIZE = 20;
 
@@ -64,12 +65,22 @@ export function FacturasView({ clienteId, razonSocial, rfc, correoFacturacion }:
   const [uiError, setUiError] = useState<string | null>(null);
   const displayError = uiError ?? fetchError?.message ?? null;
 
-  // Filters
+  // Active tab
+  const [tab, setTab] = useState<Tab>('facturas');
+
+  // Filters (compartidos entre tabs; el filtro de estado y método solo aplica a facturas)
   const [search, setSearch]     = useState('');
   const [yearFilter, setYear]   = useState<'todos' | number>('todos');
   const [tipoFilter, setTipo]   = useState<TipoFilter>('todas');
   const [estadoFilter, setEst]  = useState<EstadoFilter>('todas');
   const [page, setPage]         = useState(0);
+
+  // Reset página cuando cambia tab
+  const changeTab = (next: Tab) => {
+    setTab(next);
+    setPage(0);
+    setSearch('');
+  };
 
   // Upload state
   const [xmlFile, setXmlFile]   = useState<File | null>(null);
@@ -82,15 +93,19 @@ export function FacturasView({ clienteId, razonSocial, rfc, correoFacturacion }:
 
   // ─── Data derivations ────────────────────────────────────────────────────
   const ingresos = useMemo(() => facturas.filter(f => f.tipo === 'cfdi_emitido'), [facturas]);
+  const reps     = useMemo(() => facturas.filter(f => f.tipo === 'rep_emitido'), [facturas]);
   const repsByRelated = useMemo(() => {
     const m = new Map<string, Factura>();
-    for (const f of facturas) {
-      if (f.tipo === 'rep_emitido' && f.related_uuid) m.set(f.related_uuid, f);
-    }
+    for (const r of reps) if (r.related_uuid) m.set(r.related_uuid, r);
     return m;
-  }, [facturas]);
+  }, [reps]);
+  const cfdisByUuid = useMemo(() => {
+    const m = new Map<string, Factura>();
+    for (const c of ingresos) if (c.cfdi_uuid) m.set(c.cfdi_uuid, c);
+    return m;
+  }, [ingresos]);
 
-  // Stats año actual
+  // Stats — Facturas
   const currentYear = new Date().getFullYear();
   const thisYearIngresos = ingresos.filter(f => new Date(f.created_at).getFullYear() === currentYear);
   const totalYear      = thisYearIngresos.reduce((sum, f) => sum + (f.monto ?? 0), 0);
@@ -100,46 +115,57 @@ export function FacturasView({ clienteId, razonSocial, rfc, correoFacturacion }:
   ).length;
   const sinPagoPPD     = ingresos.filter(f => f.metodo_pago_cfdi === 'PPD' && !f.paid_at).length;
 
-  // Available years for filter
-  const years = useMemo(() => {
+  // Stats — REPs
+  const thisYearReps = reps.filter(r => new Date(r.created_at).getFullYear() === currentYear);
+  const totalRepsYear = thisYearReps.reduce((sum, r) => sum + (r.monto ?? 0), 0);
+  const repsHuerfanos = reps.filter(r => !r.related_uuid || !cfdisByUuid.get(r.related_uuid)).length;
+
+  // Available years — separado por tab para no mostrar años vacíos
+  const yearsFacturas = useMemo(() => {
     const set = new Set<number>();
     for (const f of ingresos) set.add(new Date(f.created_at).getFullYear());
     return Array.from(set).sort((a, b) => b - a);
   }, [ingresos]);
+  const yearsReps = useMemo(() => {
+    const set = new Set<number>();
+    for (const r of reps) set.add(new Date(r.created_at).getFullYear());
+    return Array.from(set).sort((a, b) => b - a);
+  }, [reps]);
+  const years = tab === 'facturas' ? yearsFacturas : yearsReps;
 
-  // Filtered list
+  // Filtered list — depende del tab activo
   const filtered = useMemo(() => {
-    let list = [...ingresos];
-
-    // Year
-    if (yearFilter !== 'todos') {
-      list = list.filter(f => new Date(f.created_at).getFullYear() === yearFilter);
+    if (tab === 'facturas') {
+      let list = [...ingresos];
+      if (yearFilter !== 'todos') list = list.filter(f => new Date(f.created_at).getFullYear() === yearFilter);
+      if (tipoFilter !== 'todas') list = list.filter(f => f.metodo_pago_cfdi === tipoFilter);
+      if (estadoFilter === 'pagadas')  list = list.filter(f => !!f.paid_at);
+      if (estadoFilter === 'sin_pago') list = list.filter(f => f.metodo_pago_cfdi === 'PPD' && !f.paid_at);
+      if (estadoFilter === 'sin_rep')  list = list.filter(f => f.metodo_pago_cfdi === 'PPD' && f.paid_at && !repsByRelated.get(f.cfdi_uuid ?? ''));
+      if (estadoFilter === 'con_rep')  list = list.filter(f => f.cfdi_uuid && repsByRelated.get(f.cfdi_uuid));
+      const q = search.trim().toLowerCase();
+      if (q) {
+        list = list.filter(f =>
+          (f.cfdi_uuid ?? '').toLowerCase().includes(q) ||
+          (f.ciclo_key ?? '').toLowerCase().includes(q) ||
+          String(f.monto ?? '').includes(q),
+        );
+      }
+      return list.sort((a, b) => b.created_at.localeCompare(a.created_at));
     }
-
-    // Tipo (método de pago CFDI)
-    if (tipoFilter !== 'todas') {
-      list = list.filter(f => f.metodo_pago_cfdi === tipoFilter);
-    }
-
-    // Estado
-    if (estadoFilter === 'pagadas')  list = list.filter(f => !!f.paid_at);
-    if (estadoFilter === 'sin_pago') list = list.filter(f => f.metodo_pago_cfdi === 'PPD' && !f.paid_at);
-    if (estadoFilter === 'sin_rep')  list = list.filter(f => f.metodo_pago_cfdi === 'PPD' && f.paid_at && !repsByRelated.get(f.cfdi_uuid ?? ''));
-    if (estadoFilter === 'con_rep')  list = list.filter(f => f.cfdi_uuid && repsByRelated.get(f.cfdi_uuid));
-
-    // Search: UUID (partial), monto exacto, ciclo
+    // tab === 'reps'
+    let list = [...reps];
+    if (yearFilter !== 'todos') list = list.filter(r => new Date(r.created_at).getFullYear() === yearFilter);
     const q = search.trim().toLowerCase();
     if (q) {
-      list = list.filter(f => {
-        const uuid = (f.cfdi_uuid ?? '').toLowerCase();
-        const ciclo = (f.ciclo_key ?? '').toLowerCase();
-        const monto = String(f.monto ?? '');
-        return uuid.includes(q) || ciclo.includes(q) || monto.includes(q);
-      });
+      list = list.filter(r =>
+        (r.cfdi_uuid ?? '').toLowerCase().includes(q) ||
+        (r.related_uuid ?? '').toLowerCase().includes(q) ||
+        String(r.monto ?? '').includes(q),
+      );
     }
-
     return list.sort((a, b) => b.created_at.localeCompare(a.created_at));
-  }, [ingresos, yearFilter, tipoFilter, estadoFilter, search, repsByRelated]);
+  }, [tab, ingresos, reps, yearFilter, tipoFilter, estadoFilter, search, repsByRelated]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage   = Math.min(page, totalPages - 1);
@@ -243,13 +269,57 @@ export function FacturasView({ clienteId, razonSocial, rfc, correoFacturacion }:
         </p>
       </header>
 
-      {/* Stats */}
-      {!loading && ingresos.length > 0 && (
+      {/* Tab strip */}
+      <nav className="flex items-center gap-1 mb-5" style={{ borderBottom: '1px solid #E8E3F5' }}>
+        <button
+          onClick={() => changeTab('facturas')}
+          className="inline-flex items-center gap-2 px-4 py-2.5 text-[13px] font-semibold transition-colors"
+          style={{
+            color:        tab === 'facturas' ? '#6C3BFF' : '#6B6480',
+            borderBottom: tab === 'facturas' ? '2px solid #6C3BFF' : '2px solid transparent',
+            marginBottom: '-1px',
+          }}
+        >
+          <FileText size={13} />
+          Facturas
+          <span className="text-[11px] font-bold px-1.5 py-0.5 rounded" style={{ background: tab === 'facturas' ? 'rgba(108,59,255,0.12)' : '#F5F0FF', color: '#6C3BFF' }}>
+            {ingresos.length}
+          </span>
+        </button>
+        <button
+          onClick={() => changeTab('reps')}
+          className="inline-flex items-center gap-2 px-4 py-2.5 text-[13px] font-semibold transition-colors"
+          style={{
+            color:        tab === 'reps' ? '#6C3BFF' : '#6B6480',
+            borderBottom: tab === 'reps' ? '2px solid #6C3BFF' : '2px solid transparent',
+            marginBottom: '-1px',
+          }}
+        >
+          <Receipt size={13} />
+          REPs
+          <span className="text-[11px] font-bold px-1.5 py-0.5 rounded" style={{ background: tab === 'reps' ? 'rgba(108,59,255,0.12)' : '#F5F0FF', color: '#6C3BFF' }}>
+            {reps.length}
+          </span>
+        </button>
+      </nav>
+
+      {/* Stats — Facturas */}
+      {!loading && tab === 'facturas' && ingresos.length > 0 && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
           <StatCard label="Total emitidas" value={String(ingresos.length)} accent="#6C3BFF" icon={<FileText size={16} />} hint={`${thisYearIngresos.length} en ${currentYear}`} />
           <StatCard label={`Ingresado ${currentYear}`} value={formatMoney(totalYear, { minDecimals: 0, maxDecimals: 0 })} accent="#22C55E" icon={<TrendingUp size={16} />} hint={`histórico ${formatMoney(totalHistorico, { minDecimals: 0, maxDecimals: 0 })}`} />
           <StatCard label="Sin pago (PPD)" value={String(sinPagoPPD)} accent="#B45309" icon={<Clock size={16} />} hint="esperando abono" />
           <StatCard label="REPs pendientes" value={String(pendientesRep)} accent={pendientesRep > 0 ? '#EF4444' : '#22C55E'} icon={pendientesRep > 0 ? <AlertTriangle size={16} /> : <CheckCircle2 size={16} />} hint={pendientesRep > 0 ? 'por timbrar' : 'todo al día'} />
+        </div>
+      )}
+
+      {/* Stats — REPs */}
+      {!loading && tab === 'reps' && reps.length > 0 && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+          <StatCard label="Total REPs" value={String(reps.length)} accent="#15803D" icon={<Receipt size={16} />} hint={`${thisYearReps.length} en ${currentYear}`} />
+          <StatCard label={`Timbrado ${currentYear}`} value={formatMoney(totalRepsYear, { minDecimals: 0, maxDecimals: 0 })} accent="#22C55E" icon={<TrendingUp size={16} />} hint="monto de los pagos" />
+          <StatCard label="REPs pendientes" value={String(pendientesRep)} accent={pendientesRep > 0 ? '#EF4444' : '#22C55E'} icon={pendientesRep > 0 ? <AlertTriangle size={16} /> : <CheckCircle2 size={16} />} hint={pendientesRep > 0 ? 'PPD sin REP' : 'todo al día'} />
+          <StatCard label="Sin factura padre" value={String(repsHuerfanos)} accent={repsHuerfanos > 0 ? '#B45309' : '#22C55E'} icon={<FileText size={16} />} hint={repsHuerfanos > 0 ? 'huérfanos, revisar' : 'todos ligados'} />
         </div>
       )}
 
@@ -259,7 +329,7 @@ export function FacturasView({ clienteId, razonSocial, rfc, correoFacturacion }:
           <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#9B8FB5' }} />
           <input
             type="text"
-            placeholder="Buscar por UUID, ciclo o monto…"
+            placeholder={tab === 'facturas' ? 'Buscar por UUID, ciclo o monto…' : 'Buscar por UUID del REP, factura padre o monto…'}
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(0); }}
             className="w-full pl-10 pr-9 rounded-xl text-[13px] outline-none transition-shadow"
@@ -279,19 +349,23 @@ export function FacturasView({ clienteId, razonSocial, rfc, correoFacturacion }:
           {years.map(y => <option key={y} value={y}>{y}</option>)}
         </FilterSelect>
 
-        <FilterSelect value={tipoFilter} onChange={v => { setTipo(v as TipoFilter); setPage(0); }}>
-          <option value="todas">Todos los métodos</option>
-          <option value="PUE">PUE</option>
-          <option value="PPD">PPD</option>
-        </FilterSelect>
+        {tab === 'facturas' && (
+          <>
+            <FilterSelect value={tipoFilter} onChange={v => { setTipo(v as TipoFilter); setPage(0); }}>
+              <option value="todas">Todos los métodos</option>
+              <option value="PUE">PUE</option>
+              <option value="PPD">PPD</option>
+            </FilterSelect>
 
-        <FilterSelect value={estadoFilter} onChange={v => { setEst(v as EstadoFilter); setPage(0); }}>
-          <option value="todas">Todos los estados</option>
-          <option value="pagadas">Pagadas</option>
-          <option value="sin_pago">Sin pago (PPD)</option>
-          <option value="sin_rep">REP pendiente</option>
-          <option value="con_rep">Con REP timbrado</option>
-        </FilterSelect>
+            <FilterSelect value={estadoFilter} onChange={v => { setEst(v as EstadoFilter); setPage(0); }}>
+              <option value="todas">Todos los estados</option>
+              <option value="pagadas">Pagadas</option>
+              <option value="sin_pago">Sin pago (PPD)</option>
+              <option value="sin_rep">REP pendiente</option>
+              <option value="con_rep">Con REP timbrado</option>
+            </FilterSelect>
+          </>
+        )}
 
         {filtered.length > 0 && (
           <div className="ml-auto rounded-xl px-4 py-2" style={{ background: '#F5F0FF', border: '1px solid #E8E3F5' }}>
@@ -317,8 +391,8 @@ export function FacturasView({ clienteId, razonSocial, rfc, correoFacturacion }:
         </div>
       )}
 
-      {/* Empty state */}
-      {!loading && ingresos.length === 0 && (
+      {/* Empty state — Facturas */}
+      {!loading && tab === 'facturas' && ingresos.length === 0 && (
         <div className="rounded-2xl text-center flex flex-col items-center gap-3 mb-4" style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', padding: '48px 24px' }}>
           <div className="flex items-center justify-center rounded-2xl" style={{ background: 'rgba(108,59,255,0.08)', width: 56, height: 56 }}>
             <FileText size={24} style={{ color: '#6C3BFF' }} />
@@ -332,15 +406,32 @@ export function FacturasView({ clienteId, razonSocial, rfc, correoFacturacion }:
         </div>
       )}
 
-      {/* Filtered empty */}
-      {!loading && ingresos.length > 0 && filtered.length === 0 && (
-        <div className="rounded-2xl text-center py-10 mb-4" style={{ background: '#FAFAFB', border: '1px dashed #E8E3F5' }}>
-          <p className="text-[13px]" style={{ color: '#6B6480' }}>Ninguna factura coincide con los filtros aplicados.</p>
+      {/* Empty state — REPs */}
+      {!loading && tab === 'reps' && reps.length === 0 && (
+        <div className="rounded-2xl text-center flex flex-col items-center gap-3 mb-4" style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', padding: '48px 24px' }}>
+          <div className="flex items-center justify-center rounded-2xl" style={{ background: 'rgba(21,128,61,0.10)', width: 56, height: 56 }}>
+            <Receipt size={24} style={{ color: '#15803D' }} />
+          </div>
+          <div>
+            <p className="text-[15px] font-semibold" style={{ color: '#1A0A3B' }}>Sin REPs registrados</p>
+            <p className="text-[13px] mt-1 max-w-md" style={{ color: '#6B6480' }}>
+              Los complementos de pago aparecen aquí cuando timbres uno para una factura PPD. Usa el botón &ldquo;Subir REP&rdquo; en la tabla de Facturas para registrarlos.
+            </p>
+          </div>
         </div>
       )}
 
-      {/* Table */}
-      {visible.length > 0 && (
+      {/* Filtered empty */}
+      {!loading && filtered.length === 0 && ((tab === 'facturas' && ingresos.length > 0) || (tab === 'reps' && reps.length > 0)) && (
+        <div className="rounded-2xl text-center py-10 mb-4" style={{ background: '#FAFAFB', border: '1px dashed #E8E3F5' }}>
+          <p className="text-[13px]" style={{ color: '#6B6480' }}>
+            {tab === 'facturas' ? 'Ninguna factura' : 'Ningún REP'} coincide con los filtros aplicados.
+          </p>
+        </div>
+      )}
+
+      {/* Table — Facturas */}
+      {tab === 'facturas' && visible.length > 0 && (
         <div className="rounded-2xl overflow-hidden mb-4" style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 3px rgba(15,5,34,0.04)' }}>
           <div className="overflow-x-auto">
             <table className="w-full text-[13px]">
@@ -452,6 +543,82 @@ export function FacturasView({ clienteId, razonSocial, rfc, correoFacturacion }:
         </div>
       )}
 
+      {/* Table — REPs */}
+      {tab === 'reps' && visible.length > 0 && (
+        <div className="rounded-2xl overflow-hidden mb-4" style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 3px rgba(15,5,34,0.04)' }}>
+          <div className="overflow-x-auto">
+            <table className="w-full text-[13px]">
+              <thead style={{ background: '#FAFAFB' }}>
+                <tr>
+                  <Th>UUID del REP</Th>
+                  <Th>Factura padre</Th>
+                  <Th>Ciclo padre</Th>
+                  <Th className="text-right">Monto pago</Th>
+                  <Th>Timbrado</Th>
+                  <Th className="text-right">Acciones</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {visible.map(r => {
+                  const padre = r.related_uuid ? cfdisByUuid.get(r.related_uuid) : undefined;
+                  return (
+                    <tr key={r.id} style={{ borderTop: '1px solid #F0EBFA' }} className="transition-colors hover:bg-[#FAFAFB]">
+                      <Td>
+                        <code className="text-[12px] font-mono font-semibold inline-flex items-center gap-1.5" style={{ color: '#15803D' }}>
+                          <Receipt size={11} />
+                          {shortUuid(r.cfdi_uuid)}
+                        </code>
+                      </Td>
+                      <Td>
+                        {padre ? (
+                          <button
+                            onClick={() => { changeTab('facturas'); setSearch(r.related_uuid ?? ''); }}
+                            className="text-[12px] font-mono font-semibold hover:underline"
+                            style={{ color: '#6C3BFF' }}
+                            title="Ver factura padre"
+                          >
+                            {shortUuid(r.related_uuid)}
+                          </button>
+                        ) : r.related_uuid ? (
+                          <span className="text-[12px] font-mono" style={{ color: '#B45309' }} title="Factura padre no encontrada">
+                            {shortUuid(r.related_uuid)} <span className="ml-1">⚠</span>
+                          </span>
+                        ) : (
+                          <span className="text-[11px]" style={{ color: '#9B8FB5' }}>Huérfano</span>
+                        )}
+                      </Td>
+                      <Td>
+                        {padre?.ciclo_key ? (
+                          <span className="text-[12px]" style={{ color: '#6B6480' }}>{padre.ciclo_key}</span>
+                        ) : (
+                          <span className="text-[11px]" style={{ color: '#9B8FB5' }}>—</span>
+                        )}
+                      </Td>
+                      <Td className="text-right">
+                        <span className="text-[14px] font-bold tabular-nums" style={{ color: '#1A0A3B' }}>{formatMoney(r.monto)}</span>
+                      </Td>
+                      <Td>
+                        <span className="text-[12px]" style={{ color: '#6B6480' }}>{fmtDate(r.created_at)}</span>
+                      </Td>
+                      <Td>
+                        <div className="flex items-center gap-1.5 justify-end">
+                          <ActionButton onClick={() => download(r, 'xml')} title="Descargar XML del REP" tone="rep">
+                            <Download size={12} />
+                          </ActionButton>
+                          <ActionButton onClick={() => download(r, 'pdf')} title="Descargar PDF del REP" tone="rep">
+                            <FileText size={12} />
+                          </ActionButton>
+                        </div>
+                      </Td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between mb-4">
@@ -479,51 +646,63 @@ export function FacturasView({ clienteId, razonSocial, rfc, correoFacturacion }:
         </div>
       )}
 
-      {/* Upload area */}
-      <div className="rounded-2xl flex flex-col gap-3" style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', padding: '18px 20px' }}>
-        <div>
-          <p className="text-[13px] font-bold" style={{ color: '#1A0A3B' }}>Registrar factura ya timbrada</p>
-          <p className="text-[12px] mt-0.5" style={{ color: '#6B6480' }}>
-            Neka parsea el XML para extraer UUID, montos, método de pago y uso CFDI.
-          </p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <OficinaModal.Field label="XML del CFDI">
-            <OficinaModal.FileInput accept="application/xml,text/xml,.xml" placeholder="Selecciona XML…" onChange={setXmlFile} />
-          </OficinaModal.Field>
-          <OficinaModal.Field label="PDF del CFDI">
-            <OficinaModal.FileInput accept="application/pdf,.pdf" placeholder="Selecciona PDF…" onChange={setPdfFile} />
-          </OficinaModal.Field>
-        </div>
-        <div className="flex items-end gap-2">
-          <div className="flex-1 max-w-xs">
-            <OficinaModal.Field label="Ciclo" hint="opcional">
-              <OficinaModal.Input
-                value={cicloKey}
-                onChange={e => setCicloKey(e.target.value)}
-                placeholder="2026-09"
-                maxLength={20}
-              />
+      {/* Upload area — solo tab Facturas */}
+      {tab === 'facturas' && (
+        <div className="rounded-2xl flex flex-col gap-3" style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', padding: '18px 20px' }}>
+          <div>
+            <p className="text-[13px] font-bold" style={{ color: '#1A0A3B' }}>Registrar factura ya timbrada</p>
+            <p className="text-[12px] mt-0.5" style={{ color: '#6B6480' }}>
+              Neka parsea el XML para extraer UUID, montos, método de pago y uso CFDI.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <OficinaModal.Field label="XML del CFDI">
+              <OficinaModal.FileInput accept="application/xml,text/xml,.xml" placeholder="Selecciona XML…" onChange={setXmlFile} />
+            </OficinaModal.Field>
+            <OficinaModal.Field label="PDF del CFDI">
+              <OficinaModal.FileInput accept="application/pdf,.pdf" placeholder="Selecciona PDF…" onChange={setPdfFile} />
             </OficinaModal.Field>
           </div>
-          <button
-            onClick={upload}
-            disabled={uploading}
-            className="inline-flex items-center gap-2 rounded-xl text-[13px] font-semibold transition-all shrink-0"
-            style={{
-              padding:    '9px 18px',
-              height:     40,
-              background: uploading ? '#B9A8E8' : '#6C3BFF',
-              color:      '#ffffff',
-              boxShadow:  uploading ? 'none' : '0 2px 8px rgba(108,59,255,0.32)',
-              cursor:     uploading ? 'not-allowed' : 'pointer',
-            }}
-          >
-            {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
-            Registrar factura
-          </button>
+          <div className="flex items-end gap-2">
+            <div className="flex-1 max-w-xs">
+              <OficinaModal.Field label="Ciclo" hint="opcional">
+                <OficinaModal.Input
+                  value={cicloKey}
+                  onChange={e => setCicloKey(e.target.value)}
+                  placeholder="2026-09"
+                  maxLength={20}
+                />
+              </OficinaModal.Field>
+            </div>
+            <button
+              onClick={upload}
+              disabled={uploading}
+              className="inline-flex items-center gap-2 rounded-xl text-[13px] font-semibold transition-all shrink-0"
+              style={{
+                padding:    '9px 18px',
+                height:     40,
+                background: uploading ? '#B9A8E8' : '#6C3BFF',
+                color:      '#ffffff',
+                boxShadow:  uploading ? 'none' : '0 2px 8px rgba(108,59,255,0.32)',
+                cursor:     uploading ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+              Registrar factura
+            </button>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Info banner — tab REPs */}
+      {tab === 'reps' && reps.length > 0 && (
+        <div className="rounded-xl flex items-start gap-3" style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.20)', padding: '12px 14px' }}>
+          <Receipt size={14} className="mt-0.5 flex-shrink-0" style={{ color: '#6C3BFF' }} />
+          <p className="text-[12px] leading-relaxed" style={{ color: '#4A3B6B' }}>
+            Los REPs se registran desde el tab <button onClick={() => changeTab('facturas')} className="font-semibold underline" style={{ color: '#6C3BFF' }}>Facturas</button> — busca la factura PPD ya pagada y usa el botón &ldquo;Subir REP&rdquo; en sus acciones.
+          </p>
+        </div>
+      )}
 
       {/* REP upload modal */}
       {repFor && (
