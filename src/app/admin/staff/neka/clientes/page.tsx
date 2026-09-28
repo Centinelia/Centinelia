@@ -2,10 +2,9 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Plus, User, Calendar, Pause, Play, Edit3, Loader2, FileText, Mail, MapPin, Repeat, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Plus, User, Calendar, Pause, Play, Edit3, Loader2, FileText, Mail, MapPin, Repeat, TrendingUp, Receipt } from 'lucide-react';
 import type { ClienteDoc } from '@/lib/billing/centinelia-clientes';
 import { DocsSection } from './DocsSection';
-import { FacturasSection } from './FacturasSection';
 import OficinaModal from '@/app/portal/[token]/oficina/OficinaModal';
 import { useApi } from '@/lib/hooks/useApi';
 import { formatMoney } from '@/lib/format/money';
@@ -225,6 +224,19 @@ function ClienteCard({ cliente: c, onEdit, onTogglePause }: { cliente: Cliente; 
         </div>
 
         <div className="flex items-center gap-1.5 flex-shrink-0">
+          <Link
+            href={`/admin/staff/neka/clientes/${c.id}/facturas`}
+            className="flex items-center justify-center rounded-lg transition-colors"
+            style={{
+              width: 34, height: 34,
+              background: 'rgba(108,59,255,0.08)',
+              color:      '#6C3BFF',
+              border:     '1px solid rgba(108,59,255,0.16)',
+            }}
+            title="Ver facturas emitidas"
+          >
+            <Receipt size={14} />
+          </Link>
           <button
             onClick={onTogglePause}
             className="flex items-center justify-center rounded-lg transition-colors"
@@ -527,13 +539,31 @@ function ClienteForm({ initial, onClose, onSaved }: { initial: Cliente | null; o
         {initial && (
           <>
             <div style={{ height: 1, background: '#F0EBFA' }} />
+
+            {/* Link a la vista dedicada de facturas — antes era una seccion embed
+                que se llenaba de historial sin filtros. Sacado a
+                /[id]/facturas con busqueda, filtros y descargas. */}
+            <Link
+              href={`/admin/staff/neka/clientes/${initial.id}/facturas`}
+              className="flex items-center gap-3 rounded-xl transition-colors"
+              style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', padding: '14px 18px', color: '#1A0A3B' }}
+            >
+              <div className="flex items-center justify-center rounded-lg" style={{ background: 'rgba(108,59,255,0.10)', color: '#6C3BFF', width: 40, height: 40 }}>
+                <Receipt size={18} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-semibold" style={{ color: '#1A0A3B' }}>Facturas emitidas y REPs</p>
+                <p className="text-[12px] mt-0.5" style={{ color: '#6B6480' }}>Buscar, filtrar y descargar CFDIs de este cliente</p>
+              </div>
+              <span className="text-[12px] font-semibold" style={{ color: '#6C3BFF' }}>Abrir →</span>
+            </Link>
+
+            <div style={{ height: 1, background: '#F0EBFA' }} />
             <DocsSection
               clienteId={initial.id}
               initialDocs={initial.docs ?? []}
               onClienteUpdated={onSaved}
             />
-            <div style={{ height: 1, background: '#F0EBFA' }} />
-            <FacturasSection clienteId={initial.id} />
           </>
         )}
 
