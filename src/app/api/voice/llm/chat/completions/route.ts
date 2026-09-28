@@ -28,6 +28,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { transformRequest, type OpenAIRequest } from '@/lib/voice/openai-to-anthropic';
 import { anthropicToOpenAISse } from '@/lib/voice/anthropic-to-openai-sse';
 import { logLlmCall } from '@/lib/observability/llm-log';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export const dynamic  = 'force-dynamic';
 export const runtime  = 'nodejs';   // streaming SSE necesita nodejs (edge tiene TTFB issues con anthropic-ai/sdk)
@@ -75,10 +76,15 @@ export async function POST(req: NextRequest) {
     return jsonError('messages array required', 400);
   }
 
-  // Vapi inyecta un objeto `call` con id/assistantId/phoneNumber — lo ignoramos
-  // por ahora. Si quisiéramos correlacionar con voice_calls en logs, aquí es
-  // donde lo haríamos.
+  // Vapi inyecta un objeto `call` con id/assistantId/phoneNumber. Usamos
+  // assistantId para mapear a agent_id en supabase (lookup por vapi_agent_id).
+  // Sin esto los llm_call_log de voice_llm quedan con agent_id=null y no se
+  // pueden atribuir costos/uso a un cliente especifico (bug detectado 2026-09-28
+  // en Nelia Tortilleria: 70 turnos en 72h todos con agent_id=null).
   const model = body.model || 'claude-haiku-4-5-20251001';
+  const callObj = (body.call ?? {}) as Record<string, unknown>;
+  const vapiAssistantId = typeof callObj.assistantId === 'string' ? callObj.assistantId : null;
+  const vapiCallId      = typeof callObj.id === 'string' ? callObj.id : null;
 
   let params;
   try {
@@ -131,17 +137,41 @@ export async function POST(req: NextRequest) {
           const toolUses = contentBlocks
             .filter((b) => b.type === 'tool_use')
             .map((b) => ({ name: b.name, input: b.input }));
+          // Resolver agent_id + portal_email desde vapiAssistantId para atribuir
+          // el turno al cliente en llm_call_log. Best-effort — si el lookup
+          // falla, log queda con agent_id=null (comportamiento previo).
+          let resolvedAgentId: string | null = null;
+          let resolvedPortalEmail: string | null = null;
+          if (vapiAssistantId) {
+            try {
+              const supa = createAdminClient();
+              const { data: agentRow } = await supa
+                .from('voice_agents')
+                .select('id, portal_email')
+                .eq('vapi_agent_id', vapiAssistantId)
+                .maybeSingle();
+              resolvedAgentId     = (agentRow?.id as string | null) ?? null;
+              resolvedPortalEmail = (agentRow?.portal_email as string | null) ?? null;
+            } catch (err) {
+              console.warn('[voice/llm] agent lookup failed:', err);
+            }
+          }
+
           void logLlmCall({
             source: 'voice_llm',
             model: params.model,
             usage: finalMsg.usage,
             latencyMs: Date.now() - __t,
+            agentId:     resolvedAgentId,
+            portalEmail: resolvedPortalEmail,
             meta: {
               tools_count:  __toolsCount,
               tool_names:   (params.tools ?? []).map((t: {name?: string}) => t.name).slice(0, 20),
               tool_choice:  params.tool_choice ?? null,
               last_user:    __lastUserPreview,
               stop_reason:  finalMsg.stop_reason,
+              vapi_assistant_id: vapiAssistantId,
+              vapi_call_id:      vapiCallId,
               tool_uses:    toolUses,
               resp_preview: respText,
             },
