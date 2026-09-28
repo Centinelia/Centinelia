@@ -155,7 +155,13 @@ export const MEERKAT_CONFIGS: Record<string, MeerkatConfigVersions> = {
   niva:  NIVA_CONFIGS,
 };
 
+// Fallback config para roles que aún no tienen entrada en MEERKAT_CONFIGS
+// (ej. rol nuevo agregado sin cargar sus versiones todavía). Antes 2026-09-28
+// caía en Haiku 4.5 lo cual contradice la política de que TODO meerkat corre
+// con Sonnet 4.6 + custom-llm por default. Ahora el fallback también es Sonnet,
+// así que crear un rol nuevo sin config no lo degrada silenciosamente a Haiku.
+// Ver feedback-custom-llm-default-meerkats.
 export const DEFAULT_MODEL_CONFIG: MeerkatModelConfig = {
-  provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.40, maxTokens: 150,
-  speed: 0.98, minChars: 28, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3',
+  provider: 'anthropic', model: 'claude-sonnet-4-6', temperature: 0.40, maxTokens: 200,
+  speed: 0.98, minChars: 28, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2',
 };
