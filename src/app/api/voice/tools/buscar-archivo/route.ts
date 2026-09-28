@@ -3,25 +3,24 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { requireVapiAuth } from '@/lib/vapi/auth';
 import { executeSearchFiles } from '@/lib/services/connector-tools';
 import { traceVoiceCall } from '@/lib/observability/voice-trace';
+import { extractToolCall, toolResponse } from '@/lib/voice/tool-response';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { searchParams } = new URL(req.url);
   const agent_id = searchParams.get('agent_id');
-  if (!agent_id) return NextResponse.json({ result: 'Error: agent_id requerido' });
 
   const body = await req.json();
-  const args = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
-  const { busqueda } = args as { busqueda: string };
-  if (!busqueda) return NextResponse.json({ result: 'Necesito que me indiques qué archivo buscar.' });
+  const { toolCallId, args, sessionId } = extractToolCall(body);
+  if (!agent_id) return toolResponse(toolCallId, 'Error: agent_id requerido');
+
+  const { busqueda } = args as { busqueda?: string };
+  if (!busqueda) return toolResponse(toolCallId, 'Necesito que me indiques qué archivo buscar.');
 
   const startedAt = Date.now();
-  const sessionId = (((body.message as Record<string, unknown> | undefined)?.call as Record<string, unknown> | undefined)?.id as string) ?? null;
   const supabase  = createAdminClient();
 
-  console.log('[buscar-archivo] agent='+agent_id+' q="'+busqueda+'"');
-  const result   = await executeSearchFiles(agent_id, busqueda, supabase);
-  console.log('[buscar-archivo] result:', JSON.stringify(result).slice(0, 500));
+  const result = await executeSearchFiles(agent_id, busqueda, supabase);
 
   const files = (result.files as { id: string; name: string }[] | undefined) ?? [];
   const resultMsg = !result.ok
@@ -45,5 +44,5 @@ export async function POST(req: NextRequest) {
     startedAt,
   });
 
-  return NextResponse.json({ result: resultMsg });
+  return toolResponse(toolCallId, resultMsg);
 }

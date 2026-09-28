@@ -5,6 +5,7 @@ import { validateDailyAvailability } from '@/lib/daily-availability';
 import { getOrgIndustry, INDUSTRIES_WITH_DAILY_AVAILABILITY } from '@/lib/industry';
 import { traceVoiceCall } from '@/lib/observability/voice-trace';
 import { resyncPeerAgents } from '@/lib/vapi/sync';
+import { extractToolCall, toolResponse } from '@/lib/voice/tool-response';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -13,12 +14,11 @@ export async function POST(req: NextRequest) {
   const agent_id = searchParams.get('agent_id');
 
   const body = await req.json();
-  const args = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
+  const { toolCallId, args, sessionId } = extractToolCall(body);
   const startedAt = Date.now();
-  const sessionId = (body.message?.call?.id as string) ?? null;
 
   const agentId = agent_id ?? (args.agent_id as string | undefined);
-  if (!agentId) return NextResponse.json({ result: 'Error de configuracion.' });
+  if (!agentId) return toolResponse(toolCallId, 'Error de configuracion.');
 
   const supabase = createAdminClient();
 
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     .eq('id', agentId)
     .single();
   if (agentErr || !agent) {
-    return NextResponse.json({ result: 'Agente no encontrado.' }, { status: 404 });
+    return toolResponse(toolCallId, 'Agente no encontrado.');
   }
 
   // Defense in depth: validate industry via org (single source of truth).
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
     : { data: null };
   const industry = getOrgIndustry(org);
   if (!industry || !INDUSTRIES_WITH_DAILY_AVAILABILITY.includes(industry)) {
-    return NextResponse.json({ result: 'Esta funcion no esta disponible para este negocio.' }, { status: 400 });
+    return toolResponse(toolCallId, 'Esta funcion no esta disponible para este negocio.');
   }
 
   let snapshot;
@@ -45,14 +45,14 @@ export async function POST(req: NextRequest) {
     snapshot = validateDailyAvailability({
       updated_at:  new Date().toISOString(),
       updated_by:  `agent:${agent.id}`,
-      unavailable: args.unavailable ?? [],
-      limited:     args.limited     ?? [],
-      special:     args.special     ?? null,
-      notes:       args.notes       ?? null,
+      unavailable: (args.unavailable as any[]) ?? [],
+      limited:     (args.limited     as any[]) ?? [],
+      special:     (args.special     as any) ?? null,
+      notes:       (args.notes       as string | null) ?? null,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Datos invalidos.';
-    return NextResponse.json({ result: `No pude guardar la disponibilidad: ${msg}` }, { status: 400 });
+    return toolResponse(toolCallId, `No pude guardar la disponibilidad: ${msg}`);
   }
 
   const { error: updErr } = await supabase
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
 
   if (updErr) {
     console.error('[actualizar-disponibilidad-diaria] update error:', updErr.message);
-    return NextResponse.json({ result: 'Hubo un error al guardar la disponibilidad. Intentalo de nuevo.' }, { status: 500 });
+    return toolResponse(toolCallId, 'Hubo un error al guardar la disponibilidad. Intentalo de nuevo.');
   }
 
   traceVoiceCall({
@@ -83,7 +83,5 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  return NextResponse.json({
-    result: 'Disponibilidad actualizada. Todos los empleados del negocio veran este estado.',
-  });
+  return toolResponse(toolCallId, 'Disponibilidad actualizada. Todos los empleados del negocio veran este estado.');
 }

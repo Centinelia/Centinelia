@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireVapiAuth } from '@/lib/vapi/auth';
 import { traceVoiceCall } from '@/lib/observability/voice-trace';
+import { extractToolCall, toolResponse } from '@/lib/voice/tool-response';
 
 /**
  * agregar_tag_contacto — tool para que el empleado etiquete a un contacto
@@ -27,11 +28,10 @@ export async function POST(req: NextRequest) {
   const agent_id = searchParams.get('agent_id');
 
   const body = await req.json();
-  const args = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
-  const { telefono, tag, motivo } = args as { telefono: string; tag: string; motivo?: string };
+  const { toolCallId, args, sessionId } = extractToolCall(body);
+  const { telefono, tag, motivo } = args as { telefono?: string; tag?: string; motivo?: string };
 
   const startedAt = Date.now();
-  const sessionId = (body.message?.call?.id as string) ?? null;
   const trace = (result: unknown, ok = true) => traceVoiceCall({
     toolName: 'agregar_tag_contacto', agentId: agent_id ?? '', sessionId, input: args, result, ok, startedAt,
   });
@@ -39,14 +39,14 @@ export async function POST(req: NextRequest) {
   const cleanTag = sanitizeTag(tag ?? '');
   if (!agent_id || !telefono?.trim() || !cleanTag) {
     trace({ error: 'missing_params' }, false);
-    return NextResponse.json({ result: 'No pude agregar el tag: falta teléfono o tag.' });
+    return toolResponse(toolCallId, 'No pude agregar el tag: falta teléfono o tag.');
   }
 
   const supabase = createAdminClient();
   const suffix = digitsOnly(telefono).slice(-10);
   if (suffix.length < 10) {
     trace({ error: 'invalid_phone' }, false);
-    return NextResponse.json({ result: 'Número de teléfono inválido.' });
+    return toolResponse(toolCallId, 'Número de teléfono inválido.');
   }
 
   // Match contactos del mismo agent por sufijo
@@ -57,13 +57,13 @@ export async function POST(req: NextRequest) {
 
   if (matchErr || !matches) {
     trace({ error: matchErr?.message ?? 'no_matches' }, false);
-    return NextResponse.json({ result: 'No pude buscar el contacto.' });
+    return toolResponse(toolCallId, 'No pude buscar el contacto.');
   }
 
   const targets = matches.filter(r => digitsOnly(r.telefono as string).endsWith(suffix));
   if (targets.length === 0) {
     trace({ found: 0, telefono });
-    return NextResponse.json({ result: `No encontré un contacto con el teléfono ${telefono}. El tag no se agregó.` });
+    return toolResponse(toolCallId, `No encontré un contacto con el teléfono ${telefono}. El tag no se agregó.`);
   }
 
   // Agrega el tag a cada match (dedup, cap 20)
@@ -83,5 +83,5 @@ export async function POST(req: NextRequest) {
   const msg = touched > 0
     ? `Listo. Agregué el tag "${cleanTag}" al contacto ${telefono}.`
     : `El contacto ${telefono} ya tenía el tag "${cleanTag}". Sin cambios.`;
-  return NextResponse.json({ result: msg });
+  return toolResponse(toolCallId, msg);
 }

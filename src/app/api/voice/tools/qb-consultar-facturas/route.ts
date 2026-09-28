@@ -2,16 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireVapiAuth } from '@/lib/vapi/auth';
 import { getQBClient } from '@/lib/qb/client';
+import { extractToolCall, toolResponse } from '@/lib/voice/tool-response';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
   const agent_id = searchParams.get('agent_id');
-  if (!agent_id) return NextResponse.json({ result: 'Error: agent_id requerido.' });
 
   const body = await req.json();
-  const { cliente, solo_pendientes = true } = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
+  const { toolCallId, args } = extractToolCall(body);
+  if (!agent_id) return toolResponse(toolCallId, 'Error: agent_id requerido.');
+
+  const cliente = typeof args.cliente === 'string' ? args.cliente : undefined;
+  const solo_pendientes = args.solo_pendientes !== false;
 
   const supabase = createAdminClient();
   const { data: agent } = await supabase
@@ -20,10 +24,10 @@ export async function POST(req: NextRequest) {
     .eq('id', agent_id)
     .single();
 
-  if (!agent?.portal_email) return NextResponse.json({ result: 'Error: agente no encontrado.' });
+  if (!agent?.portal_email) return toolResponse(toolCallId, 'Error: agente no encontrado.');
 
   const qb = await getQBClient(agent.portal_email, supabase);
-  if (!qb) return NextResponse.json({ result: 'QuickBooks no está conectado. El cliente debe vincular su cuenta desde el portal.' });
+  if (!qb) return toolResponse(toolCallId, 'QuickBooks no está conectado. El cliente debe vincular su cuenta desde el portal.');
 
   try {
     const pendientesClause = solo_pendientes ? " AND Balance > '0'" : '';
@@ -37,7 +41,7 @@ export async function POST(req: NextRequest) {
       const msg = cliente
         ? `No encontré facturas${solo_pendientes ? ' pendientes' : ''} para "${cliente}" en QuickBooks.`
         : `No hay facturas${solo_pendientes ? ' pendientes de cobro' : ''} en QuickBooks.`;
-      return NextResponse.json({ result: msg });
+      return toolResponse(toolCallId, msg);
     }
 
     const fmt  = (n: number) => n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
@@ -49,13 +53,13 @@ export async function POST(req: NextRequest) {
     });
 
     const total = invoices.reduce((s: number, i: any) => s + (i.Balance ?? 0), 0);
-    return NextResponse.json({
-      result: `${lines.join(' ')} Total pendiente: ${fmt(total)}.`,
-      count:  invoices.length,
-      total,
-    });
+    return toolResponse(
+      toolCallId,
+      `${lines.join(' ')} Total pendiente: ${fmt(total)}.`,
+      { count: invoices.length, total },
+    );
   } catch (err) {
     console.error('qb-consultar-facturas', err);
-    return NextResponse.json({ result: 'No pude consultar las facturas en este momento.' });
+    return toolResponse(toolCallId, 'No pude consultar las facturas en este momento.');
   }
 }

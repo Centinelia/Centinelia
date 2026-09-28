@@ -109,9 +109,15 @@ export async function POST(req: NextRequest) {
       timezone:               'America/Monterrey',
       phone_number:           '',
       plan:                   'pro',
-      features: meerkat
-        ? { ...meerkat.features, role_color: meerkat.color, meerkat_role_id: meerkat.id, ...(meerkat.imagen ? { avatar: meerkat.imagen } : {}) }
-        : PLAN_FEATURES['pro'],
+      features: {
+        ...(meerkat
+          ? { ...meerkat.features, role_color: meerkat.color, meerkat_role_id: meerkat.id, ...(meerkat.imagen ? { avatar: meerkat.imagen } : {}) }
+          : PLAN_FEATURES['pro']),
+        // Default 2026-09-27: todos los meerkats nuevos corren con custom-llm +
+        // Sonnet 4.6 + prompt caching Anthropic. Costo ~$0.05/min vs precio venta
+        // $9.99/min. Ver feedback-custom-llm-default-meerkats en auto-memory.
+        use_custom_llm: true,
+      },
       ...(meerkat?.voiceId ? { elevenlabs_voice_id: meerkat.voiceId } : {}),
       minutes_included:       0,
       minutes_used:           0,
@@ -196,9 +202,14 @@ export async function POST(req: NextRequest) {
       timezone:               'America/Monterrey',
       phone_number:           '',
       plan:                   p,
-      features: meerkat
-        ? { ...meerkat.features, role_color: meerkat.color, meerkat_role_id: meerkat.id, ...(meerkat.imagen ? { avatar: meerkat.imagen } : {}) }
-        : PLAN_FEATURES[p],
+      features: {
+        ...(meerkat
+          ? { ...meerkat.features, role_color: meerkat.color, meerkat_role_id: meerkat.id, ...(meerkat.imagen ? { avatar: meerkat.imagen } : {}) }
+          : PLAN_FEATURES[p]),
+        // Default 2026-09-27: todos los meerkats nuevos corren con custom-llm.
+        // Ver feedback-custom-llm-default-meerkats en auto-memory.
+        use_custom_llm: true,
+      },
       ...(meerkat?.voiceId ? { elevenlabs_voice_id: meerkat.voiceId } : {}),
       jornada_type:           effectiveJornada,
       minutes_included:       allocation.minutes,

@@ -72,6 +72,12 @@ const NOAH_CONFIGS: MeerkatConfigVersions = {
 
 const NICO_CONFIGS: MeerkatConfigVersions = {
   1: { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.35, maxTokens: 110, speed: 0.98, minChars: 28, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3' },
+  // v2 2026-09-27: Haiku → Sonnet 4.6 como política global (feedback custom_llm_default_meerkats).
+  // Cobranza tiene flujos densos (mora, calificar razón, ofrecer opciones de pago) donde Haiku
+  // desatiende instrucciones en prompts largos. Sonnet + custom-llm baja costo real a ~$0.05/min
+  // con prompt caching. maxTokens 110 → 200 para respuestas cobranza-completas. Requiere que el
+  // agente tenga features.use_custom_llm=true. Voz/STT conservados (Turbo + nova-3).
+  2: { provider: 'anthropic', model: 'claude-sonnet-4-6',           temperature: 0.35, maxTokens: 200, speed: 0.98, minChars: 28, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3' },
 };
 
 const NELIA_CONFIGS: MeerkatConfigVersions = {
@@ -95,18 +101,37 @@ const NELIA_CONFIGS: MeerkatConfigVersions = {
 
 const NARA_CONFIGS: MeerkatConfigVersions = {
   1: { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.30, maxTokens: 150, speed: 1.02, minChars: 28, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
+  // v2 2026-09-27: Haiku → Sonnet 4.6 como política global (feedback custom_llm_default_meerkats).
+  // Trámites municipales requieren consultar fichas informativas densas + directorio + no
+  // alucinar servicios que no maneja la dependencia. Sonnet no confunde competencias. Requiere
+  // features.use_custom_llm=true. Voz/STT conservados (Flash + nova-2 para español).
+  2: { provider: 'anthropic', model: 'claude-sonnet-4-6',           temperature: 0.30, maxTokens: 200, speed: 1.02, minChars: 28, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
 };
 
 const NAIA_CONFIGS: MeerkatConfigVersions = {
   1: { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.35, maxTokens: 150, speed: 1.02, minChars: 28, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
+  // v2 2026-09-27: Haiku → Sonnet 4.6 como política global (feedback custom_llm_default_meerkats).
+  // RRHH pasa por directorios, políticas de vacaciones/permisos, y expedientes densos. Sonnet
+  // sigue mejor las reglas de captura estructurada. Requiere features.use_custom_llm=true.
+  2: { provider: 'anthropic', model: 'claude-sonnet-4-6',           temperature: 0.35, maxTokens: 200, speed: 1.02, minChars: 28, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
 };
 
 const NEO_CONFIGS: MeerkatConfigVersions = {
   1: { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.20, maxTokens: 110, speed: 1.05, minChars: 25, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
+  // v2 2026-09-27: Haiku → Sonnet 4.6 como política global (feedback custom_llm_default_meerkats).
+  // Helpdesk IT requiere diagnóstico paso-a-paso y escalar responsable correcto. Sonnet enruta
+  // mejor por el directorio de guardias. Requiere features.use_custom_llm=true.
+  2: { provider: 'anthropic', model: 'claude-sonnet-4-6',           temperature: 0.20, maxTokens: 200, speed: 1.05, minChars: 25, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
 };
 
 const NOVA_CONFIGS: MeerkatConfigVersions = {
   1: { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.70, maxTokens: 150, speed: 1.05, minChars: 25, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
+  // v2 2026-09-27: Haiku → Sonnet 4.6 como política global (feedback custom_llm_default_meerkats).
+  // Despacho de campo requiere leer disponibilidad de unidades + coordinar rutas + escalar
+  // urgencias. Sonnet mantiene contexto de múltiples unidades en la misma llamada. Requiere
+  // features.use_custom_llm=true. Temperature 0.70 conservada por creatividad para negociar
+  // ventanas de servicio.
+  2: { provider: 'anthropic', model: 'claude-sonnet-4-6',           temperature: 0.70, maxTokens: 200, speed: 1.05, minChars: 25, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
 };
 
 const NOX_CONFIGS: MeerkatConfigVersions = {

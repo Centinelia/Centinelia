@@ -4,6 +4,7 @@ import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { requireVapiAuth } from '@/lib/vapi/auth';
 import { traceVoiceCall } from '@/lib/observability/voice-trace';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
+import { extractToolCall, toolResponse } from '@/lib/voice/tool-response';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -11,12 +12,13 @@ export async function POST(req: NextRequest) {
   const agent_id = searchParams.get('agent_id');
 
   const body = await req.json();
-  const args = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
-  const { nombre, telefono, items, tipo, direccion, notas } = args;
+  const { toolCallId, args, sessionId } = extractToolCall(body);
+  const { nombre, telefono, items, tipo, direccion, notas } = args as {
+    nombre?: string; telefono?: string; items?: string; tipo?: string; direccion?: string; notas?: string;
+  };
   const startedAt = Date.now();
-  const sessionId = (body.message?.call?.id as string) ?? null;
 
-  if (!agent_id) return NextResponse.json({ result: 'Error de configuración.' });
+  if (!agent_id) return toolResponse(toolCallId, 'Error de configuración.');
 
   const supabase = createAdminClient();
   const { data: agent } = await supabase
@@ -76,5 +78,5 @@ export async function POST(req: NextRequest) {
     toolName: 'registrar_pedido', agentId: agent_id, sessionId, input: args,
     result: { ok: true, tipo, items, nombre, telefono }, startedAt,
   });
-  return NextResponse.json({ result: msg });
+  return toolResponse(toolCallId, msg);
 }

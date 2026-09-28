@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireVapiAuth } from '@/lib/vapi/auth';
 import { getQBClient } from '@/lib/qb/client';
+import { extractToolCall, toolResponse } from '@/lib/voice/tool-response';
 
 const PERIOD_MAP: Record<string, string> = {
   este_mes:    'THIS_MONTH',
@@ -17,10 +18,12 @@ export async function POST(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const agent_id = searchParams.get('agent_id');
-  if (!agent_id) return NextResponse.json({ result: 'Error: agent_id requerido.' });
 
   const body = await req.json();
-  const { periodo = 'este_mes' } = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
+  const { toolCallId, args } = extractToolCall(body);
+  if (!agent_id) return toolResponse(toolCallId, 'Error: agent_id requerido.');
+
+  const periodo = typeof args.periodo === 'string' ? args.periodo : 'este_mes';
 
   const supabase = createAdminClient();
   const { data: agent } = await supabase
@@ -29,10 +32,10 @@ export async function POST(req: NextRequest) {
     .eq('id', agent_id)
     .single();
 
-  if (!agent?.portal_email) return NextResponse.json({ result: 'Error: agente no encontrado.' });
+  if (!agent?.portal_email) return toolResponse(toolCallId, 'Error: agente no encontrado.');
 
   const qb = await getQBClient(agent.portal_email, supabase);
-  if (!qb) return NextResponse.json({ result: 'QuickBooks no está conectado.' });
+  if (!qb) return toolResponse(toolCallId, 'QuickBooks no está conectado.');
 
   try {
     const dateMacro  = PERIOD_MAP[periodo] ?? 'THIS_MONTH';
@@ -77,9 +80,9 @@ export async function POST(req: NextRequest) {
 
     if (parts.length === 1) parts.push('No hay datos disponibles para este período.');
 
-    return NextResponse.json({ result: parts.join(' '), periodo: dateMacro });
+    return toolResponse(toolCallId, parts.join(' '), { periodo: dateMacro });
   } catch (err) {
     console.error('qb-reporte-ingresos', err);
-    return NextResponse.json({ result: 'No pude generar el reporte en este momento.' });
+    return toolResponse(toolCallId, 'No pude generar el reporte en este momento.');
   }
 }

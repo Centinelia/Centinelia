@@ -7,27 +7,29 @@ import { brandKitFromAgent } from '@/lib/brand/kit';
 import { GenericDocPDF, ProposalPDF, LetterPDF } from '@/lib/pdf/doc';
 import { sendEmail } from '@/lib/email/send';
 import { requireVapiAuth } from '@/lib/vapi/auth';
+import { extractToolCall, toolResponse } from '@/lib/voice/tool-response';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { searchParams } = new URL(req.url);
   const agent_id = searchParams.get('agent_id');
-  if (!agent_id) return NextResponse.json({ result: 'Error: agent_id requerido' });
 
   const body = await req.json();
-  const args = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
+  const { toolCallId, args } = extractToolCall(body);
+  if (!agent_id) return toolResponse(toolCallId, 'Error: agent_id requerido');
+
   const { title, content, filename, template_type, client_name, client_email, total_price, validity_days, recipient_name, recipient_email } =
-    args as { title: string; content: string; filename?: string; template_type?: string; client_name?: string; client_email?: string; total_price?: string; validity_days?: number; recipient_name?: string; recipient_email?: string };
+    args as { title?: string; content?: string; filename?: string; template_type?: string; client_name?: string; client_email?: string; total_price?: string; validity_days?: number; recipient_name?: string; recipient_email?: string };
 
   if (!title || !content) {
-    return NextResponse.json({ result: 'Necesito el título y el contenido del documento.' });
+    return toolResponse(toolCallId, 'Necesito el título y el contenido del documento.');
   }
 
   // Guard 2026-08-20: rechazar template='factura'. Complemento al guard en
   // executor.ts (usado por chat/email). Este endpoint voice sirve el mismo
   // tool con lógica standalone, así que el guard debe existir en ambos lugares.
   if (template_type === 'factura') {
-    return NextResponse.json({ result: 'No existe plantilla de factura fiscal. Los CFDIs se emiten con solicitar_factura vía el PAC del negocio (Solución Factible, CONTPAQi). Si el negocio no tiene PAC conectado, registra un lead con los datos fiscales del cliente.' });
+    return toolResponse(toolCallId, 'No existe plantilla de factura fiscal. Los CFDIs se emiten con solicitar_factura vía el PAC del negocio (Solución Factible, CONTPAQi). Si el negocio no tiene PAC conectado, registra un lead con los datos fiscales del cliente.');
   }
 
   const supabase = createAdminClient();
@@ -36,11 +38,11 @@ export async function POST(req: NextRequest) {
     .select('*')
     .eq('id', agent_id)
     .single();
-  if (!agent) return NextResponse.json({ result: 'Error: agente no encontrado' });
+  if (!agent) return toolResponse(toolCallId, 'Error: agente no encontrado');
 
   const opsResult = await consumeAiOp(agent_id, 2, { source: 'tool_crear_documento', label: 'Documento creado durante llamada' });
   if (!opsResult.ok) {
-    return NextResponse.json({ result: 'No tienes operaciones IA disponibles este mes para crear documentos.' });
+    return toolResponse(toolCallId, 'No tienes operaciones IA disponibles este mes para crear documentos.');
   }
 
   try {
@@ -72,7 +74,7 @@ export async function POST(req: NextRequest) {
       .upload(path, pdfBuffer, { contentType: 'application/pdf', upsert: true });
 
     if (uploadErr) {
-      return NextResponse.json({ result: `Error al generar el documento: ${uploadErr.message}` });
+      return toolResponse(toolCallId, `Error al generar el documento: ${uploadErr.message}`);
     }
 
     const { data: signed } = await supabase.storage
@@ -105,10 +107,11 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    return NextResponse.json({
-      result: `Documento "${title}" generado y enviado a tu correo${ownerEmail ? ` ${ownerEmail}` : ''}. Puedes descargarlo desde el enlace que te enviamos.`,
-    });
+    return toolResponse(
+      toolCallId,
+      `Documento "${title}" generado y enviado a tu correo${ownerEmail ? ` ${ownerEmail}` : ''}. Puedes descargarlo desde el enlace que te enviamos.`,
+    );
   } catch (err) {
-    return NextResponse.json({ result: `Error al crear el documento: ${String(err)}` });
+    return toolResponse(toolCallId, `Error al crear el documento: ${String(err)}`);
   }
 }
