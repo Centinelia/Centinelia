@@ -49,6 +49,10 @@ export async function POST(req: NextRequest) {
       capture_leads:         capture_leads ?? true,
       capture_appointments:  capture_appointments ?? false,
       capture_orders:        capture_orders ?? false,
+      // Default 2026-09-28: use_custom_llm=true defensivo. Este flow es WA-only
+      // hoy, pero si el agente se activa como voice en el futuro, hereda el
+      // switch sin necesidad de migrar via SQL.
+      features:              { use_custom_llm: true },
     })
     .select()
     .single();
