@@ -30,22 +30,25 @@ import { config as loadEnv } from 'dotenv';
 loadEnv({ path: '.env.local' });
 
 interface Args {
-  portal?:   string;
-  role?:     string;
-  agentId?:  string;
-  apply:     boolean;
+  portal?:    string;
+  role?:      string;
+  agentId?:   string;
+  apply:      boolean;
+  forceSync:  boolean;
 }
 
 function parseArgs(): Args {
-  const args: Args = { apply: false };
+  const args: Args = { apply: false, forceSync: false };
   for (const a of process.argv.slice(2)) {
-    if (a === '--apply') args.apply = true;
+    if      (a === '--apply')       args.apply     = true;
+    else if (a === '--force-sync')  args.forceSync = true;
     else if (a.startsWith('--portal='))   args.portal  = a.slice('--portal='.length);
     else if (a.startsWith('--role='))     args.role    = a.slice('--role='.length);
     else if (a.startsWith('--agent-id=')) args.agentId = a.slice('--agent-id='.length);
   }
   if (!args.agentId && (!args.portal || !args.role)) {
-    console.error('Uso: --agent-id=UUID  |  --portal=<email> --role=<meerkat_role_id>  [--apply]');
+    console.error('Uso: --agent-id=UUID  |  --portal=<email> --role=<meerkat_role_id>  [--apply] [--force-sync]');
+    console.error('  --force-sync: re-sync Vapi incluso si features.use_custom_llm ya era true (util tras cambiar sync.ts en codigo).');
     process.exit(2);
   }
   return args;
@@ -77,33 +80,47 @@ async function main() {
     const already = feats.use_custom_llm === true;
     console.log(`\nAgent id=${row.id} name="${row.business_name}" role=${role} active=${row.active}`);
     console.log(`  vapi_agent_id=${row.vapi_agent_id ?? '(none)'}`);
-    console.log(`  features.use_custom_llm actual: ${already ? 'true (nada que hacer)' : 'ausente / false'}`);
-    if (already) continue;
+    console.log(`  features.use_custom_llm actual: ${already ? 'true' : 'ausente / false'}`);
 
-    if (!args.apply) {
-      console.log('  DRY-RUN: SET features.use_custom_llm = true (correr con --apply)');
+    const needsFlag = !already;
+    const needsSync = needsFlag || args.forceSync;
+
+    if (!needsFlag && !args.forceSync) {
+      console.log('  Nada que hacer (usa --force-sync para re-sync Vapi con las URLs actuales de sync.ts).');
       continue;
     }
 
-    const nextFeats = { ...feats, use_custom_llm: true };
-    const { error: uErr } = await supabase.from('voice_agents').update({ features: nextFeats }).eq('id', row.id);
-    if (uErr) { console.error(`  [update ${row.id}]`, uErr); process.exit(1); }
-    console.log('  ✅ features.use_custom_llm = true');
+    if (!args.apply) {
+      const parts: string[] = [];
+      if (needsFlag) parts.push('SET features.use_custom_llm = true');
+      if (needsSync) parts.push('resync Vapi (updateVapiAssistant force=true)');
+      console.log(`  DRY-RUN: ${parts.join(' + ')} (correr con --apply)`);
+      continue;
+    }
 
-    if (row.vapi_agent_id) {
+    if (needsFlag) {
+      const nextFeats = { ...feats, use_custom_llm: true };
+      const { error: uErr } = await supabase.from('voice_agents').update({ features: nextFeats }).eq('id', row.id);
+      if (uErr) { console.error(`  [update ${row.id}]`, uErr); process.exit(1); }
+      console.log('  OK features.use_custom_llm = true');
+    }
+
+    if (needsSync) {
+      if (!row.vapi_agent_id) {
+        console.warn('  Sin vapi_agent_id, skip resync. Debe estar sincronizado previamente en Vapi.');
+        continue;
+      }
       try {
         const { data: fresh } = await supabase.from('voice_agents').select('*').eq('id', row.id).single();
         if (!fresh) throw new Error('no se pudo releer el agent tras update');
         const ok = await updateVapiAssistant(row.vapi_agent_id as string, fresh as any, { force: true, syncPeers: false });
-        if (!ok) throw new Error('updateVapiAssistant devolvió false (rol no-voice?).');
-        console.log(`  ✅ Vapi assistant ${row.vapi_agent_id} re-sincronizado`);
+        if (!ok) throw new Error('updateVapiAssistant devolvio false (rol no-voice?).');
+        console.log(`  OK Vapi assistant ${row.vapi_agent_id} re-sincronizado`);
       } catch (syncErr) {
-        console.error('  ⚠  Update DB OK pero sync Vapi falló:', syncErr);
+        console.error('  Sync Vapi fallo:', syncErr);
         console.error('  Correr sync manual desde /admin/agents antes de la siguiente llamada.');
         process.exit(1);
       }
-    } else {
-      console.warn('  ⚠  Sin vapi_agent_id — no puedo re-sync. Debe estar sincronizado previamente en Vapi.');
     }
   }
 

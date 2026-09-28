@@ -13,6 +13,11 @@ import { parseToolOverrides } from '@/lib/tools/tool-overrides';
 import { resolveOrgPackContext, resolveActivePacks, meerkatActivePacks, TOOL_TO_PACK } from '@/lib/tools/packs';
 import { MEERKAT_ROLES } from '@/lib/portal/meerkat-roles';
 import { normalizeToE164 } from '@/lib/leads/dedup';
+import { MEEFI_TOOL_DEFINITIONS } from '@/lib/tools/definitions/meefi-demo';
+
+function isMeefiOrg(agent: VoiceAgent): boolean {
+  return agent.portal_email === 'meefi-demo@centinelia.mx';
+}
 
 const VAPI_URL = 'https://api.vapi.ai';
 const VAPI_KEY = process.env.VAPI_API_KEY!;
@@ -1090,7 +1095,21 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
       server: server('exec/replicar_contenido_entre_cuentas'),
     };
 
-    default: return null;
+    default: {
+      // Meefi demo tools (7) — declaradas en el preset de Nelia pero antes sin case
+      // aquí, así que buildToolDef retornaba null y el meerkat alucinaba la
+      // invocación (warning en createVapiTools). Ruteador exec/[toolName] las
+      // despacha porque executor tiene bloque `toolName.startsWith('meefi_')`.
+      const meefi = MEEFI_TOOL_DEFINITIONS.find(t => t.name === name);
+      if (meefi) {
+        return {
+          type:     'function',
+          function: { name: meefi.name, description: meefi.description, parameters: meefi.parameters },
+          server:   server(`exec/${meefi.name}`),
+        };
+      }
+      return null;
+    }
   }
 }
 
@@ -1142,6 +1161,16 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
         // transfer_number porque Nelia escala vía correo, no por transferencia.
         const RUNTIME_GATED: Record<string, (a: VoiceAgent) => boolean> = {
           transferir_llamada: (a) => !a.transfer_number,
+          // Meefi tools solo aplican al org Meefi. Todos los demás Nelia (Tortillería,
+          // futuros clientes) heredan las 7 en el preset pero sin backend real. Gate
+          // por portal_email para no registrarlas en Vapi de orgs que no las usan.
+          meefi_lookup_user_account:      (a) => !isMeefiOrg(a),
+          meefi_send_password_reset_link: (a) => !isMeefiOrg(a),
+          meefi_check_transfer_status:    (a) => !isMeefiOrg(a),
+          meefi_initiate_2fa_recovery:    (a) => !isMeefiOrg(a),
+          meefi_capture_bug_report:       (a) => !isMeefiOrg(a),
+          meefi_escalate_to_human:        (a) => !isMeefiOrg(a),
+          meefi_search_help_center:       (a) => !isMeefiOrg(a),
         };
         const gate = RUNTIME_GATED[toolName];
         if (gate && gate(agent)) {
