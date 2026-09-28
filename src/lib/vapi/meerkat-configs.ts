@@ -49,6 +49,10 @@ const NIA_CONFIGS: MeerkatConfigVersions = {
   // mantiene, temperature igual. Costo +: Sonnet ~5x Haiku por token, pero prompt cache
   // Anthropic recupera ~90% en turnos posteriores del mismo call. Solo cambia model.
   5: { provider: 'anthropic', model: 'claude-sonnet-4-6',           temperature: 0.36, maxTokens: 400, speed: 0.98, minChars: 25, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-3' },
+  // v6 2026-09-28: Sonnet 4.6 -> Sonnet 5.5 (staged, no activa hasta canario).
+  // Precio baja ~33% ($2/M input vs $3/M en 4.6). Calidad esperada mejor por
+  // Anthropic. Todo lo demas identico a v5 para aislar el cambio a modelo.
+  6: { provider: 'anthropic', model: 'claude-sonnet-5-5',           temperature: 0.36, maxTokens: 400, speed: 0.98, minChars: 25, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-3' },
 };
 
 const NOAH_CONFIGS: MeerkatConfigVersions = {
@@ -68,6 +72,9 @@ const NOAH_CONFIGS: MeerkatConfigVersions = {
   // punctuationBoundaries sin ',' y minChars 60: chunks cubren cláusulas
   // completas, direcciones no suenan staccato.
   1: { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.60, maxTokens: 150, speed: 1.00, minChars: 60, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3', punctuationBoundaries: ['.', '!', '?'] },
+  // v2 2026-09-28: staged Sonnet 5.5 (custom-llm rollout global). Sube maxTokens
+  // a 200 porque Sonnet outputea mas largo. Voz/STT/personalidad conservadas.
+  2: { provider: 'anthropic', model: 'claude-sonnet-5-5',           temperature: 0.60, maxTokens: 200, speed: 1.00, minChars: 60, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3', punctuationBoundaries: ['.', '!', '?'] },
 };
 
 const NICO_CONFIGS: MeerkatConfigVersions = {
@@ -78,6 +85,8 @@ const NICO_CONFIGS: MeerkatConfigVersions = {
   // con prompt caching. maxTokens 110 → 200 para respuestas cobranza-completas. Requiere que el
   // agente tenga features.use_custom_llm=true. Voz/STT conservados (Turbo + nova-3).
   2: { provider: 'anthropic', model: 'claude-sonnet-4-6',           temperature: 0.35, maxTokens: 200, speed: 0.98, minChars: 28, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3' },
+  // v3 2026-09-28: staged Sonnet 5.5 (custom-llm rollout global).
+  3: { provider: 'anthropic', model: 'claude-sonnet-5-5',           temperature: 0.35, maxTokens: 200, speed: 0.98, minChars: 28, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3' },
 };
 
 const NELIA_CONFIGS: MeerkatConfigVersions = {
@@ -97,6 +106,9 @@ const NELIA_CONFIGS: MeerkatConfigVersions = {
   // battle-tested en 6 meerkats. Sonnet 4.6 + nova-2 se conservan (razones documentadas
   // en v2). Solo cambia voiceModel.
   3: { provider: 'anthropic', model: 'claude-sonnet-4-6',       temperature: 0.40, maxTokens: 200, speed: 0.98, minChars: 28, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
+  // v4 2026-09-28: staged Sonnet 5.5 (canario del rollout global). Nelia
+  // Tortilleria sera el primer meerkat en activarse tras 24h de validacion.
+  4: { provider: 'anthropic', model: 'claude-sonnet-5-5',       temperature: 0.40, maxTokens: 200, speed: 0.98, minChars: 28, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
 };
 
 const NARA_CONFIGS: MeerkatConfigVersions = {
@@ -106,6 +118,8 @@ const NARA_CONFIGS: MeerkatConfigVersions = {
   // alucinar servicios que no maneja la dependencia. Sonnet no confunde competencias. Requiere
   // features.use_custom_llm=true. Voz/STT conservados (Flash + nova-2 para español).
   2: { provider: 'anthropic', model: 'claude-sonnet-4-6',           temperature: 0.30, maxTokens: 200, speed: 1.02, minChars: 28, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
+  // v3 2026-09-28: staged Sonnet 5.5 (custom-llm rollout global).
+  3: { provider: 'anthropic', model: 'claude-sonnet-5-5',           temperature: 0.30, maxTokens: 200, speed: 1.02, minChars: 28, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
 };
 
 const NAIA_CONFIGS: MeerkatConfigVersions = {
@@ -114,6 +128,8 @@ const NAIA_CONFIGS: MeerkatConfigVersions = {
   // RRHH pasa por directorios, políticas de vacaciones/permisos, y expedientes densos. Sonnet
   // sigue mejor las reglas de captura estructurada. Requiere features.use_custom_llm=true.
   2: { provider: 'anthropic', model: 'claude-sonnet-4-6',           temperature: 0.35, maxTokens: 200, speed: 1.02, minChars: 28, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
+  // v3 2026-09-28: staged Sonnet 5.5 (custom-llm rollout global).
+  3: { provider: 'anthropic', model: 'claude-sonnet-5-5',           temperature: 0.35, maxTokens: 200, speed: 1.02, minChars: 28, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
 };
 
 const NEO_CONFIGS: MeerkatConfigVersions = {
@@ -122,6 +138,8 @@ const NEO_CONFIGS: MeerkatConfigVersions = {
   // Helpdesk IT requiere diagnóstico paso-a-paso y escalar responsable correcto. Sonnet enruta
   // mejor por el directorio de guardias. Requiere features.use_custom_llm=true.
   2: { provider: 'anthropic', model: 'claude-sonnet-4-6',           temperature: 0.20, maxTokens: 200, speed: 1.05, minChars: 25, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
+  // v3 2026-09-28: staged Sonnet 5.5 (custom-llm rollout global).
+  3: { provider: 'anthropic', model: 'claude-sonnet-5-5',           temperature: 0.20, maxTokens: 200, speed: 1.05, minChars: 25, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
 };
 
 const NOVA_CONFIGS: MeerkatConfigVersions = {
@@ -132,14 +150,20 @@ const NOVA_CONFIGS: MeerkatConfigVersions = {
   // features.use_custom_llm=true. Temperature 0.70 conservada por creatividad para negociar
   // ventanas de servicio.
   2: { provider: 'anthropic', model: 'claude-sonnet-4-6',           temperature: 0.70, maxTokens: 200, speed: 1.05, minChars: 25, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
+  // v3 2026-09-28: staged Sonnet 5.5 (custom-llm rollout global).
+  3: { provider: 'anthropic', model: 'claude-sonnet-5-5',           temperature: 0.70, maxTokens: 200, speed: 1.05, minChars: 25, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
 };
 
 const NOX_CONFIGS: MeerkatConfigVersions = {
   1: { provider: 'anthropic', model: 'claude-sonnet-4-6', temperature: 0.15, maxTokens: 80, speed: 1.05, minChars: 25, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
+  // v2 2026-09-28: staged Sonnet 5.5 (custom-llm rollout global).
+  2: { provider: 'anthropic', model: 'claude-sonnet-5-5', temperature: 0.15, maxTokens: 80, speed: 1.05, minChars: 25, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
 };
 
 const NIVA_CONFIGS: MeerkatConfigVersions = {
   1: { provider: 'anthropic', model: 'claude-sonnet-4-6', temperature: 0.25, maxTokens: 150, speed: 1.00, minChars: 28, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
+  // v2 2026-09-28: staged Sonnet 5.5 (custom-llm rollout global).
+  2: { provider: 'anthropic', model: 'claude-sonnet-5-5', temperature: 0.25, maxTokens: 150, speed: 1.00, minChars: 28, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
 };
 
 export const MEERKAT_CONFIGS: Record<string, MeerkatConfigVersions> = {
@@ -158,10 +182,10 @@ export const MEERKAT_CONFIGS: Record<string, MeerkatConfigVersions> = {
 // Fallback config para roles que aún no tienen entrada en MEERKAT_CONFIGS
 // (ej. rol nuevo agregado sin cargar sus versiones todavía). Antes 2026-09-28
 // caía en Haiku 4.5 lo cual contradice la política de que TODO meerkat corre
-// con Sonnet 4.6 + custom-llm por default. Ahora el fallback también es Sonnet,
-// así que crear un rol nuevo sin config no lo degrada silenciosamente a Haiku.
-// Ver feedback-custom-llm-default-meerkats.
+// con Sonnet + custom-llm por default. Ahora el fallback también es Sonnet 5.5,
+// así que crear un rol nuevo sin config no lo degrada silenciosamente a Haiku
+// ni a versiones viejas de Sonnet. Ver feedback-custom-llm-default-meerkats.
 export const DEFAULT_MODEL_CONFIG: MeerkatModelConfig = {
-  provider: 'anthropic', model: 'claude-sonnet-4-6', temperature: 0.40, maxTokens: 200,
+  provider: 'anthropic', model: 'claude-sonnet-5-5', temperature: 0.40, maxTokens: 200,
   speed: 0.98, minChars: 28, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2',
 };
