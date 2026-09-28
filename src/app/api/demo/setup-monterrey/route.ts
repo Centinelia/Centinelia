@@ -238,7 +238,9 @@ export async function GET(req: NextRequest) {
       phone_number:            DEMO_CONFIG.phone_number,
       transfer_number:         DEMO_CONFIG.transfer_number || null,
       first_message:           DEMO_CONFIG.first_message,
-      features:                DEMO_CONFIG.features,
+      // Default 2026-09-27: incluye use_custom_llm=true en demo Monterrey igual
+      // que el resto del ecosistema. Ver feedback-custom-llm-default-meerkats.
+      features:                { ...DEMO_CONFIG.features, use_custom_llm: true },
       plan:                    DEMO_CONFIG.plan,
       minutes_included:        600,
       minutes_reset_date:      new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0],

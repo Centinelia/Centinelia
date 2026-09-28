@@ -106,7 +106,10 @@ export async function POST(req: NextRequest) {
       agent_name:             plan === 'pro' ? (agent_name?.trim() ?? null) : null,
       giro_template:          body.giro_template ?? null,
       plan:                   plan ?? 'pro',
-      features,
+      // Default 2026-09-27: todos los meerkats nuevos con use_custom_llm=true.
+      // El admin puede overrideear con features.use_custom_llm=false en el body.
+      // Ver feedback-custom-llm-default-meerkats en auto-memory.
+      features:               { ...(features ?? {}), use_custom_llm: (features?.use_custom_llm ?? true) },
       minutes_included:       PLAN_MINUTES[(plan ?? 'pro') as Plan],
       minutes_reset_date:     resetDate.toISOString().split('T')[0],
     })

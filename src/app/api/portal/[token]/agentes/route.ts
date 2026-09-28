@@ -66,6 +66,9 @@ export async function createPortalAgent({
     role_color:      role.color,
     meerkat_role_id: role.id,
     ...(role.imagen ? { avatar: role.imagen } : {}),
+    // Default 2026-09-27: todo meerkat nuevo creado desde el portal corre con
+    // custom-llm + Sonnet 4.6. Ver feedback-custom-llm-default-meerkats.
+    use_custom_llm:  true,
   };
 
   const { data: newAgent, error } = await supabase
