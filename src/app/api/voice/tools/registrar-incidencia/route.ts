@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { registrarIncidencia } from '@/lib/tools/executors/registrar-incidencia';
+import { withDedup } from '@/lib/tools/dedup/with-dedup';
 
 export const dynamic = 'force-dynamic';
 
@@ -80,15 +81,25 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const result = await registrarIncidencia(
+    const result = await withDedup(
       {
-        supabase,
-        agent,
-        org,
-        channel: 'voice',
-        sourceCallId: voiceCall?.id ?? null,
+        agentId,
+        portalEmail: agent.portal_email,
+        toolName:    'registrar_incidencia',
+        args,
+        channel:     'voice',
+        toolCallId,
       },
-      args,
+      () => registrarIncidencia(
+        {
+          supabase,
+          agent,
+          org,
+          channel: 'voice',
+          sourceCallId: voiceCall?.id ?? null,
+        },
+        args,
+      ),
     );
     // Formato {result: string} — probado en registrar_pedido, funciona sin
     // problemas con el retry loop de Vapi. Antes usábamos
