@@ -15,9 +15,10 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { mockInsertAiOpsLog, mockConsumePoolOps } = vi.hoisted(() => ({
+const { mockInsertAiOpsLog, mockConsumePoolOps, mockRpc } = vi.hoisted(() => ({
   mockInsertAiOpsLog: vi.fn(),
   mockConsumePoolOps: vi.fn(),
+  mockRpc:            vi.fn(),
 }));
 
 vi.mock('next/server', () => ({
@@ -125,6 +126,126 @@ describe('consumeAiOp — path LEGACY sync ai_ops_log insert', () => {
     const result = await consumeAiOp('agent-legacy-2', 1, { source: 'test_legacy_err' });
     expect(result.ok).toBe(true);
     expect(consoleSpy).toHaveBeenCalled();
+    consoleSpy.mockRestore();
+  });
+});
+
+// Regresión para el bug 2026-09-29 (Nelia/Tortillería): en el path NEW
+// (ops_ledger_enabled=true) si consume_pool_ops RPC devolvía error, la
+// función retornaba silently y NO se logueaba nada NI se dejaba audit row.
+// Undercharge invisible que rompía pool accuracy.
+describe('consumeAiOp — path NEW error handling (bug 2026-09-29)', () => {
+  beforeEach(() => {
+    mockRpc.mockReset();
+    // Recablear el mock de supabase para path NEW: ops_ledger_enabled=true
+    // y rpc controlable por test. Requiere resetModules para que la nueva
+    // vi.mock aplique al re-import.
+    vi.resetModules();
+    vi.doMock('@/lib/supabase/admin', () => ({
+      createAdminClient: () => ({
+        from: (table: string) => {
+          if (table === 'voice_agents') {
+            return {
+              select: () => ({
+                eq: () => ({
+                  maybeSingle: async () => ({ data: { portal_email: 'client@example.com' } }),
+                }),
+              }),
+            };
+          }
+          if (table === 'organizations') {
+            return {
+              select: () => ({
+                eq: () => ({
+                  maybeSingle: async () => ({ data: { ops_ledger_enabled: true } }),
+                }),
+              }),
+            };
+          }
+          if (table === 'ai_ops_log') {
+            return {
+              insert: async (row: unknown) => {
+                mockInsertAiOpsLog(row);
+                return { error: null };
+              },
+            };
+          }
+          if (table === 'account_ops') {
+            return {
+              select: () => ({
+                eq: () => ({
+                  maybeSingle: async () => ({ data: { ops_used: 0, ops_included: 100 } }),
+                }),
+              }),
+            };
+          }
+          return {};
+        },
+        rpc: (fn: string, args: unknown) => mockRpc(fn, args),
+      }),
+    }));
+  });
+
+  it('cuando consume_pool_ops falla, logea error y deja audit row con count=0', async () => {
+    mockRpc.mockResolvedValue({ data: null, error: { message: 'trigger cascade failed', code: 'P0001' } });
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const { consumeAiOp } = await import('../ops-guard');
+    const result = await consumeAiOp('agent-new-fail', 2, {
+      source: 'incidencia_notif',
+      label:  'Aviso de queja al encargado por correo (2 recipients)',
+      reference_id: 'incident-abc',
+    });
+
+    // Retorna ok:false (RPC falló) pero NO throw
+    expect(result.ok).toBe(false);
+    // Loguea el error para ser visible en Vercel
+    expect(consoleSpy).toHaveBeenCalledWith(
+      '[ops-guard] consume_pool_ops RPC failed (undercharge):',
+      expect.objectContaining({
+        agentId: 'agent-new-fail',
+        count: 2,
+        source: 'incidencia_notif',
+        reference_id: 'incident-abc',
+      }),
+    );
+    // Deja audit row con count=0 y rpc_error en context — clave para
+    // que el drift detector vea el intento fallido.
+    expect(mockInsertAiOpsLog).toHaveBeenCalledOnce();
+    const auditRow = mockInsertAiOpsLog.mock.calls[0][0] as {
+      count: number; source: string; reference_id: string; context: string;
+    };
+    expect(auditRow.count).toBe(0);
+    expect(auditRow.source).toBe('incidencia_notif');
+    expect(auditRow.reference_id).toBe('incident-abc');
+    const ctx = JSON.parse(auditRow.context);
+    expect(ctx.rpc_error).toContain('trigger cascade failed');
+    expect(ctx.intended_count).toBe(2);
+    consoleSpy.mockRestore();
+  });
+
+  it('cuando el RPC es exitoso, sigue insertando el audit row normal (regresión inversa)', async () => {
+    mockRpc.mockResolvedValue({ data: 98, error: null });
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const { consumeAiOp } = await import('../ops-guard');
+    const result = await consumeAiOp('agent-new-ok', 1, {
+      source: 'incident_registered',
+      label:  'Registro de queja',
+      reference_id: 'incident-xyz',
+    });
+
+    expect(result.ok).toBe(true);
+    // Path exitoso NO debe logear el nuevo error
+    expect(consoleSpy).not.toHaveBeenCalledWith(
+      '[ops-guard] consume_pool_ops RPC failed (undercharge):',
+      expect.anything(),
+    );
+    // Audit row normal, count=1
+    expect(mockInsertAiOpsLog).toHaveBeenCalledOnce();
+    const auditRow = mockInsertAiOpsLog.mock.calls[0][0] as { count: number; source: string };
+    expect(auditRow.count).toBe(1);
+    expect(auditRow.source).toBe('incident_registered');
     consoleSpy.mockRestore();
   });
 });

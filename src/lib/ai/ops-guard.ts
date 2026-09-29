@@ -127,7 +127,38 @@ export async function consumeAiOp(agentId: string, count = 1, meta?: OpsMeta): P
       p_reference_id: meta?.reference_id ?? null,
       p_description:  meta?.label ?? meta?.source ?? null,
     });
-    if (error) return { ok: false, used: 0, limit: 0 };
+    // Bug 2026-09-29 (Nelia/Tortillería): incident_registered aparece en
+    // ai_ops_log pero incidencia_notif NO — mismo path, mismo portal, misma
+    // llamada. Root cause probable: RPC falla intermitentemente y esta función
+    // retornaba silent-ok=false, matando también el audit insert. Ahora:
+    // (1) log del error para diagnosticar next-occurrence en Vercel,
+    // (2) audit row igual — con count=0 y rpc_error en context — para que el
+    //     drift detector y consumption-audit vean el intento fallido. Sin el
+    //     audit row, un charge que nunca sucedió es indistinguible de un charge
+    //     exitoso que se perdió: undercharge invisible que viola pool accuracy.
+    if (error) {
+      console.error('[ops-guard] consume_pool_ops RPC failed (undercharge):', {
+        agentId, portalEmail, count,
+        source: meta?.source, reason: meta?.reason,
+        reference_id: meta?.reference_id,
+        error,
+      });
+      try {
+        await supabase.from('ai_ops_log').insert({
+          agent_id: agentId, portal_email: portalEmail,
+          ...logPayload,
+          count: 0,
+          context: JSON.stringify({
+            ...(logPayload.context ? { orig_context: logPayload.context } : {}),
+            rpc_error: (error as { message?: string }).message ?? String(error),
+            intended_count: count,
+          }),
+        });
+      } catch (auditErr) {
+        console.error('[ops-guard] audit insert also failed (double gap):', auditErr);
+      }
+      return { ok: false, used: 0, limit: 0 };
+    }
 
     const { data: acct } = await supabase
       .from('account_ops')
