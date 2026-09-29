@@ -226,4 +226,147 @@ describe('registrarIncidencia', () => {
     // Sin recipients no debe haber incidencia_notif.
     expect(sources).not.toContain('incidencia_notif');
   });
+
+  // Dedup content-based (2026-09-29): Nelia invocó registrar_incidencia 2 veces
+  // con toolCallIds distintos para Tecate Six Cantú en 15.7s → 2 rows, 4 emails,
+  // 2 cobros. El modelo puede reinvocar la tool con motivo enriquecido; el
+  // executor NO debe insertar/notificar/cobrar 2 veces. Ventana de 5 min por
+  // (portal_email, business_name normalizado, sucursal normalizada, contact_phone).
+  describe('dedup content-based (ventana 5 min)', () => {
+    it('2 llamadas idénticas back-to-back → 1 incident, 1 email, 1 charge base', async () => {
+      const ctx = makeCtx({
+        priorCandidates: [{
+          id:                        'inc-existing',
+          business_name:             'Tecate Six Cantú',
+          sucursal:                  null,
+          contact_phone:             '+528129262462',
+          email_sent_at:             new Date(Date.now() - 30_000).toISOString(),
+          verification_scheduled_at: new Date(Date.now() + 3*86400*1000).toISOString(),
+          created_at:                new Date(Date.now() - 30_000).toISOString(),
+        }],
+      });
+      let insertCalls = 0;
+      ctx.supabase.insert = vi.fn(() => { insertCalls++; return ctx.supabase; });
+
+      const res = await registrarIncidencia(ctx as any, {
+        business_name: 'Tecate Six Cantú',
+        contact_phone: '8129262462',
+        address:       'Calle Cruz Potensada 4 54, colonia Hacienda Los Pinos',
+        motivo:        'El supervisor vino hace 3 días y desde entonces nadie',
+      });
+
+      expect(res.ok).toBe(true);
+      expect(res.incident_id).toBe('inc-existing');
+      expect(res.email_sent).toBe(true);
+      expect(insertCalls).toBe(0);
+      expect((sendMeerkatHtmlEmail as any)).not.toHaveBeenCalled();
+      expect((consumeAiOp as any)).not.toHaveBeenCalled();
+      expect((upsertFollowupContactForIncident as any)).not.toHaveBeenCalled();
+    });
+
+    it('mismo negocio + tel pero FUERA de la ventana (>5 min) → NO dedup, inserta nuevo', async () => {
+      const ctx = makeCtx({
+        priorCandidates: [{
+          id:                        'inc-old',
+          business_name:             'Tecate Six Cantú',
+          sucursal:                  null,
+          contact_phone:             '+528129262462',
+          email_sent_at:             new Date(Date.now() - 10 * 60_000).toISOString(),
+          verification_scheduled_at: new Date(Date.now() + 3*86400*1000).toISOString(),
+          created_at:                new Date(Date.now() - 10 * 60_000).toISOString(),
+        }],
+      });
+      let insertCalls = 0;
+      ctx.supabase.insert = vi.fn(() => { insertCalls++; return ctx.supabase; });
+
+      const res = await registrarIncidencia(ctx as any, {
+        business_name: 'Tecate Six Cantú',
+        contact_phone: '8129262462',
+        address:       'Y',
+        motivo:        'Nueva queja horas después',
+      });
+
+      expect(res.incident_id).toBe('inc-1');
+      expect(insertCalls).toBe(1);
+    });
+
+    it('mismo negocio pero DIFERENTE tel → NO dedup (persona distinta)', async () => {
+      const ctx = makeCtx({
+        priorCandidates: [{
+          id:                        'inc-other-phone',
+          business_name:             'Tecate Six Cantú',
+          sucursal:                  null,
+          contact_phone:             '+528111111111',
+          email_sent_at:             new Date(Date.now() - 30_000).toISOString(),
+          verification_scheduled_at: new Date(Date.now() + 3*86400*1000).toISOString(),
+          created_at:                new Date(Date.now() - 30_000).toISOString(),
+        }],
+      });
+      let insertCalls = 0;
+      ctx.supabase.insert = vi.fn(() => { insertCalls++; return ctx.supabase; });
+
+      const res = await registrarIncidencia(ctx as any, {
+        business_name: 'Tecate Six Cantú',
+        contact_phone: '8129262462',
+        address:       'Y',
+        motivo:        'Otra persona reportando misma sucursal',
+      });
+
+      expect(res.incident_id).toBe('inc-1');
+      expect(insertCalls).toBe(1);
+    });
+
+    it('mismo negocio + tel pero DIFERENTE sucursal → NO dedup (multi-branch)', async () => {
+      const ctx = makeCtx({
+        priorCandidates: [{
+          id:                        'inc-branch-a',
+          business_name:             'Don Dante',
+          sucursal:                  'San Nicolás',
+          contact_phone:             '+528129262462',
+          email_sent_at:             new Date(Date.now() - 30_000).toISOString(),
+          verification_scheduled_at: new Date(Date.now() + 3*86400*1000).toISOString(),
+          created_at:                new Date(Date.now() - 30_000).toISOString(),
+        }],
+      });
+      let insertCalls = 0;
+      ctx.supabase.insert = vi.fn(() => { insertCalls++; return ctx.supabase; });
+
+      const res = await registrarIncidencia(ctx as any, {
+        business_name: 'Don Dante',
+        sucursal:      'Apodaca',
+        contact_phone: '8129262462',
+        address:       'Y',
+        motivo:        'Otra sucursal',
+      });
+
+      expect(res.incident_id).toBe('inc-1');
+      expect(insertCalls).toBe(1);
+    });
+
+    it('dedup match ignora acentos y case (Tecate Six vs TECATE SIX)', async () => {
+      const ctx = makeCtx({
+        priorCandidates: [{
+          id:                        'inc-normalized',
+          business_name:             'Tecate Six Cantú',
+          sucursal:                  null,
+          contact_phone:             '+528129262462',
+          email_sent_at:             new Date(Date.now() - 30_000).toISOString(),
+          verification_scheduled_at: new Date(Date.now() + 3*86400*1000).toISOString(),
+          created_at:                new Date(Date.now() - 30_000).toISOString(),
+        }],
+      });
+      let insertCalls = 0;
+      ctx.supabase.insert = vi.fn(() => { insertCalls++; return ctx.supabase; });
+
+      const res = await registrarIncidencia(ctx as any, {
+        business_name: 'TECATE SIX CANTU',
+        contact_phone: '8129262462',
+        address:       'Y',
+        motivo:        'Motivo enriquecido',
+      });
+
+      expect(res.incident_id).toBe('inc-normalized');
+      expect(insertCalls).toBe(0);
+    });
+  });
 });

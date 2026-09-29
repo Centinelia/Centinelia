@@ -17,6 +17,15 @@ export interface RegistrarIncidenciaArgs {
 
 const VERIFICATION_DELAY_DAYS = 3;
 
+// Ventana anti-duplicado: Nelia invocó registrar_incidencia 2 veces con
+// toolCallIds distintos en 15.7s para Tecate Six Cantú (2026-09-29 18:35 UTC).
+// El modelo puede reinvocar la tool con el motivo enriquecido, o creyendo que
+// la primera call no respondió. Sin dedup se ensucian 3 cosas: (1) rows
+// duplicadas en client_incidents, (2) N × 2 emails al encargado, (3) doble
+// cobro que viola pool accuracy. 5 min cubre reinvocaciones dentro del mismo
+// call y contra retries que hayan tardado más que el turno de conversación.
+const DUPLICATE_WINDOW_MS = 5 * 60 * 1000;
+
 // Normaliza para match cliente: lowercase + trim + strip acentos + colapsa espacios.
 // "Suc. Apodaca " y "suc apodaca" matchean; "Apodaca" y "San Nicolás" no.
 function normalize(s: string | null | undefined): string {
@@ -39,13 +48,52 @@ export async function registrarIncidencia(ctx: any, args: RegistrarIncidenciaArg
   // memoria de quién habló, no identidad — un negocio puede tener múltiples
   // personas llamando distintas veces. Fetch todos los incidents de la org y
   // filtramos JS-side (volumen bajo per org, no hay pg extension unaccent).
+  // Extendido para dedup: también leemos id + contact_phone + email_sent_at +
+  // verification_scheduled_at + created_at para poder retornar el incident
+  // existente si es un duplicado dentro de la ventana.
   const normBiz = normalize(args.business_name);
   const normSuc = normalize(args.sucursal ?? '');
   const { data: candidates } = await ctx.supabase
     .from('client_incidents')
-    .select('business_name, sucursal')
+    .select('id, business_name, sucursal, contact_phone, email_sent_at, verification_scheduled_at, created_at')
     .eq('portal_email', ctx.agent.portal_email);
-  const isNewClient = !(candidates ?? []).some((r: { business_name: string; sucursal: string | null }) =>
+
+  // Dedup content-based: si ya existe un incident con misma (bizNorm, sucNorm,
+  // phone) creado hace <5 min, retornamos ese incident_id sin insertar, sin
+  // notificar y sin cobrar. Es el caso Tecate Six 2026-09-29 (ver
+  // DUPLICATE_WINDOW_MS arriba). Diferencia con is_new_client: aquí SÍ
+  // requerimos que el teléfono también matchee — es señal de que es la MISMA
+  // llamada, no otra persona reportando la misma sucursal en momentos distintos.
+  type Candidate = {
+    id: string;
+    business_name: string;
+    sucursal: string | null;
+    contact_phone: string | null;
+    email_sent_at: string | null;
+    verification_scheduled_at: string;
+    created_at: string;
+  };
+  const cutoff = now.getTime() - DUPLICATE_WINDOW_MS;
+  const dup = (candidates ?? []).find((r: Candidate) =>
+    normalize(r.business_name) === normBiz &&
+    normalize(r.sucursal) === normSuc &&
+    r.contact_phone === phone &&
+    new Date(r.created_at).getTime() >= cutoff,
+  );
+  if (dup) {
+    console.log('[registrar_incidencia] dedup hit — returning existing incident', {
+      incident_id: dup.id, business: args.business_name, phone,
+      age_ms: now.getTime() - new Date(dup.created_at).getTime(),
+    });
+    return {
+      ok: true as const,
+      incident_id:     dup.id,
+      email_sent:      !!dup.email_sent_at,
+      verification_at: dup.verification_scheduled_at,
+    };
+  }
+
+  const isNewClient = !(candidates ?? []).some((r: Candidate) =>
     normalize(r.business_name) === normBiz && normalize(r.sucursal) === normSuc,
   );
 
