@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { logLlmCall } from '@/lib/observability/llm-log';
 import { TOOL_SCHEMAS, toAnthropicTool } from '@/lib/tools/schemas';
 import { executeAgentTool, type ReadUrlCounter } from '@/lib/tools/executor';
+import { withDedup } from '@/lib/tools/dedup/with-dedup';
 import { rateLimit, limiters } from '@/lib/ratelimit';
 import { createElement } from 'react';
 import { renderToBuffer } from '@react-pdf/renderer';
@@ -2751,27 +2752,37 @@ ${context}`;
             if ((call.name === 'consultar_agente' || call.name === 'delegar_tarea') && call.input.caller_verified === undefined) {
               call.input.caller_verified = true;
             }
-            const toolResult = await executeAgentTool(
-              call.name,
-              call.input,
+            const toolResult = await withDedup(
               {
-                agentId:      agent.id as string,
-                portalEmail:  accountAgent.portal_email,
-                agentName,
-                businessName: agent.business_name as string,
-                portalToken:  token,
-                agent:        agent as Record<string, unknown>,
-                supabase,
-                userContext:  lastUserText(conversationMessages),
-                cookieHeader: req.cookies.get(PORTAL_COOKIE)?.value,
-                readUrlCount: readUrlCountRef,
-                channel:      'chat',
-                // Propagar identity para gates dentro de tools money-critical
-                // (aprobar_gasto, qb_crear_factura, trigger_outbound_call, etc.).
-                requesterIsSubUser: auth.isSubUser,
-                requesterUserId:    auth.userId,
-                requesterModules:   auth.modules,
-              }
+                agentId:     agent.id as string,
+                portalEmail: accountAgent.portal_email,
+                toolName:    call.name,
+                args:        call.input as Record<string, unknown>,
+                channel:     'chat',
+                toolCallId:  (call as { id?: string }).id,
+              },
+              () => executeAgentTool(
+                call.name,
+                call.input,
+                {
+                  agentId:      agent.id as string,
+                  portalEmail:  accountAgent.portal_email,
+                  agentName,
+                  businessName: agent.business_name as string,
+                  portalToken:  token,
+                  agent:        agent as Record<string, unknown>,
+                  supabase,
+                  userContext:  lastUserText(conversationMessages),
+                  cookieHeader: req.cookies.get(PORTAL_COOKIE)?.value,
+                  readUrlCount: readUrlCountRef,
+                  channel:      'chat',
+                  // Propagar identity para gates dentro de tools money-critical
+                  // (aprobar_gasto, qb_crear_factura, trigger_outbound_call, etc.).
+                  requesterIsSubUser: auth.isSubUser,
+                  requesterUserId:    auth.userId,
+                  requesterModules:   auth.modules,
+                }
+              ),
             );
 
             toolsCalled.push({
