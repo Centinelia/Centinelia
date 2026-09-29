@@ -9,6 +9,11 @@ import { NIVA_SYSTEM_PROMPT } from './prompts/niva-system';
 import { getToolsForMeerkat } from './tools';
 import type { MeerkatId, ConversationTurn, ToolCall } from './types';
 import { logLlmCall } from '@/lib/observability/llm-log';
+import {
+  isPostTempModel,
+  sonnet55VoiceExtras,
+  effectiveMaxTokens,
+} from '@/lib/anthropic/model-guards';
 
 const client = new Anthropic();
 
@@ -89,17 +94,26 @@ export async function invokeMeerkat(
   let totalTokens = 0;
   let modelUsed = config.model;
 
+  // Sonnet 5.5+ deprecó `temperature` (400 "temperature is deprecated for this
+  // model") y adaptive thinking always-on consume `max_tokens` aunque no se
+  // emita. Sin este guard, todo golden_test contra un meerkat en versión 5.5+
+  // falla (issue #73, #75 — Nia v6 en 2026-09-29 acumuló ~30 errores/6h).
+  const postTemp = isPostTempModel(config.model);
+  const goldenMaxTokens = effectiveMaxTokens(config.model, config.maxTokens, 3000);
+  const voiceExtras = sonnet55VoiceExtras(config.model);
+
   for (let iter = 0; iter < MAX_TOOL_ITERATIONS; iter++) {
     const __t = Date.now();
     let response;
     try {
       response = await client.messages.create({
         model: config.model,
-        max_tokens: config.maxTokens,
-        temperature: config.temperature,
+        max_tokens: goldenMaxTokens ?? config.maxTokens,
+        ...(postTemp ? {} : { temperature: config.temperature }),
         system: systemPrompt,
         messages,
         ...(tools.length > 0 ? { tools } : {}),
+        ...(voiceExtras as Record<string, unknown>),
       });
       void logLlmCall({ source: 'golden_test', model: config.model, usage: response.usage, latencyMs: Date.now() - __t, meta: { meerkatId, version, iter } });
     } catch (err) {
