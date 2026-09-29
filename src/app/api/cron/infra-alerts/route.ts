@@ -6,6 +6,8 @@ import { sendEmail, infraAlertHtml } from '@/lib/email/send';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
 import { evaluateElevenLabsPace, EL_PACE_CRITICAL, EL_PACE_WARN, EL_USED_PCT_CRITICAL, EL_USED_PCT_WARN } from '@/lib/monitoring/elevenlabs-pace';
 import { getMaxTokensTruncationStats, pickAlerts as pickMaxTokensAlerts, MAX_TOKENS_WARN_RATIO, MAX_TOKENS_CRITICAL_RATIO } from '@/lib/monitoring/max-tokens-truncation';
+import { detectStuckOutbound, STUCK_OUTBOUND_HOURS_WARN, STUCK_OUTBOUND_HOURS_CRITICAL } from '@/lib/monitoring/stuck-outbound';
+import { detectOutboundRegistrationDrift, OUTBOUND_REG_WINDOW_HOURS } from '@/lib/monitoring/outbound-registration';
 
 // ──────────────────────────────────────────────────────────────
 // Invoicing alert thresholds
@@ -245,6 +247,62 @@ export async function GET(req: NextRequest) {
     }
   } catch (err) {
     console.error('[infra-alerts] max_tokens truncation check failed:', err);
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Stuck outbound_contacts — firma del bug audit 2026-09-29 Nelia
+  // Tortillería: contacts en status='calling' por >2h sin outbound_calls
+  // row. Antes se acumulaban silent hasta que un humano los detectaba.
+  // Ver src/lib/monitoring/stuck-outbound.ts.
+  try {
+    const supabase = createAdminClient();
+    const stuck = await detectStuckOutbound(supabase);
+    if (stuck.level !== 'ok') {
+      const top = stuck.byAgent.slice(0, 3).map(a =>
+        `${a.agent_name ?? a.agent_id.slice(0, 8)}: ${a.count} (oldest ${a.oldest_hours.toFixed(1)}h)`,
+      ).join(' · ');
+      alerts.push({
+        service:   `Outbound stuck — contacts en 'calling' sin outbound_call (${stuck.level === 'critical' ? 'crítico' : 'aviso'})`,
+        current:   `${stuck.totalStuck} contacts · ${top}`,
+        threshold: stuck.level === 'critical'
+          ? `≥ 1 stuck por >${STUCK_OUTBOUND_HOURS_CRITICAL}h`
+          : `≥ 1 stuck por >${STUCK_OUTBOUND_HOURS_WARN}h`,
+        action:    'Revisar logs del cron /api/cron/outbound + correr scripts/cleanup-nelia-stuck-outbound.ts patrón',
+        actionUrl: 'https://vercel.com/centinelia1/centinelia_product/logs',
+        color:     stuck.level === 'critical' ? '#ef4444' : '#f59e0b',
+      });
+    }
+  } catch (err) {
+    console.error('[infra-alerts] stuck outbound check failed:', err);
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Outbound registration drift — compara Vapi API contra DB para catchear
+  // outbound calls que cayeron en voice_calls en lugar de outbound_calls
+  // (smoking gun del bug audit 2026-09-29: 18 outbound de Nelia registrados
+  // como inbound porque serverUrl no llegaba). Detección DIRECTA por vapi_call_id.
+  try {
+    const supabase = createAdminClient();
+    const drift = await detectOutboundRegistrationDrift(supabase, process.env.VAPI_API_KEY ?? '');
+    if (drift.level !== 'ok') {
+      const sample = drift.sample.slice(0, 3).map(s =>
+        `${s.vapi_call_id.slice(0, 8)}${s.location === 'voice_calls' ? '(en voice_calls!)' : ''}`,
+      ).join(', ');
+      alerts.push({
+        service:   `Outbound registration drift — Vapi vs DB (${drift.level === 'critical' ? 'crítico' : 'aviso'})`,
+        current:   `${drift.vapiOutboundInWindow} outbound en Vapi últimas ${OUTBOUND_REG_WINDOW_HOURS}h · ${drift.misregisteredInVoice} en voice_calls (mal), ${drift.missing} sin registro · muestra: ${sample}`,
+        threshold: drift.level === 'critical'
+          ? `≥ 1 outbound de Vapi cayó en voice_calls (bug 2026-09-29 reincidiendo)`
+          : `≥ 1 outbound de Vapi sin match en outbound_calls`,
+        action:    drift.level === 'critical'
+          ? 'CRÍTICO: revisar triggerOutboundCall (serverUrl override) + voice/webhook guard'
+          : 'Revisar cron /api/cron/outbound y logs',
+        actionUrl: 'https://vercel.com/centinelia1/centinelia_product/logs',
+        color:     drift.level === 'critical' ? '#ef4444' : '#f59e0b',
+      });
+    }
+  } catch (err) {
+    console.error('[infra-alerts] outbound registration drift check failed:', err);
   }
 
   // ─────────────────────────────────────────────────────────────

@@ -62,3 +62,36 @@ Formato de cada entrada:
 **Capa ajustada:** commit `d54e356e` (fix bitacora-weekly). Helpers puros extraídos a `src/lib/bitacora/weekly-flow.ts` con tests en `src/lib/bitacora/__tests__/`. Nuevo cron `/api/cron/bitacora-weekly-catchup` registrado en `vercel.json`.
 
 **Aplica a:** todo cron con envío periódico crítico (bitácoras, resúmenes, reportes ejecutivos, checkpoints de contratos). Revisar en cuanto haya reporte de "no llegó": `ops-reports`, `weekly-summary`, `weekly-insights`, `annual-contracts-payment-check`, `nox-monthly-report`, `billing-daily-report`, `csd-expiry-notify` — todos son "un solo slot semanal/diario" y potencialmente vulnerables.
+
+---
+
+## 2026-09-29 - Outbound de Nelia cobrado como inbound + 40 contacts stuck
+
+**Qué pasó:** Auditoría de primer mes de Nelia @ Tortillería Estrella (primer cliente PyME recurrente pagando 2do mes) descubrió 3 bugs acoplados en el pipeline outbound:
+
+1. `outbound_calls.scheduled_at` es NOT NULL pero `processDueOutboundContacts` no lo pasaba en el insert. El error 23502 quedaba silent (sin try/catch), dejando outbound_contacts en `status='calling'` para siempre. 40 contacts stuck para Nelia.
+
+2. `triggerOutboundCall` en `vapi/outbound.ts` NO pasaba `serverUrl` a nivel de request en el POST a Vapi. Sin ese override, Vapi enrutaba el end-of-call-report al server URL del assistant (`/api/voice/webhook`, el inbound handler). Efecto: 18 outbound calls de Nelia se registraron en `voice_calls` como inbound; el outbound webhook nunca se activaba; los minutos se cobraban con `source='call'` en lugar de `source='llamada_saliente'`. Cero fuga de $$ pero cero visibilidad de outbound vs inbound.
+
+3. `/api/voice/webhook` no tenía guard contra `call.type === 'outboundPhoneCall'`. Con Fix del serverUrl aplicado, si algún outbound legacy llegaba al inbound handler por fallback → doble cobro.
+
+**Por qué pasó:**
+- Silent DB inserts (patrón anti). Ningún try/catch alrededor de `.insert()` significaba que constraint violations no dejaban rastro.
+- Vapi request-level `serverUrl` no estaba documentado internamente. El legacy path (`/api/outbound/cron` route) sí lo pasaba; el nuevo path (`process-due-contacts.ts` → `triggerOutboundCall`) lo omitía. Divergencia entre rutas no capturada por tests.
+- Sin drift detector: 40 contacts stuck y 18 outbound mal registrados se acumularon durante 30+ días sin alerta automática. Solo un humano los detectó por casualidad en una auditoría.
+
+**Lección:**
+1. **Vapi outbound siempre requiere `serverUrl` de request-level.** Sin él, el end-of-call cae al assistant serverUrl (típicamente inbound).
+2. **Todo `.insert()` en pipeline crítico debe verificar `error`.** Silent fail es inaceptable.
+3. **Todo pipeline con state machine necesita drift detector.** Si un estado es "transitorio" (ej. `calling`), un monitor debe alertar si permanece más allá de una ventana razonable.
+4. **Vapi API es la fuente de verdad para direction.** `voice_calls` no tiene columna direction; nunca inferir tipo por caller_number o timing.
+
+**Capa ajustada:**
+- Fix: commit `52e47b21` (3 archivos: `process-due-contacts.ts`, `vapi/outbound.ts`, `voice/webhook/route.ts`)
+- Tests regression: 9 nuevos (`process-due-contacts-scheduled-at`, `outbound-serverurl`, `outbound-guard`)
+- Cleanup: `scripts/cleanup-nelia-stuck-outbound.ts` (37 contacts transicionados)
+- Drift detectors nuevos en `src/lib/monitoring/`: `stuck-outbound.ts` (contacts en `calling` >2h sin outbound_call) + `outbound-registration.ts` (Vapi vs DB comparando `vapi_call_id`, detecta el smoking gun del bug si vuelve).
+- Wired en `/api/cron/infra-alerts` (corre diario 15:00 UTC).
+- Policy: [[policies/outbound-audit-checklist]]
+
+**Aplica a:** cualquier pipeline outbound (Nelia, Nia, Noah, Navi, futuros). Cualquier flow que use `triggerOutboundCall`. Debug de reportes tipo "el meerkat no está llamando" → primer paso es el drift detector, segundo comparar Vapi API vs DB, tercero verificar `features` del agente.
