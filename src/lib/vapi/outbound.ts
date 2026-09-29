@@ -304,12 +304,22 @@ export async function triggerOutboundCall({
         ...(existingToolIds.length > 0 ? { toolIds: existingToolIds } : {}),
       };
 
+  // serverUrl a nivel de request: dirige el end-of-call-report al webhook
+  // outbound dedicado. Sin este override Vapi usaba el server URL del
+  // assistant (inbound), y los outbound calls terminaban siendo procesados
+  // como si fueran inbound: se registraban en voice_calls, se cobraban con
+  // source='call', y outbound_calls quedaba vacío. Bug audit 2026-09-29.
+  const outboundServerUrl = vapiSecret
+    ? `${appUrl}/api/outbound/vapi-webhook?secret=${encodeURIComponent(vapiSecret)}`
+    : `${appUrl}/api/outbound/vapi-webhook`;
+
   const res = await fetch(`${VAPI_URL}/call`, {
     method: 'POST',
     headers: headers(),
     body: JSON.stringify({
       assistantId:  agent.vapi_agent_id,
       phoneNumberId,
+      serverUrl:    outboundServerUrl,
       customer: {
         number: customerNumber,
         ...(customerName ? { name: customerName } : {}),

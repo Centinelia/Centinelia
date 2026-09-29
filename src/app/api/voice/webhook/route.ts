@@ -94,6 +94,20 @@ export async function POST(req: NextRequest) {
     case 'end-of-call-report': {
       const call = message.call;
 
+      // Outbound calls tienen su propio webhook (/api/outbound/vapi-webhook).
+      // Si /api/voice/webhook recibe un end-of-call-report de tipo outbound es
+      // porque el request-level serverUrl no aplicó (fallback al assistant
+      // serverUrl legacy). En ese caso NO procesamos aquí: outbound_calls es
+      // el owner del ciclo de vida y del cobro por source='llamada_saliente'.
+      // Sin este guard, un outbound call podría cobrarse doble: una vez aquí
+      // como inbound (source='call') y otra en outbound webhook. Bug audit
+      // 2026-09-29 Nelia Tortillería: 18 outbound de Nelia se estaban
+      // registrando aquí como si fueran inbound.
+      if (call?.type === 'outboundPhoneCall') {
+        console.log('[voice/webhook] outbound call routed to inbound handler, skipping. call.id:', call?.id);
+        return NextResponse.json({ ok: true, skipped: 'outbound_delegated_to_outbound_webhook' });
+      }
+
       console.log('[webhook] end-of-call-report received. call.id:', call?.id,
         '| message.assistantId:', message.assistantId,
         '| call.assistantId:', call?.assistantId,

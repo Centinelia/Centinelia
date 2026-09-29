@@ -78,7 +78,12 @@ export async function processDueOutboundContacts(limit: number = 20, onlyAgentId
           metadata: { vapi_call_id: result.callId, agent_id: agent.id },
           soft:     true, // ya lo pusimos en 'calling' arriba (atomic claim)
         });
-        await supabase.from('outbound_calls').insert({
+        // scheduled_at es NOT NULL en outbound_calls. Sin este campo el insert
+        // fallaba silent (no try/catch) y dejaba al contact atascado en
+        // 'calling' para siempre. Bug audit 2026-09-29 Nelia Tortillería: 40
+        // outbound_contacts stuck, 0 outbound_calls rows, 18 llamadas reales
+        // en Vapi cobrándose vía el webhook inbound por accidente.
+        const { error: insertErr } = await supabase.from('outbound_calls').insert({
           agent_id:     agent.id,
           contact_id:   contact.id,
           telefono:     contact.telefono,
@@ -86,8 +91,12 @@ export async function processDueOutboundContacts(limit: number = 20, onlyAgentId
           motivo:       contact.motivo ?? null,
           vapi_call_id: result.callId ?? null,
           status:       'calling',
+          scheduled_at: (contact as unknown as { scheduled_at?: string | null }).scheduled_at ?? now,
           called_at:    now,
         });
+        if (insertErr) {
+          console.error(`[outbound] outbound_calls insert failed for contact ${contact.id}:`, insertErr);
+        }
       } else {
         failed++;
         await transitionOutboundContact({
