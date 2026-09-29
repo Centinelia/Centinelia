@@ -167,6 +167,12 @@ CREATE INDEX idx_email_jobs_agent_source
 CREATE INDEX idx_email_jobs_stuck
   ON email_send_jobs (created_at)
   WHERE status IN ('pending', 'processing');
+
+-- RLS obligatorio para toda tabla nueva en schema public (regla
+-- establecida 2026-09-29 tras alerta de Supabase advisor por
+-- tool_call_dedup sin RLS — PR #82). Sin CREATE POLICY:
+-- service_role bypasses, anon/authenticated reciben 0 filas.
+ALTER TABLE email_send_jobs ENABLE ROW LEVEL SECURITY;
 ```
 
 **`source_table` + `source_row_id`**: identifican la fila destino donde actualizar `email_sent_at` (o su equivalente) cuando el job pasa a `done`. Por ejemplo `('client_incidents', '<uuid>')`. Nullable para tools sin campo de tracking (`enviar_correo`).
