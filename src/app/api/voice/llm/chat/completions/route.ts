@@ -120,15 +120,34 @@ export async function POST(req: NextRequest) {
     /^claude-(sonnet|opus|fable|mythos)-[5-9]/.test(modelId) ||
     /^claude-haiku-[5-9]/.test(modelId);
 
+  // Segunda regresion 2026-09-28: post-fix de temperature, Nia agotaba max_tokens
+  // en cada turno (stop_reason=max_tokens, latencia 4s). Causa: Sonnet 5.5 tiene
+  // "adaptive thinking always-on" que consume tokens del budget antes de emitir
+  // respuesta. Solucion (per docs Anthropic para voz/chat latency-sensitive):
+  //   1) output_config.effort = "low"                       (minimo thinking)
+  //   2) thinking.type = "between_tools"                    (skip up-front thinking)
+  //   3) max_tokens generoso: min(cfg, 2000) para dar aire  (respuesta + thinking residual)
+  // El SDK de Anthropic acepta output_config y thinking en el mismo payload.
+  const sonnetVoiceExtras = isPostTempModel
+    ? {
+        output_config: { effort: 'low' as const },
+        thinking:      { type: 'between_tools' as const },
+      }
+    : {};
+  const effectiveMaxTokens = isPostTempModel
+    ? Math.max(params.max_tokens ?? 400, 2000)
+    : params.max_tokens;
+
   const stream = anthropic.messages.stream({
     model:       params.model,
-    max_tokens:  params.max_tokens,
+    max_tokens:  effectiveMaxTokens,
     system:      params.system,
     messages:    params.messages,
     ...(isPostTempModel ? {} : { temperature: params.temperature }),
     ...(params.tools     ? { tools:       params.tools       } : {}),
     ...(params.tool_choice ? { tool_choice: params.tool_choice } : {}),
-  });
+    ...(sonnetVoiceExtras as Record<string, unknown>),
+  } as Parameters<typeof anthropic.messages.stream>[0]);
 
   const readable = new ReadableStream({
     async start(controller) {
