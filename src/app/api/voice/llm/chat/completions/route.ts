@@ -109,12 +109,23 @@ export async function POST(req: NextRequest) {
     messages_count: params.messages.length,
     last_user: __lastUserPreview,
   });
+  // Sonnet 5.5 (y modelos posteriores 5.x en adelante) deprecaron `temperature`
+  // en favor de `effort` (adaptive thinking). Pasar temperature contra esos
+  // modelos devuelve 400 "temperature is deprecated for this model". Detectamos
+  // por el prefijo del model id y omitimos temperature cuando corresponda.
+  // Regresion 2026-09-28 en Nia Santiago post-activacion Sonnet 5.5: 6 turnos
+  // fallidos consecutivos con 400.
+  const modelId = params.model ?? '';
+  const isPostTempModel =
+    /^claude-(sonnet|opus|fable|mythos)-[5-9]/.test(modelId) ||
+    /^claude-haiku-[5-9]/.test(modelId);
+
   const stream = anthropic.messages.stream({
     model:       params.model,
     max_tokens:  params.max_tokens,
-    temperature: params.temperature,
     system:      params.system,
     messages:    params.messages,
+    ...(isPostTempModel ? {} : { temperature: params.temperature }),
     ...(params.tools     ? { tools:       params.tools       } : {}),
     ...(params.tool_choice ? { tool_choice: params.tool_choice } : {}),
   });
