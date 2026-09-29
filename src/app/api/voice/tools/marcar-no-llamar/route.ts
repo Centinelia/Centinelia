@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { requireVapiAuth } from '@/lib/vapi/auth';
 import { traceVoiceCall } from '@/lib/observability/voice-trace';
 import { extractToolCall, toolResponse } from '@/lib/voice/tool-response';
+import { dedupLookup, dedupStore } from '@/lib/tools/dedup/with-dedup';
 
 // Normaliza el teléfono a solo dígitos para hacer match tolerante contra
 // las variantes almacenadas ("+52 81 12345678", "5281..." "81..." etc).
@@ -31,6 +32,27 @@ export async function POST(req: NextRequest) {
 
   const supabase = createAdminClient();
   const normalized = digitsOnly(telefono);
+
+  // Fetch agent (portal_email) al inicio para poder cachear via dedup middleware.
+  const { data: agent } = await supabase
+    .from('voice_agents')
+    .select('portal_email')
+    .eq('id', agent_id)
+    .single();
+
+  const dedupCtx = {
+    agentId:     agent_id,
+    portalEmail: (agent as { portal_email?: string })?.portal_email ?? '',
+    toolName:    'marcar_no_llamar',
+    args:        args as Record<string, unknown>,
+    channel:     'voice' as const,
+    toolCallId,
+  };
+  const cached = await dedupLookup<{ msg: string }>(dedupCtx);
+  if (cached) {
+    trace({ ok: true, telefono, cached: true });
+    return toolResponse(toolCallId, cached.msg);
+  }
 
   // 1) Marcar TODAS las filas coincidentes en outbound_contacts como 'dnc' —
   //    tanto la del cron actual como las de campañas futuras del mismo agente.
@@ -83,12 +105,6 @@ export async function POST(req: NextRequest) {
   //    llamado, cuándo, motivo. Usamos agent_learnings porque ya existe la
   //    infraestructura y guarda con auditoría; source='dnc' distingue estas
   //    entradas de learnings normales.
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('portal_email')
-    .eq('id', agent_id)
-    .single();
-
   if (agent?.portal_email) {
     await supabase.from('agent_learnings').insert({
       agent_id,
@@ -111,5 +127,6 @@ export async function POST(req: NextRequest) {
 
   const msg = `Registrado. El número ${telefono} no recibirá más llamadas de este empleado. Actualicé ${marked} registro${marked === 1 ? '' : 's'} de contacto.`;
   trace({ ok: true, telefono, marked, motivo: motivo ?? null });
+  await dedupStore(dedupCtx, { msg });
   return toolResponse(toolCallId, msg);
 }

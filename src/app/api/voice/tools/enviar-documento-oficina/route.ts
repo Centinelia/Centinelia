@@ -9,6 +9,7 @@ import { consumeAiOp } from '@/lib/ai/ops-guard';
 import { requireVapiAuth } from '@/lib/vapi/auth';
 import { checkAccount } from '@/lib/compliance/account-guard';
 import { sendOfficeDocumentByEmail } from '@/lib/documents/ops-docs-search';
+import { dedupLookup, dedupStore } from '@/lib/tools/dedup/with-dedup';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -30,6 +31,17 @@ export async function POST(req: NextRequest) {
     .from('voice_agents').select('portal_email').eq('id', agent_id).single();
   if (!agent?.portal_email) return NextResponse.json({ results: [{ toolCallId, result: 'Cuenta no encontrada.' }] });
 
+  const dedupCtx = {
+    agentId:     agent_id,
+    portalEmail: (agent as { portal_email?: string })?.portal_email ?? '',
+    toolName:    'enviar_documento_oficina',
+    args:        (parsed as unknown) as Record<string, unknown>,
+    channel:     'voice' as const,
+    toolCallId,
+  };
+  const cached = await dedupLookup<{ msg: string }>(dedupCtx);
+  if (cached) return NextResponse.json({ results: [{ toolCallId, result: cached.msg }] });
+
   const guard = await checkAccount(agent.portal_email as string, supabase);
   if (!guard.canUseOffice) {
     return NextResponse.json({ results: [{ toolCallId, result: 'Esta cuenta no puede enviar correos ahora.' }] });
@@ -45,7 +57,7 @@ export async function POST(req: NextRequest) {
     documentId: parsed.document_id, to: parsed.to, subject: parsed.subject, body: parsed.body,
   });
 
-  return NextResponse.json({
-    results: [{ toolCallId, result: res.ok ? (res.message ?? 'Correo enviado.') : `No se pudo enviar: ${res.error}` }],
-  });
+  const finalMsg = res.ok ? (res.message ?? 'Correo enviado.') : `No se pudo enviar: ${res.error}`;
+  if (res.ok) await dedupStore(dedupCtx, { msg: finalMsg });
+  return NextResponse.json({ results: [{ toolCallId, result: finalMsg }] });
 }

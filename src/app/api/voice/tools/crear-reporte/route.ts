@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { requireVapiAuth } from '@/lib/vapi/auth';
 import { generateFolio } from '@/lib/civic/folio';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
+import { dedupLookup, dedupStore } from '@/lib/tools/dedup/with-dedup';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -12,16 +13,29 @@ export async function POST(req: NextRequest) {
   if (!agent_id) return NextResponse.json({ result: 'Error de configuración.' });
 
   const body = await req.json();
-  const args = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
+  const call = (body.message?.toolCallList ?? body.toolCallList)?.[0];
+  const args = call?.function?.arguments ?? body;
+  const toolCallId: string = call?.id ?? 'call_1';
   const { categoria, descripcion, ubicacion, nombre_ciudadano, numero_ciudadano, tipo_tramite, area_responsable } = args;
 
   const supabase = createAdminClient();
 
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('business_name, transfer_whatsapp')
+    .select('business_name, transfer_whatsapp, portal_email')
     .eq('id', agent_id)
     .single();
+
+  const dedupCtx = {
+    agentId:     agent_id,
+    portalEmail: (agent as { portal_email?: string })?.portal_email ?? '',
+    toolName:    'crear_reporte',
+    args:        args as Record<string, unknown>,
+    channel:     'voice' as const,
+    toolCallId,
+  };
+  const cached = await dedupLookup<{ result: string; attach_url: string; status_url: string; folio: string }>(dedupCtx);
+  if (cached) return NextResponse.json(cached);
 
   const folio = await generateFolio(agent_id, supabase);
 
@@ -55,10 +69,12 @@ export async function POST(req: NextRequest) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
   const attachUrl = `${appUrl}/r/${folio}/adjuntar`;
   const statusUrl = `${appUrl}/reporte/${folio}`;
-  return NextResponse.json({
+  const payload = {
     result: `Su reporte ha sido registrado exitosamente. Su folio es ${folio}. Puede consultar el estatus en ${statusUrl}. Si tiene fotos del problema, puede subirlas en ${attachUrl}${tipo_tramite ? `. El área de ${area_responsable ?? tipo_tramite} le contactará cuando su expediente avance` : ''}.`,
     attach_url: attachUrl,
     status_url: statusUrl,
     folio,
-  });
+  };
+  await dedupStore(dedupCtx, payload);
+  return NextResponse.json(payload);
 }

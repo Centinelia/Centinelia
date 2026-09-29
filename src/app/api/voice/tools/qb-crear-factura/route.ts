@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { requireVapiAuth } from '@/lib/vapi/auth';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
 import { getQBClient } from '@/lib/qb/client';
+import { dedupLookup, dedupStore } from '@/lib/tools/dedup/with-dedup';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -12,8 +13,10 @@ export async function POST(req: NextRequest) {
   if (!agent_id) return NextResponse.json({ result: 'Error: agent_id requerido.' });
 
   const body = await req.json();
-  const { cliente_nombre, descripcion, monto, fecha_vencimiento } =
-    (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
+  const call = (body.message?.toolCallList ?? body.toolCallList)?.[0];
+  const args = call?.function?.arguments ?? body;
+  const toolCallId: string = call?.id ?? 'call_1';
+  const { cliente_nombre, descripcion, monto, fecha_vencimiento } = args;
 
   if (!cliente_nombre || !descripcion || !monto) {
     return NextResponse.json({ result: 'Necesito el nombre del cliente, descripción del servicio y monto para crear la factura.' });
@@ -32,6 +35,17 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (!agent?.portal_email) return NextResponse.json({ result: 'Error: agente no encontrado.' });
+
+  const dedupCtx = {
+    agentId:     agent_id,
+    portalEmail: agent.portal_email as string,
+    toolName:    'qb_crear_factura',
+    args:        args as Record<string, unknown>,
+    channel:     'voice' as const,
+    toolCallId,
+  };
+  const cached = await dedupLookup<{ result: string; invoice_id?: string; doc_number?: string }>(dedupCtx);
+  if (cached) return NextResponse.json(cached);
 
   const opsResult = await consumeAiOp(agent_id, 1, { source: 'tool_qb_crear_factura', label: 'Factura creada en QuickBooks' });
   if (!opsResult.ok) return NextResponse.json({ result: 'Sin tareas disponibles para crear la factura.' });
@@ -78,11 +92,13 @@ export async function POST(req: NextRequest) {
     const invoice = result?.Invoice;
     const fmt     = (n: number) => n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
 
-    return NextResponse.json({
+    const payload = {
       result: `Factura #${invoice?.DocNumber} creada para ${customer.DisplayName} por ${fmt(montoNum)}. Concepto: ${descripcion}.`,
       invoice_id: invoice?.Id,
       doc_number: invoice?.DocNumber,
-    });
+    };
+    await dedupStore(dedupCtx, payload);
+    return NextResponse.json(payload);
   } catch (err) {
     console.error('qb-crear-factura', err);
     return NextResponse.json({ result: 'No pude crear la factura en QuickBooks. Verifica los datos e intenta de nuevo.' });

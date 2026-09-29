@@ -8,6 +8,7 @@ import { GenericDocPDF, ProposalPDF, LetterPDF } from '@/lib/pdf/doc';
 import { sendEmail } from '@/lib/email/send';
 import { requireVapiAuth } from '@/lib/vapi/auth';
 import { extractToolCall, toolResponse } from '@/lib/voice/tool-response';
+import { dedupLookup, dedupStore } from '@/lib/tools/dedup/with-dedup';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -39,6 +40,17 @@ export async function POST(req: NextRequest) {
     .eq('id', agent_id)
     .single();
   if (!agent) return toolResponse(toolCallId, 'Error: agente no encontrado');
+
+  const dedupCtx = {
+    agentId:     agent_id,
+    portalEmail: (agent as { portal_email?: string })?.portal_email ?? '',
+    toolName:    'crear_documento',
+    args:        args as Record<string, unknown>,
+    channel:     'voice' as const,
+    toolCallId,
+  };
+  const cached = await dedupLookup<{ msg: string }>(dedupCtx);
+  if (cached) return toolResponse(toolCallId, cached.msg);
 
   const opsResult = await consumeAiOp(agent_id, 2, { source: 'tool_crear_documento', label: 'Documento creado durante llamada' });
   if (!opsResult.ok) {
@@ -107,10 +119,9 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    return toolResponse(
-      toolCallId,
-      `Documento "${title}" generado y enviado a tu correo${ownerEmail ? ` ${ownerEmail}` : ''}. Puedes descargarlo desde el enlace que te enviamos.`,
-    );
+    const finalMsg = `Documento "${title}" generado y enviado a tu correo${ownerEmail ? ` ${ownerEmail}` : ''}. Puedes descargarlo desde el enlace que te enviamos.`;
+    await dedupStore(dedupCtx, { msg: finalMsg });
+    return toolResponse(toolCallId, finalMsg);
   } catch (err) {
     return toolResponse(toolCallId, `Error al crear el documento: ${String(err)}`);
   }

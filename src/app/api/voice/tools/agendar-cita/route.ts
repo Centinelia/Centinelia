@@ -5,6 +5,7 @@ import { requireVapiAuth } from '@/lib/vapi/auth';
 import { executeListCalendarEvents, executeCreateCalendarEvent } from '@/lib/services/connector-tools';
 import { traceVoiceCall } from '@/lib/observability/voice-trace';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
+import { dedupLookup, dedupStore } from '@/lib/tools/dedup/with-dedup';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -44,9 +45,20 @@ export async function POST(req: NextRequest) {
   const supabase = createAdminClient();
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('business_name, calendar_url, transfer_whatsapp, timezone')
+    .select('business_name, calendar_url, transfer_whatsapp, timezone, portal_email')
     .eq('id', agent_id)
     .single();
+
+  const dedupCtx = {
+    agentId:     agent_id,
+    portalEmail: (agent as { portal_email?: string })?.portal_email ?? '',
+    toolName:    'agendar_cita',
+    args:        args as Record<string, unknown>,
+    channel:     'voice' as const,
+    toolCallId,
+  };
+  const cached = await dedupLookup<{ msg: string; extra: Record<string, unknown> }>(dedupCtx);
+  if (cached) return reply(cached.msg, cached.extra);
 
   // Parsear fecha_iso + hora como Mexico City (UTC-6). Si falla, startsAt = null.
   let startsAt: Date | null = null;
@@ -217,8 +229,8 @@ export async function POST(req: NextRequest) {
     cancelar:  `Su cita ha sido cancelada. Si necesita reagendar estamos a sus órdenes.`,
   };
 
-  return reply(
-    responses[accion as string] ?? 'Solicitud de cita procesada.',
-    { calendar_url: agent?.calendar_url ?? null },
-  );
+  const finalMsg = responses[accion as string] ?? 'Solicitud de cita procesada.';
+  const finalExtra = { calendar_url: agent?.calendar_url ?? null };
+  await dedupStore(dedupCtx, { msg: finalMsg, extra: finalExtra });
+  return reply(finalMsg, finalExtra);
 }

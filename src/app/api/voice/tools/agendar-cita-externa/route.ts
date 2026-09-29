@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { requireVapiAuth } from '@/lib/vapi/auth';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
+import { dedupLookup, dedupStore } from '@/lib/tools/dedup/with-dedup';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -10,7 +11,9 @@ export async function POST(req: NextRequest) {
   const agent_id = searchParams.get('agent_id');
 
   const body = await req.json();
-  const args = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
+  const call = (body.message?.toolCallList ?? body.toolCallList)?.[0];
+  const args = call?.function?.arguments ?? body;
+  const toolCallId: string = call?.id ?? 'call_1';
   const { nombre, servicio, fecha, hora, email, whatsapp_cliente } = args;
 
   if (!agent_id || !nombre || !fecha || !hora) {
@@ -26,6 +29,17 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (!agent) return NextResponse.json({ result: 'Error interno al agendar la cita.' });
+
+  const dedupCtx = {
+    agentId:     agent_id,
+    portalEmail: (agent as { portal_email?: string })?.portal_email ?? '',
+    toolName:    'agendar_cita_externa',
+    args:        args as Record<string, unknown>,
+    channel:     'voice' as const,
+    toolCallId,
+  };
+  const cached = await dedupLookup<{ result: string }>(dedupCtx);
+  if (cached) return NextResponse.json(cached);
 
   const { data: org } = agent.portal_email
     ? await supabase
@@ -110,5 +124,6 @@ export async function POST(req: NextRequest) {
       ? `Datos de la cita registrados. Comparte el link de reserva con el cliente para que confirme.`
       : `Cita registrada: ${nombre}, ${servicio ?? 'sin servicio'}, ${fecha} a las ${hora}.`;
 
+  await dedupStore(dedupCtx, { result });
   return NextResponse.json({ result });
 }
