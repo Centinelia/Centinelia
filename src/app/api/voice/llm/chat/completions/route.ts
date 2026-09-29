@@ -29,6 +29,11 @@ import { transformRequest, type OpenAIRequest } from '@/lib/voice/openai-to-anth
 import { anthropicToOpenAISse } from '@/lib/voice/anthropic-to-openai-sse';
 import { logLlmCall } from '@/lib/observability/llm-log';
 import { createAdminClient } from '@/lib/supabase/admin';
+import {
+  isPostTempModel,
+  sonnet55VoiceExtras,
+  effectiveMaxTokens,
+} from '@/lib/anthropic/model-guards';
 
 export const dynamic  = 'force-dynamic';
 export const runtime  = 'nodejs';   // streaming SSE necesita nodejs (edge tiene TTFB issues con anthropic-ai/sdk)
@@ -109,44 +114,21 @@ export async function POST(req: NextRequest) {
     messages_count: params.messages.length,
     last_user: __lastUserPreview,
   });
-  // Sonnet 5.5 (y modelos posteriores 5.x en adelante) deprecaron `temperature`
-  // en favor de `effort` (adaptive thinking). Pasar temperature contra esos
-  // modelos devuelve 400 "temperature is deprecated for this model". Detectamos
-  // por el prefijo del model id y omitimos temperature cuando corresponda.
-  // Regresion 2026-09-28 en Nia Santiago post-activacion Sonnet 5.5: 6 turnos
-  // fallidos consecutivos con 400.
-  const modelId = params.model ?? '';
-  const isPostTempModel =
-    /^claude-(sonnet|opus|fable|mythos)-[5-9]/.test(modelId) ||
-    /^claude-haiku-[5-9]/.test(modelId);
-
-  // Segunda regresion 2026-09-28: post-fix de temperature, Nia agotaba max_tokens
-  // en cada turno (stop_reason=max_tokens, latencia 4s). Causa: Sonnet 5.5 tiene
-  // "adaptive thinking always-on" que consume tokens del budget antes de emitir
-  // respuesta. Solucion (per docs Anthropic para voz/chat latency-sensitive):
-  //   1) output_config.effort = "low"                       (minimo thinking)
-  //   2) thinking.type = "between_tools"                    (skip up-front thinking)
-  //   3) max_tokens generoso: min(cfg, 2000) para dar aire  (respuesta + thinking residual)
-  // El SDK de Anthropic acepta output_config y thinking en el mismo payload.
-  const sonnetVoiceExtras = isPostTempModel
-    ? {
-        output_config: { effort: 'low' as const },
-        thinking:      { type: 'between_tools' as const },
-      }
-    : {};
-  const effectiveMaxTokens = isPostTempModel
-    ? Math.max(params.max_tokens ?? 400, 2000)
-    : params.max_tokens;
+  // Guards Sonnet 5.5+ centralizados en @/lib/anthropic/model-guards.
+  // Aprendido en Nia Santiago 2026-09-28 (voice) y golden_test 2026-09-29 (#73, #75).
+  const postTemp    = isPostTempModel(params.model);
+  const voiceExtras = sonnet55VoiceExtras(params.model);
+  const maxTokens   = effectiveMaxTokens(params.model, params.max_tokens, 2000);
 
   const stream = anthropic.messages.stream({
     model:       params.model,
-    max_tokens:  effectiveMaxTokens,
+    max_tokens:  maxTokens ?? params.max_tokens,
     system:      params.system,
     messages:    params.messages,
-    ...(isPostTempModel ? {} : { temperature: params.temperature }),
+    ...(postTemp ? {} : { temperature: params.temperature }),
     ...(params.tools     ? { tools:       params.tools       } : {}),
     ...(params.tool_choice ? { tool_choice: params.tool_choice } : {}),
-    ...(sonnetVoiceExtras as Record<string, unknown>),
+    ...(voiceExtras as Record<string, unknown>),
   } as Parameters<typeof anthropic.messages.stream>[0]);
 
   const readable = new ReadableStream({
