@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail, infraAlertHtml } from '@/lib/email/send';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
 import { evaluateElevenLabsPace, EL_PACE_CRITICAL, EL_PACE_WARN, EL_USED_PCT_CRITICAL, EL_USED_PCT_WARN } from '@/lib/monitoring/elevenlabs-pace';
+import { getMaxTokensTruncationStats, pickAlerts as pickMaxTokensAlerts, MAX_TOKENS_WARN_RATIO, MAX_TOKENS_CRITICAL_RATIO } from '@/lib/monitoring/max-tokens-truncation';
 
 // ──────────────────────────────────────────────────────────────
 // Invoicing alert thresholds
@@ -216,6 +217,34 @@ export async function GET(req: NextRequest) {
       actionUrl: 'https://supabase.com/dashboard/project/_/storage',
       color:     storageAlert === 'critical' ? '#ef4444' : '#f59e0b',
     });
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Max-tokens truncation en voice_llm (ventana 1h). Alerta cuando el LLM
+  // se queda sin espacio para responder — el cliente escucha "problema de
+  // conexion" o respuesta vacia. Regresion tipica tras cambio de modelo/config
+  // (ej. Sonnet 5.5 con adaptive thinking consumiendo el budget). Ver
+  // src/lib/monitoring/max-tokens-truncation.ts.
+  try {
+    const supabase = createAdminClient();
+    const stats = await getMaxTokensTruncationStats(supabase, 60);
+    const truncAlerts = pickMaxTokensAlerts(stats);
+    for (const t of truncAlerts) {
+      const pct = (t.ratio * 100).toFixed(1);
+      const roleLbl = t.role ?? '(sin rol)';
+      alerts.push({
+        service:   `voice_llm — max_tokens truncation (${t.level === 'critical' ? 'crítico' : 'aviso'})`,
+        current:   `${roleLbl} · ${t.model} · ${t.max_tokens_turns}/${t.total_turns} turnos truncados (${pct}%) en 1h`,
+        threshold: t.level === 'critical'
+          ? `≥ ${(MAX_TOKENS_CRITICAL_RATIO * 100).toFixed(0)}% (modelo sin espacio para responder)`
+          : `≥ ${(MAX_TOKENS_WARN_RATIO * 100).toFixed(0)}%`,
+        action:    'Subir max_tokens, bajar effort, o revisar prompt del rol',
+        actionUrl: `https://www.centinelia.mx/admin/versiones?tab=health`,
+        color:     t.level === 'critical' ? '#ef4444' : '#f59e0b',
+      });
+    }
+  } catch (err) {
+    console.error('[infra-alerts] max_tokens truncation check failed:', err);
   }
 
   // ─────────────────────────────────────────────────────────────

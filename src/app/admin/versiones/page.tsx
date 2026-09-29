@@ -7,6 +7,8 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { MEERKAT_CONFIGS } from '@/lib/vapi/meerkat-configs';
 import { VersionesTable } from '@/components/admin/VersionesTable';
 import { GoldenTestsHealthTable } from '@/components/admin/GoldenTestsHealthTable';
+import { MaxTokensTruncationTable } from '@/components/admin/MaxTokensTruncationTable';
+import { getMaxTokensTruncationStats } from '@/lib/monitoring/max-tokens-truncation';
 import { Play, AlertOctagon, DollarSign } from 'lucide-react';
 
 type TabKey = 'deploys' | 'health';
@@ -174,6 +176,17 @@ async function HealthTab() {
         />
       </div>
       <GoldenTestsHealthTable runs={recentRuns ?? []} />
+
+      <div>
+        <h2 className="text-[15px] font-semibold mb-2" style={{ color: '#1A0A3B' }}>Truncación por max_tokens (voice_llm)</h2>
+        <p className="text-[12px] mb-3" style={{ color: '#6B6480' }}>
+          Turnos donde el modelo se quedó sin espacio para responder. Regresión típica tras cambio de modelo o config (ej. Sonnet 5.5 con adaptive thinking). Cuando pasa &gt;5%, el llamante escucha respuesta truncada o "problema de conexión".
+        </p>
+        <MaxTokensTruncationTable
+          stats={await getMaxTokensTruncationStats(supabase, 24 * 60)}
+          windowLabel="últimas 24h"
+        />
+      </div>
     </div>
   );
 }
