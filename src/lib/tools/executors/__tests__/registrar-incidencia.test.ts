@@ -18,6 +18,14 @@ vi.mock('../../../ai/ops-guard', () => ({
   refundOps:   vi.fn(() => Promise.resolve({ ok: true })),
 }));
 
+// Default flag OFF: los tests legacy siguen ejercitando el path inline.
+// Tests con flag ON hacen vi.doMock adicional dentro del describe.
+vi.mock('../../../email/enqueue-email', () => ({
+  isEmailJobsEnabled:    vi.fn(() => Promise.resolve(false)),
+  enqueueEmailJobBatch:  vi.fn(() => Promise.resolve([])),
+  enqueueEmailJob:       vi.fn(() => Promise.resolve({ ok: false, error: 'not enabled' })),
+}));
+
 function makeCtx(overrides: any = {}) {
   const insertedRow = { id: 'inc-1' };
   // priorCandidates: array de rows { business_name, sucursal } que simula el
@@ -367,6 +375,68 @@ describe('registrarIncidencia', () => {
 
       expect(res.incident_id).toBe('inc-normalized');
       expect(insertCalls).toBe(0);
+    });
+  });
+
+  describe('email_jobs feature flag ON (Task 8 — regression Tecate v2)', () => {
+    it('enqueue en vez de sendMeerkatHtmlEmail inline', async () => {
+      const { isEmailJobsEnabled, enqueueEmailJobBatch } = await import('../../../email/enqueue-email');
+      (isEmailJobsEnabled as any).mockResolvedValueOnce(true);
+      (enqueueEmailJobBatch as any).mockResolvedValueOnce([
+        { ok: true, job_id: 'job-1' },
+        { ok: true, job_id: 'job-2' },
+      ]);
+      (sendMeerkatHtmlEmail as any).mockClear();
+
+      const ctx = makeCtx();
+      ctx.org.directory = [
+        { id: 'p1', name: 'A', phone: '+5281', email: 'a@x.mx', receives_incident_reports: true },
+        { id: 'p2', name: 'B', phone: '+5282', email: 'b@x.mx', receives_incident_reports: true },
+      ];
+
+      const res = await registrarIncidencia(ctx as any, {
+        business_name: 'Tecate Six', contact_phone: '8129262462',
+        address: 'Y', motivo: 'Ya tiene unos días',
+      });
+
+      expect(res.ok).toBe(true);
+      expect(res.email_sent).toBe(true);
+      expect(enqueueEmailJobBatch).toHaveBeenCalledOnce();
+      expect(sendMeerkatHtmlEmail).not.toHaveBeenCalled();
+    });
+
+    it('flag ON pero sin recipients → NO enqueue, email_sent=false', async () => {
+      const { isEmailJobsEnabled, enqueueEmailJobBatch } = await import('../../../email/enqueue-email');
+      (isEmailJobsEnabled as any).mockResolvedValueOnce(true);
+      (enqueueEmailJobBatch as any).mockClear();
+
+      const ctx = makeCtx();
+      ctx.org.directory = [];
+
+      const res = await registrarIncidencia(ctx as any, {
+        business_name: 'X', contact_phone: '8112345678', address: 'Y', motivo: 'Z',
+      });
+
+      expect(res.ok).toBe(true);
+      expect(res.email_sent).toBe(false);
+      expect(enqueueEmailJobBatch).not.toHaveBeenCalled();
+    });
+
+    it('flag ON: cobro base sí ocurre (incident_registered), pero NO se cobra incidencia_notif inline', async () => {
+      const { isEmailJobsEnabled, enqueueEmailJobBatch } = await import('../../../email/enqueue-email');
+      (isEmailJobsEnabled as any).mockResolvedValueOnce(true);
+      (enqueueEmailJobBatch as any).mockResolvedValueOnce([{ ok: true, job_id: 'j1' }]);
+      (consumeAiOp as any).mockClear();
+
+      const ctx = makeCtx();
+      await registrarIncidencia(ctx as any, {
+        business_name: 'X', contact_phone: '8112345678', address: 'Y', motivo: 'Z',
+      });
+
+      const calls = (consumeAiOp as any).mock.calls;
+      const sources = calls.map((c: any[]) => c[2]?.source);
+      expect(sources).toContain('incident_registered');
+      expect(sources).not.toContain('incidencia_notif');
     });
   });
 });

@@ -5,6 +5,7 @@ import { renderIncidentCardEmail } from '../../incidents/email-template';
 import { upsertFollowupContactForIncident } from '../../incidents/scheduling';
 import { sendMeerkatHtmlEmail } from '../../email/send-as-agent';
 import { consumeAiOp } from '../../ai/ops-guard';
+import { enqueueEmailJobBatch, isEmailJobsEnabled } from '../../email/enqueue-email';
 
 export interface RegistrarIncidenciaArgs {
   business_name: string;
@@ -133,8 +134,47 @@ export async function registrarIncidencia(ctx: any, args: RegistrarIncidenciaArg
     console.error('registrar_incidencia consumeAiOp base failed silently:', err);
   }
 
-  let sentCount = 0;
-  if (recipients.length > 0) {
+  // Bifurcación email jobs (spec 2026-09-29): si el flag está ON, encolamos
+  // en email_send_jobs y respondemos <2s al modelo. Sin flag, path legacy
+  // inline preservado para reversal instantáneo por org.
+  const useJobs = recipients.length > 0
+    ? await isEmailJobsEnabled(ctx.agent.portal_email, ctx.supabase)
+    : false;
+
+  let emailSent = false;
+  if (useJobs && recipients.length > 0) {
+    const { subject, html } = renderIncidentCardEmail({
+      businessName:     args.business_name,
+      sucursal:         args.sucursal ?? null,
+      contactName:      args.contact_name ?? null,
+      contactPhone:     phone,
+      address:          args.address,
+      motivo:           args.motivo,
+      capturedAt:       now,
+      agentDisplayName: `${ctx.agent.agent_name} · ${ctx.agent.business_name ?? ''}`.trim(),
+    });
+    const enqueueResults = await enqueueEmailJobBatch(
+      {
+        agentId:      ctx.agent.id,
+        portalEmail:  ctx.agent.portal_email,
+        subject,
+        html,
+        source:       'incidencia_notif',
+        referenceId:  incidentId,
+        chargeSource: 'incidencia_notif',
+        chargeLabel:  'Aviso de queja al encargado por correo',
+        sourceTable:  'client_incidents',
+        sourceRowId:  incidentId,
+      },
+      recipients.map(r => ({ to: r.email })),
+      ctx.supabase,
+    );
+    emailSent = enqueueResults.some(r => r.ok);
+    // NOTA: charge de incidencia_notif y update de email_sent_at los hace
+    // el cron cuando cada job pasa a status='done'.
+  } else if (recipients.length > 0) {
+    // LEGACY inline path (código original preservado hasta Fase 4).
+    let sentCount = 0;
     const { subject, html } = renderIncidentCardEmail({
       businessName:     args.business_name,
       sucursal:         args.sucursal ?? null,
@@ -166,16 +206,6 @@ export async function registrarIncidencia(ctx: any, args: RegistrarIncidenciaArg
       }
     }
     if (sentCount > 0) {
-      // Cobrar N tareas (una por envío real) en UNA sola llamada al final del
-      // loop. El patrón anterior cobraba 1 tarea por iteración adentro del for,
-      // pero en producción vimos undercharge sistemático en multi-recipient
-      // (2 envíos ok, 1 sola fila en ops_ledger). Root cause no confirmada
-      // (posible timeout Vercel, race, o retry Vapi que corta el 2do await).
-      // Cambio a batched-consume: 1 sola RPC + 1 sola INSERT, superficie mínima
-      // para que se caiga a la mitad. try/catch para no abortar el flow si el
-      // cobro tira — los envíos ya salieron y el registro ya se hizo, no vale
-      // devolverle "intenta de nuevo" al meerkat. Drift detector detecta el
-      // undercharge en <1h como red de seguridad.
       try {
         await consumeAiOp(ctx.agent.id, sentCount, {
           source: 'incidencia_notif',
@@ -191,8 +221,8 @@ export async function registrarIncidencia(ctx: any, args: RegistrarIncidenciaArg
         .update({ email_sent_at: new Date().toISOString() })
         .eq('id', incidentId);
     }
+    emailSent = sentCount > 0;
   }
-  const emailSent = sentCount > 0;
 
   const { outbound_contact_id } = await upsertFollowupContactForIncident(ctx.supabase, {
     incidentId,
