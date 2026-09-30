@@ -130,18 +130,21 @@ export async function GET(req: NextRequest) {
     metrics.email_jobs_latency_p95_ms = null;
   }
 
-  // 4) platform_incidents nuevos con "temperature"
+  // 4) platform_incidents nuevos con "temperature" — solo cuenta incidents
+  // NO-resolved. Los 6 incidents pre-existentes (oleadas 4-9) están todos
+  // resolved manualmente y NO deben disparar alerta.
   const { data: tempIncs } = await supabase
     .from('platform_incidents')
-    .select('id, title, created_at')
+    .select('id, title, status, created_at')
     .gte('created_at', NASH_DEPLOY_AT.toISOString())
-    .ilike('title', '%temperature%');
+    .ilike('title', '%temperature%')
+    .not('status', 'in', '("resolved","closed")');
   metrics.platform_incidents_temperature_new = tempIncs?.length ?? 0;
   if ((tempIncs?.length ?? 0) > 0) {
     alerts.push({
       severity: 'critical',
       metric:   'platform_incidents temperature re-open',
-      detail:   `Nash reabrió ${tempIncs?.length} incidents pese al floor: ${tempIncs?.map(i => i.title).join(' | ')}`,
+      detail:   `Nash reabrió ${tempIncs?.length} incidents pese al floor: ${tempIncs?.map(i => `[${i.status}] ${i.title}`).join(' | ')}`,
     });
   }
 
