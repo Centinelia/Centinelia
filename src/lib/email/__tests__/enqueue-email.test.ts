@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { enqueueEmailJob, enqueueEmailJobBatch } from '../enqueue-email';
+import { enqueueEmailJob, enqueueEmailJobBatch, isEmailJobsEnabled, __clearEmailJobsFlagCache } from '../enqueue-email';
 
 const mockInsert = vi.fn();
 const mockSupa = {
@@ -153,5 +153,73 @@ describe('enqueueEmailJobBatch', () => {
     expect(results).toHaveLength(2);
     expect(results[0]).toEqual({ ok: false, error: 'db down' });
     expect(results[1]).toEqual({ ok: false, error: 'db down' });
+  });
+});
+
+describe('isEmailJobsEnabled', () => {
+  const mockFlag = vi.fn();
+  const mockSupaFlag = {
+    from: (table: string) => {
+      if (table !== 'organizations') throw new Error(`unexpected: ${table}`);
+      return {
+        select: () => ({
+          eq: () => ({
+            maybeSingle: async () => mockFlag(),
+          }),
+        }),
+      };
+    },
+  } as unknown as Parameters<typeof isEmailJobsEnabled>[1];
+
+  beforeEach(() => {
+    mockFlag.mockReset();
+    __clearEmailJobsFlagCache();
+  });
+
+  it('flag ON en org → retorna true', async () => {
+    mockFlag.mockResolvedValue({ data: { email_jobs_enabled: true }, error: null });
+    expect(await isEmailJobsEnabled('org@x.mx', mockSupaFlag)).toBe(true);
+  });
+
+  it('flag OFF en org → retorna false', async () => {
+    mockFlag.mockResolvedValue({ data: { email_jobs_enabled: false }, error: null });
+    expect(await isEmailJobsEnabled('org@x.mx', mockSupaFlag)).toBe(false);
+  });
+
+  it('org no existe → retorna false (fail-safe)', async () => {
+    mockFlag.mockResolvedValue({ data: null, error: null });
+    expect(await isEmailJobsEnabled('missing@x.mx', mockSupaFlag)).toBe(false);
+  });
+
+  it('DB throw → retorna false (fail-safe)', async () => {
+    mockFlag.mockRejectedValue(new Error('db down'));
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect(await isEmailJobsEnabled('org@x.mx', mockSupaFlag)).toBe(false);
+    expect(consoleSpy).toHaveBeenCalled();
+    consoleSpy.mockRestore();
+  });
+
+  it('cache 30s → 2 lookups consecutivos = 1 DB query', async () => {
+    mockFlag.mockResolvedValue({ data: { email_jobs_enabled: true }, error: null });
+    await isEmailJobsEnabled('org@x.mx', mockSupaFlag);
+    await isEmailJobsEnabled('org@x.mx', mockSupaFlag);
+    expect(mockFlag).toHaveBeenCalledOnce();
+  });
+
+  it('cache respeta TTL — 31s después re-lookup a DB', async () => {
+    vi.useFakeTimers();
+    mockFlag.mockResolvedValue({ data: { email_jobs_enabled: true }, error: null });
+    await isEmailJobsEnabled('org@x.mx', mockSupaFlag);
+    vi.advanceTimersByTime(31_000);
+    await isEmailJobsEnabled('org@x.mx', mockSupaFlag);
+    expect(mockFlag).toHaveBeenCalledTimes(2);
+    vi.useRealTimers();
+  });
+
+  it('cache es por-org — 2 orgs distintos = 2 queries', async () => {
+    mockFlag.mockResolvedValue({ data: { email_jobs_enabled: true }, error: null });
+    await isEmailJobsEnabled('a@x.mx', mockSupaFlag);
+    await isEmailJobsEnabled('b@x.mx', mockSupaFlag);
+    expect(mockFlag).toHaveBeenCalledTimes(2);
   });
 });

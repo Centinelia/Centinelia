@@ -95,3 +95,41 @@ export async function enqueueEmailJobBatch(
   const inserted = (data ?? []) as Array<{ id: string }>;
   return inserted.map(r => ({ ok: true as const, job_id: r.id }));
 }
+
+const FLAG_TTL_MS = 30_000;
+
+interface FlagCacheEntry {
+  value:      boolean;
+  fetchedAt:  number;
+}
+const flagCache = new Map<string, FlagCacheEntry>();
+
+export function __clearEmailJobsFlagCache(): void {
+  flagCache.clear();
+}
+
+export async function isEmailJobsEnabled(
+  portalEmail: string,
+  supabase:    SupabaseClient,
+): Promise<boolean> {
+  const cached = flagCache.get(portalEmail);
+  const now = Date.now();
+  if (cached && (now - cached.fetchedAt) < FLAG_TTL_MS) {
+    return cached.value;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('organizations')
+      .select('email_jobs_enabled')
+      .eq('portal_email', portalEmail)
+      .maybeSingle();
+    if (error) throw error;
+    const value = !!(data as { email_jobs_enabled?: boolean } | null)?.email_jobs_enabled;
+    flagCache.set(portalEmail, { value, fetchedAt: now });
+    return value;
+  } catch (err) {
+    console.error('[email-jobs] isEmailJobsEnabled fail-safe:', err);
+    return false;
+  }
+}
