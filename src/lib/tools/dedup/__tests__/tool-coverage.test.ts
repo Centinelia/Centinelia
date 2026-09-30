@@ -65,3 +65,35 @@ describe('tool coverage — dedup middleware applied', () => {
     expect(missing, `tools con side-effects sin dedup wrapper: ${missing.join(', ')}`).toEqual([]);
   });
 });
+
+describe('email jobs coverage', () => {
+  // Ruling Task 9 (2026-09-29): enviar-correo y enviar-documento-oficina son
+  // user-triggered (el modelo espera confirmación real del envío) + requieren
+  // ops-gate sync pre-send. Su naturaleza es distinta a las tools de
+  // notificación (registrar_incidencia, registrar_cliente_nuevo, crear_ticket)
+  // que sí se benefician del background pattern. Ver ledger.
+  const TOOLS_WITH_EMAIL = [
+    'registrar-cliente-nuevo',
+    'crear-ticket',
+  ];
+  for (const tool of TOOLS_WITH_EMAIL) {
+    it(`${tool} tiene bifurcación isEmailJobsEnabled → enqueueEmailJob`, () => {
+      const candidates = [
+        path.join(ROOT, 'src', 'app', 'api', 'voice', 'tools', tool, 'route.ts'),
+        path.join(ROOT, 'src', 'lib', 'tools', 'executors', `${tool}.ts`),
+      ];
+      const found = candidates.filter(p => existsSync(p));
+      expect(found.length, `${tool} debe existir en al menos un lugar`).toBeGreaterThan(0);
+      const src = found.map(p => readFileSync(p, 'utf8')).join('\n');
+      expect(src, `${tool} debe importar isEmailJobsEnabled`).toMatch(/isEmailJobsEnabled/);
+      expect(src, `${tool} debe llamar enqueueEmailJob o enqueueEmailJobBatch`).toMatch(/enqueueEmailJob(Batch)?\s*\(/);
+    });
+  }
+
+  it('registrar-incidencia executor tiene bifurcación', () => {
+    const p = path.join(ROOT, 'src', 'lib', 'tools', 'executors', 'registrar-incidencia.ts');
+    const src = readFileSync(p, 'utf8');
+    expect(src).toMatch(/isEmailJobsEnabled/);
+    expect(src).toMatch(/enqueueEmailJobBatch\s*\(/);
+  });
+});
