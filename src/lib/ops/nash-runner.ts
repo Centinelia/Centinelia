@@ -231,6 +231,26 @@ export interface NashSignalCheck {
   pending_verification: number;
 }
 
+/**
+ * Consulta el floor máximo de nash_error_floor para descartar errores viejos
+ * de sources ya fixeados. Devuelve el timestamp más alto de todos los floors;
+ * Nash lo usa como piso conservador para el count de llm_call_log.
+ *
+ * Bug 2026-09-29 (issues #77 #79 #80): sin este floor, Nash contaba errores
+ * acumulados pre-fix como "señales nuevas" y disparaba re-issues cada 10 min.
+ * Ver feedback_nash_false_positive_prefix_errors.md.
+ */
+async function getMaxErrorFloor(supabase: SupabaseAdmin): Promise<Date | null> {
+  const { data } = await supabase
+    .from('nash_error_floor')
+    .select('floor_timestamp')
+    .order('floor_timestamp', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const ts = (data as { floor_timestamp?: string } | null)?.floor_timestamp;
+  return ts ? new Date(ts) : null;
+}
+
 export async function hasNewSignalsForNash(
   supabase: SupabaseAdmin,
   since:    Date,
@@ -238,12 +258,20 @@ export async function hasNewSignalsForNash(
   const sinceIso = since.toISOString();
   const staleIso = new Date(Date.now() - NASH_STALE_INBOX_HOURS * 3_600_000).toISOString();
 
+  // Aplicar floor de errores fixeados: usar MAX(since, floor) para el count
+  // de llm_call_log. Sin esto, Nash re-alerta sobre errores pre-fix cada
+  // vez que un cron miss deja `nash_last_run_at` muy atrás.
+  const floor = await getMaxErrorFloor(supabase);
+  const llmSinceIso = floor && floor > since
+    ? floor.toISOString()
+    : sinceIso;
+
   // Cuentas en paralelo — head:true no descarga filas, solo el count.
   const [bug, llm, inbox, hf, tasks, pending] = await Promise.all([
     supabase.from('tool_call_log').select('id', { count: 'exact', head: true })
       .eq('tool_name', 'reportar_falla').gte('created_at', sinceIso),
     supabase.from('llm_call_log').select('id', { count: 'exact', head: true })
-      .not('error', 'is', null).gte('created_at', sinceIso),
+      .not('error', 'is', null).gte('created_at', llmSinceIso),
     supabase.from('ops_inbox').select('id', { count: 'exact', head: true })
       .eq('status', 'escalated').lt('updated_at', staleIso),
     supabase.from('handoff_failed_responses').select('id', { count: 'exact', head: true })
