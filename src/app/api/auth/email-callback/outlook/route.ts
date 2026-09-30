@@ -12,15 +12,16 @@ export async function GET(req: NextRequest) {
   const rawState = req.nextUrl.searchParams.get('state') ?? '';
 
   // State format (A-D3 nonce): `${baseToken}.${nonce}` — donde baseToken puede
-  // incluir el sufijo __agent si el flow inició con scope=agent. Antes del
-  // nonce esto era solo `${baseToken}` y el callback hacía endsWith('__agent')
-  // sobre rawState, lo cual dejó de funcionar al agregar `.${nonce}` (el string
-  // ya no termina en __agent, termina en el nonce). Corrección: partir por el
-  // primer '.' PRIMERO, luego evaluar el marker sobre la parte del token.
+  // incluir sufijo `__agent` (scope=agent sin hint) o `__agent:<uuid>` (scope=agent
+  // con agent_id explícito, bug fix 2026-09-11 en email-callback/route.ts).
+  // El regex maneja ambos formatos. Sin él, `__agent:<uuid>` no se strippeaba y
+  // getPrimaryAgentFromToken recibía el composite → not found → 404.
   const dotIdx      = rawState.indexOf('.');
   const tokenPart   = dotIdx >= 0 ? rawState.slice(0, dotIdx) : rawState;
-  const isAgentScope = tokenPart.endsWith('__agent');
-  const state        = isAgentScope ? tokenPart.replace(/__agent$/, '') : tokenPart;
+  const agentScopeMatch = tokenPart.match(/^(.+?)__agent(?::([0-9a-f-]{36}))?$/i);
+  const isAgentScope    = !!agentScopeMatch;
+  const state           = agentScopeMatch ? agentScopeMatch[1] : tokenPart;
+  const agentIdFromState = agentScopeMatch?.[2] ?? null;
 
   const errorUrl = state
     ? `${appUrl}/portal/${state}?tab=organizacion&email=error#integraciones`
@@ -32,9 +33,35 @@ export async function GET(req: NextRequest) {
     const tokens  = await outlookExchangeCode(code);
     const supabase = createAdminClient();
 
-    const agent = await getPrimaryAgentFromToken<{ id: string; portal_email: string | null }>(
-      state, 'id, portal_email', supabase,
-    );
+    // Si el state incluye agent_id explícito, usarlo directamente. Fallback a
+    // getPrimaryAgentFromToken (legacy) si no viene o si el agente no existe.
+    let agent: { id: string; portal_email: string | null } | null = null;
+    if (agentIdFromState) {
+      const { data } = await supabase
+        .from('voice_agents')
+        .select('id, portal_email')
+        .eq('id', agentIdFromState)
+        .maybeSingle();
+      const candidate = data as { id: string; portal_email: string | null } | null;
+      // Defensa contra manipulación de state: verificar que el agente pertenece
+      // al org del token.
+      if (candidate) {
+        const { resolveOrgFromToken } = await import('@/lib/portal/org-token');
+        const org = await resolveOrgFromToken(state);
+        if (org && candidate.portal_email === org.portalEmail) {
+          agent = candidate;
+        } else {
+          console.warn('[outlook-callback] agent_id en state no matchea el org del token', {
+            agentId: agentIdFromState, orgFromToken: org?.portalEmail, agentPortal: candidate.portal_email,
+          });
+        }
+      }
+    }
+    if (!agent) {
+      agent = await getPrimaryAgentFromToken<{ id: string; portal_email: string | null }>(
+        state, 'id, portal_email', supabase,
+      );
+    }
 
     if (!agent) return NextResponse.redirect(errorUrl);
 
