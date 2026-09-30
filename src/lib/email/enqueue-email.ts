@@ -56,3 +56,42 @@ export async function enqueueEmailJob(
   if (error) return { ok: false, error: error.message };
   return { ok: true, job_id: (data as { id: string }).id };
 }
+
+export async function enqueueEmailJobBatch(
+  common:     Omit<EnqueueEmailArgs, 'to'>,
+  recipients: Array<{ to: string }>,
+  supabase:   SupabaseClient,
+): Promise<EnqueueEmailResult[]> {
+  if (recipients.length === 0) return [];
+
+  const rows = recipients.map(r => ({
+    agent_id:        common.agentId,
+    portal_email:    common.portalEmail,
+    to_addr:         r.to,
+    subject:         common.subject,
+    html:            common.html,
+    reply_to:        common.replyTo ?? null,
+    from_addr:       common.from ?? null,
+    attachment_url:  common.attachment?.url ?? null,
+    attachment_name: common.attachment?.name ?? null,
+    attachment_mime: common.attachment?.mime ?? null,
+    source:          common.source,
+    reference_id:    common.referenceId ?? null,
+    charge_source:   common.chargeSource ?? null,
+    charge_label:    common.chargeLabel ?? null,
+    source_table:    common.sourceTable ?? null,
+    source_row_id:   common.sourceRowId ?? null,
+    status:          'pending',
+  }));
+
+  const { data, error } = await supabase
+    .from('email_send_jobs')
+    .insert(rows)
+    .select('id');
+
+  if (error) {
+    return recipients.map(() => ({ ok: false as const, error: error.message }));
+  }
+  const inserted = (data ?? []) as Array<{ id: string }>;
+  return inserted.map(r => ({ ok: true as const, job_id: r.id }));
+}

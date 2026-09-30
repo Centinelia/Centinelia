@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { enqueueEmailJob } from '../enqueue-email';
+import { enqueueEmailJob, enqueueEmailJobBatch } from '../enqueue-email';
 
 const mockInsert = vi.fn();
 const mockSupa = {
@@ -96,5 +96,62 @@ describe('enqueueEmailJob', () => {
       reply_to:  null,
       from_addr: null,
     }));
+  });
+});
+
+describe('enqueueEmailJobBatch', () => {
+  const mockBatchInsert = vi.fn();
+  const mockBatchSupa = {
+    from: () => ({
+      insert: (rows: unknown[]) => ({
+        select: () => mockBatchInsert(rows),
+      }),
+    }),
+  } as unknown as Parameters<typeof enqueueEmailJobBatch>[2];
+
+  beforeEach(() => {
+    mockBatchInsert.mockReset();
+  });
+
+  it('N recipients → 1 INSERT batch con N rows', async () => {
+    mockBatchInsert.mockResolvedValue({
+      data: [{ id: 'job-1' }, { id: 'job-2' }],
+      error: null,
+    });
+    const results = await enqueueEmailJobBatch(
+      { agentId: 'a', portalEmail: 'p@x.mx', subject: 's', html: 'h', source: 'x' },
+      [{ to: 'a@x.mx' }, { to: 'b@x.mx' }],
+      mockBatchSupa,
+    );
+    expect(results).toHaveLength(2);
+    expect(results[0]).toEqual({ ok: true, job_id: 'job-1' });
+    expect(results[1]).toEqual({ ok: true, job_id: 'job-2' });
+    expect(mockBatchInsert).toHaveBeenCalledOnce();
+    const rows = mockBatchInsert.mock.calls[0][0] as Array<{ to_addr: string }>;
+    expect(rows).toHaveLength(2);
+    expect(rows[0].to_addr).toBe('a@x.mx');
+    expect(rows[1].to_addr).toBe('b@x.mx');
+  });
+
+  it('recipients vacío → retorna [] sin INSERT', async () => {
+    const results = await enqueueEmailJobBatch(
+      { agentId: 'a', portalEmail: 'p@x.mx', subject: 's', html: 'h', source: 'x' },
+      [],
+      mockBatchSupa,
+    );
+    expect(results).toEqual([]);
+    expect(mockBatchInsert).not.toHaveBeenCalled();
+  });
+
+  it('INSERT falla → retorna N × { ok: false } manteniendo alineación con recipients', async () => {
+    mockBatchInsert.mockResolvedValue({ data: null, error: { message: 'db down' } });
+    const results = await enqueueEmailJobBatch(
+      { agentId: 'a', portalEmail: 'p@x.mx', subject: 's', html: 'h', source: 'x' },
+      [{ to: 'a@x.mx' }, { to: 'b@x.mx' }],
+      mockBatchSupa,
+    );
+    expect(results).toHaveLength(2);
+    expect(results[0]).toEqual({ ok: false, error: 'db down' });
+    expect(results[1]).toEqual({ ok: false, error: 'db down' });
   });
 });
