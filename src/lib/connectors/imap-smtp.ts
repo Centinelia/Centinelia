@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import type { SMTPSentMessageInfo } from 'nodemailer/lib/smtp-transport/index.js';
 import MailComposer from 'nodemailer/lib/mail-composer/index.js';
 import { ImapFlow } from 'imapflow';
 import { simpleParser, type ParsedMail, type Attachment as MailAttachment } from 'mailparser';
@@ -120,7 +121,7 @@ export async function sendViaSmtp(
   });
 
   const transporter = nodemailer.createTransport(buildTransportOptions(cfg));
-  let info: nodemailer.SentMessageInfo;
+  let info: SMTPSentMessageInfo;
   try {
     info = await transporter.sendMail({
       envelope: { from: cfg.username, to: [to] },
