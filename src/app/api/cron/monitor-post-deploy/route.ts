@@ -6,11 +6,15 @@
  * 2026-10-01T20:32Z (Fase 1 → Fase 3 decision point).
  *
  * Alertas por email a nazre20@gmail.com si:
- *  - Duplicados en client_incidents por Nelia > 0
- *  - Jobs email_send_jobs stuck (pending/processing >10min) > 3
- *  - Latencia enqueue→delivered p95 > 5s
- *  - platform_incidents nuevos con "temperature" en título (Nash re-open)
- *  - Errores golden_test "temperature" post-fix > 0
+ *  1) Duplicados en client_incidents por Nelia > 0
+ *  2) Jobs email_send_jobs stuck (pending/processing >10min) > 3
+ *  3) Latencia enqueue→delivered p95 > 5s
+ *  4) platform_incidents nuevos con "temperature" en título (Nash re-open)
+ *  5) Errores golden_test "temperature" post-fix > 0
+ *  6) platform_incidents con "temperature" NO-resolved OR creados post-PR#92
+ *     (signal 6 añadido tras oleadas 4-9 — verifica que el filter dentro de
+ *     revisar_incidentes_plataforma sigue funcionando y ningún incident
+ *     temperature quedó abierto)
  *
  * Ventana: `MONITOR_WINDOW_END` hardcoded. Después de esa fecha, la ruta
  * retorna { skipped: 'window_expired' } sin hacer nada — no requiere
@@ -26,6 +30,7 @@ const MONITOR_WINDOW_END = new Date('2026-10-01T22:00:00Z');   // ~48h + buffer
 const DEPLOY_AT          = new Date('2026-09-29T18:32:00Z');   // PR #83 merge
 const NASH_DEPLOY_AT     = new Date('2026-09-29T23:35:00Z');   // PR #84 merge
 const FIX_TEMP_AT        = new Date('2026-09-29T15:40:00Z');   // PR #76 merge
+const NASH_FILTER_FIX_AT = new Date('2026-09-30T07:00:00Z');   // PR #92 merge
 const NELIA_ID           = 'e22fbc64-c01c-4184-8365-62e423052d7a';
 const ALERT_TO           = 'nazre20@gmail.com';
 
@@ -154,6 +159,43 @@ export async function GET(req: NextRequest) {
       severity: 'critical',
       metric:   'golden_test temperature errors post-fix',
       detail:   `${tempErrs} errores POST-fix del PR #76 — el guard isPostTempModel no está funcionando`,
+    });
+  }
+
+  // 6) Verificar que el fix del filter dentro de revisar_incidentes_plataforma
+  // (PR #92) sigue funcionando: (a) NO deben existir incidents con "temperature"
+  // creados post-PR#92 merge, (b) NO deben existir incidents temperature en
+  // status no-resolved (todos deben estar resolved o closed).
+  //
+  // Añadido tras oleadas 4-9 (issues #86-#91) — el bug era que Nash LLM
+  // seguía viendo errores pre-fix dentro del loop y creaba incident nuevo
+  // cada hora. Este signal detecta si el fix regresa o si aparece una nueva
+  // ruta de generación de incidents que no consideramos.
+  const { data: tempPostFilterFix } = await supabase
+    .from('platform_incidents')
+    .select('id, title, status, created_at')
+    .gte('created_at', NASH_FILTER_FIX_AT.toISOString())
+    .ilike('title', '%temperature%');
+  metrics.platform_incidents_temperature_post_pr92 = tempPostFilterFix?.length ?? 0;
+  if ((tempPostFilterFix?.length ?? 0) > 0) {
+    alerts.push({
+      severity: 'critical',
+      metric:   'platform_incidents temperature POST-PR#92',
+      detail:   `Nash creó ${tempPostFilterFix?.length} incident(s) con "temperature" DESPUÉS del PR #92 (${NASH_FILTER_FIX_AT.toISOString()}) — el filter en revisar_incidentes_plataforma no funciona. Ids: ${tempPostFilterFix?.map(i => i.id).join(', ')}`,
+    });
+  }
+
+  const { data: tempOpen } = await supabase
+    .from('platform_incidents')
+    .select('id, title, status')
+    .ilike('title', '%temperature%')
+    .not('status', 'in', '("resolved","closed")');
+  metrics.platform_incidents_temperature_open = tempOpen?.length ?? 0;
+  if ((tempOpen?.length ?? 0) > 0) {
+    alerts.push({
+      severity: 'warn',
+      metric:   'platform_incidents temperature not resolved',
+      detail:   `${tempOpen?.length} incidents con "temperature" siguen sin marcar como resolved: ${tempOpen?.map(i => `[${i.status}] ${i.id}`).join(', ')}`,
     });
   }
 
