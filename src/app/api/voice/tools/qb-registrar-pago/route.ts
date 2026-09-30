@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { requireVapiAuth } from '@/lib/vapi/auth';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
 import { getQBClient } from '@/lib/qb/client';
+import { dedupLookup, dedupStore } from '@/lib/tools/dedup/with-dedup';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -12,8 +13,10 @@ export async function POST(req: NextRequest) {
   if (!agent_id) return NextResponse.json({ result: 'Error: agent_id requerido.' });
 
   const body = await req.json();
-  const { cliente_nombre, factura_numero, monto } =
-    (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
+  const call = (body.message?.toolCallList ?? body.toolCallList)?.[0];
+  const args = call?.function?.arguments ?? body;
+  const toolCallId: string = call?.id ?? 'call_1';
+  const { cliente_nombre, factura_numero, monto } = args;
 
   if (!cliente_nombre || !monto) {
     return NextResponse.json({ result: 'Necesito el nombre del cliente y el monto del pago para registrarlo.' });
@@ -32,6 +35,17 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (!agent?.portal_email) return NextResponse.json({ result: 'Error: agente no encontrado.' });
+
+  const dedupCtx = {
+    agentId:     agent_id,
+    portalEmail: agent.portal_email as string,
+    toolName:    'qb_registrar_pago',
+    args:        args as Record<string, unknown>,
+    channel:     'voice' as const,
+    toolCallId,
+  };
+  const cached = await dedupLookup<{ result: string; payment_id?: string }>(dedupCtx);
+  if (cached) return NextResponse.json(cached);
 
   const opsResult = await consumeAiOp(agent_id, 1, { source: 'tool_qb_registrar_pago', label: 'Pago registrado en QuickBooks' });
   if (!opsResult.ok) return NextResponse.json({ result: 'Sin tareas disponibles para registrar el pago.' });
@@ -74,10 +88,12 @@ export async function POST(req: NextRequest) {
     const fmt     = (n: number) => n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
 
     const invoiceRef = invoice ? ` aplicado a factura #${invoice.DocNumber}` : '';
-    return NextResponse.json({
+    const payload = {
       result:     `Pago de ${fmt(montoNum)} registrado para ${customer.DisplayName}${invoiceRef}.`,
       payment_id: payment?.Id,
-    });
+    };
+    await dedupStore(dedupCtx, payload);
+    return NextResponse.json(payload);
   } catch (err) {
     console.error('qb-registrar-pago', err);
     return NextResponse.json({ result: 'No pude registrar el pago en QuickBooks. Verifica los datos e intenta de nuevo.' });

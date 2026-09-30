@@ -7,6 +7,7 @@ import { checkAccount } from '@/lib/compliance/account-guard';
 import { agentInboxAddressFor } from '@/lib/email/inbox';
 import { traceVoiceCall } from '@/lib/observability/voice-trace';
 import { extractToolCall, toolResponse } from '@/lib/voice/tool-response';
+import { dedupLookup, dedupStore } from '@/lib/tools/dedup/with-dedup';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -62,6 +63,20 @@ export async function POST(req: NextRequest) {
     return toolResponse(toolCallId, 'Error: agente no encontrado');
   }
 
+  const dedupCtx = {
+    agentId:     agent_id,
+    portalEmail: (agent as { portal_email?: string })?.portal_email ?? '',
+    toolName:    'enviar_correo',
+    args:        args as Record<string, unknown>,
+    channel:     'voice' as const,
+    toolCallId,
+  };
+  const cached = await dedupLookup<{ msg: string }>(dedupCtx);
+  if (cached) {
+    traceResp({ ok: true, sent_to: to, subject, cached: true, message: cached.msg }, true);
+    return toolResponse(toolCallId, cached.msg);
+  }
+
   const guard = await checkAccount((agent as any).portal_email, supabase);
   if (!guard.canUseOffice) {
     const msg = 'Esta cuenta no puede enviar correos. Contacta a soporte.';
@@ -102,5 +117,6 @@ export async function POST(req: NextRequest) {
     ...(result.message ? { message: result.message } : {}),
     ...(result.ok ? {} : { error: result.error ?? 'unknown' }),
   }, result.ok);
+  if (result.ok) await dedupStore(dedupCtx, { msg: finalMsg });
   return toolResponse(toolCallId, finalMsg);
 }

@@ -7,6 +7,7 @@ import { requireVapiAuth } from '@/lib/vapi/auth';
 import { traceVoiceCall } from '@/lib/observability/voice-trace';
 import { logLlmCall } from '@/lib/observability/llm-log';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
+import { dedupLookup, dedupStore } from '@/lib/tools/dedup/with-dedup';
 
 export const dynamic = 'force-dynamic';
 
@@ -106,6 +107,23 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (!caller?.portal_email) return fail('No se pudo identificar al agente consultante.');
+
+  const dedupCtx = {
+    agentId:     agentId,
+    portalEmail: caller.portal_email as string,
+    toolName:    'consultar_agente',
+    args:        args as Record<string, unknown>,
+    channel:     'voice' as const,
+    toolCallId,
+  };
+  const cached = await dedupLookup<{ msg: string }>(dedupCtx);
+  if (cached) {
+    traceVoiceCall({
+      toolName: 'consultar_agente', agentId, sessionId, input: traceInput,
+      result: { ok: true, cached: true, answer: cached.msg }, startedAt,
+    });
+    return NextResponse.json({ results: [{ toolCallId, result: cached.msg }] });
+  }
 
   const callerMeerkat = ((caller.features as Record<string, unknown> | null)?.meerkat_role_id as string | null) ?? 'unknown';
 
@@ -246,6 +264,7 @@ export async function POST(req: NextRequest) {
           taskSummary: tarea, outcome: 'success',
           metadata: { turns: turn + 1, session_id: sessionId },
         });
+        await dedupStore(dedupCtx, { msg: finalMsg });
         return NextResponse.json({ results: [{ toolCallId, result: finalMsg }] });
       }
 

@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { requireVapiAuth } from '@/lib/vapi/auth';
 import { getCabildoTemplate, fillTemplate, getNextDocNumber } from '@/lib/civic/cabildo';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
+import { dedupLookup, dedupStore } from '@/lib/tools/dedup/with-dedup';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -12,7 +13,9 @@ export async function POST(req: NextRequest) {
   if (!agent_id) return NextResponse.json({ result: 'Error de configuración.' });
 
   const body = await req.json();
-  const args = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
+  const call = (body.message?.toolCallList ?? body.toolCallList)?.[0];
+  const args = call?.function?.arguments ?? body;
+  const toolCallId: string = call?.id ?? 'call_1';
   const {
     numero_sesion = '',
     tipo_sesion   = 'Ordinaria',
@@ -25,7 +28,18 @@ export async function POST(req: NextRequest) {
   const supabase = createAdminClient();
 
   const { data: agent } = await supabase
-    .from('voice_agents').select('business_name, transfer_whatsapp').eq('id', agent_id).single();
+    .from('voice_agents').select('business_name, transfer_whatsapp, portal_email').eq('id', agent_id).single();
+
+  const dedupCtx = {
+    agentId:     agent_id,
+    portalEmail: (agent as { portal_email?: string })?.portal_email ?? '',
+    toolName:    'generar_acta_sesion',
+    args:        args as Record<string, unknown>,
+    channel:     'voice' as const,
+    toolCallId,
+  };
+  const cached = await dedupLookup<{ result: string }>(dedupCtx);
+  if (cached) return NextResponse.json(cached);
 
   const template = await getCabildoTemplate(agent_id, supabase);
   const numero   = await getNextDocNumber(agent_id, 'acta_sesion', supabase);
@@ -62,7 +76,9 @@ export async function POST(req: NextRequest) {
     await sendWhatsApp(agent.transfer_whatsapp, msg);
   }
 
-  return NextResponse.json({
+  const payload = {
     result: `Acta de Sesión generada con número ${numero}. El borrador ha sido guardado en el portal de Cabildo y puede ser editado y completado por el equipo.`,
-  });
+  };
+  await dedupStore(dedupCtx, payload);
+  return NextResponse.json(payload);
 }

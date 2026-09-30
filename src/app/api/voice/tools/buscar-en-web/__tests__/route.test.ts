@@ -20,6 +20,27 @@ vi.mock('@/lib/observability/voice-trace', () => ({
   traceVoiceCall: vi.fn(),
 }));
 
+// Stub supabase admin: dedup middleware hace un lookup del agent + org flag.
+// Devolvemos null en todas las queries para que el dedup sea no-op (fail-open).
+vi.mock('@/lib/supabase/admin', () => ({
+  createAdminClient: () => ({
+    from: () => ({
+      select: () => ({
+        eq: () => ({
+          maybeSingle: () => Promise.resolve({ data: null }),
+          single:      () => Promise.resolve({ data: null }),
+        }),
+      }),
+    }),
+  }),
+}));
+
+// Dedup helpers: siempre no-op en tests unitarios (flag disabled).
+vi.mock('@/lib/tools/dedup/with-dedup', () => ({
+  dedupLookup: vi.fn(() => Promise.resolve(null)),
+  dedupStore:  vi.fn(() => Promise.resolve()),
+}));
+
 beforeEach(() => {
   vi.clearAllMocks();
   process.env.BRAVE_SEARCH_API_KEY = 'test-key';

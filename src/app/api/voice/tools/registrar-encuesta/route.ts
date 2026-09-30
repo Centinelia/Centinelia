@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail } from '@/lib/email/send';
 import { getNextTicketFolio } from '@/lib/helpdesk/folio';
 import { requireVapiAuth } from '@/lib/vapi/auth';
+import { dedupLookup, dedupStore } from '@/lib/tools/dedup/with-dedup';
 
 export const dynamic = 'force-dynamic';
 
@@ -57,6 +58,24 @@ export async function POST(req: NextRequest) {
 
   if (!Object.keys(mapped).length) return fail('No se mapearon respuestas válidas.');
 
+  // Fetch agent (portal_email) al inicio para poder cachear via dedup middleware.
+  const { data: agent } = await supabase
+    .from('voice_agents')
+    .select('portal_email')
+    .eq('id', agentId)
+    .maybeSingle();
+
+  const dedupCtx = {
+    agentId,
+    portalEmail: (agent as { portal_email?: string } | null)?.portal_email ?? '',
+    toolName:    'registrar_encuesta',
+    args:        args as Record<string, unknown>,
+    channel:     'voice' as const,
+    toolCallId,
+  };
+  const cached = await dedupLookup<{ msg: string }>(dedupCtx);
+  if (cached) return NextResponse.json({ results: [{ toolCallId, result: cached.msg }] });
+
   const { data: responseRow, error } = await supabase
     .from('survey_responses')
     .insert({
@@ -73,11 +92,6 @@ export async function POST(req: NextRequest) {
 
   // Encola al digest diario. portal_email lo resolvemos por agent_id.
   try {
-    const { data: agent } = await supabase
-      .from('voice_agents')
-      .select('portal_email')
-      .eq('id', agentId)
-      .maybeSingle();
     if (agent?.portal_email) {
       const { queueNotificationEvent } = await import('@/lib/notifications/queue');
       await queueNotificationEvent({
@@ -186,10 +200,12 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  const finalMsg = `Encuesta registrada. ${Object.keys(mapped).length} respuestas guardadas. Gracias por su participación.`;
+  await dedupStore(dedupCtx, { msg: finalMsg });
   return NextResponse.json({
     results: [{
       toolCallId,
-      result: `Encuesta registrada. ${Object.keys(mapped).length} respuestas guardadas. Gracias por su participación.`,
+      result: finalMsg,
     }],
   });
 }

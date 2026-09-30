@@ -6,6 +6,7 @@ import { approvalEmailHtml } from '@/lib/ops/approval-email';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
 import { EMAIL_BODY_TRUNCATE_CHARS } from '@/lib/constants';
 import { executeAgentTool, type ReadUrlCounter } from '@/lib/tools/executor';
+import { withDedup } from '@/lib/tools/dedup/with-dedup';
 import type { ReplyAttachment } from '@/lib/connectors';
 import { getQBClient } from '@/lib/qb/client';
 import { quickClassifyEmail } from '@/lib/ops/email-quick-classify';
@@ -2137,7 +2138,17 @@ CATEGORÍAS:
           (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use',
         );
         const parallel = await Promise.allSettled(
-          toolBlocks.map(b => executeAgentTool(b.name, b.input as Record<string, unknown>, execCtx)),
+          toolBlocks.map(b => withDedup(
+            {
+              agentId,
+              portalEmail,
+              toolName:   b.name,
+              args:       b.input as Record<string, unknown>,
+              channel:    'email',
+              toolCallId: b.id,
+            },
+            () => executeAgentTool(b.name, b.input as Record<string, unknown>, execCtx),
+          )),
         );
         for (let ti = 0; ti < toolBlocks.length; ti++) {
           const b = toolBlocks[ti];

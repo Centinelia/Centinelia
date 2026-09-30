@@ -8,6 +8,7 @@ import { ticketEmailHtml } from '@/lib/ops/approval-email';
 import { requireVapiAuth } from '@/lib/vapi/auth';
 import { traceVoiceCall } from '@/lib/observability/voice-trace';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
+import { withDedup } from '@/lib/tools/dedup/with-dedup';
 
 const WA_URL = 'https://api.twilio.com/2010-04-01/Accounts';
 
@@ -74,9 +75,19 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const folio = await getNextTicketFolio(agentId, supabase);
+  const { finalMsg, folio } = await withDedup(
+    {
+      agentId,
+      portalEmail: (agent as { portal_email?: string })?.portal_email ?? '',
+      toolName:    'crear_ticket',
+      args:        args as Record<string, unknown>,
+      channel:     'voice',
+      toolCallId:  toolId,
+    },
+    async () => {
+      const folio = await getNextTicketFolio(agentId, supabase);
 
-  await supabase.from('helpdesk_tickets').insert({
+      await supabase.from('helpdesk_tickets').insert({
     agent_id:     agentId,
     folio,
     caller_number: caller_number ?? null,
@@ -156,9 +167,13 @@ export async function POST(req: NextRequest) {
     }).catch(console.error);
   }
 
-  const assignMsg = asignadoA ? ` Lo asigné a ${asignadoA}.` : '';
-  const finalMsg = `Ticket creado con folio ${folio}.${assignMsg} El equipo de soporte lo atenderá pronto.`;
-  trace({ ok: true, folio, titulo, categoria, prioridad, asignado_a: asignadoA });
+      const assignMsg = asignadoA ? ` Lo asigné a ${asignadoA}.` : '';
+      const finalMsg = `Ticket creado con folio ${folio}.${assignMsg} El equipo de soporte lo atenderá pronto.`;
+      return { finalMsg, folio, asignadoA };
+    },
+  );
+
+  trace({ ok: true, folio, titulo, categoria, prioridad });
   return NextResponse.json({
     results: [{ toolCallId: toolId, result: finalMsg }],
   });

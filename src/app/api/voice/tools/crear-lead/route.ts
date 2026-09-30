@@ -7,6 +7,7 @@ import { syncLeadToSheets } from '@/lib/services/sheets';
 import { upsertLeadWithDedup } from '@/lib/leads/dedup';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
 import { extractToolCall, toolResponse } from '@/lib/voice/tool-response';
+import { dedupLookup, dedupStore } from '@/lib/tools/dedup/with-dedup';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -30,6 +31,17 @@ export async function POST(req: NextRequest) {
     .select('business_name, transfer_whatsapp, portal_email')
     .eq('id', agent_id)
     .single();
+
+  const dedupCtx = {
+    agentId:     agent_id,
+    portalEmail: (agent as { portal_email?: string })?.portal_email ?? '',
+    toolName:    'crear_lead',
+    args:        args as Record<string, unknown>,
+    channel:     'voice' as const,
+    toolCallId,
+  };
+  const cached = await dedupLookup<{ msg: string }>(dedupCtx);
+  if (cached) return toolResponse(toolCallId, cached.msg);
 
   const upsert = await upsertLeadWithDedup(supabase, {
     agentId: agent_id, source: 'llamada',
@@ -86,5 +98,6 @@ export async function POST(req: NextRequest) {
   const resultMsg = upsert.action === 'updated'
     ? 'Ya tenías registrado este contacto hace unos minutos, actualicé sus datos.'
     : 'Lead registrado correctamente. Le haremos llegar información pronto.';
+  await dedupStore(dedupCtx, { msg: resultMsg });
   return toolResponse(toolCallId, resultMsg);
 }

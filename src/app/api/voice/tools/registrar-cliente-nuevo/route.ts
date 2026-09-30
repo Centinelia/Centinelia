@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { registrarClienteNuevo } from '@/lib/tools/executors/registrar-cliente-nuevo';
 import { extractToolCall, toolResponse } from '@/lib/voice/tool-response';
+import { withDedup } from '@/lib/tools/dedup/with-dedup';
 
 export const dynamic = 'force-dynamic';
 
@@ -69,22 +70,32 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const result = await registrarClienteNuevo(
+    const result = await withDedup(
       {
-        supabase,
-        agent,
-        org,
-        channel: 'voice',
-        sourceCallId: voiceCall?.id ?? null,
+        agentId,
+        portalEmail: agent.portal_email,
+        toolName:    'registrar_cliente_nuevo',
+        args:        args as Record<string, unknown>,
+        channel:     'voice',
+        toolCallId,
       },
-      {
-        business_name: args.business_name!,
-        sucursal:      args.sucursal,
-        contact_name:  args.contact_name,
-        contact_phone: args.contact_phone!,
-        address:       args.address!,
-        notas:         args.notas,
-      },
+      () => registrarClienteNuevo(
+        {
+          supabase,
+          agent,
+          org,
+          channel: 'voice',
+          sourceCallId: voiceCall?.id ?? null,
+        },
+        {
+          business_name: args.business_name!,
+          sucursal:      args.sucursal,
+          contact_name:  args.contact_name,
+          contact_phone: args.contact_phone!,
+          address:       args.address!,
+          notas:         args.notas,
+        },
+      ),
     );
 
     const msg = result.email_sent
