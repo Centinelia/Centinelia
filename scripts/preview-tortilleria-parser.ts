@@ -14,7 +14,7 @@ import { parseTortilleriaBatchXlsx } from '../src/lib/billing/parsers/tortilleri
 
 const FIXTURES = join(__dirname, '..', 'src/lib/billing/parsers/__tests__/fixtures');
 
-function printBlock(fileLabel: string, blockIdx: number, block: ReturnType<typeof parseTortilleriaBatchXlsx>['blocks'][number]): void {
+function printBlock(fileLabel: string, blockIdx: number, block: Awaited<ReturnType<typeof parseTortilleriaBatchXlsx>>['blocks'][number]): void {
   console.log('─'.repeat(80));
   console.log(`${fileLabel} — Bloque ${blockIdx + 1}: ${block.tituloBloque}`);
   console.log(`Código cliente: ${block.codigoCliente ?? '(sin CTE, resolver por nombre)'}`);
@@ -46,9 +46,9 @@ function printBlock(fileLabel: string, blockIdx: number, block: ReturnType<typeo
   console.log('');
 }
 
-function preview(filename: string): void {
+async function preview(filename: string): Promise<void> {
   const buf = readFileSync(join(FIXTURES, filename));
-  const result = parseTortilleriaBatchXlsx(buf);
+  const result = await parseTortilleriaBatchXlsx(buf);
   console.log('');
   console.log('='.repeat(80));
   console.log(`Archivo: ${filename}`);
@@ -60,6 +60,10 @@ function preview(filename: string): void {
   }
 }
 
-preview('varios.xlsx');
-preview('ortiz.xlsx');
-preview('melendez.xlsx');
+async function main(): Promise<void> {
+  await preview('varios.xlsx');
+  await preview('ortiz.xlsx');
+  await preview('melendez.xlsx');
+}
+
+main().catch((err) => { console.error(err); process.exit(1); });

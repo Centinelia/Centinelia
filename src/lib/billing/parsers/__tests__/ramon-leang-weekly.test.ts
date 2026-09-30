@@ -2,16 +2,23 @@
  * Tests del parser Ramón Leang. Usa el fixture real de una hoja con múltiples
  * bloques semanales de 2025-2026.
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { parseRamonLeangXlsx } from '../ramon-leang-weekly';
+import type { ParsedWeekBlock } from '../ramon-leang-weekly';
 
 const FIXTURE = join(__dirname, 'fixtures', 'ramon-leang', 'ramon-leang-real.xlsx');
 const buf = readFileSync(FIXTURE);
 
 describe('parseRamonLeangXlsx — fixture real Ramón Leang', () => {
-  const { blocks, warnings } = parseRamonLeangXlsx(buf);
+  let blocks: ParsedWeekBlock[] = [];
+  let warnings: string[] = [];
+  beforeAll(async () => {
+    const r = await parseRamonLeangXlsx(buf);
+    blocks = r.blocks;
+    warnings = r.warnings;
+  });
 
   it('detecta al menos 15 bloques semanales', () => {
     expect(blocks.length).toBeGreaterThanOrEqual(15);

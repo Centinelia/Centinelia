@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import * as XLSX from 'xlsx';
+import { parseXlsxBuffer, parseCsvBuffer } from '@/lib/excel-io/read';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { resolveOrgFromToken } from '@/lib/portal/org-token';
 
@@ -49,11 +49,9 @@ export async function POST(req: NextRequest, { params }: Params) {
   const isXlsx = ext === 'xlsx' || ext === 'xls' || ext === 'ods';
 
   try {
-    const wb    = XLSX.read(buffer, { type: 'buffer', codepage: isXlsx ? undefined : 65001, cellDates: false });
-    const sheet = wb.Sheets[wb.SheetNames[0]];
-    if (!sheet) return NextResponse.json({ error: 'El archivo no tiene hojas legibles' }, { status: 400 });
-
-    const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '', raw: false });
+    const rows = isXlsx
+      ? await parseXlsxBuffer(buffer, { asString: true })
+      : parseCsvBuffer(buffer);
     if (rows.length === 0) return NextResponse.json({ error: 'El archivo está vacío o sin filas de datos' }, { status: 400 });
 
     const headers = Object.keys(rows[0]);
