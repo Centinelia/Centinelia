@@ -151,10 +151,10 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
   const colorLocked    = !!meerkatId;
   const isCoordinator  = !!meerkatId && (COORDINATOR_ROLE_IDS as readonly string[]).includes(meerkatId);
   const jornadaType    = ((agent as any).jornada_type as string) ?? 'combinada';
-  // 'custom' meerkat fue eliminado (ver [[feedback-no-custom-meerkat]]) —
-  // hasVoice queda como no-coordinador con plan pro. Antes esta cláusula
-  // ocultaba la card de voz para meerkats legítimos.
-  const hasVoice       = !isCoordinator && agent.plan === 'pro';
+  // Muestra la sección de voz solo si el rol la soporta (no coordinator)
+  // Y la jornada la incluye (no jornada_type='tareas'). Antes usábamos
+  // solo `!isCoordinator && plan === 'pro'` pero eso incluía a los task-only
+  // meerkats (Nami, Naia, etc.) que no deben ver voz aunque tengan plan pro.
   const hasVoiceJornada = !isCoordinator && jornadaType !== 'tareas';
   const initOutbound   = !!(features.outbound_calls);
   const initMissedCall = !!((agent as any).missed_call_recovery);
@@ -360,7 +360,7 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
           // Cada item incluye el tab correcto para que ConfigurarTabs lo abra
           // y haga scroll al anchor correspondiente.
           const pending = [
-            !hasFirstMessage && hasVoice && { label: 'Configura el saludo de bienvenida',          tab: 'personalidad', anchor: 'llamadas' },
+            !hasFirstMessage && hasVoiceJornada && { label: 'Configura el saludo de bienvenida',          tab: 'personalidad', anchor: 'llamadas' },
             !hasRoleKb       && !isCoordinator && { label: 'Redacta las instrucciones del puesto', tab: 'personalidad', anchor: 'rol'      },
             needsEmail       && { label: 'Conecta un correo para el empleado',                      tab: 'tools',        anchor: 'correo'   },
           ].filter(Boolean) as { label: string; tab: string; anchor: string }[];
@@ -415,7 +415,7 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
                  Cómo suena y cómo se identifica el empleado.               */}
             <div className="flex flex-col gap-5">
 
-              {hasVoice && (
+              {hasVoiceJornada && (
                 <div id="voz" style={SCROLL_STYLE}>
                   <Card border elevated={false} padding="sm">
                     <SectionHeader
