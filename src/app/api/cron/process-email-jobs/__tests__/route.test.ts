@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
-const { mockPending, mockLock, mockUpdate, mockSourceUpdate, mockSend, mockConsume, mockFetchAgent } = vi.hoisted(() => ({
+const { mockPending, mockLock, mockUpdate, mockSourceUpdate, mockSend, mockConsume, mockFetchAgent, mockRescue } = vi.hoisted(() => ({
   mockPending:      vi.fn(),
   mockLock:         vi.fn(),
   mockUpdate:       vi.fn(),
@@ -9,6 +9,7 @@ const { mockPending, mockLock, mockUpdate, mockSourceUpdate, mockSend, mockConsu
   mockSend:         vi.fn(),
   mockConsume:      vi.fn(),
   mockFetchAgent:   vi.fn(),
+  mockRescue:       vi.fn(),
 }));
 
 vi.mock('@/lib/supabase/admin', () => ({
@@ -26,11 +27,15 @@ vi.mock('@/lib/supabase/admin', () => ({
             }),
           }),
           update: (patch: Record<string, unknown>) => ({
-            eq: () => ({
+            eq: (_col: string, val: string) => ({
               eq: () => ({
                 select: () => ({
                   single: async () => mockLock(patch),
                 }),
+              }),
+              lt: () => ({
+                // Rescue path: .update({status:'pending'}).eq('status','processing').lt(...).select('id')
+                select: async () => mockRescue(patch, val),
               }),
               select: () => ({
                 single: async () => mockUpdate(patch),
@@ -74,6 +79,8 @@ beforeEach(() => {
   mockSend.mockReset();
   mockConsume.mockReset();
   mockFetchAgent.mockReset();
+  mockRescue.mockReset();
+  mockRescue.mockResolvedValue({ data: [], error: null });
   process.env.CRON_SECRET = 'test-secret';
   mockFetchAgent.mockResolvedValue({ data: { agent_name: 'Nia', business_name: 'Biz', email_from: null, email_domain_verified: false } });
 });
@@ -249,6 +256,18 @@ describe('retry logic', () => {
     expect(body).toMatchObject({ retried: 1 });
     const retry = mockUpdate.mock.calls.find(c => (c[0] as { status?: string }).status === 'pending');
     expect((retry![0] as { last_error: string }).last_error).toContain('SMTP 550');
+  });
+
+  it('processing stuck > 5 min → devuelto a pending antes de pick nuevos', async () => {
+    mockRescue.mockResolvedValue({ data: [{ id: 'stuck-1' }, { id: 'stuck-2' }], error: null });
+    mockPending.mockResolvedValue({ data: [], error: null });
+
+    const { GET } = await import('../route');
+    const res = await GET(makeReq());
+    const body = await res.json();
+
+    expect(mockRescue).toHaveBeenCalled();
+    expect(body).toMatchObject({ ok: true, rescued: 2, picked: 0 });
   });
 
   it('charge deferred throw NO revierte job.done (audit gap logeado)', async () => {

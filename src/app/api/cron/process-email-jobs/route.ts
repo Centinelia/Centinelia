@@ -37,6 +37,20 @@ export async function GET(req: NextRequest) {
   const supabase = createAdminClient();
   const batchSize = 20;
 
+  // Rescate: jobs stuck en 'processing' > 5 min (crash del cron mid-flight).
+  // UPDATE los devuelve a pending para que el siguiente ciclo los reintente.
+  const stuckCutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+  const { data: rescued } = await supabase
+    .from('email_send_jobs')
+    .update({ status: 'pending' })
+    .eq('status', 'processing')
+    .lt('processing_at', stuckCutoff)
+    .select('id');
+  const rescuedCount = rescued?.length ?? 0;
+  if (rescuedCount > 0) {
+    console.warn('[email-jobs] rescued stuck processing jobs:', rescuedCount);
+  }
+
   const { data: pending } = await supabase
     .from('email_send_jobs')
     .select('*')
@@ -148,5 +162,5 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, ...results, latency_ms: Date.now() - started });
+  return NextResponse.json({ ok: true, ...results, rescued: rescuedCount, latency_ms: Date.now() - started });
 }
