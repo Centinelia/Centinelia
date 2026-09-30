@@ -76,7 +76,8 @@ export interface VerifyResult {
   ok:          boolean;
   portalToken: string | null;
   reason?:     'no_cookie' | 'nonce_mismatch' | 'malformed_state';
-  legacy?:     boolean;  // true si state no tiene formato .nonce (aceptado durante rollout)
+  /** @deprecated kept for type compat en callers; siempre false ahora. */
+  legacy?:     boolean;
 }
 
 export function verifyOAuthState(
@@ -84,10 +85,14 @@ export function verifyOAuthState(
   provider: string,
   received: string,
 ): VerifyResult {
-  // Formato viejo (backward compat): state = portal_token (sin .nonce).
-  // Aceptamos + marcamos legacy=true (log warning en el caller).
+  // Formato legacy sin .nonce: RECHAZO. Antes se aceptaba con warning para
+  // rollout gradual; ya todos los initiate paths (qb-oauth/connect, portal
+  // qb-oauth/connect, notion connect, email-oauth/connect) emiten formato
+  // .nonce. Un state sin `.` en 2026-09-30+ es o un flow viejo cachado
+  // (usuario debe reiniciar) o un ataque CSRF-callback intentando bypassear
+  // el nonce check. Ver audit 2026-09-30.
   if (!received.includes('.')) {
-    return { ok: true, portalToken: received, legacy: true };
+    return { ok: false, portalToken: null, reason: 'malformed_state' };
   }
 
   const [portalToken, receivedNonce] = received.split('.');

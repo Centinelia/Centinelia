@@ -19,15 +19,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(`${appUrl}/portal/?tab=organizacion&email=error#integraciones`);
   }
 
-  // A-D3: verify nonce cookie. verifyOAuthState devuelve portalToken (con
-  // sufijo __agent si aplica). Legacy state (sin .nonce) se acepta con warning.
+  // Verify nonce cookie. verifyOAuthState devuelve portalToken (con
+  // sufijo __agent si aplica). Legacy state (sin .nonce) ahora se rechaza —
+  // audit 2026-09-30 encontró CSRF bypass en el path legacy.
   const stateCheck = verifyOAuthState(req, provider, rawState);
   if (!stateCheck.ok || !stateCheck.portalToken) {
     console.warn('[email-callback] OAuth state nonce mismatch:', stateCheck.reason);
     return NextResponse.redirect(`${appUrl}/portal/?tab=organizacion&email=csrf_nonce#integraciones`);
-  }
-  if (stateCheck.legacy) {
-    console.warn('[email-callback] OAuth state legacy format (rollout in progress)');
   }
   const portalTokenFromState = stateCheck.portalToken;
   // Formatos soportados en el sufijo:
