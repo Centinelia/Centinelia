@@ -22,15 +22,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
     return NextResponse.redirect(to('error=qb_denied'));
   }
 
-  // D-Q4: verify nonce cookie matches state URL. Rollout gradual: legacy=true
-  // (state sin .nonce) se acepta con warning; strict enforcement after N days.
+  // D-Q4: verify nonce cookie matches state URL. Legacy state (sin .nonce)
+  // ahora se rechaza — audit 2026-09-30 encontró CSRF bypass en el path legacy.
   const stateCheck = verifyOAuthState(req, 'qb', stateParam);
   if (!stateCheck.ok) {
     console.warn('[qb-callback portal] OAuth state nonce mismatch:', stateCheck.reason);
     return NextResponse.redirect(to('error=qb_csrf_nonce'));
-  }
-  if (stateCheck.legacy) {
-    console.warn('[qb-callback portal] OAuth state legacy format (no nonce) — rollout in progress');
   }
 
   const clientId     = process.env.INTUIT_CLIENT_ID!;
