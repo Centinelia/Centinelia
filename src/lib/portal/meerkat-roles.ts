@@ -659,6 +659,8 @@ FILOSOFÍA: Un statement sin reconciliar es un riesgo esperando a explotar. Un b
     rol:         'Inventarios',
     descripcion: 'Lleva inventarios, controla stock por bodega y coordina reposiciones',
     imagen:      '/meerkats/nami.png',
+    avatarPosition: '30% 8%',   // face left-of-center, hand con escáner extendido a la derecha
+    avatarScale:    1.35,
     color:       '#EA580C',
     genero:      'F',
     tagline:     'Cada serie, cada bodega, cada equipo. Todo bajo control.',
