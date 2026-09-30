@@ -9,6 +9,7 @@ import { requireVapiAuth } from '@/lib/vapi/auth';
 import { traceVoiceCall } from '@/lib/observability/voice-trace';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
 import { withDedup } from '@/lib/tools/dedup/with-dedup';
+import { enqueueEmailJob, isEmailJobsEnabled } from '@/lib/email/enqueue-email';
 
 const WA_URL = 'https://api.twilio.com/2010-04-01/Accounts';
 
@@ -147,24 +148,44 @@ export async function POST(req: NextRequest) {
     }).catch(console.error);
   }
 
-  // Email notification to owner
+  // Email notification to owner — bifurcación email jobs (spec 2026-09-29)
   const ownerEmail  = agent?.client_email as string | null;
   const portalToken = agent?.portal_token  as string | null;
   if (ownerEmail && portalToken) {
     const portalUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx'}/portal/${portalToken}/oficina/helpdesk`;
-    sendEmail({
-      to:      ownerEmail,
-      subject: `[Ticket ${folio}] ${titulo} — ${prioridad.toUpperCase()}`,
-      html:    ticketEmailHtml({ folio, titulo, categoria, prioridad, descripcion: descripcion ?? null, asignadoA, source: 'voz', portalUrl }),
-    }).then(async ok => {
-      if (ok) {
-        await consumeAiOp(agentId, 1, {
-          source:       'ticket_email_notify',
-          reference_id: folio,
-          label:        'Correo de ticket al encargado',
-        });
-      }
-    }).catch(console.error);
+    const emailSubject = `[Ticket ${folio}] ${titulo} — ${prioridad.toUpperCase()}`;
+    const emailHtml = ticketEmailHtml({ folio, titulo, categoria, prioridad, descripcion: descripcion ?? null, asignadoA, source: 'voz', portalUrl });
+    const portalEmail = agent?.portal_email as string | undefined;
+    const useJobs = portalEmail
+      ? await isEmailJobsEnabled(portalEmail, supabase)
+      : false;
+    if (useJobs && portalEmail) {
+      await enqueueEmailJob({
+        agentId,
+        portalEmail,
+        to:           ownerEmail,
+        subject:      emailSubject,
+        html:         emailHtml,
+        source:       'ticket_email_notify',
+        referenceId:  folio,
+        chargeSource: 'ticket_email_notify',
+        chargeLabel:  'Correo de ticket al encargado',
+      }, supabase);
+    } else {
+      sendEmail({
+        to:      ownerEmail,
+        subject: emailSubject,
+        html:    emailHtml,
+      }).then(async ok => {
+        if (ok) {
+          await consumeAiOp(agentId, 1, {
+            source:       'ticket_email_notify',
+            reference_id: folio,
+            label:        'Correo de ticket al encargado',
+          });
+        }
+      }).catch(console.error);
+    }
   }
 
       const assignMsg = asignadoA ? ` Lo asigné a ${asignadoA}.` : '';

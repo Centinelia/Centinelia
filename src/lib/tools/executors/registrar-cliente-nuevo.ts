@@ -4,6 +4,7 @@ import { resolveIncidentRecipients } from '../../incidents/directory';
 import { renderNewClientCardEmail } from '../../incidents/email-template';
 import { sendMeerkatHtmlEmail } from '../../email/send-as-agent';
 import { consumeAiOp } from '../../ai/ops-guard';
+import { enqueueEmailJobBatch, isEmailJobsEnabled } from '../../email/enqueue-email';
 
 export interface RegistrarClienteNuevoArgs {
   business_name: string;
@@ -79,8 +80,43 @@ export async function registrarClienteNuevo(ctx: any, args: RegistrarClienteNuev
     console.error('registrar_cliente_nuevo consumeAiOp base failed silently:', err);
   }
 
-  let sentCount = 0;
-  if (recipients.length > 0) {
+  // Bifurcación email jobs (spec 2026-09-29): flag ON → enqueue + <2s; OFF → legacy inline
+  const useJobs = recipients.length > 0
+    ? await isEmailJobsEnabled(ctx.agent.portal_email, ctx.supabase)
+    : false;
+
+  let emailSent = false;
+  if (useJobs && recipients.length > 0) {
+    const { subject, html } = renderNewClientCardEmail({
+      businessName:     args.business_name,
+      sucursal:         args.sucursal ?? null,
+      contactName:      args.contact_name ?? null,
+      contactPhone:     phone,
+      address:          args.address,
+      notas:            args.notas ?? null,
+      capturedAt:       now,
+      agentDisplayName: `${ctx.agent.agent_name} · ${ctx.agent.business_name ?? ''}`.trim(),
+    });
+    const enqueueResults = await enqueueEmailJobBatch(
+      {
+        agentId:      ctx.agent.id,
+        portalEmail:  ctx.agent.portal_email,
+        subject,
+        html,
+        source:       'alta_cliente_notif',
+        referenceId:  incidentId,
+        chargeSource: 'alta_cliente_notif',
+        chargeLabel:  'Aviso de alta de cliente al encargado por correo',
+        sourceTable:  'client_incidents',
+        sourceRowId:  incidentId,
+      },
+      recipients.map(r => ({ to: r.email })),
+      ctx.supabase,
+    );
+    emailSent = enqueueResults.some(r => r.ok);
+  } else if (recipients.length > 0) {
+    // LEGACY inline path (preservado hasta Fase 4)
+    let sentCount = 0;
     const { subject, html } = renderNewClientCardEmail({
       businessName:     args.business_name,
       sucursal:         args.sucursal ?? null,
@@ -112,10 +148,6 @@ export async function registrarClienteNuevo(ctx: any, args: RegistrarClienteNuev
       }
     }
     if (sentCount > 0) {
-      // Batched-consume: 1 sola RPC + 1 sola INSERT en vez de N awaits en loop.
-      // Ver comentario largo en registrar-incidencia.ts sobre por qué el patrón
-      // per-iteration produce undercharge sistemático. try/catch para no abortar
-      // el flow si el cobro tira (drift detector es la red de seguridad).
       try {
         await consumeAiOp(ctx.agent.id, sentCount, {
           source: 'alta_cliente_notif',
@@ -131,7 +163,8 @@ export async function registrarClienteNuevo(ctx: any, args: RegistrarClienteNuev
         .update({ email_sent_at: new Date().toISOString() })
         .eq('id', incidentId);
     }
+    emailSent = sentCount > 0;
   }
 
-  return { ok: true as const, incident_id: incidentId, email_sent: sentCount > 0 };
+  return { ok: true as const, incident_id: incidentId, email_sent: emailSent };
 }
