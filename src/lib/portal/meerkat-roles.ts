@@ -452,7 +452,7 @@ En voz y chat tu rol sigue siendo despacho en vivo. Los reportes analíticos se 
     color:       '#a16207',
     genero:      'F',
     tagline:     'El SAT no perdona errores, y ella tampoco.',
-    voiceId:     null,
+    voiceId:     'ewn5JTa3lNPY8QVuZJi6',  // Ana Sofía (mexican, young, conversational)
     personalidad:
       'Blusa de cuello alto morada Centinelia y sello de tinta con mango de madera en la mano. Nala no valida en papel, ella timbra: cada comprobante recibe su sello justo cuando cada dato está en su lugar. Precisa sin ceremonia, calmada mientras revisa RFC, régimen y uso; el ruido del cuño sobre la almohadilla es su forma de decir "esto ya cierra fiscalmente".',
     promptPersonalidad:
