@@ -454,7 +454,7 @@ export async function POST(req: NextRequest) {
   // usamos el portal_email como fallback confiable para el correo del dueño.
   const { data: orgRow } = await supabase
     .from('organizations')
-    .select('knowledge_base, business_email, brand_phone, business_website, brand_website, brand_address, email_footer_text')
+    .select('knowledge_base, business_email, brand_phone, business_website, brand_website, business_address, email_footer_text')
     .eq('portal_email', caller.portal_email)
     .maybeSingle();
   const orgKb    = (orgRow?.knowledge_base as string | null) ?? null;
@@ -463,7 +463,7 @@ export async function POST(req: NextRequest) {
     brand_phone?:       string | null;
     business_website?:  string | null;
     brand_website?:     string | null;
-    brand_address?:     string | null;
+    business_address?:     string | null;
     email_footer_text?: string | null;
   } | null;
   const ownerEmail = caller.portal_email;
@@ -665,7 +665,7 @@ export async function POST(req: NextRequest) {
   if (contactEmail)                    contactLines.push(`- Correo: ${contactEmail}`);
   if (orgContactRow?.brand_phone)      contactLines.push(`- Teléfono: ${orgContactRow.brand_phone}`);
   if (contactSite)                     contactLines.push(`- Sitio web: ${contactSite}`);
-  if (orgContactRow?.brand_address)    contactLines.push(`- Dirección: ${orgContactRow.brand_address}`);
+  if (orgContactRow?.business_address)    contactLines.push(`- Dirección: ${orgContactRow.business_address}`);
   if (contactLines.length > 0) {
     promptLines.push(
       '',

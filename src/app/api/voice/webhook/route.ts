@@ -752,7 +752,7 @@ export async function POST(req: NextRequest) {
               brandColor: agent.email_brand_color ?? '#6C3BFF',
               footerText: agent.email_footer_text ?? null,
               website:    agent.brand_website     ?? null,
-              address:    agent.brand_address     ?? null,
+              address:    agent.business_address     ?? null,
               senderName: agent.business_name,
             };
             if (outcome === 'appointment_booked') {

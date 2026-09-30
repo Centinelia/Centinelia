@@ -23,7 +23,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     email_brand_color?:    string;
     email_footer_text?:    string;
     brand_website?:        string;
-    brand_address?:        string;
+    business_address?:     string;
     brand_phone?:          string;
     brand_color_secondary?: string;
   };
@@ -33,11 +33,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if ('email_footer_text'    in body) patch.email_footer_text    = body.email_footer_text    ?? null;
   if ('brand_website'        in body) {
     patch.brand_website    = body.brand_website ?? null;
-    // Sincroniza al campo usado por el escaneo de sitio (Sitio web y reseñas).
-    // Un solo sitio del negocio, propagado a ambos campos.
     patch.business_website = body.brand_website ?? null;
   }
-  if ('brand_address'        in body) patch.brand_address        = body.brand_address        ?? null;
+  if ('business_address'     in body) patch.business_address     = body.business_address     ?? null;
   if ('brand_phone'          in body) patch.brand_phone          = body.brand_phone          ?? null;
   if ('brand_color_secondary' in body) patch.brand_color_secondary = body.brand_color_secondary ?? null;
 

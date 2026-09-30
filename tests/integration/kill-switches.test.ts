@@ -62,7 +62,7 @@ vi.mock('@/lib/supabase/admin', () => ({
                 brand_phone:       null,
                 business_website:  null,
                 brand_website:     null,
-                brand_address:     null,
+                business_address:     null,
                 directory:         null,
               },
               error: null,

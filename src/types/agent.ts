@@ -106,7 +106,7 @@ export interface VoiceAgent {
   client_name: string;
   business_name: string;
   business_description: string;
-  business_address?: string;
+  business_address?: string | null;
   business_phone_display: string; // número que el agente menciona verbalmente
   phone_number: string;           // número Twilio/Vapi asignado
   vapi_agent_id?: string;
@@ -161,7 +161,6 @@ export interface VoiceAgent {
   email_brand_color?: string | null;
   email_footer_text?: string | null;
   brand_website?: string | null;
-  brand_address?: string | null;
   // Calendar integration
   calendar_type?: string | null;
   calendar_api_key?: string | null;

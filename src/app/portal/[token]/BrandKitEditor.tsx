@@ -50,7 +50,7 @@ export default function BrandKitEditor({
           brand_color_secondary: color2  || null,
           email_footer_text:     footer  || null,
           brand_website:         website || null,
-          brand_address:         address || null,
+          business_address:      address || null,
           brand_phone:           phone   || null,
         }),
       });

@@ -392,7 +392,7 @@ async function executeAgentToolInner(
       // desde e372013. Sin este fetch todos los PDFs salen en morado default.
       const { data: orgBrand } = await supabase
         .from('organizations')
-        .select('email_brand_color, brand_color_secondary, email_footer_text, brand_website, brand_address')
+        .select('email_brand_color, brand_color_secondary, email_footer_text, brand_website, business_address')
         .eq('portal_email', portalEmail)
         .maybeSingle();
       const brand        = brandKitFromAgent(agent, orgBrand as Record<string, unknown> | null);
@@ -594,7 +594,7 @@ async function executeAgentToolInner(
         .toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').slice(0, 40);
       const { data: orgBrand2 } = await supabase
         .from('organizations')
-        .select('email_brand_color, brand_color_secondary, email_footer_text, brand_website, brand_address')
+        .select('email_brand_color, brand_color_secondary, email_footer_text, brand_website, business_address')
         .eq('portal_email', portalEmail)
         .maybeSingle();
       const brand     = brandKitFromAgent(agent, orgBrand2 as Record<string, unknown> | null);
@@ -5138,7 +5138,7 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
     // invente dominios/emails/teléfonos en el CTA de los documentos).
     const { data: org } = await supabase
       .from('organizations')
-      .select('knowledge_base, business_description, brand_website, brand_address, business_email')
+      .select('knowledge_base, business_description, brand_website, business_address, business_email')
       .eq('portal_email', portalEmail)
       .maybeSingle();
 

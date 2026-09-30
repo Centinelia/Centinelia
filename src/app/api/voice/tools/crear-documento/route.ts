@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
     const { data: orgBrand } = agent.portal_email
       ? await supabase
           .from('organizations')
-          .select('email_brand_color, brand_color_secondary, email_footer_text, brand_website, brand_address')
+          .select('email_brand_color, brand_color_secondary, email_footer_text, brand_website, business_address')
           .eq('portal_email', agent.portal_email)
           .maybeSingle()
       : { data: null };

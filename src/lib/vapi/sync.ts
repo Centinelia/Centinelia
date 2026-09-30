@@ -178,7 +178,7 @@ function peerToolCapabilities(peer: TeamPeer): string[] {
 // Org fields are stored in `organizations` (single source of truth).
 // Before building any Vapi assistant, merge them over the per-agent row.
 
-const ORG_SELECT = 'knowledge_base, owner_profile, owner_passphrase, business_description, business_hours, business_website, website_knowledge, google_review_url, email_brand_color, brand_color_secondary, brand_website, brand_address, email_footer_text, multilingual, invoicing_allow_agent_cancellation, industry';
+const ORG_SELECT = 'knowledge_base, owner_profile, owner_passphrase, business_description, business_hours, business_website, website_knowledge, google_review_url, email_brand_color, brand_color_secondary, brand_website, business_address, email_footer_text, multilingual, invoicing_allow_agent_cancellation, industry';
 
 async function enrichWithOrgData(agent: VoiceAgent): Promise<VoiceAgent> {
   if (!agent.portal_email) return agent;

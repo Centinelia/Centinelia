@@ -391,7 +391,7 @@ export async function executeTask(params: {
   const ocRaw = targetAgent.portal_email
     ? (await supabase
         .from('organizations')
-        .select('business_email, brand_phone, business_website, brand_website, brand_address, email_footer_text, daily_availability, industry')
+        .select('business_email, brand_phone, business_website, brand_website, business_address, email_footer_text, daily_availability, industry')
         .eq('portal_email', targetAgent.portal_email)
         .maybeSingle()
       ).data
@@ -399,14 +399,14 @@ export async function executeTask(params: {
   const orgExecIndustry = getOrgIndustry(ocRaw as { industry?: string | null } | null);
 
   if (targetAgent.portal_email) {
-    const oc = ocRaw as { business_email?: string | null; brand_phone?: string | null; business_website?: string | null; brand_website?: string | null; brand_address?: string | null; email_footer_text?: string | null; daily_availability?: unknown; industry?: string | null } | null;
+    const oc = ocRaw as { business_email?: string | null; brand_phone?: string | null; business_website?: string | null; brand_website?: string | null; business_address?: string | null; email_footer_text?: string | null; daily_availability?: unknown; industry?: string | null } | null;
     const contactLines: string[] = [];
     const contactEmail = oc?.business_email || targetAgent.portal_email;
     const contactSite  = oc?.business_website || oc?.brand_website;
     if (contactEmail)      contactLines.push(`- Correo: ${contactEmail}`);
     if (oc?.brand_phone)   contactLines.push(`- Teléfono: ${oc.brand_phone}`);
     if (contactSite)       contactLines.push(`- Sitio web: ${contactSite}`);
-    if (oc?.brand_address) contactLines.push(`- Dirección: ${oc.brand_address}`);
+    if (oc?.business_address) contactLines.push(`- Dirección: ${oc.business_address}`);
 
     if (contactLines.length > 0) {
       promptLines.push('', '## Datos de contacto de tu empresa', 'SIEMPRE que redactes un correo, cotización, contrato o firma para un cliente, incluye estos datos al final para que puedan contactarnos:', contactLines.join('\n'));

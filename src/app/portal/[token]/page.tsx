@@ -193,7 +193,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           : Promise.resolve([] as any[]),
         supabase
           .from('organizations')
-          .select('knowledge_base, owner_profile, business_description, business_email, business_hours, business_website, website_knowledge, email_brand_color, brand_color_secondary, brand_website, brand_address, brand_phone, email_footer_text, billing_model, contract_accepted_at, contract_ip, contract_signer_name, multilingual, brand_voice_guide, directory, monthly_ops_pool, monthly_ops_used, fallback_phone_number, ops_ledger_enabled')
+          .select('knowledge_base, owner_profile, business_description, business_email, business_hours, business_website, website_knowledge, email_brand_color, brand_color_secondary, brand_website, business_address, brand_phone, email_footer_text, billing_model, contract_accepted_at, contract_ip, contract_signer_name, multilingual, brand_voice_guide, directory, monthly_ops_pool, monthly_ops_used, fallback_phone_number, ops_ledger_enabled')
           .eq('portal_email', agent.portal_email)
           .single()
           .then(r => r.data),
@@ -1214,7 +1214,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                           initialColor={orgSettings?.email_brand_color ?? (agent as any).email_brand_color ?? '#6C3BFF'}
                           initialColorSecondary={orgSettings?.brand_color_secondary ?? (agent as any).brand_color_secondary ?? ''}
                           initialWebsite={orgSettings?.brand_website ?? (agent as any).brand_website ?? ''}
-                          initialAddress={orgSettings?.brand_address ?? (agent as any).brand_address ?? ''}
+                          initialAddress={orgSettings?.business_address ?? (agent as any).business_address ?? ''}
                           initialPhone={orgSettings?.brand_phone ?? ''}
                           initialFooter={orgSettings?.email_footer_text ?? (agent as any).email_footer_text ?? ''}
                           senderEmail={(orgSettings as any)?.business_email ?? agent.portal_email ?? null}

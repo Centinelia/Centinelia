@@ -28,7 +28,7 @@ export function brandKitFromAgent(
   const orgColor = org?.email_brand_color as string | null | undefined;
   const orgSecondary = org?.brand_color_secondary as string | null | undefined;
   const orgWebsite = org?.brand_website as string | null | undefined;
-  const orgAddress = org?.brand_address as string | null | undefined;
+  const orgAddress = org?.business_address as string | null | undefined;
   const orgFooter = org?.email_footer_text as string | null | undefined;
   const orgLogoUrl = org?.logo_url as string | null | undefined;
   const orgPhone = org?.brand_phone as string | null | undefined;

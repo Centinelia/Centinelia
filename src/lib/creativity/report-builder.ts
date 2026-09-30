@@ -256,7 +256,7 @@ export async function buildReport(
       .select('business_name, logo_url, email_logo_url, phone_number')
       .eq('id', agent.id).maybeSingle(),
     (supabase as any).from('organizations')
-      .select('logo_url, email_brand_color, brand_color_secondary, brand_website, brand_address, email_footer_text')
+      .select('logo_url, email_brand_color, brand_color_secondary, brand_website, business_address, email_footer_text')
       .eq('portal_email', agent.portalEmail).maybeSingle(),
   ]);
   const brandKit = brandKitFromAgent(
