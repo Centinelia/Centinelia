@@ -327,6 +327,55 @@ export async function POST(req: NextRequest) {
         })();
       }
 
+      // ── Aviso llamada sin reporte (Tortillería Estrella — Ramón 2026-09-30) ──
+      // Se dispara para toda llamada sin acción concreta capturada (unanswered
+      // u outcome sin registrar_incidencia/lead/cita/pedido/transfer). Feature
+      // flag por-org en organizations.notify_calls_without_report. La detección
+      // de "sin reporte" vive dentro de notifyIfNoReport para dejar el webhook
+      // slim. Sin dedup (1 llamada = 1 correo, como pidió Ramón).
+      if (callDbId && callerNumber) {
+        void (async () => {
+          try {
+            const { data: agRow } = await supabase
+              .from('voice_agents')
+              .select('id, portal_email, agent_name, business_name, email_from, email_domain_verified')
+              .eq('id', resolvedAgentId)
+              .maybeSingle();
+            const pe = (agRow as { portal_email?: string } | null)?.portal_email;
+            if (!agRow || !pe) return;
+            const { data: orgRow } = await supabase
+              .from('organizations')
+              .select('notify_calls_without_report, directory')
+              .eq('portal_email', pe)
+              .maybeSingle();
+            if (!orgRow) return;
+            const org = orgRow as { notify_calls_without_report?: boolean; directory?: unknown };
+            const { notifyIfNoReport } = await import('@/lib/incidents/no-report-notify');
+            const nrAgent = agRow as import('@/lib/incidents/no-report-notify').NoReportAgent;
+            const nrDirectory = Array.isArray(org.directory)
+              ? org.directory as import('@/lib/incidents/no-report-notify').NoReportOrg['directory']
+              : [];
+            await notifyIfNoReport({
+              agent: nrAgent,
+              org: {
+                notify_calls_without_report: !!org.notify_calls_without_report,
+                directory:                   nrDirectory,
+              },
+              callRow: {
+                id:               callDbId,
+                caller_number:    callerNumber,
+                duration_seconds: durationSeconds,
+                outcome,
+                summary,
+              },
+              capturedAt: rawEndedAt ? new Date(rawEndedAt) : new Date(),
+            }, supabase);
+          } catch (err) {
+            console.error('[webhook] no-report-notify failed (no-op):', err);
+          }
+        })();
+      }
+
       // Llamadas unanswered (duration <=5s por outcome-normalize línea 158) NO
       // cobran minutos ni escriben ledger de consumo — evita cobrar por drops
       // pre-conexión (auditor Municipio: "esta llamada no conectó, ¿por qué se
