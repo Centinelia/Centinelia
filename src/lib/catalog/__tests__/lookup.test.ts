@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { searchCatalog, _clearCatalogCache } from '../lookup';
 
 const mockOrg = {
@@ -25,18 +25,22 @@ vi.mock('@/lib/supabase/admin', () => ({
 }));
 
 const mockRev = 'rev123';
-const mockFileBuffer = () => {
-  const ws = XLSX.utils.aoa_to_sheet([
+let cachedMockBuffer: Buffer | null = null;
+async function mockFileBuffer(): Promise<Buffer> {
+  if (cachedMockBuffer) return cachedMockBuffer;
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('Sheet1');
+  ws.addRows([
     ['SKU', 'Descripcion', 'Precio'],
     ['A-001', 'Tornillo hex 1/4"', '2.50'],
     ['A-002', 'Tuerca 1/4"', '0.80'],
     ['B-100', 'Cable calibre 12', '15.00'],
     ['B-101', 'Cable calibre 14', '12.00'],
   ]);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
-  return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
-};
+  const arr = await wb.xlsx.writeBuffer();
+  cachedMockBuffer = Buffer.from(arr);
+  return cachedMockBuffer;
+}
 
 let filesDownloadCalls = 0;
 let filesGetMetadataCalls = 0;
@@ -45,7 +49,7 @@ vi.mock('dropbox', () => {
   class Dropbox {
     async filesDownload() {
       filesDownloadCalls++;
-      return { result: { rev: mockRev, fileBinary: mockFileBuffer() } };
+      return { result: { rev: mockRev, fileBinary: await mockFileBuffer() } };
     }
     async filesGetMetadata() {
       filesGetMetadataCalls++;

@@ -33,7 +33,7 @@
  *  trae YYYY-MM-DD).
  */
 
-import * as XLSX from 'xlsx';
+import { parseXlsxBufferAsArrays, type ArrayRow } from '@/lib/excel-io/read';
 
 // ---- Public types ---------------------------------------------------------
 
@@ -75,7 +75,7 @@ export interface ParseResult {
 
 // ---- Helpers --------------------------------------------------------------
 
-type Row = Array<string | number | Date | boolean | null | undefined>;
+type Row = ArrayRow;
 
 /**
  * Convierte fechas explícitas a ISO YYYY-MM-DD. NO convierte números a Excel
@@ -118,20 +118,13 @@ function isWeekHeaderCell(v: unknown): string | null {
  * Parsea el buffer .xlsx de Ramón Leang y retorna todos los bloques semanales
  * encontrados. No hace side effects.
  */
-export function parseRamonLeangXlsx(buffer: Buffer): ParseResult {
-  const wb = XLSX.read(buffer, { type: 'buffer', cellDates: true });
+export async function parseRamonLeangXlsx(buffer: Buffer): Promise<ParseResult> {
+  const sheets = await parseXlsxBufferAsArrays(buffer);
   const warnings: string[] = [];
   const blocks: ParsedWeekBlock[] = [];
 
-  for (const sheetName of wb.SheetNames) {
-    const sheet = wb.Sheets[sheetName];
-    if (!sheet['!ref']) continue; // hoja vacía
-    const rows = XLSX.utils.sheet_to_json<Row>(sheet, {
-      header: 1,
-      raw: true,
-      blankrows: true,
-      defval: null,
-    });
+  for (const { rows } of sheets) {
+    if (rows.length === 0) continue;
 
     for (let r = 0; r < rows.length; r++) {
       const row = rows[r] ?? [];

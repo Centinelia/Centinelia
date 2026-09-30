@@ -28,7 +28,7 @@
  * viene en fase 2 con mapping asistido guardado por cliente.
  */
 
-import * as XLSX from 'xlsx';
+import { parseXlsxBufferAsArrays, excelSerialToDate, type ArrayRow } from '@/lib/excel-io/read';
 
 // ---- Public types ----------------------------------------------------------
 
@@ -97,7 +97,7 @@ export interface ParseResult {
 
 // ---- Parser ----------------------------------------------------------------
 
-type Row = Array<string | number | Date | boolean | null | undefined>;
+type Row = ArrayRow;
 
 /**
  * Extrae el código de cliente del texto del header del bloque.
@@ -231,8 +231,7 @@ function coerceFecha(v: unknown): string | null {
   }
   if (typeof v === 'string' && v.trim()) return v.trim();
   if (typeof v === 'number') {
-    // Excel serial date. Convertimos con XLSX helper.
-    const d = XLSX.SSF.parse_date_code(v);
+    const d = excelSerialToDate(v);
     if (d) return `${d.y}-${String(d.m).padStart(2, '0')}-${String(d.d).padStart(2, '0')}`;
   }
   return null;
@@ -257,20 +256,12 @@ function isRemisionRow(row: Row): boolean {
  * los bloques encontrados. No hace side effects, no valida contra catálogo
  * CONTPAQi; solo interpreta el layout.
  */
-export function parseTortilleriaBatchXlsx(buffer: Buffer): ParseResult {
-  const wb = XLSX.read(buffer, { type: 'buffer', cellDates: true });
+export async function parseTortilleriaBatchXlsx(buffer: Buffer): Promise<ParseResult> {
+  const sheets = await parseXlsxBufferAsArrays(buffer);
   const warnings: string[] = [];
   const blocks: ParsedBlock[] = [];
 
-  for (const sheetName of wb.SheetNames) {
-    const sheet = wb.Sheets[sheetName];
-    const rows = XLSX.utils.sheet_to_json<Row>(sheet, {
-      header: 1,
-      raw: true,
-      blankrows: true,
-      defval: null,
-    });
-
+  for (const { rows } of sheets) {
     let i = 0;
     while (i < rows.length) {
       const row = rows[i] ?? [];

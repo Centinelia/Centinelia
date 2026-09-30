@@ -15,7 +15,7 @@
  * integration_accounts activa con el provider elegido.
  */
 import { Dropbox } from 'dropbox';
-import * as XLSX from 'xlsx';
+import { parseXlsxBuffer, parseCsvBuffer } from '@/lib/excel-io/read';
 import { decrypt } from '@/lib/crypto';
 import { dropboxRefreshToken } from '@/lib/dropbox/oauth';
 import type { createAdminClient } from '@/lib/supabase/admin';
@@ -131,21 +131,6 @@ async function checkFingerprint(portalEmail: string, config: CatalogConfig, supa
   return null;
 }
 
-function parseXlsx(buffer: Buffer): Record<string, unknown>[] {
-  const wb = XLSX.read(buffer, { type: 'buffer' });
-  const sheetName = wb.SheetNames[0];
-  if (!sheetName) return [];
-  const sheet = wb.Sheets[sheetName];
-  return XLSX.utils.sheet_to_json(sheet, { defval: '' });
-}
-
-function parseCsv(buffer: Buffer): Record<string, unknown>[] {
-  const text = buffer.toString('utf-8');
-  const wb = XLSX.read(text, { type: 'string' });
-  const sheetName = wb.SheetNames[0];
-  if (!sheetName) return [];
-  return XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval: '' });
-}
 
 function rowsToEntries(rows: Record<string, unknown>[], config: CatalogConfig): CatalogMatch[] {
   const out: CatalogMatch[] = [];
@@ -169,7 +154,7 @@ export async function getCatalogHeaders(portalEmail: string, provider: CatalogPr
   const dl = await downloadWithFingerprint(portalEmail, config, supabase);
   if ('error' in dl) return dl;
   const ext = docPath.toLowerCase().split('.').pop() ?? '';
-  const rows = ext === 'csv' ? parseCsv(dl.buffer) : parseXlsx(dl.buffer);
+  const rows = ext === 'csv' ? parseCsvBuffer(dl.buffer) : await parseXlsxBuffer(dl.buffer);
   const first = rows[0];
   return first ? Object.keys(first) : [];
 }
@@ -204,7 +189,7 @@ export async function searchCatalog(portalEmail: string, config: CatalogConfig, 
     const dl = await downloadWithFingerprint(portalEmail, config, supabase, opts.agentId);
     if ('error' in dl) return dl;
     const ext = config.doc_path.toLowerCase().split('.').pop() ?? '';
-    const rows = ext === 'csv' ? parseCsv(dl.buffer) : parseXlsx(dl.buffer);
+    const rows = ext === 'csv' ? parseCsvBuffer(dl.buffer) : await parseXlsxBuffer(dl.buffer);
     entries = rowsToEntries(rows, config);
     CACHE.set(cacheKey, { fingerprint: dl.fingerprint, entries, cachedAt: now });
   }

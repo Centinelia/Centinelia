@@ -7,7 +7,7 @@
 // Cobro: batched — N contactos importados = 1 cobro count=N (regla
 // batched-consume-multi-io). Solo se cobra si viene agentId.
 
-import * as XLSX from 'xlsx';
+import { parseXlsxBuffer, parseCsvBuffer } from '@/lib/excel-io/read';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
 
@@ -66,23 +66,12 @@ function coerceNumber(raw: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-// Detecta si el buffer es CSV o XLSX por magic bytes y extensión.
-function parseBufferToRows(buffer: Buffer, filename: string): Record<string, unknown>[] {
+// Detecta si el buffer es CSV o XLSX por extensión y parsea a array de objetos.
+async function parseBufferToRows(buffer: Buffer, filename: string): Promise<Record<string, unknown>[]> {
   const ext = filename.toLowerCase().split('.').pop() ?? '';
   const isXlsx = ext === 'xlsx' || ext === 'xls' || ext === 'ods';
-
-  if (isXlsx) {
-    const wb    = XLSX.read(buffer, { type: 'buffer', cellDates: false });
-    const sheet = wb.Sheets[wb.SheetNames[0]];
-    if (!sheet) return [];
-    return XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
-  }
-
-  // Asumimos CSV. XLSX.read soporta CSV nativamente.
-  const wb    = XLSX.read(buffer, { type: 'buffer', codepage: 65001 /* UTF-8 */ });
-  const sheet = wb.Sheets[wb.SheetNames[0]];
-  if (!sheet) return [];
-  return XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
+  if (isXlsx) return parseXlsxBuffer(buffer, { asString: true });
+  return parseCsvBuffer(buffer);
 }
 
 export async function importCarteraContactos(buffer: Buffer, opts: ImportOpts): Promise<ImportResult> {
@@ -93,7 +82,7 @@ export async function importCarteraContactos(buffer: Buffer, opts: ImportOpts): 
     throw new Error('Import: la columna "nombre" es obligatoria en el column mapping');
   }
 
-  const rows = parseBufferToRows(buffer, filename);
+  const rows = await parseBufferToRows(buffer, filename);
   const result: ImportResult = {
     total_rows_leidas:      rows.length,
     contactos_creados:      0,

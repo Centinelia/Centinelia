@@ -115,7 +115,7 @@ export async function runRamonLeangFlow(input: RamonLeangFlowInput): Promise<Ram
   const allErrors:   PipelineErrorRL[]   = [];
   for (const att of excels) {
     try {
-      const parsed = parseRamonLeangXlsx(att.buffer);
+      const parsed = await parseRamonLeangXlsx(att.buffer);
       allBlocks.push(...parsed.blocks);
       for (const w of parsed.warnings) allWarnings.push({ weekStart: '(archivo)', message: w });
     } catch (parseErr) {

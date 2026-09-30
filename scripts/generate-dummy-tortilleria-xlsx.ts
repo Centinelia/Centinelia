@@ -8,7 +8,7 @@
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 
 interface DummyBlock {
   header:     string;
@@ -63,15 +63,17 @@ function blockToRows(b: DummyBlock): (string|number|null)[][] {
   return rows;
 }
 
-function writeXlsx(blocks: DummyBlock[], path: string) {
-  const rows: (string|number|null)[][] = [];
-  for (const b of blocks) rows.push(...blockToRows(b));
-  const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  XLSX.utils.book_append_sheet(wb, ws, 'Facturación');
+async function writeXlsx(blocks: DummyBlock[], path: string): Promise<void> {
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('Facturación');
+  for (const b of blocks) {
+    for (const row of blockToRows(b)) {
+      ws.addRow(row);
+    }
+  }
   mkdirSync(dirname(path), { recursive: true });
-  const buffer = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' });
-  writeFileSync(path, buffer);
+  const arr = await wb.xlsx.writeBuffer();
+  writeFileSync(path, Buffer.from(arr));
   console.log(`  ✓ ${path}`);
 }
 
@@ -175,8 +177,12 @@ const melendezBlocks: DummyBlock[] = [
   },
 ];
 
-console.log('Generando dummy xlsx...');
-writeXlsx(variosBlocks,   'scripts/output/dummy-varios.xlsx');
-writeXlsx(ortizBlocks,    'scripts/output/dummy-ortiz.xlsx');
-writeXlsx(melendezBlocks, 'scripts/output/dummy-melendez.xlsx');
-console.log('Done.');
+async function main(): Promise<void> {
+  console.log('Generando dummy xlsx...');
+  await writeXlsx(variosBlocks,   'scripts/output/dummy-varios.xlsx');
+  await writeXlsx(ortizBlocks,    'scripts/output/dummy-ortiz.xlsx');
+  await writeXlsx(melendezBlocks, 'scripts/output/dummy-melendez.xlsx');
+  console.log('Done.');
+}
+
+main().catch((err) => { console.error(err); process.exit(1); });

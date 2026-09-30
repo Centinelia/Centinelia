@@ -44,35 +44,40 @@ function key(columna: string, precio: number): string {
   return `${columna.toUpperCase().trim()}@${precio.toFixed(2)}`;
 }
 
-for (const filename of ['varios.xlsx', 'ortiz.xlsx', 'melendez.xlsx']) {
-  const buf = readFileSync(join(FIXTURES, filename));
-  const result = parseTortilleriaBatchXlsx(buf);
+async function main(): Promise<void> {
+  for (const filename of ['varios.xlsx', 'ortiz.xlsx', 'melendez.xlsx']) {
+    const buf = readFileSync(join(FIXTURES, filename));
+    const result = await parseTortilleriaBatchXlsx(buf);
 
-  for (let i = 0; i < result.blocks.length; i++) {
-    const b = result.blocks[i];
-    blockRows.push({
-      archivo:      filename,
-      bloque:       i + 1,
-      titulo:       b.tituloBloque,
-      codigoParser: b.codigoCliente,
-      remisiones:   b.remisiones.length,
-      totalExcel:   b.totalGeneralExcel,
-    });
+    for (let i = 0; i < result.blocks.length; i++) {
+      const b = result.blocks[i];
+      blockRows.push({
+        archivo:      filename,
+        bloque:       i + 1,
+        titulo:       b.tituloBloque,
+        codigoParser: b.codigoCliente,
+        remisiones:   b.remisiones.length,
+        totalExcel:   b.totalGeneralExcel,
+      });
 
-    for (const p of b.productos) {
-      if (p.precioUnit == null || p.cantidadTotal === 0) continue;
-      const k = key(p.columnaNombre, p.precioUnit);
-      if (!productMap.has(k)) {
-        productMap.set(k, {
-          columna:      p.columnaNombre.trim(),
-          precioTipico: p.precioUnit,
-          visto_en:     new Set(),
-        });
+      for (const p of b.productos) {
+        if (p.precioUnit == null || p.cantidadTotal === 0) continue;
+        const k = key(p.columnaNombre, p.precioUnit);
+        if (!productMap.has(k)) {
+          productMap.set(k, {
+            columna:      p.columnaNombre.trim(),
+            precioTipico: p.precioUnit,
+            visto_en:     new Set(),
+          });
+        }
+        productMap.get(k)!.visto_en.add(`${b.codigoCliente ?? b.tituloBloque.slice(0, 30)}:${filename}`);
       }
-      productMap.get(k)!.visto_en.add(`${b.codigoCliente ?? b.tituloBloque.slice(0, 30)}:${filename}`);
     }
   }
+  writeOutputs();
 }
+
+function writeOutputs(): void {
 
 // -- Output CSV 1: bloques + código --------------------------------------------
 const blockCsv = [
@@ -124,3 +129,6 @@ console.log(`  ${join(OUT, 'beatriz-product-mapping.csv')}`);
 console.log('');
 console.log('Abre los CSV en Excel y ve llenando junto con Beatriz. Al terminar,');
 console.log('mándamelos de vuelta y los ingiero al mapping guardado del portal.');
+}
+
+main().catch((err) => { console.error(err); process.exit(1); });

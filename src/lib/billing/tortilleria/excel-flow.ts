@@ -171,7 +171,7 @@ export async function runExcelFlow(input: ExcelFlowInput): Promise<ExcelFlowResu
   for (const att of excelAttachments) {
     let parsed;
     try {
-      parsed = parseTortilleriaBatchXlsx(att.buffer);
+      parsed = await parseTortilleriaBatchXlsx(att.buffer);
     } catch (parseErr) {
       allErrors.push({
         tituloBloque: att.filename,

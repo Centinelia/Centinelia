@@ -1,13 +1,14 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { parseTortilleriaBatchXlsx } from '../tortilleria-batch';
+import { parseTortilleriaBatchXlsx, type ParseResult } from '../tortilleria-batch';
 
 const FIXTURES = join(__dirname, 'fixtures');
 const loadFixture = (name: string) => readFileSync(join(FIXTURES, name));
 
 describe('parseTortilleriaBatchXlsx — CTES. VARIOS', () => {
-  const result = parseTortilleriaBatchXlsx(loadFixture('varios.xlsx'));
+  let result: ParseResult;
+  beforeAll(async () => { result = await parseTortilleriaBatchXlsx(loadFixture('varios.xlsx')); });
 
   it('parsea al menos 2 bloques (Cardenas + Silla)', () => {
     expect(result.blocks.length).toBeGreaterThanOrEqual(2);
@@ -55,7 +56,8 @@ describe('parseTortilleriaBatchXlsx — CTES. VARIOS', () => {
 });
 
 describe('parseTortilleriaBatchXlsx — Ortiz (razones sociales distintas)', () => {
-  const result = parseTortilleriaBatchXlsx(loadFixture('ortiz.xlsx'));
+  let result: ParseResult;
+  beforeAll(async () => { result = await parseTortilleriaBatchXlsx(loadFixture('ortiz.xlsx')); });
 
   it('parsea 3 bloques (Rosario, Diana, Karina)', () => {
     expect(result.blocks.length).toBe(3);
@@ -111,7 +113,8 @@ describe('parseTortilleriaBatchXlsx — Ortiz (razones sociales distintas)', () 
 });
 
 describe('parseTortilleriaBatchXlsx — Melendez (sin CTE, mapping por nombre)', () => {
-  const result = parseTortilleriaBatchXlsx(loadFixture('melendez.xlsx'));
+  let result: ParseResult;
+  beforeAll(async () => { result = await parseTortilleriaBatchXlsx(loadFixture('melendez.xlsx')); });
 
   it('parsea 8 bloques (HACIENDA, CASA BLANCA, HUINALA, CONCORDIA, RINCON, CIENCIA, ANZURES, UROS)', () => {
     expect(result.blocks.length).toBe(8);

@@ -3,7 +3,7 @@
  * Cubre las 3 variantes de formato (varios, ortiz, melendez) y las reglas
  * especiales (DCA consolidado, SILLATPROP crédito, skips de descontinuados).
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { parseTortilleriaBatchXlsx } from '../../parsers/tortilleria-batch';
@@ -112,9 +112,11 @@ const CONFIG: TortilleriaPipelineConfig = {
 // ---- Tests ----------------------------------------------------------------
 
 describe('pipeline — CTES. VARIOS', () => {
-  const buf = loadXlsx('varios.xlsx');
-  const parsed = parseTortilleriaBatchXlsx(buf);
-  const result = buildInvoicesFromBlocks(parsed.blocks, MAPPING, CONFIG);
+  let result: ReturnType<typeof buildInvoicesFromBlocks>;
+  beforeAll(async () => {
+    const parsed = await parseTortilleriaBatchXlsx(loadXlsx('varios.xlsx'));
+    result = buildInvoicesFromBlocks(parsed.blocks, MAPPING, CONFIG);
+  });
 
   it('skip ALWIN FOOD y ALIMENOTOS EL NEGRO', () => {
     const titles = result.skipped.map(s => s.tituloBloque);
@@ -161,8 +163,11 @@ describe('pipeline — CTES. VARIOS', () => {
 });
 
 describe('pipeline — Ortiz', () => {
-  const parsed = parseTortilleriaBatchXlsx(loadXlsx('ortiz.xlsx'));
-  const result = buildInvoicesFromBlocks(parsed.blocks, MAPPING, CONFIG);
+  let result: ReturnType<typeof buildInvoicesFromBlocks>;
+  beforeAll(async () => {
+    const parsed = await parseTortilleriaBatchXlsx(loadXlsx('ortiz.xlsx'));
+    result = buildInvoicesFromBlocks(parsed.blocks, MAPPING, CONFIG);
+  });
 
   it('emite 3 facturas separadas (razones sociales distintas)', () => {
     expect(result.invoices.length).toBe(3);
@@ -190,8 +195,11 @@ describe('pipeline — Ortiz', () => {
 });
 
 describe('pipeline — Melendez', () => {
-  const parsed = parseTortilleriaBatchXlsx(loadXlsx('melendez.xlsx'));
-  const result = buildInvoicesFromBlocks(parsed.blocks, MAPPING, CONFIG);
+  let result: ReturnType<typeof buildInvoicesFromBlocks>;
+  beforeAll(async () => {
+    const parsed = await parseTortilleriaBatchXlsx(loadXlsx('melendez.xlsx'));
+    result = buildInvoicesFromBlocks(parsed.blocks, MAPPING, CONFIG);
+  });
 
   it('emite 7 facturas (8 bloques - 1 vacío CONCORDIA)', () => {
     // CONCORDIA tiene 0 remisiones → sin líneas → se salta con warning

@@ -1,5 +1,5 @@
 import mammoth from 'mammoth';
-import * as XLSX from 'xlsx';
+import { xlsxBufferToText } from '@/lib/excel-io/read';
 import { extractText, getDocumentProxy } from 'unpdf';
 
 const DOCX_MIME  = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
@@ -27,14 +27,7 @@ export async function parseFileToText(buffer: Buffer, mimeType: string): Promise
 
   if (mt === XLSX_MIME || mt === XLS_MIME) {
     try {
-      const wb = XLSX.read(buffer, { type: 'buffer' });
-      const parts: string[] = [];
-      for (const sheetName of wb.SheetNames) {
-        const sheet = wb.Sheets[sheetName];
-        const csv = XLSX.utils.sheet_to_csv(sheet).trim();
-        if (csv) parts.push(`# Hoja: ${sheetName}\n${csv}`);
-      }
-      return parts.join('\n\n');
+      return await xlsxBufferToText(buffer);
     } catch (err) {
       return `[No pude leer el .xlsx: ${String(err)}]`;
     }
