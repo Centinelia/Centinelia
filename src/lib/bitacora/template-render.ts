@@ -600,7 +600,10 @@ export function populateSheetWithIncidents(
   incidents.forEach((inc, i) => {
     const rowIdx = mapping.insertion_row + i;
     const emptyRow = new Array((hiddenIdCol ?? maxCol) + 1).fill(null);
-    const newRow = ws.insertRow(rowIdx, emptyRow);
+    // exceljs 3.4.0 removió insertRow. spliceRows(idx, 0, ...rows) inserta N
+    // filas en la posición idx; después getRow para acceder al Row nuevo.
+    ws.spliceRows(rowIdx, 0, emptyRow);
+    const newRow = ws.getRow(rowIdx);
 
     const preservedForRow = options.preservedValues?.get(inc.id);
 
