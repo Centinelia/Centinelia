@@ -333,8 +333,14 @@ export async function POST(req: NextRequest) {
       // flag por-org en organizations.notify_calls_without_report. La detección
       // de "sin reporte" vive dentro de notifyIfNoReport para dejar el webhook
       // slim. Sin dedup (1 llamada = 1 correo, como pidió Ramón).
+      //
+      // Envuelto en after() (Next.js 15 canonical) en lugar de void async — bug
+      // 2026-09-30: el void secuencial de 2 sendMeerkatHtmlEmail + consumeAiOp
+      // ~15s excedía la ventana de gracia post-response de Vercel y mataba el
+      // cobro después de mandar los correos, dejando 0 rows en ai_ops_log.
+      // after() extiende la ejecución para post-response work.
       if (callDbId && callerNumber) {
-        void (async () => {
+        after(async () => {
           try {
             const { data: agRow } = await supabase
               .from('voice_agents')
@@ -373,7 +379,7 @@ export async function POST(req: NextRequest) {
           } catch (err) {
             console.error('[webhook] no-report-notify failed (no-op):', err);
           }
-        })();
+        });
       }
 
       // Llamadas unanswered (duration <=5s por outcome-normalize línea 158) NO

@@ -108,10 +108,14 @@ export async function notifyIfNoReport(
     agentDisplayName: `${input.agent.agent_name}${input.agent.business_name ? ' · ' + input.agent.business_name : ''}`,
   });
 
-  let sent = 0;
-  for (const r of recipients) {
+  // Envío paralelo: reduce latencia total de N * ~2s a max(~2s). Crítico bajo
+  // Vercel `after()` — cada segundo ahorrado disminuye el riesgo de que el
+  // contenedor se termine antes de llegar a consumeAiOp (bug de pool accuracy
+  // observado 2026-09-30: 2 correos ok pero 0 rows en ai_ops_log porque el
+  // for-loop secuencial se comía la ventana post-response).
+  const sendResults = await Promise.all(recipients.map(async r => {
     try {
-      const res = await sendMeerkatHtmlEmail({
+      return await sendMeerkatHtmlEmail({
         agentId: input.agent.id,
         to:      r.email,
         subject,
@@ -123,12 +127,15 @@ export async function notifyIfNoReport(
           email_domain_verified: input.agent.email_domain_verified ?? false,
         },
       }, supabase);
-      if (res.ok) sent += 1;
-      else console.warn(`[no-report-notify] email a ${r.email} failed:`, res.error);
     } catch (err) {
       console.error(`[no-report-notify] sendMeerkatHtmlEmail a ${r.email} threw:`, err);
+      return { ok: false as const, provider: 'none' as const };
     }
-  }
+  }));
+  sendResults.forEach((res, i) => {
+    if (!res.ok) console.warn(`[no-report-notify] email a ${recipients[i].email} failed:`, (res as { error?: string }).error);
+  });
+  const sent = sendResults.filter(r => r.ok).length;
 
   if (sent > 0) {
     try {

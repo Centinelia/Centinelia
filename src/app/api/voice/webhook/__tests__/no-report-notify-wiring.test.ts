@@ -103,12 +103,15 @@ describe('webhook wiring: notifyIfNoReport hook', () => {
     expect(hook).toContain('Array.isArray(org.directory)');
   });
 
-  it('fire-and-forget: envuelto en void async IIFE (no bloquea la respuesta a Vapi)', () => {
-    // Vapi tiene timeout de ~30s en end-of-call-report. Si notifyIfNoReport
-    // bloqueara síncronamente (fetch agent + fetch org + N sends), llamadas
-    // con muchos recipients podrían timeoutear. Ver perfiles_vivos pattern
-    // right above.
-    expect(hook).toMatch(/void\s*\(async\s*\(\)/);
+  it('fire-and-forget: envuelto en after() de next/server (no bloquea la respuesta a Vapi)', () => {
+    // Bug 2026-09-30: originalmente usaba `void (async () => {})()` heredado
+    // de perfiles_vivos. Vercel corta la ventana de gracia post-response y
+    // mataba `consumeAiOp` antes de completar → 2 correos ok pero 0 rows en
+    // ai_ops_log (undercharge silencioso, viola pool accuracy). `after()` es
+    // la primitiva canonical de Next.js 15 que extiende la ejecución para
+    // post-response work.
+    expect(hook).toMatch(/after\(async\s*\(\)\s*=>/);
+    expect(hook).not.toMatch(/void\s*\(async\s*\(\)/);
   });
 
   it('captura errores del hook sin propagar (no rompe el webhook si notifyIfNoReport falla)', () => {
