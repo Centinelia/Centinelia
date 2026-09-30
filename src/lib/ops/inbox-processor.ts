@@ -1202,10 +1202,15 @@ export async function processInboxEmail(params: {
       const { createAdminClient: createAdminClient2 } = await import('@/lib/supabase/admin');
       const { data: orgContact } = await createAdminClient2()
         .from('organizations')
-        .select('business_email, brand_phone, business_website, brand_website, business_address, business_description, industry')
+        .select('business_email, brand_phone, business_website, brand_website, business_address, business_description, industry, brand_voice_guide, banned_terms')
         .eq('portal_email', portalEmail)
         .maybeSingle();
-      const orgC = orgContact as { business_email?: string | null; brand_phone?: string | null; business_website?: string | null; brand_website?: string | null; business_address?: string | null; business_description?: string | null; industry?: string | null } | null;
+      const orgC = orgContact as { business_email?: string | null; brand_phone?: string | null; business_website?: string | null; brand_website?: string | null; business_address?: string | null; business_description?: string | null; industry?: string | null; brand_voice_guide?: string | null; banned_terms?: string | null } | null;
+
+      // Tono de marca + banned terms — org-level, inyectados en los 5 canales.
+      const { buildBrandVoiceBlock } = await import('@/lib/brand/voice-guide');
+      const brandBlock = buildBrandVoiceBlock(orgC?.brand_voice_guide, orgC?.banned_terms);
+      if (brandBlock) contextBlocks.push(brandBlock);
 
       // # Perfil del negocio — bloque prominente para pre-check de relevancia
       // en la sección CLASIFICACIÓN. Sin esto el LLM tenía que inferir el giro

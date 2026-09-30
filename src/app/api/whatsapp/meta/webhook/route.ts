@@ -14,6 +14,8 @@ import Anthropic from '@anthropic-ai/sdk';
 import { withWebhookAuth } from '@/lib/webhooks/with-webhook-auth';
 import { buildWASystemPrompt } from '@/lib/whatsapp/prompt-builder';
 import { PRIMELIFT_ADDENDUM } from '@/lib/whatsapp/primelift-addendum';
+import { getBrandVoiceContext } from '@/lib/brand/voice-guide';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { sendMetaText } from '@/lib/whatsapp/meta-send';
 import { checkAccount } from '@/lib/compliance/account-guard';
 import { logLlmCall } from '@/lib/observability/llm-log';
@@ -228,7 +230,11 @@ export const POST = withWebhookAuth('meta_wa', async (_req: NextRequest, { event
   }
 
   // 6. Build system prompt (base + addendum PrimeLift)
-  const systemPrompt = (await buildWASystemPrompt(agent)) + '\n\n' + PRIMELIFT_ADDENDUM;
+  //    Inyecta brand_voice_guide + banned_terms del org — paridad con /whatsapp/webhook (Twilio).
+  const brandCtx = agent.portal_email
+    ? await getBrandVoiceContext(agent.portal_email, createAdminClient())
+    : { voiceGuide: null, bannedTerms: null };
+  const systemPrompt = (await buildWASystemPrompt(agent, brandCtx.voiceGuide, brandCtx.bannedTerms)) + '\n\n' + PRIMELIFT_ADDENDUM;
 
   const claudeMessages: Anthropic.MessageParam[] = allMessages
     .slice(-30)

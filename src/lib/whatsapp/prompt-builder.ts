@@ -4,7 +4,11 @@ import { listTasksForAgent } from '@/lib/agent-tasks/service';
 import { isFeatureEnabled } from '@/lib/feature-flags/agent-missions';
 import { describeTrigger } from '@/lib/agent-tasks/prompt-helpers';
 
-export async function buildWASystemPrompt(agent: VoiceAgent, brandVoiceGuide?: string | null): Promise<string> {
+export async function buildWASystemPrompt(
+  agent:           VoiceAgent,
+  brandVoiceGuide?: string | null,
+  bannedTerms?:    string | null,
+): Promise<string> {
   const agentName = agent.agent_name?.trim() || agent.business_name;
 
   const now = new Date().toLocaleString('es-MX', {
@@ -76,11 +80,10 @@ SOLO ACTÚA SOBRE LO QUE EL CLIENTE PIDE EXPLÍCITAMENTE. No asumas necesidades 
     blocks.push(`DEFINICIÓN DE ÉXITO — TU BRÚJULA:\n${dod.trim()}\nEsta es la condición que define que hiciste bien tu trabajo. Cada acción que tomes debe orientarse a cumplir esto.`);
   }
 
-  if (brandVoiceGuide?.trim()) {
-    blocks.push(`TONO DE MARCA — HABLA COMO ESTE NEGOCIO, NO GENÉRICO:
-${brandVoiceGuide.trim()}
-
-Aplica este tono en cada mensaje sin mencionarlo. Si el estilo genérico y esta guía entran en conflicto, esta guía gana.`);
+  {
+    const { buildBrandVoiceBlock } = await import('@/lib/brand/voice-guide');
+    const brandBlock = buildBrandVoiceBlock(brandVoiceGuide, bannedTerms);
+    if (brandBlock) blocks.push(brandBlock);
   }
 
   // A-F2: Guardrails ANTI-FABRICACIÓN + PRIVACIDAD + BILLING + URLs — portados

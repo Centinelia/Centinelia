@@ -256,18 +256,20 @@ export const POST = withWebhookAuth('twilio', async (_req: NextRequest, { event,
     tools.push(LEAD_TOOL);
   }
 
-  // Brand voice guide (per-org). Se inyecta en el prompt para que el bot
+  // Brand voice guide + banned terms (per-org). Se inyectan para que el bot
   // hable como este negocio, no con tono genérico.
   let brandVoiceGuide: string | null = null;
+  let bannedTerms:     string | null = null;
   if (agent.portal_email) {
     const { data: org } = await supabase
       .from('organizations')
-      .select('brand_voice_guide')
+      .select('brand_voice_guide, banned_terms')
       .eq('portal_email', agent.portal_email)
       .maybeSingle();
     brandVoiceGuide = (org?.brand_voice_guide as string | null) ?? null;
+    bannedTerms     = ((org as Record<string, unknown> | null)?.banned_terms as string | null) ?? null;
   }
-  const systemPrompt = await buildWASystemPrompt(agent, brandVoiceGuide);
+  const systemPrompt = await buildWASystemPrompt(agent, brandVoiceGuide, bannedTerms);
 
   // ── Phrase task matcher (antes del LLM) ──────────────────────────────────
   // Si el mensaje del usuario activa una tarea de tipo 'phrase', ejecutamos la

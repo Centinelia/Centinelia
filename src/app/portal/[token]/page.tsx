@@ -47,6 +47,8 @@ import OwnerProfileEditor     from './OwnerProfileEditor';
 import WebsiteSyncButton      from './WebsiteSyncButton';
 import BusinessHoursEditor    from './BusinessHoursEditor';
 import BrandVoiceEditor       from './BrandVoiceEditor';
+import BrandVoiceEmailLearningSection from './BrandVoiceEmailLearningSection';
+import BannedTermsEditor       from './BannedTermsEditor';
 import OutboundSection           from './OutboundSection';
 import AutoRefillSection         from './AutoRefillSection';
 import IntegrationsHub           from './IntegrationsHub';
@@ -193,7 +195,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           : Promise.resolve([] as any[]),
         supabase
           .from('organizations')
-          .select('knowledge_base, owner_profile, business_description, business_email, business_hours, business_website, website_knowledge, email_brand_color, brand_color_secondary, brand_website, business_address, brand_phone, email_footer_text, billing_model, contract_accepted_at, contract_ip, contract_signer_name, multilingual, brand_voice_guide, directory, monthly_ops_pool, monthly_ops_used, fallback_phone_number, ops_ledger_enabled')
+          .select('knowledge_base, owner_profile, business_description, business_email, business_hours, business_website, website_knowledge, email_brand_color, brand_color_secondary, brand_website, business_address, brand_phone, email_footer_text, billing_model, contract_accepted_at, contract_ip, contract_signer_name, multilingual, brand_voice_guide, banned_terms, directory, monthly_ops_pool, monthly_ops_used, fallback_phone_number, ops_ledger_enabled')
           .eq('portal_email', agent.portal_email)
           .single()
           .then(r => r.data),
@@ -259,6 +261,24 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const allClientAgents = clientAgents ?? [];
   const orgSettings   = orgSettingsRes as any;
   const acctMins      = acctMinsRes;
+
+  // Correo de la organización conectado (Gmail/Outlook per-org) — para
+  // BrandVoiceEmailLearningSection. Fetch fuera del Promise.all porque solo
+  // aplica en el bloque "Tono de marca" y no bloquea el resto de la página.
+  let orgConnectedEmail: string | null = null;
+  if (agent.portal_email) {
+    const { data: orgAcct } = await supabase
+      .from('integration_accounts')
+      .select('account_label, status, created_at')
+      .eq('portal_email', agent.portal_email)
+      .in('provider', ['gmail', 'outlook'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (orgAcct && (orgAcct as any).status !== 'needs_reauth') {
+      orgConnectedEmail = ((orgAcct as any).account_label as string) ?? null;
+    }
+  }
   const opsAgents     = opsAgentsRes;
   const accountSerial = accountSerialRes;
   const rolloverLostThisCycle = Math.max(
@@ -1236,6 +1256,29 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                       </div>
                       <div className="px-5 py-4" style={{ borderTop: '1px solid #F0EDF9' }}>
                         <BrandVoiceEditor token={token} initGuide={(orgSettings as any)?.brand_voice_guide ?? ''} />
+                      </div>
+                      <div className="px-5 py-4" style={{ borderTop: '1px solid #F0EDF9' }}>
+                        <div className="flex items-baseline gap-2 mb-3">
+                          <h3 className="text-[13px] font-semibold tracking-tight" style={{ color: '#1A0A3B' }}>
+                            Extraer tono desde correos enviados
+                          </h3>
+                        </div>
+                        <BrandVoiceEmailLearningSection
+                          token={token}
+                          connectedEmail={orgConnectedEmail}
+                          initialGuide={(orgSettings as any)?.brand_voice_guide ?? null}
+                        />
+                      </div>
+                      <div className="px-5 py-4" style={{ borderTop: '1px solid #F0EDF9' }}>
+                        <div className="flex items-baseline gap-2 mb-3">
+                          <h3 className="text-[13px] font-semibold tracking-tight" style={{ color: '#1A0A3B' }}>
+                            Palabras y frases prohibidas
+                          </h3>
+                        </div>
+                        <BannedTermsEditor
+                          token={token}
+                          initTerms={(orgSettings as any)?.banned_terms ?? ''}
+                        />
                       </div>
                     </div>
                   </div>

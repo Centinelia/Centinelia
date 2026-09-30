@@ -41,6 +41,7 @@ import { generateSlides, type Slide } from '@/lib/documents/slides';
 import { sendEmail, bugReportHtml } from '@/lib/email/send';
 import { checkOfficeInitiative } from '@/lib/initiative/detector';
 import { extractChatLearnings } from '@/lib/ai/chat-learning';
+import { getBrandVoiceContext, buildBrandVoiceBlock } from '@/lib/brand/voice-guide';
 import { getKnowledgeBase } from '@/lib/knowledge-base';
 import { MEERKAT_VOICE_DISTRIBUTION } from '@/lib/vapi/sync';
 import { VOICE_TO_CHAT, UNIVERSAL_TOOLS } from '@/lib/tools/channel-mapping';
@@ -2226,6 +2227,11 @@ export async function POST(req: NextRequest, { params }: Params) {
   if ((agent.role_knowledge_base as string | null)?.trim()) {
     sections.push(`# Instrucciones del rol${agentRole ? ` — ${agentRole}` : ''}\n${agent.role_knowledge_base}`);
   }
+
+  // Tono de marca + banned terms — org-level, inyectados en los 5 canales.
+  const brandCtx        = await getBrandVoiceContext((agent as any).portal_email as string, supabase);
+  const brandVoiceBlock = buildBrandVoiceBlock(brandCtx.voiceGuide, brandCtx.bannedTerms);
+  if (brandVoiceBlock) sections.push(brandVoiceBlock);
 
   if ((agent.role_learnings as string | null)?.trim()) {
     sections.push(`# Aprendizajes del agente — instrucciones del puesto\n${agent.role_learnings}`);

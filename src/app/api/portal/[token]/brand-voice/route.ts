@@ -27,7 +27,13 @@ export async function GET(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   const guide = await getBrandVoiceGuide(portalEmail, supabase);
-  return NextResponse.json({ guide });
+  const { data: org } = await supabase
+    .from('organizations')
+    .select('banned_terms')
+    .eq('portal_email', portalEmail)
+    .maybeSingle();
+  const banned_terms = ((org as Record<string, unknown> | null)?.banned_terms as string | null) ?? null;
+  return NextResponse.json({ guide, banned_terms });
 }
 
 export async function POST(req: NextRequest, { params }: Params) {
@@ -42,20 +48,27 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!auth.portalEmail || auth.portalEmail !== portalEmail)
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
-  const body = await req.json() as { samples?: string[]; guide?: string };
+  const body = await req.json() as { samples?: string[]; guide?: string; banned_terms?: string };
 
-  // Modo manual: el dueño pega la guía directamente
-  if (typeof body.guide === 'string') {
-    const guide = body.guide.trim();
+  // Modo manual: el dueño pega la guía directamente y/o edita banned_terms.
+  // Ambos son opcionales — si viene solo uno, se actualiza solo ese.
+  const hasGuide  = typeof body.guide        === 'string';
+  const hasBanned = typeof body.banned_terms === 'string';
+  if (hasGuide || hasBanned) {
+    const patch: Record<string, unknown> = {};
+    if (hasGuide) {
+      patch.brand_voice_guide      = body.guide!.trim() || null;
+      patch.brand_voice_updated_at = new Date().toISOString();
+    }
+    if (hasBanned) {
+      patch.banned_terms = body.banned_terms!.trim() || null;
+    }
     const { error } = await supabase
       .from('organizations')
-      .update({
-        brand_voice_guide:      guide || null,
-        brand_voice_updated_at: new Date().toISOString(),
-      })
+      .update(patch)
       .eq('portal_email', portalEmail);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ ok: true, guide });
+    return NextResponse.json({ ok: true, guide: body.guide, banned_terms: body.banned_terms });
   }
 
   // Modo extraer: envías muestras y el modelo produce la guía

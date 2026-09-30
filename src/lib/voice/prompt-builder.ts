@@ -247,6 +247,7 @@ TONO Y ESTILO DE VOZ:
   // NOTA: el parámetro se llama orgId por historia, pero es el portal_email
   // — organizations no tiene columna id, su PK es portal_email.
   let orgBrandVoice:    string | null = null;
+  let orgBannedTerms:   string | null = null;
   let orgPassphrase:    string | null = null;
   let orgDailyAvail:   unknown       = null;
   let orgForIndustry:  { industry?: string | null } | null = null;
@@ -254,21 +255,21 @@ TONO Y ESTILO DE VOZ:
   if (orgId && supabase) {
     const { data: orgRow } = await supabase
       .from('organizations')
-      .select('brand_voice_guide, owner_passphrase, daily_availability, industry, features')
+      .select('brand_voice_guide, banned_terms, owner_passphrase, daily_availability, industry, features')
       .eq('portal_email', orgId)
       .maybeSingle();
     orgBrandVoice  = (orgRow?.brand_voice_guide as string | null) ?? null;
+    orgBannedTerms = ((orgRow as Record<string, unknown> | null)?.banned_terms as string | null) ?? null;
     orgPassphrase  = (orgRow?.owner_passphrase as string | null) ?? null;
     orgDailyAvail  = (orgRow as Record<string, unknown> | null)?.daily_availability ?? null;
     orgForIndustry = orgRow as { industry?: string | null } | null;
     orgFeaturesRow = (orgRow as Record<string, unknown> | null)?.features as Record<string, unknown> | null ?? null;
   }
 
-  if (!isCoordinator && orgBrandVoice?.trim()) {
-    blocks.push(`TONO DE MARCA — HABLA COMO ESTE NEGOCIO, NO GENÉRICO:
-${orgBrandVoice.trim()}
-
-Aplica este tono en cada frase, sin mencionarlo. Si el bloque de estilo de voz genérico y este entran en conflicto, esta guía gana.`);
+  if (!isCoordinator) {
+    const { buildBrandVoiceBlock } = await import('@/lib/brand/voice-guide');
+    const brandBlock = buildBrandVoiceBlock(orgBrandVoice, orgBannedTerms);
+    if (brandBlock) blocks.push(brandBlock);
   }
 
   // ── Org team roster — fuente única de verdad (organizations.directory) ────

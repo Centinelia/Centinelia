@@ -27,7 +27,8 @@ const MIN_SAMPLES     = 2;
 const MIN_CHARS_TOTAL = 400;
 const MAX_SAMPLE_CHARS = 4000;
 
-function buildPrompt(samples: string[]): string {
+// Exportado para eval scripts (scripts/eval-brand-voice.mjs).
+export function buildBrandVoicePrompt(samples: string[]): string {
   const numbered = samples.map((s, i) => `[Muestra ${i + 1}]\n${s.slice(0, MAX_SAMPLE_CHARS)}`).join('\n\n');
   return `Analiza estas muestras reales de comunicación de un negocio y produce una GUÍA DE TONO reutilizable en español mexicano.
 
@@ -69,7 +70,7 @@ export async function extractBrandVoice(args: ExtractArgs): Promise<BrandVoiceRe
     resp = await client.messages.create({
       model:      __m,
       max_tokens: 1200,
-      messages: [{ role: 'user', content: buildPrompt(cleaned) }],
+      messages: [{ role: 'user', content: buildBrandVoicePrompt(cleaned) }],
     });
     void logLlmCall({ source: 'brand_voice_guide', model: __m, usage: resp.usage, portalEmail, latencyMs: Date.now() - __t });
   } catch (err) {
@@ -99,11 +100,74 @@ export async function getBrandVoiceGuide(
   portalEmail: string,
   supabase: SupabaseClient,
 ): Promise<string | null> {
+  const ctx = await getBrandVoiceContext(portalEmail, supabase);
+  return ctx.voiceGuide;
+}
+
+export interface BrandVoiceContext {
+  voiceGuide:  string | null;
+  bannedTerms: string | null;
+}
+
+/**
+ * Reads brand voice context (guide + banned terms) for an org in one query.
+ * Preferred over getBrandVoiceGuide when inyectando en system prompt de un
+ * meerkat — trae ambas piezas de contexto de marca sin roundtrips extra.
+ */
+export async function getBrandVoiceContext(
+  portalEmail: string,
+  supabase: SupabaseClient,
+): Promise<BrandVoiceContext> {
   const { data } = await supabase
     .from('organizations')
-    .select('brand_voice_guide')
+    .select('brand_voice_guide, banned_terms')
     .eq('portal_email', portalEmail)
     .maybeSingle();
   const g = (data?.brand_voice_guide as string | null)?.trim();
-  return g || null;
+  const b = (data?.banned_terms      as string | null)?.trim();
+  return { voiceGuide: g || null, bannedTerms: b || null };
+}
+
+/** Normaliza el banned_terms crudo (una-por-línea o comma-separated) a lista limpia. */
+export function parseBannedTerms(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  return raw
+    .split(/[\n,;]+/)
+    .map(s => s.trim())
+    .filter(s => s.length > 0 && s.length < 100)
+    .slice(0, 40);
+}
+
+/**
+ * Construye el bloque de system prompt para el tono de marca + restricciones
+ * duras (banned terms). Único lugar donde vive el copy — reutilizado por los
+ * 5 canales (voice, whatsapp-twilio, whatsapp-meta, chat portal,
+ * inbox-processor) para garantizar consistencia y para que un solo test
+ * cubra la paridad.
+ *
+ * Formato del header preservado del original voice/whatsapp (mayúsculas +
+ * dos puntos) para no cambiar comportamiento observable en clientes que ya
+ * usan brand_voice_guide en prod.
+ */
+export function buildBrandVoiceBlock(
+  guide:       string | null | undefined,
+  bannedTerms: string | null | undefined = null,
+): string | null {
+  const g     = guide?.trim();
+  const terms = parseBannedTerms(bannedTerms);
+  if (!g && terms.length === 0) return null;
+
+  const parts: string[] = [];
+  if (g) {
+    parts.push(
+      `TONO DE MARCA — HABLA COMO ESTE NEGOCIO, NO GENÉRICO:\n${g}\n\nAplica este tono en cada respuesta, sin mencionarlo. Si el estilo genérico y esta guía entran en conflicto, esta guía gana.`,
+    );
+  }
+  if (terms.length > 0) {
+    const list = terms.map(t => `- ${t}`).join('\n');
+    parts.push(
+      `PALABRAS Y FRASES PROHIBIDAS EN ESTE NEGOCIO (nunca las uses, sin excepciones):\n${list}\n\nSi tu instinto es usar una de estas expresiones, sustitúyela por una alternativa natural con el mismo significado. Esta restricción gana sobre cualquier otra guía de estilo.`,
+    );
+  }
+  return parts.join('\n\n');
 }
