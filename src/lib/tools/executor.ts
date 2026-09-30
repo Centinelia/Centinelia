@@ -1053,6 +1053,23 @@ async function executeAgentToolInner(
     }));
 
     // 2) Errores de LLM (llm_call_log.error is not null).
+    //
+    // Fix 2026-09-30 (oleadas 4-9 del temperature deprecated post-PR #84):
+    // el floor de nash_error_floor solo se aplicaba en hasNewSignalsForNash
+    // (skip guard pre-loop). Adentro del loop, esta tool devolvía los 249
+    // errores pre-fix acumulados al LLM, que decidía crear un nuevo incident
+    // cada hora. Ahora aplicamos el mismo floor aquí — cero errores pre-fix
+    // llegan al LLM.
+    const { data: floorRows } = await supabase
+      .from('nash_error_floor')
+      .select('source, floor_timestamp');
+    const floorMap = new Map<string, number>();
+    for (const f of (floorRows ?? [])) {
+      const src = (f as { source: string }).source;
+      const ts  = (f as { floor_timestamp: string }).floor_timestamp;
+      floorMap.set(src, new Date(ts).getTime());
+    }
+
     const { data: llmRaw } = await supabase
       .from('llm_call_log')
       .select('id, source, model, agent_id, portal_email, error, created_at')
@@ -1060,7 +1077,12 @@ async function executeAgentToolInner(
       .gte('created_at', sinceIso)
       .order('created_at', { ascending: false })
       .limit(perSource);
-    const error_logs = (llmRaw ?? []).filter(r => !trackedSet.has(`error_log:${r.id}`));
+    const error_logs = (llmRaw ?? []).filter(r => {
+      if (trackedSet.has(`error_log:${r.id}`)) return false;
+      const floor = floorMap.get(r.source as string);
+      if (floor && new Date(r.created_at as string).getTime() < floor) return false;
+      return true;
+    });
 
     // 3) Bandeja escalada estancada (>24h sin actualización).
     const { data: inboxRaw } = await supabase
