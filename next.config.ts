@@ -34,6 +34,14 @@ const CSP = [
 ].join("; ");
 
 const nextConfig: NextConfig = {
+  // Producción: eliminar console.log/debug/info del bundle. Mantiene
+  // console.error/warn (útiles para observability en Vercel logs).
+  // Item #17 del checklist de seguridad 2026-09-30.
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production'
+      ? { exclude: ['error', 'warn'] }
+      : false,
+  },
   // sharp usa binarios nativos (libvips) que Next intenta bundle-ar y rompe
   // el linking del `.so`. Externalizar hace que se cargue con require() en
   // runtime desde node_modules. Fix del dry run FASE 4 (2026-09-07):
