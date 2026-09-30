@@ -2,6 +2,14 @@
   "ignoreCommand": "bash scripts/vercel-ignore.sh",
   "crons": [
     {
+      "path": "/api/cron/process-email-jobs",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/cleanup-email-jobs",
+      "schedule": "0 3 * * 0"
+    },
+    {
       "path": "/api/cron/dedup-cleanup",
       "schedule": "0 * * * *"
     },
