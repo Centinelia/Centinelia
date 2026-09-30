@@ -119,7 +119,32 @@ export async function GET(req: NextRequest) {
 
       results.done++;
     } catch (err) {
-      console.error('[email-jobs] job failed (retry en Task 6):', err);
+      const attemptsSoFar = (locked as EmailJob).attempts;
+      const isFinal = attemptsSoFar >= job.max_attempts;
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      // Backoff exponencial: 30s × 2^attempts (attempts=1→60s, 2→2m, 3→4m, 4→8m, 5→final)
+      const delayMs = 30_000 * Math.pow(2, attemptsSoFar);
+      const nextAttemptAt = new Date(Date.now() + delayMs).toISOString();
+
+      await supabase
+        .from('email_send_jobs')
+        .update({
+          status:          isFinal ? 'failed' : 'pending',
+          next_attempt_at: nextAttemptAt,
+          last_error:      errorMsg,
+          failed_at:       isFinal ? new Date().toISOString() : null,
+        })
+        .eq('id', job.id)
+        .select()
+        .single();
+
+      if (isFinal) {
+        results.failed++;
+        console.error('[email-jobs] job max_attempts reached:', { job_id: job.id, error: errorMsg });
+      } else {
+        results.retried++;
+        console.warn('[email-jobs] job retry:', { job_id: job.id, attempt: attemptsSoFar, next_attempt_at: nextAttemptAt, error: errorMsg });
+      }
     }
   }
 

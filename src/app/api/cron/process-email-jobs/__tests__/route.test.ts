@@ -192,3 +192,83 @@ describe('process-email-jobs cron', () => {
     expect(body).toMatchObject({ ok: true, picked: 1, done: 0 });
   });
 });
+
+describe('retry logic', () => {
+  it('send throw + attempts=0 → status vuelve a pending, attempts=1, next_attempt_at futuro con backoff 60s', async () => {
+    const job = { id: 'job-1', agent_id: 'a', portal_email: 'p', to_addr: 't', subject: 's', html: 'h', reply_to: null, from_addr: null, attachment_url: null, attachment_name: null, attachment_mime: null, source: 'x', reference_id: null, charge_source: null, charge_label: null, source_table: null, source_row_id: null, attempts: 0, max_attempts: 5 };
+    mockPending.mockResolvedValue({ data: [job], error: null });
+    mockLock.mockResolvedValue({ data: { ...job, attempts: 1 }, error: null });
+    mockSend.mockRejectedValue(new Error('smtp timeout'));
+    mockUpdate.mockResolvedValue({ data: null, error: null });
+
+    const { GET } = await import('../route');
+    const res = await GET(makeReq());
+    const body = await res.json();
+
+    expect(body).toMatchObject({ picked: 1, done: 0, retried: 1, failed: 0 });
+    const retryUpdate = mockUpdate.mock.calls.find(c => (c[0] as { status?: string }).status === 'pending');
+    expect(retryUpdate).toBeDefined();
+    const patch = retryUpdate![0] as { last_error: string; next_attempt_at: string };
+    expect(patch.last_error).toContain('smtp timeout');
+    const delay = new Date(patch.next_attempt_at).getTime() - Date.now();
+    // Backoff 30s × 2^1 = 60s (attempts es 1 tras lock)
+    expect(delay).toBeGreaterThan(55_000);
+    expect(delay).toBeLessThan(65_000);
+  });
+
+  it('send throw + attempts=4 (5to intento) → status=failed + failed_at', async () => {
+    const job = { id: 'job-1', agent_id: 'a', portal_email: 'p', to_addr: 't', subject: 's', html: 'h', reply_to: null, from_addr: null, attachment_url: null, attachment_name: null, attachment_mime: null, source: 'x', reference_id: null, charge_source: null, charge_label: null, source_table: null, source_row_id: null, attempts: 4, max_attempts: 5 };
+    mockPending.mockResolvedValue({ data: [job], error: null });
+    mockLock.mockResolvedValue({ data: { ...job, attempts: 5 }, error: null });
+    mockSend.mockRejectedValue(new Error('final fail'));
+    mockUpdate.mockResolvedValue({ data: null, error: null });
+
+    const { GET } = await import('../route');
+    const res = await GET(makeReq());
+    const body = await res.json();
+
+    expect(body).toMatchObject({ picked: 1, done: 0, retried: 0, failed: 1 });
+    const failedUpdate = mockUpdate.mock.calls.find(c => (c[0] as { status?: string }).status === 'failed');
+    expect(failedUpdate).toBeDefined();
+    const patch = failedUpdate![0] as { failed_at: string; last_error: string };
+    expect(patch.failed_at).toBeTruthy();
+    expect(patch.last_error).toContain('final fail');
+  });
+
+  it('sendMeerkat retorna ok:false → tratado como throw, entra a retry', async () => {
+    const job = { id: 'job-1', agent_id: 'a', portal_email: 'p', to_addr: 't', subject: 's', html: 'h', reply_to: null, from_addr: null, attachment_url: null, attachment_name: null, attachment_mime: null, source: 'x', reference_id: null, charge_source: null, charge_label: null, source_table: null, source_row_id: null, attempts: 1, max_attempts: 5 };
+    mockPending.mockResolvedValue({ data: [job], error: null });
+    mockLock.mockResolvedValue({ data: { ...job, attempts: 2 }, error: null });
+    mockSend.mockResolvedValue({ ok: false, provider: 'none', error: 'SMTP 550' });
+    mockUpdate.mockResolvedValue({ data: null, error: null });
+
+    const { GET } = await import('../route');
+    const res = await GET(makeReq());
+    const body = await res.json();
+
+    expect(body).toMatchObject({ retried: 1 });
+    const retry = mockUpdate.mock.calls.find(c => (c[0] as { status?: string }).status === 'pending');
+    expect((retry![0] as { last_error: string }).last_error).toContain('SMTP 550');
+  });
+
+  it('charge deferred throw NO revierte job.done (audit gap logeado)', async () => {
+    const job = { id: 'job-1', agent_id: 'a', portal_email: 'p', to_addr: 't', subject: 's', html: 'h', reply_to: null, from_addr: null, attachment_url: null, attachment_name: null, attachment_mime: null, source: 'x', reference_id: 'ref-1', charge_source: 'notif', charge_label: 'L', source_table: null, source_row_id: null, attempts: 0, max_attempts: 5 };
+    mockPending.mockResolvedValue({ data: [job], error: null });
+    mockLock.mockResolvedValue({ data: { ...job, attempts: 1 }, error: null });
+    mockSend.mockResolvedValue({ ok: true, provider: 'resend' });
+    mockUpdate.mockResolvedValue({ data: null, error: null });
+    mockConsume.mockRejectedValue(new Error('pool RPC down'));
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { GET } = await import('../route');
+    const res = await GET(makeReq());
+    const body = await res.json();
+
+    expect(body).toMatchObject({ done: 1, failed: 0 });
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringMatching(/charge failed/),
+      expect.anything(),
+    );
+    consoleSpy.mockRestore();
+  });
+});
