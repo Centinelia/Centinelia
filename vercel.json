@@ -2,6 +2,10 @@
   "ignoreCommand": "bash scripts/vercel-ignore.sh",
   "crons": [
     {
+      "path": "/api/cron/monitor-post-deploy",
+      "schedule": "32 0,12 * * *"
+    },
+    {
       "path": "/api/cron/process-email-jobs",
       "schedule": "* * * * *"
     },
