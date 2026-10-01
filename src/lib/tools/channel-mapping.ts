@@ -31,6 +31,10 @@ export const VOICE_TO_CHAT: Record<string, string | null> = {
   transferir_llamada:        null,
   registrar_encuesta:        null,
 
+  // Chat+Email-only (no aplica a voz — requiere archivo adjunto)
+  // Nalú conciliación: imposible dictar un CSV de 50 líneas por teléfono.
+  conciliar_estado_cuenta:   'conciliar_estado_cuenta',
+
   // Data capture
   crear_lead:                'crear_lead',
   crear_contacto_saliente:   'crear_contacto_saliente',

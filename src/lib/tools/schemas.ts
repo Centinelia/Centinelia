@@ -527,6 +527,30 @@ export const TOOL_SCHEMAS: Record<string, ToolSchema> = {
     channels: ['voice', 'chat', 'email'],
   },
 
+  // conciliar_estado_cuenta — Nalú. Match estado cuenta bancario ↔ CFDIs emitidos.
+  // Solo chat + email (voz imposible: requiere archivo adjunto). Gated por
+  // organizations.bank_reconciliation_enabled.
+  conciliar_estado_cuenta: {
+    name: 'conciliar_estado_cuenta',
+    description: 'Procesa un estado de cuenta bancario (CSV o XLSX de BBVA o Banorte) y lo cruza contra los CFDIs emitidos pendientes del negocio. Devuelve un Excel con 3 hojas: Conciliados (match automático), Para revisar (score medio o ambiguo), Sin conciliar (no corresponde a ningún CFDI). Úsala cuando el dueño del negocio o el contador suba un estado de cuenta y pida saber qué pagos corresponden a qué facturas. Requiere el storage_path del archivo subido (vas a verlo en el prompt cuando el usuario adjunte el archivo).',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        attachment_storage_path: {
+          type: 'string',
+          description: 'Ruta en storage del archivo CSV o XLSX con el estado de cuenta. Lo recibes en el prompt cuando el usuario adjunta el archivo al correo o al chat (bloque "ATTACHMENTS").',
+        },
+        bank_hint: {
+          type: 'string',
+          enum: ['bbva', 'banorte'],
+          description: 'Opcional. Si ya sabes de qué banco es el archivo pásalo aquí. Si no, el sistema lo detecta automáticamente por el header del archivo.',
+        },
+      },
+      required: ['attachment_storage_path'],
+    },
+    channels: ['chat', 'email'],
+  },
+
 };
 
 // ─── Adapter functions ────────────────────────────────────────────────────────

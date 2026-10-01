@@ -207,6 +207,14 @@ async function executeAgentToolInner(
     return runNaviTool(toolName, toolInput, { agentId, portalEmail, supabase });
   }
 
+  // ── Nalú: conciliación bancaria ──────────────────────────────────────────
+  if (toolName === 'conciliar_estado_cuenta') {
+    const { runConciliarEstadoCuenta } = await import('./executors/conciliar-estado-cuenta');
+    return runConciliarEstadoCuenta(toolInput, {
+      agentId, portalEmail, supabase, channel: ctx.channel,
+    });
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
   // read_url
   // ─────────────────────────────────────────────────────────────────────────

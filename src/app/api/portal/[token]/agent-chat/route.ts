@@ -1862,6 +1862,7 @@ export const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
   agendar_cita:              AGENDAR_CITA_TOOL,
   registrar_pedido:          REGISTRAR_PEDIDO_TOOL,
   buscar_cliente:            BUSCAR_CLIENTE_TOOL,
+  conciliar_estado_cuenta:   toAnthropicTool(TOOL_SCHEMAS['conciliar_estado_cuenta']),
   crear_ticket:              CREAR_TICKET_TOOL,
   consultar_incidentes:      CONSULTAR_INCIDENTES_TOOL,
   buscar_directorio:         BUSCAR_DIRECTORIO_TOOL,

@@ -256,6 +256,14 @@ const TOOL_REGISTRY_BASE: Omit<ToolEntry, 'pack'>[] = [
   // Exclusivas navi_agencia (2) — gestion multi-cuenta
   { name: 'listar_cuentas_gestionadas',      description: 'Navi Agencia: lista todas las cuentas de redes sociales que la agencia gestiona',              channels: A, category: 'social', destructive: false, gatedByRole: ['navi_agencia'],         gatedByFeature: 'social_publishing', capability: null, policy: DEFAULT_POLICY },
   { name: 'replicar_contenido_entre_cuentas', description: 'Navi Agencia: replica borrador de post a una o varias cuentas destino (destructivo)',        channels: A, category: 'social', destructive: true,  gatedByRole: ['navi_agencia'],         gatedByFeature: 'social_publishing', capability: null, policy: DEFAULT_POLICY },
+
+  // ── bank reconciliation (Nalú) ────────────────────────────────────────────
+  // Solo chat + email: voz imposible (requiere archivo adjunto). Gate por
+  // columna organizations.bank_reconciliation_enabled (ver migración
+  // 20261001000000_bank_reconciliations.sql). gatedByFeature usa el nombre
+  // de la columna aunque el sistema moderno prefiera packs — este flag es
+  // ad-hoc per-org para rollout gradual Tortillería → pilotos → global.
+  { name: 'conciliar_estado_cuenta',          description: 'Match extracto bancario (CSV/XLSX BBVA o Banorte) contra CFDIs emitidos pendientes. Devuelve Excel 3 hojas: Conciliados / Para revisar / Sin conciliar.', channels: ['chat', 'email'], category: 'fiscal', destructive: false, gatedByRole: ['nalu'], gatedByFeature: 'bank_reconciliation_enabled', capability: null, policy: DEFAULT_POLICY },
 ];
 
 export const TOOL_REGISTRY: ToolEntry[] = TOOL_REGISTRY_BASE.map(entry => ({
