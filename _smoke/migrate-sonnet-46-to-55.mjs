@@ -13,8 +13,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const OLD = `'claude-sonnet-4-6'`;
-const NEW = `'claude-sonnet-5-5'`;
+// Nombres documentales (los reemplazos reales se hacen vía los 3 .replace() abajo).
+// const OLD = `'claude-sonnet-4-6'`; const NEW = `'claude-sonnet-5-5'`;
 
 // Archivos a NO modificar (explícitamente pinnean 4-6 como caso de control)
 const EXCLUDED = new Set([

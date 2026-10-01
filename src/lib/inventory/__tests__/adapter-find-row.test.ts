@@ -20,8 +20,8 @@ const BASE_CTX = {
 
 async function setupMock(headers: string[], rows: unknown[][]) {
   const gx = await import('../graph-excel');
-  (gx.getTableHeader as any).mockResolvedValue(headers);
-  (gx.listTableRows as any).mockResolvedValue(rows.map((r, i) => ({ index: i, values: r })));
+  vi.mocked(gx.getTableHeader).mockResolvedValue(headers);
+  vi.mocked(gx.listTableRows).mockResolvedValue(rows.map((r, i) => ({ index: i, values: r })));
 }
 
 describe('findRowIndexBySerie', () => {

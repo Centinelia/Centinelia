@@ -41,22 +41,22 @@ describe('executor inv_agregar_equipo', () => {
       after_state: { OC: 'A1', SERIE: '2619HA012345', ESTATUS: 'ALMACEN' },
     });
     const r = await runTool({ oc: 'A1', modelo: '4TXK', serie: '2619HA012345', tonelada: 3 });
-    expect((r as any).ok).toBe(true);
-    expect((r as any).message).toContain('FLETEROS');
+    expect((r as Record<string, unknown>).ok).toBe(true);
+    expect((r as Record<string, unknown>).message).toContain('FLETEROS');
     expect(mocks.insertLog).toHaveBeenCalledOnce();
   });
 
   it('adapter not_configured → refund + mensaje de setup', async () => {
     mocks.resolveInv.mockResolvedValue({ error: 'not_configured', message: 'Configura el Excel...' });
     const r = await runTool({ oc: 'A1', modelo: '4TXK', serie: 'X' });
-    expect((r as any).ok).toBe(false);
+    expect((r as Record<string, unknown>).ok).toBe(false);
     expect(mocks.refundOps).toHaveBeenCalled();
   });
 
   it('adapter serie_already_exists → ok:false, cobra (es error de negocio)', async () => {
     mocks.addEquipoRow.mockResolvedValue({ ok: false, code: 'serie_already_exists', existing_row_index: 7 });
     const r = await runTool({ oc: 'A1', modelo: '4TXK', serie: '2619HA012345' });
-    expect((r as any).ok).toBe(false);
+    expect((r as Record<string, unknown>).ok).toBe(false);
     expect(mocks.refundOps).not.toHaveBeenCalled();
     expect(mocks.insertLog).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ success: false, error_code: 'serie_already_exists' }));
   });
@@ -68,7 +68,7 @@ describe('executor inv_agregar_equipo', () => {
       agent: { id: 'agent-1', features: {} },
       supabase: {} as never, channel: 'chat',
     });
-    expect((r as any).ok).toBe(false);
-    expect((r as any).code).toBe('write_not_enabled');
+    expect((r as Record<string, unknown>).ok).toBe(false);
+    expect((r as Record<string, unknown>).code).toBe('write_not_enabled');
   });
 });

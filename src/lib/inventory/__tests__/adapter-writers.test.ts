@@ -34,8 +34,8 @@ const HEADERS = ['OC','MODELO','SERIE','ESTATUS','BODEGA','TON','USD','TC','COST
 
 async function mockHeaders(rows: unknown[][] = []) {
   const gx = await import('../graph-excel');
-  (gx.getTableHeader as any).mockResolvedValue(HEADERS);
-  (gx.listTableRows as any).mockResolvedValue(rows.map((r, i) => ({ index: i, values: r })));
+  vi.mocked(gx.getTableHeader).mockResolvedValue(HEADERS);
+  vi.mocked(gx.listTableRows).mockResolvedValue(rows.map((r, i) => ({ index: i, values: r })));
 }
 
 describe('addEquipoRow', () => {
@@ -45,7 +45,7 @@ describe('addEquipoRow', () => {
     const { addEquipoRow } = await import('../adapter');
     await mockHeaders([]);
     const gx = await import('../graph-excel');
-    (gx.addTableRow as any).mockResolvedValue({ index: 10 });
+    vi.mocked(gx.addTableRow).mockResolvedValue({ index: 10 });
     const r = await addEquipoRow(CTX, { oc: 'A1', modelo: '4TXK', serie: '2619HA012345', tonelada: 3 });
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.bodega_asignada).toBe('FLETEROS');
@@ -55,7 +55,7 @@ describe('addEquipoRow', () => {
     const { addEquipoRow } = await import('../adapter');
     await mockHeaders([]);
     const gx = await import('../graph-excel');
-    (gx.addTableRow as any).mockResolvedValue({ index: 10 });
+    vi.mocked(gx.addTableRow).mockResolvedValue({ index: 10 });
     const r = await addEquipoRow(CTX, { oc: 'A1', modelo: '4TXK', serie: '2619HA012345', tonelada: 10 });
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.bodega_asignada).toBe('CENIZO');
@@ -65,7 +65,7 @@ describe('addEquipoRow', () => {
     const { addEquipoRow } = await import('../adapter');
     await mockHeaders([]);
     const gx = await import('../graph-excel');
-    (gx.addTableRow as any).mockResolvedValue({ index: 10 });
+    vi.mocked(gx.addTableRow).mockResolvedValue({ index: 10 });
     const r = await addEquipoRow(CTX, { oc: 'A1', modelo: '4TXK', serie: '2619HA012345', tonelada: 10, bodega: 'FLETEROS' });
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.bodega_asignada).toBe('FLETEROS');
@@ -76,7 +76,7 @@ describe('addEquipoRow', () => {
     await mockHeaders([]);
     const gx = await import('../graph-excel');
     let capturedRow: unknown[] = [];
-    (gx.addTableRow as any).mockImplementation((_t: unknown, _l: unknown, _tbl: unknown, values: unknown[]) => {
+    vi.mocked(gx.addTableRow).mockImplementation((_t: unknown, _l: unknown, _tbl: unknown, values: unknown[]) => {
       capturedRow = values;
       return Promise.resolve({ index: 10 });
     });
@@ -101,7 +101,7 @@ describe('addEquipoRow', () => {
     await mockHeaders([]);
     const gx = await import('../graph-excel');
     let capturedRow: unknown[] = [];
-    (gx.addTableRow as any).mockImplementation((_t: unknown, _l: unknown, _tbl: unknown, values: unknown[]) => {
+    vi.mocked(gx.addTableRow).mockImplementation((_t: unknown, _l: unknown, _tbl: unknown, values: unknown[]) => {
       capturedRow = values;
       return Promise.resolve({ index: 10 });
     });
@@ -114,7 +114,7 @@ describe('addEquipoRow', () => {
     const { addEquipoRow } = await import('../adapter');
     await mockHeaders([]);
     const gx = await import('../graph-excel');
-    (gx.addTableRow as any).mockResolvedValue({ index: 10 });
+    vi.mocked(gx.addTableRow).mockResolvedValue({ index: 10 });
     const r = await addEquipoRow(CTX, { oc: 'A1', modelo: '4TXK', serie: '2619HA012345' });
     expect(r.ok).toBe(true);
     if (r.ok) {
@@ -281,7 +281,7 @@ describe('patchVentaBySerie', () => {
     await mockHeaders([row]);
     const gx = await import('../graph-excel');
     await patchVentaBySerie(CTX, '2619HA012345', { folio_venta: 'FV-1', fecha_venta: '2026-10-01', precio_unitario_mx: 30000, factura_venta: 'F-TEST' });
-    expect((gx.patchCell as any).mock.calls.length).toBeGreaterThanOrEqual(4);
+    expect(vi.mocked(gx.patchCell).mock.calls.length).toBeGreaterThanOrEqual(4);
   });
 
   it('no sobreescribe factura existente cuando input.factura_venta no se pasa (fix corrupcion silenciosa)', async () => {
@@ -296,7 +296,7 @@ describe('patchVentaBySerie', () => {
     expect(r.ok).toBe(true);
     // Inspect all patchCell calls — ninguna debe tocar la celda FACTURA
     const facturaColLetter = String.fromCharCode(65 + HEADERS.indexOf('FACTURA'));
-    const touchedFactura = (gx.patchCell as any).mock.calls.some((call: unknown[]) => {
+    const touchedFactura = vi.mocked(gx.patchCell).mock.calls.some((call: unknown[]) => {
       const address = call[3] as string;
       return address.startsWith(facturaColLetter);
     });

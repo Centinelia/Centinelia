@@ -44,9 +44,9 @@ describe('executor inv_registrar_salida', () => {
       message: 'Hoja de salida 4251 registrada: 2 equipos entregados a Mauricio Guerra.',
     });
     const r = await runTool({ folio_hoja: '4251', cliente_nombre: 'Mauricio Guerra', fecha: '2026-10-01', series: ['2616HA045921', '2617HA02401A'] });
-    expect((r as any).ok).toBe(true);
+    expect((r as Record<string, unknown>).ok).toBe(true);
     expect(mocks.insertLog).toHaveBeenCalledTimes(2);
-    expect((r as any).message).toContain('2 equipos');
+    expect((r as Record<string, unknown>).message).toContain('2 equipos');
   });
 
   it('1 encontrada + 1 not_found → ok:true con ambos sets en el mensaje', async () => {
@@ -57,15 +57,15 @@ describe('executor inv_registrar_salida', () => {
       message: 'Hoja de salida 4251 registrada: 1 equipos entregados a X. Series no encontradas: NO-EXISTE.',
     });
     const r = await runTool({ folio_hoja: '4251', cliente_nombre: 'X', fecha: '2026-10-01', series: ['2616HA045921', 'NO-EXISTE'] });
-    expect((r as any).ok).toBe(true);
-    expect((r as any).series_not_found).toEqual(['NO-EXISTE']);
+    expect((r as Record<string, unknown>).ok).toBe(true);
+    expect((r as Record<string, unknown>).series_not_found).toEqual(['NO-EXISTE']);
     expect(mocks.insertLog).toHaveBeenCalledTimes(1);
   });
 
   it('fecha inválida (no ISO) → invalid_input + refund (Review Focus #4)', async () => {
     const r = await runTool({ folio_hoja: '4251', cliente_nombre: 'X', fecha: '1 de octubre', series: ['X'] });
-    expect((r as any).ok).toBe(false);
-    expect((r as any).code).toBe('invalid_input');
+    expect((r as Record<string, unknown>).ok).toBe(false);
+    expect((r as Record<string, unknown>).code).toBe('invalid_input');
     expect(mocks.refundOps).toHaveBeenCalled();
     expect(mocks.patchSalida).not.toHaveBeenCalled();
     expect(mocks.insertLog).not.toHaveBeenCalled();
@@ -79,7 +79,7 @@ describe('executor inv_registrar_salida', () => {
       message: 'Hoja de salida 4251 registrada: 1 equipos entregados.',
     });
     const r = await runTool({ folio_hoja: '4251', cliente_nombre: 'X', series: ['2616HA045921'] });
-    expect((r as any).ok).toBe(true);
-    expect((r as any).conflicts).toHaveLength(1);
+    expect((r as Record<string, unknown>).ok).toBe(true);
+    expect((r as Record<string, unknown>).conflicts).toHaveLength(1);
   });
 });

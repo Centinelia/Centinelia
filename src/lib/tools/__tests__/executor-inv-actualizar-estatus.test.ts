@@ -41,15 +41,15 @@ describe('executor inv_actualizar_estatus', () => {
       patched_columns: ['ESTATUS'], table_row_index: 5,
     });
     const r = await runTool({ serie: '2619HA012345', nuevo_estatus: 'SEPARADO' });
-    expect((r as any).ok).toBe(true);
-    expect((r as any).message).toContain('ALMACEN → SEPARADO');
+    expect((r as Record<string, unknown>).ok).toBe(true);
+    expect((r as Record<string, unknown>).message).toContain('ALMACEN → SEPARADO');
     expect(mocks.insertLog).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ success: true, patched_columns: ['ESTATUS'] }));
   });
 
   it('serie_not_found → ok:false, cobra (negocio)', async () => {
     mocks.patchEstatus.mockResolvedValue({ ok: false, code: 'serie_not_found' });
     const r = await runTool({ serie: 'X', nuevo_estatus: 'SEPARADO' });
-    expect((r as any).ok).toBe(false);
+    expect((r as Record<string, unknown>).ok).toBe(false);
     expect(mocks.refundOps).not.toHaveBeenCalled();
     expect(mocks.insertLog).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ success: false, error_code: 'serie_not_found' }));
   });
@@ -61,14 +61,14 @@ describe('executor inv_actualizar_estatus', () => {
       patched_columns: [], table_row_index: 5,
     });
     const r = await runTool({ serie: '2619HA012345', nuevo_estatus: 'ALMACEN' });
-    expect((r as any).ok).toBe(true);
-    expect((r as any).no_op).toBe(true);
-    expect((r as any).message).toContain('ya estaba en ALMACEN');
+    expect((r as Record<string, unknown>).ok).toBe(true);
+    expect((r as Record<string, unknown>).no_op).toBe(true);
+    expect((r as Record<string, unknown>).message).toContain('ya estaba en ALMACEN');
   });
 
   it('flag off → write_not_enabled', async () => {
     const r = await runTool({ serie: 'X', nuevo_estatus: 'SEPARADO' }, false);
-    expect((r as any).ok).toBe(false);
-    expect((r as any).code).toBe('write_not_enabled');
+    expect((r as Record<string, unknown>).ok).toBe(false);
+    expect((r as Record<string, unknown>).code).toBe('write_not_enabled');
   });
 });

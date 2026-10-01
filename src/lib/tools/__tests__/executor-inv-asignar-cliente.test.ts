@@ -42,17 +42,17 @@ describe('executor inv_asignar_cliente', () => {
       patched_columns: ['CLIENTE', 'VEND', 'ESTATUS'], table_row_index: 5,
     });
     const r = await runTool({ serie: '2619HA012345', cliente_nombre: 'Mauricio Guerra', vendedor_codigo: 'ANA' });
-    expect((r as any).ok).toBe(true);
-    expect((r as any).message).toContain('Mauricio Guerra');
-    expect((r as any).message).toContain('SEPARADA');
+    expect((r as Record<string, unknown>).ok).toBe(true);
+    expect((r as Record<string, unknown>).message).toContain('Mauricio Guerra');
+    expect((r as Record<string, unknown>).message).toContain('SEPARADA');
   });
 
   it('cliente_assigned_conflict → mensaje incluye current_cliente', async () => {
     mocks.patchCliente.mockResolvedValue({ ok: false, code: 'cliente_assigned_conflict', current_cliente: 'Otro Cliente' });
     const r = await runTool({ serie: '2619HA012345', cliente_nombre: 'Nuevo' });
-    expect((r as any).ok).toBe(false);
-    expect((r as any).error).toContain('Otro Cliente');
-    expect((r as any).error).toContain('force=true');
+    expect((r as Record<string, unknown>).ok).toBe(false);
+    expect((r as Record<string, unknown>).error).toContain('Otro Cliente');
+    expect((r as Record<string, unknown>).error).toContain('force=true');
     expect(mocks.insertLog).toHaveBeenCalledOnce();
   });
 
@@ -69,8 +69,8 @@ describe('executor inv_asignar_cliente', () => {
   it('serie_not_found → ok:false', async () => {
     mocks.patchCliente.mockResolvedValue({ ok: false, code: 'serie_not_found' });
     const r = await runTool({ serie: 'X', cliente_nombre: 'Y' });
-    expect((r as any).ok).toBe(false);
-    expect((r as any).code).toBe('serie_not_found');
+    expect((r as Record<string, unknown>).ok).toBe(false);
+    expect((r as Record<string, unknown>).code).toBe('serie_not_found');
     expect(mocks.insertLog).toHaveBeenCalledOnce();
   });
 });
