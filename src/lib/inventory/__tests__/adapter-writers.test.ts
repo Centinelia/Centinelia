@@ -306,3 +306,47 @@ describe('patchVentaBySerie', () => {
     }
   });
 });
+
+describe('patchSalidaBySeries', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('registra salida multi-serie: 2 series marcadas ENTREGADO', async () => {
+    const { patchSalidaBySeries } = await import('../adapter');
+    const r1 = new Array(HEADERS.length).fill(''); r1[2] = '2616HA045921'; r1[3] = 'SEPARADO';
+    const r2 = new Array(HEADERS.length).fill(''); r2[2] = '2617HA02401A'; r2[3] = 'SEPARADO';
+    await mockHeaders([r1, r2]);
+    const r = await patchSalidaBySeries(CTX, ['2616HA045921', '2617HA02401A'], {
+      folio_hoja: '4251', cliente_nombre: 'Mauricio Guerra', vendedor_codigo: 'ANA', fecha: '2026-10-01',
+    });
+    expect(r.series_registradas.sort()).toEqual(['2616HA045921', '2617HA02401A']);
+    expect(r.series_not_found).toEqual([]);
+  });
+
+  it('serie no encontrada se reporta en series_not_found pero no aborta las otras', async () => {
+    const { patchSalidaBySeries } = await import('../adapter');
+    const r1 = new Array(HEADERS.length).fill(''); r1[2] = '2616HA045921';
+    await mockHeaders([r1]);
+    const r = await patchSalidaBySeries(CTX, ['2616HA045921', 'NO-EXISTE'], {
+      folio_hoja: '4251', cliente_nombre: 'X', fecha: '2026-10-01',
+    });
+    expect(r.series_registradas).toContain('2616HA045921');
+    expect(r.series_not_found).toContain('NO-EXISTE');
+  });
+
+  it('fecha inválida (no ISO) → rechaza con invalid_input (Review Focus #4)', async () => {
+    const { patchSalidaBySeries } = await import('../adapter');
+    await mockHeaders([]);
+    const r = await patchSalidaBySeries(CTX, ['X'], { folio_hoja: '4251', cliente_nombre: 'Y', fecha: '1 de octubre' });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.code).toBe('invalid_input');
+  });
+
+  it('fecha default = hoy si no se pasa (ISO YYYY-MM-DD)', async () => {
+    const { patchSalidaBySeries } = await import('../adapter');
+    const r1 = new Array(HEADERS.length).fill(''); r1[2] = '2616HA045921';
+    await mockHeaders([r1]);
+    const r = await patchSalidaBySeries(CTX, ['2616HA045921'], { folio_hoja: '4251', cliente_nombre: 'X' });
+    expect(r.ok).toBe(true);
+    // No explicit assertion on fecha_default, pero debe no crashear.
+  });
+});

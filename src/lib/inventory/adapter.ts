@@ -582,6 +582,112 @@ export async function patchVentaBySerie(
   };
 }
 
+export interface PatchSalidaInput {
+  folio_hoja:      string;
+  cliente_nombre:  string;
+  vendedor_codigo?: string;
+  fecha?:          string;
+  proyecto?:       string;
+}
+
+export type SalidaMutation = {
+  serie:           string;
+  table_row_index: number;
+  before_state:    Record<string, unknown>;
+  after_state:     Record<string, unknown>;
+  patched_columns: string[];
+  conflict?:       string;
+};
+
+export type PatchSalidaResult =
+  | { ok: true; folio_hoja: string; series_registradas: string[]; series_not_found: string[]; conflicts: string[]; mutations: SalidaMutation[]; message: string }
+  | { ok: false; code: 'invalid_input'; message: string };
+
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+export async function patchSalidaBySeries(
+  ctx: InventoryContext,
+  series: string[],
+  input: PatchSalidaInput,
+): Promise<PatchSalidaResult> {
+  if (input.fecha && !ISO_DATE_RE.test(input.fecha)) {
+    return { ok: false, code: 'invalid_input', message: `fecha debe ser YYYY-MM-DD; recibí "${input.fecha}"` };
+  }
+  const fecha = input.fecha ?? new Date().toISOString().slice(0, 10);
+  if (!series.length) return { ok: false, code: 'invalid_input', message: 'series requiere al menos 1 elemento' };
+
+  const col = ctx.config.columns_historico;
+  const series_registradas: string[] = [];
+  const series_not_found:   string[] = [];
+  const conflicts:          string[] = [];
+  const mutations:          SalidaMutation[] = [];
+
+  await GraphExcel.withSession(ctx.token, ctx.config.location, async session => {
+    const sheet = ctx.config.sheets.historico.name;
+    for (const s of series) {
+      const hit = await findRowIndexBySerie(ctx, s);
+      if (!hit) { series_not_found.push(s); continue; }
+
+      const estatusIdx = hit.headersMap[col.estatus.toUpperCase()];
+      if (estatusIdx === undefined) {
+        throw new Error(`Columna de estatus '${col.estatus}' no encontrada en headersMap. Revisa inventory_excel_config.columns_historico.`);
+      }
+      const clienteIdx = hit.headersMap[col.cliente.toUpperCase()];
+      if (clienteIdx === undefined) {
+        throw new Error(`Columna de cliente '${col.cliente}' no encontrada en headersMap. Revisa inventory_excel_config.columns_historico.`);
+      }
+      const fechaIdx = hit.headersMap[col.fecha_venta.toUpperCase()];
+      if (fechaIdx === undefined) {
+        throw new Error(`Columna de fecha_venta '${col.fecha_venta}' no encontrada en headersMap. Revisa inventory_excel_config.columns_historico.`);
+      }
+      const vendedorIdx = col.vendedor ? hit.headersMap[col.vendedor.toUpperCase()] : undefined;
+      const folioSalidaIdx = hit.headersMap['FOLIO SALIDA'];
+
+      const headers = Object.entries(hit.headersMap).sort((a, b) => a[1] - b[1]).map(([h]) => h);
+      const before_state = rowToState(headers, hit.row);
+      const after_row = [...hit.row];
+      const patched: string[] = [];
+      let conflictMsg: string | undefined;
+
+      const abs = hit.tableRowIndex + 2;
+
+      await GraphExcel.patchCell(ctx.token, session, sheet, `${cellLetter(estatusIdx)}${abs}`, 'ENTREGADO');
+      after_row[estatusIdx] = 'ENTREGADO'; patched.push(col.estatus.toUpperCase());
+
+      const currentCliente = String(hit.row[clienteIdx] ?? '').trim();
+      if (!currentCliente) {
+        await GraphExcel.patchCell(ctx.token, session, sheet, `${cellLetter(clienteIdx)}${abs}`, input.cliente_nombre);
+        after_row[clienteIdx] = input.cliente_nombre; patched.push(col.cliente.toUpperCase());
+      } else if (currentCliente.toLowerCase() !== input.cliente_nombre.toLowerCase()) {
+        conflictMsg = `serie ${s} ya estaba asignada a "${currentCliente}" (no sobre-escribí)`;
+        conflicts.push(conflictMsg);
+      }
+
+      if (vendedorIdx != null && input.vendedor_codigo) {
+        const currentVend = String(hit.row[vendedorIdx] ?? '').trim();
+        if (!currentVend) {
+          await GraphExcel.patchCell(ctx.token, session, sheet, `${cellLetter(vendedorIdx)}${abs}`, input.vendedor_codigo);
+          after_row[vendedorIdx] = input.vendedor_codigo; patched.push(col.vendedor!.toUpperCase());
+        }
+      }
+
+      await GraphExcel.patchCell(ctx.token, session, sheet, `${cellLetter(fechaIdx)}${abs}`, fecha);
+      after_row[fechaIdx] = fecha; patched.push(col.fecha_venta.toUpperCase());
+
+      if (folioSalidaIdx != null && input.folio_hoja) {
+        await GraphExcel.patchCell(ctx.token, session, sheet, `${cellLetter(folioSalidaIdx)}${abs}`, input.folio_hoja);
+        after_row[folioSalidaIdx] = input.folio_hoja; patched.push('FOLIO SALIDA');
+      }
+
+      series_registradas.push(hit.row[hit.headersMap[col.serie.toUpperCase()]] as string);
+      mutations.push({ serie: s, table_row_index: hit.tableRowIndex, before_state, after_state: rowToState(headers, after_row), patched_columns: patched, ...(conflictMsg ? { conflict: conflictMsg } : {}) });
+    }
+  });
+
+  const message = `Hoja de salida ${input.folio_hoja} registrada: ${series_registradas.length} equipos entregados a ${input.cliente_nombre}.${series_not_found.length ? ` Series no encontradas: ${series_not_found.join(', ')}.` : ''}`;
+  return { ok: true, folio_hoja: input.folio_hoja, series_registradas, series_not_found, conflicts, mutations, message };
+}
+
 // ─── Historico (Excel Table) helpers ─────────────────────────────────────────
 
 export interface HistoricoRowMapped {
