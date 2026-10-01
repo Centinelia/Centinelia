@@ -5453,6 +5453,50 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
   // Ver src/lib/inventory/adapter.ts para helpers de alto nivel.
   // ─────────────────────────────────────────────────────────────────────────
   if (toolName.startsWith('inv_')) {
+    // ── Feature flag gate para herramientas de escritura ─────────────────────
+    const INV_WRITE_TOOLS = new Set(['inv_agregar_equipo', 'inv_actualizar_estatus', 'inv_asignar_cliente', 'inv_registrar_venta', 'inv_registrar_salida']);
+    if (INV_WRITE_TOOLS.has(toolName)) {
+      const flag = (agent.features as Record<string, unknown> | undefined)?.inventory_write_enabled === true;
+      if (!flag) return { ok: false, error: 'Write disabled para este agente.', code: 'write_not_enabled' };
+    }
+
+    // ── inv_agregar_equipo ────────────────────────────────────────────────────
+    if (toolName === 'inv_agregar_equipo') {
+      const { resolveInventoryContext, addEquipoRow, insertMutationLog } = await import('@/lib/inventory/adapter');
+      const ctx = await resolveInventoryContext(portalEmail, supabase, agentId);
+      if ('error' in ctx) {
+        await refundOps(agentId, 1, { source: 'tool_execution', label: `Refund ${toolName}: ${ctx.error}` });
+        return { ok: false, error: ctx.message, code: ctx.error };
+      }
+      const result = await addEquipoRow(ctx, toolInput as never);
+      const serie = (toolInput as { serie?: string }).serie ?? null;
+      await insertMutationLog(supabase, {
+        portal_email:    portalEmail,
+        agent_id:        agentId,
+        tool_name:       toolName,
+        serie,
+        table_row_index: result.ok ? result.row_index : null,
+        before_state:    null,
+        after_state:     result.ok ? result.after_state : {},
+        patched_columns: [],
+        metadata:        null,
+        ops_charged:     1,
+        success:         result.ok,
+        error_code:      result.ok ? null : result.code,
+      });
+      if (!result.ok) {
+        return { ok: false, error: `No pude agregar el equipo: ${result.code === 'serie_already_exists' ? `la serie ya está en el inventario (row ${result.existing_row_index})` : (result as { message?: string }).message ?? result.code}`, code: result.code };
+      }
+      return {
+        ok: true,
+        serie: result.serie,
+        bodega_asignada: result.bodega_asignada,
+        row_index: result.row_index,
+        message: `Agregado equipo serie ${result.serie} a bodega ${result.bodega_asignada ?? 'sin asignar'} en row ${result.row_index}.`,
+      };
+    }
+
+    // ── Herramientas de lectura (read handlers) ───────────────────────────────
     const { resolveInventoryContext, listHistorico, findBySerie, findByModelo, readStock, computeReposiciones, normalizeBodega, GraphExcel, findRowIndexBySerie } = await import('@/lib/inventory/adapter');
     const inv = await resolveInventoryContext(portalEmail, supabase, agentId);
     if ('error' in inv) return { ok: false, error: inv.message, code: inv.error };
@@ -5546,38 +5590,6 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       }, supabase);
       if (!result.ok) return { ok: false, error: result.error ?? 'Envío falló' };
       return { ok: true, message: `Correo enviado a ${encargados.join(', ')} solicitando ${cantidad} pieza(s) de ${modelo}.`, provider: result.provider };
-    }
-
-    if (toolName === 'inv_agregar_equipo') {
-      const requeridos = ['oc', 'modelo', 'serie', 'bodega'] as const;
-      for (const k of requeridos) {
-        if (!String(toolInput[k] ?? '').trim()) return { ok: false, error: `${k} es requerido` };
-      }
-      const bodegaNorm = normalizeBodega(inv, String(toolInput.bodega));
-      if (!bodegaNorm) return { ok: false, error: `Bodega "${toolInput.bodega}" no es válida. Canónicas: ${inv.config.bodegas_canonicas.join(', ')}` };
-      const headers = await GraphExcel.getTableHeader(inv.token, inv.config.location, inv.config.sheets.historico.table);
-      const cols = inv.config.columns_historico;
-      const rowValues: unknown[] = new Array(headers.length).fill('');
-      const setByLogic = (logic: string, value: unknown) => {
-        const header = cols[logic];
-        if (!header) return;
-        const idx = headers.indexOf(header);
-        if (idx >= 0) rowValues[idx] = value;
-      };
-      setByLogic('oc', toolInput.oc);
-      setByLogic('modelo', String(toolInput.modelo).toUpperCase());
-      setByLogic('serie', String(toolInput.serie).trim().toUpperCase());
-      setByLogic('bodega', bodegaNorm.canonical);
-      setByLogic('estatus', 'ALMACEN');
-      if (toolInput.usd !== undefined) setByLogic('usd', Number(toolInput.usd));
-      if (toolInput.tc  !== undefined) setByLogic('tc',  Number(toolInput.tc));
-      if (toolInput.usd !== undefined && toolInput.tc !== undefined) {
-        setByLogic('costo_mx', Number(toolInput.usd) * Number(toolInput.tc));
-      }
-      await GraphExcel.withSession(inv.token, inv.config.location, async (session) => {
-        await GraphExcel.addTableRow(inv.token, session, inv.config.sheets.historico.table, rowValues);
-      });
-      return { ok: true, message: `Equipo ${toolInput.modelo} (serie ${toolInput.serie}) agregado en bodega ${bodegaNorm.canonical}.`, was_alias: bodegaNorm.was_alias };
     }
 
     if (toolName === 'inv_actualizar_estatus') {

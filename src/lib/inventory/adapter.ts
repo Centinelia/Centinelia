@@ -814,5 +814,28 @@ export function normalizeBodega(ctx: InventoryContext, raw: string): { canonical
   return null;
 }
 
+// ─── Audit log ───────────────────────────────────────────────────────────────
+
+export async function insertMutationLog(
+  supabase: SupabaseClient,
+  entry: {
+    portal_email:    string;
+    agent_id:        string | null;
+    tool_name:       string;
+    serie:           string | null;
+    table_row_index: number | null;
+    before_state:    Record<string, unknown> | null;
+    after_state:     Record<string, unknown>;
+    patched_columns: string[];
+    metadata:        Record<string, unknown> | null;
+    ops_charged:     number;
+    success:         boolean;
+    error_code:      string | null;
+  },
+): Promise<void> {
+  const { error } = await supabase.from('inventory_mutations_log').insert(entry);
+  if (error) console.error('[inventory-mutations-log] insert failed:', error.message);
+}
+
 // ─── Re-export de piezas Graph que los tools quizá necesiten ─────────────────
 export { GraphExcel };
