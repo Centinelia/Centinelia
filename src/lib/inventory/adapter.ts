@@ -248,6 +248,9 @@ export interface RowIndexHit {
  *
  * Prerequisito para los patch helpers de Fase 1 (patchEstatusBySerie, etc.)
  * que necesitan resolver índice + headers antes de escribir.
+ *
+ * Las claves de `headersMap` están normalizadas a mayúsculas (toUpperCase());
+ * los callers deben uppercase sus lookups.
  */
 export async function findRowIndexBySerie(
   ctx: InventoryContext,
