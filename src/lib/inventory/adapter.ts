@@ -429,6 +429,84 @@ export async function patchEstatusBySerie(
   };
 }
 
+export interface PatchClienteInput {
+  cliente_nombre:   string;
+  vendedor_codigo?: string;
+  marcar_separado?: boolean; // default true
+  force?:           boolean; // default false
+}
+
+export type PatchClienteResult =
+  | { ok: true;  serie: string; cliente_asignado: string; vendedor: string | null; estatus_resultante: string; before_state: Record<string, unknown>; after_state: Record<string, unknown>; patched_columns: string[]; table_row_index: number }
+  | { ok: false; code: 'serie_not_found' }
+  | { ok: false; code: 'cliente_assigned_conflict'; current_cliente: string };
+
+export async function patchClienteBySerie(
+  ctx: InventoryContext,
+  serie: string,
+  input: PatchClienteInput,
+): Promise<PatchClienteResult> {
+  const hit = await findRowIndexBySerie(ctx, serie);
+  if (!hit) return { ok: false, code: 'serie_not_found' };
+
+  const col = ctx.config.columns_historico;
+  const clienteIdx = hit.headersMap[col.cliente.toUpperCase()];
+  const vendedorIdx = col.vendedor ? hit.headersMap[col.vendedor.toUpperCase()] : undefined;
+  const estatusIdx = hit.headersMap[col.estatus.toUpperCase()];
+
+  if (clienteIdx === undefined) {
+    throw new Error(`Columna de cliente '${col.cliente}' no encontrada en headersMap. Revisa inventory_excel_config.columns_historico.`);
+  }
+
+  const currentCliente = String(hit.row[clienteIdx] ?? '').trim();
+  if (currentCliente && !input.force) {
+    return { ok: false, code: 'cliente_assigned_conflict', current_cliente: currentCliente };
+  }
+
+  const marcar = input.marcar_separado !== false;
+  const estatusActual = String(hit.row[estatusIdx] ?? '').toUpperCase();
+  const willPatchEstatus = marcar && estatusActual === 'ALMACEN';
+
+  if (willPatchEstatus && estatusIdx === undefined) {
+    throw new Error(`Columna de estatus '${col.estatus}' no encontrada en headersMap. Revisa inventory_excel_config.columns_historico.`);
+  }
+
+  const headers = Object.entries(hit.headersMap).sort((a, b) => a[1] - b[1]).map(([h]) => h);
+  const before_state = rowToState(headers, hit.row);
+
+  const patched: string[] = [col.cliente.toUpperCase()];
+  const after_row = [...hit.row];
+  after_row[clienteIdx] = input.cliente_nombre;
+  if (vendedorIdx != null && input.vendedor_codigo) {
+    after_row[vendedorIdx] = input.vendedor_codigo;
+    patched.push(col.vendedor!.toUpperCase());
+  }
+  if (willPatchEstatus) {
+    after_row[estatusIdx] = 'SEPARADO';
+    patched.push(col.estatus.toUpperCase());
+  }
+
+  await GraphExcel.withSession(ctx.token, ctx.config.location, async session => {
+    const sheet = ctx.config.sheets.historico.name;
+    const abs = hit.tableRowIndex + 2;
+    await GraphExcel.patchCell(ctx.token, session, sheet, `${cellLetter(clienteIdx)}${abs}`, input.cliente_nombre);
+    if (vendedorIdx != null && input.vendedor_codigo) {
+      await GraphExcel.patchCell(ctx.token, session, sheet, `${cellLetter(vendedorIdx)}${abs}`, input.vendedor_codigo);
+    }
+    if (willPatchEstatus) {
+      await GraphExcel.patchCell(ctx.token, session, sheet, `${cellLetter(estatusIdx)}${abs}`, 'SEPARADO');
+    }
+  });
+
+  return {
+    ok: true, serie: serie.trim().toUpperCase(),
+    cliente_asignado: input.cliente_nombre, vendedor: input.vendedor_codigo ?? null,
+    estatus_resultante: willPatchEstatus ? 'SEPARADO' : estatusActual,
+    before_state, after_state: rowToState(headers, after_row),
+    patched_columns: patched, table_row_index: hit.tableRowIndex,
+  };
+}
+
 // ─── Historico (Excel Table) helpers ─────────────────────────────────────────
 
 export interface HistoricoRowMapped {

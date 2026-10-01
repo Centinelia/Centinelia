@@ -177,3 +177,60 @@ describe('patchEstatusBySerie', () => {
     await expect(patchEstatusBySerie(badCtx, '2619HA012345', 'SEPARADO')).rejects.toThrow(/no encontrada en headersMap/);
   });
 });
+
+describe('patchClienteBySerie', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('asigna cliente a serie en ALMACEN + marca SEPARADO por default', async () => {
+    const { patchClienteBySerie } = await import('../adapter');
+    await mockHeaders([['A1','4TXK','2619HA012345','ALMACEN','FLETEROS',null,null,'','','','','',null,null,null,null,'VEND','']]);
+    const r = await patchClienteBySerie(CTX, '2619HA012345', { cliente_nombre: 'Mauricio Guerra', vendedor_codigo: 'ANA' });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.cliente_asignado).toBe('Mauricio Guerra');
+      expect(r.estatus_resultante).toBe('SEPARADO');
+      expect(r.patched_columns).toContain('CLIENTE');
+      expect(r.patched_columns).toContain('ESTATUS');
+    }
+  });
+
+  it('marcar_separado=false NO toca estatus', async () => {
+    const { patchClienteBySerie } = await import('../adapter');
+    await mockHeaders([['A1','4TXK','2619HA012345','ALMACEN','FLETEROS',null,null,'','','','','',null,null,null,null,'','']]);
+    const r = await patchClienteBySerie(CTX, '2619HA012345', { cliente_nombre: 'X', marcar_separado: false });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.estatus_resultante).toBe('ALMACEN');
+      expect(r.patched_columns).not.toContain('ESTATUS');
+    }
+  });
+
+  it('rechaza conflict si cliente ya asignado + force=false', async () => {
+    const { patchClienteBySerie } = await import('../adapter');
+    const row = new Array(HEADERS.length).fill(''); row[2] = '2619HA012345'; row[3] = 'SEPARADO'; row[HEADERS.indexOf('CLIENTE')] = 'Otro Cliente';
+    await mockHeaders([row]);
+    const r = await patchClienteBySerie(CTX, '2619HA012345', { cliente_nombre: 'Nuevo' });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.code).toBe('cliente_assigned_conflict');
+      expect(r.current_cliente).toBe('Otro Cliente');
+    }
+  });
+
+  it('force=true permite reasignar cliente', async () => {
+    const { patchClienteBySerie } = await import('../adapter');
+    const row = new Array(HEADERS.length).fill(''); row[2] = '2619HA012345'; row[3] = 'SEPARADO'; row[HEADERS.indexOf('CLIENTE')] = 'Otro Cliente';
+    await mockHeaders([row]);
+    const r = await patchClienteBySerie(CTX, '2619HA012345', { cliente_nombre: 'Nuevo', force: true });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.cliente_asignado).toBe('Nuevo');
+  });
+
+  it('serie not found → serie_not_found', async () => {
+    const { patchClienteBySerie } = await import('../adapter');
+    await mockHeaders([]);
+    const r = await patchClienteBySerie(CTX, '2619HA012345', { cliente_nombre: 'X' });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.code).toBe('serie_not_found');
+  });
+});
