@@ -4,6 +4,7 @@
 import type { BankSlug, RawBankTxn } from '../types';
 import { looksLikeBbva, parseBbvaCsv } from './bbva';
 import { looksLikeBanorte, parseBanorteCsv } from './banorte';
+import { bufferToCsvText } from './_decode';
 
 export interface ParseStatementResult {
   bankSlug: BankSlug | 'unknown';
@@ -62,5 +63,27 @@ function buildPeriod(txns: RawBankTxn[]): { statementPeriodStart: Date | null; s
   return { statementPeriodStart: min, statementPeriodEnd: max };
 }
 
+/**
+ * Entry point para flows reales (adjunto correo, upload portal): acepta
+ * Buffer, autodetecta encoding/formato (XLSX vs CSV UTF-8/16/Windows-1252)
+ * y pasa al parser correcto.
+ */
+export async function parseBankStatementBuffer(
+  buf: Buffer,
+  hint?: BankSlug,
+): Promise<ParseStatementResult> {
+  if (!buf || buf.length === 0) {
+    return {
+      bankSlug: 'unknown',
+      txns: [],
+      statementPeriodStart: null,
+      statementPeriodEnd: null,
+    };
+  }
+  const text = await bufferToCsvText(buf);
+  return parseBankStatement(text, hint);
+}
+
 export { parseBbvaCsv, looksLikeBbva } from './bbva';
 export { parseBanorteCsv, looksLikeBanorte } from './banorte';
+export { bufferToCsvText, decodeBuffer, isXlsxBuffer } from './_decode';

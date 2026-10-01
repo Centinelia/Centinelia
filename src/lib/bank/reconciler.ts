@@ -27,10 +27,17 @@ export function scoreMatch(txn: RawBankTxn, invoice: InvoiceCandidate): {
   const dateScore = scoreDate(txn.date, invoice.issuedAt);
   const referenceScore = scoreReference(txn, invoice);
 
-  const weighted =
+  let weighted =
     amountScore * WEIGHTS.amount +
     dateScore * WEIGHTS.date +
     referenceScore * WEIGHTS.reference;
+
+  // Monto exacto al centavo es señal muy fuerte: típico pago PPD 30d
+  // después del CFDI matchea en monto pero el date-decay lo baja de 90.
+  // Floor del score a 90 cuando amount=100 preserva autoridad de la
+  // dimensión más confiable sin perder discriminación entre candidatos
+  // (el 90 es el piso, sigue habiendo 91-100 si date+ref ayudan).
+  if (amountScore === 100 && weighted < 90) weighted = 90;
 
   return {
     score: Math.round(weighted),
