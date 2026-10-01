@@ -8,6 +8,7 @@ import { evaluateElevenLabsPace, EL_PACE_CRITICAL, EL_PACE_WARN, EL_USED_PCT_CRI
 import { getMaxTokensTruncationStats, pickAlerts as pickMaxTokensAlerts, MAX_TOKENS_WARN_RATIO, MAX_TOKENS_CRITICAL_RATIO } from '@/lib/monitoring/max-tokens-truncation';
 import { detectStuckOutbound, STUCK_OUTBOUND_HOURS_WARN, STUCK_OUTBOUND_HOURS_CRITICAL } from '@/lib/monitoring/stuck-outbound';
 import { detectOutboundRegistrationDrift, OUTBOUND_REG_WINDOW_HOURS } from '@/lib/monitoring/outbound-registration';
+import { detectPoolProvisioningAnomalies } from '@/lib/monitoring/pool-provisioning-drift';
 
 // ──────────────────────────────────────────────────────────────
 // Invoicing alert thresholds
@@ -303,6 +304,33 @@ export async function GET(req: NextRequest) {
     }
   } catch (err) {
     console.error('[infra-alerts] outbound registration drift check failed:', err);
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Pool provisioning drift — detecta orgs con agentes active=true pero
+  // ledger balance <= 0 (nunca sembrado o agotado). Precedente: bug
+  // 2026-09-30 AC Proyectos — Nami active pero pool=0 → cada chat 429,
+  // Camila veía "Ocurrió un error" sin saber que faltaba pool. Diagnosticar
+  // tomó ~2 horas; con este alert bajamos a <1h.
+  try {
+    const supabase = createAdminClient();
+    const anomalies = await detectPoolProvisioningAnomalies(supabase);
+    if (anomalies.length > 0) {
+      const sample = anomalies.slice(0, 3).map(a =>
+        `${a.portal_email} (${a.reason}, bal=${a.ledger_balance}, agents=${a.active_agents})`,
+      ).join(' · ');
+      const neverSeeded = anomalies.filter(a => a.reason === 'never_seeded').length;
+      alerts.push({
+        service:   `Pool provisioning drift — orgs activos sin pool`,
+        current:   `${anomalies.length} org(s) · ${neverSeeded} never_seeded, ${anomalies.length - neverSeeded} exhausted · muestra: ${sample}`,
+        threshold: `≥ 1 org con active agent + ledger balance <= 0`,
+        action:    'Correr scripts/ac/provision-nami.mjs --activate (o equivalente) para la org afectada, o seedear ledger manualmente',
+        actionUrl: 'https://vercel.com/centinelia1/centinelia_product/logs',
+        color:     neverSeeded > 0 ? '#ef4444' : '#f59e0b',
+      });
+    }
+  } catch (err) {
+    console.error('[infra-alerts] pool provisioning drift check failed:', err);
   }
 
   // ─────────────────────────────────────────────────────────────

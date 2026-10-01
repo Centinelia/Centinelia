@@ -54,8 +54,9 @@ export const MEERKAT_AVATAR_CROP: Record<string, MeerkatCrop> = {
   nala:  { pos: 'center 6%',  scale: 1.3,  origin: 'center 10%', shiftY: '3px' },
   // Neus: sin imagen dedicada al momento, fallback conservador.
   neus:  { pos: 'center 6%',  scale: 1.3,  origin: 'center 10%' },
-  // Nami: retrato landscape con face al lado izquierdo (scanner a la derecha).
-  nami:  { pos: '32% 35%',    scale: 1.6,  origin: '32% 35%' },
+  // Nami: face top-left (30% 8%), scanner a la derecha extendido.
+  // Consistente con landing TeamFlowSection.tsx / meerkat-roles.ts avatarPosition.
+  nami:  { pos: '30% 8%',     scale: 1.35, origin: '30% 8%' },
 };
 
 /**

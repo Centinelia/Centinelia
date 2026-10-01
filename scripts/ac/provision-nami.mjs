@@ -1,9 +1,10 @@
 /**
- * Provisioning one-shot para AC Proyectos + Nami inventarios.
+ * Provisioning + activación one-shot para AC Proyectos + Nami inventarios.
  *
  * Uso:
- *   node scripts/ac/provision-nami.mjs             # dry-run (default)
- *   node scripts/ac/provision-nami.mjs --apply     # inserta en Supabase real
+ *   node scripts/ac/provision-nami.mjs             # dry-run provisioning
+ *   node scripts/ac/provision-nami.mjs --apply     # inserta org + agent (inactivos)
+ *   node scripts/ac/provision-nami.mjs --activate  # flip active=true + seed ledger
  *
  * Modelo comercial (2026-09-30 con Nazre):
  * - AC paga 4 mensualidades de $20k + IVA por la implementación (marco financiero).
@@ -11,18 +12,25 @@
  * - Al activar: cobro de incorporación + mensualidad Media Jornada (tareas-only).
  * - Nami: puras tareas, cero voz. Chat + correo.
  *
- * Estado inicial en DB:
+ * Estado inicial en DB (--apply):
  * - Org creada, contract aceptado (acuerdo verbal + WhatsApp).
- * - Nami creada con active=false, billing_status='pendiente'.
- * - Al activar: flip active=true, billing_status='activo', arrancar ai_ops_limit=500.
+ * - Nami creada con active=false, billing_status='pendiente', ai_ops_limit=0.
+ *
+ * Activación (--activate), idempotente:
+ * - voice_agents.active=true, billing_status='activo', ai_ops_limit=500.
+ * - Insert initial_grant +500 en ops_ledger (si no existe ya).
+ * - Refresh account_ops cache.
+ * - Bug 2026-09-30: el flip manual previo no sembró el ledger → cada chat
+ *   retornaba 429 ops_limit_reached. --activate ahora lo hace automático.
  */
 import { config as loadEnv } from 'dotenv';
 loadEnv({ path: '.env.local' });
 import { createClient } from '@supabase/supabase-js';
 import { randomUUID } from 'node:crypto';
 
-const APPLY = process.argv.includes('--apply');
-const MODE  = APPLY ? 'APPLY' : 'DRY-RUN';
+const APPLY    = process.argv.includes('--apply');
+const ACTIVATE = process.argv.includes('--activate');
+const MODE     = ACTIVATE ? 'ACTIVATE' : APPLY ? 'APPLY' : 'DRY-RUN';
 
 const supa = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -103,8 +111,81 @@ function banner(label) {
 }
 function pretty(obj) { console.log(JSON.stringify(obj, null, 2)); }
 
+// ─────────────────────────── activate ──────────────────────────────
+async function activate() {
+  banner(`MODO: ACTIVATE — flip Nami + seed ledger`);
+
+  const { data: nami } = await supa
+    .from('voice_agents')
+    .select('id, agent_name, active, billing_status, ai_ops_limit')
+    .eq('portal_email', PORTAL_EMAIL)
+    .eq('agent_name',   'Nami')
+    .maybeSingle();
+  if (!nami) {
+    console.error(`[ABORT] No existe Nami para ${PORTAL_EMAIL}. Corre --apply primero.`);
+    process.exit(1);
+  }
+  console.log('Nami actual:');
+  pretty(nami);
+
+  // Idempotencia: si ya hay grant, no duplicamos
+  const { data: existingGrant } = await supa
+    .from('ops_ledger')
+    .select('id, amount, kind, created_at')
+    .eq('portal_email', PORTAL_EMAIL)
+    .in('kind', ['initial_grant', 'annual_grant', 'monthly_grant'])
+    .limit(1);
+  const alreadyGranted = (existingGrant?.length ?? 0) > 0;
+
+  banner('Patch voice_agents');
+  const update = { active: true, billing_status: 'activo', ai_ops_limit: 500 };
+  pretty(update);
+  const { error: updErr } = await supa
+    .from('voice_agents')
+    .update(update)
+    .eq('id', nami.id);
+  if (updErr) { console.error('[UPDATE ERROR]', updErr); process.exit(1); }
+
+  banner('Insert initial_grant en ops_ledger');
+  if (alreadyGranted) {
+    console.log('Ya existe grant previo — skip insert para no duplicar.');
+    pretty(existingGrant);
+  } else {
+    const { error: grantErr } = await supa.from('ops_ledger').insert({
+      portal_email: PORTAL_EMAIL,
+      agent_id:     null,
+      amount:       500,
+      kind:         'initial_grant',
+      source:       'provision_script_activation',
+      description:  `Grant inicial piloto Mes 1 AC Proyectos (Nami ai_ops_limit=500). Activación via scripts/ac/provision-nami.mjs --activate.`,
+    });
+    if (grantErr) { console.error('[GRANT ERROR]', grantErr); process.exit(1); }
+    console.log('Grant +500 insertado.');
+  }
+
+  banner('Refresh account_ops cache');
+  const { error: refreshErr } = await supa.rpc('refresh_ops_pool_cache', { p_portal_email: PORTAL_EMAIL });
+  if (refreshErr) { console.error('[REFRESH ERROR]', refreshErr); process.exit(1); }
+  console.log('Cache refreshed.');
+
+  banner('Estado post-activación');
+  const { data: balance } = await supa.rpc('get_ops_pool_balance', { p_portal_email: PORTAL_EMAIL });
+  const { data: acct }    = await supa.from('account_ops').select('*').eq('portal_email', PORTAL_EMAIL).maybeSingle();
+  console.log('Ledger balance:', balance);
+  console.log('account_ops:');
+  pretty(acct);
+
+  if ((balance ?? 0) <= 0) {
+    console.error('\n[WARN] Balance <= 0 después de activación. Esto no debería pasar.');
+    process.exit(1);
+  }
+  console.log('\nDONE. Camila puede chatear con Nami desde el portal.');
+}
+
 // ─────────────────────────── main ──────────────────────────────────
 async function main() {
+  if (ACTIVATE) return activate();
+
   banner(`MODO: ${MODE}`);
 
   // Preflight: verificar que no exista ya
@@ -181,8 +262,8 @@ async function main() {
   console.log(`1. Portal URL para Camila: https://www.centinelia.mx/portal/${orgInserted.portal_token}`);
   console.log(`2. Camila hace OAuth de Outlook (Files.ReadWrite.All + Sites.ReadWrite.All).`);
   console.log(`3. Nami queda active=false hasta que verifiquemos el pipeline E2E.`);
-  console.log(`4. Al activar: UPDATE voice_agents SET active=true, billing_status='activo', ai_ops_limit=500`);
-  console.log(`   + cobrar $14,990 setup + $2,997/mes Media Jornada tareas starter (0 min + 500 tareas).`);
+  console.log(`4. Al activar: corre 'node scripts/ac/provision-nami.mjs --activate' — flip active + seed ledger atómico.`);
+  console.log(`   Después: cobrar $14,990 setup + $2,997/mes Media Jornada tareas starter (0 min + 500 tareas).`);
 }
 
 main().catch(err => {

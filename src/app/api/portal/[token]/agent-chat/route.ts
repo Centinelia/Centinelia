@@ -2857,7 +2857,22 @@ ${context}`;
         }
 
         controller.enqueue(enc.encode('data: [DONE]\n\n'));
-      } catch {
+      } catch (err) {
+        // Anti-silent-fail: log full error para Vercel + emitir debug SSE al
+        // cliente para que DevTools Console lo muestre. Sin esto (bug 2026-09-30
+        // sesión AC Proyectos) un 429/schema-error era indistinguible de un
+        // cuelgue y diagnosticar el chat de Nami tomó ~2 horas.
+        const errMsg   = err instanceof Error ? err.message : String(err);
+        const errStack = err instanceof Error ? err.stack   : undefined;
+        console.error('[agent-chat] stream failed:', {
+          agentId:     agent.id,
+          portalEmail: (agent.portal_email as string | null) ?? null,
+          message:     errMsg,
+          stack:       errStack,
+        });
+        controller.enqueue(enc.encode(`data: ${JSON.stringify({
+          debug: { source: 'agent-chat/stream-error', message: errMsg },
+        })}\n\n`));
         controller.enqueue(
           enc.encode(`data: ${JSON.stringify({ error: 'Error generando respuesta' })}\n\n`)
         );

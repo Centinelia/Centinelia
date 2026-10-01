@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { X, Send, Loader2, FileText, Download, Zap, Wrench } from 'lucide-react';
 import { marked } from 'marked';
 import { getMeerkatCrop, buildCropTransform } from '@/lib/portal/meerkat-avatar-crop';
+import { formatAgentChatError, type AgentChatErrorBody } from '@/lib/portal/chat-error';
 
 // Marked: sin encabezados grandes, sin escape de HTML (LLM output es texto puro).
 marked.setOptions({ breaks: true, gfm: true });
@@ -251,7 +252,10 @@ export default function OpsAgentChatFab({ token, agents }: Props) {
       });
 
       if (!res.ok || !res.body) {
-        setChatHistory(prev => ({ ...prev, [selectedId]: [...next, { role: 'assistant', content: 'Ocurrió un error. Intenta de nuevo.' }] }));
+        let body: AgentChatErrorBody | null = null;
+        try { body = await res.json() as AgentChatErrorBody; } catch { /* no-JSON body */ }
+        const msg = formatAgentChatError(body);
+        setChatHistory(prev => ({ ...prev, [selectedId]: [...next, { role: 'assistant', content: msg }] }));
         return;
       }
 
