@@ -5559,6 +5559,43 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       };
     }
 
+    // ── inv_registrar_venta ───────────────────────────────────────────────────
+    if (toolName === 'inv_registrar_venta') {
+      const a = toolInput as { serie: string; folio_venta: string; fecha_venta: string; factura_venta?: string; precio_unitario_mx: number; factor?: number };
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(a.fecha_venta)) {
+        await refundOps(agentId, 1, { source: 'tool_execution', label: `Refund ${toolName}: invalid_date` });
+        return { ok: false, error: `fecha_venta debe ser YYYY-MM-DD; recibí "${a.fecha_venta}".`, code: 'invalid_input' };
+      }
+      const { resolveInventoryContext, patchVentaBySerie, insertMutationLog } = await import('@/lib/inventory/adapter');
+      const ctx = await resolveInventoryContext(portalEmail, supabase, agentId);
+      if ('error' in ctx) {
+        await refundOps(agentId, 1, { source: 'tool_execution', label: `Refund ${toolName}: ${ctx.error}` });
+        return { ok: false, error: ctx.message, code: ctx.error };
+      }
+      const result = await patchVentaBySerie(ctx, a.serie, a);
+      await insertMutationLog(supabase, {
+        portal_email: portalEmail, agent_id: agentId, tool_name: toolName,
+        serie: a.serie, table_row_index: result.ok ? result.table_row_index : null,
+        before_state: result.ok ? result.before_state : null,
+        after_state:  result.ok ? result.after_state  : {},
+        patched_columns: result.ok ? result.patched_columns : [],
+        metadata: null, ops_charged: 1,
+        success: result.ok, error_code: result.ok ? null : result.code,
+      });
+      if (!result.ok) {
+        if (result.code === 'cannot_compute_factor') {
+          return { ok: false, error: `No hay costo_mx en la fila de la serie ${a.serie}. Pásame factor explícito o completa el costo primero con inv_agregar_equipo.`, code: result.code };
+        }
+        return { ok: false, error: `No encontré el equipo con serie ${a.serie}.`, code: 'serie_not_found' };
+      }
+      return {
+        ok: true, serie: result.serie,
+        folio_venta: result.folio_venta, precio_unitario_mx: result.precio_unitario_mx,
+        factor_calculado: result.factor_calculado,
+        message: `Venta registrada serie ${result.serie}: folio ${result.folio_venta}, precio ${result.precio_unitario_mx} MXN, factor ${result.factor_calculado}.`,
+      };
+    }
+
     // ── Herramientas de lectura (read handlers) ───────────────────────────────
     const { resolveInventoryContext, listHistorico, findBySerie, findByModelo, readStock, computeReposiciones, normalizeBodega, GraphExcel, findRowIndexBySerie } = await import('@/lib/inventory/adapter');
     const inv = await resolveInventoryContext(portalEmail, supabase, agentId);
@@ -5857,45 +5894,6 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       };
     }
 
-    // Captura manual — Tania busca en SF (o el sistema que use el cliente) y le
-    // pasa los 4 datos a Nami. Nami solo hace patch al Excel. Approach elegido
-    // 2026-09-01: AC migrará de SF a otro sistema pronto, integración externa
-    // sería wasted work. Captura manual sirve tanto ahora como con el nuevo
-    // sistema sin cambios de código.
-    if (toolName === 'inv_registrar_venta') {
-      const serie          = String(toolInput.serie ?? '').trim();
-      const folio_factura  = String(toolInput.folio_factura ?? '').trim();
-      const fecha_factura  = toolInput.fecha_factura ? String(toolInput.fecha_factura).trim() : null;
-      const precio_unit_mx = toolInput.precio_unit_mx !== undefined ? Number(toolInput.precio_unit_mx) : null;
-      if (!serie)         return { ok: false, error: 'serie es requerido' };
-      if (!folio_factura) return { ok: false, error: 'folio_factura es requerido' };
-      if (fecha_factura && !/^\d{4}-\d{2}-\d{2}$/.test(fecha_factura)) {
-        return { ok: false, error: 'fecha_factura debe ser YYYY-MM-DD' };
-      }
-      const found = await findRowIndexBySerie(inv, serie);
-      if (!found) return { ok: false, error: `No encontré equipo con serie ${serie}` };
-      const headers = await GraphExcel.getTableHeader(inv.token, inv.config.location, inv.config.sheets.historico.table);
-      const excelRow = found.tableRowIndex + 2;
-      const patched: string[] = [];
-      await GraphExcel.withSession(inv.token, inv.config.location, async (session) => {
-        const patchOne = async (logic: string, value: unknown) => {
-          if (value === null || value === undefined || value === '') return;
-          const header = inv.config.columns_historico[logic];
-          if (!header) return;
-          const colIdx = headers.indexOf(header);
-          if (colIdx < 0) return;
-          const colLetter = String.fromCharCode(65 + colIdx);
-          await GraphExcel.patchCell(inv.token, session, inv.config.sheets.historico.name, `${colLetter}${excelRow}`, value);
-          patched.push(logic);
-        };
-        await patchOne('factura_venta', folio_factura);
-        await patchOne('folio_venta',   folio_factura);
-        if (fecha_factura)  await patchOne('fecha_venta',    fecha_factura);
-        if (precio_unit_mx) await patchOne('costo_venta_mx', precio_unit_mx);
-        await patchOne('estatus', 'ENTREGADO');
-      });
-      return { ok: true, message: `Venta registrada para serie ${serie} (factura ${folio_factura}). Estatus → ENTREGADO. Campos actualizados: ${patched.join(', ')}.` };
-    }
     if (toolName === 'inv_importar_backlog') {
       return { ok: false, error: 'not_implemented', pending_flow_doc: true, blocked_by: 'Formato del correo BACKLOG de TRANE — pregunta pendiente a AC' };
     }
