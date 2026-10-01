@@ -12,7 +12,7 @@
 
 export async function assertNotProdOrAllowed(): Promise<void> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
-  const allowProd = process.env.TEST_ALLOW_PROD === 'true';
+  const allowProd = process.env.TEST_ALLOW_PROD === 'true' || process.env.ALLOW_PROD_SMOKE === 'true';
 
   if (allowProd) return;
 
@@ -21,7 +21,7 @@ export async function assertNotProdOrAllowed(): Promise<void> {
     throw new Error(
       '[prod-guard] BLOQUEADO: SUPABASE_URL apunta a un proyecto hosted en Supabase (.supabase.co). ' +
       'Este test inserta/modifica datos reales. ' +
-      'Usa un ambiente de dev local o activa TEST_ALLOW_PROD=true solo si sabes lo que haces.',
+      'Usa un ambiente de dev local o activa TEST_ALLOW_PROD=true o ALLOW_PROD_SMOKE=true solo si sabes lo que haces.',
     );
   }
 }
