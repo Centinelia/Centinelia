@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireVapiAuth } from '@/lib/vapi/auth';
 import { executeAgentTool } from '@/lib/tools/executor';
+import { toolResponse } from '@/lib/voice/tool-response';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,11 +26,18 @@ export async function POST(
   const { toolName } = await params;
   const { searchParams } = new URL(req.url);
   const agent_id = searchParams.get('agent_id');
-  if (!agent_id) return NextResponse.json({ result: 'Error de configuración: agent_id requerido.' }, { status: 400 });
 
+  // Body parsing arriba (antes del check de agent_id) para que toolCallId
+  // esté disponible en TODOS los returns — incluido el error de agent_id
+  // missing. Con el helper toolResponse Nelia ve el mensaje como tool_result
+  // y verbaliza "déjame reintentar" en vez de recibir un 400 ciego.
   const body = await req.json().catch(() => ({}));
   const toolCall = (body.message?.toolCallList ?? body.toolCallList)?.[0];
-  const toolCallId = toolCall?.id ?? 'tool';
+  // Default '' en vez de 'tool' para que toolResponse() caiga a formato
+  // flat cuando no viene toolCall real (tests, curl directo). Con 'tool'
+  // siempre envolvía — rompía backwards-compat silenciosamente.
+  const toolCallId = toolCall?.id ?? '';
+  if (!agent_id) return toolResponse(toolCallId, 'Error de configuración: agent_id requerido.');
   const rawArgs   = toolCall?.function?.arguments ?? body;
   // Vapi manda arguments como string JSON. Sin parseo el executor recibe
   // undefined en todos los campos y falla en silencio o cae al fallback.
@@ -43,7 +51,7 @@ export async function POST(
     .select('*')
     .eq('id', agent_id)
     .single();
-  if (!agent) return NextResponse.json({ result: 'Error: agente no encontrado.' });
+  if (!agent) return toolResponse(toolCallId, 'Error: agente no encontrado.');
 
   const portalEmail  = (agent.portal_email  as string | null) ?? '';
   const agentName    = (agent.agent_name    as string | null)?.trim() || (agent.business_name as string) || 'Centinelia';
@@ -70,19 +78,19 @@ export async function POST(
       ?? (typed?.ok === false ? (typed?.error ?? 'No se pudo completar la acción.') : null)
       ?? JSON.stringify(result);
 
-    // Vapi requiere el formato { results: [{ toolCallId, result }] }. Antes
-    // devolvíamos { result: msg } y Vapi respondía "No result returned",
-    // dejando al LLM sin visibilidad del error/resultado. Bug crítico que
-    // rompía silenciosamente TODAS las tools que rutean por /exec/*.
-    return NextResponse.json({ results: [{ toolCallId, result: msg }] });
+    // Response wrap custom-LLM via helper compartido (ver tool-response.ts).
+    // Antes se usaba inline — el helper centraliza el fallback flat para
+    // tests y llamadas legacy sin toolCallList.
+    return toolResponse(toolCallId, msg);
   } catch (err) {
     console.error(`[voice/exec/${toolName}] error:`, err);
     // NO exponer stack trace / mensaje raw de err — antes Vapi verbalizaba
     // "Error al ejecutar la acción: TypeError: cannot read property x…" al
     // cliente. Devolvemos HTTP 200 con message user-friendly (el modelo lo
     // ve como tool_result y puede decidir reintentar, delegar o escalar).
-    return NextResponse.json({
-      results: [{ toolCallId, result: 'No pude completar esa acción por un problema técnico. Intenta de otra forma o dime cómo prefieres continuar.' }],
-    });
+    return toolResponse(
+      toolCallId,
+      'No pude completar esa acción por un problema técnico. Intenta de otra forma o dime cómo prefieres continuar.',
+    );
   }
 }
