@@ -2076,9 +2076,18 @@ CATEGORÍAS:
         const isLastIter = i === MAX_ITER - 1;
         itersUsedF3 = i + 1;
 
-        // Charge 1 op per iteration after the first (first was charged above)
+        // Charge 1 op per iteration after the first (first was charged above).
+        // Sufijo :iter${i} evita colisión con el cobro base y entre iters
+        // distintas que comparten (portal, ref, kind=consumption). Sin sufijo
+        // el UNIQUE constraint ops_ledger_portal_ref_kind_uniq rechazaba
+        // todas las iters >=2 → undercharge en flows con tool loop extenso
+        // (hallazgo investigación 2026-10-01).
         if (i > 0) {
-          const midOps = await consumeAiOp(agentId, 1, { source: 'inbox_processor', reference_id: existingInboxId ?? rawMessageId, label: 'Procesamiento de bandeja (correo/tarea)' });
+          const midOps = await consumeAiOp(agentId, 1, {
+            source:       'inbox_processor',
+            reference_id: `${existingInboxId ?? rawMessageId}:iter${i}`,
+            label:        'Procesamiento de bandeja (correo/tarea)',
+          });
           if (!midOps.ok) break;
         }
 

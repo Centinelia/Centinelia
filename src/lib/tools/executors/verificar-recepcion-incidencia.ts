@@ -132,7 +132,10 @@ export async function verificarRecepcionIncidencia(ctx: any, args: {
           label:  sentCount > 1
             ? `Aviso de verificación al encargado por correo (${sentCount} recipients)`
             : 'Aviso de verificación al encargado por correo',
-          reference_id: args.incident_id,
+          // Sufijo :verif evita colisión con incident_registered (mismo
+          // incident_id). Ver comentario en registrar-incidencia.ts sobre
+          // UNIQUE constraint ops_ledger_portal_ref_kind_uniq.
+          reference_id: `${args.incident_id}:verif`,
         });
       } catch (err) {
         console.error(`verificar_recepcion_incidencia consumeAiOp(${sentCount}) failed silently:`, err);

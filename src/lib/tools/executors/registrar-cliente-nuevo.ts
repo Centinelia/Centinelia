@@ -104,7 +104,9 @@ export async function registrarClienteNuevo(ctx: any, args: RegistrarClienteNuev
         subject,
         html,
         source:       'alta_cliente_notif',
-        referenceId:  incidentId,
+        // Sufijo :notif evita colisión con customer_registered. Ver comentario
+        // en registrar-incidencia.ts (bug UNIQUE constraint, hallazgo 2026-10-01).
+        referenceId:  `${incidentId}:notif`,
         chargeSource: 'alta_cliente_notif',
         chargeLabel:  'Aviso de alta de cliente al encargado por correo',
         sourceTable:  'client_incidents',
@@ -154,7 +156,8 @@ export async function registrarClienteNuevo(ctx: any, args: RegistrarClienteNuev
           label:  sentCount > 1
             ? `Aviso de alta de cliente al encargado por correo (${sentCount} recipients)`
             : 'Aviso de alta de cliente al encargado por correo',
-          reference_id: incidentId,
+          // Sufijo :notif evita colisión con customer_registered. Ver nota arriba.
+          reference_id: `${incidentId}:notif`,
         });
       } catch (err) {
         console.error(`registrar_cliente_nuevo consumeAiOp(${sentCount}) failed silently:`, err);
