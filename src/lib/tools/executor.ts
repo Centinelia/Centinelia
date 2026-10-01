@@ -5612,6 +5612,15 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       const result = await patchSalidaBySeries(ctx, a.series, a);
       if (!result.ok) {
         await refundOps(agentId, 1, { source: 'tool_execution', label: `Refund ${toolName}: ${result.code}` });
+        await insertMutationLog(supabase, {
+          portal_email: portalEmail, agent_id: agentId, tool_name: toolName,
+          serie: null, table_row_index: null,
+          before_state: null, after_state: {},
+          patched_columns: [],
+          metadata: { folio_hoja: a.folio_hoja, cliente: a.cliente_nombre, series: a.series },
+          ops_charged: 0,
+          success: false, error_code: result.code,
+        });
         return { ok: false, error: result.message, code: result.code };
       }
       for (const m of result.mutations) {

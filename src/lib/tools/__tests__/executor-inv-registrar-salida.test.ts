@@ -71,6 +71,22 @@ describe('executor inv_registrar_salida', () => {
     expect(mocks.insertLog).not.toHaveBeenCalled();
   });
 
+  it('adapter devuelve invalid_input → refund + audit log con success:false', async () => {
+    mocks.patchSalida.mockResolvedValue({
+      ok: false, code: 'invalid_input',
+      message: 'Series vacías: no se puede registrar una hoja sin series.',
+    });
+    const r = await runTool({ folio_hoja: '4251', cliente_nombre: 'X', series: [] });
+    expect((r as Record<string, unknown>).ok).toBe(false);
+    expect((r as Record<string, unknown>).code).toBe('invalid_input');
+    expect(mocks.refundOps).toHaveBeenCalled();
+    expect(mocks.insertLog).toHaveBeenCalledTimes(1);
+    expect(mocks.insertLog).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ success: false, error_code: 'invalid_input', ops_charged: 0 }),
+    );
+  });
+
   it('conflicts reportados en el mensaje sin abortar', async () => {
     mocks.patchSalida.mockResolvedValue({
       ok: true, folio_hoja: '4251',

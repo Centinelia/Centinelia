@@ -52,7 +52,7 @@ await adapter.GraphExcel.withSession(ctx.token, ctx.config.location, async sessi
     const value = m.before_state[col];
     const letter = String.fromCharCode(65 + idx); // simplificado para col <= 26
     const abs = m.table_row_index + 2;
-    await adapter.GraphExcel.patchCell(session, ctx.config.sheets.historico.name, `${letter}${abs}`, value);
+    await adapter.GraphExcel.patchCell(ctx.token, session, ctx.config.sheets.historico.name, `${letter}${abs}`, value);
     console.log(`reverted ${col} -> ${JSON.stringify(value)}`);
   }
 });

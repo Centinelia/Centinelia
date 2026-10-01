@@ -1447,6 +1447,22 @@ const INV_REGISTRAR_VENTA_TOOL: Anthropic.Tool = {
     required: ['serie', 'folio_factura'],
   },
 };
+const INV_REGISTRAR_SALIDA_TOOL: Anthropic.Tool = {
+  name: 'inv_registrar_salida',
+  description: 'Nami: registra una hoja de salida física (el taco pre-impreso con folio en rojo que firma el cliente) cuando sale uno o varios equipos del almacén. Marca cada serie como ENTREGADO, asigna cliente y vendedor si no estaban, y guarda el folio de la hoja.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      folio_hoja:      { type: 'string', description: 'Folio del taco pre-impreso (ej. 4251).' },
+      cliente_nombre:  { type: 'string' },
+      vendedor_codigo: { type: 'string' },
+      fecha:           { type: 'string', description: 'YYYY-MM-DD. Default hoy si no se pasa.' },
+      series:          { type: 'array', items: { type: 'string' }, description: 'Series de los equipos que salen juntos en esa hoja.', minItems: 1 },
+      proyecto:        { type: 'string' },
+    },
+    required: ['folio_hoja', 'cliente_nombre', 'series'],
+  },
+};
 const INV_TRANSFERIR_BODEGA_TOOL: Anthropic.Tool = {
   name: 'inv_transferir_bodega',
   description: 'Nami: mueve un equipo entre bodegas (FLETEROS ↔ CENIZO ↔ TRANE). Normaliza aliases automáticamente.',
@@ -1785,6 +1801,7 @@ const ALL_TOOLS = [
   INV_ACTUALIZAR_ESTATUS_TOOL,
   INV_ASIGNAR_CLIENTE_TOOL,
   INV_REGISTRAR_VENTA_TOOL,
+  INV_REGISTRAR_SALIDA_TOOL,
   INV_TRANSFERIR_BODEGA_TOOL,
   INV_IMPORTAR_BACKLOG_TOOL,
   INV_NORMALIZAR_BODEGAS_TOOL,
@@ -1892,6 +1909,7 @@ export const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
   inv_actualizar_estatus:    INV_ACTUALIZAR_ESTATUS_TOOL,
   inv_asignar_cliente:       INV_ASIGNAR_CLIENTE_TOOL,
   inv_registrar_venta:       INV_REGISTRAR_VENTA_TOOL,
+  inv_registrar_salida:      INV_REGISTRAR_SALIDA_TOOL,
   inv_transferir_bodega:     INV_TRANSFERIR_BODEGA_TOOL,
   inv_importar_backlog:      INV_IMPORTAR_BACKLOG_TOOL,
   inv_normalizar_bodegas:    INV_NORMALIZAR_BODEGAS_TOOL,
