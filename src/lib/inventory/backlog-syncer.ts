@@ -28,7 +28,16 @@ export interface SyncerSummary {
   added:         number;
   updated:       number;
   unchanged:     number;
+  deleted:       number;   // Modo 'replace': filas que estaban en Excel pero NO en el PDF nuevo
+  mode:          'upsert' | 'replace';
   errors:        Array<{ row_key: string; error: string }>;
+}
+
+export class BacklogSyncerError extends Error {
+  constructor(message: string, public code: 'empty_parsed_in_replace') {
+    super(message);
+    this.name = 'BacklogSyncerError';
+  }
 }
 
 /** 8 columnas del BACKLOG Excel en el orden A..H. */
@@ -125,42 +134,83 @@ function normalizeCell(v: unknown): string {
 }
 
 /**
- * Upsert de las filas parseadas en la hoja BACKLOG. Agrupa escrituras en una
- * sesión Excel para minimizar round-trips.
+ * Sync de las filas parseadas a la hoja BACKLOG. Dos modos:
+ *
+ * - `mode: 'replace'` (DEFAULT, confirmado por Camila 2026-10-01): vacía las
+ *   filas actuales del BACKLOG y escribe las parseadas desde cero. Semántica
+ *   "mirror del PDF más reciente". Filas Excel que no están en el PDF nuevo
+ *   se eliminan (visible en summary.deleted). Guard crítico: si parsedRows
+ *   está vacío (parse falló), lanza `BacklogSyncerError('empty_parsed_in_replace')`
+ *   SIN tocar la hoja — nunca borra BACKLOG basado en un parse malo.
+ *
+ * - `mode: 'upsert'`: merge inteligente. Preserva filas Excel que no están
+ *   en el PDF. Útil si Camila agrega notas manuales a filas específicas y
+ *   no quiere que se borren.
  *
  * `dryRun=true` (default): no escribe, solo devuelve el summary de qué haría.
+ * Siempre agrupa escrituras en una sola sesión Excel.
  */
 export async function syncBacklogRows(
   ctx:          InventoryContext,
   config:       BacklogSheetConfig,
   parsedRows:   BacklogRow[],
-  options:      { dryRun?: boolean } = {},
+  options:      { dryRun?: boolean; mode?: 'upsert' | 'replace' } = {},
 ): Promise<SyncerSummary> {
-  const dryRun  = options.dryRun !== false;   // default true
-  const summary: SyncerSummary = { total_parsed: parsedRows.length, added: 0, updated: 0, unchanged: 0, errors: [] };
+  const dryRun = options.dryRun !== false;         // default true
+  const mode   = options.mode ?? 'replace';        // default replace per Camila
+  const summary: SyncerSummary = { total_parsed: parsedRows.length, added: 0, updated: 0, unchanged: 0, deleted: 0, mode, errors: [] };
+
+  if (mode === 'replace' && parsedRows.length === 0) {
+    throw new BacklogSyncerError(
+      'Rechazo replace con parsedRows vacío — nunca borrar BACKLOG basado en un parse fallido.',
+      'empty_parsed_in_replace',
+    );
+  }
 
   const existingIndex = await readBacklogIndex(ctx, config);
+  const parsedKeys    = new Set(parsedRows.map(rowKey));
 
-  // Si dryRun: contamos sin escribir
-  if (dryRun) {
-    let nextAppendRow = computeNextAppendRow(existingIndex, config);
-    for (const r of parsedRows) {
-      const key = rowKey(r);
-      const existing = existingIndex.get(key);
-      const newValues = rowToExcelValues(r);
-      if (!existing) {
-        summary.added++;
-        nextAppendRow++;
-      } else if (!rowsEqual(existing.values, newValues)) {
-        summary.updated++;
-      } else {
-        summary.unchanged++;
-      }
+  // Contadores: comparar parsed vs existing en ambos modos
+  for (const r of parsedRows) {
+    const key = rowKey(r);
+    const existing = existingIndex.get(key);
+    const newValues = rowToExcelValues(r);
+    if (!existing)                              summary.added++;
+    else if (!rowsEqual(existing.values, newValues)) summary.updated++;
+    else                                        summary.unchanged++;
+  }
+  if (mode === 'replace') {
+    for (const k of existingIndex.keys()) {
+      if (!parsedKeys.has(k)) summary.deleted++;
+    }
+  }
+
+  if (dryRun) return summary;
+
+  if (mode === 'replace') {
+    // Un solo patchRange atómico: todas las filas parseadas + fill blanco
+    // para cubrir el rango que antes ocupaban las filas eliminadas.
+    const parsedValues = parsedRows.map(rowToExcelValues);
+    const existingMaxRow = Array.from(existingIndex.values()).reduce((m, e) => Math.max(m, e.rowNumber), config.start_row - 1);
+    const newMaxRow      = config.start_row + parsedValues.length - 1;
+    const writeMaxRow    = Math.max(newMaxRow, existingMaxRow);
+    const emptyRow: unknown[] = ['', '', '', '', '', '', '', ''];
+    const allValues: unknown[][] = [];
+    for (let i = 0; i <= writeMaxRow - config.start_row; i++) {
+      allValues.push(parsedValues[i] ?? emptyRow);
+    }
+    const address = `A${config.start_row}:H${writeMaxRow}`;
+    try {
+      await GraphExcel.withSession(ctx.token, ctx.config.location, async session => {
+        await GraphExcel.patchRange(ctx.token, session, config.name, address, allValues);
+      });
+    } catch (err) {
+      summary.errors.push({ row_key: '*', error: err instanceof Error ? err.message : String(err) });
     }
     return summary;
   }
 
-  // Modo write: una sesión para todas las escrituras
+  // mode === 'upsert': iterar + patch/add
   await GraphExcel.withSession(ctx.token, ctx.config.location, async session => {
     let nextAppendRow = computeNextAppendRow(existingIndex, config);
     for (const r of parsedRows) {
@@ -171,14 +221,10 @@ export async function syncBacklogRows(
         if (!existing) {
           const address = `A${nextAppendRow}:H${nextAppendRow}`;
           await GraphExcel.patchRange(ctx.token, session, config.name, address, [newValues]);
-          summary.added++;
           nextAppendRow++;
         } else if (!rowsEqual(existing.values, newValues)) {
           const address = `A${existing.rowNumber}:H${existing.rowNumber}`;
           await GraphExcel.patchRange(ctx.token, session, config.name, address, [newValues]);
-          summary.updated++;
-        } else {
-          summary.unchanged++;
         }
       } catch (err) {
         summary.errors.push({ row_key: key, error: err instanceof Error ? err.message : String(err) });

@@ -1477,12 +1477,13 @@ const INV_TRANSFERIR_BODEGA_TOOL: Anthropic.Tool = {
 };
 const INV_IMPORTAR_BACKLOG_TOOL: Anthropic.Tool = {
   name: 'inv_importar_backlog',
-  description: 'Nami: parsea un PDF de BACKLOG que llega de TRANE (no-reply@tranetechnologies.com) y lo upsertea a la hoja BACKLOG del Excel. Idempotente por (OC_AC, LINE_NUMBER). Por default corre dry_run=true y reporta "voy a agregar N, actualizar M, dejar K iguales" — Camila confirma y volvemos a invocar con dry_run=false. Password del PDF vive en la config de la organización.',
+  description: 'Nami: parsea un PDF de BACKLOG que llega de TRANE (no-reply@tranetechnologies.com) y lo escribe a la hoja BACKLOG del Excel. Por default modo "replace": vacía la hoja y la rellena con el PDF más reciente (semántica mirror, preferida por Camila 2026-10-01 — BACKLOG llega lunes/miércoles/viernes y se desfasa rápido). Modo alternativo "upsert" (merge inteligente que preserva filas no mencionadas en el PDF) para casos edge. Siempre dry_run=true por default: reporta "voy a agregar N, actualizar M, dejar K iguales, eliminar D" y Camila confirma antes de aplicar. Password del PDF vive en la config de la organización.',
   input_schema: {
     type: 'object' as const,
     properties: {
       pdf_url: { type: 'string', description: 'URL del PDF BACKLOG adjunto al correo TRANE. En el flow de inbox-processor viene de attachments[].url.' },
       dry_run: { type: 'boolean', description: 'Si true (default), no escribe al Excel y solo devuelve el summary de qué haría. Pasar false para aplicar los cambios reales.' },
+      mode:    { type: 'string', enum: ['replace', 'upsert'], description: 'Default "replace": vacía la hoja BACKLOG y la rellena con el PDF más reciente (lo que Camila prefiere). "upsert": merge inteligente que preserva filas Excel no presentes en el PDF (edge case).' },
     },
     required: ['pdf_url'],
   },

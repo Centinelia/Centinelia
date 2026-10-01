@@ -125,60 +125,47 @@ describe('rowsEqual', () => {
   });
 });
 
-describe('syncBacklogRows — dryRun', () => {
+describe('syncBacklogRows — upsert mode (merge inteligente)', () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
-  it('con sheet vacía: todas las filas cuentan como added', async () => {
+  it('dryRun: sheet vacía → todas las filas cuentan como added', async () => {
     const { syncBacklogRows } = await import('../backlog-syncer');
     const gx = await import('../graph-excel');
     vi.mocked(gx.readRange).mockResolvedValue({ address: 'A5:H1004', values: [], formulas: [] });
     const parsed = [makeRow({ customer_po_number: '4599', line_number: '1.5' }), makeRow({ customer_po_number: '4600', line_number: '2.1' })];
-    const summary = await syncBacklogRows(BASE_CTX, BACKLOG_CFG, parsed, { dryRun: true });
-    expect(summary).toEqual({ total_parsed: 2, added: 2, updated: 0, unchanged: 0, errors: [] });
+    const summary = await syncBacklogRows(BASE_CTX, BACKLOG_CFG, parsed, { dryRun: true, mode: 'upsert' });
+    expect(summary).toEqual({ total_parsed: 2, added: 2, updated: 0, unchanged: 0, deleted: 0, mode: 'upsert', errors: [] });
     expect(gx.patchRange).not.toHaveBeenCalled();
   });
 
-  it('con una fila existente idéntica: cuenta como unchanged', async () => {
+  it('dryRun: fila existente idéntica → unchanged', async () => {
     const { syncBacklogRows, rowToExcelValues } = await import('../backlog-syncer');
     const gx = await import('../graph-excel');
     const r = makeRow({});
-    vi.mocked(gx.readRange).mockResolvedValue({
-      address: 'A5:H1004',
-      values: [rowToExcelValues(r)],
-      formulas: [],
-    });
-    const summary = await syncBacklogRows(BASE_CTX, BACKLOG_CFG, [r], { dryRun: true });
+    vi.mocked(gx.readRange).mockResolvedValue({ address: 'A5:H1004', values: [rowToExcelValues(r)], formulas: [] });
+    const summary = await syncBacklogRows(BASE_CTX, BACKLOG_CFG, [r], { dryRun: true, mode: 'upsert' });
     expect(summary.unchanged).toBe(1);
     expect(summary.added).toBe(0);
     expect(summary.updated).toBe(0);
   });
 
-  it('con una fila existente distinta (status cambió): cuenta como updated', async () => {
+  it('dryRun: upsert NO cuenta como deleted las filas Excel que no están en el PDF', async () => {
     const { syncBacklogRows, rowToExcelValues } = await import('../backlog-syncer');
     const gx = await import('../graph-excel');
-    const old = makeRow({ lines_status: 'AWAITING_SUPPLY' });
-    const nue = makeRow({ lines_status: 'AWAITING_SHIPPING' });
-    vi.mocked(gx.readRange).mockResolvedValue({
-      address: 'A5:H1004',
-      values: [rowToExcelValues(old)],
-      formulas: [],
-    });
-    const summary = await syncBacklogRows(BASE_CTX, BACKLOG_CFG, [nue], { dryRun: true });
-    expect(summary.updated).toBe(1);
-    expect(summary.added).toBe(0);
-    expect(summary.unchanged).toBe(0);
+    const zombie = makeRow({ customer_po_number: '9999', line_number: '7.7' });
+    vi.mocked(gx.readRange).mockResolvedValue({ address: 'A5:H1004', values: [rowToExcelValues(zombie)], formulas: [] });
+    const parsed = [makeRow({ customer_po_number: '4599', line_number: '1.5' })];
+    const summary = await syncBacklogRows(BASE_CTX, BACKLOG_CFG, parsed, { dryRun: true, mode: 'upsert' });
+    expect(summary.deleted).toBe(0);
+    expect(summary.added).toBe(1);
   });
-});
 
-describe('syncBacklogRows — write mode', () => {
-  beforeEach(() => { vi.clearAllMocks(); });
-
-  it('append nueva fila: patchRange A{nextRow}:H{nextRow}', async () => {
+  it('write: append nueva fila patchRange A{nextRow}:H{nextRow}', async () => {
     const { syncBacklogRows } = await import('../backlog-syncer');
     const gx = await import('../graph-excel');
     vi.mocked(gx.readRange).mockResolvedValue({ address: 'A5:H1004', values: [], formulas: [] });
     const r = makeRow({});
-    const summary = await syncBacklogRows(BASE_CTX, BACKLOG_CFG, [r], { dryRun: false });
+    const summary = await syncBacklogRows(BASE_CTX, BACKLOG_CFG, [r], { dryRun: false, mode: 'upsert' });
     expect(summary.added).toBe(1);
     expect(gx.patchRange).toHaveBeenCalledOnce();
     const [, , sheet, address] = vi.mocked(gx.patchRange).mock.calls[0];
@@ -186,17 +173,13 @@ describe('syncBacklogRows — write mode', () => {
     expect(address).toBe('A5:H5');
   });
 
-  it('update fila existente: patchRange al rowNumber correcto', async () => {
+  it('write: update fila existente al rowNumber correcto', async () => {
     const { syncBacklogRows, rowToExcelValues } = await import('../backlog-syncer');
     const gx = await import('../graph-excel');
     const old = makeRow({ lines_status: 'AWAITING_SUPPLY' });
-    vi.mocked(gx.readRange).mockResolvedValue({
-      address: 'A5:H1004',
-      values: [rowToExcelValues(old)],
-      formulas: [],
-    });
+    vi.mocked(gx.readRange).mockResolvedValue({ address: 'A5:H1004', values: [rowToExcelValues(old)], formulas: [] });
     const nue = makeRow({ lines_status: 'AWAITING_SHIPPING' });
-    const summary = await syncBacklogRows(BASE_CTX, BACKLOG_CFG, [nue], { dryRun: false });
+    const summary = await syncBacklogRows(BASE_CTX, BACKLOG_CFG, [nue], { dryRun: false, mode: 'upsert' });
     expect(summary.updated).toBe(1);
     expect(gx.patchRange).toHaveBeenCalledOnce();
     const [, , sheet, address] = vi.mocked(gx.patchRange).mock.calls[0];
@@ -219,8 +202,77 @@ describe('syncBacklogRows — write mode', () => {
       makeRow({ customer_po_number: '4600', line_number: '2.1' }),                                     // unchanged
       makeRow({ customer_po_number: '4700', line_number: '1.0' }),                                     // added
     ];
-    const summary = await syncBacklogRows(BASE_CTX, BACKLOG_CFG, parsed, { dryRun: false });
-    expect(summary).toEqual({ total_parsed: 3, added: 1, updated: 1, unchanged: 1, errors: [] });
+    const summary = await syncBacklogRows(BASE_CTX, BACKLOG_CFG, parsed, { dryRun: false, mode: 'upsert' });
+    expect(summary).toEqual({ total_parsed: 3, added: 1, updated: 1, unchanged: 1, deleted: 0, mode: 'upsert', errors: [] });
     expect(gx.patchRange).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('syncBacklogRows — replace mode (DEFAULT, Camila 2026-10-01)', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('mode default es "replace" (no "upsert") cuando no se pasa', async () => {
+    const { syncBacklogRows } = await import('../backlog-syncer');
+    const gx = await import('../graph-excel');
+    vi.mocked(gx.readRange).mockResolvedValue({ address: 'A5:H1004', values: [], formulas: [] });
+    const summary = await syncBacklogRows(BASE_CTX, BACKLOG_CFG, [makeRow({})], { dryRun: true });
+    expect(summary.mode).toBe('replace');
+  });
+
+  it('dryRun: cuenta deleted = filas Excel que NO están en el PDF nuevo', async () => {
+    const { syncBacklogRows, rowToExcelValues } = await import('../backlog-syncer');
+    const gx = await import('../graph-excel');
+    const existing1 = makeRow({ customer_po_number: '4599', line_number: '1.5' });
+    const existing2 = makeRow({ customer_po_number: '9999', line_number: '7.7' });  // zombie
+    vi.mocked(gx.readRange).mockResolvedValue({
+      address: 'A5:H1004',
+      values: [rowToExcelValues(existing1), rowToExcelValues(existing2)],
+      formulas: [],
+    });
+    const parsed = [makeRow({ customer_po_number: '4599', line_number: '1.5' })];  // zombie no está
+    const summary = await syncBacklogRows(BASE_CTX, BACKLOG_CFG, parsed, { dryRun: true, mode: 'replace' });
+    expect(summary.unchanged).toBe(1);
+    expect(summary.deleted).toBe(1);
+    expect(summary.mode).toBe('replace');
+  });
+
+  it('write: 1 solo patchRange atómico cubriendo filas parseadas + fill blanco de las eliminadas', async () => {
+    const { syncBacklogRows, rowToExcelValues } = await import('../backlog-syncer');
+    const gx = await import('../graph-excel');
+    // Excel actual tiene 3 filas en rows 5, 6, 7
+    const r1 = makeRow({ customer_po_number: '4599', line_number: '1.5' });
+    const r2 = makeRow({ customer_po_number: '9999', line_number: '7.7' });  // zombie
+    const r3 = makeRow({ customer_po_number: '8888', line_number: '2.2' });  // zombie
+    vi.mocked(gx.readRange).mockResolvedValue({
+      address: 'A5:H1004',
+      values: [rowToExcelValues(r1), rowToExcelValues(r2), rowToExcelValues(r3)],
+      formulas: [],
+    });
+    // PDF nuevo tiene solo 1 fila
+    const parsed = [makeRow({ customer_po_number: '4599', line_number: '1.5', lines_status: 'AWAITING_SHIPPING' })];
+    const summary = await syncBacklogRows(BASE_CTX, BACKLOG_CFG, parsed, { dryRun: false, mode: 'replace' });
+    expect(summary.deleted).toBe(2);
+    expect(summary.unchanged).toBe(1);
+    expect(gx.patchRange).toHaveBeenCalledOnce();
+    const [, , sheet, address, values] = vi.mocked(gx.patchRange).mock.calls[0];
+    expect(sheet).toBe('BACKLOG');
+    expect(address).toBe('A5:H7');  // cubre las 3 filas que había
+    const arr = values as unknown[][];
+    expect(arr).toHaveLength(3);
+    // row 1: la fila parseada
+    expect(arr[0][0]).toBe('4599');
+    // rows 2 y 3: blanco (deleted)
+    expect(arr[1]).toEqual(['', '', '', '', '', '', '', '']);
+    expect(arr[2]).toEqual(['', '', '', '', '', '', '', '']);
+  });
+
+  it('SAFETY GUARD: replace con parsedRows vacío lanza BacklogSyncerError SIN leer ni escribir', async () => {
+    const { syncBacklogRows, BacklogSyncerError } = await import('../backlog-syncer');
+    const gx = await import('../graph-excel');
+    await expect(
+      syncBacklogRows(BASE_CTX, BACKLOG_CFG, [], { dryRun: false, mode: 'replace' })
+    ).rejects.toBeInstanceOf(BacklogSyncerError);
+    expect(gx.patchRange).not.toHaveBeenCalled();
+    expect(gx.readRange).not.toHaveBeenCalled();
   });
 });

@@ -5935,11 +5935,12 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
     }
 
     if (toolName === 'inv_importar_backlog') {
-      const a = toolInput as { pdf_url: string; dry_run?: boolean };
+      const a = toolInput as { pdf_url: string; dry_run?: boolean; mode?: 'upsert' | 'replace' };
       if (!a.pdf_url || typeof a.pdf_url !== 'string') {
         return { ok: false, error: 'pdf_url es requerido (URL del PDF BACKLOG adjunto al correo TRANE)', code: 'invalid_input' };
       }
       const dryRun = a.dry_run !== false;  // default true
+      const mode   = a.mode === 'upsert' ? 'upsert' : 'replace';  // default replace
 
       const { resolveInventoryContext } = await import('@/lib/inventory/adapter');
       const ctx = await resolveInventoryContext(portalEmail, supabase, agentId);
@@ -5980,11 +5981,19 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
         return { ok: false, error: err instanceof Error ? err.message : 'Fallo parseo', code };
       }
 
-      const { syncBacklogRows } = await import('@/lib/inventory/backlog-syncer');
-      const summary = await syncBacklogRows(ctx, sheetCfg, parsed.rows, { dryRun });
+      const { syncBacklogRows, BacklogSyncerError } = await import('@/lib/inventory/backlog-syncer');
+      let summary;
+      try {
+        summary = await syncBacklogRows(ctx, sheetCfg, parsed.rows, { dryRun, mode });
+      } catch (err) {
+        await refundOps(agentId, 1, { source: 'tool_execution', label: 'Refund inv_importar_backlog: sync' });
+        const code = err instanceof BacklogSyncerError ? err.code : 'sync_failed';
+        return { ok: false, error: err instanceof Error ? err.message : 'Fallo sync', code };
+      }
 
       const action = dryRun ? 'PREVISTO' : 'APLICADO';
-      const message = `BACKLOG TRANE ${action}: ${summary.total_parsed} filas parseadas. ${summary.added} nuevas, ${summary.updated} actualizadas, ${summary.unchanged} sin cambios. ${summary.errors.length ? `${summary.errors.length} errores de escritura.` : ''}${dryRun ? ' Pide a Camila confirmación antes de aplicar (vuelve a invocar con dry_run=false).' : ''}`;
+      const deletedStr = mode === 'replace' ? `, ${summary.deleted} eliminadas` : '';
+      const message = `BACKLOG TRANE ${action} (${mode}): ${summary.total_parsed} filas parseadas. ${summary.added} nuevas, ${summary.updated} actualizadas, ${summary.unchanged} sin cambios${deletedStr}. ${summary.errors.length ? `${summary.errors.length} errores de escritura.` : ''}${dryRun ? ' Pide a Camila confirmación antes de aplicar (vuelve a invocar con dry_run=false).' : ''}`;
 
       return { ok: true, dry_run: dryRun, summary, message };
     }
