@@ -671,6 +671,8 @@ export async function patchSalidaBySeries(
         }
       }
 
+      // Overwrite intencional: la fecha de la hoja de salida ES el evento de entrega;
+      // cualquier fecha_venta previa (de registros parciales) se corrige con esta.
       await GraphExcel.patchCell(ctx.token, session, sheet, `${cellLetter(fechaIdx)}${abs}`, fecha);
       after_row[fechaIdx] = fecha; patched.push(col.fecha_venta.toUpperCase());
 
