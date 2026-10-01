@@ -146,12 +146,17 @@ export async function runEphemeralFlow(
   const weeklyFilename = `bitacora-${sanitizeBusinessName(agent.business_name as string)}-${agent.agent_name}-${weekStartStr}.xlsx`;
   const weekLabel = formatWeekLabel(monday);
 
+  // Cobro batched: 1 operación de negocio = 1 bitácora enviada, aunque vaya
+  // a N recipients. Antes se cobraba 1 por cada recipient dentro del loop, lo
+  // que duplicaba el ledger y el audit log (bug detectado en el case study
+  // Tortillería 2026-10-01). Patrón idéntico al de registrar-incidencia.
   let ok = false;
+  let sentCount = 0;
   for (const to of cfg.recipients) {
     const res = await sendMeerkatHtmlEmail({
       agentId,
       to,
-      subject: `Bitácora semanal ${agent.agent_name} — ${agent.business_name} (${weekLabel})`,
+      subject: `Bitácora semanal ${agent.agent_name} · ${agent.business_name} (${weekLabel})`,
       html:    renderEmailHtml(agent.business_name as string, agent.agent_name as string, weekLabel, false, DAY_LABELS_ES[cfg.day_of_week] ?? 'semana'),
       attachment: { filename: weeklyFilename, content: weeklyBuf, mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
       agent: {
@@ -163,8 +168,19 @@ export async function runEphemeralFlow(
     }, supabase);
     if (res.ok) {
       ok = true;
-      await consumeAiOp(agentId, 1, { source: 'bitacora_semanal_send', label: 'Bitácora semanal enviada por correo' });
+      sentCount += 1;
     }
+  }
+  if (sentCount > 0) {
+    // reference_id trae trazabilidad para el histórico de consumo del portal:
+    // qué bitácora específica cobró este op. Ver [[feedback-pool-transparencia]].
+    await consumeAiOp(agentId, sentCount, {
+      source: 'bitacora_semanal_send',
+      label:  sentCount > 1
+        ? `Bitácora semanal enviada por correo (${sentCount} recipients)`
+        : 'Bitácora semanal enviada por correo',
+      reference_id: `${agentId}:bitacora-week-${weekStartStr}`,
+    });
   }
 
   let isMonthlyFinal = false;
@@ -191,11 +207,12 @@ export async function runEphemeralFlow(
     const monthlyFilename = `bitacora-${sanitizeBusinessName(agent.business_name as string)}-${agent.agent_name}-${monthKey}.xlsx`;
     const monthLabel = `${MONTHS_ES[mStart.getMonth()]} ${mStart.getFullYear()}`;
 
+    let monthlySentCount = 0;
     for (const to of cfg.recipients) {
       const res = await sendMeerkatHtmlEmail({
         agentId,
         to,
-        subject: `Bitácora mensual ${agent.agent_name} — ${agent.business_name} (${monthLabel})`,
+        subject: `Bitácora mensual ${agent.agent_name} · ${agent.business_name} (${monthLabel})`,
         html:    renderEmailHtml(agent.business_name as string, agent.agent_name as string, monthLabel, true, DAY_LABELS_ES[cfg.day_of_week] ?? 'semana'),
         attachment: { filename: monthlyFilename, content: monthlyBuf, mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
         agent: {
@@ -207,8 +224,18 @@ export async function runEphemeralFlow(
       }, supabase);
       if (res.ok) {
         isMonthlyFinal = true;
-        await consumeAiOp(agentId, 1, { source: 'bitacora_mensual_send', label: 'Bitácora mensual enviada por correo' });
+        monthlySentCount += 1;
       }
+    }
+    if (monthlySentCount > 0) {
+      const monthKeyEphemeral = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+      await consumeAiOp(agentId, monthlySentCount, {
+        source: 'bitacora_mensual_send',
+        label:  monthlySentCount > 1
+          ? `Bitácora mensual enviada por correo (${monthlySentCount} recipients)`
+          : 'Bitácora mensual enviada por correo',
+        reference_id: `${agentId}:bitacora-month-${monthKeyEphemeral}`,
+      });
     }
   }
 
@@ -277,11 +304,14 @@ export async function runPersistentFlow(
   const weekLabel = formatWeekLabel(weekStartMonday(currentDate));
   const periodLabel = isMonthlyFinal ? `${monthLabel} (mes completo)` : `${weekLabel} · ${monthLabel} en curso`;
   const subject = isMonthlyFinal
-    ? `Reporte final del mes ${agent.agent_name} — ${agent.business_name} (${monthLabel})`
-    : `Bitácora semanal ${agent.agent_name} — ${agent.business_name} (${weekLabel})`;
+    ? `Reporte final del mes ${agent.agent_name} · ${agent.business_name} (${monthLabel})`
+    : `Bitácora semanal ${agent.agent_name} · ${agent.business_name} (${weekLabel})`;
   const filename = `bitacora-${sanitizeBusinessName(agent.business_name as string)}-${agent.agent_name}-${monthKey}.xlsx`;
 
+  // Mismo patrón batched: 1 cobro por envío (todos los recipients cuentan como
+  // 1 operación de negocio). Ver comentario arriba en runEphemeralFlow.
   let ok = false;
+  let sentCount = 0;
   for (const to of cfg.recipients) {
     const res = await sendMeerkatHtmlEmail({
       agentId,
@@ -298,11 +328,22 @@ export async function runPersistentFlow(
     }, supabase);
     if (res.ok) {
       ok = true;
-      await consumeAiOp(agentId, 1, {
-        source: isMonthlyFinal ? 'bitacora_mensual_send' : 'bitacora_semanal_send',
-        label:  isMonthlyFinal ? 'Bitácora mensual enviada por correo' : 'Bitácora semanal enviada por correo',
-      });
+      sentCount += 1;
     }
+  }
+  if (sentCount > 0) {
+    const source = isMonthlyFinal ? 'bitacora_mensual_send' : 'bitacora_semanal_send';
+    const baseLabel = isMonthlyFinal ? 'Bitácora mensual enviada por correo' : 'Bitácora semanal enviada por correo';
+    // reference_id para auditabilidad en portal. Semanales usan la semana del
+    // envío; mensuales usan el monthKey. Ver [[feedback-pool-transparencia]].
+    const refTag = isMonthlyFinal
+      ? `${agentId}:bitacora-month-${monthKey}`
+      : `${agentId}:bitacora-week-${weekStartMonday(currentDate).toISOString().slice(0, 10)}`;
+    await consumeAiOp(agentId, sentCount, {
+      source,
+      label: sentCount > 1 ? `${baseLabel} (${sentCount} recipients)` : baseLabel,
+      reference_id: refTag,
+    });
   }
 
   return { ok, isMonthlyFinal };
