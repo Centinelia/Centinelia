@@ -506,6 +506,82 @@ export async function patchClienteBySerie(
   };
 }
 
+export interface PatchVentaInput {
+  folio_venta:         string;
+  fecha_venta:         string;
+  factura_venta?:      string;
+  precio_unitario_mx:  number;
+  factor?:             number;
+}
+
+export type PatchVentaResult =
+  | { ok: true; serie: string; folio_venta: string; precio_unitario_mx: number; factor_calculado: number; before_state: Record<string, unknown>; after_state: Record<string, unknown>; patched_columns: string[]; table_row_index: number }
+  | { ok: false; code: 'serie_not_found' }
+  | { ok: false; code: 'cannot_compute_factor' };
+
+export async function patchVentaBySerie(
+  ctx: InventoryContext,
+  serie: string,
+  input: PatchVentaInput,
+): Promise<PatchVentaResult> {
+  const hit = await findRowIndexBySerie(ctx, serie);
+  if (!hit) return { ok: false, code: 'serie_not_found' };
+
+  const col = ctx.config.columns_historico;
+  const costoMxIdx = col.costo_mx ? hit.headersMap[col.costo_mx.toUpperCase()] : undefined;
+  const costoMxVal = costoMxIdx != null ? Number(hit.row[costoMxIdx]) : NaN;
+
+  let factor = input.factor;
+  if (factor == null) {
+    if (!Number.isFinite(costoMxVal) || costoMxVal <= 0) return { ok: false, code: 'cannot_compute_factor' };
+    factor = Math.round((input.precio_unitario_mx / costoMxVal) * 10000) / 10000;
+  }
+
+  const folioIdx = hit.headersMap[col.folio_venta.toUpperCase()];
+  if (folioIdx === undefined) {
+    throw new Error(`Columna de folio_venta '${col.folio_venta}' no encontrada en headersMap. Revisa inventory_excel_config.columns_historico.`);
+  }
+  const fechaIdx = hit.headersMap[col.fecha_venta.toUpperCase()];
+  if (fechaIdx === undefined) {
+    throw new Error(`Columna de fecha_venta '${col.fecha_venta}' no encontrada en headersMap. Revisa inventory_excel_config.columns_historico.`);
+  }
+  const facturaIdx = col.factura_venta ? hit.headersMap[col.factura_venta.toUpperCase()] : undefined;
+  const costoVtaIdx = col.costo_venta_mx ? hit.headersMap[col.costo_venta_mx.toUpperCase()] : undefined;
+
+  const headers = Object.entries(hit.headersMap).sort((a, b) => a[1] - b[1]).map(([h]) => h);
+  const before_state = rowToState(headers, hit.row);
+  const after_row = [...hit.row];
+
+  const patched: string[] = [];
+  const sheet = ctx.config.sheets.historico.name;
+  const abs = hit.tableRowIndex + 2;
+
+  await GraphExcel.withSession(ctx.token, ctx.config.location, async session => {
+    await GraphExcel.patchCell(ctx.token, session, sheet, `${cellLetter(folioIdx)}${abs}`, input.folio_venta);
+    after_row[folioIdx] = input.folio_venta; patched.push(col.folio_venta.toUpperCase());
+
+    await GraphExcel.patchCell(ctx.token, session, sheet, `${cellLetter(fechaIdx)}${abs}`, input.fecha_venta);
+    after_row[fechaIdx] = input.fecha_venta; patched.push(col.fecha_venta.toUpperCase());
+
+    if (facturaIdx != null) {
+      await GraphExcel.patchCell(ctx.token, session, sheet, `${cellLetter(facturaIdx)}${abs}`, input.factura_venta ?? '');
+      after_row[facturaIdx] = input.factura_venta ?? ''; patched.push(col.factura_venta!.toUpperCase());
+    }
+    if (costoVtaIdx != null) {
+      await GraphExcel.patchCell(ctx.token, session, sheet, `${cellLetter(costoVtaIdx)}${abs}`, input.precio_unitario_mx);
+      after_row[costoVtaIdx] = input.precio_unitario_mx; patched.push(col.costo_venta_mx!.toUpperCase());
+    }
+  });
+
+  return {
+    ok: true, serie: serie.trim().toUpperCase(),
+    folio_venta: input.folio_venta, precio_unitario_mx: input.precio_unitario_mx,
+    factor_calculado: factor,
+    before_state, after_state: rowToState(headers, after_row),
+    patched_columns: patched, table_row_index: hit.tableRowIndex,
+  };
+}
+
 // ─── Historico (Excel Table) helpers ─────────────────────────────────────────
 
 export interface HistoricoRowMapped {

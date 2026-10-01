@@ -241,3 +241,46 @@ describe('patchClienteBySerie', () => {
     await expect(patchClienteBySerie(badCtx, '2619HA012345', { cliente_nombre: 'X' })).rejects.toThrow(/no encontrada en headersMap/);
   });
 });
+
+describe('patchVentaBySerie', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('calcula factor = precio / costo_mx (4 decimales)', async () => {
+    const { patchVentaBySerie } = await import('../adapter');
+    const row = new Array(HEADERS.length).fill('');
+    row[2] = '2619HA012345'; row[HEADERS.indexOf('COSTO MX')] = 26013.15;
+    await mockHeaders([row]);
+    const r = await patchVentaBySerie(CTX, '2619HA012345', { folio_venta: 'FV-1', fecha_venta: '2026-10-01', precio_unitario_mx: 35000 });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.factor_calculado).toBe(1.3455);
+    }
+  });
+
+  it('respeta factor explícito del user', async () => {
+    const { patchVentaBySerie } = await import('../adapter');
+    const row = new Array(HEADERS.length).fill(''); row[2] = '2619HA012345';
+    await mockHeaders([row]);
+    const r = await patchVentaBySerie(CTX, '2619HA012345', { folio_venta: 'FV-1', fecha_venta: '2026-10-01', precio_unitario_mx: 35000, factor: 1.5 });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.factor_calculado).toBe(1.5);
+  });
+
+  it('sin costo_mx y sin factor explícito → cannot_compute_factor', async () => {
+    const { patchVentaBySerie } = await import('../adapter');
+    const row = new Array(HEADERS.length).fill(''); row[2] = '2619HA012345'; // COSTO MX vacío
+    await mockHeaders([row]);
+    const r = await patchVentaBySerie(CTX, '2619HA012345', { folio_venta: 'FV-1', fecha_venta: '2026-10-01', precio_unitario_mx: 35000 });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.code).toBe('cannot_compute_factor');
+  });
+
+  it('patch 4 celdas en una sesión (folio, fecha, precio, factor)', async () => {
+    const { patchVentaBySerie } = await import('../adapter');
+    const row = new Array(HEADERS.length).fill(''); row[2] = '2619HA012345'; row[HEADERS.indexOf('COSTO MX')] = 20000;
+    await mockHeaders([row]);
+    const gx = await import('../graph-excel');
+    await patchVentaBySerie(CTX, '2619HA012345', { folio_venta: 'FV-1', fecha_venta: '2026-10-01', precio_unitario_mx: 30000 });
+    expect((gx.patchCell as any).mock.calls.length).toBeGreaterThanOrEqual(4);
+  });
+});
