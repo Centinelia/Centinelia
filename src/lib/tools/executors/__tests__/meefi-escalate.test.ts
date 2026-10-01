@@ -77,6 +77,34 @@ describe('meefi-escalate-to-human', () => {
     expect(r.sent_to).toBe('nazre20+ashley@gmail.com');
     expect(r.routed_to_name).toBe('Ashley (Cuentas)');
   });
+
+  // Regression 2026-10-01: meefi_escalation (base) y meefi_escalation_notif
+  // (envío correo) usaban ambos reference_id=ticketId → UNIQUE constraint
+  // ops_ledger_portal_ref_kind_uniq rechazaba el 2do cobro → undercharge.
+  // Fix: notif usa `${ticketId}:notif`.
+  it('base y notif usan reference_id DIFERENTES para evitar colisión UNIQUE', async () => {
+    consumeAiOpMock.mockClear();
+    const r = await executeMeefiEscalateToHuman(
+      { agent_id: 'nelia_meefi' } as any,
+      {
+        topic:           'transferencia_urgente',
+        priority:        'alta',
+        context_summary: 'x',
+        user_id:         'usr_001',
+      },
+    );
+    expect(r.ok).toBe(true);
+    const calls = consumeAiOpMock.mock.calls;
+    const baseCall  = calls.find(c => (c[2] as any)?.source === 'meefi_escalation');
+    const notifCall = calls.find(c => (c[2] as any)?.source === 'meefi_escalation_notif');
+    expect(baseCall).toBeTruthy();
+    expect(notifCall).toBeTruthy();
+    const baseRef  = (baseCall![2] as any).reference_id as string;
+    const notifRef = (notifCall![2] as any).reference_id as string;
+    expect(baseRef).toBe(r.ticket_id);
+    expect(notifRef).toBe(`${r.ticket_id}:notif`);
+    expect(baseRef).not.toBe(notifRef);
+  });
 });
 
 // Regression test 2026-09-15 — Meefi Soporte estaba enviando escalamientos

@@ -160,7 +160,11 @@ export async function registrarIncidencia(ctx: any, args: RegistrarIncidenciaArg
         subject,
         html,
         source:       'incidencia_notif',
-        referenceId:  incidentId,
+        // Sufijo :notif evita colisión con el cobro base incident_registered
+        // (mismo incidentId, kind=consumption). Sin sufijo el UNIQUE constraint
+        // ops_ledger_portal_ref_kind_uniq rechaza el 2do cobro y hay undercharge
+        // silencioso. Hallazgo investigación 2026-10-01 (Tortillería).
+        referenceId:  `${incidentId}:notif`,
         chargeSource: 'incidencia_notif',
         chargeLabel:  'Aviso de queja al encargado por correo',
         sourceTable:  'client_incidents',
@@ -212,7 +216,8 @@ export async function registrarIncidencia(ctx: any, args: RegistrarIncidenciaArg
           label:  sentCount > 1
             ? `Aviso de queja al encargado por correo (${sentCount} recipients)`
             : 'Aviso de queja al encargado por correo',
-          reference_id: incidentId,
+          // Sufijo :notif evita colisión con incident_registered. Ver nota arriba.
+          reference_id: `${incidentId}:notif`,
         });
       } catch (err) {
         console.error(`registrar_incidencia consumeAiOp(${sentCount}) failed silently:`, err);

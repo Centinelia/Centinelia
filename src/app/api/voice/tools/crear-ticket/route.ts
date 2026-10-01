@@ -141,7 +141,10 @@ export async function POST(req: NextRequest) {
       if (r.ok) {
         await consumeAiOp(agentId, 1, {
           source:       'ticket_whatsapp_notify',
-          reference_id: folio,
+          // Sufijo :whatsapp evita colisión con ticket_registered (mismo folio).
+          // Ver nota en registrar-incidencia.ts sobre UNIQUE constraint
+          // ops_ledger_portal_ref_kind_uniq (hallazgo 2026-10-01).
+          reference_id: `${folio}:whatsapp`,
           label:        'WhatsApp de ticket al asignado',
         });
       }
@@ -167,7 +170,8 @@ export async function POST(req: NextRequest) {
         subject:      emailSubject,
         html:         emailHtml,
         source:       'ticket_email_notify',
-        referenceId:  folio,
+        // Sufijo :email evita colisión con ticket_registered. Ver nota arriba.
+        referenceId:  `${folio}:email`,
         chargeSource: 'ticket_email_notify',
         chargeLabel:  'Correo de ticket al encargado',
       }, supabase);
@@ -180,7 +184,8 @@ export async function POST(req: NextRequest) {
         if (ok) {
           await consumeAiOp(agentId, 1, {
             source:       'ticket_email_notify',
-            reference_id: folio,
+            // Sufijo :email evita colisión con ticket_registered. Ver nota arriba.
+            reference_id: `${folio}:email`,
             label:        'Correo de ticket al encargado',
           });
         }
