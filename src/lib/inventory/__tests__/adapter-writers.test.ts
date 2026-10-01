@@ -280,7 +280,29 @@ describe('patchVentaBySerie', () => {
     const row = new Array(HEADERS.length).fill(''); row[2] = '2619HA012345'; row[HEADERS.indexOf('COSTO MX')] = 20000;
     await mockHeaders([row]);
     const gx = await import('../graph-excel');
-    await patchVentaBySerie(CTX, '2619HA012345', { folio_venta: 'FV-1', fecha_venta: '2026-10-01', precio_unitario_mx: 30000 });
+    await patchVentaBySerie(CTX, '2619HA012345', { folio_venta: 'FV-1', fecha_venta: '2026-10-01', precio_unitario_mx: 30000, factura_venta: 'F-TEST' });
     expect((gx.patchCell as any).mock.calls.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it('no sobreescribe factura existente cuando input.factura_venta no se pasa (fix corrupcion silenciosa)', async () => {
+    const { patchVentaBySerie } = await import('../adapter');
+    const row = new Array(HEADERS.length).fill('');
+    row[2] = '2619HA012345';
+    row[HEADERS.indexOf('COSTO MX')] = 20000;
+    row[HEADERS.indexOf('FACTURA')] = 'F-EXISTENTE-123';
+    await mockHeaders([row]);
+    const gx = await import('../graph-excel');
+    const r = await patchVentaBySerie(CTX, '2619HA012345', { folio_venta: 'FV-1', fecha_venta: '2026-10-01', precio_unitario_mx: 30000 });
+    expect(r.ok).toBe(true);
+    // Inspect all patchCell calls — ninguna debe tocar la celda FACTURA
+    const facturaColLetter = String.fromCharCode(65 + HEADERS.indexOf('FACTURA'));
+    const touchedFactura = (gx.patchCell as any).mock.calls.some((call: unknown[]) => {
+      const address = call[3] as string;
+      return address.startsWith(facturaColLetter);
+    });
+    expect(touchedFactura).toBe(false);
+    if (r.ok) {
+      expect((r.after_state as Record<string, unknown>).FACTURA).toBe('F-EXISTENTE-123');
+    }
   });
 });

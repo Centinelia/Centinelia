@@ -563,9 +563,9 @@ export async function patchVentaBySerie(
     await GraphExcel.patchCell(ctx.token, session, sheet, `${cellLetter(fechaIdx)}${abs}`, input.fecha_venta);
     after_row[fechaIdx] = input.fecha_venta; patched.push(col.fecha_venta.toUpperCase());
 
-    if (facturaIdx != null) {
-      await GraphExcel.patchCell(ctx.token, session, sheet, `${cellLetter(facturaIdx)}${abs}`, input.factura_venta ?? '');
-      after_row[facturaIdx] = input.factura_venta ?? ''; patched.push(col.factura_venta!.toUpperCase());
+    if (facturaIdx != null && input.factura_venta) {
+      await GraphExcel.patchCell(ctx.token, session, sheet, `${cellLetter(facturaIdx)}${abs}`, input.factura_venta);
+      after_row[facturaIdx] = input.factura_venta; patched.push(col.factura_venta!.toUpperCase());
     }
     if (costoVtaIdx != null) {
       await GraphExcel.patchCell(ctx.token, session, sheet, `${cellLetter(costoVtaIdx)}${abs}`, input.precio_unitario_mx);
