@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verificarRecepcionIncidencia } from '@/lib/tools/executors/verificar-recepcion-incidencia';
+import { toolResponse } from '@/lib/voice/tool-response';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +22,7 @@ export async function POST(req: NextRequest) {
     const { data: agent, error: agentErr } = await supabase.from('voice_agents').select('*').eq('id', agentId).single();
     if (agentErr || !agent) {
       console.error('[verificar_recepcion_incidencia] agent lookup failed:', agentErr);
-      return NextResponse.json({ results: [{ toolCallId, result: { error: 'agent not found' } }] });
+      return toolResponse(toolCallId ?? '', 'No pude encontrar la configuración del agente.');
     }
 
     // Cargar directory de la org para que el executor pueda mandar el correo
@@ -34,16 +35,20 @@ export async function POST(req: NextRequest) {
     if (orgErr) console.warn('[verificar_recepcion_incidencia] org lookup warning:', orgErr.message);
 
     const result = await verificarRecepcionIncidencia({ supabase, agent, org, channel: 'voice' }, args);
-    // Formato {result: string} — mismo cambio que registrar-incidencia (ver 2026-08-28).
+    // Response wrap custom-LLM: mismo fix que registrar-incidencia 2026-10-01.
+    // Vapi en custom-LLM mode traduce {result:msg} legacy como "No result
+    // returned" al modelo, haciendo que Nelia piense que falló y reporte
+    // bug innecesariamente. toolResponse() envuelve si viene toolCallId;
+    // cae a flat si no (backwards-compat).
     const emailSuffix = result.email_sent ? ' Correo enviado al encargado.' : '';
     const msg = result.verification_result === 'ok'
       ? `Verificación registrada como recibida. Caso cerrado.${emailSuffix}`
       : result.verification_result === 'no_visitado'
       ? `Verificación registrada como NO visitado — queda en rojo en la bitácora esta semana.${emailSuffix}`
       : `Verificación registrada como sin respuesta — queda en gris en la bitácora.${emailSuffix}`;
-    return NextResponse.json({ result: msg });
+    return toolResponse(toolCallId ?? '', msg);
   } catch (err: any) {
     console.error('[verificar_recepcion_incidencia] unhandled:', err);
-    return NextResponse.json({ result: `Error al registrar la verificación: ${err?.message ?? 'error interno'}.` });
+    return toolResponse(toolCallId ?? '', `Error al registrar la verificación: ${err?.message ?? 'error interno'}.`);
   }
 }
