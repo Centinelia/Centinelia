@@ -76,6 +76,47 @@ export class GraphExcelError extends Error {
 }
 
 /**
+ * Codifica un share URL al formato que acepta `/shares/{id}` según Microsoft
+ * Graph: base64url (padding '=' recortado) con prefijo "u!".
+ * Ver docs.microsoft.com/en-us/graph/api/shares-get
+ */
+export function encodeShareUrl(shareUrl: string): string {
+  const b64 = Buffer.from(shareUrl, 'utf-8').toString('base64');
+  const b64url = b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return `u!${b64url}`;
+}
+
+/**
+ * Resuelve un OneDrive/SharePoint share URL a un `ExcelWorkbookLocation`
+ * (scope + itemId) consumible por el adapter. Para links personales
+ * SharePoint-based ('-my.sharepoint.com'), usa scope site con parentReference.
+ */
+export async function resolveShareUrlToLocation(
+  shareUrl: string,
+  token: string,
+): Promise<ExcelWorkbookLocation> {
+  const encoded = encodeShareUrl(shareUrl);
+  const data = await graphFetch(`${GRAPH}/shares/${encoded}/driveItem?$select=id,parentReference`, {
+    method:  'GET',
+    headers: headers(token),
+  }) as {
+    id:              string;
+    parentReference?: { driveId?: string; siteId?: string };
+  };
+
+  const itemId  = data.id;
+  const driveId = data.parentReference?.driveId;
+  const siteId  = data.parentReference?.siteId;
+
+  if (!itemId) throw new Error('Graph /shares no devolvió itemId');
+
+  // SharePoint retorna siteId; OneDrive personal normalmente solo trae driveId.
+  if (siteId) return { scope: { type: 'site', siteId, driveId }, itemId };
+  if (driveId) return { scope: { type: 'site', siteId: driveId.split(',')[0] ?? driveId, driveId }, itemId };
+  return { scope: { type: 'me' }, itemId };
+}
+
+/**
  * Crea sesión Excel con persistencia (writes se guardan en el archivo).
  * TTL ~60 min. Cerrar con closeSession al terminar el batch.
  */

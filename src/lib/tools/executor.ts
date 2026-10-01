@@ -5454,7 +5454,7 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
   // ─────────────────────────────────────────────────────────────────────────
   if (toolName.startsWith('inv_')) {
     const { resolveInventoryContext, listHistorico, findBySerie, findByModelo, readStock, computeReposiciones, normalizeBodega, GraphExcel } = await import('@/lib/inventory/adapter');
-    const inv = await resolveInventoryContext(portalEmail, supabase);
+    const inv = await resolveInventoryContext(portalEmail, supabase, agentId);
     if ('error' in inv) return { ok: false, error: inv.message, code: inv.error };
 
     const findRowIndexBySerie = async (serie: string): Promise<{ tableRowIndex: number; row: unknown[] } | null> => {

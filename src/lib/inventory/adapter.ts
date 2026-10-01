@@ -67,10 +67,17 @@ export type InventoryResolveError =
 /**
  * Resuelve config + token para operar el inventario Excel de una org.
  * Retorna null en cualquier fallo con un objeto de error tipado.
+ *
+ * `agentId` opcional: si se pasa, el token Microsoft se resuelve primero
+ * desde `email_integrations` (OAuth per-agent del inbox-processor flow).
+ * Sin agentId, cae a `integration_accounts` org-level. El fix 2026-10-01
+ * (bug AC Proyectos: Nami tenía Outlook en email_integrations pero el
+ * adapter solo miraba integration_accounts) requiere este parámetro.
  */
 export async function resolveInventoryContext(
   portalEmail: string,
   supabase: SupabaseClient,
+  agentId?: string,
 ): Promise<InventoryContext | InventoryResolveError> {
   const { data: org, error: orgErr } = await supabase
     .from('organizations')
@@ -83,21 +90,103 @@ export async function resolveInventoryContext(
     return { error: 'not_configured', message: 'La organización no tiene inventory_excel_config seteado. Configura el archivo Excel en el portal → Integraciones → Inventario.' };
   }
 
-  const token = await resolveMicrosoftAccessToken(portalEmail, supabase);
+  const token = await resolveMicrosoftAccessToken(portalEmail, supabase, agentId);
   if ('error' in token) return token;
 
   return { portalEmail, token: token.access_token, config };
 }
 
 /**
- * Circula token Microsoft (outlook) desde integration_accounts. Mismo patrón
- * que src/lib/catalog/providers.ts — refresca si está por vencer.
+ * Circula token Microsoft en orden de scope-adequado para Graph /drives API:
+ *   1. `integration_accounts` capability='storage_microsoft' per-agent — OAuth
+ *      dedicado del empleado para OneDrive/SharePoint (incluye Files.ReadWrite).
+ *   2. `integration_accounts` capability='storage_microsoft' por portal_email —
+ *      storage OAuth org-level.
+ *   3. `email_integrations` provider='outlook' per-agent — fallback last-resort.
+ *      Nota: el scope email (Mail.*, Contacts.*) NO incluye Files.* por diseño
+ *      Fase 1 (2026-09-04). Graph /shares devolverá 403 para SharePoint real
+ *      aunque pueda funcionar con OneDrive personal del usuario. Preserve el
+ *      fallback por si una org tiene config legacy, pero prefiere storage_microsoft.
+ *   4. `integration_accounts` capability='email' org-level — path muy legacy.
  */
 async function resolveMicrosoftAccessToken(
   portalEmail: string,
   supabase: SupabaseClient,
+  agentId?: string,
 ): Promise<{ access_token: string } | InventoryResolveError> {
-  const { data: acct } = await supabase
+  // Path 1: storage OAuth per-agent (scope Files.ReadWrite)
+  if (agentId) {
+    const { data: perAgent } = await supabase
+      .from('integration_accounts')
+      .select('access_token, refresh_token, expires_at, status')
+      .eq('agent_id', agentId)
+      .eq('capability', 'storage_microsoft')
+      .neq('status', 'disconnected')
+      .maybeSingle();
+    if (perAgent?.access_token) {
+      return maybeRefreshOutlook({
+        accessToken:        perAgent.access_token as string,
+        refreshToken:       perAgent.refresh_token as string | null,
+        expiresAt:          perAgent.expires_at as string | null,
+        refreshIsEncrypted: true,
+      }, async (refreshed) => {
+        await supabase.from('integration_accounts')
+          .update({ access_token: refreshed.access_token, expires_at: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(), status: 'active' })
+          .eq('agent_id', agentId)
+          .eq('capability', 'storage_microsoft');
+      });
+    }
+  }
+
+  // Path 2: storage OAuth org-level
+  const { data: orgStorage } = await supabase
+    .from('integration_accounts')
+    .select('access_token, refresh_token, expires_at, status')
+    .eq('portal_email', portalEmail)
+    .eq('capability', 'storage_microsoft')
+    .neq('status', 'disconnected')
+    .maybeSingle();
+  if (orgStorage?.access_token) {
+    return maybeRefreshOutlook({
+      accessToken:        orgStorage.access_token as string,
+      refreshToken:       orgStorage.refresh_token as string | null,
+      expiresAt:          orgStorage.expires_at as string | null,
+      refreshIsEncrypted: true,
+    }, async (refreshed) => {
+      await supabase.from('integration_accounts')
+        .update({ access_token: refreshed.access_token, expires_at: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(), status: 'active' })
+        .eq('portal_email', portalEmail)
+        .eq('capability', 'storage_microsoft');
+    });
+  }
+
+  // Path 3: email_integrations per-agent (fallback last-resort)
+  // Scope email no incluye Files.*: funciona para OneDrive personal del user en
+  // casos limitados pero NO para SharePoint. Si falla, el error de Graph llega
+  // al caller con mensaje claro.
+  if (agentId) {
+    const { data: emailInt } = await supabase
+      .from('email_integrations')
+      .select('access_token, refresh_token, token_expires_at')
+      .eq('agent_id', agentId)
+      .eq('provider', 'outlook')
+      .maybeSingle();
+    if (emailInt?.access_token) {
+      return maybeRefreshOutlook({
+        accessToken:        emailInt.access_token as string,
+        refreshToken:       emailInt.refresh_token as string | null,
+        expiresAt:          emailInt.token_expires_at as string | null,
+        refreshIsEncrypted: true,
+      }, async (refreshed) => {
+        await supabase.from('email_integrations')
+          .update({ access_token: refreshed.access_token, token_expires_at: new Date(Date.now() + refreshed.expires_in * 1000).toISOString() })
+          .eq('agent_id', agentId).eq('provider', 'outlook');
+      });
+    }
+  }
+
+  // Path 4: integration_accounts capability='email' org-level (muy legacy)
+  const { data: legacy } = await supabase
     .from('integration_accounts')
     .select('access_token, refresh_token, expires_at, status')
     .eq('portal_email', portalEmail)
@@ -105,32 +194,43 @@ async function resolveMicrosoftAccessToken(
     .eq('provider', 'outlook')
     .neq('status', 'disconnected')
     .maybeSingle();
-  if (!acct) return { error: 'microsoft_disconnected', message: 'Outlook/Microsoft no conectado. Conéctalo desde el portal para operar el inventario en SharePoint.' };
-
-  let accessToken = acct.access_token as string;
-  const expiresAt = acct.expires_at ? new Date(acct.expires_at as string) : null;
-  const needsRefresh = !expiresAt || expiresAt.getTime() - Date.now() < 5 * 60 * 1000;
-  if (needsRefresh && acct.refresh_token) {
-    const { decrypt } = await import('@/lib/crypto');
-    const plainRefresh = decrypt(acct.refresh_token as string);
-    const { outlookRefreshToken } = await import('@/lib/email/outlook');
-    try {
-      const refreshed = await outlookRefreshToken(plainRefresh);
-      accessToken = refreshed.access_token;
-      await supabase.from('integration_accounts')
-        .update({
-          access_token: refreshed.access_token,
-          expires_at:   new Date(Date.now() + refreshed.expires_in * 1000).toISOString(),
-          status:       'active',
-        })
-        .eq('portal_email', portalEmail)
-        .eq('provider', 'outlook')
-        .eq('capability', 'email');
-    } catch (err) {
-      return { error: 'refresh_failed', message: `Refresh outlook falló: ${err instanceof Error ? err.message : 'unknown'}` };
-    }
+  if (!legacy) {
+    return {
+      error:   'microsoft_disconnected',
+      message: 'OneDrive/SharePoint no conectado para este empleado. Conéctalo desde el portal → Empleado → Almacenamiento → Microsoft/OneDrive. El OAuth de correo no incluye permisos de archivos.',
+    };
   }
-  return { access_token: accessToken };
+  return maybeRefreshOutlook({
+    accessToken:        legacy.access_token as string,
+    refreshToken:       legacy.refresh_token as string | null,
+    expiresAt:          legacy.expires_at as string | null,
+    refreshIsEncrypted: true,
+  }, async (refreshed) => {
+    await supabase.from('integration_accounts')
+      .update({ access_token: refreshed.access_token, expires_at: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(), status: 'active' })
+      .eq('portal_email', portalEmail).eq('provider', 'outlook').eq('capability', 'email');
+  });
+}
+
+async function maybeRefreshOutlook(
+  tok:         { accessToken: string; refreshToken: string | null; expiresAt: string | null; refreshIsEncrypted: boolean },
+  persistFresh: (refreshed: { access_token: string; expires_in: number }) => Promise<void>,
+): Promise<{ access_token: string } | InventoryResolveError> {
+  const expiresAt = tok.expiresAt ? new Date(tok.expiresAt) : null;
+  const needsRefresh = !expiresAt || expiresAt.getTime() - Date.now() < 5 * 60 * 1000;
+  if (!needsRefresh) return { access_token: tok.accessToken };
+  if (!tok.refreshToken) return { access_token: tok.accessToken };
+
+  const { decrypt } = await import('@/lib/crypto');
+  const { outlookRefreshToken } = await import('@/lib/email/outlook');
+  try {
+    const plainRefresh = tok.refreshIsEncrypted ? decrypt(tok.refreshToken) : tok.refreshToken;
+    const refreshed = await outlookRefreshToken(plainRefresh);
+    await persistFresh(refreshed);
+    return { access_token: refreshed.access_token };
+  } catch (err) {
+    return { error: 'refresh_failed', message: `Refresh outlook falló: ${err instanceof Error ? err.message : 'unknown'}` };
+  }
 }
 
 // ─── Historico (Excel Table) helpers ─────────────────────────────────────────
