@@ -5496,6 +5496,36 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       };
     }
 
+    // ── inv_actualizar_estatus ────────────────────────────────────────────────
+    if (toolName === 'inv_actualizar_estatus') {
+      const { resolveInventoryContext, patchEstatusBySerie, insertMutationLog } = await import('@/lib/inventory/adapter');
+      const a = toolInput as { serie: string; nuevo_estatus: string; notas?: string };
+      const ctx = await resolveInventoryContext(portalEmail, supabase, agentId);
+      if ('error' in ctx) {
+        await refundOps(agentId, 1, { source: 'tool_execution', label: `Refund ${toolName}: ${ctx.error}` });
+        return { ok: false, error: ctx.message, code: ctx.error };
+      }
+      const result = await patchEstatusBySerie(ctx, a.serie, a.nuevo_estatus);
+      await insertMutationLog(supabase, {
+        portal_email: portalEmail, agent_id: agentId, tool_name: toolName,
+        serie: a.serie, table_row_index: result.ok ? result.table_row_index : null,
+        before_state: result.ok ? result.before_state : null,
+        after_state:  result.ok ? result.after_state  : {},
+        patched_columns: result.ok ? result.patched_columns : [],
+        metadata: a.notas ? { notas: a.notas } : null,
+        ops_charged: 1, success: result.ok,
+        error_code: result.ok ? null : result.code,
+      });
+      if (!result.ok) {
+        return { ok: false, error: `No encontré el equipo con serie ${a.serie}.`, code: 'serie_not_found' };
+      }
+      if (result.no_op) {
+        return { ok: true, no_op: true, message: `Serie ${result.serie} ya estaba en ${result.estatus_nuevo}, no toqué nada.` };
+      }
+      return { ok: true, serie: result.serie, estatus_anterior: result.estatus_anterior, estatus_nuevo: result.estatus_nuevo,
+        message: `Serie ${result.serie}: ${result.estatus_anterior} → ${result.estatus_nuevo}.` };
+    }
+
     // ── Herramientas de lectura (read handlers) ───────────────────────────────
     const { resolveInventoryContext, listHistorico, findBySerie, findByModelo, readStock, computeReposiciones, normalizeBodega, GraphExcel, findRowIndexBySerie } = await import('@/lib/inventory/adapter');
     const inv = await resolveInventoryContext(portalEmail, supabase, agentId);
@@ -5590,28 +5620,6 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       }, supabase);
       if (!result.ok) return { ok: false, error: result.error ?? 'Envío falló' };
       return { ok: true, message: `Correo enviado a ${encargados.join(', ')} solicitando ${cantidad} pieza(s) de ${modelo}.`, provider: result.provider };
-    }
-
-    if (toolName === 'inv_actualizar_estatus') {
-      const serie   = String(toolInput.serie ?? '').trim();
-      const estatus = String(toolInput.estatus ?? '').trim().toUpperCase();
-      if (!serie)   return { ok: false, error: 'serie es requerido' };
-      if (!estatus) return { ok: false, error: 'estatus es requerido' };
-      if (!inv.config.estatus_validos.includes(estatus)) {
-        return { ok: false, error: `Estatus "${estatus}" no válido. Válidos: ${inv.config.estatus_validos.join(', ')}` };
-      }
-      const found = await findRowIndexBySerie(inv, serie);
-      if (!found) return { ok: false, error: `No encontré equipo con serie ${serie}` };
-      const headers = await GraphExcel.getTableHeader(inv.token, inv.config.location, inv.config.sheets.historico.table);
-      const colHeader = inv.config.columns_historico.estatus;
-      const colIdx = headers.indexOf(colHeader);
-      if (colIdx < 0) return { ok: false, error: `Columna ${colHeader} no encontrada en la tabla` };
-      const colLetter = String.fromCharCode(65 + colIdx);
-      const excelRow = found.tableRowIndex + 2;
-      await GraphExcel.withSession(inv.token, inv.config.location, async (session) => {
-        await GraphExcel.patchCell(inv.token, session, inv.config.sheets.historico.name, `${colLetter}${excelRow}`, estatus);
-      });
-      return { ok: true, message: `Estatus del equipo ${serie} → ${estatus}.` };
     }
 
     if (toolName === 'inv_asignar_cliente') {
