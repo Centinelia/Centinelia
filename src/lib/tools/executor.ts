@@ -5596,6 +5596,37 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       };
     }
 
+    // ── inv_registrar_salida ──────────────────────────────────────────────────
+    if (toolName === 'inv_registrar_salida') {
+      const a = toolInput as { folio_hoja: string; cliente_nombre: string; vendedor_codigo?: string; fecha?: string; series: string[]; proyecto?: string };
+      if (a.fecha && !/^\d{4}-\d{2}-\d{2}$/.test(a.fecha)) {
+        await refundOps(agentId, 1, { source: 'tool_execution', label: `Refund ${toolName}: invalid_date` });
+        return { ok: false, error: `fecha debe ser YYYY-MM-DD; recibí "${a.fecha}"`, code: 'invalid_input' };
+      }
+      const { resolveInventoryContext, patchSalidaBySeries, insertMutationLog } = await import('@/lib/inventory/adapter');
+      const ctx = await resolveInventoryContext(portalEmail, supabase, agentId);
+      if ('error' in ctx) {
+        await refundOps(agentId, 1, { source: 'tool_execution', label: `Refund ${toolName}: ${ctx.error}` });
+        return { ok: false, error: ctx.message, code: ctx.error };
+      }
+      const result = await patchSalidaBySeries(ctx, a.series, a);
+      if (!result.ok) {
+        await refundOps(agentId, 1, { source: 'tool_execution', label: `Refund ${toolName}: ${result.code}` });
+        return { ok: false, error: result.message, code: result.code };
+      }
+      for (const m of result.mutations) {
+        await insertMutationLog(supabase, {
+          portal_email: portalEmail, agent_id: agentId, tool_name: toolName,
+          serie: m.serie, table_row_index: m.table_row_index,
+          before_state: m.before_state, after_state: m.after_state,
+          patched_columns: m.patched_columns,
+          metadata: { folio_hoja: a.folio_hoja, cliente: a.cliente_nombre, proyecto: a.proyecto ?? null, conflict: m.conflict ?? null },
+          ops_charged: 1, success: true, error_code: null,
+        });
+      }
+      return { ...result, ok: true };
+    }
+
     // ── Herramientas de lectura (read handlers) ───────────────────────────────
     const { resolveInventoryContext, listHistorico, findBySerie, findByModelo, readStock, computeReposiciones, normalizeBodega, GraphExcel, findRowIndexBySerie } = await import('@/lib/inventory/adapter');
     const inv = await resolveInventoryContext(portalEmail, supabase, agentId);
