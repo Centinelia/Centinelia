@@ -233,4 +233,11 @@ describe('patchClienteBySerie', () => {
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.code).toBe('serie_not_found');
   });
+
+  it('throw si config.columns_historico.estatus no existe en headersMap (guard)', async () => {
+    const { patchClienteBySerie } = await import('../adapter');
+    await mockHeaders([['A1','4TXK','2619HA012345','ALMACEN','FLETEROS',null,null,'','','','','',null,null,null,null,'','']]);
+    const badCtx = { ...CTX, config: { ...CTX.config, columns_historico: { ...CTX.config.columns_historico, estatus: 'INEXISTENTE' } } };
+    await expect(patchClienteBySerie(badCtx, '2619HA012345', { cliente_nombre: 'X' })).rejects.toThrow(/no encontrada en headersMap/);
+  });
 });

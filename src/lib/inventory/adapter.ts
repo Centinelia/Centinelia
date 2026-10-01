@@ -457,6 +457,9 @@ export async function patchClienteBySerie(
   if (clienteIdx === undefined) {
     throw new Error(`Columna de cliente '${col.cliente}' no encontrada en headersMap. Revisa inventory_excel_config.columns_historico.`);
   }
+  if (estatusIdx === undefined) {
+    throw new Error(`Columna de estatus '${col.estatus}' no encontrada en headersMap. Revisa inventory_excel_config.columns_historico.`);
+  }
 
   const currentCliente = String(hit.row[clienteIdx] ?? '').trim();
   if (currentCliente && !input.force) {
@@ -466,10 +469,6 @@ export async function patchClienteBySerie(
   const marcar = input.marcar_separado !== false;
   const estatusActual = String(hit.row[estatusIdx] ?? '').toUpperCase();
   const willPatchEstatus = marcar && estatusActual === 'ALMACEN';
-
-  if (willPatchEstatus && estatusIdx === undefined) {
-    throw new Error(`Columna de estatus '${col.estatus}' no encontrada en headersMap. Revisa inventory_excel_config.columns_historico.`);
-  }
 
   const headers = Object.entries(hit.headersMap).sort((a, b) => a[1] - b[1]).map(([h]) => h);
   const before_state = rowToState(headers, hit.row);
