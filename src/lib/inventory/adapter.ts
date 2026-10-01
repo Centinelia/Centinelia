@@ -233,6 +233,48 @@ async function maybeRefreshOutlook(
   }
 }
 
+// ─── Row lookup helper ───────────────────────────────────────────────────────
+
+export interface RowIndexHit {
+  tableRowIndex: number;
+  row:           unknown[];
+  headersMap:    Record<string, number>;
+}
+
+/**
+ * Localiza la primera fila del histórico cuya columna SERIE coincide con
+ * `serie` (normalizado trim+toUpperCase en ambos lados).
+ * Retorna `{tableRowIndex, row, headersMap}` o `null` si no existe.
+ *
+ * Prerequisito para los patch helpers de Fase 1 (patchEstatusBySerie, etc.)
+ * que necesitan resolver índice + headers antes de escribir.
+ */
+export async function findRowIndexBySerie(
+  ctx: InventoryContext,
+  serie: string,
+): Promise<RowIndexHit | null> {
+  const [headers, rows] = await Promise.all([
+    GraphExcel.getTableHeader(ctx.token, ctx.config.location, ctx.config.sheets.historico.table),
+    GraphExcel.listTableRows(ctx.token, ctx.config.location, ctx.config.sheets.historico.table),
+  ]);
+
+  const headersMap: Record<string, number> = {};
+  headers.forEach((h, i) => { headersMap[String(h).trim().toUpperCase()] = i; });
+
+  const serieColumn = ctx.config.columns_historico.serie;
+  const serieColIdx = headersMap[serieColumn.toUpperCase()];
+  if (serieColIdx == null) return null;
+
+  const needle = serie.trim().toUpperCase();
+  for (const r of rows) {
+    const cell = String((r.values as unknown[])[serieColIdx] ?? '').trim().toUpperCase();
+    if (cell === needle) {
+      return { tableRowIndex: r.index, row: r.values as unknown[], headersMap };
+    }
+  }
+  return null;
+}
+
 // ─── Historico (Excel Table) helpers ─────────────────────────────────────────
 
 export interface HistoricoRowMapped {

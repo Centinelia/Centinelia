@@ -5453,23 +5453,9 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
   // Ver src/lib/inventory/adapter.ts para helpers de alto nivel.
   // ─────────────────────────────────────────────────────────────────────────
   if (toolName.startsWith('inv_')) {
-    const { resolveInventoryContext, listHistorico, findBySerie, findByModelo, readStock, computeReposiciones, normalizeBodega, GraphExcel } = await import('@/lib/inventory/adapter');
+    const { resolveInventoryContext, listHistorico, findBySerie, findByModelo, readStock, computeReposiciones, normalizeBodega, GraphExcel, findRowIndexBySerie } = await import('@/lib/inventory/adapter');
     const inv = await resolveInventoryContext(portalEmail, supabase, agentId);
     if ('error' in inv) return { ok: false, error: inv.message, code: inv.error };
-
-    const findRowIndexBySerie = async (serie: string): Promise<{ tableRowIndex: number; row: unknown[] } | null> => {
-      const s = String(serie).trim().toUpperCase();
-      const [headers, rows] = await Promise.all([
-        GraphExcel.getTableHeader(inv.token, inv.config.location, inv.config.sheets.historico.table),
-        GraphExcel.listTableRows(inv.token, inv.config.location, inv.config.sheets.historico.table),
-      ]);
-      const serieHeader = inv.config.columns_historico.serie;
-      const serieIdx = headers.indexOf(serieHeader);
-      if (serieIdx < 0) return null;
-      const match = rows.find(r => String(r.values[serieIdx] ?? '').trim().toUpperCase() === s);
-      if (!match) return null;
-      return { tableRowIndex: match.index, row: match.values };
-    };
 
     if (toolName === 'inv_buscar_por_serie') {
       const serie = String(toolInput.serie ?? '').trim();
@@ -5602,7 +5588,7 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       if (!inv.config.estatus_validos.includes(estatus)) {
         return { ok: false, error: `Estatus "${estatus}" no válido. Válidos: ${inv.config.estatus_validos.join(', ')}` };
       }
-      const found = await findRowIndexBySerie(serie);
+      const found = await findRowIndexBySerie(inv, serie);
       if (!found) return { ok: false, error: `No encontré equipo con serie ${serie}` };
       const headers = await GraphExcel.getTableHeader(inv.token, inv.config.location, inv.config.sheets.historico.table);
       const colHeader = inv.config.columns_historico.estatus;
@@ -5622,7 +5608,7 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       const vendedor = String(toolInput.vendedor ?? '').trim();
       if (!serie)   return { ok: false, error: 'serie es requerido' };
       if (!cliente) return { ok: false, error: 'cliente es requerido' };
-      const found = await findRowIndexBySerie(serie);
+      const found = await findRowIndexBySerie(inv, serie);
       if (!found) return { ok: false, error: `No encontré equipo con serie ${serie}` };
       const headers = await GraphExcel.getTableHeader(inv.token, inv.config.location, inv.config.sheets.historico.table);
       const excelRow = found.tableRowIndex + 2;
@@ -5648,7 +5634,7 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       if (!bodega) return { ok: false, error: 'bodega es requerida' };
       const bodegaNorm = normalizeBodega(inv, bodega);
       if (!bodegaNorm) return { ok: false, error: `Bodega "${bodega}" no válida. Canónicas: ${inv.config.bodegas_canonicas.join(', ')}` };
-      const found = await findRowIndexBySerie(serie);
+      const found = await findRowIndexBySerie(inv, serie);
       if (!found) return { ok: false, error: `No encontré equipo con serie ${serie}` };
       const headers = await GraphExcel.getTableHeader(inv.token, inv.config.location, inv.config.sheets.historico.table);
       const colHeader = inv.config.columns_historico.bodega;
@@ -5683,7 +5669,7 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       let applied = 0;
       await GraphExcel.withSession(inv.token, inv.config.location, async (session) => {
         for (const c of changes) {
-          const found = await findRowIndexBySerie(c.serie);
+          const found = await findRowIndexBySerie(inv, c.serie);
           if (!found) continue;
           const excelRow = found.tableRowIndex + 2;
           await GraphExcel.patchCell(inv.token, session, inv.config.sheets.historico.name, `${colLetter}${excelRow}`, c.to);
@@ -5858,7 +5844,7 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       if (fecha_factura && !/^\d{4}-\d{2}-\d{2}$/.test(fecha_factura)) {
         return { ok: false, error: 'fecha_factura debe ser YYYY-MM-DD' };
       }
-      const found = await findRowIndexBySerie(serie);
+      const found = await findRowIndexBySerie(inv, serie);
       if (!found) return { ok: false, error: `No encontré equipo con serie ${serie}` };
       const headers = await GraphExcel.getTableHeader(inv.token, inv.config.location, inv.config.sheets.historico.table);
       const excelRow = found.tableRowIndex + 2;
