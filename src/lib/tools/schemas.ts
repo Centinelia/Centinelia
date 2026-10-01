@@ -527,6 +527,107 @@ export const TOOL_SCHEMAS: Record<string, ToolSchema> = {
     channels: ['voice', 'chat', 'email'],
   },
 
+  // ─── Nami — pack inventory_excel writers (Fase 1) ────────────────────────────
+
+  inv_agregar_equipo: {
+    name: 'inv_agregar_equipo',
+    description: 'Nami: agrega un equipo nuevo al INVENTARIO cuando llega físicamente al almacén y Camila te dice los datos (OC, modelo, serie del label, tonelada, costos TRANE). Bodega se autoasigna por tonelada (≤5TR FLETEROS, >5TR CENIZO) si no la especificas.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        oc:            { type: 'string', description: 'Folio de la OC en QuickBooks.' },
+        modelo:        { type: 'string', description: 'Modelo del equipo.' },
+        serie:         { type: 'string', description: 'Número de serie del label físico. CRÍTICO: NO inventar, usar el que viene en el equipo.' },
+        bodega:        { type: 'string', description: 'FLETEROS o CENIZO. Opcional, se autoasigna por tonelada.' },
+        tonelada:      { type: 'number', description: 'Toneladas de refrigeración.' },
+        descripcion:   { type: 'string' },
+        ref:           { type: 'string', description: 'Refrigerante (R410A, R32, etc).' },
+        seer:          { type: 'string' },
+        volts:         { type: 'string' },
+        usd:           { type: 'number', description: 'Costo en USD de la factura TRANE.' },
+        tc:            { type: 'number', description: 'Tipo de cambio. costo_mx = usd * tc se calcula automáticamente.' },
+        fecha_compra:  { type: 'string', description: 'YYYY-MM-DD. Default hoy si no se pasa.' },
+        folio_factura: { type: 'string' },
+        fecha_factura: { type: 'string', description: 'YYYY-MM-DD.' },
+      },
+      required: ['oc', 'modelo', 'serie'],
+    },
+    channels: ['voice', 'chat', 'email'],
+    voiceServerPath: 'inv-agregar-equipo',
+  },
+
+  inv_actualizar_estatus: {
+    name: 'inv_actualizar_estatus',
+    description: 'Nami: cambia el estatus de un equipo por serie. Transiciones típicas: ALMACEN→SEPARADO al pagar cliente, SEPARADO→ENTREGADO al salir. Si ya estaba en el estatus pedido, no toca nada.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        serie:         { type: 'string' },
+        nuevo_estatus: { type: 'string', enum: ['ALMACEN', 'SEPARADO', 'ENTREGADO', 'PENDIENTE', 'PEDIDO', 'DEVUELTO', 'DESHABILITADO'] },
+        notas:         { type: 'string', description: 'Razón del cambio, va al audit log.' },
+      },
+      required: ['serie', 'nuevo_estatus'],
+    },
+    channels: ['voice', 'chat', 'email'],
+    voiceServerPath: 'inv-actualizar-estatus',
+  },
+
+  inv_asignar_cliente: {
+    name: 'inv_asignar_cliente',
+    description: 'Nami: asigna un equipo a un cliente cuando ventas confirma que pagó. Marca el equipo como SEPARADO automáticamente (si estaba en ALMACEN). Rechaza si ya tiene otro cliente asignado, salvo que pases force=true.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        serie:            { type: 'string' },
+        cliente_nombre:   { type: 'string' },
+        vendedor_codigo:  { type: 'string', description: 'Códigos conocidos AC: ANA, ANG, MTP, RLP. O libre.' },
+        marcar_separado:  { type: 'boolean', description: 'Si true (default), también cambia estatus a SEPARADO.' },
+        force:            { type: 'boolean', description: 'Si true, reemplaza cliente existente sin confirmar.' },
+      },
+      required: ['serie', 'cliente_nombre'],
+    },
+    channels: ['voice', 'chat', 'email'],
+    voiceServerPath: 'inv-asignar-cliente',
+  },
+
+  inv_registrar_venta: {
+    name: 'inv_registrar_venta',
+    description: 'Nami: registra la venta cuando llega el folio de factura venta de Solución Factible. Guarda folio, fecha, precio y calcula el factor (precio / costo_mx). No cambia estatus (asume ENTREGADO ya via inv_registrar_salida).',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        serie:               { type: 'string' },
+        folio_venta:         { type: 'string', description: 'Folio del CFDI de venta.' },
+        fecha_venta:         { type: 'string', description: 'YYYY-MM-DD.' },
+        factura_venta:       { type: 'string', description: 'Serie/folio alternativo si distinto.' },
+        precio_unitario_mx:  { type: 'number' },
+        factor:              { type: 'number', description: 'Opcional. Si no se pasa, se calcula = precio / costo_mx.' },
+      },
+      required: ['serie', 'folio_venta', 'fecha_venta', 'precio_unitario_mx'],
+    },
+    channels: ['voice', 'chat', 'email'],
+    voiceServerPath: 'inv-registrar-venta',
+  },
+
+  inv_registrar_salida: {
+    name: 'inv_registrar_salida',
+    description: 'Nami: registra una hoja de salida física (el taco pre-impreso con folio en rojo que firma el cliente) cuando sale uno o varios equipos del almacén. Marca cada serie como ENTREGADO, asigna cliente y vendedor si no estaban, y guarda el folio de la hoja.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        folio_hoja:       { type: 'string', description: 'Folio del taco pre-impreso (ej. 4251).' },
+        cliente_nombre:   { type: 'string' },
+        vendedor_codigo:  { type: 'string' },
+        fecha:            { type: 'string', description: 'YYYY-MM-DD. Default hoy si no se pasa.' },
+        series:           { type: 'array', items: { type: 'string' }, description: 'Series de los equipos que salen juntos en esa hoja.', minItems: 1 },
+        proyecto:         { type: 'string' },
+      },
+      required: ['folio_hoja', 'cliente_nombre', 'series'],
+    },
+    channels: ['voice', 'chat', 'email'],
+    voiceServerPath: 'inv-registrar-salida',
+  },
+
 };
 
 // ─── Adapter functions ────────────────────────────────────────────────────────

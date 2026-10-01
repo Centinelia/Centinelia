@@ -121,6 +121,7 @@ export const VOICE_TO_CHAT: Record<string, string | null> = {
   inv_actualizar_estatus:    'inv_actualizar_estatus',
   inv_asignar_cliente:       'inv_asignar_cliente',
   inv_registrar_venta:       'inv_registrar_venta',
+  inv_registrar_salida:      'inv_registrar_salida',
   inv_transferir_bodega:     'inv_transferir_bodega',
   inv_importar_backlog:      'inv_importar_backlog',
   inv_normalizar_bodegas:    'inv_normalizar_bodegas',
