@@ -278,6 +278,91 @@ export async function findRowIndexBySerie(
   return null;
 }
 
+// ─── Writer helpers ──────────────────────────────────────────────────────────
+
+export interface AddEquipoInput {
+  oc:            string;
+  modelo:        string;
+  serie:         string;
+  bodega?:       string;
+  tonelada?:     number;
+  descripcion?:  string;
+  ref?:          string;
+  seer?:         string;
+  volts?:        string;
+  usd?:          number;
+  tc?:           number;
+  fecha_compra?: string;
+  folio_factura?: string;
+  fecha_factura?: string;
+}
+
+export type AddEquipoResult =
+  | { ok: true;  serie: string; bodega_asignada: string | null; row_index: number; after_state: Record<string, unknown> }
+  | { ok: false; code: 'serie_already_exists'; existing_row_index: number }
+  | { ok: false; code: 'invalid_input'; message: string };
+
+function assignBodegaByTonelada(ton: number | undefined, canonical: string[]): string | null {
+  if (ton == null) return null;
+  if (ton <= 5 && canonical.includes('FLETEROS')) return 'FLETEROS';
+  if (ton >  5 && canonical.includes('CENIZO'))   return 'CENIZO';
+  return null;
+}
+
+export async function addEquipoRow(
+  ctx: InventoryContext,
+  input: AddEquipoInput,
+): Promise<AddEquipoResult> {
+  if (!input.serie?.trim()) return { ok: false, code: 'invalid_input', message: 'serie es requerida' };
+
+  const existing = await findRowIndexBySerie(ctx, input.serie);
+  if (existing) return { ok: false, code: 'serie_already_exists', existing_row_index: existing.tableRowIndex };
+
+  const headers = await GraphExcel.getTableHeader(ctx.token, ctx.config.location, ctx.config.sheets.historico.table);
+  const idx: Record<string, number> = {};
+  headers.forEach((h, i) => { idx[String(h).trim().toUpperCase()] = i; });
+
+  const bodega = input.bodega ?? assignBodegaByTonelada(input.tonelada, ctx.config.bodegas_canonicas);
+  const costoMx = (input.usd != null && input.tc != null)
+    ? Math.round(input.usd * input.tc * 100) / 100
+    : null;
+
+  const col = ctx.config.columns_historico;
+  const row: unknown[] = new Array(headers.length).fill('');
+  const put = (key: string, val: unknown) => {
+    const colName = (col as Record<string, string>)[key];
+    if (!colName) return;
+    const i = idx[colName.toUpperCase()];
+    if (i != null && val != null) row[i] = val;
+  };
+
+  put('oc',            input.oc);
+  put('modelo',        input.modelo);
+  put('serie',         input.serie);
+  put('estatus',       'ALMACEN');
+  put('bodega',        bodega);
+  put('tonelada',      input.tonelada);
+  put('descripcion',   input.descripcion);
+  put('ref',           input.ref);
+  put('seer',          input.seer);
+  put('volts',         input.volts);
+  put('usd',           input.usd);
+  put('tc',            input.tc);
+  put('costo_mx',      costoMx);
+  put('fecha_compra',  input.fecha_compra ?? new Date().toISOString().slice(0, 10));
+  put('folio_factura', input.folio_factura);
+  put('fecha_factura', input.fecha_factura);
+
+  const added = await GraphExcel.withSession(ctx.token, ctx.config.location, (session) =>
+    GraphExcel.addTableRow(ctx.token, session, ctx.config.sheets.historico.table, row),
+  );
+
+  const after_state: Record<string, unknown> = {};
+  headers.forEach((h, i) => { after_state[String(h).trim().toUpperCase()] = row[i]; });
+
+  return { ok: true, serie: input.serie.trim(), bodega_asignada: bodega, row_index: (added as { index: number }).index, after_state };
+}
+
 // ─── Historico (Excel Table) helpers ─────────────────────────────────────────
 
 export interface HistoricoRowMapped {
