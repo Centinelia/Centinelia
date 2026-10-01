@@ -159,6 +159,16 @@ function validateProcessedEmail(raw: unknown): ProcessedEmail {
   };
 }
 
+// Tools cuyo resultado incluye un archivo que debe adjuntarse al reply.
+// Shape esperado: `{ ok: true, file_id: <storage_path>, filename, mime_type }`.
+// Agregar aquí al crear tool nueva que produzca archivo (Excel, PDF, etc).
+// Exported para tests de invariant (ver executors/__tests__).
+export const TOOLS_THAT_PRODUCE_FILES = new Set<string>([
+  'create_file',
+  'create_document',
+  'conciliar_estado_cuenta',
+]);
+
 // All tools potentially available in email context (ML tools excluded —
 // require portal cookie). El subset que RECIBE cada meerkat se filtra por
 // role via getToolsForRoleEmail() abajo. Antes 2026-08-19 todos los meerkats
@@ -2168,10 +2178,13 @@ CATEGORÍAS:
           const output: unknown = r.status === 'fulfilled' ? r.value : { ok: false, error: String(r.reason) };
           const okShape = output && typeof output === 'object' && (output as { ok?: unknown }).ok !== false;
           if (okShape) toolsInvokedOk.push(b.name);
-          // Capturar files generados por create_file/create_document para
-          // adjuntarlos al reply. Sin esta captura los files quedan en Storage
-          // pero nunca llegan al remitente. Ver Fase 3 brecha pipeline correo.
-          if (okShape && (b.name === 'create_file' || b.name === 'create_document')) {
+          // Capturar files generados por tools que producen archivo (create_file,
+          // create_document, conciliar_estado_cuenta, etc.) para adjuntarlos al
+          // reply. Sin esta captura los files quedan en Storage pero nunca llegan
+          // al remitente. Ver Fase 3 brecha pipeline correo.
+          // Patrón: tool devuelve `{ ok: true, file_id, filename, mime_type }` y
+          // su nombre aparece en TOOLS_THAT_PRODUCE_FILES.
+          if (okShape && TOOLS_THAT_PRODUCE_FILES.has(b.name)) {
             const out = output as { file_id?: string; filename?: string; mime_type?: string };
             if (out.file_id && out.filename && out.mime_type) {
               generatedFiles.push({

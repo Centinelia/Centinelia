@@ -42,6 +42,13 @@ export interface ConciliarResult {
   error?: string;
   batch_id?: string;
   result_file_path?: string;
+  // Campos que el inbox-processor usa para adjuntar el Excel al reply
+  // (ver capture en src/lib/ops/inbox-processor.ts línea ~2175, patrón
+  // compartido con create_file / create_document).
+  file_id?: string;      // == result_file_path, nombre consistente con el capture
+  filename?: string;
+  mime_type?: string;
+  url?: string | null;   // signed URL de 1 hora para incluir en el mensaje humano
   totals?: {
     txns: number;
     auto: number;
@@ -153,6 +160,13 @@ export async function runConciliarEstadoCuenta(
   }
   const batchId = inserted.id as string;
 
+  // ── 7b. Signed URL del Excel (válida 1h, consistente con create_file) ──────
+  const { data: signed } = await supabase.storage
+    .from(STORAGE_BUCKET)
+    .createSignedUrl(resultPath, 60 * 60);
+  const filename = `conciliacion-${parsed.bankSlug}-${toIsoDate(parsed.statementPeriodEnd)}.xlsx`;
+  const mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
   // ── 8. Cobrar 1 op (batched-consume: N txns procesadas = 1 op) ──────────────
   await consumeAiOp(agentId, 1, {
     reason: 'tool_execution',
@@ -170,8 +184,12 @@ export async function runConciliarEstadoCuenta(
     ok: true,
     batch_id: batchId,
     result_file_path: resultPath,
+    file_id: resultPath,
+    filename,
+    mime_type: mimeType,
+    url: signed?.signedUrl ?? null,
     totals,
-    message: `Procesé ${totals.txns} movimientos: ${totals.auto} con match automático, ${totals.review} para revisar, ${totals.unmatched} sin CFDI pendiente. El reporte está listo en el portal.`,
+    message: `Procesé ${totals.txns} movimientos: ${totals.auto} con match automático, ${totals.review} para revisar, ${totals.unmatched} sin CFDI pendiente. El reporte está listo en el portal${signed?.signedUrl ? ` y en este enlace: ${signed.signedUrl}` : ''}.`,
   };
 }
 

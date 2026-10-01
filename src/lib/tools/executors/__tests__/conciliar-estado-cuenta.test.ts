@@ -16,6 +16,7 @@ vi.mock('@/lib/documents/excel', () => ({
 
 import { runConciliarEstadoCuenta } from '../conciliar-estado-cuenta';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
+import { TOOLS_THAT_PRODUCE_FILES } from '@/lib/ops/inbox-processor';
 
 const BBVA_CSV = `FECHA,DESCRIPCIÓN,CARGO,ABONO,SALDO,REFERENCIA
 15/09/2026,SPEI RECIBIDO OXXO FACT F-100,,15000.00,15000.00,0012345678
@@ -50,6 +51,10 @@ function makeSupabase(opts: MakeSupabaseOpts = {}) {
     from: vi.fn(() => storage),
     download: vi.fn(() => Promise.resolve({ data: downloadBlob, error: downloadError })),
     upload: vi.fn(() => Promise.resolve({ data: { path: 'uploaded' }, error: uploadError })),
+    createSignedUrl: vi.fn(() => Promise.resolve({
+      data: { signedUrl: 'https://signed.example/url' },
+      error: null,
+    })),
   };
 
   const api: Record<string, unknown> = {};
@@ -109,6 +114,16 @@ function makeCtx(overrides: Partial<Parameters<typeof runConciliarEstadoCuenta>[
 }
 
 beforeEach(() => vi.clearAllMocks());
+
+// Invariant F3: la tool debe estar registrada en el capture set del
+// inbox-processor. Si alguien la quita de ese set, el Excel generado
+// nunca llega como adjunto al remitente del correo — bug silencioso
+// idéntico al que causó Fase 3 brecha pipeline-correo-nalu-debug.
+describe('F3 invariant', () => {
+  it('conciliar_estado_cuenta está en TOOLS_THAT_PRODUCE_FILES', () => {
+    expect(TOOLS_THAT_PRODUCE_FILES.has('conciliar_estado_cuenta')).toBe(true);
+  });
+});
 
 describe('runConciliarEstadoCuenta', () => {
   it('rechaza si no viene attachment_storage_path', async () => {
@@ -191,6 +206,11 @@ describe('runConciliarEstadoCuenta', () => {
     expect(res.totals?.txns).toBe(2);
     expect(res.result_file_path).toContain('bank-reconciliations/');
     expect(res.message).toContain('match automático');
+    // Shape compatible con capture del inbox-processor:
+    expect(res.file_id).toBe(res.result_file_path);
+    expect(res.filename).toMatch(/^conciliacion-bbva-\d{4}-\d{2}-\d{2}\.xlsx$/);
+    expect(res.mime_type).toBe('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    expect(res.url).toBe('https://signed.example/url');
     expect(consumeAiOp).toHaveBeenCalledTimes(1);
     expect(consumeAiOp).toHaveBeenCalledWith(
       'agent-nalu',
