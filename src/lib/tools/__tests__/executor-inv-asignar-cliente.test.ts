@@ -53,6 +53,7 @@ describe('executor inv_asignar_cliente', () => {
     expect((r as any).ok).toBe(false);
     expect((r as any).error).toContain('Otro Cliente');
     expect((r as any).error).toContain('force=true');
+    expect(mocks.insertLog).toHaveBeenCalledOnce();
   });
 
   it('force=true pasa a adapter correctamente', async () => {
@@ -70,5 +71,6 @@ describe('executor inv_asignar_cliente', () => {
     const r = await runTool({ serie: 'X', cliente_nombre: 'Y' });
     expect((r as any).ok).toBe(false);
     expect((r as any).code).toBe('serie_not_found');
+    expect(mocks.insertLog).toHaveBeenCalledOnce();
   });
 });
