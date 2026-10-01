@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { registrarIncidencia } from '@/lib/tools/executors/registrar-incidencia';
 import { withDedup } from '@/lib/tools/dedup/with-dedup';
+import { toolResponse } from '@/lib/voice/tool-response';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
     const { data: agent, error: agentErr } = await supabase.from('voice_agents').select('*').eq('id', agentId).single();
     if (agentErr || !agent) {
       console.error('[registrar_incidencia] agent lookup failed:', agentErr);
-      return NextResponse.json({ results: [{ toolCallId, result: { error: 'agent not found' } }] });
+      return toolResponse(toolCallId ?? '', 'No pude encontrar la configuración del agente.');
     }
 
     // NOTA: organizations NO tiene columna `features` — solo `directory` +
@@ -76,9 +77,10 @@ export async function POST(req: NextRequest) {
         !args?.address       && 'address',
         !args?.motivo        && 'motivo',
       ].filter(Boolean).join(', ');
-      return NextResponse.json({
-        result: `No pude registrar la incidencia: faltan campos requeridos (${missing}). Vuelve a llamar registrar_incidencia con TODOS los datos que ya capturaste del cliente: business_name (nombre del negocio), contact_phone (teléfono), address (dirección completa), motivo (queja con las palabras del cliente). No dejes ninguno vacío.`,
-      });
+      return toolResponse(
+        toolCallId ?? '',
+        `No pude registrar la incidencia: faltan campos requeridos (${missing}). Vuelve a llamar registrar_incidencia con TODOS los datos que ya capturaste del cliente: business_name (nombre del negocio), contact_phone (teléfono), address (dirección completa), motivo (queja con las palabras del cliente). No dejes ninguno vacío.`,
+      );
     }
 
     const result = await withDedup(
@@ -101,15 +103,19 @@ export async function POST(req: NextRequest) {
         args,
       ),
     );
-    // Formato {result: string} — probado en registrar_pedido, funciona sin
-    // problemas con el retry loop de Vapi. Antes usábamos
-    // {results:[{toolCallId,result:{obj}}]} pero Vapi retriaba porque no
-    // reconocía el ack — 8x "Ya notifico" en un solo call, cero rows en DB
-    // pese a endpoint respondiendo 200. Ver smoke 2026-08-28 18:15 UTC.
+    // Response wrap custom-LLM: Vapi con provider=custom-llm (Nelia Tortillería
+    // desde Sonnet 5.5 rollout 2026-09-28) requiere `{results:[{toolCallId,result:"<string>"}]}`.
+    // Bug 2026-08-28 era que usábamos `result:{obj}` (objeto) — eso sí rompía.
+    // Con result:"string" dentro del wrap funciona. Bug 2026-10-01 (Rosendo
+    // Ramírez): sin el wrap Vapi devolvía "No result returned" al modelo
+    // aunque el server había ejecutado todo bien, Nelia pensaba que falló y
+    // mandaba reportar_falla innecesariamente. toolResponse() usa el wrap si
+    // viene toolCallId; cae a {result:msg} si no (backwards-compat para tests
+    // y llamadas legacy sin toolCallList).
     const msg = result.email_sent
       ? 'Registrado. Correo enviado al encargado y llamada de verificación agendada para dentro de 3 días.'
       : 'Registrado en el sistema. No pude notificar al encargado por correo (no hay encargado configurado), pero quedó agendada la llamada de verificación en 3 días.';
-    return NextResponse.json({ result: msg });
+    return toolResponse(toolCallId ?? '', msg);
   } catch (err: any) {
     console.error('[registrar_incidencia] unhandled:', err, { debugAgentId, debugBodyStr });
     // Trace del error también
@@ -127,6 +133,9 @@ export async function POST(req: NextRequest) {
         attempt:     1,
       });
     } catch { /* best effort */ }
-    return NextResponse.json({ result: `Error al registrar la incidencia: ${err?.message ?? 'error interno'}. Intenta capturar los datos de nuevo.` });
+    return toolResponse(
+      toolCallId ?? '',
+      `Error al registrar la incidencia: ${err?.message ?? 'error interno'}. Intenta capturar los datos de nuevo.`,
+    );
   }
 }

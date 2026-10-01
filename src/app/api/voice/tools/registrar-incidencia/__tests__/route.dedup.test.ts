@@ -103,6 +103,13 @@ describe('registrar_incidencia route — dedup wrap', () => {
     }));
 
     expect(mockRegistrarIncidencia).toHaveBeenCalledOnce();
-    expect(await r1.json()).toEqual(await r2.json());
+    // El executor solo corre 1 vez (dedup pega el 2do), pero cada response
+    // lleva su propio toolCallId (call_a vs call_b) — Vapi necesita match
+    // 1:1 entre tool_call y tool_result. Lo invariante es el result text.
+    const j1 = await r1.json();
+    const j2 = await r2.json();
+    expect(j1.results[0].result).toEqual(j2.results[0].result);
+    expect(j1.results[0].toolCallId).toBe('call_a');
+    expect(j2.results[0].toolCallId).toBe('call_b');
   });
 });
