@@ -4,18 +4,19 @@ import { requireVapiAuth } from '@/lib/vapi/auth';
 import { generateFolio } from '@/lib/civic/folio';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { dedupLookup, dedupStore } from '@/lib/tools/dedup/with-dedup';
+import { toolResponse } from '@/lib/voice/tool-response';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
   const agent_id = searchParams.get('agent_id');
-  if (!agent_id) return NextResponse.json({ result: 'Error de configuración.' });
 
   const body = await req.json();
   const call = (body.message?.toolCallList ?? body.toolCallList)?.[0];
   const args = call?.function?.arguments ?? body;
-  const toolCallId: string = call?.id ?? 'call_1';
+  const toolCallId: string = call?.id ?? '';
+  if (!agent_id) return toolResponse(toolCallId, 'Error de configuración.');
   const { categoria, descripcion, ubicacion, nombre_ciudadano, numero_ciudadano, tipo_tramite, area_responsable } = args;
 
   const supabase = createAdminClient();
@@ -35,7 +36,7 @@ export async function POST(req: NextRequest) {
     toolCallId,
   };
   const cached = await dedupLookup<{ result: string; attach_url: string; status_url: string; folio: string }>(dedupCtx);
-  if (cached) return NextResponse.json(cached);
+  if (cached) return toolResponse(toolCallId, cached.result);
 
   const folio = await generateFolio(agent_id, supabase);
 
@@ -76,5 +77,5 @@ export async function POST(req: NextRequest) {
     folio,
   };
   await dedupStore(dedupCtx, payload);
-  return NextResponse.json(payload);
+  return toolResponse(toolCallId, payload.result);
 }

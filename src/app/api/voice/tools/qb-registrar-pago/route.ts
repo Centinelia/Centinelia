@@ -4,27 +4,28 @@ import { requireVapiAuth } from '@/lib/vapi/auth';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
 import { getQBClient } from '@/lib/qb/client';
 import { dedupLookup, dedupStore } from '@/lib/tools/dedup/with-dedup';
+import { toolResponse } from '@/lib/voice/tool-response';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
   const agent_id = searchParams.get('agent_id');
-  if (!agent_id) return NextResponse.json({ result: 'Error: agent_id requerido.' });
 
   const body = await req.json();
   const call = (body.message?.toolCallList ?? body.toolCallList)?.[0];
   const args = call?.function?.arguments ?? body;
-  const toolCallId: string = call?.id ?? 'call_1';
+  const toolCallId: string = call?.id ?? '';
+  if (!agent_id) return toolResponse(toolCallId, 'Error: agent_id requerido.');
   const { cliente_nombre, factura_numero, monto } = args;
 
   if (!cliente_nombre || !monto) {
-    return NextResponse.json({ result: 'Necesito el nombre del cliente y el monto del pago para registrarlo.' });
+    return toolResponse(toolCallId, 'Necesito el nombre del cliente y el monto del pago para registrarlo.');
   }
 
   const montoNum = parseFloat(String(monto).replace(/[^0-9.]/g, ''));
   if (isNaN(montoNum) || montoNum <= 0) {
-    return NextResponse.json({ result: 'El monto debe ser un número mayor a cero.' });
+    return toolResponse(toolCallId, 'El monto debe ser un número mayor a cero.');
   }
 
   const supabase = createAdminClient();
@@ -34,7 +35,7 @@ export async function POST(req: NextRequest) {
     .eq('id', agent_id)
     .single();
 
-  if (!agent?.portal_email) return NextResponse.json({ result: 'Error: agente no encontrado.' });
+  if (!agent?.portal_email) return toolResponse(toolCallId, 'Error: agente no encontrado.');
 
   const dedupCtx = {
     agentId:     agent_id,
@@ -45,13 +46,13 @@ export async function POST(req: NextRequest) {
     toolCallId,
   };
   const cached = await dedupLookup<{ result: string; payment_id?: string }>(dedupCtx);
-  if (cached) return NextResponse.json(cached);
+  if (cached) return toolResponse(toolCallId, cached.result);
 
   const opsResult = await consumeAiOp(agent_id, 1, { source: 'tool_qb_registrar_pago', label: 'Pago registrado en QuickBooks' });
-  if (!opsResult.ok) return NextResponse.json({ result: 'Sin tareas disponibles para registrar el pago.' });
+  if (!opsResult.ok) return toolResponse(toolCallId, 'Sin tareas disponibles para registrar el pago.');
 
   const qb = await getQBClient(agent.portal_email, supabase);
-  if (!qb) return NextResponse.json({ result: 'QuickBooks no está conectado.' });
+  if (!qb) return toolResponse(toolCallId, 'QuickBooks no está conectado.');
 
   try {
     const safe = cliente_nombre.replace(/'/g, '');
@@ -60,7 +61,7 @@ export async function POST(req: NextRequest) {
     const custData = await qb.query(`SELECT Id, DisplayName FROM Customer WHERE DisplayName LIKE '%${safe}%' MAXRESULTS 1`);
     const customer = custData?.QueryResponse?.Customer?.[0];
     if (!customer) {
-      return NextResponse.json({ result: `No encontré al cliente "${cliente_nombre}" en QuickBooks.` });
+      return toolResponse(toolCallId, `No encontré al cliente "${cliente_nombre}" en QuickBooks.`);
     }
 
     // Find invoice to apply payment to
@@ -93,9 +94,9 @@ export async function POST(req: NextRequest) {
       payment_id: payment?.Id,
     };
     await dedupStore(dedupCtx, payload);
-    return NextResponse.json(payload);
+    return toolResponse(toolCallId, payload.result);
   } catch (err) {
     console.error('qb-registrar-pago', err);
-    return NextResponse.json({ result: 'No pude registrar el pago en QuickBooks. Verifica los datos e intenta de nuevo.' });
+    return toolResponse(toolCallId, 'No pude registrar el pago en QuickBooks. Verifica los datos e intenta de nuevo.');
   }
 }

@@ -4,18 +4,19 @@ import { requireVapiAuth } from '@/lib/vapi/auth';
 import { getCabildoTemplate, fillTemplate, getNextDocNumber } from '@/lib/civic/cabildo';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { dedupLookup, dedupStore } from '@/lib/tools/dedup/with-dedup';
+import { toolResponse } from '@/lib/voice/tool-response';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
   const agent_id = searchParams.get('agent_id');
-  if (!agent_id) return NextResponse.json({ result: 'Error de configuración.' });
 
   const body = await req.json();
   const call = (body.message?.toolCallList ?? body.toolCallList)?.[0];
   const args = call?.function?.arguments ?? body;
-  const toolCallId: string = call?.id ?? 'call_1';
+  const toolCallId: string = call?.id ?? '';
+  if (!agent_id) return toolResponse(toolCallId, 'Error de configuración.');
   const {
     proposicion,
     considerandos,
@@ -28,7 +29,7 @@ export async function POST(req: NextRequest) {
   } = args as Record<string, string>;
 
   if (!proposicion || !resolutivos) {
-    return NextResponse.json({ result: 'Se requiere la proposición y los resolutivos para generar el Punto de Acuerdo.' });
+    return toolResponse(toolCallId, 'Se requiere la proposición y los resolutivos para generar el Punto de Acuerdo.');
   }
 
   const supabase = createAdminClient();
@@ -45,7 +46,7 @@ export async function POST(req: NextRequest) {
     toolCallId,
   };
   const cached = await dedupLookup<{ result: string }>(dedupCtx);
-  if (cached) return NextResponse.json(cached);
+  if (cached) return toolResponse(toolCallId, cached.result);
 
   const template = await getCabildoTemplate(agent_id, supabase);
   const numero   = await getNextDocNumber(agent_id, 'punto_acuerdo', supabase);
@@ -88,5 +89,5 @@ export async function POST(req: NextRequest) {
     result: `Punto de Acuerdo generado con número ${numero}. Votación: ${votos_favor} a favor, ${votos_contra} en contra, ${abstenciones} abstenciones. Puede consultarlo y descargarlo en el portal de Cabildo.`,
   };
   await dedupStore(dedupCtx, payload);
-  return NextResponse.json(payload);
+  return toolResponse(toolCallId, payload.result);
 }

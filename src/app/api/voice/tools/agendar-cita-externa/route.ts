@@ -4,6 +4,7 @@ import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { requireVapiAuth } from '@/lib/vapi/auth';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
 import { dedupLookup, dedupStore } from '@/lib/tools/dedup/with-dedup';
+import { toolResponse } from '@/lib/voice/tool-response';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -13,11 +14,11 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const call = (body.message?.toolCallList ?? body.toolCallList)?.[0];
   const args = call?.function?.arguments ?? body;
-  const toolCallId: string = call?.id ?? 'call_1';
+  const toolCallId: string = call?.id ?? '';
   const { nombre, servicio, fecha, hora, email, whatsapp_cliente } = args;
 
   if (!agent_id || !nombre || !fecha || !hora) {
-    return NextResponse.json({ result: 'Faltan datos para agendar la cita. Pide nombre, fecha y hora al cliente.' });
+    return toolResponse(toolCallId, 'Faltan datos para agendar la cita. Pide nombre, fecha y hora al cliente.');
   }
 
   const supabase = createAdminClient();
@@ -28,7 +29,7 @@ export async function POST(req: NextRequest) {
     .eq('id', agent_id)
     .single();
 
-  if (!agent) return NextResponse.json({ result: 'Error interno al agendar la cita.' });
+  if (!agent) return toolResponse(toolCallId, 'Error interno al agendar la cita.');
 
   const dedupCtx = {
     agentId:     agent_id,
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
     toolCallId,
   };
   const cached = await dedupLookup<{ result: string }>(dedupCtx);
-  if (cached) return NextResponse.json(cached);
+  if (cached) return toolResponse(toolCallId, cached.result);
 
   const { data: org } = agent.portal_email
     ? await supabase
@@ -125,5 +126,5 @@ export async function POST(req: NextRequest) {
       : `Cita registrada: ${nombre}, ${servicio ?? 'sin servicio'}, ${fecha} a las ${hora}.`;
 
   await dedupStore(dedupCtx, { result });
-  return NextResponse.json({ result });
+  return toolResponse(toolCallId, result);
 }

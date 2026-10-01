@@ -2,18 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireVapiAuth } from '@/lib/vapi/auth';
 import { getQBClient } from '@/lib/qb/client';
+import { toolResponse } from '@/lib/voice/tool-response';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
   const agent_id = searchParams.get('agent_id');
-  if (!agent_id) return NextResponse.json({ result: 'Error: agent_id requerido.' });
 
   const body = await req.json();
-  const { nombre } = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
+  const call = (body.message?.toolCallList ?? body.toolCallList)?.[0];
+  const toolCallId: string = call?.id ?? '';
+  const { nombre } = call?.function?.arguments ?? body;
+  if (!agent_id) return toolResponse(toolCallId, 'Error: agent_id requerido.');
 
-  if (!nombre) return NextResponse.json({ result: 'Necesito el nombre del cliente para buscarlo en QuickBooks.' });
+  if (!nombre) return toolResponse(toolCallId, 'Necesito el nombre del cliente para buscarlo en QuickBooks.');
 
   const supabase = createAdminClient();
   const { data: agent } = await supabase
@@ -22,10 +25,10 @@ export async function POST(req: NextRequest) {
     .eq('id', agent_id)
     .single();
 
-  if (!agent?.portal_email) return NextResponse.json({ result: 'Error: agente no encontrado.' });
+  if (!agent?.portal_email) return toolResponse(toolCallId, 'Error: agente no encontrado.');
 
   const qb = await getQBClient(agent.portal_email, supabase);
-  if (!qb) return NextResponse.json({ result: 'QuickBooks no está conectado.' });
+  if (!qb) return toolResponse(toolCallId, 'QuickBooks no está conectado.');
 
   try {
     const safe = nombre.replace(/'/g, '');
@@ -38,7 +41,7 @@ export async function POST(req: NextRequest) {
     const invoices  = invRes?.QueryResponse?.Invoice  ?? [];
 
     if (customers.length === 0) {
-      return NextResponse.json({ result: `No encontré ningún cliente con el nombre "${nombre}" en QuickBooks.` });
+      return toolResponse(toolCallId, `No encontré ningún cliente con el nombre "${nombre}" en QuickBooks.`);
     }
 
     const fmt = (n: number) => n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
@@ -60,14 +63,9 @@ export async function POST(req: NextRequest) {
       parts.push('Sin facturas pendientes.');
     }
 
-    return NextResponse.json({
-      result:       parts.join(' '),
-      customer_id:  c.Id,
-      display_name: c.DisplayName,
-      balance:      c.Balance ?? 0,
-    });
+    return toolResponse(toolCallId, parts.join(' '));
   } catch (err) {
     console.error('qb-buscar-cliente', err);
-    return NextResponse.json({ result: 'No pude buscar el cliente en QuickBooks en este momento.' });
+    return toolResponse(toolCallId, 'No pude buscar el cliente en QuickBooks en este momento.');
   }
 }

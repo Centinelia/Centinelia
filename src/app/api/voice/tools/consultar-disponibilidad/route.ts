@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireVapiAuth } from '@/lib/vapi/auth';
+import { toolResponse } from '@/lib/voice/tool-response';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -8,11 +9,13 @@ export async function POST(req: NextRequest) {
   const agent_id = searchParams.get('agent_id');
 
   const body = await req.json();
-  const args = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
+  const call = (body.message?.toolCallList ?? body.toolCallList)?.[0];
+  const toolCallId: string = call?.id ?? '';
+  const args = call?.function?.arguments ?? body;
   const { fecha_inicio, fecha_fin } = args;
 
   if (!agent_id) {
-    return NextResponse.json({ result: 'Error de configuración.' });
+    return toolResponse(toolCallId, 'Error de configuración.');
   }
 
   const supabase = createAdminClient();
@@ -32,7 +35,7 @@ export async function POST(req: NextRequest) {
     : { data: null };
 
   if (!org?.calendar_api_key || !org?.calendar_event_type_id) {
-    return NextResponse.json({ result: 'El calendario no está configurado. Pregunta directamente al cliente qué fecha y hora prefiere.' });
+    return toolResponse(toolCallId, 'El calendario no está configurado. Pregunta directamente al cliente qué fecha y hora prefiere.');
   }
 
   // Build date range, default: today + 7 days
@@ -58,13 +61,13 @@ export async function POST(req: NextRequest) {
     const res = await fetch(`https://api.cal.com/v1/slots?${params}`);
     if (!res.ok) {
       console.error('[consultar-disponibilidad] Cal.com error:', await res.text());
-      return NextResponse.json({ result: 'No pude consultar la disponibilidad en este momento. Pregunta al cliente qué fecha y hora prefiere y yo verifico al agendar.' });
+      return toolResponse(toolCallId, 'No pude consultar la disponibilidad en este momento. Pregunta al cliente qué fecha y hora prefiere y yo verifico al agendar.');
     }
     const data = await res.json();
     slots = data.slots ?? {};
   } catch (e) {
     console.error('[consultar-disponibilidad] exception:', e);
-    return NextResponse.json({ result: 'No pude consultar la disponibilidad en este momento. Pregunta al cliente qué fecha y hora prefiere y yo verifico al agendar.' });
+    return toolResponse(toolCallId, 'No pude consultar la disponibilidad en este momento. Pregunta al cliente qué fecha y hora prefiere y yo verifico al agendar.');
   }
 
   // Format slots into readable Spanish text
@@ -73,7 +76,7 @@ export async function POST(req: NextRequest) {
     .slice(0, 5); // max 5 days to keep response concise
 
   if (days.length === 0) {
-    return NextResponse.json({ result: 'No hay horarios disponibles en los próximos 7 días. Informa al cliente y sugiere que contacte directamente al negocio.' });
+    return toolResponse(toolCallId, 'No hay horarios disponibles en los próximos 7 días. Informa al cliente y sugiere que contacte directamente al negocio.');
   }
 
   const DIAS: Record<number, string> = { 0: 'domingo', 1: 'lunes', 2: 'martes', 3: 'miércoles', 4: 'jueves', 5: 'viernes', 6: 'sábado' };
@@ -100,5 +103,5 @@ export async function POST(req: NextRequest) {
 
   lines.push('\nPresenta estas opciones al cliente y una vez que elija confirma con agendar_cita_externa.');
 
-  return NextResponse.json({ result: lines.join('\n') });
+  return toolResponse(toolCallId, lines.join('\n'));
 }

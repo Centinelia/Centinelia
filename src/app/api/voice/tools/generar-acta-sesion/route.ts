@@ -4,18 +4,19 @@ import { requireVapiAuth } from '@/lib/vapi/auth';
 import { getCabildoTemplate, fillTemplate, getNextDocNumber } from '@/lib/civic/cabildo';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { dedupLookup, dedupStore } from '@/lib/tools/dedup/with-dedup';
+import { toolResponse } from '@/lib/voice/tool-response';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
   const agent_id = searchParams.get('agent_id');
-  if (!agent_id) return NextResponse.json({ result: 'Error de configuración.' });
 
   const body = await req.json();
   const call = (body.message?.toolCallList ?? body.toolCallList)?.[0];
   const args = call?.function?.arguments ?? body;
-  const toolCallId: string = call?.id ?? 'call_1';
+  const toolCallId: string = call?.id ?? '';
+  if (!agent_id) return toolResponse(toolCallId, 'Error de configuración.');
   const {
     numero_sesion = '',
     tipo_sesion   = 'Ordinaria',
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
     toolCallId,
   };
   const cached = await dedupLookup<{ result: string }>(dedupCtx);
-  if (cached) return NextResponse.json(cached);
+  if (cached) return toolResponse(toolCallId, cached.result);
 
   const template = await getCabildoTemplate(agent_id, supabase);
   const numero   = await getNextDocNumber(agent_id, 'acta_sesion', supabase);
@@ -80,5 +81,5 @@ export async function POST(req: NextRequest) {
     result: `Acta de Sesión generada con número ${numero}. El borrador ha sido guardado en el portal de Cabildo y puede ser editado y completado por el equipo.`,
   };
   await dedupStore(dedupCtx, payload);
-  return NextResponse.json(payload);
+  return toolResponse(toolCallId, payload.result);
 }
