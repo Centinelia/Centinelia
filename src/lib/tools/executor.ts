@@ -5935,7 +5935,58 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
     }
 
     if (toolName === 'inv_importar_backlog') {
-      return { ok: false, error: 'not_implemented', pending_flow_doc: true, blocked_by: 'Formato del correo BACKLOG de TRANE — pregunta pendiente a AC' };
+      const a = toolInput as { pdf_url: string; dry_run?: boolean };
+      if (!a.pdf_url || typeof a.pdf_url !== 'string') {
+        return { ok: false, error: 'pdf_url es requerido (URL del PDF BACKLOG adjunto al correo TRANE)', code: 'invalid_input' };
+      }
+      const dryRun = a.dry_run !== false;  // default true
+
+      const { resolveInventoryContext } = await import('@/lib/inventory/adapter');
+      const ctx = await resolveInventoryContext(portalEmail, supabase, agentId);
+      if ('error' in ctx) {
+        await refundOps(agentId, 1, { source: 'tool_execution', label: `Refund inv_importar_backlog: ${ctx.error}` });
+        return { ok: false, error: ctx.message, code: ctx.error };
+      }
+
+      const config = ctx.config as { backlog_trane?: { pdf_password?: string }; sheets?: { backlog?: { name: string; start_row: number } } };
+      const password = config.backlog_trane?.pdf_password;
+      const sheetCfg = config.sheets?.backlog;
+      if (!password) {
+        await refundOps(agentId, 1, { source: 'tool_execution', label: 'Refund inv_importar_backlog: no password en config' });
+        return { ok: false, error: 'Falta inventory_excel_config.backlog_trane.pdf_password en la organización.', code: 'invalid_input' };
+      }
+      if (!sheetCfg?.name) {
+        await refundOps(agentId, 1, { source: 'tool_execution', label: 'Refund inv_importar_backlog: no sheet config' });
+        return { ok: false, error: 'Falta inventory_excel_config.sheets.backlog en la organización.', code: 'invalid_input' };
+      }
+
+      let pdfBytes: Uint8Array;
+      try {
+        const resp = await fetch(a.pdf_url);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        pdfBytes = new Uint8Array(await resp.arrayBuffer());
+      } catch (err) {
+        await refundOps(agentId, 1, { source: 'tool_execution', label: 'Refund inv_importar_backlog: fetch PDF' });
+        return { ok: false, error: `No pude descargar el PDF: ${err instanceof Error ? err.message : 'unknown'}`, code: 'pdf_fetch_failed' };
+      }
+
+      const { parseBacklogPdf, BacklogParseError } = await import('@/lib/inventory/backlog-parser');
+      let parsed;
+      try {
+        parsed = await parseBacklogPdf(pdfBytes, password);
+      } catch (err) {
+        await refundOps(agentId, 1, { source: 'tool_execution', label: 'Refund inv_importar_backlog: parse' });
+        const code = err instanceof BacklogParseError ? err.code : 'parse_failed';
+        return { ok: false, error: err instanceof Error ? err.message : 'Fallo parseo', code };
+      }
+
+      const { syncBacklogRows } = await import('@/lib/inventory/backlog-syncer');
+      const summary = await syncBacklogRows(ctx, sheetCfg, parsed.rows, { dryRun });
+
+      const action = dryRun ? 'PREVISTO' : 'APLICADO';
+      const message = `BACKLOG TRANE ${action}: ${summary.total_parsed} filas parseadas. ${summary.added} nuevas, ${summary.updated} actualizadas, ${summary.unchanged} sin cambios. ${summary.errors.length ? `${summary.errors.length} errores de escritura.` : ''}${dryRun ? ' Pide a Camila confirmación antes de aplicar (vuelve a invocar con dry_run=false).' : ''}`;
+
+      return { ok: true, dry_run: dryRun, summary, message };
     }
 
     return { ok: false, error: `Tool inv_ desconocida: ${toolName}` };

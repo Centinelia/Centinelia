@@ -1477,8 +1477,15 @@ const INV_TRANSFERIR_BODEGA_TOOL: Anthropic.Tool = {
 };
 const INV_IMPORTAR_BACKLOG_TOOL: Anthropic.Tool = {
   name: 'inv_importar_backlog',
-  description: 'Nami: sincroniza el BACKLOG de TRANE desde el correo periódico. BLOQUEADA hasta ver formato del correo real de Isabel.',
-  input_schema: { type: 'object' as const, properties: {} },
+  description: 'Nami: parsea un PDF de BACKLOG que llega de TRANE (no-reply@tranetechnologies.com) y lo upsertea a la hoja BACKLOG del Excel. Idempotente por (OC_AC, LINE_NUMBER). Por default corre dry_run=true y reporta "voy a agregar N, actualizar M, dejar K iguales" — Camila confirma y volvemos a invocar con dry_run=false. Password del PDF vive en la config de la organización.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      pdf_url: { type: 'string', description: 'URL del PDF BACKLOG adjunto al correo TRANE. En el flow de inbox-processor viene de attachments[].url.' },
+      dry_run: { type: 'boolean', description: 'Si true (default), no escribe al Excel y solo devuelve el summary de qué haría. Pasar false para aplicar los cambios reales.' },
+    },
+    required: ['pdf_url'],
+  },
 };
 const INV_NORMALIZAR_BODEGAS_TOOL: Anthropic.Tool = {
   name: 'inv_normalizar_bodegas',

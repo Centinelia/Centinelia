@@ -628,6 +628,21 @@ export const TOOL_SCHEMAS: Record<string, ToolSchema> = {
     voiceServerPath: 'inv-registrar-salida',
   },
 
+  inv_importar_backlog: {
+    name: 'inv_importar_backlog',
+    description: 'Nami: parsea un PDF de BACKLOG que llega de TRANE (no-reply@tranetechnologies.com) y lo upsertea a la hoja BACKLOG del Excel. Idempotente por (OC_AC, LINE_NUMBER). Por default corre dry_run=true y reporta "voy a agregar N, actualizar M, dejar K iguales" — Camila confirma y volvemos a invocar con dry_run=false. Password del PDF vive en la config de la organización.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        pdf_url: { type: 'string', description: 'URL del PDF BACKLOG adjunto al correo TRANE. En el flow de inbox-processor viene de attachments[].url.' },
+        dry_run: { type: 'boolean', description: 'Si true (default), no escribe al Excel y solo devuelve el summary de qué haría. Pasar false para aplicar los cambios reales.' },
+      },
+      required: ['pdf_url'],
+    },
+    channels: ['chat', 'email'],
+    voiceServerPath: 'inv-importar-backlog',
+  },
+
 };
 
 // ─── Adapter functions ────────────────────────────────────────────────────────
