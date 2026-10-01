@@ -21,6 +21,7 @@ const {
   mockRegistrarRep,
   mockList,
   mockSingle,
+  mockUpdateParent,
 } = vi.hoisted(() => ({
   mockIsAdmin:       vi.fn(),
   mockRegistrar:     vi.fn(),
@@ -29,6 +30,7 @@ const {
   mockRegistrarRep:  vi.fn(),
   mockList:          vi.fn(),
   mockSingle:        vi.fn(),
+  mockUpdateParent:  vi.fn(),
 }));
 
 vi.mock('@/lib/admin/auth', () => ({
@@ -57,6 +59,14 @@ vi.mock('@/lib/supabase/admin', () => ({
           single: vi.fn().mockImplementation(() => mockSingle()),
         }),
       }),
+      update: vi.fn().mockImplementation((patch: Record<string, unknown>) => ({
+        eq: vi.fn().mockImplementation((col: string, val: string) => ({
+          is: vi.fn().mockImplementation((isCol: string, isVal: string | null) => {
+            mockUpdateParent({ patch, col, val, isCol, isVal });
+            return Promise.resolve({ error: null });
+          }),
+        })),
+      })),
     }),
   }),
 }));
@@ -241,5 +251,29 @@ describe('POST /rep — subir REP contra factura padre', () => {
     expect(arg.ingresoUuid).toBe('A1FC4F3A-F870-4F14-B6C6-958687605B4D');
     expect(arg.clienteId).toBe('cli-1');
     expect(mockUpload).toHaveBeenCalled();
+  });
+
+  it('marca rep_reminder_sent_at del padre tras subir REP (regresion falso-positivo 2026-10-01)', async () => {
+    mockSingle.mockResolvedValueOnce({
+      data: { id: 'b-1', cfdi_uuid: 'A1FC4F3A-F870-4F14-B6C6-958687605B4D', tipo: 'cfdi_emitido' },
+      error: null,
+    });
+    mockRegistrarRep.mockResolvedValueOnce({
+      ok: true,
+      factura: { id: 'row-rep', cliente_id: 'cli-1', cfdi_uuid: 'REP-UUID-TEST-0000', related_uuid: 'A1FC4F3A-F870-4F14-B6C6-958687605B4D', metodo_pago_cfdi: null },
+    });
+    mockUpload.mockResolvedValueOnce({
+      ok: true, xmlPath: 'cli-1/facturas/rep-uuid-test-0000/rep.xml', pdfPath: 'cli-1/facturas/rep-uuid-test-0000/rep.pdf',
+    });
+
+    await POST_rep(makeFormRequest({ xml: repXmlFile(), pdf: pdfFile() }, 'facturas/b-1/rep'), { params: Promise.resolve({ id: 'cli-1', billingId: 'b-1' }) });
+
+    expect(mockUpdateParent).toHaveBeenCalledTimes(1);
+    const call = mockUpdateParent.mock.calls[0][0] as { patch: { rep_reminder_sent_at: string }; col: string; val: string; isCol: string; isVal: string | null };
+    expect(call.patch.rep_reminder_sent_at).toBeDefined();
+    expect(call.col).toBe('id');
+    expect(call.val).toBe('b-1');
+    expect(call.isCol).toBe('rep_reminder_sent_at');
+    expect(call.isVal).toBeNull();
   });
 });

@@ -9,9 +9,10 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { mockSendViaTitan, mockSelect, mockUpdate } = vi.hoisted(() => ({
+const { mockSendViaTitan, mockPendientes, mockRepsEmitidos, mockUpdate } = vi.hoisted(() => ({
   mockSendViaTitan: vi.fn(),
-  mockSelect:       vi.fn(),
+  mockPendientes:   vi.fn(),
+  mockRepsEmitidos: vi.fn(),
   mockUpdate:       vi.fn(),
 }));
 
@@ -21,18 +22,32 @@ vi.mock('@/lib/email/titan-smtp', () => ({
 
 vi.mock('@/lib/supabase/admin', () => ({
   createAdminClient: () => ({
-    from: () => ({
-      select: () => ({
-        eq: () => ({
-          not: () => ({
-            is:  () => ({
-              lte: () => mockSelect(),
+    from: (_table: string) => ({
+      // dos variantes de select segun si viene lte (padres) o in (reps emitidos)
+      select: (_cols: string) => ({
+        eq: (_col: string, val: string) => {
+          if (val === 'rep_emitido') {
+            return { in: (_c: string, _vs: string[]) => mockRepsEmitidos() };
+          }
+          return {
+            not: () => ({
+              is:  () => ({
+                lte: () => mockPendientes(),
+              }),
             }),
-          }),
-        }),
+          };
+        },
       }),
       update: (patch: Record<string, unknown>) => ({
-        eq: (col: string, val: string) => mockUpdate({ patch, col, val }),
+        eq: (col: string, val: string) => {
+          const chain = { patch, col, val };
+          const resolveNow = () => mockUpdate(chain);
+          const thenable = {
+            then: (onFulfilled: (v: unknown) => unknown) => Promise.resolve(resolveNow()).then(onFulfilled),
+            is:  (_c: string, _v: string | null) => Promise.resolve(resolveNow()),
+          };
+          return thenable;
+        },
       }),
     }),
   }),
@@ -43,7 +58,8 @@ import { runRepReminders } from '../neka-rep-reminders';
 beforeEach(() => {
   vi.clearAllMocks();
   mockSendViaTitan.mockResolvedValue({ ok: true, savedToSent: false });
-  mockUpdate.mockResolvedValue({ error: null });
+  mockUpdate.mockReturnValue({ error: null });
+  mockRepsEmitidos.mockResolvedValue({ data: [], error: null });
   delete process.env.NEKA_NOTIFY_TO;
   delete process.env.NAZRE_ADMIN_EMAIL;
 });
@@ -75,7 +91,7 @@ function fakeRow(overrides: Partial<FacturaRow> = {}): FacturaRow {
 
 describe('runRepReminders — skip', () => {
   it('no manda correos si no hay reminders due', async () => {
-    mockSelect.mockResolvedValueOnce({ data: [], error: null });
+    mockPendientes.mockResolvedValueOnce({ data: [], error: null });
     const result = await runRepReminders({ testMode: true });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -87,7 +103,7 @@ describe('runRepReminders — skip', () => {
 
 describe('runRepReminders — happy path', () => {
   it('manda 1 correo por factura y marca rep_reminder_sent_at', async () => {
-    mockSelect.mockResolvedValueOnce({ data: [fakeRow(), fakeRow({ id: 'row-2', cfdi_uuid: 'B2FC' })], error: null });
+    mockPendientes.mockResolvedValueOnce({ data: [fakeRow(), fakeRow({ id: 'row-2', cfdi_uuid: 'B2FC' })], error: null });
 
     const result = await runRepReminders({ testMode: true });
     expect(result.ok).toBe(true);
@@ -104,7 +120,7 @@ describe('runRepReminders — happy path', () => {
 
   it('el correo incluye UUID del ingreso padre + monto + link', async () => {
     process.env.NEXT_PUBLIC_APP_URL = 'https://www.centinelia.mx';
-    mockSelect.mockResolvedValueOnce({ data: [fakeRow()], error: null });
+    mockPendientes.mockResolvedValueOnce({ data: [fakeRow()], error: null });
 
     await runRepReminders({ testMode: false });
     const arg = mockSendViaTitan.mock.calls[0][0] as { subject: string; html: string };
@@ -116,9 +132,59 @@ describe('runRepReminders — happy path', () => {
   });
 });
 
+describe('runRepReminders — skip si ya hay REP emitido (regresion falso-positivo 2026-10-01)', () => {
+  it('NO manda correo cuando ya existe rep_emitido con related_uuid = cfdi_uuid del padre', async () => {
+    const row = fakeRow();
+    mockPendientes.mockResolvedValueOnce({ data: [row], error: null });
+    mockRepsEmitidos.mockResolvedValueOnce({
+      data: [{ related_uuid: row.cfdi_uuid }],
+      error: null,
+    });
+
+    const result = await runRepReminders({ testMode: true });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.enviados).toBe(0);
+    expect(mockSendViaTitan).not.toHaveBeenCalled();
+  });
+
+  it('marca rep_reminder_sent_at silenciosamente al detectar REP ya emitido', async () => {
+    const row = fakeRow();
+    mockPendientes.mockResolvedValueOnce({ data: [row], error: null });
+    mockRepsEmitidos.mockResolvedValueOnce({
+      data: [{ related_uuid: row.cfdi_uuid }],
+      error: null,
+    });
+
+    await runRepReminders({ testMode: true });
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
+    const call = mockUpdate.mock.calls[0][0] as { patch: { rep_reminder_sent_at: string }; col: string; val: string };
+    expect(call.patch.rep_reminder_sent_at).toBeDefined();
+    expect(call.val).toBe('row-1');
+  });
+
+  it('mezcla: 2 padres pendientes, uno ya tiene REP — solo manda correo al que no', async () => {
+    const row1 = fakeRow({ id: 'con-rep', cfdi_uuid: 'AAAA-1' });
+    const row2 = fakeRow({ id: 'sin-rep', cfdi_uuid: 'BBBB-2' });
+    mockPendientes.mockResolvedValueOnce({ data: [row1, row2], error: null });
+    mockRepsEmitidos.mockResolvedValueOnce({
+      data: [{ related_uuid: 'AAAA-1' }],
+      error: null,
+    });
+
+    const result = await runRepReminders({ testMode: true });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.enviados).toBe(1);
+    expect(mockSendViaTitan).toHaveBeenCalledTimes(1);
+    // mockUpdate llamado 2 veces: 1 silent-skip + 1 marca-tras-correo
+    expect(mockUpdate).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe('runRepReminders — error path', () => {
   it('NO marca rep_reminder_sent_at si sendViaTitan falla (permite retry)', async () => {
-    mockSelect.mockResolvedValueOnce({ data: [fakeRow()], error: null });
+    mockPendientes.mockResolvedValueOnce({ data: [fakeRow()], error: null });
     mockSendViaTitan.mockResolvedValueOnce({ ok: false, savedToSent: false, error: 'SMTP timeout' });
 
     const result = await runRepReminders({ testMode: true });

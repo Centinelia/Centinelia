@@ -97,5 +97,13 @@ export async function POST(
     return NextResponse.json({ error: uploadResult.message, code: uploadResult.code }, { status: 500 });
   }
 
+  // Marcar el padre como notificado para que el cron de REP reminders no mande
+  // un recordatorio falso-positivo cuando llegue rep_reminder_at.
+  await supabase
+    .from('centinelia_billing')
+    .update({ rep_reminder_sent_at: new Date().toISOString() })
+    .eq('id', billingId)
+    .is('rep_reminder_sent_at', null);
+
   return NextResponse.json({ factura: registrarResult.factura, xmlPath: uploadResult.xmlPath, pdfPath: uploadResult.pdfPath });
 }

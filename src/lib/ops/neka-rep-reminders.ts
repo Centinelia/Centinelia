@@ -10,10 +10,10 @@
  *   - paid_at IS NOT NULL
  *   - rep_reminder_at <= NOW()
  *   - rep_reminder_sent_at IS NULL
- *
- * (Un futuro paso: skip si ya existe un rep_emitido para ese cfdi_uuid. Para
- * hoy, el rep_reminder_sent_at es suficiente: al subir el REP en el admin la
- * UI puede tambien marcar sent_at, o Nazre lo cierra manual.)
+ *   - NO existe ya un rep_emitido con related_uuid = cfdi_uuid del padre
+ *     (defense in depth: el endpoint POST /rep tambien marca sent_at al subir,
+ *     pero si por alguna razon no se marco, aqui lo detectamos y marcamos
+ *     silenciosamente sin mandar correo).
  */
 import { sendViaTitan } from '@/lib/email/titan-smtp';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -63,8 +63,35 @@ export async function runRepReminders(opts: RepRemindersOpts): Promise<RepRemind
     return { ok: false, error: error.message };
   }
 
-  const rows = ((data ?? []) as unknown as RepPendienteRow[])
+  const candidatos = ((data ?? []) as unknown as RepPendienteRow[])
     .filter(r => r.cliente != null && r.cfdi_uuid);
+
+  // Skip padres que ya tienen un rep_emitido apuntando a ellos.
+  // Marcamos sent_at silenciosamente para que no vuelvan a aparecer.
+  const uuids = candidatos.map(r => r.cfdi_uuid!);
+  const yaConRep = new Set<string>();
+  if (uuids.length > 0) {
+    const { data: reps } = await supabase
+      .from('centinelia_billing')
+      .select('related_uuid')
+      .eq('tipo', 'rep_emitido')
+      .in('related_uuid', uuids);
+    for (const r of (reps ?? []) as { related_uuid: string | null }[]) {
+      if (r.related_uuid) yaConRep.add(r.related_uuid);
+    }
+  }
+
+  const rows: RepPendienteRow[] = [];
+  for (const c of candidatos) {
+    if (yaConRep.has(c.cfdi_uuid!)) {
+      await supabase
+        .from('centinelia_billing')
+        .update({ rep_reminder_sent_at: new Date().toISOString() })
+        .eq('id', c.id);
+      continue;
+    }
+    rows.push(c);
+  }
 
   let enviados = 0;
   let errores  = 0;
