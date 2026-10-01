@@ -169,4 +169,11 @@ describe('patchEstatusBySerie', () => {
       expect(r.after_state).toMatchObject({ ESTATUS: 'SEPARADO' });
     }
   });
+
+  it('throw si config.columns_historico.estatus no existe en headersMap (guard)', async () => {
+    const { patchEstatusBySerie } = await import('../adapter');
+    await mockHeaders([['A1','4TXK','2619HA012345','ALMACEN']]);
+    const badCtx = { ...CTX, config: { ...CTX.config, columns_historico: { ...CTX.config.columns_historico, estatus: 'INEXISTENTE' } } };
+    await expect(patchEstatusBySerie(badCtx, '2619HA012345', 'SEPARADO')).rejects.toThrow(/no encontrada en headersMap/);
+  });
 });

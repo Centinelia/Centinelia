@@ -395,6 +395,9 @@ export async function patchEstatusBySerie(
 
   const estatusColName = ctx.config.columns_historico.estatus;
   const estatusIdx = hit.headersMap[estatusColName.toUpperCase()];
+  if (estatusIdx === undefined) {
+    throw new Error(`Columna de estatus '${estatusColName}' no encontrada en headersMap. Revisa inventory_excel_config.columns_historico.`);
+  }
   const estatus_anterior = String(hit.row[estatusIdx] ?? '').toUpperCase();
   const estatus_nuevo = nuevo_estatus.trim().toUpperCase();
 
