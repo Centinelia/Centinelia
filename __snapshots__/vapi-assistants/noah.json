@@ -2,7 +2,7 @@
   "name": "Noah, Pneuma Studio",
   "model": {
     "provider": "anthropic",
-    "model": "claude-sonnet-4-6",
+    "model": "claude-sonnet-5-5",
     "messages": [
       {
         "role": "system",

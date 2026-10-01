@@ -287,7 +287,7 @@ async function evaluateGoal(
   // matiz — "¿realmente cumplió, o solo dijo que sí?" — y Haiku falla en
   // casos borderline. Cost delta absoluto muy pequeño, calidad muy notable.
   const __t = Date.now();
-  const __m = 'claude-sonnet-4-6';
+  const __m = 'claude-sonnet-5-5';
   let evalMsg;
   try {
     evalMsg = await client.messages.create({
@@ -762,7 +762,7 @@ export async function POST(req: NextRequest) {
       if (Date.now() - loopStart > TIME_BUDGET_MS) break;
 
       const __dtT = Date.now();
-      const __dtM = 'claude-sonnet-4-6';
+      const __dtM = 'claude-sonnet-5-5';
       let response;
       try {
         response = await client.messages.create({

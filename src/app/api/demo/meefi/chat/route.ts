@@ -222,7 +222,7 @@ export async function POST(req: NextRequest) {
         | { type: 'text'; text: string }
         | { type: 'tool_use'; id: string; name: string; input: Record<string, unknown> };
 
-      const __model  = 'claude-sonnet-4-6';
+      const __model  = 'claude-sonnet-5-5';
       const runStart = Date.now();
       let   llmCalls = 0;
 

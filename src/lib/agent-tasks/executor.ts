@@ -198,7 +198,7 @@ export async function executeTask(input: {
   // 6. Invocar Claude Sonnet con logLlmCall
   // En v1 el LLM solo narra el plan (no ejecuta tools). NO cobrar task_action ops.
   const __llmStart = Date.now();
-  const __llmModel = 'claude-sonnet-4-6';
+  const __llmModel = 'claude-sonnet-5-5';
   let response: Anthropic.Message | null = null;
   let llmError: string | undefined;
 

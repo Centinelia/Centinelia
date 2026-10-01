@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { logLlmCall } from '@/lib/observability/llm-log';
 
-const MODEL = 'claude-sonnet-4-6' as const;
+const MODEL = 'claude-sonnet-5-5' as const;
 
 export interface ContentContext {
   agentName:    string;

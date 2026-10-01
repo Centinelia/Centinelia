@@ -24,7 +24,7 @@ import { logLlmCall } from '@/lib/observability/llm-log';
 const DRY_RUN = process.argv.includes('--dry-run');
 const TEST_ONLY_PORTAL_EMAIL = process.env.TEST_ONLY_PORTAL_EMAIL ?? null;
 const MIGRATION_SOURCE = 'migration_2026-09-25';
-const SONNET_MODEL = 'claude-sonnet-4-6-20251001';
+const SONNET_MODEL = 'claude-sonnet-5-5';
 
 // ─── Supabase / Anthropic setup ──────────────────────────────────────────────
 

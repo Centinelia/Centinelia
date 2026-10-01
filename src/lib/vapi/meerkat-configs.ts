@@ -48,7 +48,7 @@ const NIA_CONFIGS: MeerkatConfigVersions = {
   // Haiku antes de saltar a Sonnet en v2, documentado ahi). maxTokens subido a 400 se
   // mantiene, temperature igual. Costo +: Sonnet ~5x Haiku por token, pero prompt cache
   // Anthropic recupera ~90% en turnos posteriores del mismo call. Solo cambia model.
-  5: { provider: 'anthropic', model: 'claude-sonnet-4-6',           temperature: 0.36, maxTokens: 400, speed: 0.98, minChars: 25, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-3' },
+  5: { provider: 'anthropic', model: 'claude-sonnet-5-5',           temperature: 0.36, maxTokens: 400, speed: 0.98, minChars: 25, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-3' },
   // v6 2026-09-28: Sonnet 4.6 -> Sonnet 5.5 (staged, no activa hasta canario).
   // Precio baja ~33% ($2/M input vs $3/M en 4.6). Calidad esperada mejor por
   // Anthropic. Todo lo demas identico a v5 para aislar el cambio a modelo.
@@ -84,7 +84,7 @@ const NICO_CONFIGS: MeerkatConfigVersions = {
   // desatiende instrucciones en prompts largos. Sonnet + custom-llm baja costo real a ~$0.05/min
   // con prompt caching. maxTokens 110 → 200 para respuestas cobranza-completas. Requiere que el
   // agente tenga features.use_custom_llm=true. Voz/STT conservados (Turbo + nova-3).
-  2: { provider: 'anthropic', model: 'claude-sonnet-4-6',           temperature: 0.35, maxTokens: 200, speed: 0.98, minChars: 28, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3' },
+  2: { provider: 'anthropic', model: 'claude-sonnet-5-5',           temperature: 0.35, maxTokens: 200, speed: 0.98, minChars: 28, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3' },
   // v3 2026-09-28: staged Sonnet 5.5 (custom-llm rollout global).
   3: { provider: 'anthropic', model: 'claude-sonnet-5-5',           temperature: 0.35, maxTokens: 200, speed: 0.98, minChars: 28, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3' },
 };
@@ -99,13 +99,13 @@ const NELIA_CONFIGS: MeerkatConfigVersions = {
   // STT nova-2 (no nova-3): mejor español para nombres propios. Test 2026-08-29:
   // nova-3 confundió Charro→Carro, Meche→Mertxe, Fondita→Condita. nova-2 tiene
   // +latencia pero mejor accuracy en dialectos MX + nombres.
-  2: { provider: 'anthropic', model: 'claude-sonnet-4-6',       temperature: 0.40, maxTokens: 200, speed: 0.98, minChars: 28, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-2' },
+  2: { provider: 'anthropic', model: 'claude-sonnet-5-5',       temperature: 0.40, maxTokens: 200, speed: 0.98, minChars: 28, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-2' },
   // v3 2026-09-24: Turbo -> Flash v2.5 para bajar consumo de creditos ElevenLabs.
   // Baseline previo: Nelia Tortilleria consumia 33% del volumen (33.5 min/7d), segundo
   // consumidor solo despues de Nia Municipio. Flash v2.5 ~50% mas barato que Turbo, ya
   // battle-tested en 6 meerkats. Sonnet 4.6 + nova-2 se conservan (razones documentadas
   // en v2). Solo cambia voiceModel.
-  3: { provider: 'anthropic', model: 'claude-sonnet-4-6',       temperature: 0.40, maxTokens: 200, speed: 0.98, minChars: 28, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
+  3: { provider: 'anthropic', model: 'claude-sonnet-5-5',       temperature: 0.40, maxTokens: 200, speed: 0.98, minChars: 28, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
   // v4 2026-09-28: staged Sonnet 5.5 (canario del rollout global). Nelia
   // Tortilleria sera el primer meerkat en activarse tras 24h de validacion.
   4: { provider: 'anthropic', model: 'claude-sonnet-5-5',       temperature: 0.40, maxTokens: 200, speed: 0.98, minChars: 28, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
@@ -117,7 +117,7 @@ const NARA_CONFIGS: MeerkatConfigVersions = {
   // Trámites municipales requieren consultar fichas informativas densas + directorio + no
   // alucinar servicios que no maneja la dependencia. Sonnet no confunde competencias. Requiere
   // features.use_custom_llm=true. Voz/STT conservados (Flash + nova-2 para español).
-  2: { provider: 'anthropic', model: 'claude-sonnet-4-6',           temperature: 0.30, maxTokens: 200, speed: 1.02, minChars: 28, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
+  2: { provider: 'anthropic', model: 'claude-sonnet-5-5',           temperature: 0.30, maxTokens: 200, speed: 1.02, minChars: 28, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
   // v3 2026-09-28: staged Sonnet 5.5 (custom-llm rollout global).
   3: { provider: 'anthropic', model: 'claude-sonnet-5-5',           temperature: 0.30, maxTokens: 200, speed: 1.02, minChars: 28, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
 };
@@ -127,7 +127,7 @@ const NAIA_CONFIGS: MeerkatConfigVersions = {
   // v2 2026-09-27: Haiku → Sonnet 4.6 como política global (feedback custom_llm_default_meerkats).
   // RRHH pasa por directorios, políticas de vacaciones/permisos, y expedientes densos. Sonnet
   // sigue mejor las reglas de captura estructurada. Requiere features.use_custom_llm=true.
-  2: { provider: 'anthropic', model: 'claude-sonnet-4-6',           temperature: 0.35, maxTokens: 200, speed: 1.02, minChars: 28, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
+  2: { provider: 'anthropic', model: 'claude-sonnet-5-5',           temperature: 0.35, maxTokens: 200, speed: 1.02, minChars: 28, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
   // v3 2026-09-28: staged Sonnet 5.5 (custom-llm rollout global).
   3: { provider: 'anthropic', model: 'claude-sonnet-5-5',           temperature: 0.35, maxTokens: 200, speed: 1.02, minChars: 28, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
 };
@@ -137,7 +137,7 @@ const NEO_CONFIGS: MeerkatConfigVersions = {
   // v2 2026-09-27: Haiku → Sonnet 4.6 como política global (feedback custom_llm_default_meerkats).
   // Helpdesk IT requiere diagnóstico paso-a-paso y escalar responsable correcto. Sonnet enruta
   // mejor por el directorio de guardias. Requiere features.use_custom_llm=true.
-  2: { provider: 'anthropic', model: 'claude-sonnet-4-6',           temperature: 0.20, maxTokens: 200, speed: 1.05, minChars: 25, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
+  2: { provider: 'anthropic', model: 'claude-sonnet-5-5',           temperature: 0.20, maxTokens: 200, speed: 1.05, minChars: 25, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
   // v3 2026-09-28: staged Sonnet 5.5 (custom-llm rollout global).
   3: { provider: 'anthropic', model: 'claude-sonnet-5-5',           temperature: 0.20, maxTokens: 200, speed: 1.05, minChars: 25, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
 };
@@ -149,19 +149,19 @@ const NOVA_CONFIGS: MeerkatConfigVersions = {
   // urgencias. Sonnet mantiene contexto de múltiples unidades en la misma llamada. Requiere
   // features.use_custom_llm=true. Temperature 0.70 conservada por creatividad para negociar
   // ventanas de servicio.
-  2: { provider: 'anthropic', model: 'claude-sonnet-4-6',           temperature: 0.70, maxTokens: 200, speed: 1.05, minChars: 25, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
+  2: { provider: 'anthropic', model: 'claude-sonnet-5-5',           temperature: 0.70, maxTokens: 200, speed: 1.05, minChars: 25, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
   // v3 2026-09-28: staged Sonnet 5.5 (custom-llm rollout global).
   3: { provider: 'anthropic', model: 'claude-sonnet-5-5',           temperature: 0.70, maxTokens: 200, speed: 1.05, minChars: 25, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
 };
 
 const NOX_CONFIGS: MeerkatConfigVersions = {
-  1: { provider: 'anthropic', model: 'claude-sonnet-4-6', temperature: 0.15, maxTokens: 80, speed: 1.05, minChars: 25, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
+  1: { provider: 'anthropic', model: 'claude-sonnet-5-5', temperature: 0.15, maxTokens: 80, speed: 1.05, minChars: 25, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
   // v2 2026-09-28: staged Sonnet 5.5 (custom-llm rollout global).
   2: { provider: 'anthropic', model: 'claude-sonnet-5-5', temperature: 0.15, maxTokens: 80, speed: 1.05, minChars: 25, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
 };
 
 const NIVA_CONFIGS: MeerkatConfigVersions = {
-  1: { provider: 'anthropic', model: 'claude-sonnet-4-6', temperature: 0.25, maxTokens: 150, speed: 1.00, minChars: 28, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
+  1: { provider: 'anthropic', model: 'claude-sonnet-5-5', temperature: 0.25, maxTokens: 150, speed: 1.00, minChars: 28, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
   // v2 2026-09-28: staged Sonnet 5.5 (custom-llm rollout global).
   2: { provider: 'anthropic', model: 'claude-sonnet-5-5', temperature: 0.25, maxTokens: 150, speed: 1.00, minChars: 28, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
 };

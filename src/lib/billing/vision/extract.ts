@@ -15,7 +15,7 @@
  *     al cliente equivocado o por monto equivocado eran riesgos reales
  *     porque la lectura OCR era ambigua.
  *
- * Usa claude-sonnet-4-6 por default (configurable via BILLING_VISION_MODEL).
+ * Usa claude-sonnet-5-5 por default (configurable via BILLING_VISION_MODEL).
  */
 
 import Anthropic from '@anthropic-ai/sdk';
@@ -23,7 +23,7 @@ import { EXTRACT_NOTE_SYSTEM, EXTRACT_NOTE_USER, buildContextBlock } from './pro
 import { withBatchedPoolCharge } from '../pool-charge';
 import { logLlmCall } from '@/lib/observability/llm-log';
 
-const DEFAULT_MODEL = 'claude-sonnet-4-6';
+const DEFAULT_MODEL = 'claude-sonnet-5-5';
 
 /**
  * Contexto opcional de facturación al pool. Cuando se pasa, cada foto

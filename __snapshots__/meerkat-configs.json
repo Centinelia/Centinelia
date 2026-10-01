@@ -14,7 +14,7 @@
   "noah": {
     "1": {
       "provider": "anthropic",
-      "model": "claude-sonnet-4-6",
+      "model": "claude-sonnet-5-5",
       "temperature": 0.6,
       "maxTokens": 150,
       "speed": 1,
@@ -98,7 +98,7 @@
   "nox": {
     "1": {
       "provider": "anthropic",
-      "model": "claude-sonnet-4-6",
+      "model": "claude-sonnet-5-5",
       "temperature": 0.15,
       "maxTokens": 80,
       "speed": 1.05,
@@ -110,7 +110,7 @@
   "niva": {
     "1": {
       "provider": "anthropic",
-      "model": "claude-sonnet-4-6",
+      "model": "claude-sonnet-5-5",
       "temperature": 0.25,
       "maxTokens": 150,
       "speed": 1,

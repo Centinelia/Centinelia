@@ -8,7 +8,7 @@ export const NIVA_CONSULTA_NIA: GoldenScenario = {
   // en vez de responder de memoria o inventar cifras.
   // Sonnet 4.6 con 2048 tokens (config real de agent-chat).
   config_override: {
-    model:     'claude-sonnet-4-6',
+    model:     'claude-sonnet-5-5',
     maxTokens: 2048,
   },
   user_persona: {

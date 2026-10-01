@@ -19,7 +19,7 @@ import { consumeAiOp } from '@/lib/ai/ops-guard';
 import { logLlmCall } from '@/lib/observability/llm-log';
 
 const anthropic = new Anthropic();
-const DISPATCHER_MODEL     = 'claude-sonnet-4-6';
+const DISPATCHER_MODEL     = 'claude-sonnet-5-5';
 const CONFIDENCE_THRESHOLD = 0.5;
 
 // Meerkats con modelo Sonnet — se usan como fallback preferido y como

@@ -269,7 +269,7 @@ Responde SOLO en JSON con esta forma exacta, sin markdown ni texto adicional:
     let winnerIdx = 1;
     let winnerReason = 'Evaluación automática de calidad.';
     const __jt = Date.now();
-    const __jm = 'claude-sonnet-4-6';
+    const __jm = 'claude-sonnet-5-5';
     try {
       const judgeRes = await client.messages.create({
         model:      __jm,

@@ -108,7 +108,7 @@ Reglas:
 - Responde SOLO JSON válido, sin markdown.`;
 
   const __t = Date.now();
-  const __m = 'claude-sonnet-4-6';
+  const __m = 'claude-sonnet-5-5';
   let resp;
   try {
     resp = await client.messages.create({

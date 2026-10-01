@@ -6,7 +6,7 @@ import { generateSlides, type Slide, type LogoAsset } from '@/lib/documents/slid
 import { logLlmCall } from '@/lib/observability/llm-log';
 
 type SupabaseClient = ReturnType<typeof createAdminClient>;
-const MODEL = 'claude-sonnet-4-6' as const;
+const MODEL = 'claude-sonnet-5-5' as const;
 
 // Descarga logo, mide dimensiones (para preservar aspect ratio en slides) y
 // devuelve un LogoAsset. Sin las dimensiones reales pptxgenjs deforma el logo

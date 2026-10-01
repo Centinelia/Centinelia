@@ -48,7 +48,7 @@ async function main() {
   const provider = asst?.model?.provider;
   const model    = asst?.model?.model;
   console.log(`\nVapi ahora: provider=${provider}  model=${model}`);
-  const expected = ROLLBACK ? 'claude-sonnet-4-6' : 'claude-sonnet-5-5';
+  const expected = ROLLBACK ? 'claude-sonnet-5-5' : 'claude-sonnet-5-5';
   if (model !== expected) {
     console.error(`\n⚠  ESPERADO ${expected} PERO VAPI TIENE ${model}. Investigar.`);
     process.exit(1);

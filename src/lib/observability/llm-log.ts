@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 // USD per million tokens (Anthropic + OpenAI embeddings, actualizado 2026-09)
 const PRICING: Record<string, { input: number; output: number; cacheCreation: number; cacheRead: number }> = {
   'claude-haiku-4-5':        { input: 1.0,  output: 5.0,  cacheCreation: 1.25,  cacheRead: 0.10 },
-  'claude-sonnet-4-6':       { input: 3.0,  output: 15.0, cacheCreation: 3.75,  cacheRead: 0.30 },
+  'claude-sonnet-5-5':       { input: 3.0,  output: 15.0, cacheCreation: 3.75,  cacheRead: 0.30 },
   'claude-opus-4-7':         { input: 15.0, output: 75.0, cacheCreation: 18.75, cacheRead: 1.50 },
   'text-embedding-3-small':  { input: 0.02, output: 0,    cacheCreation: 0,     cacheRead: 0    },
   'text-embedding-3-large':  { input: 0.13, output: 0,    cacheCreation: 0,     cacheRead: 0    },
@@ -12,7 +12,7 @@ const PRICING: Record<string, { input: number; output: number; cacheCreation: nu
 function normalizeModel(model: string): string {
   // Normaliza 'claude-haiku-4-5-20251001' → 'claude-haiku-4-5' para lookup en PRICING
   if (model.startsWith('claude-haiku-4-5'))  return 'claude-haiku-4-5';
-  if (model.startsWith('claude-sonnet-4-6')) return 'claude-sonnet-4-6';
+  if (model.startsWith('claude-sonnet-5-5')) return 'claude-sonnet-5-5';
   if (model.startsWith('claude-opus-4-7'))   return 'claude-opus-4-7';
   return model;
 }

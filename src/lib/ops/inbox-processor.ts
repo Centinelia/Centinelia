@@ -2091,7 +2091,7 @@ CATEGORÍAS:
         // Trade-off: costo ~10x por correo, pero para casos como Nalú (tesorería,
         // reconciliación bancaria) el análisis vale. Observer y summary siguen
         // en Haiku (no requieren tool_use complejo).
-        const __ipM = 'claude-sonnet-4-6';
+        const __ipM = 'claude-sonnet-5-5';
         let response;
         try {
           response = await anthropic.messages.create({

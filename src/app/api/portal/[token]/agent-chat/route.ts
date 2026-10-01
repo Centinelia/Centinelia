@@ -2645,7 +2645,7 @@ ${context}`;
           llmCalls = callCount;
 
           const __acT = Date.now();
-          const __acM = 'claude-sonnet-4-6';
+          const __acM = 'claude-sonnet-5-5';
           // Prompt caching: el system prompt es enorme (~10-15k tokens) y
           // estable dentro de una sesión de chat. Cache breakpoint al final
           // del system + al final de tools → primer call escribe (1.25x input),

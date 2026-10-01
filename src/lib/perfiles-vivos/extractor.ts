@@ -22,7 +22,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { logLlmCall } from '@/lib/observability/llm-log';
 import { registrarInteraccion, actualizarContactoEstado } from './lookup';
 
-const MODEL = 'claude-sonnet-4-6';
+const MODEL = 'claude-sonnet-5-5';
 
 const SYSTEM_PROMPT = `Eres un extractor de datos estructurados de conversaciones telefónicas de cobranza, ventas o atención al cliente. Recibes el transcript de una llamada real y devuelves JSON con los datos capturados.
 

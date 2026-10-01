@@ -16,7 +16,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { logLlmCall } from '@/lib/observability/llm-log';
 import type { ParsedFicha, ParsedSection, FichaSectionType } from './parse-ficha-santiago';
 
-const MODEL = 'claude-sonnet-4-6';
+const MODEL = 'claude-sonnet-5-5';
 
 const VALID_SECTION_TYPES: readonly FichaSectionType[] = [
   'header', 'descripcion', 'ordenamientos', 'requisitos', 'ubicacion',

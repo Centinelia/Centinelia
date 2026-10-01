@@ -64,7 +64,7 @@ export async function extractBrandVoice(args: ExtractArgs): Promise<BrandVoiceRe
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const __t = Date.now();
-  const __m = 'claude-sonnet-4-6';
+  const __m = 'claude-sonnet-5-5';
   let resp;
   try {
     resp = await client.messages.create({

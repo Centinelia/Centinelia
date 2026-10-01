@@ -27,7 +27,7 @@ import {
   type OutboundDrift,
 } from '@/lib/ops/consumption-audit';
 
-const MODEL           = 'claude-sonnet-4-6';
+const MODEL           = 'claude-sonnet-5-5';
 const MAX_ITERATIONS  = 8;
 const MAX_TOKENS      = 4096;
 const NASH_PORTAL     = 'hola@centinelia.mx';

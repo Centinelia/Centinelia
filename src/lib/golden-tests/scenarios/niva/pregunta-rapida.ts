@@ -7,7 +7,7 @@ export const NIVA_PREGUNTA_RAPIDA: GoldenScenario = {
   // Emula el codepath del chat oficina (src/app/api/portal/[token]/agent-chat/route.ts:1231-1233).
   // Sonnet 4.6 con 2048 tokens (config real de agent-chat).
   config_override: {
-    model:     'claude-sonnet-4-6',
+    model:     'claude-sonnet-5-5',
     maxTokens: 2048,
   },
   user_persona: {

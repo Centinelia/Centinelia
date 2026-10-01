@@ -23,7 +23,7 @@ import {
 } from './prompt';
 
 const anthropic = new Anthropic();
-const MODEL = 'claude-sonnet-4-6';
+const MODEL = 'claude-sonnet-5-5';
 const AUTOTAG_TIMEOUT_MS = 5_000;
 
 export interface AutotagResult {

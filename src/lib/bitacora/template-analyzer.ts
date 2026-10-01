@@ -175,7 +175,7 @@ Responde SOLO con JSON válido en este shape (nada más, sin markdown). Los camp
   "notes": "opcional, si detectaste ambigüedad"
 }`;
 
-  const __model = 'claude-sonnet-4-6';
+  const __model = 'claude-sonnet-5-5';
   const __t = Date.now();
   let response;
   try {

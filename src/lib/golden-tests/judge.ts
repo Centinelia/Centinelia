@@ -38,7 +38,7 @@ const MEERKAT_COUNTERPART_LABEL: Record<MeerkatId, string> = {
 
 const client = new Anthropic();
 
-const MODEL = 'claude-sonnet-4-6';
+const MODEL = 'claude-sonnet-5-5';
 const MAX_OUTPUT_TOKENS = 1000;
 const MAX_PARSE_RETRIES = 2;
 

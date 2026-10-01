@@ -117,7 +117,7 @@ describe.runIf(SHOULD_RUN)('Nia + fichas_informativas — smoke integration', ()
 
     for (let step = 0; step < 4; step++) {
       const resp = await anth.messages.create({
-        model:      'claude-sonnet-4-6',
+        model:      'claude-sonnet-5-5',
         max_tokens: 800,
         system:     [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
         tools:      [TOOL_SCHEMA],

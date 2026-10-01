@@ -220,7 +220,7 @@ export async function POST(req: NextRequest) {
   try {
     for (let turn = 0; turn < MAX_TURNS; turn++) {
       const __t = Date.now();
-      const __m = 'claude-sonnet-4-6';
+      const __m = 'claude-sonnet-5-5';
       let response;
       try {
         response = await client.messages.create({

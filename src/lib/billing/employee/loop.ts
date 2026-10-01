@@ -12,7 +12,7 @@
  * Adaptador: por ahora se recibe como parametro de construccion. La Fase 2
  * conectara el adaptador real de CONTPAQi via la integration config de Supabase.
  *
- * Modelo: claude-sonnet-4-6 por default (configurable via BILLING_LOOP_MODEL).
+ * Modelo: claude-sonnet-5-5 por default (configurable via BILLING_LOOP_MODEL).
  * max_tokens: 4096. MAX_ITERATIONS: 20.
  *
  * Fase 2 -- conectar adaptador real:
@@ -75,7 +75,7 @@ export interface BillingEmployeeConfig {
 // Constantes
 // ---------------------------------------------------------------------------
 
-const DEFAULT_MODEL = 'claude-sonnet-4-6';
+const DEFAULT_MODEL = 'claude-sonnet-5-5';
 const MAX_ITERATIONS = 20;
 /** Umbral en minutos para escalacion inmediata por frescura del adaptador. */
 const FRESHNESS_ESCALATE_THRESHOLD_MIN = 360; // 6 horas
