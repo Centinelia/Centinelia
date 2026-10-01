@@ -2193,6 +2193,14 @@ export async function POST(req: NextRequest, { params }: Params) {
   sessionTools.length = 0;
   sessionTools.push(...finalTools);
 
+  // Capa 4 (prompt-level): cuando inventory_write_enabled===false las 5
+  // herramientas de escritura se eliminan del listado visible al LLM para
+  // que el modelo nunca intente invocarlas. Complementa el gate en executor.ts.
+  const { filterWriteToolsByFlag } = await import('@/lib/portal/inventory-write-flag');
+  const filtered = filterWriteToolsByFlag(sessionTools, agentFeatures as Record<string, unknown>);
+  sessionTools.length = 0;
+  sessionTools.push(...filtered);
+
   const toolsListText = sessionTools.length
     ? 'Herramientas disponibles:\n' + sessionTools.map(t => `- ${t.name}: ${t.description}`).join('\n')
     : '';
