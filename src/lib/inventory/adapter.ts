@@ -363,6 +363,69 @@ export async function addEquipoRow(
   return { ok: true, serie: input.serie.trim(), bodega_asignada: bodega, row_index: (added as { index: number }).index, after_state };
 }
 
+// ─── Patch helpers ───────────────────────────────────────────────────────────
+
+export type PatchEstatusResult =
+  | { ok: true;  no_op?: boolean; serie: string; estatus_anterior: string; estatus_nuevo: string; before_state: Record<string, unknown>; after_state: Record<string, unknown>; patched_columns: string[]; table_row_index: number }
+  | { ok: false; code: 'serie_not_found' };
+
+function cellLetter(colIdx: number): string {
+  let s = '';
+  let n = colIdx;
+  while (n >= 0) {
+    s = String.fromCharCode(65 + (n % 26)) + s;
+    n = Math.floor(n / 26) - 1;
+  }
+  return s;
+}
+
+function rowToState(headers: string[], row: unknown[]): Record<string, unknown> {
+  const o: Record<string, unknown> = {};
+  headers.forEach((h, i) => { o[String(h).trim().toUpperCase()] = row[i]; });
+  return o;
+}
+
+export async function patchEstatusBySerie(
+  ctx: InventoryContext,
+  serie: string,
+  nuevo_estatus: string,
+): Promise<PatchEstatusResult> {
+  const hit = await findRowIndexBySerie(ctx, serie);
+  if (!hit) return { ok: false, code: 'serie_not_found' };
+
+  const estatusColName = ctx.config.columns_historico.estatus;
+  const estatusIdx = hit.headersMap[estatusColName.toUpperCase()];
+  const estatus_anterior = String(hit.row[estatusIdx] ?? '').toUpperCase();
+  const estatus_nuevo = nuevo_estatus.trim().toUpperCase();
+
+  const headers = Object.entries(hit.headersMap).sort((a, b) => a[1] - b[1]).map(([h]) => h);
+  const before_state = rowToState(headers, hit.row);
+
+  if (estatus_anterior === estatus_nuevo) {
+    return {
+      ok: true, no_op: true, serie: serie.trim().toUpperCase(),
+      estatus_anterior, estatus_nuevo,
+      before_state, after_state: before_state,
+      patched_columns: [], table_row_index: hit.tableRowIndex,
+    };
+  }
+
+  await GraphExcel.withSession(ctx.token, ctx.config.location, async session => {
+    const sheet = ctx.config.sheets.historico.name;
+    const abs = hit.tableRowIndex + 2; // header row + 1-based
+    await GraphExcel.patchCell(ctx.token, session, sheet, `${cellLetter(estatusIdx)}${abs}`, estatus_nuevo);
+  });
+
+  const after_row = [...hit.row]; after_row[estatusIdx] = estatus_nuevo;
+  return {
+    ok: true, serie: serie.trim().toUpperCase(),
+    estatus_anterior, estatus_nuevo,
+    before_state, after_state: rowToState(headers, after_row),
+    patched_columns: [estatusColName.toUpperCase()],
+    table_row_index: hit.tableRowIndex,
+  };
+}
+
 // ─── Historico (Excel Table) helpers ─────────────────────────────────────────
 
 export interface HistoricoRowMapped {

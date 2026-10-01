@@ -124,3 +124,49 @@ describe('addEquipoRow', () => {
     }
   });
 });
+
+describe('patchEstatusBySerie', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('cambia estatus ALMACEN → SEPARADO', async () => {
+    const { patchEstatusBySerie } = await import('../adapter');
+    await mockHeaders([['A1','4TXK','2619HA012345','ALMACEN','FLETEROS']]);
+    const gx = await import('../graph-excel');
+    const r = await patchEstatusBySerie(CTX, '2619HA012345', 'SEPARADO');
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.estatus_anterior).toBe('ALMACEN');
+      expect(r.estatus_nuevo).toBe('SEPARADO');
+    }
+    expect(gx.patchCell).toHaveBeenCalledOnce();
+  });
+
+  it('serie not found → ok:false con code serie_not_found', async () => {
+    const { patchEstatusBySerie } = await import('../adapter');
+    await mockHeaders([['A1','4TXK','OTRA','ALMACEN']]);
+    const r = await patchEstatusBySerie(CTX, '2619HA012345', 'SEPARADO');
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.code).toBe('serie_not_found');
+  });
+
+  it('estatus actual == nuevo → no_op true, NO llama patchCell', async () => {
+    const { patchEstatusBySerie } = await import('../adapter');
+    await mockHeaders([['A1','4TXK','2619HA012345','ALMACEN']]);
+    const gx = await import('../graph-excel');
+    const r = await patchEstatusBySerie(CTX, '2619HA012345', 'ALMACEN');
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.no_op).toBe(true);
+    expect(gx.patchCell).not.toHaveBeenCalled();
+  });
+
+  it('before_state captura la row completa antes del patch (Review Focus #3 race con Tania)', async () => {
+    const { patchEstatusBySerie } = await import('../adapter');
+    await mockHeaders([['A1','4TXK','2619HA012345','ALMACEN','FLETEROS']]);
+    const r = await patchEstatusBySerie(CTX, '2619HA012345', 'SEPARADO');
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.before_state).toMatchObject({ OC: 'A1', SERIE: '2619HA012345', ESTATUS: 'ALMACEN' });
+      expect(r.after_state).toMatchObject({ ESTATUS: 'SEPARADO' });
+    }
+  });
+});
