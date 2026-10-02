@@ -99,14 +99,17 @@ function pickFirst(rows, predicate) {
 }
 const almacenRows = sByStatus['ALMACEN'] ?? [];
 
-// Prefiero serie con cliente vacío (happy path, sin force). Fallback: cualquier ALMACEN con force:true.
-let asignarWithForce = false;
-let serieAsignar = pickFirst(almacenRows, r => !String(r.values.cliente ?? '').trim());
-if (!serieAsignar) {
-  asignarWithForce = true;
-  serieAsignar = almacenRows[0];
-  console.log('  (no hay ALMACEN con cliente vacío → uso force:true para override)');
+// STOCK fix 2026-10-02 (commit 18bc8d97): adapter trata cliente='STOCK' o vacío
+// como disponible, por eso NUNCA necesitamos force:true. Preferimos una serie
+// con cliente='STOCK' específicamente para validar el fix end-to-end.
+function clienteEsDisponible(v) {
+  const s = String(v ?? '').trim().toUpperCase();
+  return s === '' || s === 'STOCK';
 }
+let serieAsignar = pickFirst(almacenRows, r => String(r.values.cliente ?? '').trim().toUpperCase() === 'STOCK')
+                ?? pickFirst(almacenRows, r => clienteEsDisponible(r.values.cliente));
+if (!serieAsignar) { console.error('  ✗ No encontré ninguna ALMACEN con cliente disponible'); process.exit(1); }
+console.log('  (validando STOCK fix: cliente actual =', JSON.stringify(serieAsignar.values.cliente) + ', force:false)');
 const serieEstatus = pickFirst(almacenRows, r => String(r.values.serie ?? '').trim() !== (serieAsignar?.values.serie ?? ''));
 // Venta: config NO mapea costo_mx, siempre paso factor explícito (sin heurística).
 const serieVenta = pickFirst(almacenRows, r => {
@@ -175,7 +178,7 @@ try {
     cliente_nombre:  'E2E CLIENTE DUMMY',
     vendedor_codigo: 'E2E',
     marcar_separado: true,
-    force:           asignarWithForce,
+    force:           false,  // STOCK fix: no debería requerir force (cliente='STOCK' = disponible)
   });
   console.log('  Result:', JSON.stringify(r, null, 2).slice(0, 500));
   if (!r.ok) throw new Error('asignar_cliente failed: ' + JSON.stringify(r));
@@ -270,6 +273,46 @@ try {
   results.importar_backlog = { ok: false, error: e.message };
 }
 
+// ─── Validaciones específicas de los cambios post-Camila 2026-10-02 ────────
+console.log('\n═════════════════════════════════════════');
+console.log('VALIDACIONES ESPECÍFICAS POST-CAMILA');
+console.log('═════════════════════════════════════════');
+
+const validaciones = [];
+
+// 1. STOCK fix: asignar_cliente sin force sobre cliente='STOCK' debe haber funcionado
+validaciones.push({
+  nombre: 'STOCK fix — asignar_cliente sin force sobre cliente=STOCK',
+  ok: results.asignar_cliente?.ok === true,
+  detalle: results.asignar_cliente?.ok ? 'estatus resultante: ' + results.asignar_cliente.estatus_resultante : 'FAIL: ' + JSON.stringify(results.asignar_cliente),
+});
+
+// 2. STOCK fix: registrar_salida sobre series STOCK no debe tener conflicts
+validaciones.push({
+  nombre: 'STOCK fix — registrar_salida sobre series STOCK sin conflicts',
+  ok: results.registrar_salida?.ok === true && results.registrar_salida?.conflicts === 0,
+  detalle: `conflicts=${results.registrar_salida?.conflicts ?? '?'} (esperado 0)`,
+});
+
+// 3. BACKLOG migration: debería haber borrado las 47 humanas y escrito 45 Nami
+validaciones.push({
+  nombre: 'BACKLOG migration — primera corrida: deleted=47 humanas + added=45 Nami',
+  ok: results.importar_backlog?.ok === true && results.importar_backlog?.added === 45 && results.importar_backlog?.deleted === 47,
+  detalle: `added=${results.importar_backlog?.added}, deleted=${results.importar_backlog?.deleted} (esperado 45/47)`,
+});
+
+// 4. Idempotency: segunda corrida debe ser 0/0/0 unchanged=45
+validaciones.push({
+  nombre: 'Idempotency — segunda corrida: unchanged=45, 0/0/0',
+  ok: results.backlog_idempotency?.ok === true,
+  detalle: results.backlog_idempotency?.summary2 ? `added=${results.backlog_idempotency.summary2.added}, updated=${results.backlog_idempotency.summary2.updated}, deleted=${results.backlog_idempotency.summary2.deleted}, unchanged=${results.backlog_idempotency.summary2.unchanged}` : 'FAIL',
+});
+
+for (const v of validaciones) {
+  console.log(`  ${v.ok ? '✓' : '✗'} ${v.nombre}`);
+  console.log(`      ${v.detalle}`);
+}
+
 // ─── Reporte final ──────────────────────────────────────────────────────────
 console.log('\n═════════════════════════════════════════');
 console.log('REPORTE E2E — RUN_TAG:', RUN_TAG);
@@ -277,8 +320,10 @@ console.log('══════════════════════�
 for (const [k, v] of Object.entries(results)) {
   console.log(`  ${v.ok ? '✓' : '✗'} ${k}:`, JSON.stringify(v));
 }
-const allOk = Object.values(results).every(r => r.ok);
-console.log(allOk ? '\n✓ TODOS LOS FLOWS OK — Excel real intacto, sandbox tiene evidencia visual.' : '\n✗ Hay fallos. Revisa el detalle arriba.');
+const allFlowsOk  = Object.values(results).every(r => r.ok);
+const allValidsOk = validaciones.every(v => v.ok);
+const allOk       = allFlowsOk && allValidsOk;
+console.log(allOk ? '\n✓ TODOS LOS FLOWS + VALIDACIONES OK — Nami listo al 100% para el Meet.' : '\n✗ Hay fallos. Revisa el detalle arriba.');
 console.log('\nAudit log sandbox query:');
 console.log('  SELECT * FROM inventory_mutations_log WHERE metadata->>\'run_tag\' = \'' + RUN_TAG + '\' ORDER BY created_at;');
 process.exit(allOk ? 0 : 1);

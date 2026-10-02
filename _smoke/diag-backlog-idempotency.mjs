@@ -28,7 +28,7 @@ const parsed = await parser.parseBacklogPdf(pdfBytes, pwd);
 console.log('Parsed rows:', parsed.rows.length);
 
 const sheetCfg = ctx.config.sheets.backlog;
-const existing = await syncer.readBacklogIndex(ctx, sheetCfg);
+const { index: existing } = await syncer.readBacklogIndex(ctx, sheetCfg);
 console.log('Existing rows en BACKLOG post-sync:', existing.size);
 
 // Comparar primera row

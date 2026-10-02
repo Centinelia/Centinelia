@@ -309,4 +309,49 @@ describe('syncBacklogRows — replace mode (DEFAULT, Camila 2026-10-01)', () => 
     expect(gx.patchRange).not.toHaveBeenCalled();
     expect(gx.readRange).not.toHaveBeenCalled();
   });
+
+  // Regression 2026-10-02: BACKLOG humano de Camila (47 filas con formato
+  // distinto) no era reconocido por excelRowKey → quedaba residual al final
+  // de la hoja después del replace. Fix: maxContentRow trackea cualquier fila
+  // con contenido, el replace blank-fillea hasta ahí.
+  it('replace: filas con formato no-Nami (col A vacía) también se blank-fillean', async () => {
+    const { syncBacklogRows } = await import('../backlog-syncer');
+    const gx = await import('../graph-excel');
+    // Simular 3 filas humanas: col A y B vacías, data real en C-H
+    const humanRow = (po: string, item: string) => ['', '', po, item, 'AWAITING_SHIPPING', 2, '$1000.00', 2];
+    vi.mocked(gx.readRange).mockResolvedValue({
+      address: 'A5:H1004',
+      values: [humanRow('4599', 'MODEL-A'), humanRow('5610', 'MODEL-B'), humanRow('7032', 'MODEL-C')],
+      formulas: [],
+    });
+    // PDF nuevo trae 1 fila Nami
+    const parsed = [makeRow({ customer_po_number: '4599', line_number: '1.5' })];
+    const summary = await syncBacklogRows(BASE_CTX, BACKLOG_CFG, parsed, { dryRun: false, mode: 'replace' });
+    expect(summary.deleted).toBe(3);  // las 3 humanas no-reconocidas cuentan como deleted
+    expect(summary.added).toBe(1);
+    expect(gx.patchRange).toHaveBeenCalledOnce();
+    const [, , , address, values] = vi.mocked(gx.patchRange).mock.calls[0];
+    expect(address).toBe('A5:H7');  // cubre las 3 filas humanas + la nueva
+    const arr = values as unknown[][];
+    expect(arr).toHaveLength(3);
+    expect(arr[0][0]).toBe('4599');                               // nueva fila Nami
+    expect(arr[1]).toEqual(['', '', '', '', '', '', '', '']);     // blank
+    expect(arr[2]).toEqual(['', '', '', '', '', '', '', '']);     // blank
+  });
+
+  it('replace: dryRun cuenta correctamente las filas no-reconocidas como deleted', async () => {
+    const { syncBacklogRows } = await import('../backlog-syncer');
+    const gx = await import('../graph-excel');
+    const humanRow = (po: string) => ['', '', po, 'X', 'S', 1, '$100', 1];
+    vi.mocked(gx.readRange).mockResolvedValue({
+      address: 'A5:H1004',
+      values: [humanRow('a'), humanRow('b')],
+      formulas: [],
+    });
+    const parsed = [makeRow({ customer_po_number: '4599', line_number: '1.5' })];
+    const summary = await syncBacklogRows(BASE_CTX, BACKLOG_CFG, parsed, { dryRun: true, mode: 'replace' });
+    expect(summary.deleted).toBe(2);
+    expect(summary.added).toBe(1);
+    expect(gx.patchRange).not.toHaveBeenCalled();
+  });
 });

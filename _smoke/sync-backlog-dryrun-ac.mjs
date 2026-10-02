@@ -84,7 +84,7 @@ console.log('\n── 5. Diff: filas que serían ELIMINADAS en modo replace ─�
 if (summaryReplace.deleted > 0) {
   console.log('  (' + summaryReplace.deleted + ' filas en Excel que no están en el PDF nuevo)');
   // Leer el BACKLOG actual para listar cuáles
-  const existing = await syncer.readBacklogIndex(ctx, sheetCfg);
+  const { index: existing } = await syncer.readBacklogIndex(ctx, sheetCfg);
   const parsedKeys = new Set(parsed.rows.map(syncer.rowKey));
   let shown = 0;
   for (const [key, { rowNumber, values }] of existing) {

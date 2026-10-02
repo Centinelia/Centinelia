@@ -87,29 +87,47 @@ export function excelRowKey(excelRow: unknown[]): string {
   return `${po}::${line}`;
 }
 
+export interface BacklogIndex {
+  index:         Map<string, { rowNumber: number; values: unknown[] }>;
+  /**
+   * Mayor fila con CUALQUIER contenido (incluso si no es formato Nami
+   * reconocible). Necesario para que `replace` mode blank-fillee hasta
+   * el final real de datos — sin esto, una hoja con filas residuales de
+   * otro formato queda con basura al final (bug detectado 2026-10-02 contra
+   * BACKLOG humano de 47 filas de Camila).
+   */
+  maxContentRow: number;
+}
+
 /**
  * Lee la hoja BACKLOG actual y devuelve index por (OC_AC, LINE_NUMBER).
  * El rango leído es A{start_row}:H{start_row + 999} — suficiente para 1000
  * líneas de BACKLOG, muy por encima del volumen esperado (~45-200).
+ *
+ * Retorna también `maxContentRow` para que replace mode conozca el verdadero
+ * fin de datos (incluyendo filas con formato no-Nami que `excelRowKey` descarta).
  */
 export async function readBacklogIndex(
   ctx:    InventoryContext,
   config: BacklogSheetConfig,
-): Promise<Map<string, { rowNumber: number; values: unknown[] }>> {
+): Promise<BacklogIndex> {
   const endRow  = config.start_row + 999;
   const address = `A${config.start_row}:H${endRow}`;
   const range   = await GraphExcel.readRange(ctx.token, ctx.config.location, config.name, address);
   const index   = new Map<string, { rowNumber: number; values: unknown[] }>();
+  let maxContentRow = config.start_row - 1;
   for (let i = 0; i < range.values.length; i++) {
     const row = range.values[i];
     // Fila vacía si A..H están todas vacías
     const hasContent = row.some(v => v !== '' && v !== null && v !== undefined);
     if (!hasContent) continue;
+    const absRow = config.start_row + i;
+    if (absRow > maxContentRow) maxContentRow = absRow;
     const key = excelRowKey(row);
-    if (key === '::') continue;  // basura
-    index.set(key, { rowNumber: config.start_row + i, values: row });
+    if (key === '::') continue;  // formato no reconocido (basura o formato humano antiguo)
+    index.set(key, { rowNumber: absRow, values: row });
   }
-  return index;
+  return { index, maxContentRow };
 }
 
 /**
@@ -198,7 +216,7 @@ export async function syncBacklogRows(
     );
   }
 
-  const existingIndex = await readBacklogIndex(ctx, config);
+  const { index: existingIndex, maxContentRow } = await readBacklogIndex(ctx, config);
   const parsedKeys    = new Set(parsedRows.map(rowKey));
 
   // Contadores: comparar parsed vs existing en ambos modos
@@ -211,9 +229,15 @@ export async function syncBacklogRows(
     else                                        summary.unchanged++;
   }
   if (mode === 'replace') {
+    // `deleted` cuenta filas RECONOCIDAS que no están en el PDF nuevo.
     for (const k of existingIndex.keys()) {
       if (!parsedKeys.has(k)) summary.deleted++;
     }
+    // Y filas no-reconocidas que vamos a borrar también (ex. formato humano).
+    const unrecognizedRows = maxContentRow >= config.start_row
+      ? (maxContentRow - config.start_row + 1) - existingIndex.size
+      : 0;
+    summary.deleted += unrecognizedRows;
   }
 
   if (dryRun) return summary;
@@ -222,7 +246,9 @@ export async function syncBacklogRows(
     // Un solo patchRange atómico: todas las filas parseadas + fill blanco
     // para cubrir el rango que antes ocupaban las filas eliminadas.
     const parsedValues = parsedRows.map(rowToExcelValues);
-    const existingMaxRow = Array.from(existingIndex.values()).reduce((m, e) => Math.max(m, e.rowNumber), config.start_row - 1);
+    // `maxContentRow` incluye tanto filas reconocidas como no-reconocidas
+    // (fix 2026-10-02: BACKLOG humano con formato distinto quedaba residual).
+    const existingMaxRow = Math.max(maxContentRow, config.start_row - 1);
     const newMaxRow      = config.start_row + parsedValues.length - 1;
     const writeMaxRow    = Math.max(newMaxRow, existingMaxRow);
     const emptyRow: unknown[] = ['', '', '', '', '', '', '', ''];

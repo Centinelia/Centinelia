@@ -28,17 +28,20 @@ for (const row of humana.values) {
 }
 console.log('  Filas no-vacías en BACKLOG real:', nonEmpty, '(esperado: 47 — intacta)');
 
-console.log('\n── Hoja BACKLOG_NAMI (nueva de Nami) ──');
-const nami = await GraphExcel.readRange(ctx.token, ctx.config.location, 'BACKLOG_NAMI', 'A1:H60');
-let nonEmptyNami = 0;
-for (const row of nami.values) {
-  if (row.some(v => v !== '' && v !== null && v !== undefined)) nonEmptyNami++;
-}
-console.log('  Filas no-vacías en BACKLOG_NAMI real:', nonEmptyNami, '(esperado: 0 — Nami aún no corrió en real)');
+console.log('\n── Hojas del Excel real ──');
+const sheets = await GraphExcel.listWorksheets(ctx.token, ctx.config.location);
+console.log('  Hojas:', sheets.map(s => s.name).join(', '));
+const tieneBacklogNami = sheets.some(s => s.name === 'BACKLOG_NAMI');
+console.log('  BACKLOG_NAMI existe?', tieneBacklogNami ? 'SÍ (debería ser NO tras revert)' : 'NO ✓');
+
+console.log('\n── Config apunta a hoja correcta ──');
+const { data: orgCfg } = await sb.from('organizations').select('inventory_excel_config').eq('portal_email', 'camila@acproyectos.com').maybeSingle();
+const backlogSheetName = orgCfg?.inventory_excel_config?.sheets?.backlog?.name;
+console.log('  sheets.backlog.name:', backlogSheetName, backlogSheetName === 'BACKLOG' ? '✓' : '✗ (esperado BACKLOG)');
 
 console.log('\nResumen:');
-if (nonEmpty >= 40 && nonEmptyNami === 0) {
-  console.log('✓ BACKLOG humana PRESERVADA (' + nonEmpty + ' filas) + BACKLOG_NAMI lista para la primera corrida de Nami.');
+if (nonEmpty >= 40 && !tieneBacklogNami && backlogSheetName === 'BACKLOG') {
+  console.log('✓ BACKLOG humana PRESERVADA (' + nonEmpty + ' filas) + hoja BACKLOG_NAMI borrada + config apunta a BACKLOG. Listo para el Meet.');
 } else {
   console.log('✗ Algo no cuadra. Revisar.');
 }
