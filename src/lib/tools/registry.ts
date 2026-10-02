@@ -236,6 +236,8 @@ const TOOL_REGISTRY_BASE: Omit<ToolEntry, 'pack'>[] = [
   { name: 'inv_importar_backlog',     description: 'Nami: sincroniza BACKLOG desde el correo periódico de TRANE (bloqueado sin muestra)', channels: A, category: 'inventarios', destructive: true, gatedByRole: ['nami'], gatedByFeature: null, capability: 'files', policy: DEFAULT_POLICY },
   { name: 'inv_normalizar_bodegas',   description: 'Nami: normaliza aliases de bodega (FLETERO → FLETEROS) sobre el INVENTARIO',  channels: A, category: 'inventarios', destructive: true,  gatedByRole: ['nami'], gatedByFeature: null, capability: 'files', policy: DEFAULT_POLICY },
   { name: 'inv_reporte_utilidad',     description: 'Nami: calcula FACTOR de venta (precio_venta / costo_mx) por modelo/periodo',  channels: A, category: 'inventarios', destructive: false, gatedByRole: ['nami'], gatedByFeature: null, capability: 'files', policy: DEFAULT_POLICY },
+  { name: 'inv_notificar_trane_registro_oc', description: 'Nami: redacta/envía correo a Isabel de TRANE para que registre una OC nueva (borrador por defecto; manda si enviar=true)', channels: A, category: 'inventarios', destructive: true, gatedByRole: ['nami'], gatedByFeature: null, capability: 'email', policy: DEFAULT_POLICY },
+  { name: 'inv_solicitar_entrega_trane',     description: 'Nami: redacta/envía correo a Isabel pidiendo entrega de una OC ya registrada (borrador por defecto; manda si enviar=true)',    channels: A, category: 'inventarios', destructive: true, gatedByRole: ['nami'], gatedByFeature: null, capability: 'email', policy: DEFAULT_POLICY },
 
   // ─── Navi — publicacion social (feature: social_publishing) ─────────────
   // 14 tools estandar disponibles para navi y navi_agencia.

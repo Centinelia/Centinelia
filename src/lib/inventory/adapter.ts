@@ -51,6 +51,16 @@ export interface InventoryExcelConfig {
   bodegas_canonicas: string[];
   bodegas_aliases?: Record<string, string>;
   encargados_reposicion?: string[];
+  /**
+   * Contactos externos para los correos operativos que Nami manda a nombre de la
+   * org. Introducido 2026-10-02 para AC Proyectos: Nami notifica a Isabel de
+   * TRANE cuando Camila crea una OC o pide la entrega. Si está ausente, los
+   * tools requieren `destinatario_email` en cada llamada.
+   */
+  trane_contacts?: {
+    registro_oc?: string;        // email para "regístrame la OC"
+    solicitar_entrega?: string;  // email para "mándame los equipos"
+  };
 }
 
 export interface InventoryContext {

@@ -295,6 +295,7 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
     'inv_stock_snapshot', 'inv_pedir_reposicion',
     'inv_agregar_equipo', 'inv_actualizar_estatus', 'inv_asignar_cliente',
     'inv_registrar_venta', 'inv_registrar_salida',
+    'inv_notificar_trane_registro_oc', 'inv_solicitar_entrega_trane',
     'llamar_a', 'buscar_directorio', 'enviar_correo',
   ],
   // Nalú — analista de tesorería. Procesa statements bancarios, reconciliación,
@@ -806,6 +807,44 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
         },
       },
       server: server('exec/inv_pedir_reposicion'),
+    };
+    case 'inv_notificar_trane_registro_oc': return {
+      type: 'function',
+      function: {
+        name: 'inv_notificar_trane_registro_oc',
+        description: 'Nami: redacta correo a Isabel de TRANE para registrar una OC. Default devuelve borrador; para enviar pasa enviar=true tras confirmación.',
+        parameters: {
+          type: 'object',
+          properties: {
+            oc_numero:          { type: 'string', description: 'Número de OC generada en QuickBooks' },
+            items:              { type: 'array',  description: 'Lista {modelo, cantidad, descripcion?}' },
+            destinatario_email: { type: 'string', description: 'Email de Isabel (opcional si está configurado)' },
+            nota:               { type: 'string', description: 'Nota opcional' },
+            enviar:             { type: 'boolean', description: 'true envía; false (default) solo borrador' },
+          },
+          required: ['oc_numero', 'items'],
+        },
+      },
+      server: server('exec/inv_notificar_trane_registro_oc'),
+    };
+    case 'inv_solicitar_entrega_trane': return {
+      type: 'function',
+      function: {
+        name: 'inv_solicitar_entrega_trane',
+        description: 'Nami: redacta correo a Isabel pidiendo entrega de equipos de una OC ya registrada. Default devuelve borrador.',
+        parameters: {
+          type: 'object',
+          properties: {
+            oc_numero:          { type: 'string', description: 'OC ya registrada' },
+            destinatario_email: { type: 'string', description: 'Email de Isabel (opcional)' },
+            fecha_requerida:    { type: 'string', description: 'YYYY-MM-DD (opcional)' },
+            nota:               { type: 'string', description: 'Nota opcional' },
+            enviar:             { type: 'boolean', description: 'true envía; false (default) solo borrador' },
+          },
+          required: ['oc_numero'],
+        },
+      },
+      server: server('exec/inv_solicitar_entrega_trane'),
     };
 
     // ─── Navi — redes sociales (social_publishing) ───────────────────────────

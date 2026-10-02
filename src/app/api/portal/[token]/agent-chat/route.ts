@@ -1392,6 +1392,48 @@ const INV_PEDIR_REPOSICION_TOOL: Anthropic.Tool = {
     required: ['modelo', 'cantidad'],
   },
 };
+const INV_NOTIFICAR_TRANE_REGISTRO_OC_TOOL: Anthropic.Tool = {
+  name: 'inv_notificar_trane_registro_oc',
+  description: 'Nami: redacta correo a Isabel de TRANE para que registre una OC nueva. Devuelve BORRADOR por defecto (muestra draft al usuario). Para enviar: llamar de nuevo con enviar=true después de confirmación.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      oc_numero: { type: 'string', description: 'Número de OC (el que generaste en QuickBooks)' },
+      items: {
+        type: 'array',
+        description: 'Lista de equipos solicitados en esta OC',
+        items: {
+          type: 'object' as const,
+          properties: {
+            modelo:      { type: 'string', description: 'Modelo del equipo' },
+            cantidad:    { type: 'number', description: 'Cantidad (>0)' },
+            descripcion: { type: 'string', description: 'Descripción opcional' },
+          },
+          required: ['modelo', 'cantidad'],
+        },
+      },
+      destinatario_email: { type: 'string', description: 'Email del contacto en TRANE (opcional si está configurado en el org)' },
+      nota:               { type: 'string', description: 'Nota opcional (urgencia, proyecto, etc.)' },
+      enviar:             { type: 'boolean', description: 'true=envía; false (default)=solo devuelve borrador' },
+    },
+    required: ['oc_numero', 'items'],
+  },
+};
+const INV_SOLICITAR_ENTREGA_TRANE_TOOL: Anthropic.Tool = {
+  name: 'inv_solicitar_entrega_trane',
+  description: 'Nami: redacta correo a Isabel pidiendo la entrega de los equipos de una OC ya registrada. Devuelve BORRADOR por defecto. Para enviar: llamar de nuevo con enviar=true tras confirmación.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      oc_numero:          { type: 'string', description: 'Número de OC ya registrada' },
+      destinatario_email: { type: 'string', description: 'Email del contacto en TRANE (opcional si está configurado)' },
+      fecha_requerida:    { type: 'string', description: 'Fecha deseada de entrega en formato YYYY-MM-DD (opcional)' },
+      nota:               { type: 'string', description: 'Nota opcional' },
+      enviar:             { type: 'boolean', description: 'true=envía; false (default)=solo devuelve borrador' },
+    },
+    required: ['oc_numero'],
+  },
+};
 const INV_AGREGAR_EQUIPO_TOOL: Anthropic.Tool = {
   name: 'inv_agregar_equipo',
   description: 'Nami: agrega equipo nuevo al INVENTARIO cuando llega físicamente. Requiere OC de origen, modelo, serie (de la etiqueta), y bodega destino. USD y TC opcionales — si los pasas ambos, se calcula el costo en MXN automáticamente.',
@@ -1913,6 +1955,8 @@ export const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
   inv_buscar_por_modelo:     INV_BUSCAR_POR_MODELO_TOOL,
   inv_stock_snapshot:        INV_STOCK_SNAPSHOT_TOOL,
   inv_pedir_reposicion:      INV_PEDIR_REPOSICION_TOOL,
+  inv_notificar_trane_registro_oc: INV_NOTIFICAR_TRANE_REGISTRO_OC_TOOL,
+  inv_solicitar_entrega_trane:     INV_SOLICITAR_ENTREGA_TRANE_TOOL,
   inv_agregar_equipo:        INV_AGREGAR_EQUIPO_TOOL,
   inv_actualizar_estatus:    INV_ACTUALIZAR_ESTATUS_TOOL,
   inv_asignar_cliente:       INV_ASIGNAR_CLIENTE_TOOL,

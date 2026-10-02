@@ -5732,6 +5732,101 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       return { ok: true, message: `Correo enviado a ${encargados.join(', ')} solicitando ${cantidad} pieza(s) de ${modelo}.`, provider: result.provider };
     }
 
+    // ─── TRANE outbound email tools (Nami envía a Isabel per Camila) ──────────
+    // Introducidos 2026-10-02 post-Meet con Camila. Automatizan los 2 correos
+    // que Camila mandaba a mano (slides 2 y 4 de la presentación):
+    //   1. Registrar OC después de crear en QuickBooks
+    //   2. Solicitar entrega cuando Isabel confirma que TRANE tiene stock
+    // Patrón `enviar: boolean`: default false devuelve borrador; true envía.
+    // Nami debe mostrar el borrador a Camila antes de confirmar envío.
+    if (toolName === 'inv_notificar_trane_registro_oc' || toolName === 'inv_solicitar_entrega_trane') {
+      const ocNumero = String(toolInput.oc_numero ?? '').trim();
+      if (!ocNumero) return { ok: false, error: 'oc_numero es requerido (el folio de la OC que generaste en QuickBooks)' };
+
+      const kind = toolName === 'inv_notificar_trane_registro_oc' ? 'registro_oc' : 'solicitar_entrega';
+      const destinatarioOverride = toolInput.destinatario_email ? String(toolInput.destinatario_email).trim() : null;
+      const destinatarioConfig   = inv.config.trane_contacts?.[kind] ?? null;
+      const destinatario = destinatarioOverride ?? destinatarioConfig;
+
+      const nota = toolInput.nota ? String(toolInput.nota).trim() : null;
+      const enviar = toolInput.enviar === true;
+
+      let subject: string;
+      let html: string;
+
+      if (toolName === 'inv_notificar_trane_registro_oc') {
+        const itemsRaw = Array.isArray(toolInput.items) ? toolInput.items : [];
+        if (itemsRaw.length === 0) {
+          return { ok: false, error: 'items es requerido (lista de equipos con modelo y cantidad)' };
+        }
+        const items = itemsRaw.map((it, i) => {
+          const o = it as Record<string, unknown>;
+          const modelo   = String(o.modelo ?? '').trim();
+          const cantidad = Number(o.cantidad ?? 0);
+          const descripcion = o.descripcion ? String(o.descripcion).trim() : null;
+          if (!modelo || !(cantidad > 0)) {
+            throw new Error(`item ${i + 1} inválido: modelo y cantidad > 0 son requeridos`);
+          }
+          return { modelo, cantidad, descripcion };
+        });
+
+        subject = `Registrar OC ${ocNumero} - ${businessName ?? 'AC Proyectos'}`;
+        const itemsHtml = items.map(it =>
+          `<li><strong>${it.modelo}</strong>: ${it.cantidad} pieza(s)${it.descripcion ? ` - ${it.descripcion}` : ''}</li>`
+        ).join('');
+        html =
+          `<p>Hola Isabel,</p>` +
+          `<p>Les comparto nuestra orden de compra <strong>${ocNumero}</strong> para que la puedan registrar de su lado.</p>` +
+          `<p>Equipos solicitados:</p>` +
+          `<ul>${itemsHtml}</ul>` +
+          (nota ? `<p>${nota}</p>` : '') +
+          `<p>Quedo pendiente de la confirmación. Gracias.</p>` +
+          `<p>Saludos,<br>${agentName ?? 'Nami'}<br>${businessName ?? 'AC Proyectos'}</p>`;
+      } else {
+        const fechaRequerida = toolInput.fecha_requerida ? String(toolInput.fecha_requerida).trim() : null;
+        subject = `Solicitud de entrega OC ${ocNumero} - ${businessName ?? 'AC Proyectos'}`;
+        html =
+          `<p>Hola Isabel,</p>` +
+          `<p>Les escribo para solicitar la entrega de los equipos de nuestra orden de compra <strong>${ocNumero}</strong>.</p>` +
+          (fechaRequerida ? `<p>Fecha requerida: <strong>${fechaRequerida}</strong>.</p>` : '') +
+          (nota ? `<p>${nota}</p>` : '') +
+          `<p>Quedo pendiente de la programación. Gracias.</p>` +
+          `<p>Saludos,<br>${agentName ?? 'Nami'}<br>${businessName ?? 'AC Proyectos'}</p>`;
+      }
+
+      if (!enviar) {
+        return {
+          ok: true,
+          draft: { to: destinatario ?? '(falta destinatario)', subject, html },
+          hint: 'Muestra este borrador a quien te lo pidió. Si confirma, llámame de nuevo con enviar=true.',
+        };
+      }
+
+      if (!destinatario) {
+        return { ok: false, error: 'destinatario_email es requerido para enviar (y no hay trane_contacts configurado para esta org)' };
+      }
+
+      const { sendMeerkatHtmlEmail } = await import('@/lib/email/send-as-agent');
+      const result = await sendMeerkatHtmlEmail({
+        agentId,
+        to: destinatario,
+        subject, html,
+        agent: {
+          agent_name:    agentName,
+          business_name: businessName,
+          email_from:    (agent.email_from as string | null) ?? null,
+          email_domain_verified: (agent.email_domain_verified as boolean | null) ?? null,
+        },
+      }, supabase);
+      if (!result.ok) return { ok: false, error: result.error ?? 'Envío falló' };
+      return {
+        ok: true,
+        message: `Correo enviado a ${destinatario} sobre la OC ${ocNumero}.`,
+        provider: result.provider,
+        oc_numero: ocNumero,
+      };
+    }
+
     if (toolName === 'inv_transferir_bodega') {
       const serie  = String(toolInput.serie ?? '').trim();
       const bodega = String(toolInput.bodega ?? '').trim();
