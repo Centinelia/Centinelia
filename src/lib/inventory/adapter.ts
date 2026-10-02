@@ -429,6 +429,17 @@ export async function patchEstatusBySerie(
   };
 }
 
+/**
+ * Trata el valor de la columna CLIENTE como "disponible" (equivalente a vacío)
+ * si está en blanco o es el placeholder "STOCK" que AC Proyectos usa para
+ * marcar equipos aún no asignados. Confirmado por Camila 2026-10-02 en WhatsApp.
+ * Case-insensitive y tolera espacios.
+ */
+function isClienteDisponible(v: unknown): boolean {
+  const s = String(v ?? '').trim().toUpperCase();
+  return s === '' || s === 'STOCK';
+}
+
 export interface PatchClienteInput {
   cliente_nombre:   string;
   vendedor_codigo?: string;
@@ -462,7 +473,7 @@ export async function patchClienteBySerie(
   }
 
   const currentCliente = String(hit.row[clienteIdx] ?? '').trim();
-  if (currentCliente && !input.force) {
+  if (!isClienteDisponible(currentCliente) && !input.force) {
     return { ok: false, code: 'cliente_assigned_conflict', current_cliente: currentCliente };
   }
 
@@ -655,7 +666,7 @@ export async function patchSalidaBySeries(
       after_row[estatusIdx] = 'ENTREGADO'; patched.push(col.estatus.toUpperCase());
 
       const currentCliente = String(hit.row[clienteIdx] ?? '').trim();
-      if (!currentCliente) {
+      if (isClienteDisponible(currentCliente)) {
         await GraphExcel.patchCell(ctx.token, session, sheet, `${cellLetter(clienteIdx)}${abs}`, input.cliente_nombre);
         after_row[clienteIdx] = input.cliente_nombre; patched.push(col.cliente.toUpperCase());
       } else if (currentCliente.toLowerCase() !== input.cliente_nombre.toLowerCase()) {

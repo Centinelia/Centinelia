@@ -240,6 +240,29 @@ describe('patchClienteBySerie', () => {
     const badCtx = { ...CTX, config: { ...CTX.config, columns_historico: { ...CTX.config.columns_historico, estatus: 'INEXISTENTE' } } };
     await expect(patchClienteBySerie(badCtx, '2619HA012345', { cliente_nombre: 'X' })).rejects.toThrow(/no encontrada en headersMap/);
   });
+
+  // Regression 2026-10-02: Camila confirmó que CLIENTE="STOCK" es el placeholder
+  // que ella usa para "disponible, no asignado". Nami debe tratarlo como vacío
+  // y permitir asignar sin force. Igual aplica case-insensitive.
+  it('CLIENTE="STOCK" se trata como disponible (no genera conflict)', async () => {
+    const { patchClienteBySerie } = await import('../adapter');
+    const row = new Array(HEADERS.length).fill(''); row[2] = '2619HA012345'; row[3] = 'ALMACEN'; row[HEADERS.indexOf('CLIENTE')] = 'STOCK';
+    await mockHeaders([row]);
+    const r = await patchClienteBySerie(CTX, '2619HA012345', { cliente_nombre: 'Mauricio Guerra' });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.cliente_asignado).toBe('Mauricio Guerra');
+      expect(r.estatus_resultante).toBe('SEPARADO');
+    }
+  });
+
+  it('CLIENTE="stock" (lowercase) también se trata como disponible', async () => {
+    const { patchClienteBySerie } = await import('../adapter');
+    const row = new Array(HEADERS.length).fill(''); row[2] = '2619HA012345'; row[3] = 'ALMACEN'; row[HEADERS.indexOf('CLIENTE')] = 'stock';
+    await mockHeaders([row]);
+    const r = await patchClienteBySerie(CTX, '2619HA012345', { cliente_nombre: 'Nuevo' });
+    expect(r.ok).toBe(true);
+  });
 });
 
 describe('patchVentaBySerie', () => {
@@ -348,5 +371,21 @@ describe('patchSalidaBySeries', () => {
     const r = await patchSalidaBySeries(CTX, ['2616HA045921'], { folio_hoja: '4251', cliente_nombre: 'X' });
     expect(r.ok).toBe(true);
     // No explicit assertion on fecha_default, pero debe no crashear.
+  });
+
+  // Regression 2026-10-02: STOCK = disponible per Camila. En salida tampoco debe
+  // generar conflict ni respetar "STOCK" como asignación previa.
+  it('CLIENTE="STOCK" en salida acepta la nueva asignación sin conflict', async () => {
+    const { patchSalidaBySeries } = await import('../adapter');
+    const r1 = new Array(HEADERS.length).fill(''); r1[2] = '2616HA045921'; r1[HEADERS.indexOf('CLIENTE')] = 'STOCK';
+    await mockHeaders([r1]);
+    const r = await patchSalidaBySeries(CTX, ['2616HA045921'], {
+      folio_hoja: '4251', cliente_nombre: 'Mauricio Guerra', fecha: '2026-10-02',
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.series_registradas).toContain('2616HA045921');
+      expect(r.conflicts).toEqual([]);
+    }
   });
 });
