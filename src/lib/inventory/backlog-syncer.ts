@@ -116,13 +116,20 @@ export async function readBacklogIndex(
  * Compara dos filas (array de 8 valores) para decidir si hay cambios.
  * Normalizamos tipos antes de comparar (strings vs numbers que Excel puede
  * leer distinto).
+ *
+ * Las columnas C (FECHA REGISTRO, idx 2) y G (FECHA ENTREGA ESTIMADA, idx 6)
+ * reciben normalización fecha-aware: Excel coerce fechas ISO escritas como
+ * string ("2025-11-18") a serial numbers (45979) al leerlas de vuelta. Sin
+ * esta normalización el syncer reportaba `updated=45` cada re-run del mismo
+ * PDF (bug detectado en E2E 2026-10-02).
  */
+const DATE_COL_INDEXES = new Set([2, 6]);
+
 export function rowsEqual(a: unknown[], b: unknown[]): boolean {
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) {
-    const na = normalizeCell(a[i]);
-    const nb = normalizeCell(b[i]);
-    if (na !== nb) return false;
+    const normalize = DATE_COL_INDEXES.has(i) ? normalizeDateCell : normalizeCell;
+    if (normalize(a[i]) !== normalize(b[i])) return false;
   }
   return true;
 }
@@ -131,6 +138,30 @@ function normalizeCell(v: unknown): string {
   if (v == null || v === '') return '';
   if (typeof v === 'number') return String(v);
   return String(v).trim();
+}
+
+/**
+ * Normaliza una celda que semánticamente es fecha. Si es string ISO (YYYY-MM-DD)
+ * la deja así; si es un Excel serial en rango razonable de fechas lo convierte
+ * a ISO. Fuera de rango o tipos inesperados cae al `normalizeCell` genérico.
+ *
+ * Rango 10000–80000 cubre ~1927–2119. Serials fuera de ahí no son fechas y se
+ * tratan como strings/numbers normales — ver test "Excel serial fuera de rango".
+ */
+const EXCEL_DATE_MIN = 10000;
+const EXCEL_DATE_MAX = 80000;
+const EXCEL_EPOCH_UTC_MS = Date.UTC(1899, 11, 30);   // 1899-12-30, maneja Lotus 1900 leap bug
+
+function normalizeDateCell(v: unknown): string {
+  if (v == null || v === '') return '';
+  if (typeof v === 'number' && Number.isFinite(v) && v >= EXCEL_DATE_MIN && v <= EXCEL_DATE_MAX) {
+    const d = new Date(EXCEL_EPOCH_UTC_MS + Math.round(v) * 86400000);
+    const y  = d.getUTCFullYear();
+    const m  = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(d.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${dd}`;
+  }
+  return normalizeCell(v);
 }
 
 /**

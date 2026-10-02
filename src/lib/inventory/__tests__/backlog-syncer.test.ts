@@ -123,6 +123,40 @@ describe('rowsEqual', () => {
     expect(rowsEqual([null], [''])).toBe(true);
     expect(rowsEqual([undefined], [''])).toBe(true);
   });
+
+  // Regression: Excel coerce fechas ISO escritas como string ("2025-11-18") a serial
+  // numbers (45979) al leerlas de vuelta. Sin esta normalización, re-correr el syncer
+  // con el mismo PDF reportaba updated=45 cada vez (bug detectado en E2E 2026-10-02).
+  // Las columnas C (FECHA REGISTRO, idx 2) y G (FECHA ENTREGA ESTIMADA, idx 6) son
+  // fechas; los demás índices mantienen la comparación genérica.
+  it('idempotency: fecha ISO en col date-aware == Excel serial del mismo día', async () => {
+    const { rowsEqual } = await import('../backlog-syncer');
+    // 8 columnas BACKLOG: idx 2 = FECHA REGISTRO, idx 6 = FECHA ENTREGA ESTIMADA
+    // 2025-11-18 → Excel serial 45979 ; 2026-11-27 → 46353
+    const written = ['4599', '80522090', '2025-11-18', 'EAC180A3E0A1HY3*', 2, 'AWAITING_SHIPPING', '2026-11-27', 'L1.5 · DCD · USD 18848.62 · RES 2'];
+    const readBack = [4599, 80522090, 45979, 'EAC180A3E0A1HY3*', 2, 'AWAITING_SHIPPING', 46353, 'L1.5 · DCD · USD 18848.62 · RES 2'];
+    expect(rowsEqual(written, readBack)).toBe(true);
+  });
+
+  it('idempotency: fecha ISO vs Excel serial de día DISTINTO → false', async () => {
+    const { rowsEqual } = await import('../backlog-syncer');
+    // 2025-11-18 vs serial 46000 (día distinto)
+    const a = ['x', 'y', '2025-11-18', 'z', 1, 'S', '2026-11-27', 'n'];
+    const b = ['x', 'y', 46000,       'z', 1, 'S', '2026-11-27', 'n'];
+    expect(rowsEqual(a, b)).toBe(false);
+  });
+
+  it('idempotency: Excel serial fuera de rango de fechas (ej. 42 o 999999) NO se trata como fecha', async () => {
+    const { rowsEqual } = await import('../backlog-syncer');
+    // Row donde FECHA REGISTRO es un número 42 (no fecha): string "42" vs number 42 iguales por fallback numérico
+    const a = ['x', 'y', '42',  'z', 1, 'S', '', 'n'];
+    const b = ['x', 'y', 42,    'z', 1, 'S', '', 'n'];
+    expect(rowsEqual(a, b)).toBe(true);
+    // Pero "42" vs serial de fecha debería diferir
+    const c = ['x', 'y', '2025-11-18', 'z', 1, 'S', '', 'n'];
+    const d = ['x', 'y', 42,           'z', 1, 'S', '', 'n'];
+    expect(rowsEqual(c, d)).toBe(false);
+  });
 });
 
 describe('syncBacklogRows — upsert mode (merge inteligente)', () => {
