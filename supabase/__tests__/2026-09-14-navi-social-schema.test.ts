@@ -26,6 +26,10 @@ describe('navi-social-schema', () => {
 
     await supabase.from('organizations').insert({ portal_email: orgEmail, name: 'Test Navi' });
 
+    // active:false en todos los agents de test — así, si el afterAll falla a
+    // mitad, los zombies no tienen active=true y no disparan la alerta
+    // pool-provisioning-drift (precedente 2026-10-03: 17 zombies por este
+    // mismo test con afterAll que caía silencioso).
     const { data: navi, error: naviErr } = await supabase
       .from('voice_agents')
       .insert({
@@ -35,6 +39,7 @@ describe('navi-social-schema', () => {
         client_name: 'Test Client',
         business_name: 'Test Business',
         plan: 'pro',
+        active: false,
       })
       .select()
       .single();
@@ -50,6 +55,7 @@ describe('navi-social-schema', () => {
         client_name: 'Test Client',
         business_name: 'Test Business',
         plan: 'pro',
+        active: false,
       })
       .select()
       .single();
@@ -58,8 +64,28 @@ describe('navi-social-schema', () => {
   }, 30000);
 
   afterAll(async () => {
-    // Deleting the org cascades / nullifies FKs down to social_accounts, voice_agents
-    await supabase.from('organizations').delete().eq('portal_email', orgEmail);
+    // Defense in depth: social_accounts, content_drafts, editorial_calendars,
+    // brand_templates y user_media_uploads NO cascadean desde organizations
+    // (ver 20260914000000_navi_social_schema.sql). Si solo borramos la org,
+    // falla silencioso por FK violation y quedan zombies.
+    // Orden: hojas primero, raíces después. editorial_calendar_slots y
+    // social_metrics cascadean desde su parent — no se tocan explícito.
+    const children = [
+      'social_interactions',
+      'user_media_uploads',
+      'content_drafts',          // cascade a social_metrics via FK
+      'editorial_calendars',     // cascade a editorial_calendar_slots via FK
+      'brand_templates',
+      'social_accounts',
+    ];
+    for (const t of children) {
+      const { error } = await supabase.from(t as any).delete().eq('portal_email', orgEmail);
+      if (error) console.warn(`[afterAll] ${t} cleanup warning: ${error.message}`);
+    }
+    const { error: vaErr } = await supabase.from('voice_agents').delete().eq('portal_email', orgEmail);
+    if (vaErr) console.warn(`[afterAll] voice_agents cleanup warning: ${vaErr.message}`);
+    const { error: orgErr } = await supabase.from('organizations').delete().eq('portal_email', orgEmail);
+    if (orgErr) console.warn(`[afterAll] organizations cleanup warning: ${orgErr.message}`);
   }, 30000);
 
   // ── Original tests (renamed/improved) ───────────────────────────────────────
@@ -177,6 +203,7 @@ describe('navi-social-schema', () => {
         client_name: 'Test Client',
         business_name: 'Test Business',
         plan: 'pro',
+        active: false,
       })
       .select()
       .single();
