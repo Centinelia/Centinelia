@@ -112,4 +112,30 @@ describe('detectPoolProvisioningAnomalies', () => {
     expect(result).toHaveLength(1);
     expect(result[0].active_agents).toBe(3);
   });
+
+  // Regression 2026-10-03: alert ruidosa de 20 orgs — 17 eran test fixtures y
+  // demos zombie (active=true pero ops_used=0, nadie ha intentado consumir).
+  // El comentario del detector dice "flag solo si ops_used > 0", pero el código
+  // no lo verificaba. Sin consumo real no hay dolor del cliente → no flag.
+  it('zombie org (active agent, no pool, ops_used=0) → no flag', async () => {
+    const supa = mockSupabase({
+      activeAgents:     [{ portal_email: 'nazre20+navi-test-123@gmail.com', active: true }],
+      balanceByOrg:     new Map([['nazre20+navi-test-123@gmail.com', 0]]),
+      grantExistsByOrg: new Map(),
+      opsUsedByOrg:     new Map([['nazre20+navi-test-123@gmail.com', 0]]),
+    });
+    const result = await detectPoolProvisioningAnomalies(supa);
+    expect(result).toEqual([]);
+  });
+
+  it('zombie exhausted-looking org con ops_used=0 → no flag (idle, sin dolor real)', async () => {
+    const supa = mockSupabase({
+      activeAgents:     [{ portal_email: 'idle-demo@centinelia.mx', active: true }],
+      balanceByOrg:     new Map([['idle-demo@centinelia.mx', 0]]),
+      grantExistsByOrg: new Map([['idle-demo@centinelia.mx', true]]),
+      opsUsedByOrg:     new Map([['idle-demo@centinelia.mx', 0]]),
+    });
+    const result = await detectPoolProvisioningAnomalies(supa);
+    expect(result).toEqual([]);
+  });
 });
