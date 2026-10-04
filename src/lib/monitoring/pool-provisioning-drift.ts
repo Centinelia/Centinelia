@@ -53,19 +53,25 @@ export async function detectPoolProvisioningAnomalies(
     const bal = typeof balance === 'number' ? balance : 0;
     if (bal > 0) continue;
 
-    const { data: hasGrant } = await supabase
-      .from('ops_ledger')
-      .select('id')
-      .eq('portal_email', portalEmail)
-      .in('kind', ['initial_grant', 'annual_grant', 'monthly_grant', 'topup'])
-      .limit(1);
-
+    // Gate on `ops_used > 0` para evitar flagear orgs sin tráfico: test fixtures
+    // zombie (Navi afterAll que falló), demos sin uso, orgs recién provisionadas
+    // dentro de la ventana de seeding. Si nadie ha intentado consumir aún no hay
+    // 429 ni dolor del cliente — alertar aquí sería ruido. Precedente 2026-10-03:
+    // alerta de 20 orgs con 17 zombies.
     const { data: acct } = await supabase
       .from('account_ops')
       .select('ops_used')
       .eq('portal_email', portalEmail)
       .maybeSingle();
     const opsUsed = (acct?.ops_used as number | undefined) ?? 0;
+    if (opsUsed === 0) continue;
+
+    const { data: hasGrant } = await supabase
+      .from('ops_ledger')
+      .select('id')
+      .eq('portal_email', portalEmail)
+      .in('kind', ['initial_grant', 'annual_grant', 'monthly_grant', 'topup'])
+      .limit(1);
 
     anomalies.push({
       portal_email:   portalEmail,
