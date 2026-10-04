@@ -49,6 +49,27 @@ export async function POST(req: NextRequest) {
   const typedAgent = agent as VoiceAgent;
   const agentName  = typedAgent.agent_name?.trim() || 'Centinelia';
 
+  // Blocklist check — números marcados como spam/bot por el dueño del negocio
+  // vía /portal/[token]/configurar. Devolvemos 403 (mismo patrón que suspended)
+  // para que Vapi cuelgue en <1s sin consumir pool del cliente. Si phoneNumber
+  // está vacío (llamada sin caller ID), skipeamos el chequeo — no bloqueable
+  // por policy y el regex E.164 lo rechazaría.
+  if (phoneNumber && typedAgent.portal_email) {
+    const normalizedCaller = normalizeToE164(phoneNumber);
+    const { data: blocked } = await supabase
+      .from('blocked_numbers')
+      .select('id')
+      .eq('portal_email', typedAgent.portal_email)
+      .eq('phone_e164', normalizedCaller)
+      .maybeSingle();
+    if (blocked) {
+      return NextResponse.json(
+        { error: 'Caller number is blocked for this organization' },
+        { status: 403 }
+      );
+    }
+  }
+
   // Agente pausado → mensaje explicativo al llamante + colgar. Antes el
   // llamante escuchaba silencio y no sabía por qué. Cubre pausa manual, pausa
   // por pool agotado sin fallback config, y grace period vencido.
