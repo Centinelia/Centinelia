@@ -1,10 +1,15 @@
 import { defineConfig } from 'vitest/config';
 import path from 'node:path';
 
-// Default test run excludes tests/integration/**. Those hit real Supabase
-// with real data (e.g., production portal_email) and need a seeded DB state
-// to be deterministic. Run them explicitly with:
-//   npx vitest run tests/integration
+// Default test run (npm test) excluye todos los tests que requieren Supabase
+// real, Playwright, o fixtures de infraestructura. Para esos, usar:
+//   npm run test:integration  → tests/integration/**
+//   npm run test:smoke        → supabase/__tests__/**/*.integration.test.ts
+//   npm run test:e2e          → tests/playwright/** (Playwright)
+//
+// Convención: cualquier test con sufijo `.integration.test.ts` o bajo
+// `supabase/__tests__/`, `tests/e2e/`, `tests/integration/`, `tests/playwright/`
+// se asume que necesita env/DB real y queda fuera del default.
 export default defineConfig({
   resolve: {
     alias: {
@@ -18,8 +23,11 @@ export default defineConfig({
       '**/.next/**',
       '**/.git/**',
       '**/.claude/**',
+      'supabase/__tests__/**',
+      'tests/e2e/**',
       'tests/integration/**',
       'tests/playwright/**',
+      '**/*.integration.test.ts',
     ],
     // Tests que necesitan DOM se marcan con:
     //   // @vitest-environment jsdom

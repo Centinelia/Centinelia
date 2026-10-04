@@ -375,7 +375,7 @@ function FichaCard({ ficha, token, onDelete, onEdited }: { ficha: Ficha; token: 
       {!editing && (
         <div className="flex flex-col gap-1 text-xs" style={{ color: '#4A3B6B' }}>
           {ficha.contacto_nombre && (
-            <div><span className="font-medium" style={{ color: '#1A0A3B' }}>{ficha.contacto_nombre}</span>{ficha.contacto_puesto ? ` — ${ficha.contacto_puesto}` : ''}</div>
+            <div><span className="font-medium" style={{ color: '#1A0A3B' }}>{ficha.contacto_nombre}</span>{ficha.contacto_puesto ? ` · ${ficha.contacto_puesto}` : ''}</div>
           )}
           <div className="flex flex-wrap gap-3">
             {ficha.contacto_correo && (<span className="inline-flex items-center gap-1"><Mail size={12} />{ficha.contacto_correo}</span>)}

@@ -42,6 +42,16 @@ vi.mock('@/lib/auth/cron-auth', () => ({
   },
 }));
 
+// La ruta llama normalizeImageForVision() con el buffer de cada attachment —
+// sharp intenta decodificar y revienta con buffers de 2 bytes como los que usan
+// los tests. Mock devuelve el mismo buffer tratado como JPEG válido.
+vi.mock('@/lib/billing/vision/image-normalize', () => ({
+  normalizeImageForVision: async ({ buffer }: { buffer: Buffer }) => ({
+    buffer,
+    mimeType: 'image/jpeg' as const,
+  }),
+}));
+
 const { mockAgentsList, mockIntegrationLookup, mockEmailInsert, mockLockAcquire, mockAgentFull, mockOrgKB } = vi.hoisted(() => ({
   mockAgentsList:        vi.fn(),
   mockIntegrationLookup: vi.fn(),

@@ -271,7 +271,7 @@ export default function FacturasRecibidasPage() {
                   <td className="p-2" style={{ color: '#4A3B6B' }}>{fmtDate(f.fecha_emision)}</td>
                   <td className="p-2 max-w-[240px] truncate" style={{ color: '#1A0A3B' }} title={f.razon_social_emisor}>{f.razon_social_emisor}</td>
                   <td className="p-2 font-mono" style={{ color: '#6B6480' }}>{f.rfc_emisor}</td>
-                  <td className="p-2" style={{ color: '#4A3B6B' }}>{f.categoria_gasto ?? '—'}</td>
+                  <td className="p-2" style={{ color: '#4A3B6B' }}>{f.categoria_gasto ?? '·'}</td>
                   <td className="p-2 text-right font-medium" style={{ color: '#1A0A3B' }}>${money(f.total)}</td>
                   <td className="p-2 text-center">
                     {f.deducible

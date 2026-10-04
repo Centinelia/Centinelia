@@ -229,13 +229,22 @@ describe('dequeueAndRun', () => {
 
     const updateEqMock = vi.fn().mockResolvedValue({ error: null });
     const updateMock   = vi.fn().mockReturnValue({ eq: updateEqMock });
-    mockClient.from = vi.fn().mockReturnValue({ update: updateMock });
+    // markFailed hace billing_jobs.update + notification_events.insert
+    // (dead-letter). Mock ambos para no crashear.
+    const insertMock   = vi.fn().mockResolvedValue({ error: null });
+    mockClient.from = vi.fn((table: string) => {
+      if (table === 'notification_events') return { insert: insertMock };
+      return { update: updateMock };
+    });
 
     const result = await dequeueAndRun();
 
     expect(result).toEqual({ processed: 1 });
     expect(updateMock).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'failed' }),
+    );
+    expect(insertMock).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'billing_job_dead_letter' }),
     );
   });
 

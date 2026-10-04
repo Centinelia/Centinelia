@@ -258,10 +258,11 @@ describe('BillingEmployee.runOnEmail -- consulta', () => {
     expect(result.consulted).toBe(1);
     expect(result.processed).toBe(0);
     expect(result.errors).toHaveLength(0);
-    expect(mockReplyToInboundEmail).toHaveBeenCalledWith(
-      'email-001',
-      '<p>No se pudo identificar al cliente. Por favor confirme el RFC.</p>',
-    );
+    // replyToInboundEmail(emailId, body, attachments?, billing?, smtp?) — los
+    // 3 opcionales llegan undefined al contestar sin adjuntos ni billing override.
+    const [emailIdArg, bodyArg] = mockReplyToInboundEmail.mock.calls[0];
+    expect(emailIdArg).toBe('email-001');
+    expect(bodyArg).toBe('<p>No se pudo identificar al cliente. Por favor confirme el RFC.</p>');
   });
 });
 
