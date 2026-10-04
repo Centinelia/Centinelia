@@ -99,4 +99,42 @@ describe('crear-ticket route (work-based billing)', () => {
     expect(res.status).toBe(401);
     expect(consumeAiOpMock.mock.calls).toHaveLength(0);
   });
+
+  // Regression 2026-10-01: ticket_registered, ticket_whatsapp_notify y
+  // ticket_email_notify usaban todos reference_id=folio → UNIQUE constraint
+  // ops_ledger_portal_ref_kind_uniq rechazaba el 2do+ cobro → undercharge.
+  // Fix: notifs usan `${folio}:whatsapp` o `${folio}:email`.
+  it('cobros de notif (WA/email) usan reference_id con sufijo distinto al base', async () => {
+    // Config con client_email y portal_token para disparar el path email
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+    (createAdminClient as any).mockReturnValueOnce({
+      from:   vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      eq:     vi.fn().mockReturnThis(),
+      insert: vi.fn().mockResolvedValue({ data: null, error: null }),
+      single: vi.fn().mockResolvedValue({
+        data: {
+          transfer_whatsapp: null, wa_phone_number: null, timezone: 'America/Monterrey',
+          portal_email: 'x@x.mx', client_email: 'dueno@x.mx', portal_token: 'tok-abc', agent_name: 'Nia',
+        },
+        error: null,
+      }),
+    });
+    const { POST } = await import('../route');
+    const req = await buildReq({
+      titulo: 'Fuga', categoria: 'plomeria', prioridad: 'normal',
+    });
+    await POST(req);
+
+    // Esperar al microtask del .then() del email send
+    await new Promise(r => setImmediate(r));
+
+    const baseCall  = consumeAiOpMock.mock.calls.find(c => (c[2] as any)?.source === 'ticket_registered');
+    const emailCall = consumeAiOpMock.mock.calls.find(c => (c[2] as any)?.source === 'ticket_email_notify');
+    expect(baseCall).toBeTruthy();
+    expect((baseCall![2] as any).reference_id).toBe('TCK-000123');
+    if (emailCall) {
+      expect((emailCall[2] as any).reference_id).toBe('TCK-000123:email');
+    }
+  });
 });

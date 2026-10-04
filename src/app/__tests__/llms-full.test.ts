@@ -92,6 +92,8 @@ describe('llms-full.txt', () => {
   });
 
   it('tiene las secciones numeradas obligatorias', () => {
+    // 16 secciones tras los packs Fichas Informativas (#8) y Perfiles Vivos (#9)
+    // shipeados 2026-09-23/24. Comparación/Glosario/Blog/etc se renumeraron.
     const sections = [
       '## 1. Qué es Centinelia',
       '## 2. El equipo de empleados digitales',
@@ -100,13 +102,15 @@ describe('llms-full.txt', () => {
       '## 5. Cómo funciona técnicamente',
       '## 6. Casos por industria',
       '## 7. Pack Ciclo OC-CFDI',
-      '## 8. Comparación con otras plataformas',
-      '## 9. Glosario de términos citables',
-      '## 10. Blog: guías long-tail',
-      '## 11. Preguntas frecuentes generales',
-      '## 12. Contacto',
-      '## 13. Páginas del sitio',
-      '## 14. Categorización',
+      '## 8. Pack Fichas Informativas',
+      '## 9. Pack Perfiles Vivos',
+      '## 10. Comparación con otras plataformas',
+      '## 11. Glosario de términos citables',
+      '## 12. Blog: guías long-tail',
+      '## 13. Preguntas frecuentes generales',
+      '## 14. Contacto',
+      '## 15. Páginas del sitio',
+      '## 16. Categorización',
     ];
     for (const s of sections) {
       expect(content, `Falta sección ${s}`).toContain(s);

@@ -20,7 +20,8 @@ import type Anthropic from '@anthropic-ai/sdk';
 const { mockMessagesCreate, mockSupabaseFrom, mockLogLlmCall } = vi.hoisted(() => ({
   mockMessagesCreate: vi.fn(),
   mockSupabaseFrom:   vi.fn(),
-  mockLogLlmCall:     vi.fn(),
+  // logLlmCall se consume con .catch() → debe retornar Promise siempre.
+  mockLogLlmCall:     vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('@anthropic-ai/sdk', () => ({

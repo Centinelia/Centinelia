@@ -98,11 +98,14 @@ export async function POST(req: NextRequest) {
 
   // Cobro diferencial si hubo más de 1 envío real (CC): la línea 71 ya prepagó 1 op como gate.
   // Este route no acepta cc hoy — la guarda es defensiva por si un futuro cambio agrega cc sin actualizar el pre-charge.
+  // Sufijo :cc evita colisión con el pre-charge (mismo sessionId, mismo source).
+  // Ver nota en registrar-incidencia.ts sobre UNIQUE constraint
+  // ops_ledger_portal_ref_kind_uniq (hallazgo 2026-10-01).
   const sendCount = result.count ?? 0;
   if (result.ok && sendCount > 1) {
     await consumeAiOp(agent_id, sendCount - 1, {
       source:       'tool_enviar_correo',
-      reference_id: sessionId ?? undefined,
+      reference_id: sessionId ? `${sessionId}:cc` : undefined,
       label:        `Correo enviado durante llamada (envío extra por CC — ${sendCount} envíos totales)`,
     });
   }

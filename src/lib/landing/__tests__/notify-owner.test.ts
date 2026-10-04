@@ -12,9 +12,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mockSendEmail = vi.fn().mockResolvedValue(true);
 
-vi.mock('@/lib/email/send', () => ({
-  sendEmail: (...args: unknown[]) => mockSendEmail(...args),
-}));
+// Preserva los helpers de branding (shell, heading, badge, btn, …) y solo
+// mockea sendEmail. Sin importOriginal, notify-owner.ts crashea con
+// "badge is not a function" al construir el HTML del correo.
+vi.mock('@/lib/email/send', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/email/send')>();
+  return {
+    ...actual,
+    sendEmail: (...args: unknown[]) => mockSendEmail(...args),
+  };
+});
 
 import { notifyOwnerFallback, notifyOwnerNewLead } from '../notify-owner';
 
@@ -23,7 +30,7 @@ import { notifyOwnerFallback, notifyOwnerNewLead } from '../notify-owner';
 describe('notifyOwnerFallback', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('envia correo al owner con subject que contiene FALLBACK', async () => {
+  it('envia correo al owner con subject que marca Fallback', async () => {
     await notifyOwnerFallback({
       requestId: 'r1',
       phone:     '8112345678',
@@ -32,8 +39,8 @@ describe('notifyOwnerFallback', () => {
     });
     expect(mockSendEmail).toHaveBeenCalledOnce();
     const [opts] = mockSendEmail.mock.calls[0];
-    expect(opts.to).toBe('nazre20@gmail.com');
-    expect(opts.subject).toContain('FALLBACK');
+    expect(opts.to).toBe('hola@centinelia.mx');
+    expect(opts.subject).toContain('Fallback');
   });
 
   it('incluye el telefono en el subject', async () => {
@@ -47,17 +54,17 @@ describe('notifyOwnerFallback', () => {
     expect(opts.subject).toContain('8119999999');
   });
 
-  it('incluye requestId, telefono, industria y reason en el html', async () => {
+  it('incluye requestId, telefono, orgName y reason en el html', async () => {
     await notifyOwnerFallback({
       requestId: 'r3',
       phone:     '8112345678',
-      orgName: 'Test Org', orgDescription: 'Test desc', expectation: 'Test exp',
+      orgName: 'Despacho XYZ', orgDescription: 'Test desc', expectation: 'Test exp',
       reason:    'agent_not_seeded',
     });
     const [opts] = mockSendEmail.mock.calls[0];
     expect(opts.html).toContain('r3');
     expect(opts.html).toContain('8112345678');
-    expect(opts.html).toContain('servicios_profesionales');
+    expect(opts.html).toContain('Despacho XYZ');
     expect(opts.html).toContain('agent_not_seeded');
   });
 
@@ -73,16 +80,16 @@ describe('notifyOwnerFallback', () => {
 describe('notifyOwnerNewLead', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('envia correo al owner con subject que contiene el telefono e industria', async () => {
+  it('envia correo al owner con subject que contiene el telefono y orgName', async () => {
     await notifyOwnerNewLead({
       requestId: 'r5',
       phone:     '8112345678',
-      orgName: 'Test Org', orgDescription: 'Test desc', expectation: 'Test exp',
+      orgName: 'Despacho ABC', orgDescription: 'Test desc', expectation: 'Test exp',
     });
     expect(mockSendEmail).toHaveBeenCalledOnce();
     const [opts] = mockSendEmail.mock.calls[0];
-    expect(opts.to).toBe('nazre20@gmail.com');
-    expect(opts.subject).toContain('despacho_contable');
+    expect(opts.to).toBe('hola@centinelia.mx');
+    expect(opts.subject).toContain('Despacho ABC');
     expect(opts.subject).toContain('8112345678');
   });
 

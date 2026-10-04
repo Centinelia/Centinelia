@@ -89,7 +89,7 @@ export default function EditLeadModal({ lead, onClose, onSaved }: Props) {
         </div>
 
         <OficinaModal.Field label="Servicio de interés">
-          <OficinaModal.Input value={form.servicio} onChange={e => setForm(f => ({ ...f, servicio: e.target.value }))} placeholder="Recepcionista IA" />
+          <OficinaModal.Input value={form.servicio} onChange={e => setForm(f => ({ ...f, servicio: e.target.value }))} placeholder="Recepción telefónica" />
         </OficinaModal.Field>
 
         <div className="grid grid-cols-2 gap-3">

@@ -486,7 +486,7 @@ function ImportWizard({ token, onClose, onDone, onError }: { token: string; onCl
                     className="flex-1 px-2 py-1.5 rounded border text-xs"
                     style={{ borderColor: '#E8E3F5', color: '#1A0A3B' }}
                   >
-                    <option value="">— columna del archivo —</option>
+                    <option value="">· columna del archivo ·</option>
                     {preview.headers.map((h) => <option key={h} value={h}>{h}</option>)}
                   </select>
                   <button
@@ -538,7 +538,7 @@ function MapField({ label, value, headers, onChange, required = false }: { label
         className="flex-1 px-2 py-1.5 rounded border text-xs"
         style={{ borderColor: required && !value ? '#DC2626' : '#E8E3F5', color: '#1A0A3B' }}
       >
-        <option value="">{required ? '— obligatorio —' : '— (ninguna) —'}</option>
+        <option value="">{required ? '· obligatorio ·' : '· (ninguna) ·'}</option>
         {headers.map((h) => <option key={h} value={h}>{h}</option>)}
       </select>
     </div>
@@ -788,7 +788,7 @@ function EditSelect({ label, value, options, onChange }: { label: string; value:
         className="px-2 py-1.5 rounded border text-xs"
         style={{ borderColor: '#E8E3F5', color: '#1A0A3B' }}
       >
-        {options.map((o) => <option key={o} value={o}>{o === '' ? '— (ninguno) —' : o.replace('_', ' ')}</option>)}
+        {options.map((o) => <option key={o} value={o}>{o === '' ? '· (ninguno) ·' : o.replace('_', ' ')}</option>)}
       </select>
     </label>
   );

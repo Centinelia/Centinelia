@@ -109,7 +109,10 @@ describe('autotagFicha — mocked SDK', () => {
       logLlmCall: mockLogLlmCall,
     }));
     mockCreate.mockReset();
+    // mockReset() borra la implementación → vi.fn() devuelve undefined y rompe
+    // el .catch() en autotagFicha. Mantener como Promise siempre.
     mockLogLlmCall.mockReset();
+    mockLogLlmCall.mockResolvedValue(undefined);
   });
 
   afterEach(() => {

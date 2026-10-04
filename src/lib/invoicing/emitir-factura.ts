@@ -309,7 +309,10 @@ export async function emitirFacturaAuto(
       if (ok && req.agent_id) {
         await consumeAiOp(req.agent_id, 1, {
           source:       'invoice_email_sent',
-          reference_id: result.uuid,
+          // Sufijo :email evita colisión con invoice_stamped (mismo uuid).
+          // Ver nota en registrar-incidencia.ts sobre UNIQUE constraint
+          // ops_ledger_portal_ref_kind_uniq (hallazgo 2026-10-01).
+          reference_id: `${result.uuid}:email`,
           label:        'CFDI enviado al cliente por correo',
         });
       }

@@ -438,5 +438,64 @@ describe('registrarIncidencia', () => {
       expect(sources).toContain('incident_registered');
       expect(sources).not.toContain('incidencia_notif');
     });
+
+  });
+
+  // Regression: hallazgo investigación 2026-10-01. Antes del fix, el
+  // reference_id de incidencia_notif era igual al de incident_registered
+  // (el incidentId pelado). El UNIQUE constraint ops_ledger_portal_ref_kind_uniq
+  // rechazaba el segundo cobro y Beatriz nunca pagaba por los correos de aviso.
+  // El fix agrega sufijo :notif al reference_id para que ambos cobros coexistan.
+  describe('reference_id suffix (regression 2026-10-01 UNIQUE constraint)', () => {
+    beforeEach(async () => {
+      // Reset explícito: evitar herencia de mockResolvedValue de otros tests
+      // en el mismo archivo. clearAllMocks del beforeEach global no resetea
+      // los return values.
+      const { isEmailJobsEnabled, enqueueEmailJobBatch } = await import('../../../email/enqueue-email');
+      (isEmailJobsEnabled as any).mockReset();
+      (enqueueEmailJobBatch as any).mockReset();
+      (sendMeerkatHtmlEmail as any).mockReset();
+      (consumeAiOp as any).mockReset();
+      // Re-aplicar defaults
+      (sendMeerkatHtmlEmail as any).mockResolvedValue({ ok: true, provider: 'resend' });
+      (consumeAiOp as any).mockResolvedValue({ ok: true, aiOpsUsed: 1, aiOpsLimit: 1000 });
+    });
+
+    it('path LEGACY inline: incidencia_notif usa `${incidentId}:notif` como reference_id', async () => {
+      const { isEmailJobsEnabled } = await import('../../../email/enqueue-email');
+      (isEmailJobsEnabled as any).mockResolvedValue(false);
+
+      const ctx = makeCtx();
+      await registrarIncidencia(ctx as any, {
+        business_name: 'X', contact_phone: '8112345678', address: 'Y', motivo: 'Z',
+      });
+
+      const calls = (consumeAiOp as any).mock.calls;
+      const registeredCall = calls.find((c: any[]) => c[2]?.source === 'incident_registered');
+      const notifCall      = calls.find((c: any[]) => c[2]?.source === 'incidencia_notif');
+      expect(registeredCall?.[2]?.reference_id).toBe('inc-1');
+      expect(notifCall?.[2]?.reference_id).toBe('inc-1:notif');
+    });
+
+    it('path NEW jobs: enqueueEmailJobBatch recibe referenceId con sufijo :notif', async () => {
+      const { isEmailJobsEnabled, enqueueEmailJobBatch } = await import('../../../email/enqueue-email');
+      (isEmailJobsEnabled as any).mockResolvedValue(true);
+      (enqueueEmailJobBatch as any).mockResolvedValue([{ ok: true, job_id: 'j1' }]);
+
+      const ctx = makeCtx();
+      await registrarIncidencia(ctx as any, {
+        business_name: 'X', contact_phone: '8112345678', address: 'Y', motivo: 'Z',
+      });
+
+      expect(enqueueEmailJobBatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          source:       'incidencia_notif',
+          referenceId:  'inc-1:notif',
+          chargeSource: 'incidencia_notif',
+        }),
+        expect.any(Array),
+        expect.anything(),
+      );
+    });
   });
 });

@@ -819,7 +819,7 @@ function RepUploadModal({ factura, onClose, onSubmit }: RepUploadModalProps) {
       size="md"
       eyebrow="Complemento de pago"
       title="Subir REP timbrado"
-      description={`REP para la factura ${shortUuid(factura.cfdi_uuid)} — sube el XML y el PDF ya timbrados en el portal del PAC.`}
+      description={`REP para la factura ${shortUuid(factura.cfdi_uuid)}. Sube el XML y el PDF ya timbrados en el portal del PAC.`}
       footer={
         <>
           <OficinaModal.SecondaryAction onClick={onClose} disabled={submitting}>Cancelar</OficinaModal.SecondaryAction>

@@ -103,6 +103,10 @@ const SOURCE_META: Record<string, { label: string; trigger: string }> = {
   tool_registrar_interaccion:      { label: 'Interacción con contacto registrada', trigger: 'voice_call' },
   tool_actualizar_contacto_estado: { label: 'Estado de contacto actualizado',       trigger: 'voice_call' },
   import_cartera_contactos:        { label: 'Cartera de contactos importada',       trigger: 'manual' },
+  // Brand voice (import de muestras desde correos enviados).
+  brand_voice_from_emails: { label: 'Tono de marca aprendido de correos', trigger: 'manual' },
+  // Aviso al encargado cuando una llamada no deja reporte estructurado.
+  no_report_notif:         { label: 'Aviso de llamada sin reporte',       trigger: 'voice_call' },
   // Fallbacks
   unknown:             { label: 'Consumo sin identificar',     trigger: 'manual' },
 };

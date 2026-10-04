@@ -144,7 +144,10 @@ export async function executeMeefiEscalateToHuman(
     try {
       await consumeAiOp(agentId, 1, {
         source:       'meefi_escalation_notif',
-        reference_id: ticketId,
+        // Sufijo :notif evita colisión con meefi_escalation (mismo ticketId).
+        // Ver nota en registrar-incidencia.ts sobre UNIQUE constraint
+        // ops_ledger_portal_ref_kind_uniq (hallazgo 2026-10-01).
+        reference_id: `${ticketId}:notif`,
         label:        'Correo de escalamiento enviado',
       });
     } catch (err) {

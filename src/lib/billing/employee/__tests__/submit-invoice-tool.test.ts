@@ -99,16 +99,19 @@ describe('submit_invoice_batch tool', () => {
     });
   });
 
-  it('applies unit_price and iva_tasa overrides when provided', async () => {
+  it('applies unit_price and iva_tasa overrides when provided (dentro del 5% del catálogo)', async () => {
     const { submitTool, spy } = buildToolsAgainstMockAdapter();
 
+    // Catálogo mock: SKU '021' tiene precio 6.5. La validación 2026-09-04
+    // rechaza desviaciones > 5% para evitar alucinaciones OCR del LLM.
+    // 6.70 está dentro del 5% (6.5 → 6.70 = 3%), así que el override pasa.
     await submitTool.handler({
       client_rfc: 'CAL051103F36',
-      lines: [{ sku: '021', qty: 3, unit_price: 7.25, iva_tasa: 0.16 }],
+      lines: [{ sku: '021', qty: 3, unit_price: 6.70, iva_tasa: 0.16 }],
     });
 
     const [invoices] = spy.mock.calls[0];
-    expect(invoices[0].lines[0]).toMatchObject({ unitPrice: 7.25, ivaTasa: 0.16 });
+    expect(invoices[0].lines[0]).toMatchObject({ unitPrice: 6.70, ivaTasa: 0.16 });
   });
 
   it('defaults payment_method to efectivo when omitted', async () => {

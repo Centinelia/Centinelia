@@ -9,6 +9,7 @@ import { getMaxTokensTruncationStats, pickAlerts as pickMaxTokensAlerts, MAX_TOK
 import { detectStuckOutbound, STUCK_OUTBOUND_HOURS_WARN, STUCK_OUTBOUND_HOURS_CRITICAL } from '@/lib/monitoring/stuck-outbound';
 import { detectOutboundRegistrationDrift, OUTBOUND_REG_WINDOW_HOURS } from '@/lib/monitoring/outbound-registration';
 import { detectPoolProvisioningAnomalies } from '@/lib/monitoring/pool-provisioning-drift';
+import { detectReferenceIdCollisions, REF_COLLISION_WINDOW_HOURS } from '@/lib/monitoring/reference-id-collision-drift';
 
 // ──────────────────────────────────────────────────────────────
 // Invoicing alert thresholds
@@ -331,6 +332,34 @@ export async function GET(req: NextRequest) {
     }
   } catch (err) {
     console.error('[infra-alerts] pool provisioning drift check failed:', err);
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // reference_id collisions — detecta rows en ai_ops_log con count=0 +
+  // context "duplicate key" (señal de que el UNIQUE constraint
+  // ops_ledger_portal_ref_kind_uniq rechazó un cobro). Esto significa que
+  // dos sources distintos están usando el mismo reference_id en la misma
+  // org/kind → undercharge silencioso. Precedente: hallazgo investigación
+  // 2026-10-01 Tortillería — incidencia_notif chocaba con
+  // incident_registered por compartir incidentId. Fix: sufijar reference_id.
+  try {
+    const supabase = createAdminClient();
+    const result = await detectReferenceIdCollisions(supabase);
+    if (result.level !== 'ok') {
+      const sample = result.byOrg.slice(0, 3).map(g =>
+        `${g.portal_email} ${g.source} (×${g.count}, ej: ${g.sample_refs.slice(0, 2).join(', ')})`,
+      ).join(' · ');
+      alerts.push({
+        service:   `reference_id collisions — undercharge silencioso por UNIQUE constraint`,
+        current:   `${result.total} rechazo(s) en ${REF_COLLISION_WINDOW_HOURS}h · ${result.byOrg.length} org/source distintos · muestra: ${sample}`,
+        threshold: `≥ 1 fila en ai_ops_log con count=0 y "duplicate key" en context`,
+        action:    'Buscar los sources listados en el código, cambiar reference_id del cobro secundario a `${baseRef}:<sufijo>`. Ver registrar-incidencia.ts como ejemplo.',
+        actionUrl: 'https://vercel.com/centinelia1/centinelia_product/logs',
+        color:     result.level === 'critical' ? '#ef4444' : '#f59e0b',
+      });
+    }
+  } catch (err) {
+    console.error('[infra-alerts] reference_id collision drift check failed:', err);
   }
 
   // ─────────────────────────────────────────────────────────────
