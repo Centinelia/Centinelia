@@ -31,6 +31,7 @@ import JornadaSection               from '../JornadaSection';
 import ApprovalEmailEditor          from '../ApprovalEmailEditor';
 import CallForwardingSection   from '../CallForwardingSection';
 import FallbackNumberSection  from '../FallbackNumberSection';
+import BlockedNumbersSection  from './BlockedNumbersSection';
 import AgentEmailSection     from '../AgentEmailSection';
 import AgentAccountsSection  from '../AgentAccountsSection';
 import FacturacionSection from '../oficina/integraciones/facturacion/FacturacionSection';
@@ -651,7 +652,7 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
                     <SectionHeader
                       as="h2"
                       title="Desvío de llamadas"
-                      tooltip="Redirige las llamadas de tu número actual al número Centinelia para que tu empleado las atienda automáticamente."
+                      tooltip="Redirige las llamadas de tu número actual a tu empleado. Puedes elegir que conteste al primer timbre, o que suene primero en tu negocio y entre solo si nadie responde a los 20 segundos."
                       className="mb-4"
                     />
                     <CallForwardingSection
@@ -677,6 +678,14 @@ export default async function ConfigurarAgentePage({ params, searchParams }: Pro
                       suggestedFromTransferWhatsapp={(agent as any).transfer_whatsapp ?? null}
                       apiPath={`/api/portal/${token}/org`}
                     />
+                  </Card>
+                </div>
+              )}
+
+              {!isCoordinator && hasVoiceJornada && (
+                <div id="numeros-bloqueados" style={SCROLL_STYLE}>
+                  <Card border elevated={false} padding="sm">
+                    <BlockedNumbersSection token={token} />
                   </Card>
                 </div>
               )}
