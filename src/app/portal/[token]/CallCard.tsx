@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Download, Clock, X, FileText, Star, Phone, User, ChevronDown } from 'lucide-react';
+import { Download, Clock, X, FileText, Star, Phone, User, ChevronDown, Ban } from 'lucide-react';
 import TranscriptView from '@/components/TranscriptView';
 
 const OUTCOME_LABELS: Record<string, { label: string; color: string; bg: string }> = {
@@ -105,8 +105,41 @@ export default function CallCard({ call, isPro, clientName, agentName, token, au
       Usado por el deep-link ?open=<vapi_call_id> desde LearningsSection. */
   autoOpen?:  boolean;
 }) {
-  const [open,     setOpen]     = useState(!!autoOpen);
-  const [modalTab, setModalTab] = useState<ModalTab>('resumen');
+  const [open,         setOpen]         = useState(!!autoOpen);
+  const [modalTab,     setModalTab]     = useState<ModalTab>('resumen');
+  const [blocking,     setBlocking]     = useState(false);
+  const [blockMsg,     setBlockMsg]     = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+
+  const canBlock =
+    !!token &&
+    !!call.caller_number &&
+    call.caller_number.startsWith('+') &&
+    call.caller_number !== '+anonymous';
+
+  async function blockThisCaller() {
+    if (!canBlock) return;
+    if (!confirm(`¿Bloquear ${call.caller_number}? No podrá volver a llamar a tu negocio.`)) return;
+    setBlocking(true);
+    setBlockMsg(null);
+    try {
+      const res = await fetch(`/api/portal/${token}/blocked-numbers`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ phone: call.caller_number, reason: `Bloqueado desde llamada ${call.id.slice(0, 8)}` }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setBlockMsg({ kind: 'err', text: (data as { error?: string }).error ?? 'No se pudo bloquear.' });
+      } else {
+        setBlockMsg({ kind: 'ok', text: `${call.caller_number} bloqueado.` });
+      }
+    } catch {
+      setBlockMsg({ kind: 'err', text: 'Error de red. Intenta de nuevo.' });
+    } finally {
+      setBlocking(false);
+      setTimeout(() => setBlockMsg(null), 5000);
+    }
+  }
   const cardRef                 = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -289,6 +322,32 @@ export default function CallCard({ call, isPro, clientName, agentName, token, au
 
               {effectiveTab === 'transcripcion' && call.transcript && (
                 <TranscriptView transcript={call.transcript} agentName={agentName} maxHeight={220} />
+              )}
+
+              {canBlock && (
+                <div className="pt-3 flex items-center gap-2 flex-wrap" style={{ borderTop: '1px solid #F0EDF9' }}>
+                  <button
+                    type="button"
+                    onClick={blockThisCaller}
+                    disabled={blocking}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+                    style={{
+                      background: '#FAFAFB',
+                      border:     '1px solid #E8E3F5',
+                      color:      '#6B6480',
+                      cursor:     blocking ? 'wait' : 'pointer',
+                    }}
+                    title="Bloquear este número para que no vuelva a llamar"
+                  >
+                    <Ban size={12} />
+                    {blocking ? 'Bloqueando…' : 'Bloquear este número'}
+                  </button>
+                  {blockMsg && (
+                    <span className="text-xs" style={{ color: blockMsg.kind === 'ok' ? '#10B981' : '#DC2626' }}>
+                      {blockMsg.text}
+                    </span>
+                  )}
+                </div>
               )}
             </div>
           </div>
