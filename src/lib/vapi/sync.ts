@@ -1882,12 +1882,23 @@ export async function assignAssistantToPhone(
     return false;
   }
 
-  const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/webhook?secret=${process.env.VAPI_SERVER_SECRET ?? ''}`;
+  // CRÍTICO: el serverUrl del PHONE NUMBER debe apuntar a /api/voice/inbound,
+  // no a /api/voice/webhook. Vapi usa este endpoint como "assistant-request"
+  // provider: para cada llamada entrante consulta aquí si hay override del
+  // assistant (business hours, pool exhausted, suspended, blocklist). Si en
+  // vez de inbound ponemos webhook, inbound/route.ts nunca corre y toda su
+  // lógica queda muerta — las llamadas van directo al assistantId default.
+  //
+  // Bug 2026-10-05 (Tortillería): esta función tenía webhookUrl y rompía el
+  // hook de blocked_numbers del PR #100. Fix: apunta siempre a inbound para
+  // phone-number.serverUrl. El /webhook sigue siendo correcto como
+  // assistant.serverUrl (end-of-call-report), eso vive en línea ~1541.
+  const inboundUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/inbound?secret=${process.env.VAPI_SERVER_SECRET ?? ''}`;
   // concurrencyLimit removido del endpoint /phone-number en Vapi API — ahora vive
   // a nivel assistant. Ver mismo fix en provision.ts assignAssistant (2026-08-26).
   const patch: Record<string, unknown> = {
     assistantId: vapiAssistantId,
-    serverUrl:   webhookUrl,
+    serverUrl:   inboundUrl,
   };
 
   const res = await fetch(`${VAPI_URL}/phone-number/${phone.id}`, {
