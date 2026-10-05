@@ -326,6 +326,26 @@ const html = /* html */ `<!doctype html>
     <div class="card-title">Qué pasa el día del Meet</div>
     <div class="card-body">La primera vez que Nami actualiza tu BACKLOG, va a reemplazar las 47 líneas que tenías a mano con el formato nuevo (más completo, con fechas de registro y de entrega estimadas). Si en algún momento prefieres el formato viejo, tengo tu BACKLOG original guardado y lo regresamos en 2 minutos.</div>
   </div>
+
+  <div class="block">
+    <h2>Cómo sabes que Nami ya hizo el update esta semana</h2>
+    <p>Cada vez que llega un BACKLOG y Nami lo procesa, te manda un correo corto al terminar con el resumen. Algo tipo:</p>
+    <div class="dialog">
+      <div class="quien">Nami te escribe</div>
+      <div class="texto">"Listo Camila, procesé el BACKLOG de TRANE del lunes. Agregué 3 líneas nuevas, actualicé 2 que cambiaron, dejé 42 iguales. Si algo se ve raro, dímelo."</div>
+    </div>
+    <p>Si no te llegó el correo un día que esperabas BACKLOG, probablemente TRANE no lo mandó. Puedes verificar directo en tu bandeja si llegó algo de Isabel.</p>
+  </div>
+
+  <div class="block">
+    <h2>Si TRANE no manda el BACKLOG algún día</h2>
+    <p>Pasa. A veces se les atraviesa un feriado, o Isabel está de vacaciones. Qué hacer:</p>
+    <ul>
+      <li>Tu BACKLOG en Excel se queda como estaba la última vez que Nami lo actualizó. No se borra ni se queda vacío.</li>
+      <li>Cuando TRANE lo vuelva a mandar (sea al día siguiente o la semana que viene), Nami lo procesa normal y lo actualiza con lo nuevo.</li>
+      <li>Si pasan más de 7 días sin BACKLOG y necesitas saber por qué, dímelo y le hablamos a Isabel directo.</li>
+    </ul>
+  </div>
 </div>
 
 <!-- Pag 4: Qué NO hace + contacto -->
