@@ -450,6 +450,18 @@ export async function POST(req: NextRequest) {
                 p_description:  `Cambio a jornada combinada: +${alloc.minutes} min`,
               });
             }
+
+            // Policy no-silent-provisioning-failures: si fullyProvisioned=false,
+            // el agente nació con bug (ej. voice_url no apunta al gate → calls
+            // bypasean blocklist/pausado/pool). Alertar + no dejarlo pasar silent.
+            if (!provisioned.fullyProvisioned) {
+              console.error('[billing-webhook] agent provisioned with errors', { agentId, errors: provisioned.errors });
+              await sendEmail({
+                to:      'hola@centinelia.mx',
+                subject: `[URGENTE] Agente ${agentId} provisionado con config incompleta`,
+                html:    `<p>El agente <strong>${typedAgent.business_name ?? '(sin nombre)'}</strong> (${typedAgent.portal_email ?? '(sin email)'}) nació con problemas:</p><ul>${provisioned.errors.map(e => `<li><code>${e}</code></li>`).join('')}</ul><p>Correr <code>scripts/audit-twilio-voice-urls.mjs</code> y <code>scripts/audit-vapi-phone-serverurls.mjs</code> para re-reparar.</p>`,
+              }).catch(e => console.error('[billing-webhook] admin notify failed', e));
+            }
           } else {
             console.error('[billing-webhook] provisionPhoneNumber failed', { agentId });
             await sendEmail({
@@ -694,6 +706,18 @@ export async function POST(req: NextRequest) {
               phone_number:          provisioned.phoneNumber,
               vapi_phone_number_id:  provisioned.vapiPhoneId ?? null,
             }).eq('id', agentId);
+
+            // Policy no-silent-provisioning-failures: alertar si el agent nació
+            // con bug (ej. voice_url sin gate). Ver policy en .brain.
+            if (!provisioned.fullyProvisioned) {
+              console.error('[billing-webhook] new agent provisioned with errors', { agentId, errors: provisioned.errors });
+              const { sendEmail } = await import('@/lib/email/send');
+              await sendEmail({
+                to:      'hola@centinelia.mx',
+                subject: `[URGENTE] Nuevo agente ${fullAgent.business_name ?? agentId} nació con config incompleta`,
+                html:    `<p>Alta de cliente nuevo <strong>${fullAgent.business_name ?? '(sin nombre)'}</strong> (${fullAgent.portal_email ?? '(sin email)'}) completó pero quedó con problemas:</p><ul>${provisioned.errors.map(e => `<li><code>${e}</code></li>`).join('')}</ul><p>Correr audit scripts para reparar antes de que el cliente use el número.</p>`,
+              }).catch(e => console.error('[billing-webhook] admin notify failed', e));
+            }
             // Notify client si la lada solicitada no estaba disponible y le
             // asignamos una diferente (D-M3 / Scope D1 F6). Antes: silencioso,
             // cliente MTY recibía número GDL sin aviso.
