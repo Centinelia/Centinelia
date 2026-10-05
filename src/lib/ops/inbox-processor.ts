@@ -1553,8 +1553,13 @@ CATEGORÍAS:
 
   // Observador (Trust Stage 1): triage-only. Sin borrador, sin tools, sin classifier.
   // Categoría + resumen para que el humano lo lea y responda desde cero.
+  //
+  // 2026-10-05: sufijamos reference_id con :observador para no colisionar con
+  // el cobro de modo processed (línea ~1584) si el mismo email se reprocesa
+  // tras cambiar autoMode. Alerta infra 2026-10-05 (meefi-demo@centinelia.mx)
+  // reveló la collision. Ver [[feedback-reference-id-unico-por-source]].
   if (autoMode === 'observador') {
-    const obsOps = await consumeAiOp(agentId, 1, { source: 'inbox_processor', reference_id: existingInboxId ?? rawMessageId, label: 'Procesamiento de bandeja (correo/tarea)' });
+    const obsOps = await consumeAiOp(agentId, 1, { source: 'inbox_processor', reference_id: `${existingInboxId ?? rawMessageId}:observador`, label: 'Procesamiento de bandeja (correo/tarea)' });
     if (obsOps.ok) {
       const __obsT = Date.now();
       const __obsM = 'claude-haiku-4-5-20251001';
@@ -1581,7 +1586,7 @@ CATEGORÍAS:
 
   const opsResult = autoMode === 'observador'
     ? { ok: false as const, error: 'skipped_observador_mode' as const }
-    : await consumeAiOp(agentId, 1, { source: 'inbox_processor', reference_id: existingInboxId ?? rawMessageId, label: 'Procesamiento de bandeja (correo/tarea)' });
+    : await consumeAiOp(agentId, 1, { source: 'inbox_processor', reference_id: `${existingInboxId ?? rawMessageId}:processed`, label: 'Procesamiento de bandeja (correo/tarea)' });
 
   // Instrumentación F3 — declaradas al scope del summary log al final del archivo.
   // Se actualizan dentro del loop del tool-use (path opsResult.ok && portalEmail).
