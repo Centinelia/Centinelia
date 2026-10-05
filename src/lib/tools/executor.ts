@@ -6090,7 +6090,52 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       const deletedStr = mode === 'replace' ? `, ${summary.deleted} eliminadas` : '';
       const message = `BACKLOG TRANE ${action} (${mode}): ${summary.total_parsed} filas parseadas. ${summary.added} nuevas, ${summary.updated} actualizadas, ${summary.unchanged} sin cambios${deletedStr}. ${summary.errors.length ? `${summary.errors.length} errores de escritura.` : ''}${dryRun ? ' Pide a Camila confirmación antes de aplicar (vuelve a invocar con dry_run=false).' : ''}`;
 
-      return { ok: true, dry_run: dryRun, summary, message };
+      // Correo resumen al portal_email (Camila) tras BACKLOG aplicado con cambios
+      // reales. Promesa escrita en Manual-Nami-para-Camila.pdf pag 8. Fail silent:
+      // no fallamos la operación entera si el correo no se puede enviar.
+      let summary_email_sent: 'yes' | 'no_dry_run' | 'no_changes' | 'failed' = 'no_dry_run';
+      if (!dryRun) {
+        const hasChanges = summary.added + summary.updated + summary.deleted > 0;
+        if (!hasChanges) {
+          summary_email_sent = 'no_changes';
+        } else {
+          try {
+            const { sendMeerkatHtmlEmail } = await import('@/lib/email/send-as-agent');
+            const today = new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
+            const parts: string[] = [];
+            if (summary.added   > 0) parts.push(`agregué ${summary.added} nueva${summary.added   === 1 ? '' : 's'}`);
+            if (summary.updated > 0) parts.push(`actualicé ${summary.updated} que cambió${summary.updated === 1 ? '' : 'aron'}`);
+            if (summary.deleted > 0) parts.push(`quité ${summary.deleted} que ya no estaban`);
+            if (summary.unchanged > 0) parts.push(`dejé ${summary.unchanged} igual${summary.unchanged === 1 ? '' : 'es'}`);
+            const summaryText = parts.join(', ');
+            const subject = `BACKLOG TRANE actualizado — ${today}`;
+            const html =
+              `<p>Hola,</p>` +
+              `<p>Listo, procesé el BACKLOG de TRANE del ${today}. ${summaryText.charAt(0).toUpperCase() + summaryText.slice(1)}.</p>` +
+              (summary.errors.length ? `<p><strong>Nota:</strong> hubo ${summary.errors.length} error${summary.errors.length === 1 ? '' : 'es'} de escritura. Revísalo o avísame.</p>` : '') +
+              `<p>Si algo se ve raro, dímelo.</p>` +
+              `<p>Saludos,<br>${agentName ?? 'Nami'}<br>${businessName ?? 'AC Proyectos'}</p>`;
+            const r = await sendMeerkatHtmlEmail({
+              agentId,
+              to: portalEmail,
+              subject, html,
+              agent: {
+                agent_name:    agentName,
+                business_name: businessName,
+                email_from:    (agent.email_from as string | null) ?? null,
+                email_domain_verified: (agent.email_domain_verified as boolean | null) ?? null,
+              },
+            }, supabase);
+            summary_email_sent = r.ok ? 'yes' : 'failed';
+            if (!r.ok) console.error('[inv_importar_backlog] summary email send failed:', r.error);
+          } catch (err) {
+            summary_email_sent = 'failed';
+            console.error('[inv_importar_backlog] summary email crashed:', err instanceof Error ? err.message : err);
+          }
+        }
+      }
+
+      return { ok: true, dry_run: dryRun, summary, message, summary_email_sent };
     }
 
     return { ok: false, error: `Tool inv_ desconocida: ${toolName}` };
