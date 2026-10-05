@@ -9,8 +9,36 @@ import { sheetsTools } from '@/lib/tools/definitions/sheets';
 import { hasAnyMapping } from '@/lib/services/sheets';
 import { normalizeToE164 } from '@/lib/leads/dedup';
 
-// Vapi calls this endpoint when a call comes in on an assigned phone number.
-// We respond with the agent configuration (system prompt + tools) for this caller.
+/**
+ * ============================================================================
+ *  ⚠️  LEGACY — ESTE ENDPOINT NO SE EJECUTA EN PRODUCCIÓN  ⚠️
+ * ============================================================================
+ *
+ * Diseñado como "assistant-request" provider: Vapi supuestamente consultaba
+ * aquí para obtener el assistant transient por call con todos los gates
+ * (blocklist, pausado, suspended, horario, pool, cap).
+ *
+ * REALIDAD (confirmado 2026-10-05): Vapi NO consulta este endpoint cuando el
+ * phone number tiene `assistantId` pre-set. Los 5 phones activos lo tienen,
+ * por eso NUNCA se dispara en prod. Verificado en 100 calls recientes:
+ * `assistantOverrides=false` en todas.
+ *
+ * El bug Tortillería (bot pasando el blocklist) fue el detonante. Toda la
+ * demás lógica aquí (business hours, suspended, pool exhausted, daily cap)
+ * también estaba muerta — no se notó porque las condiciones ocurren rara vez.
+ *
+ * GATE REAL: `src/app/api/twilio/voice-gate/route.ts`. Twilio consulta ese
+ * endpoint para TODA call entrante (voice_url del incoming phone number).
+ *
+ * Este archivo queda como fallback por si en el futuro algún phone se
+ * configura sin `assistantId` (modo transient). Mientras tanto es código
+ * muerto — no edites esperando cambiar comportamiento en prod, ve a
+ * voice-gate.
+ *
+ * Ver `.brain/decisions/2026-10-05-twilio-voice-gate-as-real-gate.md` o
+ * [[feedback-vapi-assistantid-bypasses-inbound]] en auto-memory.
+ * ============================================================================
+ */
 export async function POST(req: NextRequest) {
   const vapiSecret = process.env.VAPI_SERVER_SECRET;
   const providedSecret = req.headers.get('x-vapi-secret') ?? req.nextUrl.searchParams.get('secret');
