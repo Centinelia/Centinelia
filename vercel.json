@@ -203,7 +203,7 @@
     },
     {
       "path": "/api/cron/nash-monitor",
-      "schedule": "0 * * * *"
+      "schedule": "0 */4 * * *"
     },
     {
       "path": "/api/cron/pilot-monitor",
