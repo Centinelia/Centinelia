@@ -86,6 +86,43 @@ describe('extractVapiContext', () => {
       expect(r.vapiDiag.body_sample.length).toBeLessThanOrEqual(800);
     });
 
+    it('redacta strings largos del body_sample para no filtrar PII a meta.jsonb', () => {
+      // Bug detectado en audit 2026-10-05 pre-merge PR #110: el body de Vapi
+      // customLLM trae messages[].content con conversaciones reales de clientes.
+      // Un JSON.stringify(body).slice(0,800) crudo filtra ese contenido al log.
+      const userUtterance = 'quiero cancelar mi factura porque el servicio estuvo pésimo y además me cobraron de más — repito, por favor cancelen';
+      const systemPrompt  = 'Eres Nelia, atención al cliente de Tortillería Estrella. ' + 'Siempre saluda con calidez. '.repeat(30);
+      const body = {
+        model: 'claude-haiku-4-5-20251001',
+        system: systemPrompt,
+        messages: [
+          { role: 'system',    content: systemPrompt },
+          { role: 'user',      content: userUtterance },
+          { role: 'assistant', content: 'Claro que sí, con gusto le ayudo con eso.' },
+        ],
+      };
+      const r = extractVapiContext(body, {});
+      expect(r.vapiDiag.body_sample).not.toContain('cancelar mi factura');
+      expect(r.vapiDiag.body_sample).not.toContain('servicio estuvo pésimo');
+      expect(r.vapiDiag.body_sample).not.toContain('cobraron de más');
+      expect(r.vapiDiag.body_sample).not.toContain('Nelia, atención al cliente');
+      expect(r.vapiDiag.body_sample).toMatch(/<redacted \d+c>/);
+    });
+
+    it('preserva strings cortos (IDs, flags, roles) para que el diag siga siendo útil', () => {
+      // Lo que SÍ queremos ver: structure, keys, IDs, roles — sin redactar.
+      const body = {
+        model: 'claude-haiku-4-5-20251001',
+        call:  { id: 'call-abc-123', assistantId: 'asst-xyz-789', phoneNumber: '+528112803360' },
+        messages: [{ role: 'user', content: 'hola' }],
+      };
+      const r = extractVapiContext(body, {});
+      expect(r.vapiDiag.body_sample).toContain('call-abc-123');
+      expect(r.vapiDiag.body_sample).toContain('asst-xyz-789');
+      expect(r.vapiDiag.body_sample).toContain('user');
+      expect(r.vapiDiag.body_sample).toContain('hola'); // 4 chars, bajo threshold
+    });
+
     it('resolved_* del diag coincide con los valores top-level (invariante)', () => {
       const r = extractVapiContext(
         { messages: [], call: { id: 'c', assistantId: 'a' } },

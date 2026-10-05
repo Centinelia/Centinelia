@@ -81,6 +81,28 @@ export function extractCallId(
   );
 }
 
+/**
+ * Serializa el body redactando strings largos. El diag existe para encontrar
+ * el shape del payload (dónde vive el assistantId), NO para auditar contenido.
+ * Preserva IDs, flags y metadata cortos; redacta conversaciones y system
+ * prompts para no filtrar PII (mensajes de clientes) a llm_call_log.meta.
+ */
+const REDACT_STRING_THRESHOLD = 60;
+function safeStringify(body: Record<string, unknown>, maxLen: number): string {
+  function sanitize(val: unknown): unknown {
+    if (val === null || val === undefined) return val;
+    if (typeof val === 'string') {
+      return val.length > REDACT_STRING_THRESHOLD ? `<redacted ${val.length}c>` : val;
+    }
+    if (typeof val !== 'object') return val;
+    if (Array.isArray(val)) return val.map(sanitize);
+    return Object.fromEntries(
+      Object.entries(val as Record<string, unknown>).map(([k, v]) => [k, sanitize(v)]),
+    );
+  }
+  return JSON.stringify(sanitize(body)).slice(0, maxLen);
+}
+
 export function extractVapiContext(
   body: Record<string, unknown>,
   headers: Record<string, string>,
@@ -101,7 +123,7 @@ export function extractVapiContext(
       has_metadata:          body.metadata   !== undefined,
       has_phoneNumber:       body.phoneNumber !== undefined,
       has_customer:          body.customer   !== undefined,
-      body_sample:           JSON.stringify(body).slice(0, 800),
+      body_sample:           safeStringify(body, 800),
       vapi_headers:          vapiHeaders,
       resolved_assistant_id: vapiAssistantId,
       resolved_call_id:      vapiCallId,
