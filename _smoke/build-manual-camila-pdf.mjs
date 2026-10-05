@@ -81,6 +81,16 @@ const html = /* html */ `<!doctype html>
   .limites { background: #FFF9E6; border: 1px solid #F0D97A; border-radius: 6px; padding: 4mm 6mm; margin-top: 4mm; }
   .limites li { color: #665200; }
 
+  /* Antes vs Después */
+  .ad-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; margin-top: 4mm; }
+  .ad-head { background: var(--dark); color: white; padding: 3mm 5mm; font-weight: 600; font-size: 10pt; text-transform: uppercase; letter-spacing: 0.5px; }
+  .ad-head.after { background: var(--morado); }
+  .ad-row { display: contents; }
+  .ad-row > div { padding: 4mm 5mm; border-top: 1px solid var(--line); font-size: 10pt; color: var(--dark); background: white; }
+  .ad-row > div.ad-after { background: #FAF8FF; border-left: 1px solid var(--line); }
+  .ad-row > div .step-num { display: inline-block; width: 5mm; color: var(--morado); font-weight: 600; }
+  .ad-note { font-size: 9pt; color: var(--muted); font-style: italic; margin-top: 2mm; }
+
   /* Contacto */
   .contacto { background: var(--morado); color: white; border-radius: 8px; padding: 6mm 8mm; margin-top: 6mm; }
   .contacto h2 { color: white; margin-top: 0; }
@@ -128,7 +138,65 @@ const html = /* html */ `<!doctype html>
   </div>
 </div>
 
-<!-- Pag 2: Ejemplos de cómo escribirle -->
+<!-- Pag 2: Antes vs Después -->
+<div class="page">
+  <h1>Tu día a día: antes vs ahora</h1>
+  <p>Lado a lado, qué sigues haciendo tú y qué pasa a Nami. Las decisiones de negocio siguen siendo tuyas; lo que cambia es que ya no tienes que capturar en Excel.</p>
+
+  <h2>Cuando una chica de ventas te pide equipos nuevos</h2>
+  <div class="ad-grid">
+    <div class="ad-head">Antes</div>
+    <div class="ad-head after">Ahora</div>
+    <div class="ad-row">
+      <div><span class="step-num">1.</span> Entras a QuickBooks a hacer la OC.</div>
+      <div class="ad-after"><span class="step-num">1.</span> Entras a QuickBooks a hacer la OC. <span style="color:var(--muted);">(sigues tú)</span></div>
+    </div>
+    <div class="ad-row">
+      <div><span class="step-num">2.</span> Redactas correo a Isabel para que la registre.</div>
+      <div class="ad-after"><span class="step-num">2.</span> Le dices a Nami el folio y los equipos. Ella arma el correo.</div>
+    </div>
+    <div class="ad-row">
+      <div><span class="step-num">3.</span> Checas el BACKLOG hasta que Isabel la ingresó.</div>
+      <div class="ad-after"><span class="step-num">3.</span> Nami actualiza el BACKLOG sola cada lunes, miércoles y viernes.</div>
+    </div>
+    <div class="ad-row">
+      <div><span class="step-num">4.</span> Redactas otro correo a Isabel pidiendo entrega.</div>
+      <div class="ad-after"><span class="step-num">4.</span> Le dices a Nami "pide la entrega". Arma el correo.</div>
+    </div>
+  </div>
+
+  <h2>Cuando llega la factura de TRANE con los equipos</h2>
+  <div class="ad-grid">
+    <div class="ad-head">Antes</div>
+    <div class="ad-head after">Ahora</div>
+    <div class="ad-row">
+      <div><span class="step-num">5.</span> Abres la factura, lees cada equipo, capturas en Excel: OC, folio, tonelada, modelo, serie, USD, TC, costo. Repites por cada equipo.</div>
+      <div class="ad-after"><span class="step-num">5.</span> Nami lee sola el XML de la factura y agrega todos los equipos al INVENTARIO.</div>
+    </div>
+  </div>
+
+  <h2>Cuando una venta se cierra</h2>
+  <div class="ad-grid">
+    <div class="ad-head">Antes</div>
+    <div class="ad-head after">Ahora</div>
+    <div class="ad-row">
+      <div><span class="step-num">6.</span> Chica avisa pago, llamas a Nino, Nino dicta serie, entras al Excel, buscas serie, pones cliente + vendedor + SEPARADO.</div>
+      <div class="ad-after"><span class="step-num">6.</span> Chica avisa pago, llamas a Nino, Nino te dicta serie. Le dices a Nami "serie X asignada a Mauricio con vendedor ANA". <span style="color:var(--muted);">(Nino sigue físicamente separando)</span></div>
+    </div>
+    <div class="ad-row">
+      <div><span class="step-num">7.</span> Cuando entregas, haces hoja de salida y marcas cada serie como ENTREGADO en Excel.</div>
+      <div class="ad-after"><span class="step-num">7.</span> Le dices a Nami "ya salieron series X y Y en hoja folio 4251, cliente Mauricio, hoy".</div>
+    </div>
+    <div class="ad-row">
+      <div><span class="step-num">8.</span> Ventas te manda folio de factura, entras a Solución Factible, buscas, sacas fecha + precio, calculas factor, capturas en Excel.</div>
+      <div class="ad-after"><span class="step-num">8.</span> Ventas te manda folio + fecha + precio juntos. Le dices a Nami y ella captura todo.</div>
+    </div>
+  </div>
+
+  <div class="ad-note">De 8 pasos, antes hacías los 8 completos. Ahora los pasos 1 y 6 (parte física) siguen siendo tuyos, los otros 6 los hace Nami contigo platicándole en una frase.</div>
+</div>
+
+<!-- Pag 3: Ejemplos de cómo escribirle -->
 <div class="page">
   <h1>Ejemplos de cómo platicarle</h1>
   <p>No tienes que usar palabras exactas. Nami entiende tu forma de hablar. Estos son solo ejemplos para que agarres la onda.</p>
@@ -219,16 +287,20 @@ const html = /* html */ `<!doctype html>
 
 <!-- Pag 4: Qué NO hace + contacto -->
 <div class="page">
-  <h1>Qué no hace (todavía)</h1>
-  <p>Para que sepas qué sigue siendo tuyo y qué le toca a Nami:</p>
+  <h1>Qué no hace</h1>
+  <p>Para que sepas qué sigue siendo tuyo:</p>
   <div class="limites">
     <ul>
-      <li><strong>QuickBooks:</strong> crear la orden de compra ahí sigue siendo manual tuyo (ver si cambia esto con tu migración a QuickBooks Online).</li>
-      <li><strong>Solución Factible:</strong> si al vender te mandan solo el folio, el lookup en Solución Factible sigue siendo tuyo. Si las chicas te mandan folio + fecha + precio juntos, Nami ya lo captura directo sin que tengas que entrar al portal.</li>
+      <li><strong>QuickBooks:</strong> crear la orden de compra ahí sigue siendo manual tuyo. Si en algún momento migran a QuickBooks Online, lo platicamos para automatizarlo.</li>
+      <li><strong>Solución Factible:</strong> si las chicas te mandan folio + fecha + precio juntos, Nami captura directo. Si solo te mandan folio y tienes que buscar en el portal, ese lookup sigue siendo tuyo.</li>
+      <li><strong>Separar los equipos físicamente:</strong> eso lo hace Nino en bodega. Nami captura el resultado cuando le platicas.</li>
       <li><strong>WhatsApp:</strong> Nami no lee WhatsApp. Si llega algo importante por ahí, me lo reenvías por correo y Nami lo procesa.</li>
-      <li><strong>Facturas de TRANE que llegan solo en PDF (sin XML):</strong> hoy Nami solo lee el XML. Si TRANE deja de mandar XML, dímelo.</li>
     </ul>
   </div>
+
+  <h2 style="margin-top: 8mm;">Dos semanas de confianza, luego ya es automático</h2>
+  <p>Las primeras dos semanas, cuando le pidas que mande correo a Isabel, Nami te va a mostrar el borrador y te va a preguntar "¿te lo mando?" antes de hacerlo. Esto es para que agarres confianza en cómo redacta.</p>
+  <p>Pasadas esas dos semanas, si todo salió bien, le quitamos esa pregunta y Nami manda directo. Si prefieres que siga preguntándote siempre, dímelo y se queda así.</p>
 
   <h1 style="margin-top: 15mm;">Si algo sale raro</h1>
   <div class="card">
