@@ -13,6 +13,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { readdirSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { CONVERSATIONAL_DNA, CCP, HCP, VOICE_RULES } from '../../src/lib/voice/rules';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 const args = new Map<string, string>();
 for (const a of process.argv.slice(2)) {
@@ -81,11 +82,13 @@ ${c.expected.ces_min ? `- Debe cumplir CES mínimo: ${JSON.stringify(c.expected.
 Responde SOLO con JSON:
 { "passed": bool, "reasons": ["..."], "ces_estimate": { "fluidez": 1-5, "comprension": 1-5, ... } }`;
 
+  const __t = Date.now();
   const resp = await anthropic.messages.create({
     model:      'claude-haiku-4-5-20251001',
     max_tokens: 400,
     messages: [{ role: 'user', content: prompt }],
   });
+  void logLlmCall({ source: 'eval_run_cases_judge', model: 'claude-haiku-4-5-20251001', usage: resp.usage, latencyMs: Date.now() - __t, meta: { caseId: c.id } });
   const raw = resp.content[0].type === 'text' ? resp.content[0].text.trim() : '{}';
   const m   = raw.match(/\{[\s\S]*\}/);
   if (!m) return { passed: false, reasons: ['Judge no devolvió JSON válido'] };
@@ -130,12 +133,14 @@ async function runCase(c: Case): Promise<{ id: string; verdict: JudgeVerdict; ge
     content: t.text,
   }));
 
+  const __t = Date.now();
   const resp = await anthropic.messages.create({
     model,
     max_tokens: 300,
     system:     systemPrompt,
     messages,
   });
+  void logLlmCall({ source: 'eval_run_cases', model, usage: resp.usage, latencyMs: Date.now() - __t, meta: { caseId: c.id, meerkat_role_id: c.meerkat_role_id ?? null } });
   const generated = resp.content[0].type === 'text' ? resp.content[0].text.trim() : '';
 
   const verdict = await judge(c, generated);

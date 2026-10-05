@@ -1,15 +1,16 @@
-#!/usr/bin/env node
+#!/usr/bin/env tsx
 /**
  * Eval opt-in para extractBrandVoice — corre el prompt real contra 3 fixtures
  * sintéticos de tonos distintos (formal-corporativo, casual-regio, técnico) y
  * imprime la guía extraída para revisión manual.
  *
  * Uso:
- *   node scripts/eval-brand-voice.mjs           # los 3 fixtures
- *   node scripts/eval-brand-voice.mjs formal    # solo uno por nombre
+ *   npx tsx scripts/eval-brand-voice.ts           # los 3 fixtures
+ *   npx tsx scripts/eval-brand-voice.ts formal    # solo uno por nombre
  *
- * NO guarda nada en Supabase — solo llama al LLM y stdout. Requiere
- * ANTHROPIC_API_KEY en el entorno (o en .env.local).
+ * Guarda cada llamada en llm_call_log (source=eval_brand_voice) para
+ * cerrar el gap de cost tracking. Requiere ANTHROPIC_API_KEY y
+ * SUPABASE_SERVICE_ROLE_KEY en el entorno (o en .env.local).
  *
  * Criterios de éxito por fixture (revisión manual):
  *   - La guía debe MENCIONAR el ritmo de oraciones observado.
@@ -23,6 +24,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -104,7 +106,7 @@ ${numbered}`;
 
 // ─── Runner ──────────────────────────────────────────────────────────────────
 
-async function runFixture(key, fixture) {
+async function runFixture(key: string, fixture: { name: string; samples: string[] }) {
   console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
   console.log(`  ${fixture.name}  (key: ${key})`);
   console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
@@ -117,6 +119,7 @@ async function runFixture(key, fixture) {
     messages: [{ role: 'user', content: buildPrompt(fixture.samples) }],
   });
   const ms = Date.now() - t0;
+  void logLlmCall({ source: 'eval_brand_voice', model: 'claude-sonnet-5-5', usage: resp.usage, latencyMs: ms, meta: { fixture_key: key, fixture_name: fixture.name } });
 
   const block = resp.content.find(b => b.type === 'text');
   const guide = block?.type === 'text' ? block.text.trim() : '(sin salida)';
