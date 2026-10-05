@@ -1,11 +1,17 @@
 /**
- * Nash monitor loop — corre cada 10 min desde /api/cron/nash-monitor.
+ * Nash monitor loop — corre cada 4h desde /api/cron/nash-monitor.
+ *
+ * 2026-10-05: bajamos de 1h a 4h para recortar ~75% del costo mensual.
+ * Las señales monitoreadas (bug_report, escalated_stale >24h, bandejas,
+ * fixes a verificar) toleran bien 4h de latencia. Anomaly + drift
+ * detection ya tenían throttle interno de 60min, así que corren casi
+ * siempre que Nash despierta.
  *
  * Flujo:
  *   1) Fetch agente Nash de la cuenta interna (portal_email='hola@centinelia.mx',
  *      features.meerkat_role_id='nash').
  *   2) Gate por features.nash_cron_enabled (default false para opt-in explícito).
- *   3) LLM loop con Anthropic Sonnet 4.6 + 6 tools exclusivas de Nash (F2+F3)
+ *   3) LLM loop con Anthropic Sonnet 5.5 + 6 tools exclusivas de Nash (F2+F3)
  *      vía executor compartido.
  *   4) Termina cuando el modelo emite stop_reason='end_turn', no invoca ninguna
  *      tool, o alcanza max_iterations (default 8).
@@ -34,12 +40,12 @@ const NASH_PORTAL     = 'hola@centinelia.mx';
 const NASH_LAST_RUN_KEY = 'nash_last_run_at';
 const NASH_LAST_ANOMALY_CHECK_KEY = 'nash_last_anomaly_check_at';
 const NASH_LAST_DRIFT_CHECK_KEY = 'nash_last_drift_check_at';
-// Anomaly detection corre cada 60 min, no cada 10 (cron cadence). El
-// detection floor real es de horas (ratio necesita >20 events con reference_id
-// para flagear, spike vs baseline necesita 1-2 días de acumulación para
-// superar el umbral 3x). 60 min está dentro de ese floor, ahorra ~90% de
-// queries vs 10 min y mantiene el mismo comportamiento operacional.
-// Ver conversación 2026-08-24 con Nazre.
+// Anomaly detection corre cada 60 min, menos frecuente que el cron (cada 4h
+// hoy). Como el cron ahora corre cada 4h, el throttle de 60min es trivial —
+// cada despertar de Nash lo pasa. Se mantiene como guard por si subimos
+// frecuencia del cron en el futuro. El detection floor real es de horas
+// (ratio necesita >20 events con reference_id, spike vs baseline necesita
+// 1-2 días para superar 3x). Ver conversación 2026-08-24 con Nazre.
 const NASH_ANOMALY_CHECK_INTERVAL_MS = 60 * 60_000;
 // Nunca miramos más atrás que esta ventana. Alinea con el default del tool
 // revisar_incidentes_plataforma (days=7). Si Nash lleva más de 7 días sin
@@ -158,7 +164,7 @@ function buildSystemPrompt(nash: { agent_name: string | null }): string {
 ${roleBlock}
 
 CONTEXTO DEL CICLO:
-Este es un ciclo de monitoreo automático (cron cada 10 min). No hay usuario esperando respuesta. Trabajas contra la base de datos y notificaciones. Tu objetivo es cerrar cuantos incidentes puedas por ciclo con estos pasos:
+Este es un ciclo de monitoreo automático (cron cada 4 horas). No hay usuario esperando respuesta. Trabajas contra la base de datos y notificaciones. Tu objetivo es cerrar cuantos incidentes puedas por ciclo con estos pasos:
 
 1. LLAMA revisar_incidentes_plataforma con days=7 para ver señales nuevas.
 2. Para cada señal RELEVANTE, decide:
@@ -332,9 +338,9 @@ async function detectPlatformAnomaliesSafe(supabase: SupabaseAdmin): Promise<Por
 }
 
 async function detectOutboundDriftSafe(supabase: SupabaseAdmin): Promise<Array<{ portal_email: string; drifts: OutboundDrift[] }>> {
-  // Mismo throttle que anomalías (60 min). Nash corre cada 10 min pero el
-  // drift solo tiene sentido revisar cada hora — cada iteración pediría
-  // 1 query grande a outbound_emails + N a ai_ops_log por portal.
+  // Mismo throttle que anomalías (60 min). Con el cron cada 4h el throttle
+  // es trivial, pero se mantiene como guard. Cada ejecución pediría 1 query
+  // grande a outbound_emails + N a ai_ops_log por portal.
   const { data: lastCheck } = await supabase
     .from('platform_settings')
     .select('value')
@@ -473,6 +479,9 @@ export async function runNashMonitor(): Promise<NashRunResult> {
   // C3 fix: issues urgentes de autotag también abren el loop (error_spike,
   // pending_stuck). Sin este check, Nash insertaba platform_incidents pero
   // nunca los narraba ni escalaba porque el probe los ignoraba.
+  // 2026-10-05: con cron a 4h el probe se vuelve menos relevante (el 87%
+  // de ejecuciones encontraba trabajo real a frecuencia 1h), pero se
+  // mantiene como safety net.
   const urgentAutotagCount = autotagIssues.filter(i => i.urgent).length;
   if (features.nash_probe_bypass !== true && newAnomalies.length === 0 && newDriftCount === 0 && urgentAutotagCount === 0) {
     const lastRunAt = await getNashLastRunAt(supabase);
