@@ -9,6 +9,7 @@ import { dropboxExchangeCode } from '@/lib/dropbox/oauth';
 import { encrypt } from '@/lib/crypto';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { verifyOAuthState, clearOAuthState } from '@/lib/oauth/state';
+import { verifyIntegrationUpsert } from '@/lib/oauth/verify-integration';
 
 interface Params { params: Promise<{ provider: string }> }
 
@@ -100,22 +101,24 @@ export async function GET(req: NextRequest, { params }: Params) {
     // Depende del partial unique index `integration_accounts_agent_provider_capability_key`
     // (agent_id, provider, capability) WHERE agent_id IS NOT NULL. Ver migración
     // 2026-09-07 `integration_accounts_per_agent_unique`.
-    const { error: upsertErr } = await supabase.from('integration_accounts').upsert({
-      agent_id:      agentId,
-      portal_email:  resolved.portalEmail,
-      provider,
-      capability,
-      account_label: tokens.email,
-      access_token:  tokens.access_token,
-      refresh_token: encryptedRefresh,
-      expires_at:    expiresAt,
-      status:        'active',
-      metadata:      {},
-    }, { onConflict: 'agent_id,provider,capability' });
-    if (upsertErr) {
-      console.error('[storage-callback] upsert failed:', { message: upsertErr.message, code: upsertErr.code });
-      return NextResponse.redirect(backTo);
-    }
+    const persist = await verifyIntegrationUpsert({
+      integrationLabel: `Storage (${provider})`,
+      portalEmail:      resolved.portalEmail,
+      table:            'integration_accounts',
+      action: () => supabase.from('integration_accounts').upsert({
+        agent_id:      agentId,
+        portal_email:  resolved.portalEmail,
+        provider,
+        capability,
+        account_label: tokens.email,
+        access_token:  tokens.access_token,
+        refresh_token: encryptedRefresh,
+        expires_at:    expiresAt,
+        status:        'active',
+        metadata:      {},
+      }, { onConflict: 'agent_id,provider,capability' }),
+    });
+    if (!persist.ok) return NextResponse.redirect(backTo);
 
     const successRes = NextResponse.redirect(
       `${appUrl}/portal/${token}/configurar?empleado_id=${agentId}&storage=connected&provider=${provider}`

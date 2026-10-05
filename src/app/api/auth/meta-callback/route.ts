@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { resolveOrgFromToken } from '@/lib/portal/org-token';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { verifyOAuthState, clearOAuthState } from '@/lib/oauth/state';
+import { verifyIntegrationUpsert } from '@/lib/oauth/verify-integration';
 
 // Callback OAuth de Meta / Facebook para Navi.
 // State esperado: `${token}::navi-meta::${agentId}[.nonce]`
@@ -103,6 +104,7 @@ export async function GET(req: NextRequest) {
 
     // Paso 4: para cada página con cuenta IG Business, obtener handle y hacer upsert
     let connectedCount = 0;
+    let failedCount    = 0;
     const expiresAt = new Date(Date.now() + 60 * 24 * 3600 * 1000).toISOString();
 
     for (const page of pages) {
@@ -119,24 +121,38 @@ export async function GET(req: NextRequest) {
       const igInfo = await igInfoRes.json() as Record<string, unknown>;
       const igUsername = igInfo.username ? String(igInfo.username) : undefined;
 
-      await supabase.from('social_accounts').upsert(
-        {
-          portal_email:         resolved.portalEmail,
-          agent_id:             agentId,
-          provider:             'meta_instagram',
-          external_account_id:  igUserId,
-          external_username:    igUsername,
-          page_id:              String(page.id ?? ''),
-          // Se almacena el page access token (no el long-lived user token)
-          // porque el page token es el que autoriza publicar en nombre de la página
-          access_token:         pageAccessToken,
-          expires_at:           expiresAt,
-          status:               'active',
-        },
-        { onConflict: 'portal_email,provider,external_account_id' },
-      );
+      // Policy no-silent-provisioning-failures: cada upsert verificado,
+      // alertar si falla. Si una página falla no bloquea las demás, pero
+      // sí nos enteramos por correo si quedó parcial.
+      const persist = await verifyIntegrationUpsert({
+        integrationLabel: `Instagram (@${igUsername ?? igUserId})`,
+        portalEmail:      resolved.portalEmail,
+        table:            'social_accounts',
+        action: () => supabase.from('social_accounts').upsert(
+          {
+            portal_email:         resolved.portalEmail,
+            agent_id:             agentId,
+            provider:             'meta_instagram',
+            external_account_id:  igUserId,
+            external_username:    igUsername,
+            page_id:              String(page.id ?? ''),
+            // Se almacena el page access token (no el long-lived user token)
+            // porque el page token es el que autoriza publicar en nombre de la página
+            access_token:         pageAccessToken,
+            expires_at:           expiresAt,
+            status:               'active',
+          },
+          { onConflict: 'portal_email,provider,external_account_id' },
+        ),
+      });
 
-      connectedCount++;
+      if (persist.ok) connectedCount++;
+      else            failedCount++;
+    }
+
+    // Si todas las páginas fallaron, es error completo (ya alertado por verify).
+    if (connectedCount === 0 && failedCount > 0) {
+      return NextResponse.redirect(`${appUrl}/portal/${token}/configurar/${agentId}?navi=error&provider=meta`);
     }
 
     const successRes = NextResponse.redirect(

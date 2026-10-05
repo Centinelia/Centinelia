@@ -7,6 +7,7 @@ import { dropboxExchangeCode } from '@/lib/dropbox/oauth';
 import { encrypt } from '@/lib/crypto';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { verifyOAuthState, clearOAuthState } from '@/lib/oauth/state';
+import { verifyIntegrationUpsert } from '@/lib/oauth/verify-integration';
 
 export async function GET(req: NextRequest) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
@@ -65,17 +66,25 @@ export async function GET(req: NextRequest) {
       .maybeSingle();
     const existingMeta = (existing?.metadata as Record<string, unknown>) ?? {};
 
-    await supabase.from('integration_accounts').upsert({
-      portal_email:  agent.portal_email,
-      provider:      'dropbox',
-      capability:    'files',
-      account_label: tokens.email,
-      access_token:  tokens.access_token,
-      refresh_token: encryptedRefresh,
-      expires_at:    expiresAt,
-      status:        'active',
-      metadata:      { ...existingMeta },
-    }, { onConflict: 'portal_email,provider' });
+    const persist = await verifyIntegrationUpsert({
+      integrationLabel: 'Dropbox',
+      portalEmail:      agent.portal_email,
+      table:            'integration_accounts',
+      action: () => supabase.from('integration_accounts').upsert({
+        portal_email:  agent.portal_email,
+        provider:      'dropbox',
+        capability:    'files',
+        account_label: tokens.email,
+        access_token:  tokens.access_token,
+        refresh_token: encryptedRefresh,
+        expires_at:    expiresAt,
+        status:        'active',
+        metadata:      { ...existingMeta },
+      }, { onConflict: 'portal_email,provider' }),
+    });
+    if (!persist.ok) {
+      return NextResponse.redirect(`${appUrl}/portal/${state}?tab=organizacion&dropbox=error#integraciones`);
+    }
 
     const successRes = NextResponse.redirect(`${appUrl}/portal/${state}?tab=organizacion&dropbox=connected#integraciones`);
     clearOAuthState(successRes);

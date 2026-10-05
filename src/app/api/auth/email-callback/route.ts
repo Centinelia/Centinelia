@@ -8,6 +8,7 @@ import { outlookExchangeCode } from '@/lib/email/outlook';
 import { encrypt }             from '@/lib/crypto';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { verifyOAuthState, clearOAuthState } from '@/lib/oauth/state';
+import { verifyIntegrationUpsert } from '@/lib/oauth/verify-integration';
 
 export async function GET(req: NextRequest) {
   const appUrl   = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
@@ -128,17 +129,26 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    await supabase.from('email_integrations').upsert({
-      agent_id:           agent.id,
-      provider,
-      email:              tokens.email,
-      access_token:       tokens.access_token,
-      refresh_token:      encryptedRefresh,
-      token_expires_at:   expiresAt,
-      last_sync_at:       null,
-      needs_reauth:       false,
-      reauth_notified_at: null,
-    }, { onConflict: 'agent_id,provider' });
+    // Policy no-silent-provisioning-failures: verificar que el upsert quedó.
+    const persist = await verifyIntegrationUpsert({
+      integrationLabel: provider === 'gmail' ? 'Gmail' : 'Outlook',
+      portalEmail:      agent.portal_email,
+      table:            'email_integrations',
+      action: () => supabase.from('email_integrations').upsert({
+        agent_id:           agent.id,
+        provider,
+        email:              tokens.email,
+        access_token:       tokens.access_token,
+        refresh_token:      encryptedRefresh,
+        token_expires_at:   expiresAt,
+        last_sync_at:       null,
+        needs_reauth:       false,
+        reauth_notified_at: null,
+      }, { onConflict: 'agent_id,provider' }),
+    });
+    if (!persist.ok) {
+      return NextResponse.redirect(`${appUrl}/portal/${state}/configurar?email=error&provider=${provider}`);
+    }
 
     const successUrl = `${appUrl}/portal/${state}/configurar?email=connected&provider=${provider}`;
 

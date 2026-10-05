@@ -91,11 +91,28 @@ Aplica a:
 - Alta de nuevo cliente (stripe checkout new_agent).
 - Cambio de jornada que agrega canal de voz (jornada_change).
 - Resync de agente existente.
-- Cualquier otro flow que modifique config externa (Twilio, Vapi, SIP).
+- Cualquier flow que modifique config externa (Twilio, Vapi, SIP).
+- **OAuth callbacks** (QuickBooks, Gmail/Outlook, Meta/Instagram, Calendar, Storage, Notion, Dropbox): usar `verifyIntegrationUpsert()` de `@/lib/oauth/verify-integration` para que un fallo de escritura no quede silent-ok. Patrón: si falla el upsert → redirect al UI con `?error=X_db` + email URGENTE automático.
 
 NO aplica a:
 - Flujos que tocan solo nuestra DB (features toggles, prompts, directorio).
-- Flujos donde el cliente ya está pagando y usando — ahí los bugs se detectan por operación, no por provisioning.
+- Flujos donde el cliente ya está pagando y usando — los bugs ahí se detectan por operación, no por provisioning.
+
+## Coverage actual (2026-10-05, PRs #108, #109)
+
+| Flow | fail-loud | Notes |
+|---|---|---|
+| Twilio phone + Vapi phone + voice_url | ✅ | provision.ts audita contra proveedor real + alerta en billing/webhook |
+| QuickBooks OAuth (`qb-oauth/callback`) | ✅ | `verifyIntegrationUpsert` |
+| Email OAuth generic (gmail / outlook) | ✅ | `verifyIntegrationUpsert` |
+| Email OAuth outlook (`email-callback/outlook`) | ✅ | `verifyIntegrationUpsert` × 2 (per-agent + org-level fallback) |
+| Meta/Instagram OAuth (Navi) | ✅ | `verifyIntegrationUpsert` por página — si todas fallan → error, si parcial → alerta |
+| Calendar OAuth (`calendar-callback/[provider]`) | ✅ | `verifyIntegrationUpsert` |
+| Storage OAuth generic (`storage-callback/[provider]`) | ✅ | `verifyIntegrationUpsert` |
+| Dropbox OAuth (`dropbox-callback`) | ✅ | `verifyIntegrationUpsert` |
+| Notion OAuth (`integrations/notion/callback`) | ✅ | `verifyIntegrationUpsert` |
+| Canva OAuth (`canva-callback`) | ✅ | `verifyIntegrationUpsert` |
+| MercadoLibre OAuth (`ml-callback`) | ✅ | `verifyIntegrationUpsert` |
 
 ## Aprobación
 

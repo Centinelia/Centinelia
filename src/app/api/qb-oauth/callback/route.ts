@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { resolveOrgFromToken } from '@/lib/portal/org-token';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { verifyOAuthState, clearOAuthState } from '@/lib/oauth/state';
+import { verifyIntegrationUpsert } from '@/lib/oauth/verify-integration';
 
 export const dynamic = 'force-dynamic';
 
@@ -90,17 +91,27 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(to('error=qb_csrf'));
   }
 
-  await supabase
-    .from('qb_integrations')
-    .upsert({
-      portal_email:     resolved.portalEmail,
-      realm_id:         realmId,
-      access_token,
-      refresh_token,
-      token_expires_at: expiresAt,
-      company_name:     companyName,
-      updated_at:       new Date().toISOString(),
-    }, { onConflict: 'portal_email' });
+  // Policy no-silent-provisioning-failures: si la escritura falla, el usuario
+  // vería "success" pero la integración no quedó activa. Verify + alert.
+  const persist = await verifyIntegrationUpsert({
+    integrationLabel: 'QuickBooks',
+    portalEmail:      resolved.portalEmail,
+    table:            'qb_integrations',
+    action: () => supabase
+      .from('qb_integrations')
+      .upsert({
+        portal_email:     resolved.portalEmail,
+        realm_id:         realmId,
+        access_token,
+        refresh_token,
+        token_expires_at: expiresAt,
+        company_name:     companyName,
+        updated_at:       new Date().toISOString(),
+      }, { onConflict: 'portal_email' }),
+  });
+  if (!persist.ok) {
+    return NextResponse.redirect(to('error=qb_db'));
+  }
 
   const successRes = NextResponse.redirect(to('success=qb'));
   clearOAuthState(successRes);

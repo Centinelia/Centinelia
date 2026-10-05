@@ -5,6 +5,7 @@ import { createAdminClient }         from '@/lib/supabase/admin';
 import { getPrimaryAgentFromToken }  from '@/lib/portal/org-token';
 import { outlookExchangeCode }       from '@/lib/email/outlook';
 import { encrypt }                   from '@/lib/crypto';
+import { verifyIntegrationUpsert }   from '@/lib/oauth/verify-integration';
 
 export async function GET(req: NextRequest) {
   const appUrl   = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
@@ -68,17 +69,23 @@ export async function GET(req: NextRequest) {
     const expiresAt        = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
     const encryptedRefresh = tokens.refresh_token ? encrypt(tokens.refresh_token) : null;
 
-    await supabase.from('email_integrations').upsert({
-      agent_id:           agent.id,
-      provider:           'outlook',
-      email:              tokens.email,
-      access_token:       tokens.access_token,
-      refresh_token:      encryptedRefresh,
-      token_expires_at:   expiresAt,
-      last_sync_at:       null,
-      needs_reauth:       false,
-      reauth_notified_at: null,
-    }, { onConflict: 'agent_id,provider' });
+    const persistEmail = await verifyIntegrationUpsert({
+      integrationLabel: 'Outlook',
+      portalEmail:      agent.portal_email,
+      table:            'email_integrations',
+      action: () => supabase.from('email_integrations').upsert({
+        agent_id:           agent.id,
+        provider:           'outlook',
+        email:              tokens.email,
+        access_token:       tokens.access_token,
+        refresh_token:      encryptedRefresh,
+        token_expires_at:   expiresAt,
+        last_sync_at:       null,
+        needs_reauth:       false,
+        reauth_notified_at: null,
+      }, { onConflict: 'agent_id,provider' }),
+    });
+    if (!persistEmail.ok) return NextResponse.redirect(errorUrl);
 
     if (!isAgentScope && agent.portal_email) {
       const { data: existing } = await supabase
@@ -90,17 +97,23 @@ export async function GET(req: NextRequest) {
 
       const existingMeta = (existing?.metadata as Record<string, unknown>) ?? {};
 
-      await supabase.from('integration_accounts').upsert({
-        portal_email:  agent.portal_email,
-        provider:      'outlook',
-        capability:    'email',
-        account_label: tokens.email,
-        access_token:  tokens.access_token,
-        refresh_token: encryptedRefresh,
-        expires_at:    expiresAt,
-        status:        'active',
-        metadata:      { auto_reply: false, last_sync_at: null, ...existingMeta },
-      }, { onConflict: 'portal_email,provider' });
+      const persistOrg = await verifyIntegrationUpsert({
+        integrationLabel: 'Outlook (org-level)',
+        portalEmail:      agent.portal_email,
+        table:            'integration_accounts',
+        action: () => supabase.from('integration_accounts').upsert({
+          portal_email:  agent.portal_email,
+          provider:      'outlook',
+          capability:    'email',
+          account_label: tokens.email,
+          access_token:  tokens.access_token,
+          refresh_token: encryptedRefresh,
+          expires_at:    expiresAt,
+          status:        'active',
+          metadata:      { auto_reply: false, last_sync_at: null, ...existingMeta },
+        }, { onConflict: 'portal_email,provider' }),
+      });
+      if (!persistOrg.ok) return NextResponse.redirect(errorUrl);
     }
 
     const successUrl = isAgentScope
