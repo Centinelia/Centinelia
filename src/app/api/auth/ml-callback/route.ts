@@ -7,6 +7,7 @@ import { mlExchangeCode }    from '@/lib/mercadolibre/auth';
 import { encrypt }           from '@/lib/crypto';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { verifyOAuthState, clearOAuthState } from '@/lib/oauth/state';
+import { verifyIntegrationUpsert } from '@/lib/oauth/verify-integration';
 
 export async function GET(req: NextRequest) {
   const appUrl   = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
@@ -49,17 +50,25 @@ export async function GET(req: NextRequest) {
     const encryptedRefresh = encrypt(tokens.refresh_token);
 
     if (agent.portal_email) {
-      await supabase.from('integration_accounts').upsert({
-        portal_email:  agent.portal_email,
-        provider:      'mercadolibre',
-        capability:    'marketplace',
-        account_label: tokens.nickname,
-        access_token:  tokens.access_token,
-        refresh_token: encryptedRefresh,
-        expires_at:    expiresAt,
-        status:        'active',
-        metadata:      { user_id: String(tokens.user_id), nickname: tokens.nickname },
-      }, { onConflict: 'portal_email,provider' });
+      const persist = await verifyIntegrationUpsert({
+        integrationLabel: `MercadoLibre (${tokens.nickname ?? ''})`,
+        portalEmail:      agent.portal_email,
+        table:            'integration_accounts',
+        action: () => supabase.from('integration_accounts').upsert({
+          portal_email:  agent.portal_email,
+          provider:      'mercadolibre',
+          capability:    'marketplace',
+          account_label: tokens.nickname,
+          access_token:  tokens.access_token,
+          refresh_token: encryptedRefresh,
+          expires_at:    expiresAt,
+          status:        'active',
+          metadata:      { user_id: String(tokens.user_id), nickname: tokens.nickname },
+        }, { onConflict: 'portal_email,provider' }),
+      });
+      if (!persist.ok) {
+        return NextResponse.redirect(`${appUrl}/portal/${state}?tab=integraciones&ml=error`);
+      }
     }
 
     const successRes = NextResponse.redirect(`${appUrl}/portal/${state}?tab=integraciones&ml=connected`);

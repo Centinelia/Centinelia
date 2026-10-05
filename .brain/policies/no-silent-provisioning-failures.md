@@ -98,19 +98,21 @@ NO aplica a:
 - Flujos que tocan solo nuestra DB (features toggles, prompts, directorio).
 - Flujos donde el cliente ya está pagando y usando — los bugs ahí se detectan por operación, no por provisioning.
 
-## Coverage actual (2026-10-05, PR #108, #110)
+## Coverage actual (2026-10-05, PRs #108, #109)
 
 | Flow | fail-loud | Notes |
 |---|---|---|
 | Twilio phone + Vapi phone + voice_url | ✅ | provision.ts audita contra proveedor real + alerta en billing/webhook |
 | QuickBooks OAuth (`qb-oauth/callback`) | ✅ | `verifyIntegrationUpsert` |
-| Email OAuth (gmail / outlook) | ✅ | `verifyIntegrationUpsert` |
+| Email OAuth generic (gmail / outlook) | ✅ | `verifyIntegrationUpsert` |
+| Email OAuth outlook (`email-callback/outlook`) | ✅ | `verifyIntegrationUpsert` × 2 (per-agent + org-level fallback) |
 | Meta/Instagram OAuth (Navi) | ✅ | `verifyIntegrationUpsert` por página — si todas fallan → error, si parcial → alerta |
-| Calendar OAuth | ⏳ TODO | Aplicar `verifyIntegrationUpsert` |
-| Storage OAuth (Drive, OneDrive, Dropbox) | ⏳ TODO | Aplicar `verifyIntegrationUpsert` |
-| Notion OAuth | ⏳ TODO | Aplicar `verifyIntegrationUpsert` |
-| MercadoLibre OAuth | ⏳ TODO | Aplicar `verifyIntegrationUpsert` |
-| Canva OAuth | ⏳ TODO | Aplicar `verifyIntegrationUpsert` |
+| Calendar OAuth (`calendar-callback/[provider]`) | ✅ | `verifyIntegrationUpsert` |
+| Storage OAuth generic (`storage-callback/[provider]`) | ✅ | `verifyIntegrationUpsert` |
+| Dropbox OAuth (`dropbox-callback`) | ✅ | `verifyIntegrationUpsert` |
+| Notion OAuth (`integrations/notion/callback`) | ✅ | `verifyIntegrationUpsert` |
+| Canva OAuth (`canva-callback`) | ✅ | `verifyIntegrationUpsert` |
+| MercadoLibre OAuth (`ml-callback`) | ✅ | `verifyIntegrationUpsert` |
 
 ## Aprobación
 

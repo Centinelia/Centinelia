@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { resolveOrgFromToken } from '@/lib/portal/org-token';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { verifyOAuthState, clearOAuthState } from '@/lib/oauth/state';
+import { verifyIntegrationUpsert } from '@/lib/oauth/verify-integration';
 import { encrypt } from '@/lib/crypto';
 import { CanvaProvider } from '@/lib/social/canva';
 
@@ -72,20 +73,26 @@ export async function GET(req: NextRequest) {
     const encryptedRefresh = encrypt(refreshToken);
 
     // Persistir en integration_accounts (provider='canva', capability='design')
-    await supabase.from('integration_accounts').upsert(
-      {
-        agent_id:      agentId,
-        portal_email:  resolved.portalEmail,
-        provider:      'canva',
-        capability:    'design',
-        access_token:  accessToken,
-        refresh_token: encryptedRefresh,
-        expires_at:    expiresAt,
-        status:        'active',
-        metadata:      {},
-      },
-      { onConflict: 'agent_id,provider,capability' },
-    );
+    const persist = await verifyIntegrationUpsert({
+      integrationLabel: 'Canva',
+      portalEmail:      resolved.portalEmail,
+      table:            'integration_accounts',
+      action: () => supabase.from('integration_accounts').upsert(
+        {
+          agent_id:      agentId,
+          portal_email:  resolved.portalEmail,
+          provider:      'canva',
+          capability:    'design',
+          access_token:  accessToken,
+          refresh_token: encryptedRefresh,
+          expires_at:    expiresAt,
+          status:        'active',
+          metadata:      {},
+        },
+        { onConflict: 'agent_id,provider,capability' },
+      ),
+    });
+    if (!persist.ok) return NextResponse.redirect(backTo);
 
     const successRes = NextResponse.redirect(
       `${appUrl}/portal/${token}/configurar/${agentId}?navi=connected&provider=canva`,

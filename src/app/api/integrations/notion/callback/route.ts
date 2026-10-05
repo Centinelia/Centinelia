@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { verifyOAuthState, clearOAuthState } from '@/lib/oauth/state';
+import { verifyIntegrationUpsert } from '@/lib/oauth/verify-integration';
 
 export async function GET(req: NextRequest) {
   const code     = req.nextUrl.searchParams.get('code');
@@ -67,15 +68,23 @@ export async function GET(req: NextRequest) {
   // Notion es org-level: escribimos en organizations, no en voice_agents.
   // El campo notion_workspace_id se dejó en la tabla organizations legacy o
   // se ignora — usamos workspace_name como identificador visible.
-  await supabase
-    .from('organizations')
-    .upsert({
-      portal_email:          agent.portal_email,
-      notion_access_token:   access_token,
-      notion_workspace_name: workspace_name,
-      notion_db_id:          null, // clear existing DB so user picks a new page
-      notion_products_db_id: null,
-    }, { onConflict: 'portal_email' });
+  const persist = await verifyIntegrationUpsert({
+    integrationLabel: `Notion (${workspace_name ?? workspace_id ?? ''})`,
+    portalEmail:      agent.portal_email,
+    table:            'organizations',
+    action: () => supabase
+      .from('organizations')
+      .upsert({
+        portal_email:          agent.portal_email,
+        notion_access_token:   access_token,
+        notion_workspace_name: workspace_name,
+        notion_db_id:          null, // clear existing DB so user picks a new page
+        notion_products_db_id: null,
+      }, { onConflict: 'portal_email' }),
+  });
+  if (!persist.ok) {
+    return NextResponse.redirect(`${appUrl}/portal/${state}?tab=integraciones&notion=error`);
+  }
 
   const successRes = NextResponse.redirect(`${appUrl}/portal/${state}?tab=integraciones&notion=connected`);
   clearOAuthState(successRes);
