@@ -1,0 +1,47 @@
+name: Lint — Custom checks (3 linters preventivos)
+
+# Corre en cada PR hacia main. Enforza los 3 linters custom que previenen
+# los patrones de bug detectados históricamente:
+#   - check-llm-logging: SDK Anthropic sin logLlmCall ([[feedback-anthropic-debe-loggearse]])
+#   - check-ref-id-collisions: consumeAiOp duplicado con mismo (source, ref_id) ([[feedback-reference-id-unico-por-source]])
+#   - check-cron-frequencies: crons protegidos corriendo más seguido del mínimo
+#
+# No corre `npm run lint` entero porque eslint tiene ~2349 errors preexistentes
+# que no son parte de esta red de contención. Si en el futuro se limpia eslint,
+# agregar el step o migrar al script `lint` completo.
+#
+# Si uno de los 3 falla → el PR queda bloqueado hasta arreglar o justificar
+# via allow-list en el script correspondiente.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  custom-linters:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # No necesitamos npm install — los 3 linters son ES modules puros
+      # con solo imports de node:fs/path/url. Correrlos directo con node
+      # es más rápido y evita broma de dependencias.
+
+      - name: Check — logLlmCall coverage (Anthropic SDK)
+        run: node scripts/check-llm-logging.mjs
+
+      - name: Check — reference_id collisions (consumeAiOp duplicado)
+        run: node scripts/check-ref-id-collisions.mjs
+
+      - name: Check — cron frequencies (frecuencias protegidas en vercel.json)
+        run: node scripts/check-cron-frequencies.mjs
