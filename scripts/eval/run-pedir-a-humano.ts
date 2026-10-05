@@ -21,6 +21,7 @@ import '../_bootstrap';
 import * as fs from 'fs';
 import * as path from 'path';
 import Anthropic from '@anthropic-ai/sdk';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 const envPath = path.resolve(process.cwd(), '.env.local');
 if (fs.existsSync(envPath)) {
@@ -224,6 +225,7 @@ NO la uses si:
 
     const MAX_ITER = 3;
     for (let i = 0; i < MAX_ITER; i++) {
+      const __t = Date.now();
       const response = await anthropic.messages.create({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 1024,
@@ -231,6 +233,7 @@ NO la uses si:
         messages,
         tools,
       });
+      void logLlmCall({ source: 'eval_pedir_a_humano', model: 'claude-haiku-4-5-20251001', usage: response.usage, latencyMs: Date.now() - __t, meta: { iter: i } });
 
       const textBlock = response.content.find(b => b.type === 'text');
       if (textBlock?.type === 'text') reason = textBlock.text.trim();
