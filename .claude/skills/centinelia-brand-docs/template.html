@@ -1,0 +1,165 @@
+<!--
+  Template HTML para PDFs oficiales de Centinelia.
+  Uso: copiar a tu script build-*-pdf.mjs, reemplazar placeholders.
+  Las reglas CSS NO se cambian salvo que SKILL.md lo autorice.
+-->
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>{{TITULO_DOC}}</title>
+<style>
+  :root {
+    --morado:   #6C3BFF;
+    --dark:     #1A0A3B;
+    --bg:       #FAFBFF;
+    --soft:     #F0ECFF;
+    --muted:    #5B4E78;
+    --line:     #E6E0F5;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--dark); font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11pt; line-height: 1.5; orphans: 3; widows: 3; }
+
+  /* Pagination: .page = seccion forzada, flow natural interno */
+  .page { page-break-after: always; break-after: page; padding: 24mm 20mm; }
+  .page:last-child { page-break-after: auto; break-after: auto; }
+
+  /* Reglas duras de break */
+  h1, h2, h3 { page-break-after: avoid; break-after: avoid; page-break-inside: avoid; break-inside: avoid; }
+  .dialog, .card, .cap, .ad-grid, .contacto, .limites, .cap-grid, ul, ol { page-break-inside: avoid; break-inside: avoid; }
+  .block { page-break-inside: avoid; break-inside: avoid; margin-bottom: 6mm; }
+
+  /* Portada */
+  .cover { display: flex; flex-direction: column; justify-content: space-between; height: 257mm; padding: 24mm 20mm; background: linear-gradient(145deg, var(--bg) 0%, var(--soft) 100%); }
+  .cover-logo { max-width: 180px; height: auto; margin-bottom: 12mm; }
+  .cover-title { font-size: 42pt; font-weight: 700; color: var(--dark); margin: 0 0 8mm 0; line-height: 1.1; letter-spacing: -1.2px; }
+  .cover-sub   { font-size: 16pt; color: var(--morado); font-weight: 500; margin-bottom: 20mm; }
+  .cover-meta  { font-size: 11pt; color: var(--muted); border-top: 2px solid var(--morado); padding-top: 10mm; max-width: 70%; }
+  .cover-meta strong { color: var(--dark); }
+
+  /* Tipografía */
+  h1 { font-size: 24pt; font-weight: 700; color: var(--dark); margin: 0 0 6mm 0; letter-spacing: -0.5px; }
+  h2 { font-size: 15pt; font-weight: 600; color: var(--morado); margin: 10mm 0 3mm 0; letter-spacing: -0.2px; }
+  h3 { font-size: 12pt; font-weight: 600; color: var(--dark); margin: 6mm 0 2mm 0; }
+  p { margin: 0 0 3mm 0; }
+  strong { color: var(--dark); font-weight: 600; }
+  ul, ol { margin: 0 0 4mm 0; padding-left: 18px; }
+  li { margin-bottom: 2mm; }
+
+  /* Componentes reutilizables */
+  .dialog { background: var(--soft); border-left: 4px solid var(--morado); padding: 4mm 6mm; margin: 3mm 0 4mm 0; border-radius: 0 6px 6px 0; }
+  .dialog .quien { font-size: 9pt; font-weight: 600; color: var(--morado); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 1mm; }
+  .dialog .texto { font-style: italic; color: var(--dark); font-size: 11pt; }
+
+  .card { background: white; border: 1px solid var(--line); border-radius: 8px; padding: 5mm 6mm; margin-bottom: 4mm; }
+  .card-title { font-size: 11pt; font-weight: 600; color: var(--morado); margin-bottom: 2mm; }
+  .card-body  { font-size: 10.5pt; color: var(--dark); }
+
+  /* Grid 2x4 de capacidades/features */
+  .cap-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; margin-top: 4mm; }
+  .cap { background: white; border: 1px solid var(--line); border-radius: 6px; padding: 4mm 5mm; }
+  .cap-h { font-weight: 600; color: var(--morado); font-size: 10.5pt; margin-bottom: 1mm; }
+  .cap-b { font-size: 10pt; color: var(--muted); }
+
+  /* Caja amarilla para limitaciones / lo que NO hace */
+  .limites { background: #FFF9E6; border: 1px solid #F0D97A; border-radius: 6px; padding: 4mm 6mm; margin-top: 4mm; }
+  .limites li { color: #665200; }
+
+  /* Caja morada para contacto / call to action */
+  .contacto { background: var(--morado); color: white; border-radius: 8px; padding: 6mm 8mm; margin-top: 6mm; }
+  .contacto h2 { color: white; margin-top: 0; }
+  .contacto a { color: white; }
+
+  /* Pie de pagina */
+  .pie { font-size: 9pt; color: var(--muted); border-top: 1px solid var(--line); padding-top: 3mm; margin-top: 10mm; }
+</style>
+</head>
+<body>
+
+<!-- ─── PORTADA ─────────────────────────────────────────────── -->
+<div class="cover">
+  <div>
+    <img class="cover-logo" src="${logoDataUrl}" alt="Centinelia">
+    <h1 class="cover-title">{{TITULO}}<br>{{SUBTITULO}}</h1>
+    <div class="cover-sub">{{TAGLINE}}</div>
+  </div>
+  <div class="cover-meta">
+    <strong>{{CLIENTE}}</strong> · {{FECHA}}<br>
+    {{DESCRIPCION_CORTA}}
+  </div>
+</div>
+
+<!-- ─── EJEMPLO: Página con bloques titulados ───────────────── -->
+<div class="page">
+  <h1>{{TITULO_PAGINA}}</h1>
+  <p>{{INTRO_PARRAFO}}</p>
+
+  <div class="block">
+    <h2>{{TITULO_SECCION}}</h2>
+    <p>{{CONTENIDO}}</p>
+    <ul>
+      <li>{{BULLET_1}}</li>
+      <li>{{BULLET_2}}</li>
+    </ul>
+  </div>
+
+  <div class="block">
+    <h2>{{OTRO_TITULO}}</h2>
+    <div class="card">
+      <div class="card-title">{{CARD_TITULO}}</div>
+      <div class="card-body">{{CARD_CONTENIDO}}</div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── EJEMPLO: Página con diálogos (manual de uso) ────────── -->
+<div class="page">
+  <h1>{{TITULO_EJEMPLOS}}</h1>
+  <p>{{INTRO}}</p>
+
+  <div class="block">
+    <h2>{{EJEMPLO_1_TITULO}}</h2>
+    <div class="dialog">
+      <div class="quien">Tú le escribes</div>
+      <div class="texto">"{{FRASE_USUARIO}}"</div>
+    </div>
+    <div class="dialog">
+      <div class="quien">{{AGENTE}} te contesta</div>
+      <div class="texto">"{{FRASE_AGENTE}}"</div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── EJEMPLO: Grid de capacidades ─────────────────────────── -->
+<div class="page">
+  <h1>{{TITULO_CAPACIDADES}}</h1>
+  <div class="cap-grid">
+    <div class="cap"><div class="cap-h">{{CAP_1}}</div><div class="cap-b">{{CAP_1_DESC}}</div></div>
+    <div class="cap"><div class="cap-h">{{CAP_2}}</div><div class="cap-b">{{CAP_2_DESC}}</div></div>
+    <div class="cap"><div class="cap-h">{{CAP_3}}</div><div class="cap-b">{{CAP_3_DESC}}</div></div>
+    <div class="cap"><div class="cap-h">{{CAP_4}}</div><div class="cap-b">{{CAP_4_DESC}}</div></div>
+  </div>
+</div>
+
+<!-- ─── EJEMPLO: Qué NO hace + contacto ──────────────────────── -->
+<div class="page">
+  <h1>{{TITULO_LIMITES}}</h1>
+  <div class="limites">
+    <ul>
+      <li><strong>{{LIMITE_1}}:</strong> {{DESC_1}}</li>
+      <li><strong>{{LIMITE_2}}:</strong> {{DESC_2}}</li>
+    </ul>
+  </div>
+
+  <div class="contacto">
+    <h2>Contacto directo</h2>
+    <p><strong>Nazre</strong> · Centinelia</p>
+    <p>WhatsApp: {{WHATSAPP}}</p>
+    <p>Correo: nazre20@gmail.com</p>
+  </div>
+
+  <div class="pie">Documento preparado por Centinelia para {{CLIENTE}}. {{FECHA}}.</div>
+</div>
+
+</body>
+</html>

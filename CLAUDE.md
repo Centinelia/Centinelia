@@ -11,3 +11,4 @@
 @.claude/skills/centinelia-reporte-semanal/SKILL.md
 @.claude/skills/centinelia-competencia/SKILL.md
 @.claude/skills/centinelia-health-check/SKILL.md
+@.claude/skills/centinelia-brand-docs/SKILL.md
