@@ -27,6 +27,16 @@ Siempre que generes un PDF que un cliente va a ver: manuales, cotizaciones, one-
   - "parámetros" → "ajustes"
   - "serial number" → "número de serie"
 
+### Contacto (regla crítica)
+
+- **Correo de contacto SIEMPRE** `hola@centinelia.mx`. Es la cuenta oficial de Centinelia.
+- **NUNCA** usar `nazre20@gmail.com` en documentos para cliente. Esa es la cuenta personal de Nazre y queda feo visualmente en un documento con brand.
+- `nazre20@gmail.com` solo aparece en:
+  - Tests y smoke scripts (como destinatario seguro, per [[feedback-no-tests-a-clientes]])
+  - Memoria interna
+  - Nunca en PDFs, correos salientes, decks o cualquier cosa que un cliente vea.
+- Si quieres mencionar a Nazre como persona en el documento, está bien: *"Nazre · Centinelia"* como firma. Pero el canal de contacto escrito debe ser `hola@centinelia.mx`.
+
 ### Logo (viene de [[feedback-logo-real-en-docs-cliente]])
 
 - **SIEMPRE** usar `public/logo.png` (2000×600, el real).
@@ -118,6 +128,18 @@ Si el `.block` no cabe en lo que queda de página, Chromium lo baja completo a l
 - **NO** usar `height: 100vh` en elementos internos. Afecta cálculo de break.
 - **NO** meter contenido muy largo en una sola `.page`. Si una sección tiene >3 tablas, divídela en 2 páginas con otro `<div class="page">`.
 - **NO** confiar en `page-break-before: auto` para que "resuelva" overflow. Resuelve mal.
+- **NO** meter 3+ `.block` pesados (con h2 + varias cards/dialogs cada uno) en una sola `.page`. Chromium va a honrar `break-inside: avoid` del último bloque y lo empuja completo a la siguiente página, dejando la primera página con contenido corto Y la segunda con 90% blanco. **Regla práctica: máximo 2 bloques `.block` grandes por `.page`.** Si tienes 4, haz 2 páginas con 2 cada una, con el patrón "Título" + "Más título" o "(continúa)".
+
+### Antídoto al "lonely block" (bug recurrente)
+
+Síntoma: una página termina con mucho espacio en blanco y la siguiente arranca con un solo bloque pequeño pegado arriba.
+
+Causa: `.block` tiene `break-inside: avoid` y el motor no pudo meter el último bloque abajo de la página previa, lo bajó entero.
+
+Fix: antes de generar el PDF, cuenta mentalmente los bloques por página:
+- 1-2 bloques por página: casi siempre OK
+- 3 bloques: riesgo medio, verifica
+- 4+ bloques: casi seguro va a cortar mal. Divide la página en 2.
 
 ## Setup Playwright
 

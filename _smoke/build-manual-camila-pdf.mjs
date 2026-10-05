@@ -242,6 +242,12 @@ const html = /* html */ `<!doctype html>
     </div>
   </div>
 
+</div>
+
+<!-- Pag 5b: Más ejemplos (hoja de salida + venta) -->
+<div class="page">
+  <h1>Más ejemplos</h1>
+
   <div class="block">
     <h2>Registrar hoja de salida con varias series</h2>
     <div class="dialog">
@@ -362,7 +368,7 @@ const html = /* html */ `<!doctype html>
     <h2>Contacto directo</h2>
     <p><strong>Nazre</strong> · Centinelia</p>
     <p>WhatsApp: te lo escribo por aparte si es la primera vez que lo necesitas.</p>
-    <p>Correo: nazre20@gmail.com</p>
+    <p>Correo: hola@centinelia.mx</p>
     <p style="margin-top: 4mm; font-size: 10pt; opacity: 0.9;">Las primeras dos semanas estoy atento. Cualquier cosa, por mínima que sea, dime. Mejor arreglarlo pronto que dejarlo pasar.</p>
   </div>
 
