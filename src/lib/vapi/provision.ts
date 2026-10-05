@@ -38,7 +38,7 @@ export async function searchTwilioNumbers(areaCode?: string): Promise<string[]> 
   return results.flat();
 }
 
-async function buyTwilioNumber(areaCode?: string): Promise<{ number: string; ladaFallback: boolean } | null> {
+async function buyTwilioNumber(areaCode?: string): Promise<{ number: string; sid: string; ladaFallback: boolean } | null> {
   const sid = process.env.TWILIO_ACCOUNT_SID!;
 
   // Try requested area code first, then fall back to any MX number.
@@ -86,7 +86,53 @@ async function buyTwilioNumber(areaCode?: string): Promise<{ number: string; lad
 
   const data = await buyRes.json();
   const number = data.phone_number as string | undefined;
-  return number ? { number, ladaFallback } : null;
+  const twilioSid = data.sid as string | undefined;
+  if (!number || !twilioSid) return null;
+  return { number, sid: twilioSid, ladaFallback };
+}
+
+/**
+ * CRÍTICO: PATCH el `voice_url` del Twilio incoming phone number para que
+ * apunte a NUESTRO voice-gate, no al webhook de Vapi. Sin este paso, Vapi
+ * recibe las calls directo y ningún gate del nuestro corre (blocklist,
+ * paused, suspended, business hours, pool exhausted, daily cap).
+ *
+ * Vapi configura voice_url automáticamente a `api.vapi.ai/twilio/inbound_call`
+ * durante el import. Nosotros lo sobrescribimos aquí para interponernos.
+ *
+ * Ver `.brain/decisions/2026-10-05-twilio-voice-gate-as-real-gate.md`.
+ */
+async function patchTwilioVoiceUrlToGate(twilioSid: string): Promise<boolean> {
+  const sid = process.env.TWILIO_ACCOUNT_SID;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
+  if (!sid) {
+    console.error('provision: patchTwilioVoiceUrl: TWILIO_ACCOUNT_SID missing');
+    return false;
+  }
+  const gateUrl = `${appUrl}/api/twilio/voice-gate`;
+  const body = new URLSearchParams({ VoiceUrl: gateUrl, VoiceMethod: 'POST' });
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const res = await fetch(
+        `https://api.twilio.com/2010-04-01/Accounts/${sid}/IncomingPhoneNumbers/${twilioSid}.json`,
+        {
+          method:  'POST',
+          headers: { Authorization: twilioBasicAuth(), 'Content-Type': 'application/x-www-form-urlencoded' },
+          body:    body.toString(),
+          signal:  AbortSignal.timeout(15_000),
+        },
+      );
+      if (res.ok) return true;
+      const text = await res.text().catch(() => '');
+      console.error(`provision: patchTwilioVoiceUrl HTTP ${res.status} (attempt ${attempt}):`, text);
+      if (res.status < 500) return false;
+    } catch (err) {
+      console.error(`provision: patchTwilioVoiceUrl threw (attempt ${attempt}):`, err);
+    }
+    if (attempt < 3) await new Promise(r => setTimeout(r, 300 * Math.pow(2, attempt - 1)));
+  }
+  return false;
 }
 
 async function importToVapi(phoneNumber: string): Promise<string | null> {
@@ -160,28 +206,130 @@ export interface ProvisionResult {
   vapiPhoneId:   string | null;
   ladaFallback:  boolean;   // true si el número no matchea el areaCode pedido
   requestedLada: string | null;
+  /** true = TODA la cadena quedó bien (Twilio bought + Vapi imported + gate
+   *  patcheado + assistant asignado). false = algún paso falló y el agente
+   *  está en estado inconsistente — llamar a repairAgentProvisioning() o
+   *  bloquear el flow de admin. Ver policy no-silent-provisioning-failures. */
+  fullyProvisioned: boolean;
+  errors:            string[];
+}
+
+/**
+ * Audita que un phone number ya provisionado tenga TODA la config correcta:
+ * - Twilio incoming_phone_number.voice_url → /api/twilio/voice-gate
+ * - Vapi phone_number.assistantId → set
+ * - Vapi phone_number.serverUrl → /api/voice/inbound (fallback) o nuestro URL
+ *
+ * Devuelve lista de problemas encontrados. Vacío = todo bien.
+ * Usado por scripts/audit-twilio-voice-urls.mjs y por el health check tras
+ * provisioning nuevo. Ver policy no-silent-provisioning-failures.
+ */
+export async function auditPhoneProvisioning(twilioSid: string, vapiPhoneId: string | null): Promise<string[]> {
+  const problems: string[] = [];
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
+  const twSid  = process.env.TWILIO_ACCOUNT_SID;
+
+  // Check 1: Twilio voice_url
+  if (twSid) {
+    try {
+      const r = await fetch(
+        `https://api.twilio.com/2010-04-01/Accounts/${twSid}/IncomingPhoneNumbers/${twilioSid}.json`,
+        { headers: { Authorization: twilioBasicAuth() } },
+      );
+      if (r.ok) {
+        const data = await r.json();
+        const vu = (data.voice_url as string) ?? '';
+        if (!vu.includes('/api/twilio/voice-gate')) {
+          problems.push(`Twilio voice_url NO apunta al gate: "${vu}". Calls bypasean blocklist/pausado/pool.`);
+        }
+      } else {
+        problems.push(`Twilio API HTTP ${r.status} al verificar voice_url.`);
+      }
+    } catch (err) {
+      problems.push(`Twilio check threw: ${(err as Error).message}`);
+    }
+  } else {
+    problems.push('TWILIO_ACCOUNT_SID missing en env');
+  }
+
+  // Check 2: Vapi phone number assistantId + serverUrl
+  if (vapiPhoneId) {
+    try {
+      const r = await fetch(`${VAPI_URL}/phone-number/${vapiPhoneId}`, { headers: vapiHeaders() });
+      if (r.ok) {
+        const p = await r.json();
+        if (!p.assistantId) problems.push(`Vapi phone_number sin assistantId.`);
+        const su = (p.serverUrl as string) ?? '';
+        if (!su.includes('/api/voice/')) {
+          problems.push(`Vapi phone_number.serverUrl no apunta a nuestro backend: "${su}".`);
+        }
+      } else {
+        problems.push(`Vapi API HTTP ${r.status} al verificar phone_number.`);
+      }
+    } catch (err) {
+      problems.push(`Vapi check threw: ${(err as Error).message}`);
+    }
+  } else {
+    problems.push('vapiPhoneId null al auditar (Vapi import falló).');
+  }
+
+  // Log si hay problemas — admin/UI puede mostrar al provisionar.
+  if (problems.length) {
+    console.error(`[provision-audit] Agent twilioSid=${twilioSid} vapiPhoneId=${vapiPhoneId}:\n  - ${problems.join('\n  - ')}`);
+  }
+  return problems;
 }
 
 /**
  * Full provisioning:
  * 1. Buy a Mexican number in Twilio
- * 2. Import it into Vapi (Vapi auto-configures the Twilio webhook)
- * 3. Assign the Vapi assistant
+ * 2. Import it into Vapi (Vapi auto-configures the Twilio voice_url to Vapi)
+ * 3. PATCH Twilio voice_url al /api/twilio/voice-gate (CRÍTICO: sin este paso
+ *    las calls van directo a Vapi y ningún gate nuestro corre)
+ * 4. Assign the Vapi assistant
  *
  * Returns { phoneNumber, vapiPhoneId, ladaFallback } on success, null on failure.
  * ladaFallback=true → caller debe notificar al cliente que su lada no estaba
  * disponible y le asignamos otra (Scope D1 F6).
  */
 export async function provisionPhoneNumber(vapiAssistantId: string, areaCode?: string, concurrencyLimit?: number): Promise<ProvisionResult | null> {
+  const errors: string[] = [];
   const bought = await buyTwilioNumber(areaCode);
   if (!bought) return null;
 
   const vapiPhoneId = await importToVapi(bought.number);
   if (!vapiPhoneId) {
-    console.error('provision: number bought but Vapi import failed:', bought.number);
-    return { phoneNumber: bought.number, vapiPhoneId: null, ladaFallback: bought.ladaFallback, requestedLada: areaCode ?? null };
+    errors.push(`Vapi import failed for ${bought.number}`);
+    console.error('provision:', errors[errors.length - 1]);
+    return {
+      phoneNumber: bought.number, vapiPhoneId: null, ladaFallback: bought.ladaFallback,
+      requestedLada: areaCode ?? null, fullyProvisioned: false, errors,
+    };
   }
 
-  await assignAssistant(vapiPhoneId, vapiAssistantId, concurrencyLimit);
-  return { phoneNumber: bought.number, vapiPhoneId, ladaFallback: bought.ladaFallback, requestedLada: areaCode ?? null };
+  // CRÍTICO: PATCH Twilio voice_url al gate ANTES de que llegue cualquier call.
+  const gatePatched = await patchTwilioVoiceUrlToGate(bought.sid);
+  if (!gatePatched) {
+    errors.push(`Twilio voice_url NO patcheado para ${bought.number} (sid ${bought.sid}). Calls van a Vapi SIN pasar por gates (blocklist/pausado/pool/etc). Rescate: scripts/audit-twilio-voice-urls.mjs.`);
+    console.error('provision:', errors[errors.length - 1]);
+  }
+
+  const assigned = await assignAssistant(vapiPhoneId, vapiAssistantId, concurrencyLimit);
+  if (!assigned) {
+    errors.push(`Vapi assignAssistant falló para phone ${bought.number}`);
+    console.error('provision:', errors[errors.length - 1]);
+  }
+
+  // Audit post-provisioning: valida que TODO quedó bien. Si algún check falla,
+  // el agente nace con bug. Lo marcamos en el resultado para que el caller
+  // (admin UI, scripts) decida abortar o alertar. Ver policy
+  // no-silent-provisioning-failures.
+  const auditProblems = await auditPhoneProvisioning(bought.sid, vapiPhoneId);
+  errors.push(...auditProblems);
+
+  const fullyProvisioned = errors.length === 0;
+  return {
+    phoneNumber: bought.number, vapiPhoneId, ladaFallback: bought.ladaFallback,
+    requestedLada: areaCode ?? null, fullyProvisioned, errors,
+  };
 }
