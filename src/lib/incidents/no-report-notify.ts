@@ -21,6 +21,7 @@ import type { DirectoryPerson } from '../helpdesk/folio';
 import { resolveIncidentRecipients } from './directory';
 import { sendMeerkatHtmlEmail } from '../email/send-as-agent';
 import { consumeAiOp } from '../ai/ops-guard';
+import { normalizeToE164 } from '../leads/dedup';
 
 type SupabaseClient = ReturnType<typeof createAdminClient>;
 
@@ -67,7 +68,7 @@ export interface NoReportInput {
 }
 
 export type NoReportResult =
-  | { skipped: 'flag_off' | 'has_report' | 'no_caller' | 'no_recipients' }
+  | { skipped: 'flag_off' | 'has_report' | 'no_caller' | 'no_recipients' | 'blocked_number' }
   | { sent: number };
 
 export async function notifyIfNoReport(
@@ -85,6 +86,30 @@ export async function notifyIfNoReport(
   const suffix = rawPhone.replace(/\D/g, '').slice(-10);
   if (suffix.length < 10) {
     return { skipped: 'no_caller' };
+  }
+
+  // Safety net: si el caller está en blocked_numbers del org, NO avisar.
+  // En teoría el gate de Twilio ya cortó la call con <Reject> antes de que
+  // Vapi la aceptara (no debería haber llegado aquí). Pero defense-in-depth:
+  // si el gate falló (Twilio voice_url desactualizado, nuevo phone sin patch,
+  // etc.), evitamos spammear a Ramón con avisos de llamadas de bots que él
+  // mismo bloqueó. Si llega una call de un número bloqueado, es un bug del
+  // gate — el skip aquí es un apagafuegos, no esperado en operación normal.
+  try {
+    const callerE164 = normalizeToE164(rawPhone);
+    const { data: blocked } = await supabase
+      .from('blocked_numbers')
+      .select('id')
+      .eq('portal_email', input.agent.portal_email)
+      .eq('phone_e164', callerE164)
+      .maybeSingle();
+    if (blocked) {
+      console.warn(`[no-report-notify] skipped blocked_number ${callerE164} (${input.agent.portal_email}) — gate falló, call llegó cuando no debería. Revisar voice_url en Twilio.`);
+      return { skipped: 'blocked_number' };
+    }
+  } catch (err) {
+    // Fail-open: si el lookup falla, mandamos el aviso (comportamiento previo).
+    console.error('[no-report-notify] blocklist lookup error, continuing:', err);
   }
 
   const recipients = resolveIncidentRecipients(input.org.directory);

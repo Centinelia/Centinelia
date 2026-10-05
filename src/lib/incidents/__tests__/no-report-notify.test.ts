@@ -32,6 +32,7 @@ function makeSupabase(responses: Array<{ data: any; error?: any }>): MockSupabas
   // Cada consulta await supabase.from(...).select(...).eq(...) etc. consume
   // la siguiente respuesta de la cola. Los tests dan el orden esperado.
   const queue = responses.map(r => ({ data: r.data, error: r.error ?? null }));
+  const consume = () => queue.shift() ?? { data: [], error: null };
   const supabase: any = {
     _queue: queue,
     from:   vi.fn(function () { return supabase; }),
@@ -39,10 +40,9 @@ function makeSupabase(responses: Array<{ data: any; error?: any }>): MockSupabas
     eq:     vi.fn(function () { return supabase; }),
     ilike:  vi.fn(function () { return supabase; }),
     limit:  vi.fn(function () { return supabase; }),
-    then:   (resolve: any) => {
-      const next = supabase._queue.shift() ?? { data: [], error: null };
-      resolve(next);
-    },
+    maybeSingle: vi.fn(() => Promise.resolve(consume())),
+    single:      vi.fn(() => Promise.resolve(consume())),
+    then:   (resolve: any) => resolve(consume()),
   };
   return supabase;
 }
@@ -151,8 +151,20 @@ describe('notifyIfNoReport', () => {
     expect(res.skipped).toBe('no_caller');
   });
 
+  it('caller_number en blocked_numbers: skips (safety net ante gate falso)', async () => {
+    const supabase = makeSupabase([
+      { data: { id: 'blk-1' } },   // blocked_numbers lookup → HIT
+    ]);
+    const res = await notifyIfNoReport(baseInput(), supabase as any);
+    expect(res.skipped).toBe('blocked_number');
+    expect(sendMeerkatHtmlEmail).not.toHaveBeenCalled();
+  });
+
   it('directory sin recipients: skips (nadie recibe)', async () => {
-    const supabase = makeSupabase([]);
+    // 1er query: blocked_numbers → miss
+    const supabase = makeSupabase([
+      { data: null },
+    ]);
     const input = baseInput();
     input.org.directory = [];
     const res = await notifyIfNoReport(input, supabase as any);
@@ -161,9 +173,11 @@ describe('notifyIfNoReport', () => {
   });
 
   it('unanswered + número desconocido: envía correo con estado "colgó antes"', async () => {
-    // 1st query: outbound_contacts → vacío
-    // 2nd query: leads_voice → vacío
+    // 1st query: blocked_numbers → miss
+    // 2nd query: outbound_contacts → vacío
+    // 3rd query: leads_voice → vacío
     const supabase = makeSupabase([
+      { data: null },
       { data: [] },
       { data: [] },
     ]);
@@ -180,6 +194,7 @@ describe('notifyIfNoReport', () => {
 
   it('atendida sin reporte (outcome=other): envía correo con estado "atendida sin reporte"', async () => {
     const supabase = makeSupabase([
+      { data: null },  // blocked_numbers miss
       { data: [] },
       { data: [] },
     ]);
@@ -196,6 +211,7 @@ describe('notifyIfNoReport', () => {
 
   it('info_provided también dispara aviso', async () => {
     const supabase = makeSupabase([
+      { data: null },  // blocked_numbers miss
       { data: [] },
       { data: [] },
     ]);
@@ -209,6 +225,7 @@ describe('notifyIfNoReport', () => {
 
   it('nombre en outbound_contacts: aparece en el correo', async () => {
     const supabase = makeSupabase([
+      { data: null },  // blocked_numbers miss
       { data: [{ nombre: 'Abarrotes El Sol', telefono: '+528111112222' }] },
       // leads_voice no debe consultarse si outbound_contacts matcheó
     ]);
@@ -221,6 +238,7 @@ describe('notifyIfNoReport', () => {
 
   it('nombre solo en leads_voice (negocio prioriza sobre persona)', async () => {
     const supabase = makeSupabase([
+      { data: null },  // blocked_numbers miss
       { data: [] }, // outbound_contacts vacío
       { data: [{ nombre: 'Doña Meche', negocio: 'Tienda Meche', whatsapp: '+528111112222' }] },
     ]);
@@ -233,6 +251,7 @@ describe('notifyIfNoReport', () => {
 
   it('leads_voice sin negocio: usa nombre de persona', async () => {
     const supabase = makeSupabase([
+      { data: null },
       { data: [] },
       { data: [{ nombre: 'Doña Meche', negocio: null, whatsapp: '+528111112222' }] },
     ]);
@@ -244,6 +263,7 @@ describe('notifyIfNoReport', () => {
 
   it('cobra 1 tarea batched con count=recipients cuando envía', async () => {
     const supabase = makeSupabase([
+      { data: null },
       { data: [] },
       { data: [] },
     ]);
@@ -265,6 +285,7 @@ describe('notifyIfNoReport', () => {
   it('si sendMeerkatHtmlEmail falla, no cobra por ese envío', async () => {
     (sendMeerkatHtmlEmail as any).mockResolvedValueOnce({ ok: false, provider: 'none', error: 'boom' });
     const supabase = makeSupabase([
+      { data: null },
       { data: [] },
       { data: [] },
     ]);
