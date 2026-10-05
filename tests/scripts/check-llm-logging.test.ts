@@ -96,7 +96,11 @@ describe('check-llm-logging linter', () => {
   });
 
   describe('regresión real contra codebase', () => {
-    it('la codebase actual pasa el linter completo (0 violaciones)', async () => {
+    // Timeout extendido: este test escanea ~2000 archivos del repo. En aislamiento
+    // tarda <1s, pero bajo contención de I/O con la suite completa (280 archivos
+    // test corriendo en paralelo) puede exceder el default de 5s. 30s es
+    // conservador para no reintroducir flakiness.
+    it('la codebase actual pasa el linter completo (0 violaciones)', { timeout: 30_000 }, async () => {
       // Este test corre el linter contra el repo real. Si alguien agrega
       // un .messages.create o .stream sin logLlmCall en src/ o scripts/,
       // falla y bloquea el merge. Es nuestra red de contención.

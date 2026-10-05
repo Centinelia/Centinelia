@@ -174,7 +174,11 @@ describe('check-ref-id-collisions linter', () => {
   });
 
   describe('red de contención contra codebase real', () => {
-    it('la codebase actual pasa el linter (0 colisiones)', async () => {
+    // Timeout extendido: este test escanea src/ completo (~1800 archivos TS).
+    // En aislamiento tarda <1s, pero bajo contención de I/O con la suite
+    // completa puede exceder el default de 5s. 30s es conservador para no
+    // reintroducir flakiness.
+    it('la codebase actual pasa el linter (0 colisiones)', { timeout: 30_000 }, async () => {
       // Si alguien re-introduce el patrón en el repo real (en inbox-processor
       // o en cualquier otro archivo nuevo), este test falla y bloquea el merge.
       const repoRoot = join(__dirname, '..', '..');
