@@ -35,9 +35,16 @@ const html = /* html */ `<!doctype html>
     --line:     #E6E0F5;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--dark); font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11pt; line-height: 1.5; }
-  .page { page-break-after: always; padding: 24mm 20mm; min-height: 257mm; }
-  .page:last-child { page-break-after: auto; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--dark); font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11pt; line-height: 1.5; orphans: 3; widows: 3; }
+  .page { page-break-after: always; break-after: page; padding: 24mm 20mm; }
+  .page:last-child { page-break-after: auto; break-after: auto; }
+
+  /* Reglas duras: nada que no deba partirse se parte */
+  h1, h2, h3 { page-break-after: avoid; break-after: avoid; page-break-inside: avoid; break-inside: avoid; }
+  .dialog, .card, .cap, .ad-grid, .contacto, .limites, .cap-grid, ul, ol { page-break-inside: avoid; break-inside: avoid; }
+
+  /* Bloques "titulo + contenido inmediato" como unidad */
+  .block { page-break-inside: avoid; break-inside: avoid; margin-bottom: 6mm; }
 
   /* Portada */
   .cover { display: flex; flex-direction: column; justify-content: space-between; height: 257mm; padding: 24mm 20mm; background: linear-gradient(145deg, var(--bg) 0%, var(--soft) 100%); }
@@ -138,62 +145,72 @@ const html = /* html */ `<!doctype html>
   </div>
 </div>
 
-<!-- Pag 2: Antes vs Después -->
+<!-- Pag 2a: Antes vs Después — OC + llegada de equipos -->
 <div class="page">
   <h1>Tu día a día: antes vs ahora</h1>
   <p>Lado a lado, qué sigues haciendo tú y qué pasa a Nami. Las decisiones de negocio siguen siendo tuyas; lo que cambia es que ya no tienes que capturar en Excel.</p>
 
-  <h2>Cuando una chica de ventas te pide equipos nuevos</h2>
-  <div class="ad-grid">
-    <div class="ad-head">Antes</div>
-    <div class="ad-head after">Ahora</div>
-    <div class="ad-row">
-      <div><span class="step-num">1.</span> Entras a QuickBooks a hacer la OC.</div>
-      <div class="ad-after"><span class="step-num">1.</span> Entras a QuickBooks a hacer la OC. <span style="color:var(--muted);">(sigues tú)</span></div>
-    </div>
-    <div class="ad-row">
-      <div><span class="step-num">2.</span> Redactas correo a Isabel para que la registre.</div>
-      <div class="ad-after"><span class="step-num">2.</span> Le dices a Nami el folio y los equipos. Ella arma el correo.</div>
-    </div>
-    <div class="ad-row">
-      <div><span class="step-num">3.</span> Checas el BACKLOG hasta que Isabel la ingresó.</div>
-      <div class="ad-after"><span class="step-num">3.</span> Nami actualiza el BACKLOG sola cada lunes, miércoles y viernes.</div>
-    </div>
-    <div class="ad-row">
-      <div><span class="step-num">4.</span> Redactas otro correo a Isabel pidiendo entrega.</div>
-      <div class="ad-after"><span class="step-num">4.</span> Le dices a Nami "pide la entrega". Arma el correo.</div>
-    </div>
-  </div>
-
-  <h2>Cuando llega la factura de TRANE con los equipos</h2>
-  <div class="ad-grid">
-    <div class="ad-head">Antes</div>
-    <div class="ad-head after">Ahora</div>
-    <div class="ad-row">
-      <div><span class="step-num">5.</span> Abres la factura, lees cada equipo, capturas en Excel: OC, folio, tonelada, modelo, serie, USD, TC, costo. Repites por cada equipo.</div>
-      <div class="ad-after"><span class="step-num">5.</span> Nami lee sola el XML de la factura y agrega todos los equipos al INVENTARIO.</div>
+  <div class="block">
+    <h2>Cuando una chica de ventas te pide equipos nuevos</h2>
+    <div class="ad-grid">
+      <div class="ad-head">Antes</div>
+      <div class="ad-head after">Ahora</div>
+      <div class="ad-row">
+        <div><span class="step-num">1.</span> Entras a QuickBooks a hacer la OC.</div>
+        <div class="ad-after"><span class="step-num">1.</span> Entras a QuickBooks a hacer la OC. <span style="color:var(--muted);">(sigues tú)</span></div>
+      </div>
+      <div class="ad-row">
+        <div><span class="step-num">2.</span> Redactas correo a Isabel para que la registre.</div>
+        <div class="ad-after"><span class="step-num">2.</span> Le dices a Nami el folio y los equipos. Ella arma el correo.</div>
+      </div>
+      <div class="ad-row">
+        <div><span class="step-num">3.</span> Checas el BACKLOG hasta que Isabel la ingresó.</div>
+        <div class="ad-after"><span class="step-num">3.</span> Nami actualiza el BACKLOG sola cada lunes, miércoles y viernes.</div>
+      </div>
+      <div class="ad-row">
+        <div><span class="step-num">4.</span> Redactas otro correo a Isabel pidiendo entrega.</div>
+        <div class="ad-after"><span class="step-num">4.</span> Le dices a Nami "pide la entrega". Arma el correo.</div>
+      </div>
     </div>
   </div>
 
-  <h2>Cuando una venta se cierra</h2>
-  <div class="ad-grid">
-    <div class="ad-head">Antes</div>
-    <div class="ad-head after">Ahora</div>
-    <div class="ad-row">
-      <div><span class="step-num">6.</span> Chica avisa pago, llamas a Nino, Nino dicta serie, entras al Excel, buscas serie, pones cliente + vendedor + SEPARADO.</div>
-      <div class="ad-after"><span class="step-num">6.</span> Chica avisa pago, llamas a Nino, Nino te dicta serie. Le dices a Nami "serie X asignada a Mauricio con vendedor ANA". <span style="color:var(--muted);">(Nino sigue físicamente separando)</span></div>
+  <div class="block">
+    <h2>Cuando llega la factura de TRANE con los equipos</h2>
+    <div class="ad-grid">
+      <div class="ad-head">Antes</div>
+      <div class="ad-head after">Ahora</div>
+      <div class="ad-row">
+        <div><span class="step-num">5.</span> Abres la factura, lees cada equipo, capturas en Excel: OC, folio, tonelada, modelo, serie, USD, TC, costo. Repites por cada equipo.</div>
+        <div class="ad-after"><span class="step-num">5.</span> Nami lee sola el XML de la factura y agrega todos los equipos al INVENTARIO.</div>
+      </div>
     </div>
-    <div class="ad-row">
-      <div><span class="step-num">7.</span> Cuando entregas, haces hoja de salida y marcas cada serie como ENTREGADO en Excel.</div>
-      <div class="ad-after"><span class="step-num">7.</span> Le dices a Nami "ya salieron series X y Y en hoja folio 4251, cliente Mauricio, hoy".</div>
-    </div>
-    <div class="ad-row">
-      <div><span class="step-num">8.</span> Ventas te manda folio de factura, entras a Solución Factible, buscas, sacas fecha + precio, calculas factor, capturas en Excel.</div>
-      <div class="ad-after"><span class="step-num">8.</span> Ventas te manda folio + fecha + precio juntos. Le dices a Nami y ella captura todo.</div>
+  </div>
+</div>
+
+<!-- Pag 2b: Antes vs Después — Venta -->
+<div class="page">
+  <h1>Antes vs ahora (continúa)</h1>
+  <div class="block">
+    <h2>Cuando una venta se cierra</h2>
+    <div class="ad-grid">
+      <div class="ad-head">Antes</div>
+      <div class="ad-head after">Ahora</div>
+      <div class="ad-row">
+        <div><span class="step-num">6.</span> Chica avisa pago, llamas a Nino, Nino dicta serie, entras al Excel, buscas serie, pones cliente + vendedor + SEPARADO.</div>
+        <div class="ad-after"><span class="step-num">6.</span> Chica avisa pago, llamas a Nino, Nino te dicta serie. Le dices a Nami "serie X asignada a Mauricio con vendedor ANA". <span style="color:var(--muted);">(Nino sigue separando físicamente)</span></div>
+      </div>
+      <div class="ad-row">
+        <div><span class="step-num">7.</span> Cuando entregas, haces hoja de salida y marcas cada serie como ENTREGADO en Excel.</div>
+        <div class="ad-after"><span class="step-num">7.</span> Le dices a Nami "ya salieron series X y Y en hoja folio 4251, cliente Mauricio, hoy".</div>
+      </div>
+      <div class="ad-row">
+        <div><span class="step-num">8.</span> Ventas te manda folio de factura, entras a Solución Factible, buscas, sacas fecha + precio, calculas factor, capturas en Excel.</div>
+        <div class="ad-after"><span class="step-num">8.</span> Ventas te manda folio + fecha + precio juntos. Le dices a Nami y ella captura todo.</div>
+      </div>
     </div>
   </div>
 
-  <div class="ad-note">De 8 pasos, antes hacías los 8 completos. Ahora los pasos 1 y 6 (parte física) siguen siendo tuyos, los otros 6 los hace Nami contigo platicándole en una frase.</div>
+  <div class="ad-note" style="margin-top: 8mm;">De 8 pasos, antes hacías los 8 completos. Ahora los pasos 1 y 6 (parte física con QuickBooks y con Nino) siguen siendo tuyos. Los otros 6 los hace Nami contigo platicándole en una frase.</div>
 </div>
 
 <!-- Pag 3: Ejemplos de cómo escribirle -->
@@ -201,44 +218,52 @@ const html = /* html */ `<!doctype html>
   <h1>Ejemplos de cómo platicarle</h1>
   <p>No tienes que usar palabras exactas. Nami entiende tu forma de hablar. Estos son solo ejemplos para que agarres la onda.</p>
 
-  <h2>Asignarle un cliente a una serie</h2>
-  <div class="dialog">
-    <div class="quien">Tú le escribes</div>
-    <div class="texto">"Mauricio Guerra pagó la serie 2422H8318A, ya puedes separarla."</div>
-  </div>
-  <div class="dialog">
-    <div class="quien">Nami te contesta</div>
-    <div class="texto">"Listo, serie 2422H8318A asignada a Mauricio Guerra y marcada como SEPARADA."</div>
-  </div>
-
-  <h2>Cambiarle el estatus a un equipo</h2>
-  <div class="dialog">
-    <div class="quien">Tú le escribes</div>
-    <div class="texto">"La serie 2422H8393A ya pasó a pendiente de entregar."</div>
-  </div>
-  <div class="dialog">
-    <div class="quien">Nami te contesta</div>
-    <div class="texto">"Listo, la serie 2422H8393A quedó marcada como PENDIENTE."</div>
+  <div class="block">
+    <h2>Asignarle un cliente a una serie</h2>
+    <div class="dialog">
+      <div class="quien">Tú le escribes</div>
+      <div class="texto">"Mauricio Guerra pagó la serie 2422H8318A, ya puedes separarla."</div>
+    </div>
+    <div class="dialog">
+      <div class="quien">Nami te contesta</div>
+      <div class="texto">"Listo, serie 2422H8318A asignada a Mauricio Guerra y marcada como SEPARADA."</div>
+    </div>
   </div>
 
-  <h2>Registrar hoja de salida con varias series</h2>
-  <div class="dialog">
-    <div class="quien">Tú le escribes</div>
-    <div class="texto">"Ya salieron las series 2422H8448A y 2414H5168A en la hoja folio 4251, cliente Mauricio Guerra, hoy."</div>
-  </div>
-  <div class="dialog">
-    <div class="quien">Nami te contesta</div>
-    <div class="texto">"Listo, hoja de salida 4251 registrada con 2 equipos entregados a Mauricio Guerra."</div>
+  <div class="block">
+    <h2>Cambiarle el estatus a un equipo</h2>
+    <div class="dialog">
+      <div class="quien">Tú le escribes</div>
+      <div class="texto">"La serie 2422H8393A ya pasó a pendiente de entregar."</div>
+    </div>
+    <div class="dialog">
+      <div class="quien">Nami te contesta</div>
+      <div class="texto">"Listo, la serie 2422H8393A quedó marcada como PENDIENTE."</div>
+    </div>
   </div>
 
-  <h2>Registrar una venta</h2>
-  <div class="dialog">
-    <div class="quien">Tú le escribes</div>
-    <div class="texto">"Para la serie 2422H8394A: folio FV-A-2026-0442, fecha hoy, precio 35000, factor 1.4."</div>
+  <div class="block">
+    <h2>Registrar hoja de salida con varias series</h2>
+    <div class="dialog">
+      <div class="quien">Tú le escribes</div>
+      <div class="texto">"Ya salieron las series 2422H8448A y 2414H5168A en la hoja folio 4251, cliente Mauricio Guerra, hoy."</div>
+    </div>
+    <div class="dialog">
+      <div class="quien">Nami te contesta</div>
+      <div class="texto">"Listo, hoja de salida 4251 registrada con 2 equipos entregados a Mauricio Guerra."</div>
+    </div>
   </div>
-  <div class="dialog">
-    <div class="quien">Nami te contesta</div>
-    <div class="texto">"Listo, venta registrada en serie 2422H8394A: folio FV-A-2026-0442, factor 1.4."</div>
+
+  <div class="block">
+    <h2>Registrar una venta</h2>
+    <div class="dialog">
+      <div class="quien">Tú le escribes</div>
+      <div class="texto">"Para la serie 2422H8394A: folio FV-A-2026-0442, fecha hoy, precio 35000, factor 1.4."</div>
+    </div>
+    <div class="dialog">
+      <div class="quien">Nami te contesta</div>
+      <div class="texto">"Listo, venta registrada en serie 2422H8394A: folio FV-A-2026-0442, factor 1.4."</div>
+    </div>
   </div>
 </div>
 
@@ -247,35 +272,42 @@ const html = /* html */ `<!doctype html>
   <h1>Correos a Isabel de TRANE</h1>
   <p>Cuando necesites registrar una OC o pedir entrega, Nami te prepara el borrador. Lo revisas y si está bien le dices que lo mande.</p>
 
-  <h2>Registrar una OC</h2>
-  <div class="dialog">
-    <div class="quien">Tú le escribes</div>
-    <div class="texto">"Nami, acabo de hacer en QuickBooks la OC 7520 por 10 piezas de modelo 4TXK6548G1000AA y 5 del 4MXD6548G1000BA. Prepárame el correo a Isabel para que me la registre."</div>
-  </div>
-  <div class="dialog">
-    <div class="quien">Nami te contesta</div>
-    <div class="texto">"Aquí está el borrador: para Isabel, asunto Registrar OC 7520. ¿Te lo mando?"</div>
-  </div>
-  <div class="dialog">
-    <div class="quien">Tú</div>
-    <div class="texto">"Sí Nami, mándalo."</div>
-  </div>
-  <div class="dialog">
-    <div class="quien">Nami</div>
-    <div class="texto">"Listo, correo enviado a Isabel sobre la OC 7520."</div>
-  </div>
-
-  <h2>Pedir entrega de una OC ya registrada</h2>
-  <div class="dialog">
-    <div class="quien">Tú le escribes</div>
-    <div class="texto">"Nami, ya Isabel confirmó que tienen stock de la OC 7520. Prepárame el correo pidiendo la entrega para el 15 de octubre."</div>
-  </div>
-  <div class="dialog">
-    <div class="quien">Nami</div>
-    <div class="texto">"Aquí tienes el borrador. ¿Te lo mando?"</div>
+  <div class="block">
+    <h2>Registrar una OC</h2>
+    <div class="dialog">
+      <div class="quien">Tú le escribes</div>
+      <div class="texto">"Nami, acabo de hacer en QuickBooks la OC 7520 por 10 piezas de modelo 4TXK6548G1000AA y 5 del 4MXD6548G1000BA. Prepárame el correo a Isabel para que me la registre."</div>
+    </div>
+    <div class="dialog">
+      <div class="quien">Nami te contesta</div>
+      <div class="texto">"Aquí está el borrador: para Isabel, asunto Registrar OC 7520. ¿Te lo mando?"</div>
+    </div>
+    <div class="dialog">
+      <div class="quien">Tú</div>
+      <div class="texto">"Sí Nami, mándalo."</div>
+    </div>
+    <div class="dialog">
+      <div class="quien">Nami</div>
+      <div class="texto">"Listo, correo enviado a Isabel sobre la OC 7520."</div>
+    </div>
   </div>
 
-  <h1 style="margin-top: 15mm;">BACKLOG de TRANE</h1>
+  <div class="block">
+    <h2>Pedir entrega de una OC ya registrada</h2>
+    <div class="dialog">
+      <div class="quien">Tú le escribes</div>
+      <div class="texto">"Nami, ya Isabel confirmó que tienen stock de la OC 7520. Prepárame el correo pidiendo la entrega para el 15 de octubre."</div>
+    </div>
+    <div class="dialog">
+      <div class="quien">Nami</div>
+      <div class="texto">"Aquí tienes el borrador. ¿Te lo mando?"</div>
+    </div>
+  </div>
+</div>
+
+<!-- BACKLOG en su propia página para que no quede truncado -->
+<div class="page">
+  <h1>BACKLOG de TRANE automático</h1>
   <p>Lunes, miércoles y viernes, cuando llega el BACKLOG de TRANE por correo, Nami lo lee sola y actualiza tu hoja BACKLOG. No tienes que hacer nada.</p>
   <ul>
     <li>Si no cambió nada respecto a la última vez, te avisa que no cambió nada.</li>
@@ -283,6 +315,11 @@ const html = /* html */ `<!doctype html>
     <li>Si TRANE quitó líneas, te dice cuántas se fueron.</li>
   </ul>
   <p>Las primeras dos semanas Nami te pregunta antes de actualizar la hoja. Después de eso, si todo salió bien, lo hace directo sin molestarte.</p>
+
+  <div class="card" style="margin-top: 8mm;">
+    <div class="card-title">Qué pasa el día del Meet</div>
+    <div class="card-body">La primera vez que Nami actualiza tu BACKLOG, va a reemplazar las 47 líneas que tenías a mano con el formato nuevo (más completo, con fechas de registro y de entrega estimadas). Si en algún momento prefieres el formato viejo, tengo tu BACKLOG original guardado y lo regresamos en 2 minutos.</div>
+  </div>
 </div>
 
 <!-- Pag 4: Qué NO hace + contacto -->
@@ -298,11 +335,16 @@ const html = /* html */ `<!doctype html>
     </ul>
   </div>
 
-  <h2 style="margin-top: 8mm;">Dos semanas de confianza, luego ya es automático</h2>
-  <p>Las primeras dos semanas, cuando le pidas que mande correo a Isabel, Nami te va a mostrar el borrador y te va a preguntar "¿te lo mando?" antes de hacerlo. Esto es para que agarres confianza en cómo redacta.</p>
-  <p>Pasadas esas dos semanas, si todo salió bien, le quitamos esa pregunta y Nami manda directo. Si prefieres que siga preguntándote siempre, dímelo y se queda así.</p>
+  <div class="block">
+    <h2 style="margin-top: 8mm;">Dos semanas de confianza, luego ya es automático</h2>
+    <p>Las primeras dos semanas, cuando le pidas que mande correo a Isabel, Nami te va a mostrar el borrador y te va a preguntar "¿te lo mando?" antes de hacerlo. Esto es para que agarres confianza en cómo redacta.</p>
+    <p>Pasadas esas dos semanas, si todo salió bien, le quitamos esa pregunta y Nami manda directo. Si prefieres que siga preguntándote siempre, dímelo y se queda así.</p>
+  </div>
+</div>
 
-  <h1 style="margin-top: 15mm;">Si algo sale raro</h1>
+<!-- Página final: Si algo sale raro + Contacto -->
+<div class="page">
+  <h1>Si algo sale raro</h1>
   <div class="card">
     <div class="card-title">Pasos a seguir</div>
     <div class="card-body">
