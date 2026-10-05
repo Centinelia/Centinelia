@@ -29,6 +29,7 @@ import { transformRequest, type OpenAIRequest } from '@/lib/voice/openai-to-anth
 import { anthropicToOpenAISse } from '@/lib/voice/anthropic-to-openai-sse';
 import { logLlmCall } from '@/lib/observability/llm-log';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { extractVapiContext } from '@/lib/voice/vapi-context';
 import {
   isPostTempModel,
   sonnet55VoiceExtras,
@@ -81,15 +82,17 @@ export async function POST(req: NextRequest) {
     return jsonError('messages array required', 400);
   }
 
-  // Vapi inyecta un objeto `call` con id/assistantId/phoneNumber. Usamos
-  // assistantId para mapear a agent_id en supabase (lookup por vapi_agent_id).
-  // Sin esto los llm_call_log de voice_llm quedan con agent_id=null y no se
-  // pueden atribuir costos/uso a un cliente especifico (bug detectado 2026-09-28
-  // en Nelia Tortilleria: 70 turnos en 72h todos con agent_id=null).
+  // Resolución de contexto Vapi (assistantId + callId) para atribuir el
+  // llm_call_log al cliente. Historia:
+  //   2026-09-28: fix asumió `body.call.assistantId` → nunca disparó en prod.
+  //   2026-10-05: 1,886 calls con agent_id=null → se detectó que Vapi no
+  //               manda `call` top-level en el customLLM. Agregamos diag
+  //               snapshot a meta.vapi_diag para ver DÓNDE sí viene.
+  // Remover el diag tras identificar el carrier real.
   const model = body.model || 'claude-haiku-4-5-20251001';
-  const callObj = (body.call ?? {}) as Record<string, unknown>;
-  const vapiAssistantId = typeof callObj.assistantId === 'string' ? callObj.assistantId : null;
-  const vapiCallId      = typeof callObj.id === 'string' ? callObj.id : null;
+  const headerBag = Object.fromEntries([...req.headers.entries()]);
+  const { vapiAssistantId, vapiCallId, vapiDiag } =
+    extractVapiContext(body as unknown as Record<string, unknown>, headerBag);
 
   let params;
   try {
@@ -184,13 +187,14 @@ export async function POST(req: NextRequest) {
               stop_reason:  finalMsg.stop_reason,
               vapi_assistant_id: vapiAssistantId,
               vapi_call_id:      vapiCallId,
+              vapi_diag:         vapiDiag,
               tool_uses:    toolUses,
               resp_preview: respText,
             },
           });
         } catch { /* ignore usage capture errors */ }
       } catch (err) {
-        void logLlmCall({ source: 'voice_llm', model: params.model, usage: { input_tokens: 0, output_tokens: 0 }, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err) });
+        void logLlmCall({ source: 'voice_llm', model: params.model, usage: { input_tokens: 0, output_tokens: 0 }, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err), meta: { vapi_diag: vapiDiag } });
         console.error('[voice/llm] stream error:', err);
         // Fallback pre-canned: emitir un mensaje hablable para que Vapi lo
         // reproduzca en vez de cortar el stream con "error" (que causaba
