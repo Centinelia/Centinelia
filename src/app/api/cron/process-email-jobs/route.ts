@@ -114,10 +114,19 @@ export async function GET(req: NextRequest) {
 
       if (job.charge_source) {
         try {
+          // Ref ledger = `${reference_id de dominio}:${job.id}` para garantizar
+          // unicidad por job UUID. Sin el sufijo, un batch de N recipients
+          // (enqueueEmailJobBatch crea N jobs con el MISMO reference_id de
+          // dominio, ej. `${incidentId}:notif`) genera N cobros con el mismo
+          // ref → el 2do+ choca contra ops_ledger_portal_ref_kind_uniq →
+          // undercharge silent. Bug 2026-10-05 Tortillería: ~27 cobros
+          // perdidos en 5 días. El sufijo con job.id es idempotente intra-job
+          // (si el cron reintenta el mismo job, usa el mismo id → UNIQUE
+          // sigue protegiendo contra doble cobro del mismo job).
           await consumeAiOp(job.agent_id, 1, {
             source:       job.charge_source,
             label:        job.charge_label ?? job.charge_source,
-            reference_id: job.reference_id ?? undefined,
+            reference_id: job.reference_id ? `${job.reference_id}:${job.id}` : job.id,
           });
         } catch (err) {
           console.error('[email-jobs] charge failed (deferred audit gap):', err);
