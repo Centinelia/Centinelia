@@ -6705,7 +6705,11 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
         return { ok: false, error: 'pdf_url es requerido (URL del PDF BACKLOG adjunto al correo TRANE)', code: 'invalid_input' };
       }
       const dryRun = a.dry_run !== false;  // default true
-      const mode   = a.mode === 'upsert' ? 'upsert' : 'replace';  // default replace
+      // Default UPSERT para evitar borrados silenciosos cuando Camila mantiene
+      // filas en el BACKLOG que no vienen en el PDF de TRANE (equipos de otro
+      // proveedor, notas internas, etc.). Solo usa replace cuando ella lo pida
+      // explícito ("borra las que ya no están", "limpia el BACKLOG completo").
+      const mode   = a.mode === 'replace' ? 'replace' : 'upsert';  // default upsert
 
       const { resolveInventoryContext } = await import('@/lib/inventory/adapter');
       const ctx = await resolveInventoryContext(portalEmail, supabase, agentId);
