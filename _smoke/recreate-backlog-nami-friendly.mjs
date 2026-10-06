@@ -65,23 +65,53 @@ for (let i = 0; i < range.values.length; i++) {
 if (headerRowIdx < 0) { console.error('No encontré header actual con CUSTOMER PO'); process.exit(1); }
 console.log(`  Header actual en fila ${headerRowIdx + 1} (0-based idx ${headerRowIdx})`);
 
-// 3. Extrae rows actuales de datos (row después del header hasta la última no vacía)
+// 3. Detecta la posición REAL de cada columna por el nombre en el header.
+// Soporta formato legacy (7 cols: PO/ITEM/STATUS/QTY/BACKLOG/RES/RES_USD) y
+// formato nuevo (12 cols con ORDER NUMBER, ORDERED DATE, LINE NUMBER, SHIP DATE, ACCOUNT MANAGER).
+const headerRow = range.values[headerRowIdx];
+const colOf = {};
+headerRow.forEach((v, i) => {
+  const h = String(v ?? '').trim().toUpperCase();
+  if (/CUSTOMER\s*PO/.test(h) || /^PO\s*NUMBER$/.test(h)) colOf.customer_po = i;
+  else if (/^ORDER\s*NUMBER$/.test(h)) colOf.order_number = i;
+  else if (/ORDERED\s*DATE/.test(h)) colOf.ordered_date = i;
+  else if (/LINE\s*NUMBER/.test(h)) colOf.line_number = i;
+  else if (/^ITEM$/.test(h) || /^MODELO$/.test(h)) colOf.item = i;
+  else if (/LINES?\s*STATUS/.test(h) || /^STATUS$/.test(h)) colOf.lines_status = i;
+  else if (/SCHEDULE\s*SHIP/.test(h)) colOf.ship_date = i;
+  else if (/^QUANTITY$/.test(h) || /^CANTIDAD$/.test(h)) colOf.quantity = i;
+  else if (/BACKLOG\s*USD/.test(h) && !/RESERVED/.test(h)) colOf.backlog_usd = i;
+  else if (/^RESERVED$/.test(h)) colOf.reserved = i;
+  else if (/RESERVED\s*BACKLOG\s*USD/.test(h)) colOf.reserved_usd = i;
+  else if (/ACCOUNT\s*MANAGER/.test(h)) colOf.account_manager = i;
+});
+console.log(`  Columnas detectadas:`, Object.keys(colOf).join(', '));
+if (colOf.customer_po == null || colOf.item == null) {
+  console.error('  ERROR: no detecté customer_po o item. Abort.');
+  process.exit(1);
+}
+
 const currentRows = [];
 for (let i = headerRowIdx + 1; i < range.values.length; i++) {
   const row = range.values[i];
   if (!row.some(v => v !== '' && v !== null && v !== undefined)) continue;
-  // Formato actual conocido: C=PO, D=ITEM, E=LINES STATUS, F=QUANTITY, G=BACKLOG USD, H=RESERVED, I=RESERVED USD
-  const po = String(row[2] ?? '').trim();
+  const po = String(row[colOf.customer_po] ?? '').trim();
   if (!po) continue;
   currentRows.push({
     excel_row: i + 1,
-    customer_po: po,
-    item:        String(row[3] ?? '').trim(),
-    lines_status: String(row[4] ?? '').trim().toUpperCase(),
-    quantity:    Number(row[5] ?? 0),
-    backlog_usd: parseMoney(row[6]),
-    reserved:    Number(row[7] ?? 0),
-    reserved_usd: parseMoney(row[8]),
+    customer_po:    po,
+    item:           String(row[colOf.item] ?? '').trim(),
+    lines_status:   colOf.lines_status != null ? String(row[colOf.lines_status] ?? '').trim().toUpperCase() : '',
+    quantity:       colOf.quantity    != null ? Number(row[colOf.quantity] ?? 0) : 0,
+    backlog_usd:    colOf.backlog_usd != null ? parseMoney(row[colOf.backlog_usd]) : 0,
+    reserved:       colOf.reserved    != null ? Number(row[colOf.reserved] ?? 0) : 0,
+    reserved_usd:   colOf.reserved_usd!= null ? parseMoney(row[colOf.reserved_usd]) : 0,
+    // Si el formato ya es el nuevo (12 cols), capturamos también estos para no perderlos
+    existing_order_number: colOf.order_number != null ? row[colOf.order_number] : undefined,
+    existing_ordered_date: colOf.ordered_date != null ? row[colOf.ordered_date] : undefined,
+    existing_line_number:  colOf.line_number  != null ? row[colOf.line_number]  : undefined,
+    existing_ship_date:    colOf.ship_date    != null ? row[colOf.ship_date]    : undefined,
+    existing_account_mgr:  colOf.account_manager != null ? row[colOf.account_manager] : undefined,
   });
 }
 console.log(`  ${currentRows.length} filas de datos leídas del BACKLOG actual.`);
@@ -93,12 +123,32 @@ function parseMoney(v) {
   return Number.isFinite(n) ? n : 0;
 }
 
-// 4. Sintetiza las 5 columnas faltantes para cada fila
-// LINE NUMBER: contador por OC, formato "1.1", "2.1", ...
-// ORDER NUMBER: 80000000 + hash determinista de PO
-// ORDERED DATE: fechas distribuidas en los últimos 6 meses (determinista por PO)
-// SCHEDULE SHIP DATE: 2-4 meses después de ORDERED
-// ACCOUNT MANAGER: "Valdez, Hansel Alan" (fijo per los datos reales que vimos)
+// 4a. Si existe el PDF local de referencia, extraemos line_number +
+// order_number + ordered_date + ship_date + account_manager REALES
+// indexados por (po, item). Esto hace que al correr el syncer con ese
+// mismo PDF, las 42 rows sin modificar queden como "unchanged" y solo
+// las 5 randomizadas muestren "updated" — demo limpio para Camila.
+const PDF_REF = 'C:/Users/Nazre/Dropbox/PC/Downloads/AC Proyectos X Centinelia/Elementos/Inventarios/AIRE ACONDICIONADO PROYECTOS SA DE CV.pdf';
+let pdfIndex = new Map();
+if (fs.existsSync(PDF_REF)) {
+  try {
+    const parser = await import('../src/lib/inventory/backlog-parser.ts');
+    const bytes = new Uint8Array(fs.readFileSync(PDF_REF));
+    const password = ctx.config.backlog_trane.pdf_password;
+    const parsed = await parser.parseBacklogPdf(bytes, password);
+    for (const r of parsed.rows) {
+      const key = `${r.customer_po_number}::${r.item}`;
+      if (!pdfIndex.has(key)) pdfIndex.set(key, r);
+    }
+    console.log(`  Indexé ${pdfIndex.size} rows del PDF de referencia por (po, item).`);
+  } catch (err) {
+    console.warn('  ⚠ No pude parsear PDF de referencia, usaré fallback sintético:', err.message);
+  }
+}
+
+// LINE NUMBER: usar del PDF si existe, si no contador posicional por OC
+// ORDER NUMBER: del PDF si existe, si no hash determinista
+// ORDERED DATE / SCHEDULE SHIP DATE: del PDF si existe, si no sintético
 const lineCounters = new Map();
 function nextLine(po) {
   const n = (lineCounters.get(po) ?? 0) + 1;
@@ -123,21 +173,27 @@ function shipDate(orderedIso, lineIdx) {
 }
 
 const canonicalRows = currentRows.map((r, idx) => {
-  const line = nextLine(r.customer_po);
-  const ordered = orderedDate(r.customer_po, idx);
+  // Si tenemos match en el PDF por (po, item), usamos los valores reales
+  const pdfKey = `${r.customer_po}::${r.item}`;
+  const pdfRow = pdfIndex.get(pdfKey);
+  const line = pdfRow?.line_number ?? nextLine(r.customer_po);
+  const ordered = pdfRow?.ordered_date ?? orderedDate(r.customer_po, idx);
+  const ship = pdfRow?.schedule_ship_date ?? shipDate(ordered, idx);
+  const orderNum = pdfRow?.order_number ?? orderNumber(r.customer_po);
+  const acctMgr = pdfRow?.account_manager ?? 'Valdez, Hansel Alan';
   return {
     customer_po:    r.customer_po,
-    order_number:   orderNumber(r.customer_po),
+    order_number:   orderNum,
     ordered_date:   ordered,
     line_number:    line,
     item:           r.item,
     lines_status:   r.lines_status,
-    ship_date:      shipDate(ordered, idx),
+    ship_date:      ship,
     quantity:       r.quantity,
     backlog_usd:    r.backlog_usd,
     reserved:       r.reserved,
     reserved_usd:   r.reserved_usd,
-    account_manager: 'Valdez, Hansel Alan',
+    account_manager: acctMgr,
   };
 });
 
