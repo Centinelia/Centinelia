@@ -165,6 +165,7 @@ const KNOWN_DROPS = {
     'inv_buscar_por_fact_trane',
     'inv_estado_general',
     'inv_consultar_backlog',
+    'revisar_mi_inbox_ahora',
     // Meefi Nelia
     'meefi_lookup_user_account',
     'meefi_send_password_reset_link',
@@ -327,6 +328,7 @@ const KNOWN_DROPS = {
     'inv_buscar_por_fact_trane',
     'inv_estado_general',
     'inv_consultar_backlog',
+    'revisar_mi_inbox_ahora',
     // Owner delegating tools
     'delegar_tarea',
     'consultar_agente',
