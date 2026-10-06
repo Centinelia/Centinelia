@@ -5801,6 +5801,35 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       return { ok: true, message: `Correo enviado a ${encargados.join(', ')} solicitando ${cantidad} pieza(s) de ${modelo}.`, provider: result.provider };
     }
 
+    // ─── Nueva tool: Camila entrena a Nami con familias nuevas ────────────────
+    // Camila dice: "Nami, para el modelo X la familia es Y, acuérdate". Nami
+    // guarda en inventory_excel_config.familias_catalogo = { "MODELO": "FAMILIA" }.
+    // Después de esto, inv_procesar_oc_qb y inv_procesar_factura_trane
+    // consultan este catálogo primero. Introducido 2026-10-06 en vivo.
+    if (toolName === 'inv_definir_familia_modelo') {
+      const modelo  = String(toolInput.modelo ?? '').trim().toUpperCase();
+      const familia = String(toolInput.familia ?? '').trim().toUpperCase();
+      if (!modelo)  return { ok: false, error: 'modelo es requerido' };
+      if (!familia) return { ok: false, error: 'familia es requerida' };
+      const { data: org } = await supabase.from('organizations').select('inventory_excel_config').eq('portal_email', portalEmail).maybeSingle() as { data: { inventory_excel_config: Record<string, unknown> } | null };
+      if (!org) return { ok: false, error: 'org no encontrada' };
+      const cfg = (org.inventory_excel_config ?? {}) as Record<string, unknown>;
+      const catalogo = ((cfg.familias_catalogo ?? {}) as Record<string, string>);
+      const previa = catalogo[modelo] ?? null;
+      catalogo[modelo] = familia;
+      const updated = { ...cfg, familias_catalogo: catalogo };
+      const { error } = await supabase.from('organizations').update({ inventory_excel_config: updated }).eq('portal_email', portalEmail);
+      if (error) return { ok: false, error: `No pude guardar: ${error.message}` };
+      return {
+        ok: true,
+        modelo, familia,
+        previa,
+        message: previa
+          ? `Listo, actualicé la familia del modelo ${modelo}: ${previa} → ${familia}. Lo voy a usar en siguientes facturas y OCs.`
+          : `Listo, aprendí: modelo ${modelo} → familia ${familia}. Lo voy a usar en siguientes facturas y OCs.`,
+      };
+    }
+
     // ─── Procesa OC de QuickBooks (fase PRE-factura) ───────────────────────────
     // Camila le reenvía a Nami la OC de QB (texto, PDF o datos dictados).
     // Nami crea 1 fila por cada pieza (cantidad del concepto) con los datos
@@ -5820,9 +5849,37 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       const ocDigits = ocNumero.replace(/^OC0*/i, '').trim();
       const ocFormateada = /^\d+$/.test(ocDigits) ? 'OC' + ocDigits.padStart(5, '0') : ocNumero;
 
-      // Helpers inline (reusan los del handler factura trane, pero aquí también
-      // son necesarios porque este handler puede ejecutarse independiente)
-      const inferFamilia = (desc: string): string => {
+      // Helpers inline. inferFamilia hoy combina 3 fuentes (precedencia):
+      //  1. inventory_excel_config.familias_catalogo (entrenamiento explícito)
+      //  2. precedente del Excel (más común entre filas con mismo MODELO)
+      //  3. reglas regex sobre la descripción
+      // (fallback vacío). Introducido 2026-10-06 — Nami aprende.
+      const familiasCatalogo = ((inv.config as unknown as { familias_catalogo?: Record<string, string> }).familias_catalogo ?? {});
+      // Pre-fetch: contar familias por modelo en el INVENTARIO existente
+      const familiasPorModelo = new Map<string, Map<string, number>>();
+      try {
+        const rowsAll = await listHistorico(inv);
+        for (const r of rowsAll) {
+          const m = String(r.values.modelo ?? '').trim().toUpperCase();
+          const f = String(r.values.familia ?? '').trim().toUpperCase();
+          if (!m || !f) continue;
+          if (!familiasPorModelo.has(m)) familiasPorModelo.set(m, new Map());
+          const inner = familiasPorModelo.get(m)!;
+          inner.set(f, (inner.get(f) ?? 0) + 1);
+        }
+      } catch { /* read falló; seguimos con regex */ }
+      const resolveFamiliaFor = (modelo: string, desc: string): string => {
+        const mKey = modelo.toUpperCase();
+        // 1. Catálogo explícito
+        if (familiasCatalogo[mKey]) return familiasCatalogo[mKey];
+        // 2. Precedente del Excel: familia más común entre filas con mismo modelo
+        const counts = familiasPorModelo.get(mKey);
+        if (counts && counts.size > 0) {
+          let best = ''; let bestN = 0;
+          for (const [f, n] of counts) if (n > bestN) { best = f; bestN = n; }
+          if (best) return best;
+        }
+        // 3. Reglas regex sobre descripción
         const d = desc.toUpperCase();
         if (/MANEJADOR/i.test(d))         return 'MANEJADORA';
         if (/CONDENSADOR/i.test(d))       return 'CONDENSADORA';
@@ -5874,7 +5931,7 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
           const descripcion = it.descripcion ? String(it.descripcion).trim() : '';
           const usdUnit  = it.usd_unit != null ? Number(it.usd_unit) : null;
           if (!modelo || !(cantidad > 0)) continue;
-          const familia = inferFamilia(descripcion || modelo);
+          const familia = resolveFamiliaFor(modelo, descripcion || modelo);
           const { seer, ref, volts } = extractSeerRefVolts(descripcion);
           const tonelada = extractTonelada(descripcion, modelo);
           let filasInsertadas = 0;
@@ -6325,8 +6382,36 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
         if (!/^\d+$/.test(digits)) return oc.trim();
         return 'OC' + digits.padStart(5, '0');   // OC06668 (2+5 chars)
       };
-      const inferFamilia = (desc: string): string => {
+      // inferFamilia combina 3 fuentes (precedencia):
+      //  1. catálogo explícito del config
+      //  2. precedente del Excel (familia más común para ese modelo)
+      //  3. reglas regex
+      const familiasCatalogo = ((inv.config as unknown as { familias_catalogo?: Record<string, string> }).familias_catalogo ?? {});
+      const familiasPorModeloMap = new Map<string, Map<string, number>>();
+      try {
+        const rowsAll = await listHistorico(inv);
+        for (const r of rowsAll) {
+          const m = String(r.values.modelo ?? '').trim().toUpperCase();
+          const f = String(r.values.familia ?? '').trim().toUpperCase();
+          if (!m || !f) continue;
+          if (!familiasPorModeloMap.has(m)) familiasPorModeloMap.set(m, new Map());
+          const inner = familiasPorModeloMap.get(m)!;
+          inner.set(f, (inner.get(f) ?? 0) + 1);
+        }
+      } catch { /* ignore */ }
+      const inferFamilia = (desc: string, modelo = ''): string => {
+        const mKey = modelo.toUpperCase();
+        if (mKey && familiasCatalogo[mKey]) return familiasCatalogo[mKey];
+        const counts = mKey ? familiasPorModeloMap.get(mKey) : undefined;
+        if (counts && counts.size > 0) {
+          let best = ''; let bestN = 0;
+          for (const [f, n] of counts) if (n > bestN) { best = f; bestN = n; }
+          if (best) return best;
+        }
         const d = desc.toUpperCase();
+        if (/MANEJADOR/i.test(d))         return 'MANEJADORA';
+        if (/CONDENSAD/i.test(d))         return 'CONDENSADORA';
+        if (/EVAPORAD/i.test(d))          return 'EVAPORADORA';
         if (/MINI[\s-]?SPLIT/i.test(d)) {
           const seer = d.match(/(\d{1,2})\s*SEER/i)?.[1];
           return seer ? `MSP SEER${seer}` : 'MSP';
@@ -6334,8 +6419,6 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
         if (/U[-\s]?MATCH/i.test(d))  return 'U-MATCH';
         if (/PQT[\s-]?HP/i.test(d))   return 'PQT HP';
         if (/\bUMA\b/i.test(d))       return 'UMA';
-        if (/CONDENSAD/i.test(d))     return 'CONDENSADORA';
-        if (/EVAPORAD/i.test(d))      return 'EVAPORADORA';
         return '';
       };
       const extractSeerRefVolts = (desc: string): { seer?: string; ref?: string; volts?: string } => {
@@ -6495,7 +6578,7 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
 
       await GraphExcel.withSession(inv.token, inv.config.location, async (session) => {
         for (const eq of equipos) {
-          const familia = inferFamilia(eq.descripcion);
+          const familia = inferFamilia(eq.descripcion, eq.modelo);
           const { seer, ref, volts } = extractSeerRefVolts(eq.descripcion);
           const tonelada = extractTonelada(eq.descripcion, eq.modelo);
           const modeloKey = eq.modelo.toUpperCase();

@@ -718,6 +718,15 @@ Y arma la lista items[] para pasársela a la tool. No preguntes a Camila por dat
 
 **Cuando llegue la factura TRANE después:** inv_procesar_factura_trane detecta si la OC ya fue pre-registrada y hace MATCH (completa SERIE+FACT+EMITIDA+AÑO/MES COMPRA) en vez de duplicar filas. Pásale siempre el oc_ac del XML/correo para que haga el match.
 
+**FAMILIA — Nami aprende:**
+Hoy infieres FAMILIA en este orden:
+1. Catálogo entrenado por Camila (si existe para el modelo)
+2. Precedente del Excel (familia más común entre filas con el mismo modelo)
+3. Reglas de patrón sobre la descripción (MANEJADORA, CONDENSADORA, MSP SEER{N}, U-MATCH, PQT HP, UMA)
+4. Vacío (Camila la pone a mano)
+
+Si Camila dice **"para el modelo X la familia es Y, acuérdate"** → invoca inv_definir_familia_modelo(modelo=X, familia=Y). A partir de ese momento, cada OC o factura que mencione X va a usar Y automáticamente. Confirma con un mensaje corto tipo "Listo, aprendí: X → Y".
+
 **Facturas con XML CFDI adjunto:** verifica el emisor del CFDI antes de decidir.
 - Emisor RFC TRA670207Q71 (TRANE) → es factura de COMPRA → inv_procesar_factura_trane
 - Emisor RFC AAP010601S21 (AC Proyectos) → es factura de VENTA → inv_procesar_factura_venta_sf

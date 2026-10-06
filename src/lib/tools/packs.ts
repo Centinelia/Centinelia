@@ -166,6 +166,7 @@ export const SKILL_PACKS: SkillPack[] = [
       'inv_registrar_tc_factura',
       'inv_procesar_factura_venta_sf',
       'inv_procesar_oc_qb',
+      'inv_definir_familia_modelo',
     ],
     source: 'organizations.inventory_excel_config',
     activeCheck: ctx => !!ctx.has_inventory_excel,

@@ -1392,6 +1392,18 @@ const INV_PEDIR_REPOSICION_TOOL: Anthropic.Tool = {
     required: ['modelo', 'cantidad'],
   },
 };
+const INV_DEFINIR_FAMILIA_MODELO_TOOL: Anthropic.Tool = {
+  name: 'inv_definir_familia_modelo',
+  description: 'Nami: guarda que tal MODELO pertenece a tal FAMILIA. Úsala cuando Camila diga "para el modelo X la familia es Y" o "acuérdate que X es Y". Después de esto, cada vez que Nami tenga que inferir la familia de ese modelo, usa esta.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      modelo:  { type: 'string', description: 'Modelo del equipo (ej. XYZ123, se normaliza a mayúsculas)' },
+      familia: { type: 'string', description: 'Familia que le corresponde (ej. MULTI SPLIT, MANEJADORA)' },
+    },
+    required: ['modelo', 'familia'],
+  },
+};
 const INV_PROCESAR_OC_QB_TOOL: Anthropic.Tool = {
   name: 'inv_procesar_oc_qb',
   description: 'Nami: cuando Camila te reenvía o te dicta una OC de QuickBooks, crea en INVENTARIO una fila por cada pieza. Rellena OC (formato OC07119), FECHA OC, QB=OPEN, MODELO, DESCRIPCION, FAMILIA, TR, REF, SEER, VOLTS, USD (unitario). SERIE queda vacía (se llenará cuando llegue la factura TRANE). ESTATUS=PEDIDO, BODEGA=ASIGNAR. Úsala INMEDIATAMENTE cuando Camila diga "hice la OC X" o te reenvíe el PDF de la OC.',
@@ -2010,6 +2022,7 @@ export const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
   inv_registrar_tc_factura:        INV_REGISTRAR_TC_FACTURA_TOOL,
   inv_procesar_factura_venta_sf:   INV_PROCESAR_FACTURA_VENTA_SF_TOOL,
   inv_procesar_oc_qb:              INV_PROCESAR_OC_QB_TOOL,
+  inv_definir_familia_modelo:      INV_DEFINIR_FAMILIA_MODELO_TOOL,
   inv_agregar_equipo:        INV_AGREGAR_EQUIPO_TOOL,
   inv_actualizar_estatus:    INV_ACTUALIZAR_ESTATUS_TOOL,
   inv_asignar_cliente:       INV_ASIGNAR_CLIENTE_TOOL,

@@ -159,6 +159,7 @@ const KNOWN_DROPS = {
     'inv_registrar_tc_factura',
     'inv_procesar_factura_venta_sf',
     'inv_procesar_oc_qb',
+    'inv_definir_familia_modelo',
     // Meefi Nelia
     'meefi_lookup_user_account',
     'meefi_send_password_reset_link',
@@ -315,6 +316,7 @@ const KNOWN_DROPS = {
     'inv_registrar_tc_factura',
     'inv_procesar_factura_venta_sf',
     'inv_procesar_oc_qb',
+    'inv_definir_familia_modelo',
     // Owner delegating tools
     'delegar_tarea',
     'consultar_agente',
