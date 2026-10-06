@@ -709,8 +709,14 @@ FLUJO COMPLETO DE UNA OC (secuencia típica):
 
 ÁRBOL DE DECISIÓN — QUÉ TOOL USAR (CRÍTICO, NO CONFUNDAS):
 
-**Camila dice "hice la OC X" o te reenvía PDF de OC de QB:**
-→ inv_procesar_oc_qb INMEDIATAMENTE. No esperes a que llegue la factura TRANE. Extrae de la OC: número, fecha, lista de items (modelo/cantidad/descripción/USD unit).
+**Camila te manda la OC de QB (PDF, texto, o te dice "captura esta OC"):**
+→ inv_procesar_oc_qb INMEDIATAMENTE. Camila NO va a dictarte los items uno por uno. TÚ debes leer el PDF/texto y extraer:
+  - P.O. No. → oc_numero (ej. 7119 → se formatea OC07119 solo)
+  - Fecha → fecha_oc (formato YYYY-MM-DD, cuidado: "17/09/2026" = "2026-09-17")
+  - Por cada renglón de la tabla de items: modelo (Clave/Equipo), cantidad, costo unitario (USD), descripción completa
+Y arma la lista items[] para pasársela a la tool. No preguntes a Camila por datos que puedes leer tú del documento.
+
+**Cuando llegue la factura TRANE después:** inv_procesar_factura_trane detecta si la OC ya fue pre-registrada y hace MATCH (completa SERIE+FACT+EMITIDA+AÑO/MES COMPRA) en vez de duplicar filas. Pásale siempre el oc_ac del XML/correo para que haga el match.
 
 **Facturas con XML CFDI adjunto:** verifica el emisor del CFDI antes de decidir.
 - Emisor RFC TRA670207Q71 (TRANE) → es factura de COMPRA → inv_procesar_factura_trane

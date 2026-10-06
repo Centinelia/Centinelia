@@ -6455,70 +6455,126 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       const mesCompra = fechaDate && !isNaN(fechaDate.getTime()) ? MESES_ES[fechaDate.getMonth()] : null;
       const ocAcFormateada = formatOcAc(ocAc);
 
-      // Escritura real: 1 addTableRow por serie, todo en una session Graph.
+      // Match & update si la OC ya fue registrada (inv_procesar_oc_qb antes).
+      // Si no, crear filas nuevas (fallback). Decisión 2026-10-06: evitar
+      // duplicados cuando el flujo real es OC→factura.
       const headers = await GraphExcel.getTableHeader(inv.token, inv.config.location, inv.config.sheets.historico.table);
       const cols = inv.config.columns_historico;
       const bodegaNorm = bodegaDestinoRaw ? normalizeBodega(inv, bodegaDestinoRaw) : null;
+
+      // Pre-carga de filas existentes con la OC pedida y SERIE vacía
+      const ocHeader     = cols.oc        ?? 'OC';
+      const serieHeader  = cols.serie     ?? 'SERIE';
+      const modeloHeader = cols.modelo    ?? 'MODELO';
+      const ocIdx     = headers.indexOf(ocHeader);
+      const serieIdx  = headers.indexOf(serieHeader);
+      const modeloIdx = headers.indexOf(modeloHeader);
+
+      type PreregRow = { tableRowIndex: number; modelo: string };
+      const preregByModelo = new Map<string, PreregRow[]>();
+      if (ocAcFormateada && ocIdx >= 0 && serieIdx >= 0 && modeloIdx >= 0) {
+        const existingRows = await GraphExcel.listTableRows(inv.token, inv.config.location, inv.config.sheets.historico.table);
+        const ocNorm = ocAcFormateada.toUpperCase();
+        for (const r of existingRows) {
+          const vals = r.values as unknown[];
+          const ocCell = String(vals[ocIdx] ?? '').trim().toUpperCase();
+          if (ocCell !== ocNorm) continue;
+          const serieCell = String(vals[serieIdx] ?? '').trim();
+          if (serieCell && serieCell !== '-') continue;  // ya tiene serie, no es pre-registrada
+          const modelo = String(vals[modeloIdx] ?? '').trim().toUpperCase();
+          if (!modelo) continue;
+          if (!preregByModelo.has(modelo)) preregByModelo.set(modelo, []);
+          preregByModelo.get(modelo)!.push({ tableRowIndex: r.index, modelo });
+        }
+      }
+
+      let updated = 0;
       let inserted = 0;
+      const sheet = inv.config.sheets.historico.name;
+      const toLetter = (idx: number): string => { let s = ''; let n = idx; while (n >= 0) { s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26) - 1; } return s; };
+
       await GraphExcel.withSession(inv.token, inv.config.location, async (session) => {
         for (const eq of equipos) {
-          const rowValues: unknown[] = new Array(headers.length).fill('');
-          const setByLogic = (logic: string, value: unknown) => {
-            const header = cols[logic];
-            if (!header) return;
-            const idx = headers.indexOf(header);
-            if (idx >= 0) rowValues[idx] = value;
-          };
           const familia = inferFamilia(eq.descripcion);
           const { seer, ref, volts } = extractSeerRefVolts(eq.descripcion);
           const tonelada = extractTonelada(eq.descripcion, eq.modelo);
-          if (ocAcFormateada) setByLogic('oc', ocAcFormateada);
-          if (fechaOc) setByLogic('fecha_oc', fechaOc);
-          setByLogic('modelo',         eq.modelo);
-          setByLogic('serie',          eq.serie);
-          // DESCRIPCION: pasar null (NO '') para que Excel preserve fórmula
-          // auto-fill si existe (ej. VLOOKUP(MODELO, catálogo)). Decisión
-          // Camila 2026-10-06. Si Camila luego ve descripción vacía porque
-          // el modelo no estaba en el catálogo, la pone manual.
-          setByLogic('descripcion',    null);
-          setByLogic('folio_compra',   folio);
-          setByLogic('fecha_compra',   fecha);
-          setByLogic('usd',            eq.usd_unit);
-          // TC y COSTO COMPRA (MX): se dejan VACÍOS al registrar. Camila
-          // los llena cuando paga la factura (TC real del día del pago,
-          // no del día de la factura). Decisión Camila 2026-10-06.
-          setByLogic('tc',             null);
-          setByLogic('costo_mx',       null);
-          // Estatus y bodega: ASIGNAR hasta que Camila indique. Decisión
-          // Camila 2026-10-06. La inferencia automática por tonelada se
-          // desactiva aquí; Camila decide manual (FLETEROS, CENIZO, PORTEO,
-          // u otras bodegas emergentes).
-          setByLogic('estatus',        'ASIGNAR');
-          setByLogic('bodega',         'ASIGNAR');
-          // VEND/CLIENTE/FOLIO default '-' hasta que Camila dicte (2026-10-06)
-          setByLogic('vendedor',       '-');
-          setByLogic('cliente',        '-');
-          setByLogic('folio_venta',    '-');
-          // Resto automático
-          setByLogic('qb',             'OPEN');
-          if (anoCompra != null) setByLogic('ano_compra', anoCompra);
-          if (mesCompra)         setByLogic('mes_compra', mesCompra);
-          if (familia)           setByLogic('familia',    familia);
-          if (ref)               setByLogic('ref',        ref);
-          if (seer)              setByLogic('seer',       seer);
-          if (volts)             setByLogic('volts',      volts);
-          if (tonelada != null)  setByLogic('tonelada',   tonelada);
-          // bodegaDestinoRaw (parámetro opcional del tool) override si se pasa
-          // explícito. Normalmente NO se pasa en el flow factura.
-          if (bodegaNorm) setByLogic('bodega', bodegaNorm.canonical);
-          await GraphExcel.addTableRow(inv.token, session, inv.config.sheets.historico.table, rowValues);
-          inserted++;
+          const modeloKey = eq.modelo.toUpperCase();
+          const available = preregByModelo.get(modeloKey) ?? [];
+          const matchRow  = available.shift();  // FIFO per modelo
+
+          if (matchRow) {
+            // UPDATE existing row: completar SERIE + datos de factura
+            const abs = matchRow.tableRowIndex + 2;
+            const patchByLogic = async (logic: string, value: unknown) => {
+              const header = cols[logic];
+              if (!header) return;
+              const idx = headers.indexOf(header);
+              if (idx < 0) return;
+              await GraphExcel.patchCell(inv.token, session, sheet, `${toLetter(idx)}${abs}`, value);
+            };
+            await patchByLogic('serie',        eq.serie);
+            await patchByLogic('folio_compra', folio);
+            await patchByLogic('fecha_compra', fecha);
+            if (anoCompra != null) await patchByLogic('ano_compra', anoCompra);
+            if (mesCompra)         await patchByLogic('mes_compra', mesCompra);
+            // Si la fila pre-registrada no tenía estos (ej. OC muy escueta), completamos:
+            if (familia)           await patchByLogic('familia',  familia);
+            if (ref)               await patchByLogic('ref',      ref);
+            if (seer)              await patchByLogic('seer',     seer);
+            if (volts)             await patchByLogic('volts',    volts);
+            if (tonelada != null)  await patchByLogic('tonelada', tonelada);
+            // USD/EMITIDA/AÑO/MES COMPRA son de la factura, OC solo tenía USD unitario
+            await patchByLogic('usd', eq.usd_unit);
+            updated++;
+          } else {
+            // CREATE fallback: no había pre-registro para esta OC+modelo
+            const rowValues: unknown[] = new Array(headers.length).fill('');
+            const setByLogic = (logic: string, value: unknown) => {
+              const header = cols[logic];
+              if (!header) return;
+              const idx = headers.indexOf(header);
+              if (idx >= 0) rowValues[idx] = value;
+            };
+            if (ocAcFormateada) setByLogic('oc', ocAcFormateada);
+            if (fechaOc) setByLogic('fecha_oc', fechaOc);
+            setByLogic('modelo',         eq.modelo);
+            setByLogic('serie',          eq.serie);
+            setByLogic('descripcion',    null);
+            setByLogic('folio_compra',   folio);
+            setByLogic('fecha_compra',   fecha);
+            setByLogic('usd',            eq.usd_unit);
+            setByLogic('tc',             null);
+            setByLogic('costo_mx',       null);
+            setByLogic('estatus',        'ASIGNAR');
+            setByLogic('bodega',         'ASIGNAR');
+            setByLogic('vendedor',       '-');
+            setByLogic('cliente',        '-');
+            setByLogic('folio_venta',    '-');
+            setByLogic('qb',             'OPEN');
+            if (anoCompra != null) setByLogic('ano_compra', anoCompra);
+            if (mesCompra)         setByLogic('mes_compra', mesCompra);
+            if (familia)           setByLogic('familia',    familia);
+            if (ref)               setByLogic('ref',        ref);
+            if (seer)              setByLogic('seer',       seer);
+            if (volts)             setByLogic('volts',      volts);
+            if (tonelada != null)  setByLogic('tonelada',   tonelada);
+            if (bodegaNorm) setByLogic('bodega', bodegaNorm.canonical);
+            await GraphExcel.addTableRow(inv.token, session, inv.config.sheets.historico.table, rowValues);
+            inserted++;
+          }
         }
       });
+
       return {
         ok: true, dry_run: false,
         resumen: { folio, fecha, tc, oc_ac: ocAc, emisor: 'TRANE' },
-        inserted, skipped_count: skipped.length, skipped_muestra: skipped.slice(0, 5),
+        matched_updated: updated,
+        created_new: inserted,
+        skipped_count: skipped.length,
+        skipped_muestra: skipped.slice(0, 5),
+        message: `Factura ${folio} procesada: ${updated} fila(s) actualizadas (match con OC ya registrada)` +
+                 (inserted > 0 ? ` + ${inserted} fila(s) nuevas creadas (no había pre-registro)` : '') +
+                 '.',
       };
     }
 
