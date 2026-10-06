@@ -277,8 +277,13 @@ function formatTime(date: Date, tz: string): string {
 // alerta directa al owner por email (bypass de notification_events para
 // evitar depender de la misma tubería que podría estar rota).
 
-const NASH_STALE_THRESHOLD_MS = 3 * 60 * 60_000;   // 3h sin correr = alerta (subido de 2h el 2026-09-12 por Vercel cron miss-rate ~25%)
-const NASH_HEALTH_DEDUP_MS    = 12 * 60 * 60_000;  // no re-alertar más de cada 12h (subido de 6h por mismo motivo)
+// Nash corre cada 4h (vercel.json: `0 */4 * * *`, PR #112 2026-10-05).
+// Con Vercel cron miss-rate ~25%, un miss convierte la ventana en 8h.
+// Threshold = 2× cadencia + colchón para absorber 1 miss sin falsa alarma.
+// Si subes/bajas la cadencia de Nash, ajusta aquí también
+// (y revisa scripts/check-cron-frequencies.mjs → PROTECTED_CRONS).
+const NASH_STALE_THRESHOLD_MS = 10 * 60 * 60_000;  // 10h sin correr = alerta (cadencia 4h + 1 miss + buffer; antes 3h disparaba falsas alarmas con cadencia 4h)
+const NASH_HEALTH_DEDUP_MS    = 12 * 60 * 60_000;  // no re-alertar más de cada 12h
 const NASH_HEALTH_ALERT_KEY   = 'nash_health_alert_sent_at';
 const NASH_OWNER_EMAIL        = 'hola@centinelia.mx';
 

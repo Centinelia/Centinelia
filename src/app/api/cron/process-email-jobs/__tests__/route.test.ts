@@ -133,9 +133,12 @@ describe('process-email-jobs cron', () => {
 
     expect(body).toMatchObject({ ok: true, picked: 1, done: 1, retried: 0, failed: 0 });
     expect(mockSend).toHaveBeenCalledOnce();
+    // Ref efectivo = `${job.reference_id}:${job.id}` para garantizar unicidad por job
+    // UUID (bug 2026-10-05: batch de N recipients compartía reference_id → cobro #2+
+    // chocaba contra ops_ledger_portal_ref_kind_uniq → undercharge silent).
     expect(mockConsume).toHaveBeenCalledWith('a', 1, expect.objectContaining({
       source:       'incidencia_notif',
-      reference_id: 'inc-1',
+      reference_id: 'inc-1:job-1',
       label:        'Aviso',
     }));
     expect(mockSourceUpdate).toHaveBeenCalledWith('client_incidents', expect.objectContaining({
@@ -143,6 +146,71 @@ describe('process-email-jobs cron', () => {
     }));
     const doneUpdates = mockUpdate.mock.calls.filter(c => (c[0] as { status?: string }).status === 'done');
     expect(doneUpdates).toHaveLength(1);
+  });
+
+  // Regression bug 2026-10-05: batch de N recipients compartía el mismo
+  // reference_id de dominio (ej. `${incidentId}:notif`). El cron cobraba por
+  // job y los N cobros intentaban escribir con el mismo ref → el 2do+ chocaba
+  // contra ops_ledger_portal_ref_kind_uniq → undercharge silent (Tortillería
+  // perdió ~27 cobros en 5 días). Fix: sufijar con job.id (UUID) para que cada
+  // cobro de ledger sea único por job pero idempotente intra-job.
+  it('regression batch: 2 jobs mismo reference_id de dominio → 2 cobros con refs ledger distintos', async () => {
+    const common = {
+      agent_id: 'a', portal_email: 'p@x.mx',
+      subject: 'Nueva queja', html: 'h',
+      reply_to: null, from_addr: null,
+      attachment_url: null, attachment_name: null, attachment_mime: null,
+      source: 'incidencia_notif', reference_id: 'inc-batch:notif',
+      charge_source: 'incidencia_notif', charge_label: 'Aviso',
+      source_table: 'client_incidents', source_row_id: 'inc-batch',
+      attempts: 0, max_attempts: 5,
+    };
+    const jobA = { ...common, id: 'job-A', to_addr: 'ramon@x.mx' };
+    const jobB = { ...common, id: 'job-B', to_addr: 'supervision@x.mx' };
+    mockPending.mockResolvedValue({ data: [jobA, jobB], error: null });
+    mockLock
+      .mockResolvedValueOnce({ data: { ...jobA, attempts: 1 }, error: null })
+      .mockResolvedValueOnce({ data: { ...jobB, attempts: 1 }, error: null });
+    mockSend.mockResolvedValue({ ok: true, provider: 'outlook', meta: {} });
+    mockUpdate.mockResolvedValue({ data: null, error: null });
+    mockSourceUpdate.mockResolvedValue({ data: null, error: null });
+    mockConsume.mockResolvedValue({ ok: true });
+
+    const { GET } = await import('../route');
+    const res = await GET(makeReq());
+    const body = await res.json();
+
+    expect(body).toMatchObject({ picked: 2, done: 2, retried: 0, failed: 0 });
+    expect(mockConsume).toHaveBeenCalledTimes(2);
+    const refs = mockConsume.mock.calls.map(c => (c[2] as { reference_id: string }).reference_id);
+    expect(refs).toEqual(['inc-batch:notif:job-A', 'inc-batch:notif:job-B']);
+    // Garantía dura: no hay dos cobros con el mismo ref (lo que causaría UNIQUE constraint)
+    expect(new Set(refs).size).toBe(refs.length);
+  });
+
+  it('reference_id null en job → se usa job.id como ref (nunca null al ledger)', async () => {
+    const job = {
+      id: 'job-no-ref', agent_id: 'a', portal_email: 'p@x.mx',
+      to_addr: 't@x.mx', subject: 's', html: 'h',
+      reply_to: null, from_addr: null,
+      attachment_url: null, attachment_name: null, attachment_mime: null,
+      source: 'bitacora_semanal_send', reference_id: null,
+      charge_source: 'bitacora_semanal_send', charge_label: 'Bitácora',
+      source_table: null, source_row_id: null,
+      attempts: 0, max_attempts: 5,
+    };
+    mockPending.mockResolvedValue({ data: [job], error: null });
+    mockLock.mockResolvedValue({ data: { ...job, attempts: 1 }, error: null });
+    mockSend.mockResolvedValue({ ok: true, provider: 'resend' });
+    mockUpdate.mockResolvedValue({ data: null, error: null });
+    mockConsume.mockResolvedValue({ ok: true });
+
+    const { GET } = await import('../route');
+    await GET(makeReq());
+
+    expect(mockConsume).toHaveBeenCalledWith('a', 1, expect.objectContaining({
+      reference_id: 'job-no-ref',
+    }));
   });
 
   it('lock race: otro cron ya tomó → mockLock devuelve null → skip', async () => {

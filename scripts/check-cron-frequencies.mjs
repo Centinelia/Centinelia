@@ -36,6 +36,17 @@ export const PROTECTED_CRONS = [
     path:       '/api/cron/nash-monitor',
     minMinutes: 240,  // cada 4h
     reason:     'PR #112 (2026-10-05): bajamos de 1h a 4h por costo (~$7-11/mes save). Las señales que monitorea (bug_report, escalated_stale, failed_handoff) toleran 4h de latencia. Anomaly + drift detection tienen throttle interno 60min que sigue aplicando.',
+    // Monitor-del-monitor: cuando bajamos la cadencia del cron, también hay
+    // que subir el threshold de "está atascado" para no disparar falsas
+    // alarmas (bug 2026-10-05: tras bajar Nash a 4h, el threshold 3h en
+    // daily-digest/route.ts seguía igual → alerta "Nash atascado" en cada
+    // ciclo). El threshold debe ser al menos 2× cadencia + colchón para
+    // absorber el ~25% miss-rate de Vercel sin falsa alarma.
+    stuckThreshold: {
+      file:   'src/app/api/cron/daily-digest/route.ts',
+      symbol: 'NASH_STALE_THRESHOLD_MS',
+      minMs:  480 * 60_000,   // 480 min = 2× cadencia 240min (threshold real: 10h, con margen)
+    },
   },
 ];
 
@@ -93,7 +104,22 @@ export function parseCronIntervalMinutes(schedule) {
   return null;
 }
 
-export async function findCronViolations({ vercelJsonPath, protectedCrons = PROTECTED_CRONS }) {
+// Parsea una expresión aritmética literal como "10 * 60 * 60_000" o
+// "3 * 60 * 60000" (valor en ms). Soporta underscores numéricos y multiplicación.
+// Devuelve el valor numérico o null si no se puede evaluar de forma segura.
+export function parseMsLiteral(expr) {
+  const cleaned = expr.replace(/_/g, '').trim();
+  if (!/^[\d\s*]+$/.test(cleaned)) return null;
+  try {
+    const parts = cleaned.split('*').map(p => p.trim());
+    if (parts.some(p => !/^\d+$/.test(p))) return null;
+    return parts.reduce((acc, p) => acc * parseInt(p, 10), 1);
+  } catch {
+    return null;
+  }
+}
+
+export async function findCronViolations({ vercelJsonPath, protectedCrons = PROTECTED_CRONS, repoRoot }) {
   const raw = await readFile(vercelJsonPath, 'utf8');
   const vercel = JSON.parse(raw);
   const crons = Array.isArray(vercel.crons) ? vercel.crons : [];
@@ -129,6 +155,47 @@ export async function findCronViolations({ vercelJsonPath, protectedCrons = PROT
         reason:        protection.reason,
       });
     }
+
+    // Cross-check monitor-del-monitor: cuando la cadencia del cron sube, el
+    // threshold de "está atascado" también tiene que subir. Si no, el monitor
+    // dispara falsas alarmas en cada ciclo (bug Nash 2026-10-05).
+    if (protection.stuckThreshold && repoRoot) {
+      try {
+        const stuckFile = await readFile(join(repoRoot, protection.stuckThreshold.file), 'utf8');
+        const re = new RegExp(
+          `(?:const|let|var)\\s+${protection.stuckThreshold.symbol}\\s*(?::\\s*[\\w<>|]+)?\\s*=\\s*([^;\\n]+)`,
+        );
+        const m = re.exec(stuckFile);
+        if (!m) {
+          violations.push({
+            kind:    'stuck_threshold_missing',
+            path:    protection.path,
+            reason:  `No encontré el símbolo ${protection.stuckThreshold.symbol} en ${protection.stuckThreshold.file}. El monitor-del-monitor es obligatorio para crons protegidos.`,
+          });
+        } else {
+          const parsed = parseMsLiteral(m[1]);
+          if (parsed === null) {
+            violations.push({
+              kind:    'stuck_threshold_unparseable',
+              path:    protection.path,
+              reason:  `${protection.stuckThreshold.symbol} = "${m[1].trim()}" no se pudo parsear como literal ms. Usa expresión aritmética simple (ej. "10 * 60 * 60_000").`,
+            });
+          } else if (parsed < protection.stuckThreshold.minMs) {
+            violations.push({
+              kind:    'stuck_threshold_too_low',
+              path:    protection.path,
+              reason:  `${protection.stuckThreshold.symbol} en ${protection.stuckThreshold.file} vale ${parsed}ms (${Math.round(parsed/60_000)}min) pero debe ser >= ${protection.stuckThreshold.minMs}ms (${Math.round(protection.stuckThreshold.minMs/60_000)}min = 2× cadencia + buffer). Si bajas Nash a mayor cadencia, sube también este threshold o vas a dispararte falsas alarmas (bug 2026-10-05).`,
+            });
+          }
+        }
+      } catch (err) {
+        violations.push({
+          kind:    'stuck_threshold_read_error',
+          path:    protection.path,
+          reason:  `No pude leer ${protection.stuckThreshold.file}: ${err.message}`,
+        });
+      }
+    }
   }
   return violations;
 }
@@ -137,7 +204,7 @@ export async function findCronViolations({ vercelJsonPath, protectedCrons = PROT
 const __invokedPath = process.argv[1] ? process.argv[1].replace(/\\/g, '/') : '';
 const __thisFile    = fileURLToPath(import.meta.url).replace(/\\/g, '/');
 if (__invokedPath === __thisFile) {
-  const violations = await findCronViolations({ vercelJsonPath: join(ROOT, 'vercel.json') });
+  const violations = await findCronViolations({ vercelJsonPath: join(ROOT, 'vercel.json'), repoRoot: ROOT });
 
   if (violations.length > 0) {
     console.error('\n[check-cron-frequencies] Violaciones a frecuencias protegidas:\n');
