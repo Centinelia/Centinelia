@@ -6700,9 +6700,25 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
     }
 
     if (toolName === 'inv_importar_backlog') {
-      const a = toolInput as { pdf_url: string; dry_run?: boolean; mode?: 'upsert' | 'replace' };
+      const a = toolInput as { pdf_url: string; dry_run?: boolean; mode?: 'upsert' | 'replace'; force?: boolean };
       if (!a.pdf_url || typeof a.pdf_url !== 'string') {
         return { ok: false, error: 'pdf_url es requerido (URL del PDF BACKLOG adjunto al correo TRANE)', code: 'invalid_input' };
+      }
+      // Camila 2026-10-06: BACKLOG se actualiza SOLO miércoles y viernes.
+      // TRANE manda el PDF varios días a la semana (lunes también); los demás
+      // días quedan omitidos. Usar force=true para override manual explícito.
+      if (!a.force) {
+        const DIA_SEMANA_MX = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: 'America/Monterrey' }).format(new Date());
+        const esMiercolesOViernes = DIA_SEMANA_MX === 'Wed' || DIA_SEMANA_MX === 'Fri';
+        if (!esMiercolesOViernes) {
+          return {
+            ok: true,
+            skipped: true,
+            code: 'wrong_day_of_week',
+            dia_mx: DIA_SEMANA_MX,
+            message: `BACKLOG solo se actualiza miércoles y viernes (política Camila 2026-10-06). Hoy es ${DIA_SEMANA_MX} en MX, archivo este correo sin procesar. Si necesitas forzar, pide expresamente "procésalo ahora aunque no sea miércoles o viernes".`,
+          };
+        }
       }
       const dryRun = a.dry_run !== false;  // default true
       // Default UPSERT para evitar borrados silenciosos cuando Camila mantiene

@@ -759,9 +759,13 @@ Si Camila dice **"para el modelo X la familia es Y, acuérdate"** → invoca inv
 - "pedir entrega" / "entrégame los equipos" → inv_solicitar_entrega_trane.
 - Default enviar=false (muestras borrador, Camila confirma). Solo enviar=true si ella lo pide explícito.
 
-**Llega el PDF mensual del BACKLOG de TRANE (o Camila lo reenvía):**
-→ inv_importar_backlog. Default mode=upsert (agrega filas nuevas + actualiza las que cambiaron, NO borra las que no vienen en el PDF). Siempre dry_run=true primero para enseñarle a Camila el diff, luego dry_run=false para aplicar.
-Usas mode=replace SOLO cuando Camila lo pida explícito ("borra las que ya no están", "limpia el BACKLOG completo"). Nunca por tu cuenta — si usas replace, filas que Camila mantiene a mano fuera del PDF (equipos de otro proveedor, notas internas) se borran silenciosamente.
+**Llega el PDF del BACKLOG de TRANE (típicamente lunes/miércoles/viernes):**
+→ inv_importar_backlog. Pero OJO:
+  - Política Camila 2026-10-06: BACKLOG solo se actualiza MIÉRCOLES y VIERNES.
+  - Si hoy es lunes, martes, jueves, sábado o domingo: el handler te devolverá ok:true skipped:true code=wrong_day_of_week. Archivas el correo sin responder al remitente y punto. El próximo miércoles o viernes llegará otro PDF (más actualizado) y ese sí lo procesas.
+  - Default mode=upsert (agrega filas nuevas + actualiza las que cambiaron, NO borra las que no vienen en el PDF). Siempre dry_run=true primero para enseñarle a Camila el diff, luego dry_run=false para aplicar.
+  - Usas mode=replace SOLO cuando Camila lo pida explícito ("borra las que ya no están", "limpia el BACKLOG completo"). Nunca por tu cuenta.
+  - Usas force=true SOLO cuando Camila pida "procésalo ahora aunque no sea miércoles o viernes" (urgencia, día festivo). Sin esa instrucción directa, nunca lo override.
 
 AÑO/MES — NO CONFUNDAS:
 - AÑO COMPRA, MES COMPRA = del día que TRANE emitió la factura. Lo rellena inv_procesar_factura_trane.

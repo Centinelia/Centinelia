@@ -630,13 +630,14 @@ export const TOOL_SCHEMAS: Record<string, ToolSchema> = {
 
   inv_importar_backlog: {
     name: 'inv_importar_backlog',
-    description: 'Nami: parsea un PDF de BACKLOG que llega de TRANE (no-reply@tranetechnologies.com) y lo escribe a la hoja BACKLOG del Excel. Por default modo "replace": vacía la hoja y la rellena con el PDF más reciente (semántica mirror, preferida por Camila 2026-10-01 — BACKLOG llega lunes/miércoles/viernes y se desfasa rápido). Modo alternativo "upsert" (merge inteligente que preserva filas no mencionadas en el PDF) para casos edge. Siempre dry_run=true por default: reporta "voy a agregar N, actualizar M, dejar K iguales, eliminar D" y Camila confirma antes de aplicar. Password del PDF vive en la config de la organización.',
+    description: 'Nami: parsea un PDF de BACKLOG que llega de TRANE (no-reply@tranetechnologies.com) y lo escribe a la hoja BACKLOG del Excel. SOLO corre miércoles y viernes (política Camila 2026-10-06). Otros días el handler devuelve ok:true skipped:true code=wrong_day_of_week (archivas el correo sin procesar). Default modo "upsert" (agrega+actualiza, NO borra filas que Camila mantiene fuera del PDF). Modo "replace" (vacía + rellena) SOLO si Camila lo pide explícito. Siempre dry_run=true primero: reporta "voy a agregar N, actualizar M, dejar K iguales, eliminar D" y Camila confirma antes de aplicar. Password del PDF vive en la config de la organización.',
     input_schema: {
       type: 'object' as const,
       properties: {
         pdf_url: { type: 'string', description: 'URL del PDF BACKLOG adjunto al correo TRANE. En el flow de inbox-processor viene de attachments[].url.' },
         dry_run: { type: 'boolean', description: 'Si true (default), no escribe al Excel y solo devuelve el summary de qué haría. Pasar false para aplicar los cambios reales.' },
-        mode:    { type: 'string', enum: ['replace', 'upsert'], description: 'Default "replace": vacía la hoja BACKLOG y la rellena con el PDF más reciente (lo que Camila prefiere). "upsert": merge inteligente que preserva filas Excel no presentes en el PDF (edge case).' },
+        mode:    { type: 'string', enum: ['replace', 'upsert'], description: 'Default "upsert": agrega filas nuevas + actualiza las que cambiaron, NUNCA borra filas que Camila mantiene en el Excel fuera del PDF. "replace": limpia el BACKLOG y lo rellena desde cero con el PDF (SOLO si Camila lo pide explícito).' },
+        force:   { type: 'boolean', description: 'Default false. Si true, procesa aunque hoy no sea miércoles o viernes. Úsalo SOLO cuando Camila pida expresamente "procésalo ahora aunque no sea miércoles o viernes" (ej. urgencia operativa, día festivo). Sin force, el handler rechaza con code=wrong_day_of_week los lunes/martes/jueves/sábados/domingos.' },
       },
       required: ['pdf_url'],
     },
