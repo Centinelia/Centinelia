@@ -134,6 +134,7 @@ const html = /* html */ `<!doctype html>
 
   <h2>Lo que puede hacer hoy</h2>
   <div class="cap-grid">
+    <div class="cap"><div class="cap-h">Responderte sobre tu inventario</div><div class="cap-b">Pregúntale cómo va una OC, qué pasa con una factura, cuánto vale el inventario, qué está pendiente de llegar.</div></div>
     <div class="cap"><div class="cap-h">Buscar equipos</div><div class="cap-b">Por número de serie, por modelo, o por cliente.</div></div>
     <div class="cap"><div class="cap-h">Agregar equipos</div><div class="cap-b">Cuando llegan físicamente, con todos sus datos.</div></div>
     <div class="cap"><div class="cap-h">Asignar cliente</div><div class="cap-b">Cuando una chica de ventas te confirma pago.</div></div>
@@ -142,6 +143,7 @@ const html = /* html */ `<!doctype html>
     <div class="cap"><div class="cap-h">Registrar venta</div><div class="cap-b">Folio de factura, fecha, precio y factor.</div></div>
     <div class="cap"><div class="cap-h">Actualizar BACKLOG</div><div class="cap-b">Lee el PDF de TRANE y mantiene la hoja al día.</div></div>
     <div class="cap"><div class="cap-h">Correos a Isabel</div><div class="cap-b">Registrar OC o pedir entrega. Te muestra el borrador antes de mandar.</div></div>
+    <div class="cap"><div class="cap-h">Acordarse de lo que hizo</div><div class="cap-b">Pregúntale "¿qué procesaste esta semana?" o "¿cómo te fue con la OC X que te mandé?" y ella consulta su propio registro.</div></div>
   </div>
 </div>
 
@@ -270,6 +272,96 @@ const html = /* html */ `<!doctype html>
       <div class="quien">Nami te contesta</div>
       <div class="texto">"Listo, venta registrada en serie 2422H8394A: folio FV-A-2026-0442, factor 1.4."</div>
     </div>
+    <p style="margin-top: 2mm; font-size: 10pt; color: var(--muted);">Por ahora le dictas el factor. Cuando tengamos conectada tu hoja STOCK (próximas semanas), Nami lo calculará sola a partir del precio y el costo que ya tiene registrado — tú solo le dirás folio, fecha y precio.</p>
+  </div>
+</div>
+
+<!-- Pag nueva: Pregúntale cualquier cosa sobre tu inventario -->
+<div class="page">
+  <h1>Pregúntale cualquier cosa sobre tu inventario</h1>
+  <p>Nami lleva registro de todo lo que escribe en tu Excel y conoce el estado de cada equipo. Nunca inventa; siempre consulta antes de responder. Si no sabe algo, te lo dice derecho.</p>
+
+  <div class="block">
+    <h2>Cómo va una OC específica</h2>
+    <div class="dialog">
+      <div class="quien">Tú le escribes</div>
+      <div class="texto">"¿Cómo va la OC 5624?"</div>
+    </div>
+    <div class="dialog">
+      <div class="quien">Nami te contesta</div>
+      <div class="texto">"La OC 5624 tiene 5 equipos: 3 en ALMACEN, 1 SEPARADO para Mauricio, 1 ENTREGADO. Los 5 ya tienen TC aplicado."</div>
+    </div>
+  </div>
+
+  <div class="block">
+    <h2>Qué pasó con una factura TRANE</h2>
+    <div class="dialog">
+      <div class="quien">Tú</div>
+      <div class="texto">"¿Ya pagamos la factura TRANE 80099999?"</div>
+    </div>
+    <div class="dialog">
+      <div class="quien">Nami</div>
+      <div class="texto">"Sí, factura 80099999 pagada. 4 equipos, total USD $25,772, total MX $476,774. TC aplicado a los 4."</div>
+    </div>
+  </div>
+
+  <div class="block">
+    <h2>Resumen general del inventario</h2>
+    <div class="dialog">
+      <div class="quien">Tú</div>
+      <div class="texto">"¿Cómo va el inventario?"</div>
+    </div>
+    <div class="dialog">
+      <div class="quien">Nami</div>
+      <div class="texto">"5,333 equipos en total. 708 en almacén, 182 separados, 4,329 entregados. Valor total MX $60.4 millones."</div>
+    </div>
+  </div>
+
+  <div class="block">
+    <h2>Qué hizo Nami esta semana</h2>
+    <div class="dialog">
+      <div class="quien">Tú</div>
+      <div class="texto">"¿Qué correos procesaste esta semana?"</div>
+    </div>
+    <div class="dialog">
+      <div class="quien">Nami</div>
+      <div class="texto">"Esta semana ejecuté 23 acciones: 3 OCs nuevas, 2 facturas TRANE, 5 series actualizadas a ALMACEN, 1 hoja de salida con 6 equipos, 1 factura de venta SF."</div>
+    </div>
+  </div>
+</div>
+
+<!-- Pag: Correo vs Chat (política de canales) -->
+<div class="page">
+  <h1>Correo o chat, cuándo cada uno</h1>
+  <p>Nami funciona en dos canales. Cada uno sirve para cosas distintas.</p>
+
+  <div class="block">
+    <h2>Correo (para procesar documentos)</h2>
+    <p>Si tienes un documento (PDF o XML), mándalo por correo. El inbox-processor de Nami lo lee, extrae lo importante, lo captura en tu Excel y archiva el correo. Los 5 tipos de documento que Nami procesa son:</p>
+    <ul>
+      <li><strong>OC de QuickBooks</strong> (PDF): la que tú creas y le reenvías.</li>
+      <li><strong>Factura TRANE</strong> (XML CFDI): la que llega del proveedor.</li>
+      <li><strong>Hoja de salida</strong> (texto o PDF): cuando entregas equipos al cliente.</li>
+      <li><strong>Factura de venta de AC a cliente</strong> (XML CFDI de Solución Factible).</li>
+      <li><strong>PDF del BACKLOG mensual de TRANE</strong>: los miércoles y viernes.</li>
+    </ul>
+  </div>
+
+  <div class="block">
+    <h2>Chat del portal (para preguntas y correcciones)</h2>
+    <p>Si quieres preguntar algo o hacer un cambio puntual, chat. Casos típicos:</p>
+    <ul>
+      <li>Preguntar algo sobre el inventario (ejemplos en la página anterior).</li>
+      <li>Correcciones rápidas: "la serie X ya salió", "cambia el cliente de Y a Z", "pon la familia MANEJADORA al modelo W".</li>
+      <li>Pegar directo el XML de una factura (si lo tienes copiado al portapapeles).</li>
+      <li>Dictarle una OC en texto: "procesa esta OC: P.O. 7520, fecha 2026-10-15, 10 piezas de 4TXK a $5,716 y 5 de 4MXD a $7,169."</li>
+    </ul>
+    <p style="margin-top: 3mm;"><strong>Hoy el chat no tiene botón de subir archivo</strong>. Si tienes un PDF que mandar, va por correo. Pronto le vamos a agregar esa opción al chat.</p>
+  </div>
+
+  <div class="card" style="margin-top: 6mm;">
+    <div class="card-title">Qué NO hace Nami en chat</div>
+    <div class="card-body">No contesta cordialidades, "gracias", "ya quedó". Si le mandas correos random (publicidad, newsletters, propaganda), los archiva sin responder. Esto es para que no gaste su atención en cosas que no son del inventario.</div>
   </div>
 </div>
 
@@ -314,37 +406,35 @@ const html = /* html */ `<!doctype html>
 <!-- BACKLOG en su propia página para que no quede truncado -->
 <div class="page">
   <h1>BACKLOG de TRANE automático</h1>
-  <p>Lunes, miércoles y viernes, cuando llega el BACKLOG de TRANE por correo, Nami lo lee sola y actualiza tu hoja BACKLOG. No tienes que hacer nada.</p>
-  <ul>
-    <li>Si no cambió nada respecto a la última vez, te avisa que no cambió nada.</li>
-    <li>Si TRANE agregó líneas, te dice cuántas se agregaron.</li>
-    <li>Si TRANE quitó líneas, te dice cuántas se fueron.</li>
-  </ul>
-  <p>Las primeras dos semanas Nami te pregunta antes de actualizar la hoja. Después de eso, si todo salió bien, lo hace directo sin molestarte.</p>
+  <p>Miércoles y viernes, cuando llega el BACKLOG de TRANE por correo, Nami lo lee sola y actualiza tu hoja. Si TRANE lo manda otro día (lunes o jueves), Nami lo archiva pero no procesa hasta el siguiente miércoles o viernes. Esto es por tu petición, así no estamos haciendo cambios al BACKLOG todos los días.</p>
 
-  <div class="card" style="margin-top: 8mm;">
-    <div class="card-title">Qué pasa el día del Meet</div>
-    <div class="card-body">La primera vez que Nami actualiza tu BACKLOG, va a reemplazar las 47 líneas que tenías a mano con el formato nuevo (más completo, con fechas de registro y de entrega estimadas). Si en algún momento prefieres el formato viejo, tengo tu BACKLOG original guardado y lo regresamos en 2 minutos.</div>
+  <div class="card" style="margin-top: 6mm;">
+    <div class="card-title">Importante: Nami nunca borra sin pedírtelo</div>
+    <div class="card-body">Cuando llega un BACKLOG nuevo, Nami lo compara con el que tienes y sólo <strong>agrega lo nuevo y actualiza lo que cambió</strong>. Si en el PDF nuevo falta una línea que tenías, Nami la deja ahí (no la borra). Si prefieres que un día le des limpieza completa, le dices "Nami, limpia el BACKLOG y pon sólo lo que trae el PDF nuevo" y ahí sí te lo deja de cero.</div>
   </div>
 
   <div class="block">
-    <h2>Cómo sabes que Nami ya hizo el update esta semana</h2>
-    <p>Cada vez que llega un BACKLOG y Nami lo procesa, te manda un correo corto al terminar con el resumen. Algo tipo:</p>
+    <h2>Cómo quedó tu hoja hoy</h2>
+    <p>Tu BACKLOG tiene 12 columnas con toda la información que trae TRANE:</p>
+    <ul>
+      <li><strong>CUSTOMER PO NUMBER</strong>: tu número de OC.</li>
+      <li><strong>ORDER NUMBER</strong>: el folio TRANE del lado de ellos.</li>
+      <li><strong>ORDERED DATE</strong>: cuándo entró la orden a su sistema.</li>
+      <li><strong>LINE NUMBER</strong>: cada equipo de la OC con su número de línea (1.1, 2.1, 3.1…).</li>
+      <li><strong>ITEM, LINES STATUS, QUANTITY</strong>: modelo, estatus (AWAITING_SHIPPING, AWAITING_SUPPLY, etc.) y cantidad.</li>
+      <li><strong>SCHEDULE SHIP DATE</strong>: fecha estimada de entrega.</li>
+      <li><strong>BACKLOG USD y RESERVED</strong>: el monto en dólares y cuántos están reservados.</li>
+      <li><strong>ACCOUNT MANAGER</strong>: quién de TRANE lleva tu cuenta.</li>
+    </ul>
+  </div>
+
+  <div class="block">
+    <h2>Cómo sabes que Nami ya hizo el update</h2>
+    <p>Cada vez que procesa un BACKLOG, Nami te manda un correo corto con el resumen. Algo así:</p>
     <div class="dialog">
       <div class="quien">Nami te escribe</div>
-      <div class="texto">"Listo Camila, procesé el BACKLOG de TRANE del lunes. Agregué 3 líneas nuevas, actualicé 2 que cambiaron, dejé 42 iguales. Si algo se ve raro, dímelo."</div>
+      <div class="texto">"Listo Camila, procesé el BACKLOG de TRANE de hoy miércoles. Agregué 3 líneas nuevas, actualicé 5 que cambiaron, 40 quedaron igual. Si algo se ve raro, dímelo."</div>
     </div>
-    <p>Si no te llegó el correo un día que esperabas BACKLOG, probablemente TRANE no lo mandó. Puedes verificar directo en tu bandeja si llegó algo de Isabel.</p>
-  </div>
-
-  <div class="block">
-    <h2>Si TRANE no manda el BACKLOG algún día</h2>
-    <p>Pasa. A veces se les atraviesa un feriado, o Isabel está de vacaciones. Qué hacer:</p>
-    <ul>
-      <li>Tu BACKLOG en Excel se queda como estaba la última vez que Nami lo actualizó. No se borra ni se queda vacío.</li>
-      <li>Cuando TRANE lo vuelva a mandar (sea al día siguiente o la semana que viene), Nami lo procesa normal y lo actualiza con lo nuevo.</li>
-      <li>Si pasan más de 7 días sin BACKLOG y necesitas saber por qué, dímelo y le hablamos a Isabel directo.</li>
-    </ul>
   </div>
 </div>
 
