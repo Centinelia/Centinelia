@@ -5757,6 +5757,218 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       };
     }
 
+    if (toolName === 'inv_buscar_por_oc') {
+      const oc = String(toolInput.oc ?? '').trim();
+      if (!oc) return { ok: false, error: 'oc es requerido (número de OC con o sin prefijo, ej. "7119" o "OC07119")' };
+      const { formatOcAc: formatOcAcHelper } = await import('@/lib/inventory/equipo-helpers');
+      const ocNorm = (formatOcAcHelper(oc) ?? oc).toUpperCase();
+      const rows = await listHistorico(inv);
+      const matches = rows.filter(r => String(r.values.oc ?? '').trim().toUpperCase() === ocNorm);
+      if (matches.length === 0) return { ok: true, oc: ocNorm, encontrado: false, total: 0, message: `No encontré filas con OC = ${ocNorm}.` };
+      // Resumen por estatus
+      const porEstatus: Record<string, number> = {};
+      const porModelo: Record<string, number> = {};
+      let conSerie = 0;
+      let sinSerie = 0;
+      let conTc = 0;
+      for (const r of matches) {
+        const est = String(r.values.estatus ?? 'SIN_ESTATUS').toUpperCase();
+        porEstatus[est] = (porEstatus[est] ?? 0) + 1;
+        const mod = String(r.values.modelo ?? '?');
+        porModelo[mod] = (porModelo[mod] ?? 0) + 1;
+        const serie = String(r.values.serie ?? '').trim();
+        if (serie && serie !== '-') conSerie++; else sinSerie++;
+        if (Number(r.values.tc ?? 0) > 0) conTc++;
+      }
+      return {
+        ok: true, oc: ocNorm, encontrado: true, total: matches.length,
+        resumen: { por_estatus: porEstatus, por_modelo: porModelo, con_serie: conSerie, sin_serie: sinSerie, con_tc: conTc },
+        equipos: matches.map(r => ({
+          serie: r.values.serie, modelo: r.values.modelo, familia: r.values.familia,
+          estatus: r.values.estatus, bodega: r.values.bodega, cliente: r.values.cliente,
+          fact_trane: r.values.folio_compra, usd: r.values.usd, tc: r.values.tc,
+          costo_mx: r.values.costo_mx, fecha_oc: r.values.fecha_oc, fecha_compra: r.values.fecha_compra,
+        })),
+        message: `OC ${ocNorm}: ${matches.length} fila(s). Estatus: ${Object.entries(porEstatus).map(([k, v]) => `${k}=${v}`).join(', ')}. ${conSerie}/${matches.length} con SERIE. ${conTc}/${matches.length} con TC.`,
+      };
+    }
+
+    if (toolName === 'inv_buscar_por_fact_trane') {
+      const fact = String(toolInput.fact_trane ?? '').trim();
+      if (!fact) return { ok: false, error: 'fact_trane es requerido (folio de factura TRANE, ej. "80099999")' };
+      const rows = await listHistorico(inv);
+      const matches = rows.filter(r => String(r.values.folio_compra ?? '').trim() === fact);
+      if (matches.length === 0) return { ok: true, fact_trane: fact, encontrado: false, total: 0, message: `No encontré filas con FACT TRANE = ${fact}.` };
+      let totalUsd = 0;
+      let totalCostoMx = 0;
+      let conTc = 0;
+      const porEstatus: Record<string, number> = {};
+      for (const r of matches) {
+        totalUsd += Number(r.values.usd ?? 0);
+        totalCostoMx += Number(r.values.costo_mx ?? 0);
+        if (Number(r.values.tc ?? 0) > 0) conTc++;
+        const est = String(r.values.estatus ?? 'SIN_ESTATUS').toUpperCase();
+        porEstatus[est] = (porEstatus[est] ?? 0) + 1;
+      }
+      return {
+        ok: true, fact_trane: fact, encontrado: true, total: matches.length,
+        resumen: {
+          por_estatus: porEstatus,
+          total_usd: Math.round(totalUsd * 100) / 100,
+          total_costo_mx: Math.round(totalCostoMx * 100) / 100,
+          con_tc: conTc,
+          pagada: conTc === matches.length,
+        },
+        equipos: matches.map(r => ({
+          serie: r.values.serie, modelo: r.values.modelo, oc: r.values.oc,
+          estatus: r.values.estatus, usd: r.values.usd, tc: r.values.tc, costo_mx: r.values.costo_mx,
+        })),
+        message: `Factura TRANE ${fact}: ${matches.length} equipo(s), total USD $${Math.round(totalUsd * 100) / 100}, total MX $${Math.round(totalCostoMx * 100) / 100}. ${conTc === matches.length ? 'YA PAGADA (TC aplicado a todas).' : `PENDIENTE DE PAGO (${conTc}/${matches.length} con TC).`}`,
+      };
+    }
+
+    if (toolName === 'inv_estado_general') {
+      const rows = await listHistorico(inv);
+      const total = rows.length;
+      const porEstatus: Record<string, number> = {};
+      const porBodega: Record<string, number> = {};
+      const porFamilia: Record<string, number> = {};
+      let conSerie = 0;
+      let separados = 0;
+      let entregados = 0;
+      let enAlmacen = 0;
+      let pedidos = 0;
+      let costoMxTotal = 0;
+      let factorPromedio = 0;
+      let filasConFactor = 0;
+      for (const r of rows) {
+        const est = String(r.values.estatus ?? '').toUpperCase().trim();
+        const bod = String(r.values.bodega ?? '').toUpperCase().trim();
+        const fam = String(r.values.familia ?? '').toUpperCase().trim();
+        if (est) porEstatus[est] = (porEstatus[est] ?? 0) + 1;
+        if (bod) porBodega[bod] = (porBodega[bod] ?? 0) + 1;
+        if (fam) porFamilia[fam] = (porFamilia[fam] ?? 0) + 1;
+        if (String(r.values.serie ?? '').trim()) conSerie++;
+        if (est === 'SEPARADO')  separados++;
+        if (est === 'ENTREGADO') entregados++;
+        if (est === 'ALMACEN')   enAlmacen++;
+        if (est === 'PEDIDO')    pedidos++;
+        costoMxTotal += Number(r.values.costo_mx ?? 0);
+        const factor = Number(r.values.factor ?? 0);
+        if (factor > 0) { factorPromedio += factor; filasConFactor++; }
+      }
+      const avgFactor = filasConFactor > 0 ? Math.round((factorPromedio / filasConFactor) * 10000) / 10000 : null;
+      return {
+        ok: true,
+        total_equipos: total,
+        por_estatus: porEstatus,
+        por_bodega: porBodega,
+        por_familia: porFamilia,
+        kpi: {
+          en_almacen: enAlmacen,
+          pedidos_pendientes: pedidos,
+          separados: separados,
+          entregados: entregados,
+          con_serie: conSerie,
+          sin_serie: total - conSerie,
+          valor_inventario_mx: Math.round(costoMxTotal * 100) / 100,
+          factor_promedio: avgFactor,
+        },
+        message: `INVENTARIO general: ${total} equipos. ${enAlmacen} en almacén, ${pedidos} pedidos pendientes, ${separados} separados, ${entregados} entregados. Valor total MX $${Math.round(costoMxTotal * 100) / 100}.${avgFactor ? ` Factor promedio: ${avgFactor}.` : ''}`,
+      };
+    }
+
+    if (toolName === 'inv_consultar_backlog') {
+      const sheetCfg = inv.config.sheets?.backlog;
+      if (!sheetCfg?.name) return { ok: false, error: 'La organización no tiene BACKLOG configurado' };
+      // Lectura directa de rango amplio para no depender del syncer (que tiene
+      // bug de offset documentado 2026-10-06: asume datos desde A pero AC los
+      // tiene desde C). Buscamos el header en start_row-1 o start_row-2 y
+      // mapeamos campos por nombre, no por índice.
+      const headerCandidates = [sheetCfg.start_row - 1, sheetCfg.start_row - 2].filter(r => r >= 1);
+      const topRow = Math.max(1, (headerCandidates[0] ?? sheetCfg.start_row) - 1);
+      const endRow = sheetCfg.start_row + 500;
+      const range = await GraphExcel.readRange(inv.token, inv.config.location, sheetCfg.name, `A${topRow}:Z${endRow}`);
+      // Localizar la fila header: la primera fila con "CUSTOMER PO" o "PO NUMBER" en cualquier celda
+      let headerRowIdx = -1;
+      let headerRow: unknown[] = [];
+      for (let i = 0; i < range.values.length; i++) {
+        const row = range.values[i];
+        if (row.some(v => /CUSTOMER\s*PO|^\s*PO\s*NUMBER/i.test(String(v ?? '')))) {
+          headerRowIdx = i;
+          headerRow = row;
+          break;
+        }
+      }
+      if (headerRowIdx < 0) return { ok: true, total_lineas: 0, message: 'No encontré header del BACKLOG (no hay "CUSTOMER PO" ni "PO NUMBER" en la hoja). ¿Está vacío o cambió el formato?' };
+      // Mapear nombres de columnas conocidos a sus índices reales
+      const colIdx: Record<string, number> = {};
+      headerRow.forEach((v, i) => {
+        const h = String(v ?? '').toUpperCase().trim();
+        if (!h) return;
+        if (/CUSTOMER\s*PO/.test(h) || /^PO\s*NUMBER$/.test(h)) colIdx.customer_po = i;
+        else if (/^ORDER\s*NUMBER$/.test(h) || /TRANE\s*ORDER/.test(h)) colIdx.oc_trane = i;
+        else if (/ORDERED\s*DATE/.test(h) || /ORDER\s*DATE/.test(h)) colIdx.ordered_date = i;
+        else if (/LINE\s*NUMBER/.test(h)) colIdx.line_number = i;
+        else if (/^ITEM$/.test(h) || /MODELO/.test(h) || /PART/.test(h)) colIdx.item = i;
+        else if (/LINES?\s*STATUS/.test(h) || /^STATUS$/.test(h)) colIdx.lines_status = i;
+        else if (/SCHEDULE\s*SHIP/.test(h) || /SHIP\s*DATE/.test(h)) colIdx.ship_date = i;
+        else if (/^QUANTITY$/.test(h) || /CANTIDAD/.test(h)) colIdx.quantity = i;
+        else if (/BACKLOG\s*USD/.test(h) && !/RESERVED/.test(h)) colIdx.backlog_usd = i;
+        else if (/^RESERVED$/.test(h)) colIdx.reserved = i;
+        else if (/RESERVED\s*BACKLOG\s*USD/.test(h)) colIdx.reserved_usd = i;
+        else if (/ACCOUNT\s*MANAGER/.test(h)) colIdx.account_manager = i;
+      });
+      // Iterar filas de datos (después del header)
+      const dataRows: Array<Record<string, unknown>> = [];
+      for (let i = headerRowIdx + 1; i < range.values.length; i++) {
+        const row = range.values[i];
+        if (!row.some(v => v !== '' && v !== null && v !== undefined)) continue;
+        const customer_po = colIdx.customer_po != null ? String(row[colIdx.customer_po] ?? '').trim() : '';
+        if (!customer_po) continue; // skip filas sin OC (basura)
+        dataRows.push({
+          customer_po,
+          oc_trane: colIdx.oc_trane != null ? row[colIdx.oc_trane] : undefined,
+          ordered_date: colIdx.ordered_date != null ? row[colIdx.ordered_date] : undefined,
+          line_number: colIdx.line_number != null ? row[colIdx.line_number] : undefined,
+          item: colIdx.item != null ? row[colIdx.item] : undefined,
+          lines_status: colIdx.lines_status != null ? String(row[colIdx.lines_status] ?? '').trim().toUpperCase() : '',
+          ship_date: colIdx.ship_date != null ? row[colIdx.ship_date] : undefined,
+          quantity: colIdx.quantity != null ? Number(row[colIdx.quantity] ?? 0) : 0,
+          backlog_usd: colIdx.backlog_usd != null ? Number(String(row[colIdx.backlog_usd] ?? '').replace(/[$,]/g, '')) : 0,
+          reserved: colIdx.reserved != null ? Number(row[colIdx.reserved] ?? 0) : 0,
+          reserved_usd: colIdx.reserved_usd != null ? Number(String(row[colIdx.reserved_usd] ?? '').replace(/[$,]/g, '')) : 0,
+          account_manager: colIdx.account_manager != null ? row[colIdx.account_manager] : undefined,
+        });
+      }
+      const total = dataRows.length;
+      if (total === 0) return { ok: true, total_lineas: 0, message: 'El BACKLOG está vacío (no hay equipos pendientes de llegar).' };
+      const porStatus: Record<string, number> = {};
+      const porOc: Record<string, number> = {};
+      let totalBacklogUsd = 0;
+      let totalReservedUsd = 0;
+      for (const r of dataRows) {
+        const st = String(r.lines_status || 'SIN_STATUS');
+        porStatus[st] = (porStatus[st] ?? 0) + 1;
+        const oc = String(r.customer_po);
+        porOc[oc] = (porOc[oc] ?? 0) + 1;
+        if (typeof r.backlog_usd === 'number' && r.backlog_usd > 0) totalBacklogUsd += r.backlog_usd;
+        if (typeof r.reserved_usd === 'number' && r.reserved_usd > 0) totalReservedUsd += r.reserved_usd;
+      }
+      const ocsUnicas = Object.keys(porOc).length;
+      return {
+        ok: true,
+        total_lineas: total,
+        total_ocs: ocsUnicas,
+        por_lines_status: porStatus,
+        total_backlog_usd: Math.round(totalBacklogUsd * 100) / 100,
+        total_reserved_usd: Math.round(totalReservedUsd * 100) / 100,
+        columnas_detectadas: Object.keys(colIdx),
+        muestra: dataRows.slice(0, 15),
+        message: `BACKLOG: ${total} línea(s) pendientes, ${ocsUnicas} OC(s) involucradas. Status: ${Object.entries(porStatus).map(([k, v]) => `${k}=${v}`).join(', ')}. Total backlog USD $${Math.round(totalBacklogUsd * 100) / 100}, reservado USD $${Math.round(totalReservedUsd * 100) / 100}.`,
+      };
+    }
+
     if (toolName === 'inv_stock_snapshot') {
       const stock = await readStock(inv);
       const reposiciones = computeReposiciones(stock);
@@ -5827,6 +6039,90 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
         message: previa
           ? `Listo, actualicé la familia del modelo ${modelo}: ${previa} → ${familia}. Lo voy a usar en siguientes facturas y OCs.`
           : `Listo, aprendí: modelo ${modelo} → familia ${familia}. Lo voy a usar en siguientes facturas y OCs.`,
+      };
+    }
+
+    // ─── Nami consulta su propio histórico de acciones ─────────────────────────
+    // Introducido 2026-10-06 tras pregunta de Nazre: ¿Nami puede responder
+    // "qué correos procesaste hoy" o "cómo te fue con la OC X que te mandé
+    // hace rato"? Consulta `inventory_mutations_log` filtrando por agente +
+    // ventana temporal + opcional por tool/serie. Devuelve resumen agregado +
+    // muestra de las últimas N acciones legibles para el LLM.
+    if (toolName === 'inv_buscar_mis_acciones') {
+      const dias = Math.max(1, Math.min(90, Number(toolInput.dias ?? 7)));
+      const toolFiltro = toolInput.tool_name ? String(toolInput.tool_name).trim() : null;
+      const serieFiltro = toolInput.serie ? String(toolInput.serie).trim().toUpperCase() : null;
+      const ocFiltro = toolInput.oc ? String(toolInput.oc).trim().toUpperCase() : null;
+      const limit = Math.max(1, Math.min(50, Number(toolInput.limit ?? 20)));
+
+      let query = supabase
+        .from('inventory_mutations_log')
+        .select('tool_name, serie, before_state, after_state, patched_columns, metadata, ops_charged, success, error_code, created_at')
+        .eq('portal_email', portalEmail)
+        .eq('agent_id', agentId)
+        .gte('created_at', new Date(Date.now() - dias * 24 * 60 * 60 * 1000).toISOString())
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (toolFiltro) query = query.eq('tool_name', toolFiltro);
+      if (serieFiltro) query = query.eq('serie', serieFiltro);
+
+      const { data, error } = await query;
+      if (error) return { ok: false, error: `No pude consultar el histórico: ${error.message}`, code: 'db_error' };
+
+      // Filtro adicional por OC: la OC vive en metadata o after_state, no columna.
+      // Lo hacemos post-fetch (barato para 50 rows).
+      const rows = (data ?? []).filter(r => {
+        if (!ocFiltro) return true;
+        const after = r.after_state as Record<string, unknown> | null;
+        const meta = r.metadata as Record<string, unknown> | null;
+        const ocAfter = String((after?.['OC'] ?? '') as string).trim().toUpperCase();
+        const ocMeta = String((meta?.['oc'] ?? meta?.['oc_ac'] ?? '') as string).trim().toUpperCase();
+        return ocAfter === ocFiltro || ocMeta === ocFiltro;
+      });
+
+      // Agregado por tool_name + success
+      const byTool: Record<string, { ok: number; fail: number }> = {};
+      for (const r of rows) {
+        const key = r.tool_name;
+        if (!byTool[key]) byTool[key] = { ok: 0, fail: 0 };
+        if (r.success) byTool[key].ok++;
+        else byTool[key].fail++;
+      }
+
+      // Muestras legibles de las últimas acciones (máx 10)
+      const muestra = rows.slice(0, 10).map(r => {
+        const meta = r.metadata as Record<string, unknown> | null;
+        const after = r.after_state as Record<string, unknown> | null;
+        return {
+          cuando: r.created_at,
+          tool: r.tool_name,
+          serie: r.serie,
+          exitoso: r.success,
+          error: r.error_code ?? undefined,
+          columnas_tocadas: r.patched_columns,
+          contexto: meta ? {
+            oc: (meta['oc'] ?? meta['oc_ac'] ?? after?.['OC']) as string | undefined,
+            folio: (meta['folio'] ?? meta['folio_hoja'] ?? meta['fact_trane']) as string | undefined,
+            cliente: meta['cliente'] as string | undefined,
+          } : undefined,
+        };
+      });
+
+      return {
+        ok: true,
+        rango_dias: dias,
+        filtros_aplicados: {
+          tool_name: toolFiltro,
+          serie: serieFiltro,
+          oc: ocFiltro,
+        },
+        total_acciones: rows.length,
+        resumen_por_tool: byTool,
+        muestra,
+        message: rows.length === 0
+          ? `No encontré acciones en los últimos ${dias} día(s)${toolFiltro ? ` para ${toolFiltro}` : ''}${serieFiltro ? ` con serie ${serieFiltro}` : ''}${ocFiltro ? ` con OC ${ocFiltro}` : ''}.`
+          : `Encontré ${rows.length} acción(es) en los últimos ${dias} día(s). Resumen: ${Object.entries(byTool).map(([t, c]) => `${t} (${c.ok} ok${c.fail ? `, ${c.fail} fail` : ''})`).join(', ')}.`,
       };
     }
 
@@ -6602,6 +6898,20 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       if (!a.pdf_url || typeof a.pdf_url !== 'string') {
         return { ok: false, error: 'pdf_url es requerido (URL del PDF BACKLOG adjunto al correo TRANE)', code: 'invalid_input' };
       }
+      // KILL-SWITCH TEMPORAL 2026-10-06 (audit profundo): el syncer actual
+      // asume datos en columnas A-H pero AC Proyectos tiene A-B vacías y
+      // datos en C-N (12 columnas). mode=replace destruiría ORDER NUMBER,
+      // ORDERED DATE, LINE NUMBER, SCHEDULE SHIP DATE, ACCOUNT MANAGER.
+      // Mantenemos el handler bloqueado hasta refactor del syncer para que
+      // lea desde el header real del Excel. Rastreador: BACKLOG offset bug.
+      if (!a.force) {
+        return {
+          ok: false,
+          code: 'backlog_syncer_offset_bug',
+          error: 'inv_importar_backlog está temporalmente deshabilitado. El syncer actual escribiría los datos en columnas equivocadas (A-H) y destruiría ORDER NUMBER, ORDERED DATE, LINE NUMBER, SCHEDULE SHIP DATE, ACCOUNT MANAGER del BACKLOG real. Avisarle a Camila "detecté que mi importador está desalineado con el formato real de tu BACKLOG, lo estoy arreglando antes del próximo miércoles" y escalar a Nazre.',
+        };
+      }
+
       // Camila 2026-10-06: BACKLOG se actualiza SOLO miércoles y viernes.
       // TRANE manda el PDF varios días a la semana (lunes también); los demás
       // días quedan omitidos. Usar force=true para override manual explícito.

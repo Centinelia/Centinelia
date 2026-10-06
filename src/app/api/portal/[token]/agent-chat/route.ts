@@ -1404,6 +1404,61 @@ const INV_DEFINIR_FAMILIA_MODELO_TOOL: Anthropic.Tool = {
     required: ['modelo', 'familia'],
   },
 };
+const INV_BUSCAR_MIS_ACCIONES_TOOL: Anthropic.Tool = {
+  name: 'inv_buscar_mis_acciones',
+  description: 'Nami: consulta tu propio histórico de acciones ejecutadas sobre el Excel. Úsala cuando Camila pregunte "qué correos procesaste hoy", "cómo te fue con la OC X que te mandé hace rato", "qué series actualizaste esta semana" o cualquier cosa que requiera saber qué ejecutaste tú en el pasado. Devuelve resumen agregado por tool + muestra de las últimas acciones con fecha, serie, resultado. Lee de inventory_mutations_log (incluye el metadata de cada ejecución: OC, folio, cliente, etc.).',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      dias:      { type: 'number', description: 'Rango temporal hacia atrás en días (1-90, default 7). Para "hoy" usa 1, "esta semana" usa 7, "este mes" usa 30.' },
+      tool_name: { type: 'string', description: 'Opcional. Filtra por nombre exacto de la tool. Ej: "inv_procesar_oc_qb", "inv_procesar_factura_trane". Omite para ver todas.' },
+      serie:     { type: 'string', description: 'Opcional. Filtra por serie específica para ver todo lo que hiciste con ese equipo.' },
+      oc:        { type: 'string', description: 'Opcional. Filtra por número de OC (ej. "OC07119" u "7119"). Útil para "cómo te fue con la OC X".' },
+      limit:     { type: 'number', description: 'Max resultados (1-50, default 20).' },
+    },
+    required: [],
+  },
+};
+const INV_BUSCAR_POR_OC_TOOL: Anthropic.Tool = {
+  name: 'inv_buscar_por_oc',
+  description: 'Nami: devuelve TODAS las filas del INVENTARIO que pertenecen a una OC específica (de QuickBooks). Resumen por estatus, por modelo, cuántas con SERIE y cuántas con TC aplicado. Úsala cuando Camila pregunte "cómo va la OC X", "qué equipos tenía la OC X", "cuántos siguen pendientes de la OC X".',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      oc: { type: 'string', description: 'Número de OC con o sin prefijo. Ej: "7119", "OC7119", "OC07119". Nami lo normaliza.' },
+    },
+    required: ['oc'],
+  },
+};
+const INV_BUSCAR_POR_FACT_TRANE_TOOL: Anthropic.Tool = {
+  name: 'inv_buscar_por_fact_trane',
+  description: 'Nami: devuelve todas las filas del INVENTARIO vinculadas a una factura TRANE (columna FACT TRANE). Reporta total USD, total MX, si ya está pagada (todas tienen TC) o pendiente. Úsala para "qué pasó con la factura X", "ya pagamos la factura X", "qué equipos trae la factura X".',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      fact_trane: { type: 'string', description: 'Folio de factura TRANE, ej. "80099999".' },
+    },
+    required: ['fact_trane'],
+  },
+};
+const INV_ESTADO_GENERAL_TOOL: Anthropic.Tool = {
+  name: 'inv_estado_general',
+  description: 'Nami: overview completo del INVENTARIO. Totales por estatus, bodega, familia + KPIs (en almacén, pedidos pendientes, separados, entregados, valor total MX, factor promedio). Úsala para preguntas abiertas: "cómo va el inventario", "resumen general", "cuántos equipos hay en total", "cuánto vale el inventario".',
+  input_schema: {
+    type: 'object' as const,
+    properties: {},
+    required: [],
+  },
+};
+const INV_CONSULTAR_BACKLOG_TOOL: Anthropic.Tool = {
+  name: 'inv_consultar_backlog',
+  description: 'Nami: lee el BACKLOG actual (hoja Excel) y reporta cuántas líneas pendientes de llegar, cuántas OCs involucradas, totales USD. Úsala para "qué está pendiente de llegar", "cuánto backlog tenemos", "qué equipos vienen". NOTA: el BACKLOG solo se actualiza miércoles y viernes (inv_importar_backlog), pero consultar su estado actual se puede hacer cualquier día.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {},
+    required: [],
+  },
+};
 const INV_PROCESAR_OC_QB_TOOL: Anthropic.Tool = {
   name: 'inv_procesar_oc_qb',
   description: 'Nami: cuando Camila te reenvía o te dicta una OC de QuickBooks, crea en INVENTARIO una fila por cada pieza. Rellena OC (formato OC07119), FECHA OC, QB=OPEN, MODELO, DESCRIPCION, FAMILIA, TR, REF, SEER, VOLTS, USD (unitario). SERIE queda vacía (se llenará cuando llegue la factura TRANE). ESTATUS=PEDIDO, BODEGA=ASIGNAR. Úsala INMEDIATAMENTE cuando Camila diga "hice la OC X" o te reenvíe el PDF de la OC.',
@@ -2023,6 +2078,11 @@ export const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
   inv_procesar_factura_venta_sf:   INV_PROCESAR_FACTURA_VENTA_SF_TOOL,
   inv_procesar_oc_qb:              INV_PROCESAR_OC_QB_TOOL,
   inv_definir_familia_modelo:      INV_DEFINIR_FAMILIA_MODELO_TOOL,
+  inv_buscar_mis_acciones:         INV_BUSCAR_MIS_ACCIONES_TOOL,
+  inv_buscar_por_oc:               INV_BUSCAR_POR_OC_TOOL,
+  inv_buscar_por_fact_trane:       INV_BUSCAR_POR_FACT_TRANE_TOOL,
+  inv_estado_general:              INV_ESTADO_GENERAL_TOOL,
+  inv_consultar_backlog:           INV_CONSULTAR_BACKLOG_TOOL,
   inv_agregar_equipo:        INV_AGREGAR_EQUIPO_TOOL,
   inv_actualizar_estatus:    INV_ACTUALIZAR_ESTATUS_TOOL,
   inv_asignar_cliente:       INV_ASIGNAR_CLIENTE_TOOL,

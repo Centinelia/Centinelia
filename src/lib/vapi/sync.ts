@@ -297,7 +297,8 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
     'inv_registrar_venta', 'inv_registrar_salida',
     'inv_notificar_trane_registro_oc', 'inv_solicitar_entrega_trane',
     'inv_registrar_tc_factura', 'inv_procesar_factura_venta_sf',
-    'inv_procesar_oc_qb', 'inv_definir_familia_modelo',
+    'inv_procesar_oc_qb', 'inv_definir_familia_modelo', 'inv_buscar_mis_acciones',
+    'inv_buscar_por_oc', 'inv_buscar_por_fact_trane', 'inv_estado_general', 'inv_consultar_backlog',
     'llamar_a', 'buscar_directorio', 'enviar_correo',
   ],
   // Nalú — analista de tesorería. Procesa statements bancarios, reconciliación,
@@ -837,6 +838,51 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
         parameters: { type: 'object', properties: { modelo: { type: 'string' }, familia: { type: 'string' } }, required: ['modelo', 'familia'] },
       },
       server: server('exec/inv_definir_familia_modelo'),
+    };
+    case 'inv_buscar_mis_acciones': return {
+      type: 'function',
+      function: {
+        name: 'inv_buscar_mis_acciones',
+        description: 'Nami: consulta tu propio histórico de acciones. Útil cuando Camila pregunta "qué correos procesaste hoy" o "cómo te fue con la OC X".',
+        parameters: { type: 'object', properties: { dias: { type: 'number' }, tool_name: { type: 'string' }, serie: { type: 'string' }, oc: { type: 'string' }, limit: { type: 'number' } }, required: [] },
+      },
+      server: server('exec/inv_buscar_mis_acciones'),
+    };
+    case 'inv_buscar_por_oc': return {
+      type: 'function',
+      function: {
+        name: 'inv_buscar_por_oc',
+        description: 'Nami: devuelve todas las filas del INVENTARIO que pertenecen a una OC específica. Resumen por estatus/modelo + muestra.',
+        parameters: { type: 'object', properties: { oc: { type: 'string' } }, required: ['oc'] },
+      },
+      server: server('exec/inv_buscar_por_oc'),
+    };
+    case 'inv_buscar_por_fact_trane': return {
+      type: 'function',
+      function: {
+        name: 'inv_buscar_por_fact_trane',
+        description: 'Nami: todas las filas de una factura TRANE específica. Reporta total USD, MX, si está pagada.',
+        parameters: { type: 'object', properties: { fact_trane: { type: 'string' } }, required: ['fact_trane'] },
+      },
+      server: server('exec/inv_buscar_por_fact_trane'),
+    };
+    case 'inv_estado_general': return {
+      type: 'function',
+      function: {
+        name: 'inv_estado_general',
+        description: 'Nami: overview del INVENTARIO completo (totales por estatus/bodega/familia + KPIs).',
+        parameters: { type: 'object', properties: {}, required: [] },
+      },
+      server: server('exec/inv_estado_general'),
+    };
+    case 'inv_consultar_backlog': return {
+      type: 'function',
+      function: {
+        name: 'inv_consultar_backlog',
+        description: 'Nami: estado actual del BACKLOG (líneas pendientes, OCs, totales USD).',
+        parameters: { type: 'object', properties: {}, required: [] },
+      },
+      server: server('exec/inv_consultar_backlog'),
     };
     case 'inv_procesar_oc_qb': return {
       type: 'function',
