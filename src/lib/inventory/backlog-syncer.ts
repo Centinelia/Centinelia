@@ -304,20 +304,36 @@ export async function readBacklogIndex(
 ): Promise<BacklogIndex> {
   const resolved = await resolveColumns(ctx, config);
   const endRow   = resolved.dataStartRow + 999;
-  // Leemos desde columna A hasta la última mapeada (+ margen por si hay basura
-  // a la derecha). Preserva las no mapeadas intactas al re-leer.
-  const lastColLetter = colIndexToLetter(resolved.lastDataCol);
-  const address = `A${resolved.dataStartRow}:${lastColLetter}${endRow}`;
+  // Leemos solo desde la primera columna mapeada hasta la última (NO desde A).
+  // Esto hace que `values` quede alineado con lo que el syncer escribe en
+  // `buildRowForResolvedWidth` (que también usa anchos relativos a firstDataCol).
+  // Antes leíamos desde A → arrays con offset de firstDataCol posiciones de
+  // más, haciendo que rowsEqualResolved compara col 0 (A) de existing contra
+  // col 0 (customer_po) de newRow — todo quedaba "updated" cada corrida.
+  const firstColLetter = colIndexToLetter(resolved.firstDataCol);
+  const lastColLetter  = colIndexToLetter(resolved.lastDataCol);
+  const address = `${firstColLetter}${resolved.dataStartRow}:${lastColLetter}${endRow}`;
   const range = await GraphExcel.readRange(ctx.token, ctx.config.location, config.name, address);
   const index = new Map<string, { rowNumber: number; values: unknown[] }>();
   let maxContentRow = resolved.dataStartRow - 1;
+  // Como las values ahora son relativas, excelRowKey necesita un resolved con
+  // colIndex LOCAL (offset por firstDataCol) para extraer correctamente los
+  // campos clave. Construimos un resolved "local" para esta función.
+  const localResolved: ResolvedColumns = {
+    ...resolved,
+    colIndex: Object.fromEntries(
+      Object.entries(resolved.colIndex).map(([k, v]) => [k, (v as number) - resolved.firstDataCol]),
+    ) as ResolvedColumns['colIndex'],
+    firstDataCol: 0,
+    lastDataCol:  resolved.lastDataCol - resolved.firstDataCol,
+  };
   for (let i = 0; i < range.values.length; i++) {
     const row = range.values[i];
     const hasContent = row.some(v => v !== '' && v !== null && v !== undefined);
     if (!hasContent) continue;
     const absRow = resolved.dataStartRow + i;
     if (absRow > maxContentRow) maxContentRow = absRow;
-    const key = excelRowKey(row, resolved);
+    const key = excelRowKey(row, localResolved);
     if (key === '::') continue;
     index.set(key, { rowNumber: absRow, values: row });
   }
@@ -371,9 +387,11 @@ function normalizeDateCell(v: unknown): string {
  */
 export function rowsEqualResolved(a: unknown[], b: unknown[], resolved: ResolvedColumns): boolean {
   if (a.length !== b.length) return false;
+  // Los arrays comparados son relativos a firstDataCol (buildRowForResolvedWidth
+  // los construye así). Convertir los índices absolutos de colIndex a locales.
   const dateIdxs = new Set<number>();
-  if (resolved.colIndex.ordered_date != null) dateIdxs.add(resolved.colIndex.ordered_date);
-  if (resolved.colIndex.ship_date != null) dateIdxs.add(resolved.colIndex.ship_date);
+  if (resolved.colIndex.ordered_date != null) dateIdxs.add(resolved.colIndex.ordered_date - resolved.firstDataCol);
+  if (resolved.colIndex.ship_date != null) dateIdxs.add(resolved.colIndex.ship_date - resolved.firstDataCol);
   for (let i = 0; i < a.length; i++) {
     const norm = dateIdxs.has(i) ? normalizeDateCell : normalizeCell;
     if (norm(a[i]) !== norm(b[i])) return false;
