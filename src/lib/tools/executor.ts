@@ -6898,20 +6898,8 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       if (!a.pdf_url || typeof a.pdf_url !== 'string') {
         return { ok: false, error: 'pdf_url es requerido (URL del PDF BACKLOG adjunto al correo TRANE)', code: 'invalid_input' };
       }
-      // KILL-SWITCH TEMPORAL 2026-10-06 (audit profundo): el syncer actual
-      // asume datos en columnas A-H pero AC Proyectos tiene A-B vacías y
-      // datos en C-N (12 columnas). mode=replace destruiría ORDER NUMBER,
-      // ORDERED DATE, LINE NUMBER, SCHEDULE SHIP DATE, ACCOUNT MANAGER.
-      // Mantenemos el handler bloqueado hasta refactor del syncer para que
-      // lea desde el header real del Excel. Rastreador: BACKLOG offset bug.
-      if (!a.force) {
-        return {
-          ok: false,
-          code: 'backlog_syncer_offset_bug',
-          error: 'inv_importar_backlog está temporalmente deshabilitado. El syncer actual escribiría los datos en columnas equivocadas (A-H) y destruiría ORDER NUMBER, ORDERED DATE, LINE NUMBER, SCHEDULE SHIP DATE, ACCOUNT MANAGER del BACKLOG real. Avisarle a Camila "detecté que mi importador está desalineado con el formato real de tu BACKLOG, lo estoy arreglando antes del próximo miércoles" y escalar a Nazre.',
-        };
-      }
-
+      // (Kill-switch removido 2026-10-06 tras refactor del syncer para
+      // detectar columnas por header real en vez de asumir A-H fijo.)
       // Camila 2026-10-06: BACKLOG se actualiza SOLO miércoles y viernes.
       // TRANE manda el PDF varios días a la semana (lunes también); los demás
       // días quedan omitidos. Usar force=true para override manual explícito.

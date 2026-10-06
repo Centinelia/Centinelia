@@ -51,6 +51,18 @@ export interface InventoryExcelConfig {
   bodegas_canonicas: string[];
   bodegas_aliases?: Record<string, string>;
   /**
+   * Nombres de headers reales del Excel para cada campo lógico del BACKLOG.
+   * Si está vacío, el syncer auto-detecta por patrones canónicos de TRANE
+   * ("CUSTOMER PO NUMBER", "ORDER NUMBER", etc.). Útil solo cuando el cliente
+   * tiene headers no-estándar que el auto-detect no logra mapear.
+   */
+  columns_backlog?: Partial<Record<
+    'customer_po' | 'order_number' | 'ordered_date' | 'line_number'
+    | 'item' | 'lines_status' | 'ship_date' | 'quantity'
+    | 'backlog_usd' | 'reserved' | 'reserved_usd' | 'account_manager' | 'notas',
+    string
+  >>;
+  /**
    * Reglas de auto-asignación de bodega por tonelada. Si está presente,
    * assignBodegaByTonelada las usa en orden; devuelve `bodega` del primer rango
    * cuya condición matchee. Si no está, cae a la regla legacy hardcoded

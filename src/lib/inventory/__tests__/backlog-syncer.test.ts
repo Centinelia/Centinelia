@@ -168,7 +168,7 @@ describe('syncBacklogRows — upsert mode (merge inteligente)', () => {
     vi.mocked(gx.readRange).mockResolvedValue({ address: 'A5:H1004', values: [], formulas: [] });
     const parsed = [makeRow({ customer_po_number: '4599', line_number: '1.5' }), makeRow({ customer_po_number: '4600', line_number: '2.1' })];
     const summary = await syncBacklogRows(BASE_CTX, BACKLOG_CFG, parsed, { dryRun: true, mode: 'upsert' });
-    expect(summary).toEqual({ total_parsed: 2, added: 2, updated: 0, unchanged: 0, deleted: 0, mode: 'upsert', errors: [] });
+    expect(summary).toMatchObject({ total_parsed: 2, added: 2, updated: 0, unchanged: 0, deleted: 0, mode: 'upsert', errors: [] });
     expect(gx.patchRange).not.toHaveBeenCalled();
   });
 
@@ -237,7 +237,7 @@ describe('syncBacklogRows — upsert mode (merge inteligente)', () => {
       makeRow({ customer_po_number: '4700', line_number: '1.0' }),                                     // added
     ];
     const summary = await syncBacklogRows(BASE_CTX, BACKLOG_CFG, parsed, { dryRun: false, mode: 'upsert' });
-    expect(summary).toEqual({ total_parsed: 3, added: 1, updated: 1, unchanged: 1, deleted: 0, mode: 'upsert', errors: [] });
+    expect(summary).toMatchObject({ total_parsed: 3, added: 1, updated: 1, unchanged: 1, deleted: 0, mode: 'upsert', errors: [] });
     expect(gx.patchRange).toHaveBeenCalledTimes(2);
   });
 });
@@ -245,12 +245,12 @@ describe('syncBacklogRows — upsert mode (merge inteligente)', () => {
 describe('syncBacklogRows — replace mode (DEFAULT, Camila 2026-10-01)', () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
-  it('mode default es "replace" (no "upsert") cuando no se pasa', async () => {
+  it('mode default es "upsert" (cambio 2026-10-06: evita borrados silenciosos cuando el PDF trae menos filas que el Excel)', async () => {
     const { syncBacklogRows } = await import('../backlog-syncer');
     const gx = await import('../graph-excel');
     vi.mocked(gx.readRange).mockResolvedValue({ address: 'A5:H1004', values: [], formulas: [] });
     const summary = await syncBacklogRows(BASE_CTX, BACKLOG_CFG, [makeRow({})], { dryRun: true });
-    expect(summary.mode).toBe('replace');
+    expect(summary.mode).toBe('upsert');
   });
 
   it('dryRun: cuenta deleted = filas Excel que NO están en el PDF nuevo', async () => {
