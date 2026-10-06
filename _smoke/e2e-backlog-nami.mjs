@@ -142,20 +142,56 @@ if (idempResult.added === 0 && idempResult.updated === 0 && idempResult.deleted 
 }
 
 // ═════════════════════════════════════════════════════════════════════════
-// PASO 6 — Delete semántico: quitar 1 fila parseada → replace la elimina
+// PASO 6 — Upsert NO borra: subset en modo upsert preserva fila extra
 // ═════════════════════════════════════════════════════════════════════════
-console.log('\n── PASO 6: delete semántico (replace quita filas no presentes en PDF) ──');
+console.log('\n── PASO 6a: upsert con subset (nuevo default — NO borra silenciosamente) ──');
 const subsetRows = parsed.rows.slice(0, -1);  // todas menos la última
-const deleteResult = await syncer.syncBacklogRows(ctxSandbox, sheetCfg, subsetRows, { dryRun: false, mode: 'replace' });
-console.log(`    summary (subset ${subsetRows.length}): added=${deleteResult.added}, updated=${deleteResult.updated}, unchanged=${deleteResult.unchanged}, deleted=${deleteResult.deleted}`);
-if (deleteResult.deleted === 1 && deleteResult.unchanged === subsetRows.length) {
-  pass('delete_semantics', `1 fila eliminada + ${subsetRows.length} unchanged. Replace mode correcto.`);
+const upsertResult = await syncer.syncBacklogRows(ctxSandbox, sheetCfg, subsetRows, { dryRun: false, mode: 'upsert' });
+console.log(`    summary (subset ${subsetRows.length}, mode=upsert): added=${upsertResult.added}, updated=${upsertResult.updated}, unchanged=${upsertResult.unchanged}, deleted=${upsertResult.deleted}`);
+if (upsertResult.deleted === 0 && upsertResult.unchanged === subsetRows.length) {
+  pass('upsert_no_delete', `upsert no borró nada (deleted=0) + ${subsetRows.length} unchanged. SAFE DEFAULT.`);
 } else {
-  fail('delete_semantics', `deleted=${deleteResult.deleted} (esperado 1)`);
+  fail('upsert_no_delete', `upsert borró ${upsertResult.deleted} filas (esperado 0)`);
+}
+
+// Verifico que la fila que NO estaba en el subset SIGUE en el sandbox
+await new Promise(r => setTimeout(r, 3000));
+const { index: postUpsertIndex } = await syncer.readBacklogIndex(ctxSandbox, sheetCfg);
+const droppedKey = syncer.rowKey(parsed.rows[parsed.rows.length - 1]);
+if (postUpsertIndex.has(droppedKey) && postUpsertIndex.size === parsed.rows.length) {
+  pass('upsert_preserves', `fila "${droppedKey}" sigue en sandbox tras upsert con subset (total ${postUpsertIndex.size})`);
+} else {
+  fail('upsert_preserves', `postUpsertIndex=${postUpsertIndex.size}, droppedKey presente=${postUpsertIndex.has(droppedKey)}`);
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+// PASO 6b — Replace SÍ borra cuando se pide explícito
+// ═════════════════════════════════════════════════════════════════════════
+console.log('\n── PASO 6b: replace explícito SÍ borra (comportamiento intencional) ──');
+const replaceResult = await syncer.syncBacklogRows(ctxSandbox, sheetCfg, subsetRows, { dryRun: false, mode: 'replace' });
+console.log(`    summary (subset ${subsetRows.length}, mode=replace): added=${replaceResult.added}, updated=${replaceResult.updated}, unchanged=${replaceResult.unchanged}, deleted=${replaceResult.deleted}`);
+if (replaceResult.deleted === 1 && replaceResult.unchanged === subsetRows.length) {
+  pass('replace_still_deletes', `replace borró 1 fila cuando se pidió explícito + ${subsetRows.length} unchanged.`);
+} else {
+  fail('replace_still_deletes', `deleted=${replaceResult.deleted} (esperado 1)`);
 }
 
 // Restore: re-sync con todas las filas
 await syncer.syncBacklogRows(ctxSandbox, sheetCfg, parsed.rows, { dryRun: false, mode: 'replace' });
+
+// ═════════════════════════════════════════════════════════════════════════
+// PASO 6c — Verificar default del HANDLER es upsert (code assertion)
+// ═════════════════════════════════════════════════════════════════════════
+console.log('\n── PASO 6c: default del handler inv_importar_backlog ──');
+const executorSrc = fs.readFileSync('src/lib/tools/executor.ts', 'utf8');
+const match = executorSrc.match(/a\.mode === 'replace' \? 'replace' : 'upsert'/);
+if (match) {
+  pass('handler_default', 'handler default = upsert (code assertion OK)');
+} else {
+  const backwardsMatch = executorSrc.match(/a\.mode === 'upsert' \? 'upsert' : 'replace'/);
+  if (backwardsMatch) fail('handler_default', 'handler aún tiene default=replace — fix no aplicado');
+  else fail('handler_default', 'pattern no encontrado — revisar manualmente');
+}
 
 } catch (err) {
   console.error('\n✗ EXCEPCIÓN:', err.message);
@@ -174,18 +210,24 @@ await syncer.syncBacklogRows(ctxSandbox, sheetCfg, parsed.rows, { dryRun: false,
 // PASO 7 — REAL safety: 0 contaminación
 // ═════════════════════════════════════════════════════════════════════════
 console.log('\n── PASO 7: REAL safety check ──');
+// Pequeño sleep + retry para Graph propagación cross-session
+await new Promise(r => setTimeout(r, 5000));
 const ctxReal = await adapter.resolveInventoryContext(PORTAL, sb, NAMI);
 if ('error' in ctxReal) {
   fail('real_safety', 'ctx real err: ' + ctxReal.error);
 } else {
-  // Compara con snapshot inicial del REAL (preIndex NO sirve, era sandbox).
-  // Checkeamos que REAL siga teniendo filas con contenido realista (>10).
-  const { index: realIndex } = await syncer.readBacklogIndex(ctxReal, ctxReal.config.sheets.backlog);
-  console.log(`    filas BACKLOG en REAL: ${realIndex.size}`);
-  if (realIndex.size > 10) {
-    pass('real_safety', `REAL intacto (${realIndex.size} filas)`);
+  // readRange directo para contar filas no-vacías (más robusto que
+  // readBacklogIndex que puede filtrar por criterios).
+  const range = await GraphExcel.readRange(ctxReal.token, ctxReal.config.location, 'BACKLOG', 'A1:H60');
+  let nonEmpty = 0;
+  for (const row of range.values) {
+    if (row.some(v => v !== '' && v !== null && v !== undefined)) nonEmpty++;
+  }
+  console.log(`    filas no-vacías en BACKLOG real: ${nonEmpty}`);
+  if (nonEmpty > 10) {
+    pass('real_safety', `REAL intacto (${nonEmpty} filas no-vacías incluye header)`);
   } else {
-    fail('real_safety', `REAL con ${realIndex.size} filas — sospechoso`);
+    fail('real_safety', `REAL con ${nonEmpty} filas — sospechoso`);
   }
 }
 
