@@ -1620,17 +1620,17 @@ const INV_BUSCAR_POR_CLIENTE_TOOL: Anthropic.Tool = {
 };
 const INV_PROCESAR_FACTURA_TRANE_TOOL: Anthropic.Tool = {
   name: 'inv_procesar_factura_trane',
-  description: 'Nami: procesa el XML CFDI de una factura de COMPRA de TRANE (emisor RFC TRA670207Q71) y agrega 1 fila por serie al INVENTARIO. Rellena auto: OC (formato OC06668), FACT TRANE, EMITIDA, AÑO/MES COMPRA, FAMILIA, MODELO, SERIE, REF, SEER, VOLTS, TR, USD, QB=OPEN. Deja TC/COSTO/UTILIDAD/FACTOR/CLIENTE/VEND/FOLIO VACÍOS o "-" hasta que Camila los complete después. Para completar TC+COSTO cuando Camila pague usa inv_registrar_tc_factura. Pasa fecha_oc si Camila te la dicta ("hice la OC el 2026-09-17").',
+  description: 'Nami: procesa el XML CFDI de una factura de COMPRA de TRANE (emisor RFC TRA670207Q71). Hace MATCH contra las filas pre-registradas por inv_procesar_oc_qb (requiere oc_ac para encontrarlas) y completa SERIE, FACT TRANE, EMITIDA, AÑO/MES COMPRA, FAMILIA, REF, SEER, VOLTS, TR, USD. Si no hay pre-registro para esa OC+modelo, crea filas nuevas como fallback (ESTATUS=PEDIDO). Deja TC/COSTO/CLIENTE/VEND/FOLIO vacíos hasta que Camila los complete después via inv_registrar_tc_factura.',
   input_schema: {
     type: 'object' as const,
     properties: {
       xml:      { type: 'string', description: 'Contenido del cfdi.xml adjunto al correo de TRANE (texto completo)' },
       dry_run:  { type: 'boolean', description: 'True (default) para simular. False para aplicar cambios al Excel.' },
-      oc_ac:    { type: 'string', description: 'Número de OC de AC en QuickBooks (opcional pero recomendado). Se formatea como OC0XXXX con ceros.' },
+      oc_ac:    { type: 'string', description: 'Número de OC de AC en QuickBooks (REQUERIDO). Se formatea como OC0XXXX con ceros. Búscalo en el subject del correo TRANE ("OC 7119", "P.O. 7119"), en una addenda del XML, o pregúntale a Camila si no lo encuentras. Sin oc_ac el handler devuelve error missing_oc_ac porque duplicaría filas al no poder hacer match.' },
       fecha_oc: { type: 'string', description: 'Fecha de la OC en QB en formato YYYY-MM-DD (opcional, Camila dicta o la sacas del PDF de la OC)' },
       bodega:   { type: 'string', description: '(No usar normalmente) Bodega destino inicial. Por default queda ASIGNAR hasta que Camila decida.' },
     },
-    required: ['xml'],
+    required: ['xml', 'oc_ac'],
   },
 };
 

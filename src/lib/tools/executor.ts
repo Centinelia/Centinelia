@@ -5849,11 +5849,8 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       const ocDigits = ocNumero.replace(/^OC0*/i, '').trim();
       const ocFormateada = /^\d+$/.test(ocDigits) ? 'OC' + ocDigits.padStart(5, '0') : ocNumero;
 
-      // Helpers inline. inferFamilia hoy combina 3 fuentes (precedencia):
-      //  1. inventory_excel_config.familias_catalogo (entrenamiento explícito)
-      //  2. precedente del Excel (más común entre filas con mismo MODELO)
-      //  3. reglas regex sobre la descripción
-      // (fallback vacío). Introducido 2026-10-06 — Nami aprende.
+      // Helpers compartidos con inv_procesar_factura_trane en src/lib/inventory/equipo-helpers.ts
+      const { inferFamilia, extractSeerRefVolts, extractTonelada } = await import('@/lib/inventory/equipo-helpers');
       const familiasCatalogo = ((inv.config as unknown as { familias_catalogo?: Record<string, string> }).familias_catalogo ?? {});
       // Pre-fetch: contar familias por modelo en el INVENTARIO existente
       const familiasPorModelo = new Map<string, Map<string, number>>();
@@ -5868,58 +5865,8 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
           inner.set(f, (inner.get(f) ?? 0) + 1);
         }
       } catch { /* read falló; seguimos con regex */ }
-      const resolveFamiliaFor = (modelo: string, desc: string): string => {
-        const mKey = modelo.toUpperCase();
-        // 1. Catálogo explícito (Camila lo entrenó)
-        if (familiasCatalogo[mKey]) return familiasCatalogo[mKey];
-        // 2. Si la descripción contiene MANEJADORA/CONDENSADORA/EVAPORADORA,
-        //    le gana al precedente (que puede estar contaminado por filas donde
-        //    tipearon UMA genérico para un equipo que claramente no lo es).
-        const d = desc.toUpperCase();
-        if (/MANEJADOR/i.test(d))         return 'MANEJADORA';
-        if (/CONDENSADOR/i.test(d))       return 'CONDENSADORA';
-        if (/EVAPORADOR/i.test(d))        return 'EVAPORADORA';
-        // 3. Precedente del Excel (señal más débil)
-        const counts = familiasPorModelo.get(mKey);
-        if (counts && counts.size > 0) {
-          let best = ''; let bestN = 0;
-          for (const [f, n] of counts) if (n > bestN) { best = f; bestN = n; }
-          if (best) return best;
-        }
-        // 4. Heurísticas de descripción menos específicas
-        if (/MINI[\s-]?SPLIT/i.test(d)) {
-          const seer = d.match(/(\d{1,2})\s*SEER/i)?.[1];
-          return seer ? `MSP SEER${seer}` : 'MSP';
-        }
-        if (/U[-\s]?MATCH/i.test(d))  return 'U-MATCH';
-        if (/PQT[\s-]?HP/i.test(d))   return 'PQT HP';
-        if (/\bUMA\b/i.test(d))       return 'UMA';
-        return '';
-      };
-      const extractSeerRefVolts = (desc: string): { seer?: string; ref?: string; volts?: string } => {
-        const seer  = desc.match(/(\d{1,2})\s*SEER/i)?.[1];
-        const refM  = desc.match(/R(\d{2,3})/i);
-        const volts = desc.match(/(\d{3}\s*\/\s*\d{1,2}\s*\/\s*\d{1,2})/)?.[1]?.replace(/\s/g, '');
-        return { seer, ref: refM ? 'R' + refM[1] : undefined, volts };
-      };
-      const extractTonelada = (desc: string, modelo: string): number | null => {
-        const trExplicit = desc.match(/(\d{1,3})\s*TR\b/i)?.[1];  // "20TR"
-        if (trExplicit) {
-          const tr = Number(trExplicit);
-          if (tr >= 1 && tr <= 60) return tr;
-        }
-        const mbh = desc.match(/(\d{2,3})\s*MBH/i)?.[1];
-        if (mbh) {
-          const tr = Number(mbh) / 12;
-          if (tr >= 1 && tr <= 20) return tr;
-        }
-        const mspMatch = modelo.match(/16(\d{2})/);
-        if (mspMatch) {
-          const btu = Number(mspMatch[1]);
-          if (btu >= 12 && btu <= 60 && btu % 6 === 0) return btu / 12;
-        }
-        return null;
-      };
+      const resolveFamiliaFor = (modelo: string, desc: string): string =>
+        inferFamilia(desc, modelo, familiasCatalogo, familiasPorModelo);
 
       const headers = await GraphExcel.getTableHeader(inv.token, inv.config.location, inv.config.sheets.historico.table);
       const cols = inv.config.columns_historico;
@@ -6025,11 +5972,13 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       let facturaStr = `F-${folio_cfdi}${serie_cfdi}`;
       if (!/^F-/.test(facturaStr)) facturaStr = `F-${facturaStr.replace(/^F/, '')}`;
 
-      // Fecha
+      // Fecha. Parsing manual para evitar TZ bug: new Date("2026-09-20") en
+      // Vercel (UTC) + .getMonth() local puede devolver día anterior → cruza
+      // mes/año si cae día 1. Trabajamos directo con el string ISO.
       const fechaStr = String(comprobante.Fecha ?? '').slice(0, 10);
-      const fechaDate = fechaStr ? new Date(fechaStr) : null;
-      const anoVenta = fechaDate && !isNaN(fechaDate.getTime()) ? fechaDate.getFullYear() : null;
-      const mesVenta = fechaDate && !isNaN(fechaDate.getTime()) ? MESES_ES[fechaDate.getMonth()] : null;
+      const fechaMatch = fechaStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      const anoVenta = fechaMatch ? Number(fechaMatch[1]) : null;
+      const mesVenta = fechaMatch ? MESES_ES[Number(fechaMatch[2]) - 1] : null;
 
       // Extraer series + precios
       const conceptosRaw = (comprobante['cfdi:Conceptos'] ?? comprobante.Conceptos) as Record<string, unknown> | undefined;
@@ -6391,19 +6340,10 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       const dryRun = toolInput.dry_run !== false;
       const bodegaDestinoRaw = toolInput.bodega ? String(toolInput.bodega) : null;
 
-      // Helpers para derivar campos adicionales que Camila lleva a mano hoy
-      // (introducidos 2026-10-06 en vivo con Camila per flujo detallado).
+      // Helpers compartidos con inv_procesar_oc_qb en src/lib/inventory/equipo-helpers.ts
       const MESES_ES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
-      const formatOcAc = (oc: string | null): string => {
-        if (!oc) return '';
-        const digits = oc.replace(/^OC0*/i, '').trim();
-        if (!/^\d+$/.test(digits)) return oc.trim();
-        return 'OC' + digits.padStart(5, '0');   // OC06668 (2+5 chars)
-      };
-      // inferFamilia combina 3 fuentes (precedencia):
-      //  1. catálogo explícito del config
-      //  2. precedente del Excel (familia más común para ese modelo)
-      //  3. reglas regex
+      const { inferFamilia: inferFamiliaFn, extractSeerRefVolts, extractTonelada, formatOcAc: formatOcAcHelper } = await import('@/lib/inventory/equipo-helpers');
+      const formatOcAc = (oc: string | null): string => formatOcAcHelper(oc) ?? (oc ?? '').trim();
       const familiasCatalogo = ((inv.config as unknown as { familias_catalogo?: Record<string, string> }).familias_catalogo ?? {});
       const familiasPorModeloMap = new Map<string, Map<string, number>>();
       try {
@@ -6417,61 +6357,8 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
           inner.set(f, (inner.get(f) ?? 0) + 1);
         }
       } catch { /* ignore */ }
-      const inferFamilia = (desc: string, modelo = ''): string => {
-        const mKey = modelo.toUpperCase();
-        // 1. Catálogo explícito (highest priority — Camila lo entrenó)
-        if (mKey && familiasCatalogo[mKey]) return familiasCatalogo[mKey];
-        // 2. Si la descripción contiene términos obvios y fuertes (MANEJADORA,
-        //    CONDENSADORA, EVAPORADORA), le ganan al precedente histórico porque
-        //    el precedente puede estar contaminado por filas donde Camila
-        //    tipeó UMA genérico para un equipo que claramente no lo es.
-        const d = desc.toUpperCase();
-        if (/MANEJADOR/i.test(d))         return 'MANEJADORA';
-        if (/CONDENSAD/i.test(d))         return 'CONDENSADORA';
-        if (/EVAPORAD/i.test(d))          return 'EVAPORADORA';
-        // 3. Precedente del Excel (señal más débil)
-        const counts = mKey ? familiasPorModeloMap.get(mKey) : undefined;
-        if (counts && counts.size > 0) {
-          let best = ''; let bestN = 0;
-          for (const [f, n] of counts) if (n > bestN) { best = f; bestN = n; }
-          if (best) return best;
-        }
-        // 4. Heurísticas de descripción menos específicas
-        if (/MINI[\s-]?SPLIT/i.test(d)) {
-          const seer = d.match(/(\d{1,2})\s*SEER/i)?.[1];
-          return seer ? `MSP SEER${seer}` : 'MSP';
-        }
-        if (/U[-\s]?MATCH/i.test(d))  return 'U-MATCH';
-        if (/PQT[\s-]?HP/i.test(d))   return 'PQT HP';
-        if (/\bUMA\b/i.test(d))       return 'UMA';
-        return '';
-      };
-      const extractSeerRefVolts = (desc: string): { seer?: string; ref?: string; volts?: string } => {
-        const seer  = desc.match(/(\d{1,2})\s*SEER/i)?.[1];
-        const refM  = desc.match(/R(\d{2,3})/i);
-        const volts = desc.match(/(\d{3}\s*\/\s*\d{2}\s*\/\s*\d)/)?.[1]?.replace(/\s/g, '');
-        return { seer, ref: refM ? 'R' + refM[1] : undefined, volts };
-      };
-      /**
-       * Toneladas (TR): regla de Camila 2026-10-06:
-       *   - Primero intentar en la descripción: "36MBH" → 36/12 = 3 TR
-       *   - Si no viene, usar el modelo MSP: patrón `16XX` donde XX son BTUs/1000.
-       *     Ej: 1636 → 3 TR, 1624 → 2, 1618 → 1.5, 1612 → 1
-       *   - Si no cuadra, dejar null (Camila lo pondrá a mano o lo pedimos aparte).
-       */
-      const extractTonelada = (desc: string, modelo: string): number | null => {
-        const mbh = desc.match(/(\d{2,3})\s*MBH/i)?.[1];
-        if (mbh) {
-          const tr = Number(mbh) / 12;
-          if (tr >= 1 && tr <= 20) return tr;
-        }
-        const mspMatch = modelo.match(/16(\d{2})/);
-        if (mspMatch) {
-          const btu = Number(mspMatch[1]);
-          if (btu >= 12 && btu <= 60 && btu % 6 === 0) return btu / 12;
-        }
-        return null;
-      };
+      const inferFamilia = (desc: string, modelo = ''): string =>
+        inferFamiliaFn(desc, modelo, familiasCatalogo, familiasPorModeloMap);
 
       const { XMLParser } = await import('fast-xml-parser');
       const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '' });
@@ -6495,8 +6382,18 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
 
       // OC AC — vive en Documentos Relacionados (custom addendas) o en Concepto/NoIdentificacion.
       // Heurística: buscar en la Descripción del primer concepto o en un campo custom.
-      // Por ahora dejamos que el usuario la pase o la extraiga del subject del correo.
+      // REQUERIDO desde 2026-10-06: sin oc_ac el handler no puede hacer MATCH
+      // contra las filas pre-registradas (inv_procesar_oc_qb) y terminaría
+      // duplicando filas silenciosamente. Nami debe extraer el oc_ac del
+      // subject del correo / addenda / inferirlo del XML antes de llamar la tool.
       const ocAc = toolInput.oc_ac ? String(toolInput.oc_ac).trim() : null;
+      if (!ocAc) {
+        return {
+          ok: false,
+          code: 'missing_oc_ac',
+          error: 'oc_ac es requerido para hacer MATCH contra las filas pre-registradas por inv_procesar_oc_qb. Si no viene en el XML, búscalo en el subject del correo de TRANE (típicamente "OC 7119" o "P.O. 7119") o pregúntale a Camila ("¿a qué OC corresponde esta factura?"). Sin oc_ac el flow duplicaría filas.',
+        };
+      }
       // fecha_oc opcional: Camila la dicta ("hice la OC el 2026-08-07") o la
       // sacas tú de la OC de QB. No viene en el XML CFDI estándar. Si no
       // viene, FECHA OC se queda vacía.
@@ -6557,10 +6454,11 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
         };
       }
 
-      // Derivar año/mes compra en español mayúsculas desde fecha de emisión
-      const fechaDate = fecha ? new Date(fecha) : null;
-      const anoCompra = fechaDate && !isNaN(fechaDate.getTime()) ? fechaDate.getFullYear() : null;
-      const mesCompra = fechaDate && !isNaN(fechaDate.getTime()) ? MESES_ES[fechaDate.getMonth()] : null;
+      // Derivar año/mes compra en español mayúsculas desde fecha de emisión.
+      // Parsing manual para evitar TZ bug (ver mismo fix en venta_sf).
+      const fechaMatchCompra = fecha.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      const anoCompra = fechaMatchCompra ? Number(fechaMatchCompra[1]) : null;
+      const mesCompra = fechaMatchCompra ? MESES_ES[Number(fechaMatchCompra[2]) - 1] : null;
       const ocAcFormateada = formatOcAc(ocAc);
 
       // Match & update si la OC ya fue registrada (inv_procesar_oc_qb antes).
@@ -6570,10 +6468,10 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       const cols = inv.config.columns_historico;
       const bodegaNorm = bodegaDestinoRaw ? normalizeBodega(inv, bodegaDestinoRaw) : null;
 
-      // Para evitar off-by-one en patchCell con sheet addresses, usamos la API
-      // de tabla "updateRange" por índice de fila dentro del table. Esto es
-      // más robusto que calcular abs = index + 2 porque Microsoft maneja la
-      // ubicación interna de la tabla.
+      // Resolución de columnas para preregByModelo (match OC+MODELO+SERIE vacía).
+      // Para escrituras usamos patchCell con `abs = tableRowIndex + historicoBodyStartRow`
+      // (ver fix 2026-10-06 off-by-one — AC Proyectos tiene header en row 2,
+      // data desde row 3; otros clientes típicamente header en row 1).
       const ocHeader     = cols.oc        ?? 'OC';
       const serieHeader  = cols.serie     ?? 'SERIE';
       const modeloHeader = cols.modelo    ?? 'MODELO';
@@ -6660,7 +6558,7 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
             setByLogic('usd',            eq.usd_unit);
             setByLogic('tc',             null);
             setByLogic('costo_mx',       null);
-            setByLogic('estatus',        'ASIGNAR');
+            setByLogic('estatus',        'PEDIDO');  // Consistente con inv_procesar_oc_qb; 'ASIGNAR' no estaba en el enum.
             setByLogic('bodega',         'ASIGNAR');
             setByLogic('vendedor',       '-');
             setByLogic('cliente',        '-');
