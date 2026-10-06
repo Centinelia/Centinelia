@@ -6069,14 +6069,26 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
           if (ocAcFormateada) setByLogic('oc', ocAcFormateada);
           setByLogic('modelo',         eq.modelo);
           setByLogic('serie',          eq.serie);
-          setByLogic('descripcion',    eq.descripcion.slice(0, 200));
+          // DESCRIPCION: pasar null (NO '') para que Excel preserve fórmula
+          // auto-fill si existe (ej. VLOOKUP(MODELO, catálogo)). Decisión
+          // Camila 2026-10-06. Si Camila luego ve descripción vacía porque
+          // el modelo no estaba en el catálogo, la pone manual.
+          setByLogic('descripcion',    null);
           setByLogic('folio_compra',   folio);
           setByLogic('fecha_compra',   fecha);
           setByLogic('usd',            eq.usd_unit);
-          setByLogic('tc',             tc);
-          setByLogic('costo_mx',       eq.costo_mx_unit);
-          setByLogic('estatus',        'PENDIENTE');
-          // Nuevos 2026-10-06 (flow detallado Camila)
+          // TC y COSTO COMPRA (MX): se dejan VACÍOS al registrar. Camila
+          // los llena cuando paga la factura (TC real del día del pago,
+          // no del día de la factura). Decisión Camila 2026-10-06.
+          setByLogic('tc',             null);
+          setByLogic('costo_mx',       null);
+          // Estatus y bodega: ASIGNAR hasta que Camila indique. Decisión
+          // Camila 2026-10-06. La inferencia automática por tonelada se
+          // desactiva aquí; Camila decide manual (FLETEROS, CENIZO, PORTEO,
+          // u otras bodegas emergentes).
+          setByLogic('estatus',        'ASIGNAR');
+          setByLogic('bodega',         'ASIGNAR');
+          // Resto automático
           setByLogic('qb',             'OPEN');
           if (anoCompra != null) setByLogic('ano_compra', anoCompra);
           if (mesCompra)         setByLogic('mes_compra', mesCompra);
@@ -6085,6 +6097,8 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
           if (seer)              setByLogic('seer',       seer);
           if (volts)             setByLogic('volts',      volts);
           if (tonelada != null)  setByLogic('tonelada',   tonelada);
+          // bodegaDestinoRaw (parámetro opcional del tool) override si se pasa
+          // explícito. Normalmente NO se pasa en el flow factura.
           if (bodegaNorm) setByLogic('bodega', bodegaNorm.canonical);
           await GraphExcel.addTableRow(inv.token, session, inv.config.sheets.historico.table, rowValues);
           inserted++;
