@@ -50,6 +50,28 @@ export interface InventoryExcelConfig {
   estatus_validos: string[];
   bodegas_canonicas: string[];
   bodegas_aliases?: Record<string, string>;
+  /**
+   * Nombres de headers reales del Excel para cada campo lógico del BACKLOG.
+   * Si está vacío, el syncer auto-detecta por patrones canónicos de TRANE
+   * ("CUSTOMER PO NUMBER", "ORDER NUMBER", etc.). Útil solo cuando el cliente
+   * tiene headers no-estándar que el auto-detect no logra mapear.
+   */
+  columns_backlog?: Partial<Record<
+    'customer_po' | 'order_number' | 'ordered_date' | 'line_number'
+    | 'item' | 'lines_status' | 'ship_date' | 'quantity'
+    | 'backlog_usd' | 'reserved' | 'reserved_usd' | 'account_manager' | 'notas',
+    string
+  >>;
+  /**
+   * Reglas de auto-asignación de bodega por tonelada. Si está presente,
+   * assignBodegaByTonelada las usa en orden; devuelve `bodega` del primer rango
+   * cuya condición matchee. Si no está, cae a la regla legacy hardcoded
+   * (FLETEROS <=5TR / CENIZO >5TR), que solo es válida para AC Proyectos.
+   * Ejemplo:
+   *   [{ max_tr: 5,       bodega: 'FLETEROS' },
+   *    { min_tr: 5.0001,  bodega: 'CENIZO'   }]
+   */
+  bodega_assignment_rules?: Array<{ min_tr?: number; max_tr?: number; bodega: string }>;
   encargados_reposicion?: string[];
   /**
    * Contactos externos para los correos operativos que Nami manda a nombre de la
@@ -334,8 +356,22 @@ export type AddEquipoResult =
   | { ok: false; code: 'serie_already_exists'; existing_row_index: number }
   | { ok: false; code: 'invalid_input'; message: string };
 
-function assignBodegaByTonelada(ton: number | undefined, canonical: string[]): string | null {
+function assignBodegaByTonelada(
+  ton: number | undefined,
+  canonical: string[],
+  rules?: InventoryExcelConfig['bodega_assignment_rules'],
+): string | null {
   if (ton == null) return null;
+  // 1. Rules del config (preferidas, cliente-específicas)
+  if (rules && rules.length > 0) {
+    for (const rule of rules) {
+      const okMin = rule.min_tr == null || ton >= rule.min_tr;
+      const okMax = rule.max_tr == null || ton <= rule.max_tr;
+      if (okMin && okMax && canonical.includes(rule.bodega)) return rule.bodega;
+    }
+    return null;
+  }
+  // 2. Legacy AC Proyectos (FLETEROS <=5TR, CENIZO >5TR)
   if (ton <= 5 && canonical.includes('FLETEROS')) return 'FLETEROS';
   if (ton >  5 && canonical.includes('CENIZO'))   return 'CENIZO';
   return null;
@@ -354,7 +390,7 @@ export async function addEquipoRow(
   const idx: Record<string, number> = {};
   headers.forEach((h, i) => { idx[String(h).trim().toUpperCase()] = i; });
 
-  const bodega = input.bodega ?? assignBodegaByTonelada(input.tonelada, ctx.config.bodegas_canonicas);
+  const bodega = input.bodega ?? assignBodegaByTonelada(input.tonelada, ctx.config.bodegas_canonicas, ctx.config.bodega_assignment_rules);
   const costoMx = (input.usd != null && input.tc != null)
     ? Math.round(input.usd * input.tc * 100) / 100
     : null;
@@ -665,28 +701,52 @@ export async function patchSalidaBySeries(
   const conflicts:          string[] = [];
   const mutations:          SalidaMutation[] = [];
 
+  // Precargamos TODOS los rows una sola vez (antes era listTableRows por serie
+  // dentro del loop → O(N) fetches de 5000+ filas para 10 series = 50s + risk
+  // de rate limit). Ahora O(1) fetch + lookup in-memory.
+  const [tblHeaders, tblRows] = await Promise.all([
+    GraphExcel.getTableHeader(ctx.token, ctx.config.location, ctx.config.sheets.historico.table),
+    GraphExcel.listTableRows(ctx.token, ctx.config.location, ctx.config.sheets.historico.table),
+  ]);
+  const headersMap: Record<string, number> = {};
+  tblHeaders.forEach((h, i) => { headersMap[String(h).trim().toUpperCase()] = i; });
+  const serieColName = col.serie;
+  const serieColIdx = headersMap[serieColName.toUpperCase()];
+  if (serieColIdx == null) {
+    return { ok: false, code: 'invalid_input', message: `Columna de serie '${serieColName}' no encontrada en el INVENTARIO.` };
+  }
+  const rowBySerie = new Map<string, { tableRowIndex: number; row: unknown[] }>();
+  for (const r of tblRows) {
+    const vals = r.values as unknown[];
+    const cell = String(vals[serieColIdx] ?? '').trim().toUpperCase();
+    if (cell) rowBySerie.set(cell, { tableRowIndex: r.index, row: vals });
+  }
+
+  // Resolve column indices una sola vez (eran por-iteración antes)
+  const estatusIdx = headersMap[col.estatus.toUpperCase()];
+  if (estatusIdx === undefined) {
+    throw new Error(`Columna de estatus '${col.estatus}' no encontrada en headersMap. Revisa inventory_excel_config.columns_historico.`);
+  }
+  const clienteIdx = headersMap[col.cliente.toUpperCase()];
+  if (clienteIdx === undefined) {
+    throw new Error(`Columna de cliente '${col.cliente}' no encontrada en headersMap. Revisa inventory_excel_config.columns_historico.`);
+  }
+  const fechaIdx = headersMap[col.fecha_venta.toUpperCase()];
+  if (fechaIdx === undefined) {
+    throw new Error(`Columna de fecha_venta '${col.fecha_venta}' no encontrada en headersMap. Revisa inventory_excel_config.columns_historico.`);
+  }
+  const vendedorIdx = col.vendedor ? headersMap[col.vendedor.toUpperCase()] : undefined;
+  const folioSalidaHeader = col.folio_salida ?? 'FOLIO SALIDA';
+  const folioSalidaIdx = headersMap[folioSalidaHeader.toUpperCase()];
+
   await GraphExcel.withSession(ctx.token, ctx.config.location, async session => {
     const sheet = ctx.config.sheets.historico.name;
     for (const s of series) {
-      const hit = await findRowIndexBySerie(ctx, s);
+      const needle = s.trim().toUpperCase();
+      const hit = rowBySerie.get(needle);
       if (!hit) { series_not_found.push(s); continue; }
 
-      const estatusIdx = hit.headersMap[col.estatus.toUpperCase()];
-      if (estatusIdx === undefined) {
-        throw new Error(`Columna de estatus '${col.estatus}' no encontrada en headersMap. Revisa inventory_excel_config.columns_historico.`);
-      }
-      const clienteIdx = hit.headersMap[col.cliente.toUpperCase()];
-      if (clienteIdx === undefined) {
-        throw new Error(`Columna de cliente '${col.cliente}' no encontrada en headersMap. Revisa inventory_excel_config.columns_historico.`);
-      }
-      const fechaIdx = hit.headersMap[col.fecha_venta.toUpperCase()];
-      if (fechaIdx === undefined) {
-        throw new Error(`Columna de fecha_venta '${col.fecha_venta}' no encontrada en headersMap. Revisa inventory_excel_config.columns_historico.`);
-      }
-      const vendedorIdx = col.vendedor ? hit.headersMap[col.vendedor.toUpperCase()] : undefined;
-      const folioSalidaIdx = hit.headersMap['FOLIO SALIDA'];
-
-      const headers = Object.entries(hit.headersMap).sort((a, b) => a[1] - b[1]).map(([h]) => h);
+      const headers = Object.entries(headersMap).sort((a, b) => a[1] - b[1]).map(([h]) => h);
       const before_state = rowToState(headers, hit.row);
       const after_row = [...hit.row];
       const patched: string[] = [];
@@ -721,10 +781,10 @@ export async function patchSalidaBySeries(
 
       if (folioSalidaIdx != null && input.folio_hoja) {
         await GraphExcel.patchCell(ctx.token, session, sheet, `${cellLetter(folioSalidaIdx)}${abs}`, input.folio_hoja);
-        after_row[folioSalidaIdx] = input.folio_hoja; patched.push('FOLIO SALIDA');
+        after_row[folioSalidaIdx] = input.folio_hoja; patched.push(folioSalidaHeader.toUpperCase());
       }
 
-      series_registradas.push(hit.row[hit.headersMap[col.serie.toUpperCase()]] as string);
+      series_registradas.push(hit.row[serieColIdx] as string);
       mutations.push({ serie: s, table_row_index: hit.tableRowIndex, before_state, after_state: rowToState(headers, after_row), patched_columns: patched, ...(conflictMsg ? { conflict: conflictMsg } : {}) });
     }
   });

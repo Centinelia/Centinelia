@@ -5757,6 +5757,218 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       };
     }
 
+    if (toolName === 'inv_buscar_por_oc') {
+      const oc = String(toolInput.oc ?? '').trim();
+      if (!oc) return { ok: false, error: 'oc es requerido (número de OC con o sin prefijo, ej. "7119" o "OC07119")' };
+      const { formatOcAc: formatOcAcHelper } = await import('@/lib/inventory/equipo-helpers');
+      const ocNorm = (formatOcAcHelper(oc) ?? oc).toUpperCase();
+      const rows = await listHistorico(inv);
+      const matches = rows.filter(r => String(r.values.oc ?? '').trim().toUpperCase() === ocNorm);
+      if (matches.length === 0) return { ok: true, oc: ocNorm, encontrado: false, total: 0, message: `No encontré filas con OC = ${ocNorm}.` };
+      // Resumen por estatus
+      const porEstatus: Record<string, number> = {};
+      const porModelo: Record<string, number> = {};
+      let conSerie = 0;
+      let sinSerie = 0;
+      let conTc = 0;
+      for (const r of matches) {
+        const est = String(r.values.estatus ?? 'SIN_ESTATUS').toUpperCase();
+        porEstatus[est] = (porEstatus[est] ?? 0) + 1;
+        const mod = String(r.values.modelo ?? '?');
+        porModelo[mod] = (porModelo[mod] ?? 0) + 1;
+        const serie = String(r.values.serie ?? '').trim();
+        if (serie && serie !== '-') conSerie++; else sinSerie++;
+        if (Number(r.values.tc ?? 0) > 0) conTc++;
+      }
+      return {
+        ok: true, oc: ocNorm, encontrado: true, total: matches.length,
+        resumen: { por_estatus: porEstatus, por_modelo: porModelo, con_serie: conSerie, sin_serie: sinSerie, con_tc: conTc },
+        equipos: matches.map(r => ({
+          serie: r.values.serie, modelo: r.values.modelo, familia: r.values.familia,
+          estatus: r.values.estatus, bodega: r.values.bodega, cliente: r.values.cliente,
+          fact_trane: r.values.folio_compra, usd: r.values.usd, tc: r.values.tc,
+          costo_mx: r.values.costo_mx, fecha_oc: r.values.fecha_oc, fecha_compra: r.values.fecha_compra,
+        })),
+        message: `OC ${ocNorm}: ${matches.length} fila(s). Estatus: ${Object.entries(porEstatus).map(([k, v]) => `${k}=${v}`).join(', ')}. ${conSerie}/${matches.length} con SERIE. ${conTc}/${matches.length} con TC.`,
+      };
+    }
+
+    if (toolName === 'inv_buscar_por_fact_trane') {
+      const fact = String(toolInput.fact_trane ?? '').trim();
+      if (!fact) return { ok: false, error: 'fact_trane es requerido (folio de factura TRANE, ej. "80099999")' };
+      const rows = await listHistorico(inv);
+      const matches = rows.filter(r => String(r.values.folio_compra ?? '').trim() === fact);
+      if (matches.length === 0) return { ok: true, fact_trane: fact, encontrado: false, total: 0, message: `No encontré filas con FACT TRANE = ${fact}.` };
+      let totalUsd = 0;
+      let totalCostoMx = 0;
+      let conTc = 0;
+      const porEstatus: Record<string, number> = {};
+      for (const r of matches) {
+        totalUsd += Number(r.values.usd ?? 0);
+        totalCostoMx += Number(r.values.costo_mx ?? 0);
+        if (Number(r.values.tc ?? 0) > 0) conTc++;
+        const est = String(r.values.estatus ?? 'SIN_ESTATUS').toUpperCase();
+        porEstatus[est] = (porEstatus[est] ?? 0) + 1;
+      }
+      return {
+        ok: true, fact_trane: fact, encontrado: true, total: matches.length,
+        resumen: {
+          por_estatus: porEstatus,
+          total_usd: Math.round(totalUsd * 100) / 100,
+          total_costo_mx: Math.round(totalCostoMx * 100) / 100,
+          con_tc: conTc,
+          pagada: conTc === matches.length,
+        },
+        equipos: matches.map(r => ({
+          serie: r.values.serie, modelo: r.values.modelo, oc: r.values.oc,
+          estatus: r.values.estatus, usd: r.values.usd, tc: r.values.tc, costo_mx: r.values.costo_mx,
+        })),
+        message: `Factura TRANE ${fact}: ${matches.length} equipo(s), total USD $${Math.round(totalUsd * 100) / 100}, total MX $${Math.round(totalCostoMx * 100) / 100}. ${conTc === matches.length ? 'YA PAGADA (TC aplicado a todas).' : `PENDIENTE DE PAGO (${conTc}/${matches.length} con TC).`}`,
+      };
+    }
+
+    if (toolName === 'inv_estado_general') {
+      const rows = await listHistorico(inv);
+      const total = rows.length;
+      const porEstatus: Record<string, number> = {};
+      const porBodega: Record<string, number> = {};
+      const porFamilia: Record<string, number> = {};
+      let conSerie = 0;
+      let separados = 0;
+      let entregados = 0;
+      let enAlmacen = 0;
+      let pedidos = 0;
+      let costoMxTotal = 0;
+      let factorPromedio = 0;
+      let filasConFactor = 0;
+      for (const r of rows) {
+        const est = String(r.values.estatus ?? '').toUpperCase().trim();
+        const bod = String(r.values.bodega ?? '').toUpperCase().trim();
+        const fam = String(r.values.familia ?? '').toUpperCase().trim();
+        if (est) porEstatus[est] = (porEstatus[est] ?? 0) + 1;
+        if (bod) porBodega[bod] = (porBodega[bod] ?? 0) + 1;
+        if (fam) porFamilia[fam] = (porFamilia[fam] ?? 0) + 1;
+        if (String(r.values.serie ?? '').trim()) conSerie++;
+        if (est === 'SEPARADO')  separados++;
+        if (est === 'ENTREGADO') entregados++;
+        if (est === 'ALMACEN')   enAlmacen++;
+        if (est === 'PEDIDO')    pedidos++;
+        costoMxTotal += Number(r.values.costo_mx ?? 0);
+        const factor = Number(r.values.factor ?? 0);
+        if (factor > 0) { factorPromedio += factor; filasConFactor++; }
+      }
+      const avgFactor = filasConFactor > 0 ? Math.round((factorPromedio / filasConFactor) * 10000) / 10000 : null;
+      return {
+        ok: true,
+        total_equipos: total,
+        por_estatus: porEstatus,
+        por_bodega: porBodega,
+        por_familia: porFamilia,
+        kpi: {
+          en_almacen: enAlmacen,
+          pedidos_pendientes: pedidos,
+          separados: separados,
+          entregados: entregados,
+          con_serie: conSerie,
+          sin_serie: total - conSerie,
+          valor_inventario_mx: Math.round(costoMxTotal * 100) / 100,
+          factor_promedio: avgFactor,
+        },
+        message: `INVENTARIO general: ${total} equipos. ${enAlmacen} en almacén, ${pedidos} pedidos pendientes, ${separados} separados, ${entregados} entregados. Valor total MX $${Math.round(costoMxTotal * 100) / 100}.${avgFactor ? ` Factor promedio: ${avgFactor}.` : ''}`,
+      };
+    }
+
+    if (toolName === 'inv_consultar_backlog') {
+      const sheetCfg = inv.config.sheets?.backlog;
+      if (!sheetCfg?.name) return { ok: false, error: 'La organización no tiene BACKLOG configurado' };
+      // Lectura directa de rango amplio para no depender del syncer (que tiene
+      // bug de offset documentado 2026-10-06: asume datos desde A pero AC los
+      // tiene desde C). Buscamos el header en start_row-1 o start_row-2 y
+      // mapeamos campos por nombre, no por índice.
+      const headerCandidates = [sheetCfg.start_row - 1, sheetCfg.start_row - 2].filter(r => r >= 1);
+      const topRow = Math.max(1, (headerCandidates[0] ?? sheetCfg.start_row) - 1);
+      const endRow = sheetCfg.start_row + 500;
+      const range = await GraphExcel.readRange(inv.token, inv.config.location, sheetCfg.name, `A${topRow}:Z${endRow}`);
+      // Localizar la fila header: la primera fila con "CUSTOMER PO" o "PO NUMBER" en cualquier celda
+      let headerRowIdx = -1;
+      let headerRow: unknown[] = [];
+      for (let i = 0; i < range.values.length; i++) {
+        const row = range.values[i];
+        if (row.some(v => /CUSTOMER\s*PO|^\s*PO\s*NUMBER/i.test(String(v ?? '')))) {
+          headerRowIdx = i;
+          headerRow = row;
+          break;
+        }
+      }
+      if (headerRowIdx < 0) return { ok: true, total_lineas: 0, message: 'No encontré header del BACKLOG (no hay "CUSTOMER PO" ni "PO NUMBER" en la hoja). ¿Está vacío o cambió el formato?' };
+      // Mapear nombres de columnas conocidos a sus índices reales
+      const colIdx: Record<string, number> = {};
+      headerRow.forEach((v, i) => {
+        const h = String(v ?? '').toUpperCase().trim();
+        if (!h) return;
+        if (/CUSTOMER\s*PO/.test(h) || /^PO\s*NUMBER$/.test(h)) colIdx.customer_po = i;
+        else if (/^ORDER\s*NUMBER$/.test(h) || /TRANE\s*ORDER/.test(h)) colIdx.oc_trane = i;
+        else if (/ORDERED\s*DATE/.test(h) || /ORDER\s*DATE/.test(h)) colIdx.ordered_date = i;
+        else if (/LINE\s*NUMBER/.test(h)) colIdx.line_number = i;
+        else if (/^ITEM$/.test(h) || /MODELO/.test(h) || /PART/.test(h)) colIdx.item = i;
+        else if (/LINES?\s*STATUS/.test(h) || /^STATUS$/.test(h)) colIdx.lines_status = i;
+        else if (/SCHEDULE\s*SHIP/.test(h) || /SHIP\s*DATE/.test(h)) colIdx.ship_date = i;
+        else if (/^QUANTITY$/.test(h) || /CANTIDAD/.test(h)) colIdx.quantity = i;
+        else if (/BACKLOG\s*USD/.test(h) && !/RESERVED/.test(h)) colIdx.backlog_usd = i;
+        else if (/^RESERVED$/.test(h)) colIdx.reserved = i;
+        else if (/RESERVED\s*BACKLOG\s*USD/.test(h)) colIdx.reserved_usd = i;
+        else if (/ACCOUNT\s*MANAGER/.test(h)) colIdx.account_manager = i;
+      });
+      // Iterar filas de datos (después del header)
+      const dataRows: Array<Record<string, unknown>> = [];
+      for (let i = headerRowIdx + 1; i < range.values.length; i++) {
+        const row = range.values[i];
+        if (!row.some(v => v !== '' && v !== null && v !== undefined)) continue;
+        const customer_po = colIdx.customer_po != null ? String(row[colIdx.customer_po] ?? '').trim() : '';
+        if (!customer_po) continue; // skip filas sin OC (basura)
+        dataRows.push({
+          customer_po,
+          oc_trane: colIdx.oc_trane != null ? row[colIdx.oc_trane] : undefined,
+          ordered_date: colIdx.ordered_date != null ? row[colIdx.ordered_date] : undefined,
+          line_number: colIdx.line_number != null ? row[colIdx.line_number] : undefined,
+          item: colIdx.item != null ? row[colIdx.item] : undefined,
+          lines_status: colIdx.lines_status != null ? String(row[colIdx.lines_status] ?? '').trim().toUpperCase() : '',
+          ship_date: colIdx.ship_date != null ? row[colIdx.ship_date] : undefined,
+          quantity: colIdx.quantity != null ? Number(row[colIdx.quantity] ?? 0) : 0,
+          backlog_usd: colIdx.backlog_usd != null ? Number(String(row[colIdx.backlog_usd] ?? '').replace(/[$,]/g, '')) : 0,
+          reserved: colIdx.reserved != null ? Number(row[colIdx.reserved] ?? 0) : 0,
+          reserved_usd: colIdx.reserved_usd != null ? Number(String(row[colIdx.reserved_usd] ?? '').replace(/[$,]/g, '')) : 0,
+          account_manager: colIdx.account_manager != null ? row[colIdx.account_manager] : undefined,
+        });
+      }
+      const total = dataRows.length;
+      if (total === 0) return { ok: true, total_lineas: 0, message: 'El BACKLOG está vacío (no hay equipos pendientes de llegar).' };
+      const porStatus: Record<string, number> = {};
+      const porOc: Record<string, number> = {};
+      let totalBacklogUsd = 0;
+      let totalReservedUsd = 0;
+      for (const r of dataRows) {
+        const st = String(r.lines_status || 'SIN_STATUS');
+        porStatus[st] = (porStatus[st] ?? 0) + 1;
+        const oc = String(r.customer_po);
+        porOc[oc] = (porOc[oc] ?? 0) + 1;
+        if (typeof r.backlog_usd === 'number' && r.backlog_usd > 0) totalBacklogUsd += r.backlog_usd;
+        if (typeof r.reserved_usd === 'number' && r.reserved_usd > 0) totalReservedUsd += r.reserved_usd;
+      }
+      const ocsUnicas = Object.keys(porOc).length;
+      return {
+        ok: true,
+        total_lineas: total,
+        total_ocs: ocsUnicas,
+        por_lines_status: porStatus,
+        total_backlog_usd: Math.round(totalBacklogUsd * 100) / 100,
+        total_reserved_usd: Math.round(totalReservedUsd * 100) / 100,
+        columnas_detectadas: Object.keys(colIdx),
+        muestra: dataRows.slice(0, 15),
+        message: `BACKLOG: ${total} línea(s) pendientes, ${ocsUnicas} OC(s) involucradas. Status: ${Object.entries(porStatus).map(([k, v]) => `${k}=${v}`).join(', ')}. Total backlog USD $${Math.round(totalBacklogUsd * 100) / 100}, reservado USD $${Math.round(totalReservedUsd * 100) / 100}.`,
+      };
+    }
+
     if (toolName === 'inv_stock_snapshot') {
       const stock = await readStock(inv);
       const reposiciones = computeReposiciones(stock);
@@ -5830,6 +6042,90 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       };
     }
 
+    // ─── Nami consulta su propio histórico de acciones ─────────────────────────
+    // Introducido 2026-10-06 tras pregunta de Nazre: ¿Nami puede responder
+    // "qué correos procesaste hoy" o "cómo te fue con la OC X que te mandé
+    // hace rato"? Consulta `inventory_mutations_log` filtrando por agente +
+    // ventana temporal + opcional por tool/serie. Devuelve resumen agregado +
+    // muestra de las últimas N acciones legibles para el LLM.
+    if (toolName === 'inv_buscar_mis_acciones') {
+      const dias = Math.max(1, Math.min(90, Number(toolInput.dias ?? 7)));
+      const toolFiltro = toolInput.tool_name ? String(toolInput.tool_name).trim() : null;
+      const serieFiltro = toolInput.serie ? String(toolInput.serie).trim().toUpperCase() : null;
+      const ocFiltro = toolInput.oc ? String(toolInput.oc).trim().toUpperCase() : null;
+      const limit = Math.max(1, Math.min(50, Number(toolInput.limit ?? 20)));
+
+      let query = supabase
+        .from('inventory_mutations_log')
+        .select('tool_name, serie, before_state, after_state, patched_columns, metadata, ops_charged, success, error_code, created_at')
+        .eq('portal_email', portalEmail)
+        .eq('agent_id', agentId)
+        .gte('created_at', new Date(Date.now() - dias * 24 * 60 * 60 * 1000).toISOString())
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (toolFiltro) query = query.eq('tool_name', toolFiltro);
+      if (serieFiltro) query = query.eq('serie', serieFiltro);
+
+      const { data, error } = await query;
+      if (error) return { ok: false, error: `No pude consultar el histórico: ${error.message}`, code: 'db_error' };
+
+      // Filtro adicional por OC: la OC vive en metadata o after_state, no columna.
+      // Lo hacemos post-fetch (barato para 50 rows).
+      const rows = (data ?? []).filter(r => {
+        if (!ocFiltro) return true;
+        const after = r.after_state as Record<string, unknown> | null;
+        const meta = r.metadata as Record<string, unknown> | null;
+        const ocAfter = String((after?.['OC'] ?? '') as string).trim().toUpperCase();
+        const ocMeta = String((meta?.['oc'] ?? meta?.['oc_ac'] ?? '') as string).trim().toUpperCase();
+        return ocAfter === ocFiltro || ocMeta === ocFiltro;
+      });
+
+      // Agregado por tool_name + success
+      const byTool: Record<string, { ok: number; fail: number }> = {};
+      for (const r of rows) {
+        const key = r.tool_name;
+        if (!byTool[key]) byTool[key] = { ok: 0, fail: 0 };
+        if (r.success) byTool[key].ok++;
+        else byTool[key].fail++;
+      }
+
+      // Muestras legibles de las últimas acciones (máx 10)
+      const muestra = rows.slice(0, 10).map(r => {
+        const meta = r.metadata as Record<string, unknown> | null;
+        const after = r.after_state as Record<string, unknown> | null;
+        return {
+          cuando: r.created_at,
+          tool: r.tool_name,
+          serie: r.serie,
+          exitoso: r.success,
+          error: r.error_code ?? undefined,
+          columnas_tocadas: r.patched_columns,
+          contexto: meta ? {
+            oc: (meta['oc'] ?? meta['oc_ac'] ?? after?.['OC']) as string | undefined,
+            folio: (meta['folio'] ?? meta['folio_hoja'] ?? meta['fact_trane']) as string | undefined,
+            cliente: meta['cliente'] as string | undefined,
+          } : undefined,
+        };
+      });
+
+      return {
+        ok: true,
+        rango_dias: dias,
+        filtros_aplicados: {
+          tool_name: toolFiltro,
+          serie: serieFiltro,
+          oc: ocFiltro,
+        },
+        total_acciones: rows.length,
+        resumen_por_tool: byTool,
+        muestra,
+        message: rows.length === 0
+          ? `No encontré acciones en los últimos ${dias} día(s)${toolFiltro ? ` para ${toolFiltro}` : ''}${serieFiltro ? ` con serie ${serieFiltro}` : ''}${ocFiltro ? ` con OC ${ocFiltro}` : ''}.`
+          : `Encontré ${rows.length} acción(es) en los últimos ${dias} día(s). Resumen: ${Object.entries(byTool).map(([t, c]) => `${t} (${c.ok} ok${c.fail ? `, ${c.fail} fail` : ''})`).join(', ')}.`,
+      };
+    }
+
     // ─── Procesa OC de QuickBooks (fase PRE-factura) ───────────────────────────
     // Camila le reenvía a Nami la OC de QB (texto, PDF o datos dictados).
     // Nami crea 1 fila por cada pieza (cantidad del concepto) con los datos
@@ -5849,11 +6145,8 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       const ocDigits = ocNumero.replace(/^OC0*/i, '').trim();
       const ocFormateada = /^\d+$/.test(ocDigits) ? 'OC' + ocDigits.padStart(5, '0') : ocNumero;
 
-      // Helpers inline. inferFamilia hoy combina 3 fuentes (precedencia):
-      //  1. inventory_excel_config.familias_catalogo (entrenamiento explícito)
-      //  2. precedente del Excel (más común entre filas con mismo MODELO)
-      //  3. reglas regex sobre la descripción
-      // (fallback vacío). Introducido 2026-10-06 — Nami aprende.
+      // Helpers compartidos con inv_procesar_factura_trane en src/lib/inventory/equipo-helpers.ts
+      const { inferFamilia, extractSeerRefVolts, extractTonelada } = await import('@/lib/inventory/equipo-helpers');
       const familiasCatalogo = ((inv.config as unknown as { familias_catalogo?: Record<string, string> }).familias_catalogo ?? {});
       // Pre-fetch: contar familias por modelo en el INVENTARIO existente
       const familiasPorModelo = new Map<string, Map<string, number>>();
@@ -5868,58 +6161,8 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
           inner.set(f, (inner.get(f) ?? 0) + 1);
         }
       } catch { /* read falló; seguimos con regex */ }
-      const resolveFamiliaFor = (modelo: string, desc: string): string => {
-        const mKey = modelo.toUpperCase();
-        // 1. Catálogo explícito (Camila lo entrenó)
-        if (familiasCatalogo[mKey]) return familiasCatalogo[mKey];
-        // 2. Si la descripción contiene MANEJADORA/CONDENSADORA/EVAPORADORA,
-        //    le gana al precedente (que puede estar contaminado por filas donde
-        //    tipearon UMA genérico para un equipo que claramente no lo es).
-        const d = desc.toUpperCase();
-        if (/MANEJADOR/i.test(d))         return 'MANEJADORA';
-        if (/CONDENSADOR/i.test(d))       return 'CONDENSADORA';
-        if (/EVAPORADOR/i.test(d))        return 'EVAPORADORA';
-        // 3. Precedente del Excel (señal más débil)
-        const counts = familiasPorModelo.get(mKey);
-        if (counts && counts.size > 0) {
-          let best = ''; let bestN = 0;
-          for (const [f, n] of counts) if (n > bestN) { best = f; bestN = n; }
-          if (best) return best;
-        }
-        // 4. Heurísticas de descripción menos específicas
-        if (/MINI[\s-]?SPLIT/i.test(d)) {
-          const seer = d.match(/(\d{1,2})\s*SEER/i)?.[1];
-          return seer ? `MSP SEER${seer}` : 'MSP';
-        }
-        if (/U[-\s]?MATCH/i.test(d))  return 'U-MATCH';
-        if (/PQT[\s-]?HP/i.test(d))   return 'PQT HP';
-        if (/\bUMA\b/i.test(d))       return 'UMA';
-        return '';
-      };
-      const extractSeerRefVolts = (desc: string): { seer?: string; ref?: string; volts?: string } => {
-        const seer  = desc.match(/(\d{1,2})\s*SEER/i)?.[1];
-        const refM  = desc.match(/R(\d{2,3})/i);
-        const volts = desc.match(/(\d{3}\s*\/\s*\d{1,2}\s*\/\s*\d{1,2})/)?.[1]?.replace(/\s/g, '');
-        return { seer, ref: refM ? 'R' + refM[1] : undefined, volts };
-      };
-      const extractTonelada = (desc: string, modelo: string): number | null => {
-        const trExplicit = desc.match(/(\d{1,3})\s*TR\b/i)?.[1];  // "20TR"
-        if (trExplicit) {
-          const tr = Number(trExplicit);
-          if (tr >= 1 && tr <= 60) return tr;
-        }
-        const mbh = desc.match(/(\d{2,3})\s*MBH/i)?.[1];
-        if (mbh) {
-          const tr = Number(mbh) / 12;
-          if (tr >= 1 && tr <= 20) return tr;
-        }
-        const mspMatch = modelo.match(/16(\d{2})/);
-        if (mspMatch) {
-          const btu = Number(mspMatch[1]);
-          if (btu >= 12 && btu <= 60 && btu % 6 === 0) return btu / 12;
-        }
-        return null;
-      };
+      const resolveFamiliaFor = (modelo: string, desc: string): string =>
+        inferFamilia(desc, modelo, familiasCatalogo, familiasPorModelo);
 
       const headers = await GraphExcel.getTableHeader(inv.token, inv.config.location, inv.config.sheets.historico.table);
       const cols = inv.config.columns_historico;
@@ -6025,11 +6268,13 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       let facturaStr = `F-${folio_cfdi}${serie_cfdi}`;
       if (!/^F-/.test(facturaStr)) facturaStr = `F-${facturaStr.replace(/^F/, '')}`;
 
-      // Fecha
+      // Fecha. Parsing manual para evitar TZ bug: new Date("2026-09-20") en
+      // Vercel (UTC) + .getMonth() local puede devolver día anterior → cruza
+      // mes/año si cae día 1. Trabajamos directo con el string ISO.
       const fechaStr = String(comprobante.Fecha ?? '').slice(0, 10);
-      const fechaDate = fechaStr ? new Date(fechaStr) : null;
-      const anoVenta = fechaDate && !isNaN(fechaDate.getTime()) ? fechaDate.getFullYear() : null;
-      const mesVenta = fechaDate && !isNaN(fechaDate.getTime()) ? MESES_ES[fechaDate.getMonth()] : null;
+      const fechaMatch = fechaStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      const anoVenta = fechaMatch ? Number(fechaMatch[1]) : null;
+      const mesVenta = fechaMatch ? MESES_ES[Number(fechaMatch[2]) - 1] : null;
 
       // Extraer series + precios
       const conceptosRaw = (comprobante['cfdi:Conceptos'] ?? comprobante.Conceptos) as Record<string, unknown> | undefined;
@@ -6391,19 +6636,10 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       const dryRun = toolInput.dry_run !== false;
       const bodegaDestinoRaw = toolInput.bodega ? String(toolInput.bodega) : null;
 
-      // Helpers para derivar campos adicionales que Camila lleva a mano hoy
-      // (introducidos 2026-10-06 en vivo con Camila per flujo detallado).
+      // Helpers compartidos con inv_procesar_oc_qb en src/lib/inventory/equipo-helpers.ts
       const MESES_ES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
-      const formatOcAc = (oc: string | null): string => {
-        if (!oc) return '';
-        const digits = oc.replace(/^OC0*/i, '').trim();
-        if (!/^\d+$/.test(digits)) return oc.trim();
-        return 'OC' + digits.padStart(5, '0');   // OC06668 (2+5 chars)
-      };
-      // inferFamilia combina 3 fuentes (precedencia):
-      //  1. catálogo explícito del config
-      //  2. precedente del Excel (familia más común para ese modelo)
-      //  3. reglas regex
+      const { inferFamilia: inferFamiliaFn, extractSeerRefVolts, extractTonelada, formatOcAc: formatOcAcHelper } = await import('@/lib/inventory/equipo-helpers');
+      const formatOcAc = (oc: string | null): string => formatOcAcHelper(oc) ?? (oc ?? '').trim();
       const familiasCatalogo = ((inv.config as unknown as { familias_catalogo?: Record<string, string> }).familias_catalogo ?? {});
       const familiasPorModeloMap = new Map<string, Map<string, number>>();
       try {
@@ -6417,61 +6653,8 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
           inner.set(f, (inner.get(f) ?? 0) + 1);
         }
       } catch { /* ignore */ }
-      const inferFamilia = (desc: string, modelo = ''): string => {
-        const mKey = modelo.toUpperCase();
-        // 1. Catálogo explícito (highest priority — Camila lo entrenó)
-        if (mKey && familiasCatalogo[mKey]) return familiasCatalogo[mKey];
-        // 2. Si la descripción contiene términos obvios y fuertes (MANEJADORA,
-        //    CONDENSADORA, EVAPORADORA), le ganan al precedente histórico porque
-        //    el precedente puede estar contaminado por filas donde Camila
-        //    tipeó UMA genérico para un equipo que claramente no lo es.
-        const d = desc.toUpperCase();
-        if (/MANEJADOR/i.test(d))         return 'MANEJADORA';
-        if (/CONDENSAD/i.test(d))         return 'CONDENSADORA';
-        if (/EVAPORAD/i.test(d))          return 'EVAPORADORA';
-        // 3. Precedente del Excel (señal más débil)
-        const counts = mKey ? familiasPorModeloMap.get(mKey) : undefined;
-        if (counts && counts.size > 0) {
-          let best = ''; let bestN = 0;
-          for (const [f, n] of counts) if (n > bestN) { best = f; bestN = n; }
-          if (best) return best;
-        }
-        // 4. Heurísticas de descripción menos específicas
-        if (/MINI[\s-]?SPLIT/i.test(d)) {
-          const seer = d.match(/(\d{1,2})\s*SEER/i)?.[1];
-          return seer ? `MSP SEER${seer}` : 'MSP';
-        }
-        if (/U[-\s]?MATCH/i.test(d))  return 'U-MATCH';
-        if (/PQT[\s-]?HP/i.test(d))   return 'PQT HP';
-        if (/\bUMA\b/i.test(d))       return 'UMA';
-        return '';
-      };
-      const extractSeerRefVolts = (desc: string): { seer?: string; ref?: string; volts?: string } => {
-        const seer  = desc.match(/(\d{1,2})\s*SEER/i)?.[1];
-        const refM  = desc.match(/R(\d{2,3})/i);
-        const volts = desc.match(/(\d{3}\s*\/\s*\d{2}\s*\/\s*\d)/)?.[1]?.replace(/\s/g, '');
-        return { seer, ref: refM ? 'R' + refM[1] : undefined, volts };
-      };
-      /**
-       * Toneladas (TR): regla de Camila 2026-10-06:
-       *   - Primero intentar en la descripción: "36MBH" → 36/12 = 3 TR
-       *   - Si no viene, usar el modelo MSP: patrón `16XX` donde XX son BTUs/1000.
-       *     Ej: 1636 → 3 TR, 1624 → 2, 1618 → 1.5, 1612 → 1
-       *   - Si no cuadra, dejar null (Camila lo pondrá a mano o lo pedimos aparte).
-       */
-      const extractTonelada = (desc: string, modelo: string): number | null => {
-        const mbh = desc.match(/(\d{2,3})\s*MBH/i)?.[1];
-        if (mbh) {
-          const tr = Number(mbh) / 12;
-          if (tr >= 1 && tr <= 20) return tr;
-        }
-        const mspMatch = modelo.match(/16(\d{2})/);
-        if (mspMatch) {
-          const btu = Number(mspMatch[1]);
-          if (btu >= 12 && btu <= 60 && btu % 6 === 0) return btu / 12;
-        }
-        return null;
-      };
+      const inferFamilia = (desc: string, modelo = ''): string =>
+        inferFamiliaFn(desc, modelo, familiasCatalogo, familiasPorModeloMap);
 
       const { XMLParser } = await import('fast-xml-parser');
       const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '' });
@@ -6495,8 +6678,18 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
 
       // OC AC — vive en Documentos Relacionados (custom addendas) o en Concepto/NoIdentificacion.
       // Heurística: buscar en la Descripción del primer concepto o en un campo custom.
-      // Por ahora dejamos que el usuario la pase o la extraiga del subject del correo.
+      // REQUERIDO desde 2026-10-06: sin oc_ac el handler no puede hacer MATCH
+      // contra las filas pre-registradas (inv_procesar_oc_qb) y terminaría
+      // duplicando filas silenciosamente. Nami debe extraer el oc_ac del
+      // subject del correo / addenda / inferirlo del XML antes de llamar la tool.
       const ocAc = toolInput.oc_ac ? String(toolInput.oc_ac).trim() : null;
+      if (!ocAc) {
+        return {
+          ok: false,
+          code: 'missing_oc_ac',
+          error: 'oc_ac es requerido para hacer MATCH contra las filas pre-registradas por inv_procesar_oc_qb. Si no viene en el XML, búscalo en el subject del correo de TRANE (típicamente "OC 7119" o "P.O. 7119") o pregúntale a Camila ("¿a qué OC corresponde esta factura?"). Sin oc_ac el flow duplicaría filas.',
+        };
+      }
       // fecha_oc opcional: Camila la dicta ("hice la OC el 2026-08-07") o la
       // sacas tú de la OC de QB. No viene en el XML CFDI estándar. Si no
       // viene, FECHA OC se queda vacía.
@@ -6557,10 +6750,11 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
         };
       }
 
-      // Derivar año/mes compra en español mayúsculas desde fecha de emisión
-      const fechaDate = fecha ? new Date(fecha) : null;
-      const anoCompra = fechaDate && !isNaN(fechaDate.getTime()) ? fechaDate.getFullYear() : null;
-      const mesCompra = fechaDate && !isNaN(fechaDate.getTime()) ? MESES_ES[fechaDate.getMonth()] : null;
+      // Derivar año/mes compra en español mayúsculas desde fecha de emisión.
+      // Parsing manual para evitar TZ bug (ver mismo fix en venta_sf).
+      const fechaMatchCompra = fecha.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      const anoCompra = fechaMatchCompra ? Number(fechaMatchCompra[1]) : null;
+      const mesCompra = fechaMatchCompra ? MESES_ES[Number(fechaMatchCompra[2]) - 1] : null;
       const ocAcFormateada = formatOcAc(ocAc);
 
       // Match & update si la OC ya fue registrada (inv_procesar_oc_qb antes).
@@ -6570,10 +6764,10 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       const cols = inv.config.columns_historico;
       const bodegaNorm = bodegaDestinoRaw ? normalizeBodega(inv, bodegaDestinoRaw) : null;
 
-      // Para evitar off-by-one en patchCell con sheet addresses, usamos la API
-      // de tabla "updateRange" por índice de fila dentro del table. Esto es
-      // más robusto que calcular abs = index + 2 porque Microsoft maneja la
-      // ubicación interna de la tabla.
+      // Resolución de columnas para preregByModelo (match OC+MODELO+SERIE vacía).
+      // Para escrituras usamos patchCell con `abs = tableRowIndex + historicoBodyStartRow`
+      // (ver fix 2026-10-06 off-by-one — AC Proyectos tiene header en row 2,
+      // data desde row 3; otros clientes típicamente header en row 1).
       const ocHeader     = cols.oc        ?? 'OC';
       const serieHeader  = cols.serie     ?? 'SERIE';
       const modeloHeader = cols.modelo    ?? 'MODELO';
@@ -6660,7 +6854,7 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
             setByLogic('usd',            eq.usd_unit);
             setByLogic('tc',             null);
             setByLogic('costo_mx',       null);
-            setByLogic('estatus',        'ASIGNAR');
+            setByLogic('estatus',        'PEDIDO');  // Consistente con inv_procesar_oc_qb; 'ASIGNAR' no estaba en el enum.
             setByLogic('bodega',         'ASIGNAR');
             setByLogic('vendedor',       '-');
             setByLogic('cliente',        '-');
@@ -6704,6 +6898,8 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       if (!a.pdf_url || typeof a.pdf_url !== 'string') {
         return { ok: false, error: 'pdf_url es requerido (URL del PDF BACKLOG adjunto al correo TRANE)', code: 'invalid_input' };
       }
+      // (Kill-switch removido 2026-10-06 tras refactor del syncer para
+      // detectar columnas por header real en vez de asumir A-H fijo.)
       // Camila 2026-10-06: BACKLOG se actualiza SOLO miércoles y viernes.
       // TRANE manda el PDF varios días a la semana (lunes también); los demás
       // días quedan omitidos. Usar force=true para override manual explícito.
