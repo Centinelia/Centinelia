@@ -6468,6 +6468,15 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       const colL = (idx: number): string => { let s = ''; let n = idx; while (n >= 0) { s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26) - 1; } return s; };
       const tcLetter    = colL(tcIdx);
       const costoLetter = colL(costoIdx);
+      // Patrón Camila 2026-10-06: cuando equipo sigue en STOCK (sin venta),
+      // al escribir COSTO MX también se escribe UTILIDAD = COSTO MX como
+      // marcador. Al momento de la venta real, inv_procesar_factura_venta_sf
+      // sobrescribe UTILIDAD con precio_venta - costo_compra.
+      const utilidadHeader = cols.utilidad_mx;
+      const clienteHeader  = cols.cliente;
+      const utilidadIdx = utilidadHeader ? headers.indexOf(utilidadHeader) : -1;
+      const clienteIdx  = clienteHeader  ? headers.indexOf(clienteHeader)  : -1;
+      const utilidadLetter = utilidadIdx >= 0 ? colL(utilidadIdx) : null;
       const sheet = inv.config.sheets.historico.name;
 
       let updated = 0;
@@ -6483,6 +6492,11 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
           const abs = r.index + inv.historicoBodyStartRow;
           await GraphExcel.patchCell(inv.token, session, sheet, `${tcLetter}${abs}`,    tc);
           await GraphExcel.patchCell(inv.token, session, sheet, `${costoLetter}${abs}`, costoMx);
+          const clienteActual = clienteIdx >= 0 ? String(vals[clienteIdx] ?? '').trim().toUpperCase() : '';
+          const esStock = !clienteActual || clienteActual === 'STOCK' || clienteActual === '-';
+          if (esStock && utilidadLetter) {
+            await GraphExcel.patchCell(inv.token, session, sheet, `${utilidadLetter}${abs}`, costoMx);
+          }
           updated++;
           totalCostoMx += costoMx;
         }
