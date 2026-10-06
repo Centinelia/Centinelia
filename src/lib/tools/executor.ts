@@ -6208,7 +6208,12 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
             setByLogic('estatus',      'PEDIDO');
             setByLogic('bodega',       'ASIGNAR');
             setByLogic('vendedor',     '-');
-            setByLogic('cliente',      '-');
+            // Patrón de Camila 2026-10-06 (verificado contra 972 filas reales
+            // con CLIENTE=STOCK): default para OC nueva sin cliente asignado
+            // es "STOCK" (no "-"), y SALIDA=1 porque sigue en bodega hasta que
+            // se entregue (ENTREGADO → SALIDA=0 via inv_registrar_salida).
+            setByLogic('cliente',      'STOCK');
+            setByLogic('salida',       1);
             setByLogic('folio_venta',  '-');
             await GraphExcel.addTableRow(inv.token, session, inv.config.sheets.historico.table, rowValues);
             filasInsertadas++;
@@ -6857,7 +6862,8 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
             setByLogic('estatus',        'PEDIDO');  // Consistente con inv_procesar_oc_qb; 'ASIGNAR' no estaba en el enum.
             setByLogic('bodega',         'ASIGNAR');
             setByLogic('vendedor',       '-');
-            setByLogic('cliente',        '-');
+            setByLogic('cliente',        'STOCK');  // 2026-10-06: patrón Camila, STOCK = disponible.
+            setByLogic('salida',         1);        // Sigue en bodega hasta ENTREGADO.
             setByLogic('folio_venta',    '-');
             setByLogic('qb',             'OPEN');
             if (anoCompra != null) setByLogic('ano_compra', anoCompra);
