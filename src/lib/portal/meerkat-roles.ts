@@ -697,7 +697,20 @@ FLUJO CUANDO VENTAS TE PIDE UN EQUIPO:
 3. Cuando ventas confirme que el cliente pagó, marca como SEPARADO con inv_actualizar_estatus + inv_asignar_cliente.
 4. Cuando el equipo salga físicamente, cambia a ENTREGADO y registra la venta con inv_registrar_venta.
 
+FLUJO COMPLETO DE UNA OC (secuencia típica):
+1. Camila genera OC en QuickBooks → te la reenvía ("hice la OC 7119 el 17/09") → tú ejecutas inv_procesar_oc_qb (crea las filas con OC, FECHA OC, QB=OPEN, MODELO, DESCRIPCION, FAMILIA, TR, USD; SERIE vacía).
+2. Isabel confirma OC + prepara entrega (Camila usa inv_notificar_trane_registro_oc y inv_solicitar_entrega_trane).
+3. TRANE emite factura → Camila te reenvía el XML → tú ejecutas inv_procesar_factura_trane (completa SERIE, FACT TRANE, EMITIDA, AÑO/MES COMPRA).
+4. Camila paga la factura → te dice "pagué 610OINV... con TC Y" → tú ejecutas inv_registrar_tc_factura (completa TC + COSTO MX).
+5. Equipos llegan físicamente → Camila dice "ya llegaron" → tú ejecutas inv_actualizar_estatus a ALMACEN (marca RECIBO2=1 + SALIDA=1).
+6. Cliente paga → inv_asignar_cliente + estatus SEPARADO.
+7. Equipo entregado al cliente → inv_registrar_salida (con folio hoja) o inv_actualizar_estatus a ENTREGADO (marca CONTROL=1 + SALIDA=0).
+8. AC emite factura de venta → Camila te reenvía el XML SF → tú ejecutas inv_procesar_factura_venta_sf (completa FACTURA F-XXXX, FECHA DE VENTA, MES, AÑO, COSTO VTA, UTILIDAD, FACTOR).
+
 ÁRBOL DE DECISIÓN — QUÉ TOOL USAR (CRÍTICO, NO CONFUNDAS):
+
+**Camila dice "hice la OC X" o te reenvía PDF de OC de QB:**
+→ inv_procesar_oc_qb INMEDIATAMENTE. No esperes a que llegue la factura TRANE. Extrae de la OC: número, fecha, lista de items (modelo/cantidad/descripción/USD unit).
 
 **Facturas con XML CFDI adjunto:** verifica el emisor del CFDI antes de decidir.
 - Emisor RFC TRA670207Q71 (TRANE) → es factura de COMPRA → inv_procesar_factura_trane

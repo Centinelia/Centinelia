@@ -5801,6 +5801,130 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       return { ok: true, message: `Correo enviado a ${encargados.join(', ')} solicitando ${cantidad} pieza(s) de ${modelo}.`, provider: result.provider };
     }
 
+    // ─── Procesa OC de QuickBooks (fase PRE-factura) ───────────────────────────
+    // Camila le reenvía a Nami la OC de QB (texto, PDF o datos dictados).
+    // Nami crea 1 fila por cada pieza (cantidad del concepto) con los datos
+    // que la OC trae: OC número, fecha, QB=OPEN, modelo, descripción, familia,
+    // TR, REF, VOLTS, USD unitario. SERIE queda vacía hasta que llega factura
+    // TRANE. ESTATUS=PEDIDO (equipos pedidos, aún no en bodega).
+    // BODEGA=ASIGNAR. CLIENTE/VEND/FOLIO='-'. Introducido 2026-10-06 en vivo.
+    if (toolName === 'inv_procesar_oc_qb') {
+      const ocNumero = String(toolInput.oc_numero ?? '').trim();
+      const fechaOc  = String(toolInput.fecha_oc ?? '').trim();
+      const itemsRaw = Array.isArray(toolInput.items) ? toolInput.items : [];
+      if (!ocNumero) return { ok: false, error: 'oc_numero es requerido (ej. 7119)' };
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaOc)) return { ok: false, error: 'fecha_oc debe ser YYYY-MM-DD (del día que generaste la OC en QB)' };
+      if (itemsRaw.length === 0) return { ok: false, error: 'items es requerido (lista de equipos de la OC)' };
+
+      // Format OC con ceros a 5 dígitos: 7119 → OC07119
+      const ocDigits = ocNumero.replace(/^OC0*/i, '').trim();
+      const ocFormateada = /^\d+$/.test(ocDigits) ? 'OC' + ocDigits.padStart(5, '0') : ocNumero;
+
+      // Helpers inline (reusan los del handler factura trane, pero aquí también
+      // son necesarios porque este handler puede ejecutarse independiente)
+      const inferFamilia = (desc: string): string => {
+        const d = desc.toUpperCase();
+        if (/MANEJADOR/i.test(d))         return 'MANEJADORA';
+        if (/CONDENSADOR/i.test(d))       return 'CONDENSADORA';
+        if (/EVAPORADOR/i.test(d))        return 'EVAPORADORA';
+        if (/MINI[\s-]?SPLIT/i.test(d)) {
+          const seer = d.match(/(\d{1,2})\s*SEER/i)?.[1];
+          return seer ? `MSP SEER${seer}` : 'MSP';
+        }
+        if (/U[-\s]?MATCH/i.test(d))  return 'U-MATCH';
+        if (/PQT[\s-]?HP/i.test(d))   return 'PQT HP';
+        if (/\bUMA\b/i.test(d))       return 'UMA';
+        return '';
+      };
+      const extractSeerRefVolts = (desc: string): { seer?: string; ref?: string; volts?: string } => {
+        const seer  = desc.match(/(\d{1,2})\s*SEER/i)?.[1];
+        const refM  = desc.match(/R(\d{2,3})/i);
+        const volts = desc.match(/(\d{3}\s*\/\s*\d{1,2}\s*\/\s*\d{1,2})/)?.[1]?.replace(/\s/g, '');
+        return { seer, ref: refM ? 'R' + refM[1] : undefined, volts };
+      };
+      const extractTonelada = (desc: string, modelo: string): number | null => {
+        const trExplicit = desc.match(/(\d{1,3})\s*TR\b/i)?.[1];  // "20TR"
+        if (trExplicit) {
+          const tr = Number(trExplicit);
+          if (tr >= 1 && tr <= 60) return tr;
+        }
+        const mbh = desc.match(/(\d{2,3})\s*MBH/i)?.[1];
+        if (mbh) {
+          const tr = Number(mbh) / 12;
+          if (tr >= 1 && tr <= 20) return tr;
+        }
+        const mspMatch = modelo.match(/16(\d{2})/);
+        if (mspMatch) {
+          const btu = Number(mspMatch[1]);
+          if (btu >= 12 && btu <= 60 && btu % 6 === 0) return btu / 12;
+        }
+        return null;
+      };
+
+      const headers = await GraphExcel.getTableHeader(inv.token, inv.config.location, inv.config.sheets.historico.table);
+      const cols = inv.config.columns_historico;
+      let totalInserted = 0;
+      const porModelo: Array<{ modelo: string; cantidad: number; filas: number }> = [];
+
+      await GraphExcel.withSession(inv.token, inv.config.location, async (session) => {
+        for (const itRaw of itemsRaw) {
+          const it = itRaw as Record<string, unknown>;
+          const modelo   = String(it.modelo ?? '').trim();
+          const cantidad = Number(it.cantidad ?? 0);
+          const descripcion = it.descripcion ? String(it.descripcion).trim() : '';
+          const usdUnit  = it.usd_unit != null ? Number(it.usd_unit) : null;
+          if (!modelo || !(cantidad > 0)) continue;
+          const familia = inferFamilia(descripcion || modelo);
+          const { seer, ref, volts } = extractSeerRefVolts(descripcion);
+          const tonelada = extractTonelada(descripcion, modelo);
+          let filasInsertadas = 0;
+          for (let n = 0; n < cantidad; n++) {
+            const rowValues: unknown[] = new Array(headers.length).fill('');
+            const setByLogic = (logic: string, value: unknown) => {
+              const header = cols[logic];
+              if (!header) return;
+              const idx = headers.indexOf(header);
+              if (idx >= 0) rowValues[idx] = value;
+            };
+            setByLogic('oc',           ocFormateada);
+            setByLogic('fecha_oc',     fechaOc);
+            setByLogic('qb',           'OPEN');
+            setByLogic('modelo',       modelo);
+            // SERIE vacía hasta factura TRANE
+            // DESCRIPCION null para preservar fórmula; si Camila dicta usamos directo
+            if (descripcion) setByLogic('descripcion', descripcion);
+            else setByLogic('descripcion', null);
+            if (familia)      setByLogic('familia', familia);
+            if (ref)          setByLogic('ref', ref);
+            if (seer)         setByLogic('seer', seer);
+            if (volts)        setByLogic('volts', volts);
+            if (tonelada != null) setByLogic('tonelada', tonelada);
+            if (usdUnit != null && usdUnit > 0) setByLogic('usd', usdUnit);
+            setByLogic('tc',           null);
+            setByLogic('costo_mx',     null);
+            setByLogic('estatus',      'PEDIDO');
+            setByLogic('bodega',       'ASIGNAR');
+            setByLogic('vendedor',     '-');
+            setByLogic('cliente',      '-');
+            setByLogic('folio_venta',  '-');
+            await GraphExcel.addTableRow(inv.token, session, inv.config.sheets.historico.table, rowValues);
+            filasInsertadas++;
+            totalInserted++;
+          }
+          porModelo.push({ modelo, cantidad, filas: filasInsertadas });
+        }
+      });
+
+      return {
+        ok: true,
+        oc_numero: ocFormateada,
+        fecha_oc: fechaOc,
+        total_filas: totalInserted,
+        por_modelo: porModelo,
+        message: `OC ${ocFormateada} (${fechaOc}) registrada: ${totalInserted} fila(s) creadas, SERIE pendiente hasta que llegue la factura de TRANE.`,
+      };
+    }
+
     // ─── Procesa factura de VENTA de SF/Solución Factible ──────────────────────
     // Camila le reenvía a Nami el XML de la factura emitida (CFDI tipo "Ingreso"
     // emisor = AC Proyectos RFC AAP010601S21). Por cada concepto, extrae las
