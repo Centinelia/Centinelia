@@ -5528,7 +5528,7 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
         if (autoWrites.length > 0) {
           try {
             const headersArr = await GraphExcel.getTableHeader(ctx.token, ctx.config.location, ctx.config.sheets.historico.table);
-            const abs = result.table_row_index + 2;
+            const abs = result.table_row_index + ctx.historicoBodyStartRow;
             await GraphExcel.withSession(ctx.token, ctx.config.location, async session => {
               for (const w of autoWrites) {
                 const header = ctx.config.columns_historico[w.key];
@@ -5680,7 +5680,7 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
           if (controlLetter || salidaLetter) {
             await GraphExcel.withSession(ctx.token, ctx.config.location, async session => {
               for (const m of result.mutations) {
-                const abs = m.table_row_index + 2;
+                const abs = m.table_row_index + ctx.historicoBodyStartRow;
                 if (controlLetter) await GraphExcel.patchCell(ctx.token, session, ctx.config.sheets.historico.name, `${controlLetter}${abs}`, 1);
                 if (salidaLetter)  await GraphExcel.patchCell(ctx.token, session, ctx.config.sheets.historico.name, `${salidaLetter}${abs}`, 0);
                 sideEffectsApplied++;
@@ -5870,20 +5870,23 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       } catch { /* read falló; seguimos con regex */ }
       const resolveFamiliaFor = (modelo: string, desc: string): string => {
         const mKey = modelo.toUpperCase();
-        // 1. Catálogo explícito
+        // 1. Catálogo explícito (Camila lo entrenó)
         if (familiasCatalogo[mKey]) return familiasCatalogo[mKey];
-        // 2. Precedente del Excel: familia más común entre filas con mismo modelo
+        // 2. Si la descripción contiene MANEJADORA/CONDENSADORA/EVAPORADORA,
+        //    le gana al precedente (que puede estar contaminado por filas donde
+        //    tipearon UMA genérico para un equipo que claramente no lo es).
+        const d = desc.toUpperCase();
+        if (/MANEJADOR/i.test(d))         return 'MANEJADORA';
+        if (/CONDENSADOR/i.test(d))       return 'CONDENSADORA';
+        if (/EVAPORADOR/i.test(d))        return 'EVAPORADORA';
+        // 3. Precedente del Excel (señal más débil)
         const counts = familiasPorModelo.get(mKey);
         if (counts && counts.size > 0) {
           let best = ''; let bestN = 0;
           for (const [f, n] of counts) if (n > bestN) { best = f; bestN = n; }
           if (best) return best;
         }
-        // 3. Reglas regex sobre descripción
-        const d = desc.toUpperCase();
-        if (/MANEJADOR/i.test(d))         return 'MANEJADORA';
-        if (/CONDENSADOR/i.test(d))       return 'CONDENSADORA';
-        if (/EVAPORADOR/i.test(d))        return 'EVAPORADORA';
+        // 4. Heurísticas de descripción menos específicas
         if (/MINI[\s-]?SPLIT/i.test(d)) {
           const seer = d.match(/(\d{1,2})\s*SEER/i)?.[1];
           return seer ? `MSP SEER${seer}` : 'MSP';
@@ -5971,6 +5974,11 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
           porModelo.push({ modelo, cantidad, filas: filasInsertadas });
         }
       });
+
+      // Graph API propagación eventual: tras cerrar sesión las writes tardan
+      // 2-5s en ser visibles para reads externos (confirmado 2026-10-06).
+      // Esperamos para que inv_procesar_factura_trane siguiente vea las filas.
+      await new Promise(res => setTimeout(res, 4000));
 
       return {
         ok: true,
@@ -6077,7 +6085,7 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
         for (const v of ventas) {
           const hit = await findRowIndexBySerie(inv, v.serie);
           if (!hit) { results.push({ serie: v.serie, skipped: 'serie_not_found' }); continue; }
-          const abs = hit.tableRowIndex + 2;
+          const abs = hit.tableRowIndex + inv.historicoBodyStartRow;
           const costoCompraIdx = hit.headersMap[costoCompraHeader.toUpperCase()];
           const costoCompra = costoCompraIdx != null ? Number(hit.row[costoCompraIdx] ?? 0) : 0;
           const utilidad = costoCompra > 0 ? Math.round((v.precio_unitario - costoCompra) * 100) / 100 : null;
@@ -6134,7 +6142,6 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       if (!(tc > 0))  return { ok: false, error: 'tc debe ser un número > 0 (tipo de cambio del día que pagaste)' };
 
       const headers = await GraphExcel.getTableHeader(inv.token, inv.config.location, inv.config.sheets.historico.table);
-      const rows    = await GraphExcel.listTableRows(inv.token, inv.config.location, inv.config.sheets.historico.table);
       const cols = inv.config.columns_historico;
       const factHeader  = cols.folio_compra ?? 'FACT TRANE';
       const usdHeader   = cols.usd          ?? '$ USD';
@@ -6149,7 +6156,18 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       if (tcIdx < 0)    return { ok: false, error: `Falta columna "${tcHeader}" en el INVENTARIO.` };
       if (costoIdx < 0) return { ok: false, error: `Falta columna "${costoHeader}" en el INVENTARIO.` };
 
-      const matching = rows.filter(r => String(((r.values as unknown[])[factIdx]) ?? '').trim() === factTrane);
+      // Graph tiene propagación eventual (2-5s). Si inv_procesar_factura_trane
+      // acaba de correr, puede que solo 1 de N filas sea visible. Hacemos retry
+      // hasta estabilizar o max 3 intentos.
+      let matching: Awaited<ReturnType<typeof GraphExcel.listTableRows>> = [];
+      let lastCount = -1;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const rows = await GraphExcel.listTableRows(inv.token, inv.config.location, inv.config.sheets.historico.table);
+        matching = rows.filter(r => String(((r.values as unknown[])[factIdx]) ?? '').trim() === factTrane);
+        if (matching.length === lastCount && matching.length > 0) break;  // estabilizó
+        lastCount = matching.length;
+        if (attempt < 2) await new Promise(res => setTimeout(res, 3000));
+      }
       if (matching.length === 0) {
         return { ok: false, error: `No encontré filas con FACT TRANE = ${factTrane}. Verifica el folio.`, code: 'no_rows_match' };
       }
@@ -6169,7 +6187,7 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
           const usd  = Number(vals[usdIdx] ?? 0);
           if (!(usd > 0)) { skipped.push({ row: r.index, reason: 'USD inválido o 0' }); continue; }
           const costoMx = Math.round(usd * tc * 100) / 100;
-          const abs = r.index + 2;  // header + 1-based
+          const abs = r.index + inv.historicoBodyStartRow;
           await GraphExcel.patchCell(inv.token, session, sheet, `${tcLetter}${abs}`,    tc);
           await GraphExcel.patchCell(inv.token, session, sheet, `${costoLetter}${abs}`, costoMx);
           updated++;
@@ -6298,7 +6316,7 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       const colIdx = headers.indexOf(colHeader);
       if (colIdx < 0) return { ok: false, error: `Columna ${colHeader} no encontrada` };
       const colLetter = String.fromCharCode(65 + colIdx);
-      const excelRow = found.tableRowIndex + 2;
+      const excelRow = found.tableRowIndex + inv.historicoBodyStartRow;
       await GraphExcel.withSession(inv.token, inv.config.location, async (session) => {
         await GraphExcel.patchCell(inv.token, session, inv.config.sheets.historico.name, `${colLetter}${excelRow}`, bodegaNorm.canonical);
       });
@@ -6328,7 +6346,7 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
         for (const c of changes) {
           const found = await findRowIndexBySerie(inv, c.serie);
           if (!found) continue;
-          const excelRow = found.tableRowIndex + 2;
+          const excelRow = found.tableRowIndex + inv.historicoBodyStartRow;
           await GraphExcel.patchCell(inv.token, session, inv.config.sheets.historico.name, `${colLetter}${excelRow}`, c.to);
           applied++;
         }
@@ -6401,17 +6419,24 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       } catch { /* ignore */ }
       const inferFamilia = (desc: string, modelo = ''): string => {
         const mKey = modelo.toUpperCase();
+        // 1. Catálogo explícito (highest priority — Camila lo entrenó)
         if (mKey && familiasCatalogo[mKey]) return familiasCatalogo[mKey];
+        // 2. Si la descripción contiene términos obvios y fuertes (MANEJADORA,
+        //    CONDENSADORA, EVAPORADORA), le ganan al precedente histórico porque
+        //    el precedente puede estar contaminado por filas donde Camila
+        //    tipeó UMA genérico para un equipo que claramente no lo es.
+        const d = desc.toUpperCase();
+        if (/MANEJADOR/i.test(d))         return 'MANEJADORA';
+        if (/CONDENSAD/i.test(d))         return 'CONDENSADORA';
+        if (/EVAPORAD/i.test(d))          return 'EVAPORADORA';
+        // 3. Precedente del Excel (señal más débil)
         const counts = mKey ? familiasPorModeloMap.get(mKey) : undefined;
         if (counts && counts.size > 0) {
           let best = ''; let bestN = 0;
           for (const [f, n] of counts) if (n > bestN) { best = f; bestN = n; }
           if (best) return best;
         }
-        const d = desc.toUpperCase();
-        if (/MANEJADOR/i.test(d))         return 'MANEJADORA';
-        if (/CONDENSAD/i.test(d))         return 'CONDENSADORA';
-        if (/EVAPORAD/i.test(d))          return 'EVAPORADORA';
+        // 4. Heurísticas de descripción menos específicas
         if (/MINI[\s-]?SPLIT/i.test(d)) {
           const seer = d.match(/(\d{1,2})\s*SEER/i)?.[1];
           return seer ? `MSP SEER${seer}` : 'MSP';
@@ -6545,7 +6570,10 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       const cols = inv.config.columns_historico;
       const bodegaNorm = bodegaDestinoRaw ? normalizeBodega(inv, bodegaDestinoRaw) : null;
 
-      // Pre-carga de filas existentes con la OC pedida y SERIE vacía
+      // Para evitar off-by-one en patchCell con sheet addresses, usamos la API
+      // de tabla "updateRange" por índice de fila dentro del table. Esto es
+      // más robusto que calcular abs = index + 2 porque Microsoft maneja la
+      // ubicación interna de la tabla.
       const ocHeader     = cols.oc        ?? 'OC';
       const serieHeader  = cols.serie     ?? 'SERIE';
       const modeloHeader = cols.modelo    ?? 'MODELO';
@@ -6553,17 +6581,23 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       const serieIdx  = headers.indexOf(serieHeader);
       const modeloIdx = headers.indexOf(modeloHeader);
 
+      let updated = 0;
+      let inserted = 0;
+      const tableName = inv.config.sheets.historico.table;
+
+      // Precarga: busca filas pre-registradas (OC + MODELO + SERIE vacía) de UNA sola vez.
+      // Luego cada equipo .shift() del bucket por modelo (FIFO).
       type PreregRow = { tableRowIndex: number; modelo: string };
       const preregByModelo = new Map<string, PreregRow[]>();
       if (ocAcFormateada && ocIdx >= 0 && serieIdx >= 0 && modeloIdx >= 0) {
-        const existingRows = await GraphExcel.listTableRows(inv.token, inv.config.location, inv.config.sheets.historico.table);
+        const existingRows = await GraphExcel.listTableRows(inv.token, inv.config.location, tableName);
         const ocNorm = ocAcFormateada.toUpperCase();
         for (const r of existingRows) {
           const vals = r.values as unknown[];
           const ocCell = String(vals[ocIdx] ?? '').trim().toUpperCase();
           if (ocCell !== ocNorm) continue;
           const serieCell = String(vals[serieIdx] ?? '').trim();
-          if (serieCell && serieCell !== '-') continue;  // ya tiene serie, no es pre-registrada
+          if (serieCell && serieCell !== '-') continue;
           const modelo = String(vals[modeloIdx] ?? '').trim().toUpperCase();
           if (!modelo) continue;
           if (!preregByModelo.has(modelo)) preregByModelo.set(modelo, []);
@@ -6571,23 +6605,23 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
         }
       }
 
-      let updated = 0;
-      let inserted = 0;
-      const sheet = inv.config.sheets.historico.name;
-      const toLetter = (idx: number): string => { let s = ''; let n = idx; while (n >= 0) { s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26) - 1; } return s; };
-
       await GraphExcel.withSession(inv.token, inv.config.location, async (session) => {
         for (const eq of equipos) {
           const familia = inferFamilia(eq.descripcion, eq.modelo);
           const { seer, ref, volts } = extractSeerRefVolts(eq.descripcion);
           const tonelada = extractTonelada(eq.descripcion, eq.modelo);
           const modeloKey = eq.modelo.toUpperCase();
-          const available = preregByModelo.get(modeloKey) ?? [];
-          const matchRow  = available.shift();  // FIFO per modelo
 
-          if (matchRow) {
-            // UPDATE existing row: completar SERIE + datos de factura
-            const abs = matchRow.tableRowIndex + 2;
+          const bucket = preregByModelo.get(modeloKey) ?? [];
+          const matchRow = bucket.shift();
+          const matchRowIndex: number | null = matchRow ? matchRow.tableRowIndex : null;
+
+          if (matchRowIndex != null) {
+            // UPDATE existing row via patchCell por columna (partial update real).
+            // abs = tableRowIndex + body_start_row (varía por cliente: AC=3, resto=2).
+            const abs = matchRowIndex + inv.historicoBodyStartRow;
+            const sheet = inv.config.sheets.historico.name;
+            const toLetter = (idx: number): string => { let s = ''; let n = idx; while (n >= 0) { s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26) - 1; } return s; };
             const patchByLogic = async (logic: string, value: unknown) => {
               const header = cols[logic];
               if (!header) return;
@@ -6600,13 +6634,11 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
             await patchByLogic('fecha_compra', fecha);
             if (anoCompra != null) await patchByLogic('ano_compra', anoCompra);
             if (mesCompra)         await patchByLogic('mes_compra', mesCompra);
-            // Si la fila pre-registrada no tenía estos (ej. OC muy escueta), completamos:
             if (familia)           await patchByLogic('familia',  familia);
             if (ref)               await patchByLogic('ref',      ref);
             if (seer)              await patchByLogic('seer',     seer);
             if (volts)             await patchByLogic('volts',    volts);
             if (tonelada != null)  await patchByLogic('tonelada', tonelada);
-            // USD/EMITIDA/AÑO/MES COMPRA son de la factura, OC solo tenía USD unitario
             await patchByLogic('usd', eq.usd_unit);
             updated++;
           } else {
@@ -6648,6 +6680,12 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
         }
       });
 
+      // Graph API tiene propagación eventual: tras cerrar sesión las writes
+      // tardan 2-5s en ser visibles para reads externos (confirmed empirically
+      // 2026-10-06). Esperamos un pelín para que el siguiente paso (TC, etc.)
+      // vea las 4 filas, no 1.
+      await new Promise(res => setTimeout(res, 4000));
+
       return {
         ok: true, dry_run: false,
         resumen: { folio, fecha, tc, oc_ac: ocAc, emisor: 'TRANE' },
@@ -6662,12 +6700,32 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
     }
 
     if (toolName === 'inv_importar_backlog') {
-      const a = toolInput as { pdf_url: string; dry_run?: boolean; mode?: 'upsert' | 'replace' };
+      const a = toolInput as { pdf_url: string; dry_run?: boolean; mode?: 'upsert' | 'replace'; force?: boolean };
       if (!a.pdf_url || typeof a.pdf_url !== 'string') {
         return { ok: false, error: 'pdf_url es requerido (URL del PDF BACKLOG adjunto al correo TRANE)', code: 'invalid_input' };
       }
+      // Camila 2026-10-06: BACKLOG se actualiza SOLO miércoles y viernes.
+      // TRANE manda el PDF varios días a la semana (lunes también); los demás
+      // días quedan omitidos. Usar force=true para override manual explícito.
+      if (!a.force) {
+        const DIA_SEMANA_MX = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: 'America/Monterrey' }).format(new Date());
+        const esMiercolesOViernes = DIA_SEMANA_MX === 'Wed' || DIA_SEMANA_MX === 'Fri';
+        if (!esMiercolesOViernes) {
+          return {
+            ok: true,
+            skipped: true,
+            code: 'wrong_day_of_week',
+            dia_mx: DIA_SEMANA_MX,
+            message: `BACKLOG solo se actualiza miércoles y viernes (política Camila 2026-10-06). Hoy es ${DIA_SEMANA_MX} en MX, archivo este correo sin procesar. Si necesitas forzar, pide expresamente "procésalo ahora aunque no sea miércoles o viernes".`,
+          };
+        }
+      }
       const dryRun = a.dry_run !== false;  // default true
-      const mode   = a.mode === 'upsert' ? 'upsert' : 'replace';  // default replace
+      // Default UPSERT para evitar borrados silenciosos cuando Camila mantiene
+      // filas en el BACKLOG que no vienen en el PDF de TRANE (equipos de otro
+      // proveedor, notas internas, etc.). Solo usa replace cuando ella lo pida
+      // explícito ("borra las que ya no están", "limpia el BACKLOG completo").
+      const mode   = a.mode === 'replace' ? 'replace' : 'upsert';  // default upsert
 
       const { resolveInventoryContext } = await import('@/lib/inventory/adapter');
       const ctx = await resolveInventoryContext(portalEmail, supabase, agentId);

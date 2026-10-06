@@ -81,6 +81,15 @@ export const TOOL_POLICIES: Record<string, ToolPolicy> = {
   // meta-tools (delegación / consulta) — timeout largo, sin retry
   delegar_tarea:          { ...DEFAULT_POLICY, timeoutMs: 90_000 },
   consultar_agente:       { ...DEFAULT_POLICY, timeoutMs: 60_000 },
+
+  // inventario (Nami) — Excel SharePoint, N requests/row + Graph latency alto
+  inv_procesar_oc_qb:            { ...DEFAULT_POLICY, timeoutMs: 90_000 },
+  inv_procesar_factura_trane:    { ...DEFAULT_POLICY, timeoutMs: 90_000 },
+  inv_registrar_tc_factura:      { ...DEFAULT_POLICY, timeoutMs: 60_000 },
+  inv_procesar_factura_venta_sf: { ...DEFAULT_POLICY, timeoutMs: 60_000 },
+  inv_actualizar_estatus:        { ...DEFAULT_POLICY, timeoutMs: 60_000 },
+  inv_asignar_cliente:           { ...DEFAULT_POLICY, timeoutMs: 60_000 },
+  inv_registrar_salida:          { ...DEFAULT_POLICY, timeoutMs: 90_000 },
 };
 
 export function policyFor(toolName: string): ToolPolicy {

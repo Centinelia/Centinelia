@@ -201,6 +201,25 @@ export async function getTableHeader(
 }
 
 /**
+ * Devuelve el rowIndex (0-based en el sheet) y rowCount del dataBodyRange de
+ * la tabla. Útil para computar la fila absoluta del sheet a partir del índice
+ * de tabla. Para la mayoría de clientes rowIndex=1 (data desde row 2) pero AC
+ * Proyectos tiene rowIndex=2 (data desde row 3).
+ */
+export async function getTableDataBodyRange(
+  token: string,
+  loc: ExcelWorkbookLocation,
+  tableName: string,
+  sessionId?: string,
+): Promise<{ rowIndex: number; rowCount: number; address: string }> {
+  const data = await graphFetch(
+    `${itemPrefix(loc)}/workbook/tables/${encodeURIComponent(tableName)}/dataBodyRange?$select=address,rowIndex,rowCount`,
+    { method: 'GET', headers: headers(token, sessionId) },
+  ) as { address: string; rowIndex: number; rowCount: number };
+  return { rowIndex: data.rowIndex, rowCount: data.rowCount, address: data.address };
+}
+
+/**
  * Agrega una fila a la tabla. Graph replica las fórmulas de la columna al
  * insertar la fila — por eso los slots calculados van como null en `values`,
  * los llena Excel automáticamente.

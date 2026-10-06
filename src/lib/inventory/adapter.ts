@@ -67,6 +67,15 @@ export interface InventoryContext {
   portalEmail: string;
   token:       string;
   config:      InventoryExcelConfig;
+  /**
+   * Excel sheet row (1-based) where the historico data body starts.
+   * = dataBodyRange.rowIndex + 1
+   * Para `AC Proyectos`: header en row 2, data desde row 3 → = 3.
+   * Para la mayoría de clientes: header en row 1, data desde row 2 → = 2.
+   * Añadido 2026-10-06 porque AC tiene offset=3 y antes toda la codebase
+   * asumía 2, metiendo writes 1 fila arriba (off-by-one).
+   */
+  historicoBodyStartRow: number;
 }
 
 export type InventoryResolveError =
@@ -103,7 +112,20 @@ export async function resolveInventoryContext(
   const token = await resolveMicrosoftAccessToken(portalEmail, supabase, agentId);
   if ('error' in token) return token;
 
-  return { portalEmail, token: token.access_token, config };
+  // Determina el offset real de donde empiezan los datos en el sheet. Para AC
+  // Proyectos el header está en row 2 (data desde row 3). Para otros clientes
+  // típicamente row 1 (data desde row 2). Antes esto se asumía fijo = 2 lo
+  // que metía bugs off-by-one en AC. Fetch barato (<200ms) + cached en ctx.
+  let historicoBodyStartRow = 2;  // default razonable si falla
+  try {
+    const historico = config.sheets?.historico;
+    if (historico?.table) {
+      const body = await GraphExcel.getTableDataBodyRange(token.access_token, config.location, historico.table);
+      if (body?.rowIndex != null) historicoBodyStartRow = body.rowIndex + 1;
+    }
+  } catch { /* silent fallback a 2 */ }
+
+  return { portalEmail, token: token.access_token, config, historicoBodyStartRow };
 }
 
 /**
@@ -425,7 +447,7 @@ export async function patchEstatusBySerie(
 
   await GraphExcel.withSession(ctx.token, ctx.config.location, async session => {
     const sheet = ctx.config.sheets.historico.name;
-    const abs = hit.tableRowIndex + 2; // header row + 1-based
+    const abs = hit.tableRowIndex + ctx.historicoBodyStartRow;
     await GraphExcel.patchCell(ctx.token, session, sheet, `${cellLetter(estatusIdx)}${abs}`, estatus_nuevo);
   });
 
@@ -508,7 +530,7 @@ export async function patchClienteBySerie(
 
   await GraphExcel.withSession(ctx.token, ctx.config.location, async session => {
     const sheet = ctx.config.sheets.historico.name;
-    const abs = hit.tableRowIndex + 2;
+    const abs = hit.tableRowIndex + ctx.historicoBodyStartRow;
     await GraphExcel.patchCell(ctx.token, session, sheet, `${cellLetter(clienteIdx)}${abs}`, input.cliente_nombre);
     if (vendedorIdx != null && input.vendedor_codigo) {
       await GraphExcel.patchCell(ctx.token, session, sheet, `${cellLetter(vendedorIdx)}${abs}`, input.vendedor_codigo);
@@ -575,7 +597,7 @@ export async function patchVentaBySerie(
 
   const patched: string[] = [];
   const sheet = ctx.config.sheets.historico.name;
-  const abs = hit.tableRowIndex + 2;
+  const abs = hit.tableRowIndex + ctx.historicoBodyStartRow;
 
   await GraphExcel.withSession(ctx.token, ctx.config.location, async session => {
     await GraphExcel.patchCell(ctx.token, session, sheet, `${cellLetter(folioIdx)}${abs}`, input.folio_venta);
@@ -670,7 +692,7 @@ export async function patchSalidaBySeries(
       const patched: string[] = [];
       let conflictMsg: string | undefined;
 
-      const abs = hit.tableRowIndex + 2;
+      const abs = hit.tableRowIndex + ctx.historicoBodyStartRow;
 
       await GraphExcel.patchCell(ctx.token, session, sheet, `${cellLetter(estatusIdx)}${abs}`, 'ENTREGADO');
       after_row[estatusIdx] = 'ENTREGADO'; patched.push(col.estatus.toUpperCase());
