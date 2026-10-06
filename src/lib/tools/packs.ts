@@ -164,6 +164,7 @@ export const SKILL_PACKS: SkillPack[] = [
       'inv_reporte_utilidad', 'inv_procesar_factura_trane',
       'inv_notificar_trane_registro_oc', 'inv_solicitar_entrega_trane',
       'inv_registrar_tc_factura',
+      'inv_procesar_factura_venta_sf',
     ],
     source: 'organizations.inventory_excel_config',
     activeCheck: ctx => !!ctx.has_inventory_excel,

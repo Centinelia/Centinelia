@@ -5514,25 +5514,35 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       const extra_patched: string[] = [];
       if (result.ok && !result.no_op) {
         const nuevo = String(result.estatus_nuevo).toUpperCase();
-        const autoKey = nuevo === 'ALMACEN' ? 'recibo2' : nuevo === 'ENTREGADO' ? 'control' : null;
-        if (autoKey) {
-          const autoHeader = ctx.config.columns_historico[autoKey];
-          if (autoHeader) {
-            try {
-              const headersArr = await GraphExcel.getTableHeader(ctx.token, ctx.config.location, ctx.config.sheets.historico.table);
-              const idx = headersArr.indexOf(autoHeader);
-              if (idx >= 0) {
+        // Auto-fields por estatus:
+        //   ALMACEN: RECIBO2=1 (equipo llegó físicamente), SALIDA=1 (sigue en bodega)
+        //   ENTREGADO: CONTROL=1 (equipo entregado), SALIDA=0 (ya salió)
+        const autoWrites: Array<{ key: string; value: number }> = [];
+        if (nuevo === 'ALMACEN') {
+          autoWrites.push({ key: 'recibo2', value: 1 });
+          autoWrites.push({ key: 'salida',  value: 1 });
+        } else if (nuevo === 'ENTREGADO') {
+          autoWrites.push({ key: 'control', value: 1 });
+          autoWrites.push({ key: 'salida',  value: 0 });
+        }
+        if (autoWrites.length > 0) {
+          try {
+            const headersArr = await GraphExcel.getTableHeader(ctx.token, ctx.config.location, ctx.config.sheets.historico.table);
+            const abs = result.table_row_index + 2;
+            await GraphExcel.withSession(ctx.token, ctx.config.location, async session => {
+              for (const w of autoWrites) {
+                const header = ctx.config.columns_historico[w.key];
+                if (!header) continue;
+                const idx = headersArr.indexOf(header);
+                if (idx < 0) continue;
                 let colLetter = ''; let n = idx;
                 while (n >= 0) { colLetter = String.fromCharCode(65 + (n % 26)) + colLetter; n = Math.floor(n / 26) - 1; }
-                const abs = result.table_row_index + 2;
-                await GraphExcel.withSession(ctx.token, ctx.config.location, async session => {
-                  await GraphExcel.patchCell(ctx.token, session, ctx.config.sheets.historico.name, `${colLetter}${abs}`, 1);
-                });
-                extra_patched.push(autoHeader);
+                await GraphExcel.patchCell(ctx.token, session, ctx.config.sheets.historico.name, `${colLetter}${abs}`, w.value);
+                extra_patched.push(`${header}=${w.value}`);
               }
-            } catch (err) {
-              console.error('[inv_actualizar_estatus] side-effect', autoKey, 'falló:', err instanceof Error ? err.message : err);
-            }
+            });
+          } catch (err) {
+            console.error('[inv_actualizar_estatus] side-effects auto fallaron:', err instanceof Error ? err.message : err);
           }
         }
       }
@@ -5655,28 +5665,30 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
         });
         return { ok: false, error: result.message, code: result.code };
       }
-      // Side-effect 2026-10-06: cada serie entregada marca CONTROL=1
-      // (equipo entregado al cliente). Camila lo hacía a mano.
+      // Side-effect 2026-10-06: cada serie entregada marca CONTROL=1 y SALIDA=0
+      // (equipo entregado al cliente, ya no está en bodega). Camila lo hacía a mano.
       const controlHeaderName = ctx.config.columns_historico.control;
-      let controlApplied = 0;
-      if (controlHeaderName && result.mutations.length > 0) {
+      const salidaHeaderName  = ctx.config.columns_historico.salida;
+      let sideEffectsApplied = 0;
+      if ((controlHeaderName || salidaHeaderName) && result.mutations.length > 0) {
         try {
           const { GraphExcel } = await import('@/lib/inventory/adapter');
           const headersArr = await GraphExcel.getTableHeader(ctx.token, ctx.config.location, ctx.config.sheets.historico.table);
-          const controlIdx = headersArr.indexOf(controlHeaderName);
-          if (controlIdx >= 0) {
-            let colLetter = ''; let n = controlIdx;
-            while (n >= 0) { colLetter = String.fromCharCode(65 + (n % 26)) + colLetter; n = Math.floor(n / 26) - 1; }
+          const toLetter = (idx: number): string => { let s = ''; let n = idx; while (n >= 0) { s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26) - 1; } return s; };
+          const controlLetter = controlHeaderName ? (() => { const i = headersArr.indexOf(controlHeaderName); return i >= 0 ? toLetter(i) : null; })() : null;
+          const salidaLetter  = salidaHeaderName  ? (() => { const i = headersArr.indexOf(salidaHeaderName);  return i >= 0 ? toLetter(i) : null; })() : null;
+          if (controlLetter || salidaLetter) {
             await GraphExcel.withSession(ctx.token, ctx.config.location, async session => {
               for (const m of result.mutations) {
                 const abs = m.table_row_index + 2;
-                await GraphExcel.patchCell(ctx.token, session, ctx.config.sheets.historico.name, `${colLetter}${abs}`, 1);
-                controlApplied++;
+                if (controlLetter) await GraphExcel.patchCell(ctx.token, session, ctx.config.sheets.historico.name, `${controlLetter}${abs}`, 1);
+                if (salidaLetter)  await GraphExcel.patchCell(ctx.token, session, ctx.config.sheets.historico.name, `${salidaLetter}${abs}`, 0);
+                sideEffectsApplied++;
               }
             });
           }
         } catch (err) {
-          console.error('[inv_registrar_salida] side-effect CONTROL falló:', err instanceof Error ? err.message : err);
+          console.error('[inv_registrar_salida] side-effects CONTROL/SALIDA fallaron:', err instanceof Error ? err.message : err);
         }
       }
 
@@ -5690,7 +5702,7 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
           ops_charged: 1, success: true, error_code: null,
         });
       }
-      return { ...result, ok: true, control_applied: controlApplied };
+      return { ...result, ok: true, side_effects_applied: sideEffectsApplied };
     }
 
     // ── Herramientas de lectura (read handlers) ───────────────────────────────
@@ -5787,6 +5799,146 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       }, supabase);
       if (!result.ok) return { ok: false, error: result.error ?? 'Envío falló' };
       return { ok: true, message: `Correo enviado a ${encargados.join(', ')} solicitando ${cantidad} pieza(s) de ${modelo}.`, provider: result.provider };
+    }
+
+    // ─── Procesa factura de VENTA de SF/Solución Factible ──────────────────────
+    // Camila le reenvía a Nami el XML de la factura emitida (CFDI tipo "Ingreso"
+    // emisor = AC Proyectos RFC AAP010601S21). Por cada concepto, extrae las
+    // series y para cada serie encuentra la fila en INVENTARIO y rellena las 7
+    // columnas de venta (FACTURA, FECHA DE VENTA, MES, AÑO, COSTO VTA (MX),
+    // UTILIDAD (MX), FACTOR). Si CLIENTE = "-" lo sobrescribe con el receptor.
+    // Introducido 2026-10-06 en vivo con Camila.
+    if (toolName === 'inv_procesar_factura_venta_sf') {
+      const xml = String(toolInput.xml ?? '').trim();
+      if (!xml) return { ok: false, error: 'xml es requerido (contenido del CFDI emitido por SF/AC Proyectos)' };
+      const MESES_ES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+      const { XMLParser } = await import('fast-xml-parser');
+      const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '' });
+      let doc: Record<string, unknown>;
+      try { doc = parser.parse(xml); } catch (e) { return { ok: false, error: `XML inválido: ${e instanceof Error ? e.message : 'parse failed'}` }; }
+      const comprobante = (doc['cfdi:Comprobante'] ?? doc.Comprobante) as Record<string, unknown> | undefined;
+      if (!comprobante) return { ok: false, error: 'No es un CFDI válido (falta cfdi:Comprobante)' };
+
+      // Verificar emisor = AC Proyectos
+      const emisor = (comprobante['cfdi:Emisor'] ?? comprobante.Emisor) as Record<string, unknown> | undefined;
+      const emisorRfc = String(emisor?.Rfc ?? '').toUpperCase();
+      if (emisorRfc !== 'AAP010601S21') {
+        return { ok: false, error: `Emisor esperado AC Proyectos (AAP010601S21). Recibido: ${emisorRfc}. Esta tool solo procesa facturas de venta emitidas por AC.` };
+      }
+
+      // Receptor (cliente)
+      const receptor = (comprobante['cfdi:Receptor'] ?? comprobante.Receptor) as Record<string, unknown> | undefined;
+      const clienteNombre = String(receptor?.Nombre ?? '').trim() || null;
+
+      // Folio local: concat Serie + Folio → "F-23839A"
+      const serie_cfdi = String(comprobante.Serie ?? '').trim().toUpperCase().replace(/\s+/g, '');
+      const folio_cfdi = String(comprobante.Folio ?? '').trim().toUpperCase().replace(/\s+/g, '');
+      let facturaStr = `F-${folio_cfdi}${serie_cfdi}`;
+      if (!/^F-/.test(facturaStr)) facturaStr = `F-${facturaStr.replace(/^F/, '')}`;
+
+      // Fecha
+      const fechaStr = String(comprobante.Fecha ?? '').slice(0, 10);
+      const fechaDate = fechaStr ? new Date(fechaStr) : null;
+      const anoVenta = fechaDate && !isNaN(fechaDate.getTime()) ? fechaDate.getFullYear() : null;
+      const mesVenta = fechaDate && !isNaN(fechaDate.getTime()) ? MESES_ES[fechaDate.getMonth()] : null;
+
+      // Extraer series + precios
+      const conceptosRaw = (comprobante['cfdi:Conceptos'] ?? comprobante.Conceptos) as Record<string, unknown> | undefined;
+      const conceptoArr = conceptosRaw?.['cfdi:Concepto'] ?? conceptosRaw?.Concepto;
+      const conceptos = Array.isArray(conceptoArr) ? conceptoArr : conceptoArr ? [conceptoArr] : [];
+      if (conceptos.length === 0) return { ok: false, error: 'Factura sin conceptos' };
+      const SERIE_RE = /\b([0-9A-Z]{8,16}[A-Z])\b/g;
+
+      type SerieVenta = { serie: string; precio_unitario: number };
+      const ventas: SerieVenta[] = [];
+      for (const c of conceptos as Array<Record<string, unknown>>) {
+        const desc = String(c.Descripcion ?? '');
+        const precio = Number(c.ValorUnitario ?? 0);
+        const modelo = String(c.NoIdentificacion ?? '').trim();
+        const matches = [...desc.matchAll(SERIE_RE)].map(m => m[1]);
+        const series = [...new Set(matches)].filter(s => s !== modelo);
+        for (const s of series) {
+          if (precio > 0) ventas.push({ serie: s, precio_unitario: precio });
+        }
+      }
+      if (ventas.length === 0) return { ok: false, error: 'No encontré series en las descripciones del CFDI.' };
+
+      // Buscar fila por serie, leer COSTO MX actual, computar UTILIDAD/FACTOR
+      const { findRowIndexBySerie } = await import('@/lib/inventory/adapter');
+      const cols = inv.config.columns_historico;
+      const costoCompraHeader = cols.costo_mx ?? 'COSTO COMPRA (MX)';
+      const costoVtaHeader    = cols.costo_venta_mx;
+      const utilidadHeader    = cols.utilidad_mx;
+      const factorHeader      = cols.factor;
+      const facturaHeader     = cols.factura_venta;
+      const fechaVtaHeader    = cols.fecha_venta;
+      const mesVtaHeader      = cols.mes_venta;
+      const anoVtaHeader      = cols.ano_venta;
+      const clienteHeader     = cols.cliente;
+
+      type SerieResult = { serie: string; applied?: boolean; costo_mx?: number; utilidad?: number; factor?: number; skipped?: string };
+      const results: SerieResult[] = [];
+      let appliedCount = 0;
+
+      const headers = await GraphExcel.getTableHeader(inv.token, inv.config.location, inv.config.sheets.historico.table);
+      const toLetter = (idx: number): string => { let s = ''; let n = idx; while (n >= 0) { s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26) - 1; } return s; };
+      const letterFor = (header: string | undefined) => { if (!header) return null; const i = headers.indexOf(header); return i >= 0 ? toLetter(i) : null; };
+      const Lfactura = letterFor(facturaHeader);
+      const Lfecha   = letterFor(fechaVtaHeader);
+      const Lmes     = letterFor(mesVtaHeader);
+      const Lano     = letterFor(anoVtaHeader);
+      const Lcostovta = letterFor(costoVtaHeader);
+      const Lutilidad = letterFor(utilidadHeader);
+      const Lfactor  = letterFor(factorHeader);
+      const Lcliente = letterFor(clienteHeader);
+
+      await GraphExcel.withSession(inv.token, inv.config.location, async (session) => {
+        for (const v of ventas) {
+          const hit = await findRowIndexBySerie(inv, v.serie);
+          if (!hit) { results.push({ serie: v.serie, skipped: 'serie_not_found' }); continue; }
+          const abs = hit.tableRowIndex + 2;
+          const costoCompraIdx = hit.headersMap[costoCompraHeader.toUpperCase()];
+          const costoCompra = costoCompraIdx != null ? Number(hit.row[costoCompraIdx] ?? 0) : 0;
+          const utilidad = costoCompra > 0 ? Math.round((v.precio_unitario - costoCompra) * 100) / 100 : null;
+          const factor   = costoCompra > 0 ? Math.round((v.precio_unitario / costoCompra) * 10000) / 10000 : null;
+          const sheet = inv.config.sheets.historico.name;
+          if (Lfactura)  await GraphExcel.patchCell(inv.token, session, sheet, `${Lfactura}${abs}`,  facturaStr);
+          if (Lfecha)    await GraphExcel.patchCell(inv.token, session, sheet, `${Lfecha}${abs}`,    fechaStr);
+          if (Lmes && mesVenta)  await GraphExcel.patchCell(inv.token, session, sheet, `${Lmes}${abs}`,  mesVenta);
+          if (Lano && anoVenta != null) await GraphExcel.patchCell(inv.token, session, sheet, `${Lano}${abs}`,  anoVenta);
+          if (Lcostovta) await GraphExcel.patchCell(inv.token, session, sheet, `${Lcostovta}${abs}`, v.precio_unitario);
+          if (Lutilidad && utilidad != null) await GraphExcel.patchCell(inv.token, session, sheet, `${Lutilidad}${abs}`, utilidad);
+          if (Lfactor && factor != null)     await GraphExcel.patchCell(inv.token, session, sheet, `${Lfactor}${abs}`,   factor);
+          // CLIENTE: sobreescribir solo si está "-" o vacío
+          if (Lcliente && clienteHeader && clienteNombre) {
+            const clienteIdx = hit.headersMap[clienteHeader.toUpperCase()];
+            const current = clienteIdx != null ? String(hit.row[clienteIdx] ?? '').trim() : '';
+            if (!current || current === '-' || current.toUpperCase() === 'STOCK') {
+              await GraphExcel.patchCell(inv.token, session, sheet, `${Lcliente}${abs}`, clienteNombre);
+            }
+          }
+          results.push({ serie: v.serie, applied: true, costo_mx: costoCompra || undefined, utilidad: utilidad ?? undefined, factor: factor ?? undefined });
+          appliedCount++;
+        }
+      });
+
+      const sinCostoCompra = results.filter(r => r.applied && (r.costo_mx ?? 0) === 0).length;
+      const notFound = results.filter(r => r.skipped === 'serie_not_found').length;
+      return {
+        ok: true,
+        factura: facturaStr,
+        fecha_venta: fechaStr,
+        cliente: clienteNombre,
+        total_series_cfdi: ventas.length,
+        aplicados: appliedCount,
+        no_encontrados: notFound,
+        sin_costo_compra: sinCostoCompra,
+        resultados: results,
+        message: `Factura ${facturaStr} (${fechaStr}) procesada: ${appliedCount} serie(s) actualizada(s)` +
+                 (notFound ? `, ${notFound} no encontrada(s)` : '') +
+                 (sinCostoCompra ? `, ${sinCostoCompra} sin COSTO COMPRA (MX) → UTILIDAD/FACTOR en blanco` : '') +
+                 '.',
+      };
     }
 
     // ─── TC + COSTO MX de una factura (cuando Camila paga) ─────────────────────
@@ -6212,6 +6364,10 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
           // u otras bodegas emergentes).
           setByLogic('estatus',        'ASIGNAR');
           setByLogic('bodega',         'ASIGNAR');
+          // VEND/CLIENTE/FOLIO default '-' hasta que Camila dicte (2026-10-06)
+          setByLogic('vendedor',       '-');
+          setByLogic('cliente',        '-');
+          setByLogic('folio_venta',    '-');
           // Resto automático
           setByLogic('qb',             'OPEN');
           if (anoCompra != null) setByLogic('ano_compra', anoCompra);

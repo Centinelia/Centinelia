@@ -30,6 +30,11 @@ const EXTRA_COLS = {
   costo_mx:      'COSTO COMPRA (MX)',
   recibo2:       'RECIBO2',   // 2026-10-06: 1 cuando equipo llega físicamente (estatus → ALMACEN)
   control:       'CONTROL',   // 2026-10-06: 1 cuando equipo se entrega al cliente (estatus → ENTREGADO)
+  salida:        'SALIDA',    // 2026-10-06: 1 cuando ALMACEN (sigue en bodega), 0 cuando ENTREGADO (ya salió)
+  ano_venta:     'AÑO',       // 2026-10-06: año de la factura de venta
+  mes_venta:     'MES',       // 2026-10-06: mes español mayúsculas de la factura de venta
+  utilidad_mx:   'UTILIDAD (MX)',  // 2026-10-06: COSTO VTA (MX) - COSTO COMPRA (MX)
+  factor:        'FACTOR',    // 2026-10-06: COSTO VTA (MX) / COSTO COMPRA (MX)
 };
 
 const { data: org } = await sb.from('organizations')

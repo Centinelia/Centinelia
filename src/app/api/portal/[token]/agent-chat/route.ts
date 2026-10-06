@@ -1392,6 +1392,17 @@ const INV_PEDIR_REPOSICION_TOOL: Anthropic.Tool = {
     required: ['modelo', 'cantidad'],
   },
 };
+const INV_PROCESAR_FACTURA_VENTA_SF_TOOL: Anthropic.Tool = {
+  name: 'inv_procesar_factura_venta_sf',
+  description: 'Nami: procesa el XML de una factura de venta emitida por AC Proyectos (por Solución Factible). Por cada serie en los conceptos, encuentra la fila en INVENTARIO y rellena FACTURA (F-XXXXX), FECHA DE VENTA, MES, AÑO, COSTO VTA (MX), UTILIDAD (MX) y FACTOR. Úsala cuando Camila te mande "la factura de la venta".',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      xml: { type: 'string', description: 'Contenido crudo del XML CFDI de la factura emitida por AC Proyectos' },
+    },
+    required: ['xml'],
+  },
+};
 const INV_REGISTRAR_TC_FACTURA_TOOL: Anthropic.Tool = {
   name: 'inv_registrar_tc_factura',
   description: 'Nami: cuando Camila paga una factura TRANE, aplica el tipo de cambio del día del pago a TODAS las filas con ese FACT TRANE. Calcula COSTO MX = USD × TC por cada fila. Úsala cuando Camila diga "pagué la factura X con TC Y".',
@@ -1970,6 +1981,7 @@ export const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
   inv_notificar_trane_registro_oc: INV_NOTIFICAR_TRANE_REGISTRO_OC_TOOL,
   inv_solicitar_entrega_trane:     INV_SOLICITAR_ENTREGA_TRANE_TOOL,
   inv_registrar_tc_factura:        INV_REGISTRAR_TC_FACTURA_TOOL,
+  inv_procesar_factura_venta_sf:   INV_PROCESAR_FACTURA_VENTA_SF_TOOL,
   inv_agregar_equipo:        INV_AGREGAR_EQUIPO_TOOL,
   inv_actualizar_estatus:    INV_ACTUALIZAR_ESTATUS_TOOL,
   inv_asignar_cliente:       INV_ASIGNAR_CLIENTE_TOOL,

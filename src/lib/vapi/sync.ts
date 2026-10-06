@@ -296,7 +296,7 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
     'inv_agregar_equipo', 'inv_actualizar_estatus', 'inv_asignar_cliente',
     'inv_registrar_venta', 'inv_registrar_salida',
     'inv_notificar_trane_registro_oc', 'inv_solicitar_entrega_trane',
-    'inv_registrar_tc_factura',
+    'inv_registrar_tc_factura', 'inv_procesar_factura_venta_sf',
     'llamar_a', 'buscar_directorio', 'enviar_correo',
   ],
   // Nalú — analista de tesorería. Procesa statements bancarios, reconciliación,
@@ -827,6 +827,15 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
         },
       },
       server: server('exec/inv_notificar_trane_registro_oc'),
+    };
+    case 'inv_procesar_factura_venta_sf': return {
+      type: 'function',
+      function: {
+        name: 'inv_procesar_factura_venta_sf',
+        description: 'Nami: procesa XML CFDI de factura de venta de AC Proyectos y rellena FACTURA/FECHA/COSTO VTA/UTILIDAD/FACTOR por cada serie.',
+        parameters: { type: 'object', properties: { xml: { type: 'string', description: 'XML CFDI emitido por AC' } }, required: ['xml'] },
+      },
+      server: server('exec/inv_procesar_factura_venta_sf'),
     };
     case 'inv_registrar_tc_factura': return {
       type: 'function',
