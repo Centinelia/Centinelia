@@ -5916,6 +5916,55 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       const dryRun = toolInput.dry_run !== false;
       const bodegaDestinoRaw = toolInput.bodega ? String(toolInput.bodega) : null;
 
+      // Helpers para derivar campos adicionales que Camila lleva a mano hoy
+      // (introducidos 2026-10-06 en vivo con Camila per flujo detallado).
+      const MESES_ES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+      const formatOcAc = (oc: string | null): string => {
+        if (!oc) return '';
+        const digits = oc.replace(/^OC0*/i, '').trim();
+        if (!/^\d+$/.test(digits)) return oc.trim();
+        return 'OC' + digits.padStart(5, '0');   // OC06668 (2+5 chars)
+      };
+      const inferFamilia = (desc: string): string => {
+        const d = desc.toUpperCase();
+        if (/MINI[\s-]?SPLIT/i.test(d)) {
+          const seer = d.match(/(\d{1,2})\s*SEER/i)?.[1];
+          return seer ? `MSP SEER${seer}` : 'MSP';
+        }
+        if (/U[-\s]?MATCH/i.test(d))  return 'U-MATCH';
+        if (/PQT[\s-]?HP/i.test(d))   return 'PQT HP';
+        if (/\bUMA\b/i.test(d))       return 'UMA';
+        if (/CONDENSAD/i.test(d))     return 'CONDENSADORA';
+        if (/EVAPORAD/i.test(d))      return 'EVAPORADORA';
+        return '';
+      };
+      const extractSeerRefVolts = (desc: string): { seer?: string; ref?: string; volts?: string } => {
+        const seer  = desc.match(/(\d{1,2})\s*SEER/i)?.[1];
+        const refM  = desc.match(/R(\d{2,3})/i);
+        const volts = desc.match(/(\d{3}\s*\/\s*\d{2}\s*\/\s*\d)/)?.[1]?.replace(/\s/g, '');
+        return { seer, ref: refM ? 'R' + refM[1] : undefined, volts };
+      };
+      /**
+       * Toneladas (TR): regla de Camila 2026-10-06:
+       *   - Primero intentar en la descripción: "36MBH" → 36/12 = 3 TR
+       *   - Si no viene, usar el modelo MSP: patrón `16XX` donde XX son BTUs/1000.
+       *     Ej: 1636 → 3 TR, 1624 → 2, 1618 → 1.5, 1612 → 1
+       *   - Si no cuadra, dejar null (Camila lo pondrá a mano o lo pedimos aparte).
+       */
+      const extractTonelada = (desc: string, modelo: string): number | null => {
+        const mbh = desc.match(/(\d{2,3})\s*MBH/i)?.[1];
+        if (mbh) {
+          const tr = Number(mbh) / 12;
+          if (tr >= 1 && tr <= 20) return tr;
+        }
+        const mspMatch = modelo.match(/16(\d{2})/);
+        if (mspMatch) {
+          const btu = Number(mspMatch[1]);
+          if (btu >= 12 && btu <= 60 && btu % 6 === 0) return btu / 12;
+        }
+        return null;
+      };
+
       const { XMLParser } = await import('fast-xml-parser');
       const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '' });
       let doc: Record<string, unknown>;
@@ -5994,6 +6043,12 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
         };
       }
 
+      // Derivar año/mes compra en español mayúsculas desde fecha de emisión
+      const fechaDate = fecha ? new Date(fecha) : null;
+      const anoCompra = fechaDate && !isNaN(fechaDate.getTime()) ? fechaDate.getFullYear() : null;
+      const mesCompra = fechaDate && !isNaN(fechaDate.getTime()) ? MESES_ES[fechaDate.getMonth()] : null;
+      const ocAcFormateada = formatOcAc(ocAc);
+
       // Escritura real: 1 addTableRow por serie, todo en una session Graph.
       const headers = await GraphExcel.getTableHeader(inv.token, inv.config.location, inv.config.sheets.historico.table);
       const cols = inv.config.columns_historico;
@@ -6008,15 +6063,28 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
             const idx = headers.indexOf(header);
             if (idx >= 0) rowValues[idx] = value;
           };
-          if (ocAc)          setByLogic('oc', ocAc);
-          setByLogic('modelo',        eq.modelo);
-          setByLogic('serie',         eq.serie);
+          const familia = inferFamilia(eq.descripcion);
+          const { seer, ref, volts } = extractSeerRefVolts(eq.descripcion);
+          const tonelada = extractTonelada(eq.descripcion, eq.modelo);
+          if (ocAcFormateada) setByLogic('oc', ocAcFormateada);
+          setByLogic('modelo',         eq.modelo);
+          setByLogic('serie',          eq.serie);
+          setByLogic('descripcion',    eq.descripcion.slice(0, 200));
           setByLogic('folio_compra',   folio);
           setByLogic('fecha_compra',   fecha);
-          setByLogic('usd',           eq.usd_unit);
-          setByLogic('tc',            tc);
-          setByLogic('costo_mx',      eq.costo_mx_unit);
-          setByLogic('estatus',       'PENDIENTE');
+          setByLogic('usd',            eq.usd_unit);
+          setByLogic('tc',             tc);
+          setByLogic('costo_mx',       eq.costo_mx_unit);
+          setByLogic('estatus',        'PENDIENTE');
+          // Nuevos 2026-10-06 (flow detallado Camila)
+          setByLogic('qb',             'OPEN');
+          if (anoCompra != null) setByLogic('ano_compra', anoCompra);
+          if (mesCompra)         setByLogic('mes_compra', mesCompra);
+          if (familia)           setByLogic('familia',    familia);
+          if (ref)               setByLogic('ref',        ref);
+          if (seer)              setByLogic('seer',       seer);
+          if (volts)             setByLogic('volts',      volts);
+          if (tonelada != null)  setByLogic('tonelada',   tonelada);
           if (bodegaNorm) setByLogic('bodega', bodegaNorm.canonical);
           await GraphExcel.addTableRow(inv.token, session, inv.config.sheets.historico.table, rowValues);
           inserted++;
