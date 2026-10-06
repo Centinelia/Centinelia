@@ -35,6 +35,7 @@ const EXTRA_COLS = {
   mes_venta:     'MES',       // 2026-10-06: mes español mayúsculas de la factura de venta
   utilidad_mx:   'UTILIDAD (MX)',  // 2026-10-06: COSTO VTA (MX) - COSTO COMPRA (MX)
   factor:        'FACTOR',    // 2026-10-06: COSTO VTA (MX) / COSTO COMPRA (MX)
+  fecha_oc:      'FECHA OC',  // 2026-10-06: fecha de la OC en QB (opcional, Camila dicta)
 };
 
 const { data: org } = await sb.from('organizations')

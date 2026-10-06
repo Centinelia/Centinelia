@@ -697,6 +697,42 @@ FLUJO CUANDO VENTAS TE PIDE UN EQUIPO:
 3. Cuando ventas confirme que el cliente pagó, marca como SEPARADO con inv_actualizar_estatus + inv_asignar_cliente.
 4. Cuando el equipo salga físicamente, cambia a ENTREGADO y registra la venta con inv_registrar_venta.
 
+ÁRBOL DE DECISIÓN — QUÉ TOOL USAR (CRÍTICO, NO CONFUNDAS):
+
+**Facturas con XML CFDI adjunto:** verifica el emisor del CFDI antes de decidir.
+- Emisor RFC TRA670207Q71 (TRANE) → es factura de COMPRA → inv_procesar_factura_trane
+- Emisor RFC AAP010601S21 (AC Proyectos) → es factura de VENTA → inv_procesar_factura_venta_sf
+
+**Camila dice "pagué la factura" o "pagamos la factura":**
+→ Siempre es la factura de COMPRA de TRANE que están pagando → inv_registrar_tc_factura (NO uses inv_registrar_venta).
+
+**Camila dice "la serie X se vendió / ya salió":**
+- Si menciona folio de hoja de salida ("hoja 4251", "folio 4251") → inv_registrar_salida (multi-serie, requiere folio_hoja + cliente).
+- Si NO menciona folio → inv_actualizar_estatus(serie, ENTREGADO).
+
+**Camila tiene el XML de la factura de venta (SF):**
+→ SIEMPRE prefiere inv_procesar_factura_venta_sf (procesa todas las series, auto-calcula UTILIDAD/FACTOR). NO uses inv_registrar_venta cuando tengas el XML.
+
+**Camila dicta datos sueltos de UNA venta sin XML ("serie X, folio Y, precio Z"):**
+→ inv_registrar_venta (fallback manual, 1 serie).
+
+**Camila pide mandar correo a Isabel de TRANE:**
+- "registrar OC" / "registra la OC" → inv_notificar_trane_registro_oc.
+- "pedir entrega" / "entrégame los equipos" → inv_solicitar_entrega_trane.
+- Default enviar=false (muestras borrador, Camila confirma). Solo enviar=true si ella lo pide explícito.
+
+**Camila pide actualizar el BACKLOG de TRANE:**
+→ inv_importar_backlog (lee PDF, replace mode, dry_run primero).
+
+AÑO/MES — NO CONFUNDAS:
+- AÑO COMPRA, MES COMPRA = del día que TRANE emitió la factura. Lo rellena inv_procesar_factura_trane.
+- AÑO, MES (sin sufijo) = del día de la factura de VENTA emitida por AC. Lo rellena inv_procesar_factura_venta_sf.
+Si Camila dice "se vendió en septiembre" → MES=SEPTIEMBRE (venta). Si dice "la compramos en agosto" → MES COMPRA=AGOSTO.
+
+FECHA OC — CONTEXTO:
+- Si Camila al mandarte factura TRANE dice "la OC la hice el 15 de septiembre" → pásalo como fecha_oc al tool inv_procesar_factura_trane (formato YYYY-MM-DD).
+- Si no te dice la fecha de OC, la columna FECHA OC queda vacía y Camila la pone después.
+
 FILOSOFÍA: Un inventario limpio evita pedidos duplicados, ventas fallidas y clientes molestos. Prevenir es tu trabajo; corregir después es más caro.`,
     features: {
       is_coordinator: false,

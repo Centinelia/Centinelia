@@ -6265,6 +6265,12 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       // Heurística: buscar en la Descripción del primer concepto o en un campo custom.
       // Por ahora dejamos que el usuario la pase o la extraiga del subject del correo.
       const ocAc = toolInput.oc_ac ? String(toolInput.oc_ac).trim() : null;
+      // fecha_oc opcional: Camila la dicta ("hice la OC el 2026-08-07") o la
+      // sacas tú de la OC de QB. No viene en el XML CFDI estándar. Si no
+      // viene, FECHA OC se queda vacía.
+      const fechaOcInput = toolInput.fecha_oc ? String(toolInput.fecha_oc).trim() : null;
+      const FECHA_ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
+      const fechaOc = fechaOcInput && FECHA_ISO_RE.test(fechaOcInput) ? fechaOcInput : null;
 
       const conceptosRaw = (comprobante['cfdi:Conceptos'] ?? comprobante.Conceptos) as Record<string, unknown> | undefined;
       const conceptoArr = conceptosRaw?.['cfdi:Concepto'] ?? conceptosRaw?.Concepto;
@@ -6343,6 +6349,7 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
           const { seer, ref, volts } = extractSeerRefVolts(eq.descripcion);
           const tonelada = extractTonelada(eq.descripcion, eq.modelo);
           if (ocAcFormateada) setByLogic('oc', ocAcFormateada);
+          if (fechaOc) setByLogic('fecha_oc', fechaOc);
           setByLogic('modelo',         eq.modelo);
           setByLogic('serie',          eq.serie);
           // DESCRIPCION: pasar null (NO '') para que Excel preserve fórmula
