@@ -1459,6 +1459,15 @@ const INV_CONSULTAR_BACKLOG_TOOL: Anthropic.Tool = {
     required: [],
   },
 };
+const REVISAR_MI_INBOX_AHORA_TOOL: Anthropic.Tool = {
+  name: 'revisar_mi_inbox_ahora',
+  description: 'Nami: dispara una revisión INMEDIATA de tu buzón IMAP sin esperar al cron (que corre cada 10 min). Úsala cuando Camila diga "ya te mandé un correo, léelo" / "revisa tu bandeja" / "acabo de reenviarte la OC" / "ya te mandé la factura TRANE". Procesa en segundos cualquier correo nuevo con la OC/factura/BACKLOG que acabe de llegar.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {},
+    required: [],
+  },
+};
 const INV_PROCESAR_OC_QB_TOOL: Anthropic.Tool = {
   name: 'inv_procesar_oc_qb',
   description: 'Nami: cuando Camila te reenvía o te dicta una OC de QuickBooks, crea en INVENTARIO una fila por cada pieza. Rellena OC (formato OC07119), FECHA OC, QB=OPEN, MODELO, DESCRIPCION, FAMILIA, TR, REF, SEER, VOLTS, USD (unitario). SERIE queda vacía (se llenará cuando llegue la factura TRANE). ESTATUS=PEDIDO, BODEGA=ASIGNAR. Úsala INMEDIATAMENTE cuando Camila diga "hice la OC X" o te reenvíe el PDF de la OC.',
@@ -2083,6 +2092,7 @@ export const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
   inv_buscar_por_fact_trane:       INV_BUSCAR_POR_FACT_TRANE_TOOL,
   inv_estado_general:              INV_ESTADO_GENERAL_TOOL,
   inv_consultar_backlog:           INV_CONSULTAR_BACKLOG_TOOL,
+  revisar_mi_inbox_ahora:          REVISAR_MI_INBOX_AHORA_TOOL,
   inv_agregar_equipo:        INV_AGREGAR_EQUIPO_TOOL,
   inv_actualizar_estatus:    INV_ACTUALIZAR_ESTATUS_TOOL,
   inv_asignar_cliente:       INV_ASIGNAR_CLIENTE_TOOL,
