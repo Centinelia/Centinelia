@@ -128,6 +128,7 @@ export const VOICE_TO_CHAT: Record<string, string | null> = {
   inv_reporte_utilidad:      'inv_reporte_utilidad',
   inv_notificar_trane_registro_oc: 'inv_notificar_trane_registro_oc',
   inv_solicitar_entrega_trane:     'inv_solicitar_entrega_trane',
+  inv_registrar_tc_factura:        'inv_registrar_tc_factura',
 
   // Navi social publishing (14 estandar + 2 agencia). Mismo nombre en los 3 canales.
   canva_listar_plantillas:           'canva_listar_plantillas',

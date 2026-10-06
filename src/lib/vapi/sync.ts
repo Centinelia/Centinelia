@@ -296,6 +296,7 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
     'inv_agregar_equipo', 'inv_actualizar_estatus', 'inv_asignar_cliente',
     'inv_registrar_venta', 'inv_registrar_salida',
     'inv_notificar_trane_registro_oc', 'inv_solicitar_entrega_trane',
+    'inv_registrar_tc_factura',
     'llamar_a', 'buscar_directorio', 'enviar_correo',
   ],
   // Nalú — analista de tesorería. Procesa statements bancarios, reconciliación,
@@ -826,6 +827,22 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
         },
       },
       server: server('exec/inv_notificar_trane_registro_oc'),
+    };
+    case 'inv_registrar_tc_factura': return {
+      type: 'function',
+      function: {
+        name: 'inv_registrar_tc_factura',
+        description: 'Nami: cuando Camila pague una factura TRANE, aplicar TC a todas las filas con ese FACT TRANE y calcular COSTO MX = USD × TC.',
+        parameters: {
+          type: 'object',
+          properties: {
+            fact_trane: { type: 'string', description: 'Folio de la factura TRANE que pagaste' },
+            tc:         { type: 'number', description: 'Tipo de cambio del día del pago' },
+          },
+          required: ['fact_trane', 'tc'],
+        },
+      },
+      server: server('exec/inv_registrar_tc_factura'),
     };
     case 'inv_solicitar_entrega_trane': return {
       type: 'function',

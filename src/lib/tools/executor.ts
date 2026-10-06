@@ -5498,7 +5498,7 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
 
     // ── inv_actualizar_estatus ────────────────────────────────────────────────
     if (toolName === 'inv_actualizar_estatus') {
-      const { resolveInventoryContext, patchEstatusBySerie, insertMutationLog } = await import('@/lib/inventory/adapter');
+      const { resolveInventoryContext, patchEstatusBySerie, insertMutationLog, GraphExcel } = await import('@/lib/inventory/adapter');
       const a = toolInput as { serie: string; nuevo_estatus: string; notas?: string };
       const ctx = await resolveInventoryContext(portalEmail, supabase, agentId);
       if ('error' in ctx) {
@@ -5506,12 +5506,43 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
         return { ok: false, error: ctx.message, code: ctx.error };
       }
       const result = await patchEstatusBySerie(ctx, a.serie, a.nuevo_estatus);
+
+      // Side-effect 2026-10-06: cuando el estatus pasa a ALMACEN se marca
+      // RECIBO2=1 (equipo llegó físicamente), cuando pasa a ENTREGADO se
+      // marca CONTROL=1 (equipo entregado al cliente). Camila lo pedía a
+      // mano hoy; ahora Nami lo hace solo.
+      const extra_patched: string[] = [];
+      if (result.ok && !result.no_op) {
+        const nuevo = String(result.estatus_nuevo).toUpperCase();
+        const autoKey = nuevo === 'ALMACEN' ? 'recibo2' : nuevo === 'ENTREGADO' ? 'control' : null;
+        if (autoKey) {
+          const autoHeader = ctx.config.columns_historico[autoKey];
+          if (autoHeader) {
+            try {
+              const headersArr = await GraphExcel.getTableHeader(ctx.token, ctx.config.location, ctx.config.sheets.historico.table);
+              const idx = headersArr.indexOf(autoHeader);
+              if (idx >= 0) {
+                let colLetter = ''; let n = idx;
+                while (n >= 0) { colLetter = String.fromCharCode(65 + (n % 26)) + colLetter; n = Math.floor(n / 26) - 1; }
+                const abs = result.table_row_index + 2;
+                await GraphExcel.withSession(ctx.token, ctx.config.location, async session => {
+                  await GraphExcel.patchCell(ctx.token, session, ctx.config.sheets.historico.name, `${colLetter}${abs}`, 1);
+                });
+                extra_patched.push(autoHeader);
+              }
+            } catch (err) {
+              console.error('[inv_actualizar_estatus] side-effect', autoKey, 'falló:', err instanceof Error ? err.message : err);
+            }
+          }
+        }
+      }
+
       await insertMutationLog(supabase, {
         portal_email: portalEmail, agent_id: agentId, tool_name: toolName,
         serie: a.serie, table_row_index: result.ok ? result.table_row_index : null,
         before_state: result.ok ? result.before_state : null,
         after_state:  result.ok ? result.after_state  : {},
-        patched_columns: result.ok ? result.patched_columns : [],
+        patched_columns: result.ok ? [...result.patched_columns, ...extra_patched] : [],
         metadata: a.notas ? { notas: a.notas } : null,
         ops_charged: 1, success: result.ok,
         error_code: result.ok ? null : result.code,
@@ -5523,7 +5554,8 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
         return { ok: true, no_op: true, message: `Serie ${result.serie} ya estaba en ${result.estatus_nuevo}, no toqué nada.` };
       }
       return { ok: true, serie: result.serie, estatus_anterior: result.estatus_anterior, estatus_nuevo: result.estatus_nuevo,
-        message: `Serie ${result.serie}: ${result.estatus_anterior} → ${result.estatus_nuevo}.` };
+        extra_patched,
+        message: `Serie ${result.serie}: ${result.estatus_anterior} → ${result.estatus_nuevo}.${extra_patched.length ? ` También marqué ${extra_patched.join(', ')}=1.` : ''}` };
     }
 
     // ── inv_asignar_cliente ───────────────────────────────────────────────────
@@ -5623,17 +5655,42 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
         });
         return { ok: false, error: result.message, code: result.code };
       }
+      // Side-effect 2026-10-06: cada serie entregada marca CONTROL=1
+      // (equipo entregado al cliente). Camila lo hacía a mano.
+      const controlHeaderName = ctx.config.columns_historico.control;
+      let controlApplied = 0;
+      if (controlHeaderName && result.mutations.length > 0) {
+        try {
+          const { GraphExcel } = await import('@/lib/inventory/adapter');
+          const headersArr = await GraphExcel.getTableHeader(ctx.token, ctx.config.location, ctx.config.sheets.historico.table);
+          const controlIdx = headersArr.indexOf(controlHeaderName);
+          if (controlIdx >= 0) {
+            let colLetter = ''; let n = controlIdx;
+            while (n >= 0) { colLetter = String.fromCharCode(65 + (n % 26)) + colLetter; n = Math.floor(n / 26) - 1; }
+            await GraphExcel.withSession(ctx.token, ctx.config.location, async session => {
+              for (const m of result.mutations) {
+                const abs = m.table_row_index + 2;
+                await GraphExcel.patchCell(ctx.token, session, ctx.config.sheets.historico.name, `${colLetter}${abs}`, 1);
+                controlApplied++;
+              }
+            });
+          }
+        } catch (err) {
+          console.error('[inv_registrar_salida] side-effect CONTROL falló:', err instanceof Error ? err.message : err);
+        }
+      }
+
       for (const m of result.mutations) {
         await insertMutationLog(supabase, {
           portal_email: portalEmail, agent_id: agentId, tool_name: toolName,
           serie: m.serie, table_row_index: m.table_row_index,
           before_state: m.before_state, after_state: m.after_state,
-          patched_columns: m.patched_columns,
+          patched_columns: controlHeaderName ? [...m.patched_columns, controlHeaderName] : m.patched_columns,
           metadata: { folio_hoja: a.folio_hoja, cliente: a.cliente_nombre, proyecto: a.proyecto ?? null, conflict: m.conflict ?? null },
           ops_charged: 1, success: true, error_code: null,
         });
       }
-      return { ...result, ok: true };
+      return { ...result, ok: true, control_applied: controlApplied };
     }
 
     // ── Herramientas de lectura (read handlers) ───────────────────────────────
@@ -5730,6 +5787,73 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       }, supabase);
       if (!result.ok) return { ok: false, error: result.error ?? 'Envío falló' };
       return { ok: true, message: `Correo enviado a ${encargados.join(', ')} solicitando ${cantidad} pieza(s) de ${modelo}.`, provider: result.provider };
+    }
+
+    // ─── TC + COSTO MX de una factura (cuando Camila paga) ─────────────────────
+    // Cuando Camila paga una factura TRANE le dice a Nami el TC del día del
+    // pago. Nami busca todas las filas con FACT TRANE = X, les escribe TC +
+    // calcula COSTO COMPRA (MX) = USD × TC. Introducido 2026-10-06 en vivo
+    // con Camila (cerrar loop con inv_procesar_factura_trane).
+    if (toolName === 'inv_registrar_tc_factura') {
+      const factTrane = String(toolInput.fact_trane ?? '').trim();
+      const tc        = Number(toolInput.tc ?? 0);
+      if (!factTrane) return { ok: false, error: 'fact_trane es requerido (folio de factura TRANE que pagaste)' };
+      if (!(tc > 0))  return { ok: false, error: 'tc debe ser un número > 0 (tipo de cambio del día que pagaste)' };
+
+      const headers = await GraphExcel.getTableHeader(inv.token, inv.config.location, inv.config.sheets.historico.table);
+      const rows    = await GraphExcel.listTableRows(inv.token, inv.config.location, inv.config.sheets.historico.table);
+      const cols = inv.config.columns_historico;
+      const factHeader  = cols.folio_compra ?? 'FACT TRANE';
+      const usdHeader   = cols.usd          ?? '$ USD';
+      const tcHeader    = cols.tc           ?? 'TC';
+      const costoHeader = cols.costo_mx     ?? 'COSTO COMPRA (MX)';
+      const factIdx  = headers.indexOf(factHeader);
+      const usdIdx   = headers.indexOf(usdHeader);
+      const tcIdx    = headers.indexOf(tcHeader);
+      const costoIdx = headers.indexOf(costoHeader);
+      if (factIdx < 0)  return { ok: false, error: `Falta columna "${factHeader}" en el INVENTARIO.` };
+      if (usdIdx < 0)   return { ok: false, error: `Falta columna "${usdHeader}" en el INVENTARIO.` };
+      if (tcIdx < 0)    return { ok: false, error: `Falta columna "${tcHeader}" en el INVENTARIO.` };
+      if (costoIdx < 0) return { ok: false, error: `Falta columna "${costoHeader}" en el INVENTARIO.` };
+
+      const matching = rows.filter(r => String(((r.values as unknown[])[factIdx]) ?? '').trim() === factTrane);
+      if (matching.length === 0) {
+        return { ok: false, error: `No encontré filas con FACT TRANE = ${factTrane}. Verifica el folio.`, code: 'no_rows_match' };
+      }
+
+      const colL = (idx: number): string => { let s = ''; let n = idx; while (n >= 0) { s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26) - 1; } return s; };
+      const tcLetter    = colL(tcIdx);
+      const costoLetter = colL(costoIdx);
+      const sheet = inv.config.sheets.historico.name;
+
+      let updated = 0;
+      let totalCostoMx = 0;
+      const skipped: Array<{ row: number; reason: string }> = [];
+
+      await GraphExcel.withSession(inv.token, inv.config.location, async (session) => {
+        for (const r of matching) {
+          const vals = r.values as unknown[];
+          const usd  = Number(vals[usdIdx] ?? 0);
+          if (!(usd > 0)) { skipped.push({ row: r.index, reason: 'USD inválido o 0' }); continue; }
+          const costoMx = Math.round(usd * tc * 100) / 100;
+          const abs = r.index + 2;  // header + 1-based
+          await GraphExcel.patchCell(inv.token, session, sheet, `${tcLetter}${abs}`,    tc);
+          await GraphExcel.patchCell(inv.token, session, sheet, `${costoLetter}${abs}`, costoMx);
+          updated++;
+          totalCostoMx += costoMx;
+        }
+      });
+
+      return {
+        ok: true,
+        fact_trane: factTrane,
+        tc,
+        updated_rows: updated,
+        costo_mx_total: Math.round(totalCostoMx * 100) / 100,
+        skipped_count: skipped.length,
+        skipped_muestra: skipped.slice(0, 5),
+        message: `Factura ${factTrane} actualizada: TC=${tc} aplicado a ${updated} fila(s), total COSTO MX $${(Math.round(totalCostoMx * 100) / 100).toLocaleString('es-MX')}.`,
+      };
     }
 
     // ─── TRANE outbound email tools (Nami envía a Isabel per Camila) ──────────

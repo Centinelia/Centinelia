@@ -28,6 +28,8 @@ const EXTRA_COLS = {
   usd:           '$ USD',
   tc:            'TC',
   costo_mx:      'COSTO COMPRA (MX)',
+  recibo2:       'RECIBO2',   // 2026-10-06: 1 cuando equipo llega físicamente (estatus → ALMACEN)
+  control:       'CONTROL',   // 2026-10-06: 1 cuando equipo se entrega al cliente (estatus → ENTREGADO)
 };
 
 const { data: org } = await sb.from('organizations')
