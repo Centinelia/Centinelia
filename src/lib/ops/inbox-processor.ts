@@ -1821,7 +1821,7 @@ ${attachments.map(a => {
 ${originalEmailBody ? '(Este email es una respuesta a una solicitud de información previa — el hilo completo está en el cuerpo)' : ''}
 
 CUERPO:
-${effectiveBody.slice(0, 3000)}
+${effectiveBody.slice(0, 30000)}
 ${invoiceInstructions}
 
 Produce JSON con:
