@@ -6523,69 +6523,75 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
     // Nami debe mostrar el borrador a Camila antes de confirmar envío.
     if (toolName === 'inv_notificar_trane_registro_oc' || toolName === 'inv_solicitar_entrega_trane') {
       const ocNumero = String(toolInput.oc_numero ?? '').trim();
-      if (!ocNumero) return { ok: false, error: 'oc_numero es requerido (el folio de la OC que generaste en QuickBooks)' };
+      if (!ocNumero) return { ok: false, error: 'oc_numero es requerido (el folio de la OC)' };
 
       const kind = toolName === 'inv_notificar_trane_registro_oc' ? 'registro_oc' : 'solicitar_entrega';
       const destinatarioOverride = toolInput.destinatario_email ? String(toolInput.destinatario_email).trim() : null;
       const destinatarioConfig   = inv.config.trane_contacts?.[kind] ?? null;
       const destinatario = destinatarioOverride ?? destinatarioConfig;
 
-      const nota = toolInput.nota ? String(toolInput.nota).trim() : null;
+      const nota            = toolInput.nota            ? String(toolInput.nota).trim()            : null;
+      const asuntoSufijo    = toolInput.asunto_sufijo   ? String(toolInput.asunto_sufijo).trim()   : null;
+      const attachmentUrl   = toolInput.attachment_url  ? String(toolInput.attachment_url).trim()  : null;
+      const attachmentB64   = toolInput.attachment_base64 ? String(toolInput.attachment_base64)    : null;
+      const attachmentName  = toolInput.attachment_filename ? String(toolInput.attachment_filename).trim() : `OC ${ocNumero}.pdf`;
       const enviar = toolInput.enviar === true;
 
-      let subject: string;
-      let html: string;
+      // Asunto estilo Camila 2026-10-06 (3 muestras reales): "NUEVA OC {X}"
+      // base + opcional "PARA ENTREGA {bodega/dir}" como sufijo.
+      const isRegistroOC = toolName === 'inv_notificar_trane_registro_oc';
+      const subjectBase  = isRegistroOC ? `NUEVA OC ${ocNumero}` : `SOLICITUD DE ENTREGA OC ${ocNumero}`;
+      const subject      = asuntoSufijo ? `${subjectBase} ${asuntoSufijo}` : subjectBase;
 
-      if (toolName === 'inv_notificar_trane_registro_oc') {
-        const itemsRaw = Array.isArray(toolInput.items) ? toolInput.items : [];
-        if (itemsRaw.length === 0) {
-          return { ok: false, error: 'items es requerido (lista de equipos con modelo y cantidad)' };
+      // Cuerpo informal tipo Camila. Firma del org embebida porque Microsoft
+      // Graph (ni Gmail OAuth) aplican firmas del cliente cuando mandamos
+      // directo via API.
+      const cuerpoDefault = isRegistroOC
+        ? `Te mando nueva OC ${ocNumero} para ingresar a backlog`
+        : `Te escribo para solicitar la entrega de la OC ${ocNumero}`;
+      const cuerpo = nota ?? cuerpoDefault;
+      const firma  = (inv.config as unknown as { email_signature_html?: string }).email_signature_html ?? '';
+      const html =
+        `<p>Hola isa,</p>` +
+        `<p>${cuerpo}</p>` +
+        `<p>Quedo pendiente${isRegistroOC ? '' : ' de la programación'}.</p>` +
+        `<p>Saludos</p>` +
+        firma;
+
+      // Attachment: priority base64 > URL
+      let attachment: { filename: string; content: Buffer; mimeType: string } | undefined;
+      const guessMime = (name: string) => /\.pdf$/i.test(name) ? 'application/pdf' : /\.xml$/i.test(name) ? 'application/xml' : 'application/octet-stream';
+      if (attachmentB64) {
+        try {
+          attachment = { filename: attachmentName, content: Buffer.from(attachmentB64, 'base64'), mimeType: guessMime(attachmentName) };
+        } catch (err) {
+          return { ok: false, error: `attachment_base64 inválido: ${err instanceof Error ? err.message : 'parse'}` };
         }
-        const items = itemsRaw.map((it, i) => {
-          const o = it as Record<string, unknown>;
-          const modelo   = String(o.modelo ?? '').trim();
-          const cantidad = Number(o.cantidad ?? 0);
-          const descripcion = o.descripcion ? String(o.descripcion).trim() : null;
-          if (!modelo || !(cantidad > 0)) {
-            throw new Error(`item ${i + 1} inválido: modelo y cantidad > 0 son requeridos`);
-          }
-          return { modelo, cantidad, descripcion };
-        });
-
-        subject = `Registrar OC ${ocNumero} - ${businessName ?? 'AC Proyectos'}`;
-        const itemsHtml = items.map(it =>
-          `<li><strong>${it.modelo}</strong>: ${it.cantidad} pieza(s)${it.descripcion ? ` - ${it.descripcion}` : ''}</li>`
-        ).join('');
-        html =
-          `<p>Hola Isabel,</p>` +
-          `<p>Les comparto nuestra orden de compra <strong>${ocNumero}</strong> para que la puedan registrar de su lado.</p>` +
-          `<p>Equipos solicitados:</p>` +
-          `<ul>${itemsHtml}</ul>` +
-          (nota ? `<p>${nota}</p>` : '') +
-          `<p>Quedo pendiente de la confirmación. Gracias.</p>` +
-          `<p>Saludos,<br>${agentName ?? 'Nami'}<br>${businessName ?? 'AC Proyectos'}</p>`;
-      } else {
-        const fechaRequerida = toolInput.fecha_requerida ? String(toolInput.fecha_requerida).trim() : null;
-        subject = `Solicitud de entrega OC ${ocNumero} - ${businessName ?? 'AC Proyectos'}`;
-        html =
-          `<p>Hola Isabel,</p>` +
-          `<p>Les escribo para solicitar la entrega de los equipos de nuestra orden de compra <strong>${ocNumero}</strong>.</p>` +
-          (fechaRequerida ? `<p>Fecha requerida: <strong>${fechaRequerida}</strong>.</p>` : '') +
-          (nota ? `<p>${nota}</p>` : '') +
-          `<p>Quedo pendiente de la programación. Gracias.</p>` +
-          `<p>Saludos,<br>${agentName ?? 'Nami'}<br>${businessName ?? 'AC Proyectos'}</p>`;
+      } else if (attachmentUrl) {
+        try {
+          const r = await fetch(attachmentUrl);
+          if (!r.ok) return { ok: false, error: `No pude descargar attachment: HTTP ${r.status}` };
+          attachment = { filename: attachmentName, content: Buffer.from(await r.arrayBuffer()), mimeType: guessMime(attachmentName) };
+        } catch (err) {
+          return { ok: false, error: `Fallo descarga attachment: ${err instanceof Error ? err.message : 'unknown'}` };
+        }
       }
 
       if (!enviar) {
         return {
           ok: true,
-          draft: { to: destinatario ?? '(falta destinatario)', subject, html },
-          hint: 'Muestra este borrador a quien te lo pidió. Si confirma, llámame de nuevo con enviar=true.',
+          draft: {
+            to: destinatario ?? '(falta destinatario)',
+            subject,
+            html,
+            attachment: attachment ? { filename: attachment.filename, size_bytes: attachment.content.length } : null,
+          },
+          hint: 'Muestra este borrador a Camila. Si confirma, llámame de nuevo con enviar=true.',
         };
       }
 
       if (!destinatario) {
-        return { ok: false, error: 'destinatario_email es requerido para enviar (y no hay trane_contacts configurado para esta org)' };
+        return { ok: false, error: 'destinatario_email es requerido para enviar (y no hay trane_contacts configurado)' };
       }
 
       const { sendMeerkatHtmlEmail } = await import('@/lib/email/send-as-agent');
@@ -6593,6 +6599,7 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
         agentId,
         to: destinatario,
         subject, html,
+        attachment,
         agent: {
           agent_name:    agentName,
           business_name: businessName,
@@ -6603,7 +6610,7 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       if (!result.ok) return { ok: false, error: result.error ?? 'Envío falló' };
       return {
         ok: true,
-        message: `Correo enviado a ${destinatario} sobre la OC ${ocNumero}.`,
+        message: `Correo enviado a ${destinatario} sobre la OC ${ocNumero}${attachment ? ` (con ${attachment.filename} adjunto)` : ''}.`,
         provider: result.provider,
         oc_numero: ocNumero,
       };
