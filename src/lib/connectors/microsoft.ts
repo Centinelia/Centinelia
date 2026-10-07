@@ -131,6 +131,25 @@ class MicrosoftEmail implements EmailConnector {
         { count: attachments.length, names: attachments.map(a => a.filename) },
       );
     }
+    // 2026-10-07: detecta HTML en el body (ej. firma con <img src=".../logo.png">)
+    // y lo manda como HTML en vez de texto plano. Sin esto el <img> aparecía
+    // como texto literal al cliente. Pattern: cualquier tag HTML común activa
+    // modo HTML. Si no hay tags, usamos `comment` (text/plain) como siempre.
+    const looksLikeHtml = /<(img|a|br|p|div|span|b|i|strong|em|table|ul|ol|li)[\s>/]/i.test(body);
+    if (looksLikeHtml) {
+      // Convertir newlines a <br> y envolver en HTML si no está ya
+      const htmlBody = /<html|<body/i.test(body)
+        ? body
+        : `<html><body>${body.replace(/\n/g, '<br>')}</body></html>`;
+      await fetch(`${GRAPH}/me/messages/${messageId}/reply`, {
+        method:  'POST',
+        headers: { ...this.h(), 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          message: { body: { contentType: 'HTML', content: htmlBody } },
+        }),
+      });
+      return;
+    }
     await fetch(`${GRAPH}/me/messages/${messageId}/reply`, {
       method:  'POST',
       headers: { ...this.h(), 'Content-Type': 'application/json' },

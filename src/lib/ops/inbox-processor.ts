@@ -1452,7 +1452,13 @@ export async function processInboxEmail(params: {
       const orgLegal   = (logoRow as { legal_name?: string | null } | null)?.legal_name ?? null;
       const orgDisplay = (logoRow as { name?: string | null } | null)?.name ?? businessName;
       const firmaRole  = agentRole?.trim() ? `Asistente de ${agentRole}` : 'Asistente digital';
-      const firmaLogoLine = orgLogo ? `[Logo: ${orgLogo}]\n` : '';
+      // 2026-10-07: logo como <img> HTML directo. El send connector detecta
+      // HTML tags en el body y lo manda como contentType HTML (ver
+      // microsoft.ts sendReply). Si el client renderiza como texto, al menos
+      // la URL es visible y clickeable.
+      const firmaLogoHtml = orgLogo
+        ? `<img src="${orgLogo}" alt="${orgDisplay}" width="180" style="display:block;margin:8px 0;" /><br>`
+        : '';
       const firmaContactLines: string[] = [];
       if (contactEmail)             firmaContactLines.push(`Correo: ${contactEmail}`);
       if (orgC?.brand_phone)        firmaContactLines.push(`Teléfono: ${orgC.brand_phone}`);
@@ -1464,11 +1470,11 @@ Saludos,
 ${agentName}
 ${firmaRole}
 ${orgDisplay}${orgLegal && orgLegal !== orgDisplay ? ` (${orgLegal})` : ''}
-${firmaLogoLine}${firmaContactLines.join('\n')}`.trim();
+${firmaLogoHtml}${firmaContactLines.join('\n')}`.trim();
 
       contextBlocks.push(`# FIRMA ESTÁNDAR — USA ESTE FORMATO EXACTO AL CERRAR CORREOS
 
-Al final de CADA draft que redactes, cierra con el siguiente bloque de firma. NO improvises variaciones ni lo acortes. Copia EXACTAMENTE:
+Al final de CADA draft que redactes, cierra con el siguiente bloque de firma. Copia LITERALMENTE incluyendo el tag <img> si está presente — el sistema de correo lo renderiza como imagen al enviar. NO improvises variaciones, NO lo acortes, NO cambies el tag <img> por un emoji o descripción.
 
 ${firmaTemplate}
 
@@ -1477,7 +1483,7 @@ Reglas duras de la firma:
 - El rol siempre es "${firmaRole}" (NO "Coordinadora de Almacén" ni ningún título humano).
 - La empresa, dirección, teléfono y correo son los REALES de la org — no inventes.
 - Si no tienes algún dato (ej. teléfono), omite esa línea del bloque, no inventes placeholder.
-- Si existe línea [Logo: URL], déjala tal cual — el sistema la convertirá en imagen al enviar.`);
+- Tag <img ... /> va literal — es la imagen del logo. Si lo omites o lo describes como texto ("[logo aquí]"), el correo saldrá sin logo.`);
     } catch { /* best-effort */ }
   }
 
