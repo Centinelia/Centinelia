@@ -1,0 +1,86 @@
+import { describe, it, expect } from 'vitest';
+import { extractSeerRefVolts, extractTonelada } from '../equipo-helpers';
+
+describe('extractSeerRefVolts — bugs reportados por Nazre en OC 6203 real (2026-10-07)', () => {
+  it('BUG FIX: SEER en formato "SEER19" (pegado antes del número)', () => {
+    const d = 'Evaporador High Wall Panel Cristal Inverter SEER19 1.5TR';
+    expect(extractSeerRefVolts(d).seer).toBe('19');
+  });
+
+  it('SEER en formato "19 SEER" (orden inverso, histórico)', () => {
+    expect(extractSeerRefVolts('EQUIPO 19 SEER R-410A 1.5TR').seer).toBe('19');
+  });
+
+  it('BUG FIX: REF no debe matchear "R19" dentro de "SEER19"', () => {
+    const d = 'Evaporador High Wall Panel Cristal Inverter SEER19 1.5TR';
+    expect(extractSeerRefVolts(d).ref).toBeUndefined();
+  });
+
+  it('REF sí matchea "R410" cuando viene separado', () => {
+    expect(extractSeerRefVolts('MINI SPLIT 1.5TR R410A').ref).toBe('R410');
+    expect(extractSeerRefVolts('CONDENSADORA R-410A SEER19').ref).toBe('R410');
+    expect(extractSeerRefVolts('EVAPORADOR R32 SEER22').ref).toBe('R32');
+  });
+
+  it('REF no matchea R19 solo pero SÍ matchea cualquier otro R separado', () => {
+    expect(extractSeerRefVolts('SEER19 1.5TR').ref).toBeUndefined();
+    expect(extractSeerRefVolts('SEER19 R410A 1.5TR').ref).toBe('R410');
+  });
+
+  it('VOLTS parse normal', () => {
+    expect(extractSeerRefVolts('Compresor 230/3/60 20TR').volts).toBe('230/3/60');
+    expect(extractSeerRefVolts('Trifásico 460/3/60 R410').volts).toBe('460/3/60');
+  });
+
+  it('Caso real OC 6203 — Evaporador 4MXW2318CF000AA', () => {
+    const d = 'Evaporador High Wall Panel Cristal Inverter SEER19 1.5TR';
+    const r = extractSeerRefVolts(d);
+    expect(r.seer).toBe('19');
+    expect(r.ref).toBeUndefined();  // No está en la descripción
+  });
+
+  it('Caso real OC 6203 — Condensador 4TXK2318CFP00AA', () => {
+    const d = 'Condensador Inverter SEER19 1.5TR Frío-Calor';
+    const r = extractSeerRefVolts(d);
+    expect(r.seer).toBe('19');
+    expect(r.ref).toBeUndefined();
+  });
+});
+
+describe('extractTonelada — bug 1.5TR reportado Nazre OC 6203', () => {
+  it('BUG FIX: "1.5TR" → 1.5 (antes extraía 5)', () => {
+    expect(extractTonelada('Evaporador 1.5TR', '4MXW2318CF000AA')).toBe(1.5);
+    expect(extractTonelada('Condensador Inverter SEER19 1.5TR Frío-Calor', '4TXK2318CFP00AA')).toBe(1.5);
+  });
+
+  it('"1,5TR" (coma decimal) → 1.5', () => {
+    expect(extractTonelada('EVAP 1,5TR', 'X')).toBe(1.5);
+  });
+
+  it('"2.5TR" → 2.5', () => {
+    expect(extractTonelada('MINI SPLIT 2.5TR', 'X')).toBe(2.5);
+  });
+
+  it('"20TR" → 20 (entero sin decimal, regresión)', () => {
+    expect(extractTonelada('MANEJADORA 20TR SEER12', 'X')).toBe(20);
+  });
+
+  it('MBH funciona sin cambio', () => {
+    expect(extractTonelada('EQUIPO 36MBH', 'X')).toBe(3);
+    expect(extractTonelada('UMA 60MBH SEER11', 'X')).toBe(5);
+  });
+
+  it('MSP del modelo funciona sin cambio', () => {
+    expect(extractTonelada('MINI SPLIT', '1612')).toBe(1);
+    expect(extractTonelada('MINI SPLIT', '1636')).toBe(3);
+  });
+
+  it('No match → null', () => {
+    expect(extractTonelada('Equipo genérico', 'X')).toBeNull();
+  });
+
+  it('Rechaza TR fuera de rango (0.5-60)', () => {
+    expect(extractTonelada('99TR', 'X')).toBeNull();
+    expect(extractTonelada('0TR', 'X')).toBeNull();
+  });
+});

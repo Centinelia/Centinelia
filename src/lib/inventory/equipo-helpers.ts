@@ -53,12 +53,22 @@ export function inferFamilia(
 /**
  * Extrae SEER, REF (refrigerante) y VOLTS de la descripción del equipo.
  * El regex de volts tolera formatos "230/3/60", "230/03/60" (ambos con o sin
- * cero inicial en los dígitos del medio y final). Antes el handler de factura
- * TRANE era más estricto y rechazaba "230/3/60" que SÍ es un formato común.
+ * cero inicial en los dígitos del medio y final).
+ *
+ * 2026-10-07 bug fix (reportado por Nazre en OC 6203 real):
+ *   - SEER antes solo matcheaba "19 SEER" (orden inverso). Descripciones
+ *     Trane residencial usan "SEER19" (pegado). Ahora matchea ambos.
+ *   - REF matcheaba "R19" dentro de "SEER19" porque /R(\d{2,3})/ no tenía
+ *     word boundary. Ahora requiere separador antes de la R (start-of-string,
+ *     espacio, guion, coma, etc.) para evitar colisión con "SEER<n>".
  */
 export function extractSeerRefVolts(desc: string): { seer?: string; ref?: string; volts?: string } {
-  const seer  = desc.match(/(\d{1,2})\s*SEER/i)?.[1];
-  const refM  = desc.match(/R(\d{2,3})/i);
+  // SEER acepta ambos ordenes: "SEER19", "SEER 19", "19SEER", "19 SEER"
+  const seerMatch = desc.match(/(?:SEER\s*(\d{1,2})|(\d{1,2})\s*SEER)/i);
+  const seer = seerMatch ? (seerMatch[1] || seerMatch[2]) : undefined;
+  // REF: refrigerante tipo R-410A, R410, R-32, R32. Requiere separador antes
+  // de la R para no capturar "R19" de "SEER19". Letra sufijo opcional (A/B).
+  const refM = desc.match(/(?:^|[\s\-,.;:(])R[-\s]?(\d{2,3})[A-Z]?\b/i);
   const volts = desc.match(/(\d{3}\s*\/\s*\d{1,2}\s*\/\s*\d{1,2})/)?.[1]?.replace(/\s/g, '');
   return { seer, ref: refM ? 'R' + refM[1] : undefined, volts };
 }
@@ -74,10 +84,14 @@ export function extractSeerRefVolts(desc: string): { seer?: string; ref?: string
  * dejaba TR vacío aunque la descripción claramente dijera "20TR".
  */
 export function extractTonelada(desc: string, modelo: string): number | null {
-  const trExplicit = desc.match(/(\d{1,3})\s*TR\b/i)?.[1];
+  // 2026-10-07 bug fix (reportado Nazre OC 6203 real): regex antes era
+  // /(\d{1,3})\s*TR\b/ que no soportaba decimales. Para "1.5TR" matcheaba
+  // solo "5TR" (ignorando "1.") y resultaba en TR=5. Fix: aceptar decimal
+  // con punto o coma. Residencial Trane trabaja con 1, 1.5, 2, 2.5, 3 TR.
+  const trExplicit = desc.match(/(\d+(?:[.,]\d+)?)\s*TR\b/i)?.[1];
   if (trExplicit) {
-    const tr = Number(trExplicit);
-    if (tr >= 1 && tr <= 60) return tr;
+    const tr = Number(trExplicit.replace(',', '.'));
+    if (tr >= 0.5 && tr <= 60) return tr;
   }
   const mbh = desc.match(/(\d{2,3})\s*MBH/i)?.[1];
   if (mbh) {
