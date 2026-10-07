@@ -2417,6 +2417,24 @@ CATEGORÍAS:
         const forcedToolName = i === 0
           ? detectForcedTool(emailSubject, effectiveBody, attachments, tools)
           : null;
+        // 2026-10-07: SDK tool_choice: {type:'tool'} NO está soportado por
+        // claude-sonnet-5-5 (extended thinking mode) → devuelve 400. Fallback:
+        // inyectar instrucción fuerte al final del user message en iter 0
+        // para que el modelo invoque la tool como primera acción. Combinado
+        // con safety net post-LLM, si el modelo no cumple, el draft se bloquea.
+        if (i === 0 && forcedToolName && messages.length > 0 && messages[0].role === 'user') {
+          const firstMsg = messages[0];
+          if (Array.isArray(firstMsg.content)) {
+            // El content ya es array de blocks (user prompt + attachments)
+            // Append un text block al final con la instrucción forzada
+            firstMsg.content.push({
+              type: 'text',
+              text: `\n\n[INSTRUCCIÓN CRÍTICA — ANTES DE RESPONDER]\n\nEste correo requiere que invoques la tool \`${forcedToolName}\` como PRIMERA ACCIÓN. No escribas draft, resumen ni json todavía. Invoca \`${forcedToolName}\` AHORA con los datos del correo (subject, body, attachments). Si la tool devuelve error, reporta el error exacto con el nombre literal de la tool — NO inventes razones alternas como "no está configurado" ni pidas re-configurar nada. La tool existe, está disponible, y debes ejecutarla.`,
+            });
+          } else if (typeof firstMsg.content === 'string') {
+            firstMsg.content = firstMsg.content + `\n\n[INSTRUCCIÓN CRÍTICA — ANTES DE RESPONDER]\n\nEste correo requiere que invoques la tool \`${forcedToolName}\` como PRIMERA ACCIÓN. No escribas draft, resumen ni json todavía. Invoca \`${forcedToolName}\` AHORA con los datos del correo. Si la tool devuelve error, reporta el error exacto con el nombre literal de la tool — NO inventes razones alternas.`;
+          }
+        }
         if (i === 0) {
           // Debug 2026-10-07: logear decisión al DB para poder leerla sin
           // acceso a Vercel runtime logs. Soluble con llm_call_log existente.
@@ -2441,13 +2459,16 @@ CATEGORÍAS:
 
         let response;
         try {
+          // tool_choice: {type:'tool'} daba 400 en claude-sonnet-5-5. Fallback:
+          // la instrucción se inyecta al user message del iter 0 (ver bloque
+          // arriba). Si en el futuro se cambia a Opus/otro modelo con soporte,
+          // reactivar tool_choice aquí.
           response = await anthropic.messages.create({
             model:      __ipM,
             max_tokens: 2048,
             system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
             messages,
             ...(tools.length && !isLastIter ? { tools } : {}),
-            ...(forcedToolName ? { tool_choice: { type: 'tool' as const, name: forcedToolName } } : {}),
           });
           void logLlmCall({ source: 'inbox_processor', model: __ipM, usage: response.usage, agentId, portalEmail, latencyMs: Date.now() - __ipT, meta: { iter: i } });
         } catch (err) {
