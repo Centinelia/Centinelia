@@ -164,6 +164,29 @@ class MicrosoftEmail implements EmailConnector {
       body:    JSON.stringify({ isRead: true }),
     });
   }
+
+  // 2026-10-07: descarga el binario de un attachment vía Graph API.
+  // Caso real OC 6203: Nami invocó inv_procesar_oc_qb pero devolvió "items es
+  // requerido" porque el PDF llegó como metadata sin content. attachment-reader
+  // (processIncomingAttachments) early-return cuando connector.fetchAttachment
+  // está undefined. Sin este método, Nami nunca puede extraer datos de PDFs.
+  // Endpoint Graph: GET /me/messages/{id}/attachments/{attId}/$value → raw bytes.
+  async fetchAttachment(messageId: string, attachmentId: string): Promise<Buffer | null> {
+    try {
+      const url = `${GRAPH}/me/messages/${encodeURIComponent(messageId)}/attachments/${encodeURIComponent(attachmentId)}/$value`;
+      const res = await fetch(url, { headers: this.h() });
+      if (!res.ok) {
+        await this.triggerAuthErrorIfNeeded(res, 'fetchAttachment');
+        console.warn('[microsoft/fetchAttachment] non-ok:', res.status, messageId, attachmentId);
+        return null;
+      }
+      const buf = await res.arrayBuffer();
+      return Buffer.from(buf);
+    } catch (err) {
+      console.error('[microsoft/fetchAttachment] error:', err);
+      return null;
+    }
+  }
 }
 
 // ── Files ─────────────────────────────────────────────────────────────────────
