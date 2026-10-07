@@ -616,7 +616,7 @@ export const TOOL_SCHEMAS: Record<string, ToolSchema> = {
       type: 'object' as const,
       properties: {
         folio_hoja:       { type: 'string', description: 'Folio del taco pre-impreso (ej. 4251).' },
-        cliente_nombre:   { type: 'string' },
+        cliente_nombre:   { type: 'string', description: 'Nombre comercial del cliente anotado en la hoja. Si NO puedes leerlo con certeza (ilegible, borrado, campo vacío), pasa "NO IDENTIFICADO" — el sistema esperará a la factura venta posterior para rellenar el nombre con la razón social del CFDI.' },
         vendedor_codigo:  { type: 'string' },
         fecha:            { type: 'string', description: 'YYYY-MM-DD. Default hoy si no se pasa.' },
         series:           { type: 'array', items: { type: 'string' }, description: 'Series de los equipos que salen juntos en esa hoja.', minItems: 1 },

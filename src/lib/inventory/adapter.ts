@@ -36,6 +36,7 @@
 import type { createAdminClient } from '@/lib/supabase/admin';
 import type { ExcelWorkbookLocation } from './graph-excel';
 import * as GraphExcel from './graph-excel';
+import { isClienteNoIdentificado } from './cliente-match';
 
 type SupabaseClient = ReturnType<typeof createAdminClient>;
 
@@ -757,14 +758,21 @@ export async function patchSalidaBySeries(
       await GraphExcel.patchCell(ctx.token, session, sheet, `${cellLetter(estatusIdx)}${abs}`, 'ENTREGADO');
       after_row[estatusIdx] = 'ENTREGADO'; patched.push(col.estatus.toUpperCase());
 
+      // 2026-10-07 Nazre: cuando Nami no puede leer el cliente de la hoja de
+      // salida (ilegible, vacío, "NO IDENTIFICADO"), que lo deje así y la
+      // factura venta posterior lo rellene con la razón social del CFDI.
+      // isClienteNoIdentificado detecta los marcadores que el LLM puede usar.
+      const inputClienteValido = !isClienteNoIdentificado(input.cliente_nombre);
       const currentCliente = String(hit.row[clienteIdx] ?? '').trim();
-      if (isClienteDisponible(currentCliente)) {
+      if (inputClienteValido && isClienteDisponible(currentCliente)) {
         await GraphExcel.patchCell(ctx.token, session, sheet, `${cellLetter(clienteIdx)}${abs}`, input.cliente_nombre);
         after_row[clienteIdx] = input.cliente_nombre; patched.push(col.cliente.toUpperCase());
-      } else if (currentCliente.toLowerCase() !== input.cliente_nombre.toLowerCase()) {
+      } else if (inputClienteValido && currentCliente.toLowerCase() !== input.cliente_nombre.toLowerCase()) {
         conflictMsg = `serie ${s} ya estaba asignada a "${currentCliente}" (no sobre-escribí)`;
         conflicts.push(conflictMsg);
       }
+      // Si !inputClienteValido: no tocamos CLIENTE. Queda como estaba. La
+      // factura venta posterior lo poblará desde el CFDI (ver patchVentaBySerie).
 
       if (vendedorIdx != null && input.vendedor_codigo) {
         const currentVend = String(hit.row[vendedorIdx] ?? '').trim();
@@ -789,7 +797,10 @@ export async function patchSalidaBySeries(
     }
   });
 
-  const message = `Hoja de salida ${input.folio_hoja} registrada: ${series_registradas.length} equipos entregados a ${input.cliente_nombre}.${series_not_found.length ? ` Series no encontradas: ${series_not_found.join(', ')}.` : ''}`;
+  const clienteParaMsg = isClienteNoIdentificado(input.cliente_nombre)
+    ? 'cliente pendiente de identificar (se llenará con la factura venta)'
+    : input.cliente_nombre;
+  const message = `Hoja de salida ${input.folio_hoja} registrada: ${series_registradas.length} equipos entregados a ${clienteParaMsg}.${series_not_found.length ? ` Series no encontradas: ${series_not_found.join(', ')}.` : ''}`;
   return { ok: true, folio_hoja: input.folio_hoja, series_registradas, series_not_found, conflicts, mutations, message };
 }
 

@@ -6439,8 +6439,16 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       const anoVtaHeader      = cols.ano_venta;
       const clienteHeader     = cols.cliente;
 
+      // 2026-10-07 Nazre: detectar discrepancia nombre comercial (hoja) vs
+      // razón social fiscal (CFDI). Si matchean (fuzzy) → ok. Si no → NO
+      // sobreescribir el CLIENTE (hoja gana) pero registrar la discrepancia
+      // para que Nami la mencione en el reply a Camila.
+      const { isClienteMatch } = await import('@/lib/inventory/cliente-match');
+
       type SerieResult = { serie: string; applied?: boolean; costo_mx?: number; utilidad?: number; factor?: number; skipped?: string };
+      type Discrepancia = { serie: string; cliente_hoja: string; cliente_cfdi: string };
       const results: SerieResult[] = [];
+      const discrepancias_cliente: Discrepancia[] = [];
       let appliedCount = 0;
 
       const headers = await GraphExcel.getTableHeader(inv.token, inv.config.location, inv.config.sheets.historico.table);
@@ -6472,12 +6480,19 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
           if (Lcostovta) await GraphExcel.patchCell(inv.token, session, sheet, `${Lcostovta}${abs}`, v.precio_unitario);
           if (Lutilidad && utilidad != null) await GraphExcel.patchCell(inv.token, session, sheet, `${Lutilidad}${abs}`, utilidad);
           if (Lfactor && factor != null)     await GraphExcel.patchCell(inv.token, session, sheet, `${Lfactor}${abs}`,   factor);
-          // CLIENTE: sobreescribir solo si está "-" o vacío
+          // CLIENTE: lógica de precedencia + alerta de discrepancia.
+          //   - Si vacío/"-"/"STOCK": escribir razón social del CFDI.
+          //   - Si tiene nombre comercial (de hoja de salida) y matchea (fuzzy)
+          //     con razón social → ok, no tocar.
+          //   - Si NO matchea → registrar discrepancia + mantener hoja (hoja gana).
           if (Lcliente && clienteHeader && clienteNombre) {
             const clienteIdx = hit.headersMap[clienteHeader.toUpperCase()];
             const current = clienteIdx != null ? String(hit.row[clienteIdx] ?? '').trim() : '';
-            if (!current || current === '-' || current.toUpperCase() === 'STOCK') {
+            const emptyCurrent = !current || current === '-' || current.toUpperCase() === 'STOCK';
+            if (emptyCurrent) {
               await GraphExcel.patchCell(inv.token, session, sheet, `${Lcliente}${abs}`, clienteNombre);
+            } else if (!isClienteMatch(current, clienteNombre)) {
+              discrepancias_cliente.push({ serie: v.serie, cliente_hoja: current, cliente_cfdi: clienteNombre });
             }
           }
           results.push({ serie: v.serie, applied: true, costo_mx: costoCompra || undefined, utilidad: utilidad ?? undefined, factor: factor ?? undefined });
@@ -6508,7 +6523,10 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
             sin_costo_compra:   sinCostoCompra,
           },
           patched_columns: ['factura', 'fecha_venta', 'mes', 'ano', 'costo_vta', 'utilidad', 'factor', 'cliente'],
-          metadata:        { resultados_muestra: results.slice(0, 10) },
+          metadata:        {
+            resultados_muestra: results.slice(0, 10),
+            ...(discrepancias_cliente.length > 0 ? { discrepancias_cliente } : {}),
+          },
           ops_charged:     1,
           success:         appliedCount > 0,
           error_code:      appliedCount === 0 ? 'no_series_applied' : null,
@@ -6525,9 +6543,13 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
         no_encontrados: notFound,
         sin_costo_compra: sinCostoCompra,
         resultados: results,
+        discrepancias_cliente,
         message: `Factura ${facturaStr} (${fechaStr}) procesada: ${appliedCount} serie(s) actualizada(s)` +
                  (notFound ? `, ${notFound} no encontrada(s)` : '') +
                  (sinCostoCompra ? `, ${sinCostoCompra} sin COSTO COMPRA (MX) → UTILIDAD/FACTOR en blanco` : '') +
+                 (discrepancias_cliente.length
+                   ? `. ALERTA: ${discrepancias_cliente.length} serie(s) con cliente distinto en hoja vs CFDI — se mantuvo el nombre de la hoja. Revisa discrepancias_cliente[].`
+                   : '') +
                  '.',
       };
     }
