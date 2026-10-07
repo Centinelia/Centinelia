@@ -2592,7 +2592,7 @@ CATEGORÍAS:
       if (!result.draft && toolsInvokedOk.length > 0) {
         const forceDraftMsg: Anthropic.MessageParam = {
           role: 'user',
-          content: `Ya ejecutaste con éxito las herramientas: ${toolsInvokedOk.join(', ')}. Ahora REDACTA el reply a ${emailFrom || 'el remitente'} describiendo brevemente qué hiciste con el documento (modelos/series procesados, folios actualizados, resultado) o qué detalle requiere su atención. Firma como ${agentName}. Responde SOLO en JSON: {"category":"${result.category ?? 'otro'}","draft":"<texto del reply>"}`,
+          content: `Ya ejecutaste con éxito las herramientas: ${toolsInvokedOk.join(', ')}. Ahora REDACTA el reply a ${emailFrom || 'el remitente'} describiendo brevemente qué hiciste con el documento (modelos/series procesados, folios actualizados, resultado). Si cualquier tool_result arriba trae un campo "follow_up_hint" o "pending_*", INCORPÓRALO textualmente en el reply — son instrucciones específicas de qué pedirle al remitente para cerrar el loop. Firma como ${agentName}. Responde SOLO en JSON: {"category":"${result.category ?? 'otro'}","draft":"<texto del reply>"}`,
         };
         const forceDraftResp = await anthropic.messages.create({
           model:      'claude-sonnet-5-5',

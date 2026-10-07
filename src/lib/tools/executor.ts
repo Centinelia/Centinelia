@@ -7185,6 +7185,18 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
         });
       }
 
+      // 2026-10-07 Nazre: TC del CFDI es el de EMISIÓN (día que Trane emitió
+      // la factura). COSTO MX real = USD × TC_pago (día en que Camila paga,
+      // puede ser semanas después, TC distinto). Hasta que no sepamos el
+      // TC_pago, UTILIDAD/FACTOR no se pueden calcular. En lugar de dejar el
+      // pipeline silente, le damos a Nami un hint explícito para que SIEMPRE
+      // pregunte el TC en el mismo reply donde confirma el procesamiento.
+      //
+      // Flow esperado: Camila manda factura TRANE → Nami la procesa → Nami
+      // responde "Ya registré factura 265296: 2 series actualizadas con fecha
+      // de emisión 23-jun-2026. Para cerrar la utilidad falta el tipo de
+      // cambio del día en que pagues a Trane. ¿Me lo dices aquí cuando lo
+      // tengas, o lo pones directo en la columna TC del Excel?".
       return {
         ok: true, dry_run: false,
         resumen: { folio, fecha, tc, oc_ac: ocAc, emisor: 'TRANE' },
@@ -7192,9 +7204,12 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
         created_new: inserted,
         skipped_count: skipped.length,
         skipped_muestra: skipped.slice(0, 5),
+        pending_tc_payment:  true,
+        tc_emision_cfdi:     tc,
+        follow_up_hint:      `Avísale a quien envió el correo (en el mismo thread) que la factura ${folio} ya quedó registrada con las ${updated} series y su fecha de emisión, pero que para cerrar UTILIDAD/FACTOR falta el tipo de cambio del día del PAGO a Trane (distinto al TC de emisión ${tc}). Dile que puede responder a este correo con el TC cuando lo pague, o anotarlo directo en la columna TC del Excel.`,
         message: `Factura ${folio} procesada: ${updated} fila(s) actualizadas (match con OC ya registrada)` +
                  (inserted > 0 ? ` + ${inserted} fila(s) nuevas creadas (no había pre-registro)` : '') +
-                 '.',
+                 `. PENDIENTE: TC de pago (el ${tc} del CFDI es el de emisión; UTILIDAD/FACTOR se calculan con TC_pago).`,
       };
     }
 
