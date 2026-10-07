@@ -6218,13 +6218,18 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       // Helpers compartidos con inv_procesar_factura_trane en src/lib/inventory/equipo-helpers.ts
       const { inferFamilia, extractSeerRefVolts, extractTonelada } = await import('@/lib/inventory/equipo-helpers');
       const familiasCatalogo = ((inv.config as unknown as { familias_catalogo?: Record<string, string> }).familias_catalogo ?? {});
-      // Pre-fetch: contar familias por modelo en el INVENTARIO existente
+      // Pre-fetch: contar familias por modelo + recolectar SET de familias que
+      // SÍ existen en el Excel (para que inferFamilia no invente "EVAPORADORA"
+      // ni "CONDENSADORA" si esas familias no existen en el inventario real).
+      // Bug reportado por Nazre 2026-10-07 OC 6203 real.
       const familiasPorModelo = new Map<string, Map<string, number>>();
+      const familiasValidas = new Set<string>();
       try {
         const rowsAll = await listHistorico(inv);
         for (const r of rowsAll) {
           const m = String(r.values.modelo ?? '').trim().toUpperCase();
           const f = String(r.values.familia ?? '').trim().toUpperCase();
+          if (f) familiasValidas.add(f);
           if (!m || !f) continue;
           if (!familiasPorModelo.has(m)) familiasPorModelo.set(m, new Map());
           const inner = familiasPorModelo.get(m)!;
@@ -6232,7 +6237,7 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
         }
       } catch { /* read falló; seguimos con regex */ }
       const resolveFamiliaFor = (modelo: string, desc: string): string =>
-        inferFamilia(desc, modelo, familiasCatalogo, familiasPorModelo);
+        inferFamilia(desc, modelo, familiasCatalogo, familiasPorModelo, familiasValidas);
 
       const headers = await GraphExcel.getTableHeader(inv.token, inv.config.location, inv.config.sheets.historico.table);
       const cols = inv.config.columns_historico;
@@ -6768,11 +6773,13 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       const formatOcAc = (oc: string | null): string => formatOcAcHelper(oc) ?? (oc ?? '').trim();
       const familiasCatalogo = ((inv.config as unknown as { familias_catalogo?: Record<string, string> }).familias_catalogo ?? {});
       const familiasPorModeloMap = new Map<string, Map<string, number>>();
+      const familiasValidasFT = new Set<string>();
       try {
         const rowsAll = await listHistorico(inv);
         for (const r of rowsAll) {
           const m = String(r.values.modelo ?? '').trim().toUpperCase();
           const f = String(r.values.familia ?? '').trim().toUpperCase();
+          if (f) familiasValidasFT.add(f);
           if (!m || !f) continue;
           if (!familiasPorModeloMap.has(m)) familiasPorModeloMap.set(m, new Map());
           const inner = familiasPorModeloMap.get(m)!;
@@ -6780,7 +6787,7 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
         }
       } catch { /* ignore */ }
       const inferFamilia = (desc: string, modelo = ''): string =>
-        inferFamiliaFn(desc, modelo, familiasCatalogo, familiasPorModeloMap);
+        inferFamiliaFn(desc, modelo, familiasCatalogo, familiasPorModeloMap, familiasValidasFT);
 
       const { XMLParser } = await import('fast-xml-parser');
       const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '' });
