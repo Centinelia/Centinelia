@@ -2574,6 +2574,53 @@ CATEGORÍAS:
       const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
       result = validateProcessedEmail(parsed);
 
+      // 2026-10-07 Fix PARA SIEMPRE del "fallback_no_draft" (Nazre reportó
+      // que Nami invocaba inv_procesar_factura_trane / inv_registrar_salida
+      // exitosamente pero NO respondía al correo de Camila → sent_at NULL,
+      // ai_draft vacío, status pending con auto_mode_reason='fallback_no_draft').
+      //
+      // Causa raíz: después del tool_use el modelo a veces emite JSON vacío
+      // o `{"category":"X"}` sin draft, pensando que el procesamiento ya
+      // basta. Resultado: Camila manda factura → Nami la registra en Excel
+      // → silencio. Regla negocio Nazre: "Obviamente a la persona que le
+      // envia OCs, Facturas y Hojas de Salida le debe de contestar que todo
+      // bien o no, que hay un detalle con algún documento, etc".
+      //
+      // Fix: si al salir del loop hay tools exitosas Y draft vacío,
+      // forzamos UNA llamada final sin tools pidiendo resumen factual del
+      // trabajo hecho. Esto garantiza que CADA tool exitosa produzca reply.
+      if (!result.draft && toolsInvokedOk.length > 0) {
+        const forceDraftMsg: Anthropic.MessageParam = {
+          role: 'user',
+          content: `Ya ejecutaste con éxito las herramientas: ${toolsInvokedOk.join(', ')}. Ahora REDACTA el reply a ${emailFrom || 'el remitente'} describiendo brevemente qué hiciste con el documento (modelos/series procesados, folios actualizados, resultado) o qué detalle requiere su atención. Firma como ${agentName}. Responde SOLO en JSON: {"category":"${result.category ?? 'otro'}","draft":"<texto del reply>"}`,
+        };
+        const forceDraftResp = await anthropic.messages.create({
+          model:      'claude-sonnet-5-5',
+          max_tokens: 1500,
+          system:     [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
+          messages:   [...messages, forceDraftMsg],
+        });
+        const fdText = forceDraftResp.content.find(b => b.type === 'text');
+        if (fdText?.type === 'text') {
+          lastText = fdText.text.trim();
+          const fdMatch = lastText.match(/\{[\s\S]*\}/);
+          const fdParsed = fdMatch ? JSON.parse(fdMatch[0]) : {};
+          // Preservar category/needs_info/requestToSender del result original
+          // si la force-draft iter los omitió. Solo nos interesa agregar draft.
+          const merged = { ...result, ...fdParsed };
+          result = validateProcessedEmail(merged);
+          void logLlmCall({
+            source: 'inbox_processor_force_draft',
+            model:  'claude-sonnet-5-5',
+            usage:  { input_tokens: forceDraftResp.usage?.input_tokens ?? 0, output_tokens: forceDraftResp.usage?.output_tokens ?? 0 },
+            agentId,
+            portalEmail,
+            latencyMs: 0,
+            meta: { tools_invoked: toolsInvokedOk, draft_recovered: !!result.draft },
+          });
+        }
+      }
+
       // Safety net post-LLM: validar que el draft NO tenga hallucinations
       // observadas en producción (Google Sheets, "no configurado", mentiras
       // sobre tool invocations, firma suplantando humano). Si falla, dar UNA
@@ -2752,17 +2799,45 @@ CATEGORÍAS:
     }
     finalDraft  = result.draft;
   } else if (autoMode === 'auto' && sendReplyFn) {
-    autoModeVerdict = await classifyEmailDraft({
-      draft:           result.draft,
-      emailFrom,
-      emailSubject,
-      emailBody:       effectiveBody,
-      category:        result.category,
-      agentName,
-      businessName,
-      businessContext: knowledgeBase,
-      agentRole,
-    });
+    // 2026-10-07 Fix classifier conservador (Nazre reportó Nami invocaba
+    // inv_procesar_factura_trane exitoso pero classifier marcaba 'human' por
+    // sobrecautela → correo quedaba pending → Camila no recibía confirmación).
+    //
+    // Bypass del classifier cuando el empleado YA ejecutó una write operation
+    // (inv_*/qb_*/cfdi_*/registrar_*/create_*) exitosa Y el draft es resumen
+    // factual (no promete acciones futuras no verificadas). En ese caso el
+    // draft es un reporte de hechos — no necesita human review, debe enviarse.
+    //
+    // Fail-safe: si no cumple ambas condiciones, consulta classifier como antes.
+    const WRITE_TOOL_PREFIXES = ['inv_', 'qb_', 'cfdi_', 'registrar_', 'create_', 'patchear_', 'facturar_', 'sat_'];
+    const executedWriteTool = toolsInvokedOk.some(t =>
+      WRITE_TOOL_PREFIXES.some(p => t.startsWith(p)),
+    );
+    // Palabras que sugieren compromiso futuro no verificado (requieren humano):
+    //   "mañana", "próximamente", "en cuanto", "agendar/é/emos/é", "pronto",
+    //   "más tarde", "a la brevedad". Agregar aquí si surgen más patrones.
+    const PROMISE_RE = /\b(ma[ñn]ana|pr[óo]xim[aoe]|agendar[éae]?|agendaremos|pronto|m[áa]s\s+tarde|a\s+la\s+brevedad|en\s+cuanto\b)/i;
+    const draftIsFactual = result.draft ? !PROMISE_RE.test(result.draft) : false;
+
+    if (executedWriteTool && draftIsFactual && result.draft) {
+      autoModeVerdict = {
+        decision: 'send',
+        reason:   'bypass_write_tool_factual_draft',
+        signals:  [`tools:${toolsInvokedOk.join(',')}`, 'draft_factual'],
+      };
+    } else {
+      autoModeVerdict = await classifyEmailDraft({
+        draft:           result.draft,
+        emailFrom,
+        emailSubject,
+        emailBody:       effectiveBody,
+        category:        result.category,
+        agentName,
+        businessName,
+        businessContext: knowledgeBase,
+        agentRole,
+      });
+    }
 
     if (autoModeVerdict.decision === 'send') {
       // L3 — evidence check antes del auto-send del classifier
