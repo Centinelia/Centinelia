@@ -47,27 +47,37 @@ export function buildRolePromptBlock({ meerkatRoleId, variant = 'full' }: RolePr
 }
 
 /**
- * Variant corta para el chat conversacional: extrae solo las secciones
- * "PROHIBIDO ABSOLUTO" y "ANTES DE DECIR" (o equivalentes) del role prompt.
- * Objetivo: cortar hallucinations específicas (Google Sheets, "no está
- * configurado", etc.) sin inflar el prompt con detalle operativo que
- * confunde al modelo en modo conversacional.
+ * Variant corta para el chat conversacional: extrae SOLO reglas anti-
+ * hallucination (frases prohibidas, afirmaciones falsas a evitar) del
+ * promptPersonalidad. NO incluye procesos paso-a-paso ("Paso 1: ejecuta X,
+ * Paso 2: ejecuta Y") porque confunden al modelo entre "invocar tool"
+ * vs. "narrar tool call como texto". Caso real demo AC 2026-10-07:
+ * variant con proceso hizo que Nami imprimiera tool calls JSON como texto
+ * (fake "revisar_mi_inbox_ahora {ok:true...}", fake IDs "a91f", etc.).
+ *
+ * Modelo decide cuándo invocar tools basado en el prompt genérico del chat
+ * (que ya tiene "REGLA CRÍTICA: Ejecutar tools, no narrarlos"). El rol
+ * solo contribuye las reglas duras: QUÉ NO decir, no QUÉ hacer paso-a-paso.
  */
 function buildChatVariant(role: MeerkatRole): string {
   const full = role.promptPersonalidad;
-  // Extrae secciones delimitadas por ==== o encabezados en mayúsculas que
-  // contengan PROHIBIDO, BANEAD, NUNCA, SIEMPRE EJECUTA.
-  const criticalSections: string[] = [];
+  // Extrae solo secciones con PROHIBIDO/BANEAD/NUNCA, SIN secciones de
+  // "proceso paso 1/paso 2/ejecuta tal tool" que inducen narración.
+  const antiHallucinationSections: string[] = [];
   const sectionRx = /(====[^=]+====\s[\s\S]*?)(?===== |\n[A-Z]{3,}[^a-z]{0,80}:|\n\n[A-Z]{3,}|$)/g;
   let m: RegExpExecArray | null;
   while ((m = sectionRx.exec(full)) !== null) {
     const section = m[1];
-    if (/PROHIBIDO|BANEAD|NUNCA|SIEMPRE EJECUTA|ANTES DE/i.test(section)) {
-      criticalSections.push(section.trim());
+    // Solo incluir si menciona PROHIBIDO/BANEAD/NUNCA DIGAS Y no es un
+    // runbook de pasos (que contendría "Paso 1" o "Paso 2").
+    const isAntiHallucination = /PROHIBIDO|BANEAD|NUNCA DIGAS|NUNCA MENCIONES|NUNCA HABLES/i.test(section);
+    const isProceduralRunbook = /\bPaso\s+\d+\b/i.test(section) || /\bPASO\s+\d+\b/.test(section);
+    if (isAntiHallucination && !isProceduralRunbook) {
+      antiHallucinationSections.push(section.trim());
     }
   }
-  if (criticalSections.length === 0) return '';
-  return `\n## REGLAS CRÍTICAS DE TU ROL (${role.nombre} - ${role.rol})\n\n${criticalSections.join('\n\n')}\n\nPara reglas operativas detalladas (qué tool usar en cada caso específico), consulta la bandeja o pregúntame.\n`;
+  if (antiHallucinationSections.length === 0) return '';
+  return `\n## REGLAS DURAS DE TU ROL (${role.nombre} - ${role.rol})\n\nEstas son restricciones que SIEMPRE aplican, sin importar lo que el dueño te pida. Para saber cómo ejecutar algo (qué tool usar, cómo procesar), rige el prompt general del chat y las descripciones de tus tools — no describas en texto lo que vas a hacer, invoca las tools directamente.\n\n${antiHallucinationSections.join('\n\n')}\n`;
 }
 
 /**
