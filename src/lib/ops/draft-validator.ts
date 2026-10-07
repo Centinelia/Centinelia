@@ -61,29 +61,58 @@ const BANNED_PHRASES: Array<{ rx: RegExp; reason: string; fix: string; kind: Dra
     kind: 'nonexistent_integration',
   },
   {
+    // 2026-10-07 patrones nuevos: el modelo adaptó Google Sheet → "hoja de OC",
+    // "hoja de inventario", "sheet_no_configurado" (en snake_case como error),
+    // o "sheetnoconfigurado" (sin underscores). Todos son el mismo hallucination.
+    rx: /\b(hoja|sheet|plantilla)\s*(de\s+)?(oc|inventario|salida|facturas?|backlog|ventas?|compras?)\b/i,
+    reason: 'No existe "la hoja de X" como integración separada. El Excel completo YA está vinculado y las tools inv_* abren todas sus hojas (sheets) por nombre interno (STOCK, BACKLOG, INVENTARIO, etc.).',
+    fix: 'No menciones "la hoja de OC/inventario/salida" como si fuera algo que necesita configurar. Si querías escribir en la hoja STOCK o similar, invoca la tool inv_* correspondiente. El sistema sabe en qué hoja escribir.',
+    kind: 'nonexistent_integration',
+  },
+  {
+    // "sheet_no_configurado" / "sheetnoconfigurado" como pseudo-error-code inventado
+    rx: /\bsheet[_\s]*no[_\s]*(configurad[oa]|mapead[oa]|conectad[oa])/i,
+    reason: 'Ese error_code "sheet_no_configurado" NO existe. Las tools inv_* no devuelven ese error. Si una tool falló, cita el error_code REAL que devolvió, no inventes.',
+    fix: 'Elimina esa pseudo-referencia a error_code. Si invocaste una tool y falló, menciona el error que REALMENTE devolvió. Si no invocaste la tool, no inventes errores que nunca ocurrieron.',
+    kind: 'tool_claim_without_invocation',
+  },
+  {
     // Match ambos ordenes: "no está configurado el excel" / "el excel no está configurado"
-    // Y acepta configurado | conectado | vinculado | mapeado en acceso | sistema | para | ...
-    rx: /\b(excel|sheet|archivo|inventario|integraci[oó]n)\b[\s\S]{0,80}\bno\s+(est[áa]|he\s+sido|ha\s+sido)\s+(configurad[oa]|conectad[oa]|vinculad[oa]|mapead[oa])\b|\bno\s+(est[áa]|he\s+sido|ha\s+sido)\s+(configurad[oa]|conectad[oa]|vinculad[oa]|mapead[oa])\b[\s\S]{0,80}\b(excel|sheet|archivo|inventario|integraci[oó]n)\b/i,
+    rx: /\b(excel|sheet|hoja|archivo|inventario|integraci[oó]n)\b[\s\S]{0,80}\bno\s+(est[áa]|he\s+sido|ha\s+sido)\s+(configurad[oa]|conectad[oa]|vinculad[oa]|mapead[oa])\b|\bno\s+(est[áa]|he\s+sido|ha\s+sido)\s+(configurad[oa]|conectad[oa]|vinculad[oa]|mapead[oa])\b[\s\S]{0,80}\b(excel|sheet|hoja|archivo|inventario|integraci[oó]n)\b/i,
     reason: 'inventory_excel_config SÍ existe para esta org — verifica antes de afirmar que falta.',
     fix: 'Las tools inv_* abren el Excel solas. Si una tool falla técnicamente, invócala y reporta el error exacto que devolvió, no digas "no está configurado".',
     kind: 'nonexistent_integration',
   },
   {
-    rx: /\bno\s+tengo\s+(conectad[oa]|acceso\s+a)\s+(el\s+(archivo|excel|sheet|inventario)|al\s+(archivo|excel|sheet|inventario))/i,
+    rx: /\bno\s+tengo\s+(conectad[oa]|acceso\s+a)\s+(el\s+(archivo|excel|sheet|hoja|inventario)|al\s+(archivo|excel|sheet|hoja|inventario))/i,
     reason: 'Nami SÍ tiene acceso al Excel vía las tools inv_*.',
     fix: 'Elimina esa frase. Invoca la tool inv_* que corresponda al tipo de documento recibido.',
     kind: 'nonexistent_integration',
   },
   {
-    rx: /\b(conecta(r)?|configur(a|ar)|vincula(r)?|enlaza(r)?)\s+(el\s+)?(archivo|excel|sheet|inventario|integraci[oó]n)/i,
+    rx: /\b(conecta(r)?|configur(a|ar|e|es)|vincula(r)?|enlaza(r)?|habilitar?)\s+(el\s+|la\s+|que\s+se\s+)?(archivo|excel|sheet|hoja|inventario|integraci[oó]n)/i,
     reason: 'Nunca pidas al cliente que conecte/configure algo — el inventario YA está conectado.',
     fix: 'Elimina la petición de conectar algo. Si realmente no puedes avanzar sin algo del cliente, pide un dato concreto (ej. "¿cuál es la serie del equipo?") no una re-configuración.',
+    kind: 'banned_phrase',
+  },
+  {
+    // "que se configure la hoja", "que configures el sheet", "necesito que se habilite"
+    rx: /\bnecesito\s+que\s+(se\s+configur[ea]|configures?|habilites?|se\s+habilite|se\s+conecte|conectes?|vincules?)/i,
+    reason: 'Nami nunca necesita que el cliente configure/habilite nada — todo está configurado al activar su rol.',
+    fix: 'Elimina esa petición. Si una tool falló, menciona el error real. Si falta un dato del documento (serie, modelo), pide ESE dato específico.',
     kind: 'banned_phrase',
   },
   {
     rx: /\ben\s+Integraciones\s+del\s+portal\b/i,
     reason: 'No pidas al cliente que vaya a Integraciones. El Excel YA está vinculado.',
     fix: 'Elimina esa referencia.',
+    kind: 'banned_phrase',
+  },
+  {
+    // "indique en qué otro lugar registrarla" — asume que la ubicación es dudosa
+    rx: /\b(indique[sm]?|dime|ind[ií]came)\s+(en\s+qu[eé]|cu[áa]l)\s+(otro\s+)?(lugar|sheet|hoja|excel|archivo|sistema)\s+(la\s+)?(registr|guard|anot|capturar?)/i,
+    reason: 'El lugar donde registrar OC/factura/salida ya está decidido por tus tools inv_*. No preguntes al cliente dónde registrar.',
+    fix: 'Elimina esa pregunta. Invoca la tool inv_* correspondiente al tipo de documento.',
     kind: 'banned_phrase',
   },
 ];

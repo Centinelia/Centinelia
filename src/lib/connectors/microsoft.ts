@@ -29,8 +29,15 @@ class MicrosoftEmail implements EmailConnector {
     // (Outlook los marca como leídos instant). Caso real demo AC Camila 2026-10-07:
     // 2 correos con OC+factura Trane nunca llegaron a Nami. La dedup se hace en
     // ops_inbox por rawMessageId, no hace falta el filtro isRead.
+    //
+    // 2026-10-07 (segunda vez): también agregamos hasAttachments al select para
+    // detectar correos con PDFs. Attachments metadata se trae con $expand en una
+    // segunda query solo si hasAttachments=true (optimización — la mayoría no tiene).
+    // Caso real: TEST-88888 llegó con PDF pero attachments=[] en ops_inbox porque
+    // el connector no los expandía. Resultado: detectForcedTool no disparaba
+    // porque el patrón requiere PDF attachment.
     const filter     = `receivedDateTime gt ${since.toISOString()}`;
-    const select     = 'id,conversationId,subject,from,body,receivedDateTime';
+    const select     = 'id,conversationId,subject,from,body,receivedDateTime,hasAttachments';
     const url        = `${GRAPH}/me/mailFolders/${folderName}/messages?$filter=${encodeURIComponent(filter)}&$select=${select}&$top=20&$orderby=receivedDateTime desc`;
     const res = await fetch(url, { headers: this.h() });
     if (!res.ok) {
@@ -40,18 +47,43 @@ class MicrosoftEmail implements EmailConnector {
       return [];
     }
     const data = await res.json();
-    return (data.value ?? []).map((m: {
+    const messages = (data.value ?? []) as Array<{
       id: string;
       conversationId?: string;
       from: { emailAddress: { address: string; name: string } };
       subject: string;
       body: { content: string };
-    }) => ({
-      id:       m.id,
-      threadId: m.conversationId,
-      from:     `${m.from?.emailAddress?.name ?? ''} <${m.from?.emailAddress?.address ?? ''}>`,
-      subject:  m.subject ?? '',
-      body:     stripHtml(m.body?.content ?? ''),
+      hasAttachments?: boolean;
+    }>;
+
+    // Para cada mensaje con hasAttachments, fetch attachment metadata en paralelo
+    const attachmentPromises = messages.map(async m => {
+      if (!m.hasAttachments) return [];
+      try {
+        const attUrl = `${GRAPH}/me/messages/${encodeURIComponent(m.id)}/attachments?$select=id,name,contentType,size`;
+        const attRes = await fetch(attUrl, { headers: this.h() });
+        if (!attRes.ok) return [];
+        const attData = await attRes.json();
+        return ((attData.value ?? []) as Array<{ id: string; name?: string; contentType?: string; size?: number }>).map(a => ({
+          id:       a.id,
+          name:     a.name ?? 'attachment',
+          mimeType: a.contentType ?? 'application/octet-stream',
+          size:     a.size ?? 0,
+        }));
+      } catch (err) {
+        console.warn('[microsoft/fetchUnread] attachment fetch failed for', m.id, err);
+        return [];
+      }
+    });
+    const attachmentsPerMsg = await Promise.all(attachmentPromises);
+
+    return messages.map((m, idx) => ({
+      id:          m.id,
+      threadId:    m.conversationId,
+      from:        `${m.from?.emailAddress?.name ?? ''} <${m.from?.emailAddress?.address ?? ''}>`,
+      subject:     m.subject ?? '',
+      body:        stripHtml(m.body?.content ?? ''),
+      attachments: attachmentsPerMsg[idx],
     }));
   }
 
