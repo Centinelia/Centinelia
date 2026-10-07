@@ -41,6 +41,60 @@ function stripOwnPrefixes(subject: string): string {
   return subject.replace(CATEGORY_PREFIX_RX, '').trim() || '(sin asunto)';
 }
 
+// 2026-10-07 Force tool_choice en iter 0 del inbox-processor cuando el correo
+// pide inequívocamente una tool específica. Caso real: Nami prefería escalar
+// al humano antes que invocar inv_procesar_oc_qb aunque el correo trajera
+// subject "REGISTRAR OC XXXX" + PDF adjunto. Forzar tool_choice obliga al LLM
+// a invocar la tool específica en el primer turno, eliminando la escapatoria
+// de "voy a pedir más info" / "necesito que un humano lo revise".
+//
+// Reglas (todas requieren que la tool esté en el array de tools disponibles):
+//   1. Subject matchea /OC + número/ + PDF/XML adjunto → inv_procesar_oc_qb
+//   2. Subject/body menciona "factura trane" + XML adjunto → inv_procesar_factura_trane
+//   3. Subject menciona "backlog" + PDF adjunto → inv_importar_backlog
+function detectForcedTool(
+  subject: string | null | undefined,
+  body: string | null | undefined,
+  attachments: Array<{ name: string; type: string }>,
+  availableTools: Anthropic.Tool[],
+): string | null {
+  const subj = (subject ?? '').trim();
+  const bodyLow = (body ?? '').slice(0, 500).toLowerCase();
+  const availableToolNames = new Set(availableTools.map(t => t.name));
+  const hasAttachmentOfType = (rx: RegExp) =>
+    attachments.some(a => rx.test((a.name ?? '').toLowerCase()) || rx.test((a.type ?? '').toLowerCase()));
+
+  // Regla 1: OC + PDF/XML adjunto
+  if (
+    /\boc\s*[-#]?\s*[a-z0-9-]+\d/i.test(subj) &&
+    hasAttachmentOfType(/\.(pdf|xml|xlsx?)$|application\/(pdf|xml|vnd\.openxmlformats)/) &&
+    availableToolNames.has('inv_procesar_oc_qb')
+  ) {
+    return 'inv_procesar_oc_qb';
+  }
+
+  // Regla 2: Factura Trane + XML adjunto
+  if (
+    (/\bfactura\s+trane\b/i.test(subj) || /\bfact\s+trane\b/i.test(subj) ||
+     /\bfactura\s+trane\b/i.test(bodyLow)) &&
+    hasAttachmentOfType(/\.xml$|application\/xml/) &&
+    availableToolNames.has('inv_procesar_factura_trane')
+  ) {
+    return 'inv_procesar_factura_trane';
+  }
+
+  // Regla 3: Backlog + PDF adjunto
+  if (
+    /\bbacklog\b/i.test(subj) &&
+    hasAttachmentOfType(/\.pdf$|application\/pdf/) &&
+    availableToolNames.has('inv_importar_backlog')
+  ) {
+    return 'inv_importar_backlog';
+  }
+
+  return null;
+}
+
 // 2026-10-07 NAMI DEFAULT-SKIP: Nami solo debe procesar correos que piden
 // explícitamente una acción del Excel de inventario. Default: skip sin cobrar.
 // Caso real: antes del fix, Nami procesaba TODO lo que llegaba al buzón
@@ -2268,6 +2322,16 @@ CATEGORÍAS:
         // reconciliación bancaria) el análisis vale. Observer y summary siguen
         // en Haiku (no requieren tool_use complejo).
         const __ipM = 'claude-sonnet-5-5';
+
+        // 2026-10-07 Force tool_choice en iter 0 cuando el correo pide claramente
+        // una tool específica. Caso real: TEST-99999 con PDF adjunto y subject
+        // "REGISTRAR OC TEST-99999" — Nami prefería escalar antes que invocar
+        // inv_procesar_oc_qb aunque todo apuntaba a ella. Forzar tool_choice
+        // elimina la escapatoria. Ver detectForcedTool() abajo.
+        const forcedToolName = i === 0
+          ? detectForcedTool(emailSubject, effectiveBody, attachments, tools)
+          : null;
+
         let response;
         try {
           response = await anthropic.messages.create({
@@ -2276,6 +2340,7 @@ CATEGORÍAS:
             system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
             messages,
             ...(tools.length && !isLastIter ? { tools } : {}),
+            ...(forcedToolName ? { tool_choice: { type: 'tool' as const, name: forcedToolName } } : {}),
           });
           void logLlmCall({ source: 'inbox_processor', model: __ipM, usage: response.usage, agentId, portalEmail, latencyMs: Date.now() - __ipT, meta: { iter: i } });
         } catch (err) {
