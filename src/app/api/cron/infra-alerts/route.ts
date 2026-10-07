@@ -10,6 +10,15 @@ import { detectStuckOutbound, STUCK_OUTBOUND_HOURS_WARN, STUCK_OUTBOUND_HOURS_CR
 import { detectOutboundRegistrationDrift, OUTBOUND_REG_WINDOW_HOURS } from '@/lib/monitoring/outbound-registration';
 import { detectPoolProvisioningAnomalies } from '@/lib/monitoring/pool-provisioning-drift';
 import { detectReferenceIdCollisions, REF_COLLISION_WINDOW_HOURS } from '@/lib/monitoring/reference-id-collision-drift';
+import {
+  detectHighVelocityConsumption,
+  detectRepeatedSender,
+  detectRecursivePrefixes,
+  VELOCITY_WINDOW_HOURS,
+  VELOCITY_SPIKE_MULTIPLIER,
+  REPEATED_SENDER_WARN,
+  REPEATED_SENDER_CRITICAL,
+} from '@/lib/monitoring/consumption-anomaly';
 
 // ──────────────────────────────────────────────────────────────
 // Invoicing alert thresholds
@@ -360,6 +369,66 @@ export async function GET(req: NextRequest) {
     }
   } catch (err) {
     console.error('[infra-alerts] reference_id collision drift check failed:', err);
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Consumption anomaly — 3 detectores que anticipan el patrón de self-loop
+  // o leak masivo ANTES de que el pool se agote (que ya atrapa
+  // pool-provisioning-drift pero tarde). Caso que los motivó: AC Proyectos
+  // 2026-10-07 quemó 455 ops en 48h con subjects `[Factura] [Factura] [Factura]
+  // ...` 10+ niveles. Nash no gritó hasta que balance <= 0, 7 días tarde.
+  try {
+    const supabase = createAdminClient();
+    const [vel, rep, rec] = await Promise.all([
+      detectHighVelocityConsumption(supabase),
+      detectRepeatedSender(supabase),
+      detectRecursivePrefixes(supabase),
+    ]);
+
+    if (vel.length > 0) {
+      const sample = vel.slice(0, 3).map(v =>
+        `${v.portal_email}: ${v.ops_24h}ops/${VELOCITY_WINDOW_HOURS}h vs baseline ${v.baseline_avg}/día (${v.multiplier === Infinity ? 'org nueva' : v.multiplier + '×'})`,
+      ).join(' · ');
+      alerts.push({
+        service:   `Consumption velocity spike — ops/día ≥ ${VELOCITY_SPIKE_MULTIPLIER}× del baseline`,
+        current:   `${vel.length} org(s) con spike · muestra: ${sample}`,
+        threshold: `Más de ${VELOCITY_SPIKE_MULTIPLIER}× el consumo promedio de los últimos 14 días`,
+        action:    'Investigar inbox-processor logs + ops_ledger de las orgs afectadas; buscar self-loop o cambio de patrón',
+        actionUrl: 'https://vercel.com/centinelia1/centinelia_product/logs',
+        color:     '#f59e0b',
+      });
+    }
+
+    if (rep.length > 0) {
+      const crit = rep.filter(r => r.level === 'critical');
+      const sample = rep.slice(0, 3).map(r =>
+        `${r.portal_email} ← ${r.sender} (×${r.count}${r.level === 'critical' ? ' CRIT' : ''})`,
+      ).join(' · ');
+      alerts.push({
+        service:   `Repeated sender flood — mismo remitente ≥ ${REPEATED_SENDER_WARN}/día en una org`,
+        current:   `${rep.length} par(es) org/remitente · ${crit.length} crítico(s) · muestra: ${sample}`,
+        threshold: `≥ ${REPEATED_SENDER_WARN} correos del mismo remitente en 24h (${REPEATED_SENDER_CRITICAL}+ = crítico)`,
+        action:    'Verificar si es self-notification loop, newsletter runaway, o automation legítima',
+        actionUrl: 'https://vercel.com/centinelia1/centinelia_product/logs',
+        color:     crit.length > 0 ? '#ef4444' : '#f59e0b',
+      });
+    }
+
+    if (rec.length > 0) {
+      const sample = rec.slice(0, 3).map(r =>
+        `${r.portal_email} (${r.count}× anidación, ${r.deepest_level} niveles: "${r.sample_subject.slice(0, 50)}…")`,
+      ).join(' · ');
+      alerts.push({
+        service:   `Recursive subject prefix — firma de self-notification loop`,
+        current:   `${rec.length} org(s) con subjects anidados 3+ niveles · muestra: ${sample}`,
+        threshold: `≥ 1 subject matching /^(\\s*\\[[A-Za-z]+\\]\\s*){3,}/ en 24h`,
+        action:    'CRÍTICO: notif del sistema está llegando al inbox del propio meerkat. Revisar guard isSelfNotification en inbox-processor.ts y stripOwnPrefixes',
+        actionUrl: 'https://vercel.com/centinelia1/centinelia_product/logs',
+        color:     '#ef4444',
+      });
+    }
+  } catch (err) {
+    console.error('[infra-alerts] consumption anomaly check failed:', err);
   }
 
   // ─────────────────────────────────────────────────────────────
