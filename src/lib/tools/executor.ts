@@ -6410,7 +6410,13 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       const conceptoArr = conceptosRaw?.['cfdi:Concepto'] ?? conceptosRaw?.Concepto;
       const conceptos = Array.isArray(conceptoArr) ? conceptoArr : conceptoArr ? [conceptoArr] : [];
       if (conceptos.length === 0) return { ok: false, error: 'Factura sin conceptos' };
-      const SERIE_RE = /\b([0-9A-Z]{8,16}[A-Z])\b/g;
+      // Regex alineado con inv_procesar_factura_trane (fix 2026-10-07 commit
+      // 363919ec): acepta series que terminan en dígito como las residencial
+      // Trane (X2446TO182IH0113). Antes requería terminación en letra y
+      // devolvía 'No encontré series en las descripciones del CFDI' para
+      // facturas venta de residencial — bug real OC 6203 reportado por Nazre.
+      const SERIE_RE = /\b([A-Z0-9]{8,18})\b/g;
+      const isLikelySerie = (s: string): boolean => /[A-Z]/.test(s) && /\d/.test(s);
 
       type SerieVenta = { serie: string; precio_unitario: number };
       const ventas: SerieVenta[] = [];
@@ -6419,7 +6425,7 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
         const precio = Number(c.ValorUnitario ?? 0);
         const modelo = String(c.NoIdentificacion ?? '').trim();
         const matches = [...desc.matchAll(SERIE_RE)].map(m => m[1]);
-        const series = [...new Set(matches)].filter(s => s !== modelo);
+        const series = [...new Set(matches)].filter(s => s !== modelo && isLikelySerie(s));
         for (const s of series) {
           if (precio > 0) ventas.push({ serie: s, precio_unitario: precio });
         }
