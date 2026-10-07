@@ -2606,8 +2606,19 @@ export async function POST(req: NextRequest, { params }: Params) {
   // meerkat deben inyectar este bloque, para que las reglas del rol
   // (ej. anti-Google-Sheets de Nami) tengan efecto en TODO canal, no solo
   // en los que casualmente leían promptPersonalidad.
-  const { buildRolePromptBlock } = await import('@/lib/portal/role-prompt-block');
-  const rolePromptBlock = buildRolePromptBlock({ meerkatRoleId: meerkatId });
+  //
+  // 2026-10-07 KILL SWITCH temporal: la primera prueba live con Camila dio
+  // respuesta basura ("1 6203") al inyectar el promptPersonalidad completo
+  // de Nami (~4500 tokens). Posible causa: conflicto entre reglas del rol
+  // (muy prescriptivas, "EJECUTA inv_*", "NUNCA menciones X") y el prompt
+  // genérico del chat (más conversacional). Default OFF por ahora.
+  // Env AGENT_CHAT_INJECT_ROLE_PROMPT=1 lo activa cuando lo validemos.
+  const injectRolePrompt = process.env.AGENT_CHAT_INJECT_ROLE_PROMPT === '1';
+  let rolePromptBlock = '';
+  if (injectRolePrompt) {
+    const { buildRolePromptBlock } = await import('@/lib/portal/role-prompt-block');
+    rolePromptBlock = buildRolePromptBlock({ meerkatRoleId: meerkatId });
+  }
 
   const system = `Eres ${agentName}, empleado de ${agent.business_name}${agentRole ? ` con el rol de ${agentRole}` : ''}.
 
