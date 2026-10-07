@@ -29,12 +29,45 @@ export interface RolePromptBlockInput {
  * devuelve string vacío (safe to concat).
  *
  * Formato: `## REGLAS Y PROCESO DE TU ROL (<Nombre> - <Rol>)\n\n<prompt>\n`
+ *
+ * Variant 'chat': extrae solo las secciones críticas (anti-hallucination,
+ * proceso corto) del promptPersonalidad. El prompt completo pesado rompió
+ * el chat con Camila 2026-10-07 (respuesta basura "1 6203"). Para chat
+ * necesitamos reglas duras cortas, no el runbook operativo completo que
+ * sirve a inbox-processor o voice.
  */
-export function buildRolePromptBlock({ meerkatRoleId }: RolePromptBlockInput): string {
+export function buildRolePromptBlock({ meerkatRoleId, variant = 'full' }: RolePromptBlockInput & { variant?: 'full' | 'chat' } = { meerkatRoleId: null }): string {
   if (!meerkatRoleId) return '';
   const role = MEERKAT_MAP[meerkatRoleId as MeerkatRoleId] as MeerkatRole | undefined;
   if (!role?.promptPersonalidad) return '';
+  if (variant === 'chat') {
+    return buildChatVariant(role);
+  }
   return `\n## REGLAS Y PROCESO DE TU ROL (${role.nombre} - ${role.rol})\n\n${role.promptPersonalidad}\n`;
+}
+
+/**
+ * Variant corta para el chat conversacional: extrae solo las secciones
+ * "PROHIBIDO ABSOLUTO" y "ANTES DE DECIR" (o equivalentes) del role prompt.
+ * Objetivo: cortar hallucinations específicas (Google Sheets, "no está
+ * configurado", etc.) sin inflar el prompt con detalle operativo que
+ * confunde al modelo en modo conversacional.
+ */
+function buildChatVariant(role: MeerkatRole): string {
+  const full = role.promptPersonalidad;
+  // Extrae secciones delimitadas por ==== o encabezados en mayúsculas que
+  // contengan PROHIBIDO, BANEAD, NUNCA, SIEMPRE EJECUTA.
+  const criticalSections: string[] = [];
+  const sectionRx = /(====[^=]+====\s[\s\S]*?)(?===== |\n[A-Z]{3,}[^a-z]{0,80}:|\n\n[A-Z]{3,}|$)/g;
+  let m: RegExpExecArray | null;
+  while ((m = sectionRx.exec(full)) !== null) {
+    const section = m[1];
+    if (/PROHIBIDO|BANEAD|NUNCA|SIEMPRE EJECUTA|ANTES DE/i.test(section)) {
+      criticalSections.push(section.trim());
+    }
+  }
+  if (criticalSections.length === 0) return '';
+  return `\n## REGLAS CRÍTICAS DE TU ROL (${role.nombre} - ${role.rol})\n\n${criticalSections.join('\n\n')}\n\nPara reglas operativas detalladas (qué tool usar en cada caso específico), consulta la bandeja o pregúntame.\n`;
 }
 
 /**

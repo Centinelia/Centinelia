@@ -2607,17 +2607,17 @@ export async function POST(req: NextRequest, { params }: Params) {
   // (ej. anti-Google-Sheets de Nami) tengan efecto en TODO canal, no solo
   // en los que casualmente leían promptPersonalidad.
   //
-  // 2026-10-07 KILL SWITCH temporal: la primera prueba live con Camila dio
-  // respuesta basura ("1 6203") al inyectar el promptPersonalidad completo
-  // de Nami (~4500 tokens). Posible causa: conflicto entre reglas del rol
-  // (muy prescriptivas, "EJECUTA inv_*", "NUNCA menciones X") y el prompt
-  // genérico del chat (más conversacional). Default OFF por ahora.
-  // Env AGENT_CHAT_INJECT_ROLE_PROMPT=1 lo activa cuando lo validemos.
-  const injectRolePrompt = process.env.AGENT_CHAT_INJECT_ROLE_PROMPT === '1';
+  // Chat variant del role prompt: solo reglas duras anti-hallucination, no el
+  // runbook operativo completo. Prompt completo (~4500 tokens de Nami) rompió
+  // el chat con Camila 2026-10-07 (respuesta basura "1 6203"). Chat variant
+  // extrae solo secciones PROHIBIDO/BANEAD/NUNCA (~800 tokens).
+  // Env AGENT_CHAT_INJECT_ROLE_PROMPT=0 lo desactiva por completo si vuelve
+  // a romper. Default ON con variant chat.
+  const injectRolePrompt = process.env.AGENT_CHAT_INJECT_ROLE_PROMPT !== '0';
   let rolePromptBlock = '';
   if (injectRolePrompt) {
     const { buildRolePromptBlock } = await import('@/lib/portal/role-prompt-block');
-    rolePromptBlock = buildRolePromptBlock({ meerkatRoleId: meerkatId });
+    rolePromptBlock = buildRolePromptBlock({ meerkatRoleId: meerkatId, variant: 'chat' });
   }
 
   const system = `Eres ${agentName}, empleado de ${agent.business_name}${agentRole ? ` con el rol de ${agentRole}` : ''}.
