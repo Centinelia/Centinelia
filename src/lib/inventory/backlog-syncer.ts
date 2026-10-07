@@ -413,11 +413,35 @@ export function rowsEqual(a: unknown[], b: unknown[]): boolean {
 export async function syncBacklogRows(
   ctx:          InventoryContext,
   config:       BacklogSheetConfig,
-  parsedRows:   BacklogRow[],
+  parsedRowsRaw: BacklogRow[],
   options:      { dryRun?: boolean; mode?: 'upsert' | 'replace' } = {},
 ): Promise<SyncerSummary> {
   const dryRun = options.dryRun !== false;
   const mode   = options.mode ?? 'upsert';
+
+  // 2026-10-07 Camila: agrupar items iguales contiguos. En el PDF de Trane
+  // normalmente vienen 5 items iguales seguidos → cambia a otro → vuelve al
+  // primero. Al escribir al Excel BACKLOG queremos todos los iguales juntos
+  // para que Camila pueda leer "cuántos pending del modelo X" de un vistazo.
+  //
+  // Primary sort: item (modelo/SKU). Secondary: customer_po (para que distintos
+  // POs del mismo item queden adyacentes). Tertiary: ordered_date + line_number
+  // (orden estable histórico dentro del mismo item+po).
+  //
+  // Safe para replace: rowsEqualResolved compara valores, no posiciones — el
+  // "updated: N" cuenta diferencias de contenido, no reorderings.
+  // Safe para upsert: los existentes mantienen su posición original (upsert
+  // actualiza in-place); los nuevos se agregan al final en orden agrupado.
+  const parsedRows = [...parsedRowsRaw].sort((a, b) => {
+    const itemCmp = String(a.item ?? '').localeCompare(String(b.item ?? ''), 'es');
+    if (itemCmp !== 0) return itemCmp;
+    const poCmp = String(a.customer_po_number ?? '').localeCompare(String(b.customer_po_number ?? ''), 'es');
+    if (poCmp !== 0) return poCmp;
+    const dateCmp = String(a.ordered_date ?? '').localeCompare(String(b.ordered_date ?? ''));
+    if (dateCmp !== 0) return dateCmp;
+    return String(a.line_number ?? '').localeCompare(String(b.line_number ?? ''), 'es', { numeric: true });
+  });
+
   const summary: SyncerSummary = { total_parsed: parsedRows.length, added: 0, updated: 0, unchanged: 0, deleted: 0, mode, errors: [] };
 
   if (mode === 'replace' && parsedRows.length === 0) {
