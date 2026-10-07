@@ -1141,6 +1141,42 @@ export async function processInboxEmail(params: {
     /factura|invoice|bill|cobro|pago/i.test(emailSubject) ||
     /factura|invoice|bill|cobro/i.test(effectiveBody.slice(0, 300));
 
+  // 2026-10-07 HARD GUARD: notificaciones del propio sistema NUNCA van al LLM.
+  // Caso AC Proyectos: 455 ops gastadas en 2 días en loop recursivo porque
+  // notifs `[Factura] ...` disparaban looksLikeInvoice=true, bypaseaban el
+  // quick classifier, y el LLM las procesaba generando más notifs anidadas
+  // (`[Factura] [Factura] [Factura] ...` hasta 10+ niveles).
+  // Este guard es incondicional: self-notif siempre skip, sin importar
+  // existingInboxId, looksLikeInvoice ni fromSpamFolder. Si el remitente
+  // somos nosotros, el correo NO es tarea de negocio por definición.
+  // Ver [[feedback-notificaciones-self-loop]] y [[feedback-fixes-para-siempre]].
+  const fromAddr = (emailFrom ?? '').toLowerCase();
+  const isSelfNotification =
+    /(^|<)notificaciones@centinelia\.mx(>|$)/i.test(fromAddr) ||
+    /(^|<)no-reply@centinelia\.mx(>|$)/i.test(fromAddr) ||
+    /(^|<)noreply@centinelia\.mx(>|$)/i.test(fromAddr);
+  if (isSelfNotification) {
+    const supabase = createAdminClient();
+    await supabase.from('ops_inbox').insert({
+      agent_id:        agentId,
+      source,
+      raw_message_id:  rawMessageId ?? null,
+      thread_id:       threadId ?? null,
+      email_from:      emailFrom,
+      email_subject:   emailSubject,
+      email_body:      effectiveBody.slice(0, EMAIL_BODY_TRUNCATE_CHARS),
+      attachments,
+      category:        'notificacion',
+      ai_summary:      `Notificación del propio sistema Centinelia (self-loop guard, sin cobro).`,
+      ai_draft:        null,
+      item_type:       'email',
+      status:          'skipped',
+      action_required: false,
+      ...dispatcherCols,
+    });
+    return;
+  }
+
   // C5 — clasificación determinística. Correos obviamente automáticos o
   // marketing no van a Claude: se marcan `skipped` sin consumir ops.
   // Excepciones: si es una respuesta a un info_requested (existingInboxId),
