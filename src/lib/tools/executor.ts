@@ -6298,6 +6298,36 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       // Esperamos para que inv_procesar_factura_trane siguiente vea las filas.
       await new Promise(res => setTimeout(res, 4000));
 
+      // 2026-10-07: audit log — las tools bulk-insert como inv_procesar_oc_qb
+      // no logeaban en inventory_mutations_log, por eso Nash drift detectors
+      // reportaban "0 invocaciones Nami" aunque la OC se registrara (bug
+      // caught por TEST-22222: tool invocada + fila escrita, pero mutation
+      // log vacío). Fix: emitir una row de log por OC procesada con metadata
+      // agregada (num filas, items, modelos). Ver insertMutationLog en adapter.
+      {
+        const { insertMutationLog } = await import('@/lib/inventory/adapter');
+        await insertMutationLog(supabase, {
+          portal_email:    portalEmail ?? inv.portalEmail,
+          agent_id:        agentId,
+          tool_name:       'inv_procesar_oc_qb',
+          serie:           null,  // SERIE queda vacía hasta factura TRANE
+          table_row_index: null,  // multi-row insert
+          before_state:    null,
+          after_state:     {
+            oc_numero:     ocFormateada,
+            fecha_oc:      fechaOc,
+            total_filas:   totalInserted,
+            items_count:   itemsRaw.length,
+            por_modelo:    porModelo,
+          },
+          patched_columns: ['oc', 'fecha_oc', 'qb', 'modelo', 'descripcion', 'familia', 'ref', 'seer', 'volts', 'tonelada', 'usd', 'estatus', 'bodega', 'cliente'],
+          metadata:        { items: itemsRaw.slice(0, 10) },
+          ops_charged:     1,  // consumeAiOp manda 1 por tool invocation
+          success:         totalInserted > 0,
+          error_code:      totalInserted === 0 ? 'no_rows_inserted' : null,
+        });
+      }
+
       return {
         ok: true,
         oc_numero: ocFormateada,
@@ -6976,6 +7006,34 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       // 2026-10-06). Esperamos un pelín para que el siguiente paso (TC, etc.)
       // vea las 4 filas, no 1.
       await new Promise(res => setTimeout(res, 4000));
+
+      // 2026-10-07 audit log — ver nota en inv_procesar_oc_qb.
+      {
+        const { insertMutationLog } = await import('@/lib/inventory/adapter');
+        await insertMutationLog(supabase, {
+          portal_email:    portalEmail ?? inv.portalEmail,
+          agent_id:        agentId,
+          tool_name:       'inv_procesar_factura_trane',
+          serie:           null,
+          table_row_index: null,
+          before_state:    null,
+          after_state:     {
+            folio,
+            fecha,
+            tc,
+            oc_ac:            ocAc,
+            emisor:           'TRANE',
+            matched_updated:  updated,
+            created_new:      inserted,
+            skipped_count:    skipped.length,
+          },
+          patched_columns: ['serie', 'folio_compra', 'fecha_compra', 'ano_compra', 'mes_compra', 'familia', 'ref', 'seer', 'volts', 'tonelada', 'usd'],
+          metadata:        { skipped_muestra: skipped.slice(0, 5) },
+          ops_charged:     1,
+          success:         (updated + inserted) > 0,
+          error_code:      (updated + inserted) === 0 ? 'no_rows_processed' : null,
+        });
+      }
 
       return {
         ok: true, dry_run: false,
