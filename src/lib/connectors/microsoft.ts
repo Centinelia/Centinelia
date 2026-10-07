@@ -23,7 +23,13 @@ class MicrosoftEmail implements EmailConnector {
 
   async fetchUnread(since: Date, folder: 'inbox' | 'spam' = 'inbox'): Promise<EmailMessage[]> {
     const folderName = folder === 'spam' ? 'JunkEmail' : 'Inbox';
-    const filter     = `isRead eq false and receivedDateTime gt ${since.toISOString()}`;
+    // 2026-10-07 BUG FIX: antes era `isRead eq false and receivedDateTime gt ${since}`.
+    // El filtro isRead=false skippea correos que Outlook marcó como leídos ANTES del
+    // sync — típico cuando el dueño del buzón se auto-manda correos desde su móvil
+    // (Outlook los marca como leídos instant). Caso real demo AC Camila 2026-10-07:
+    // 2 correos con OC+factura Trane nunca llegaron a Nami. La dedup se hace en
+    // ops_inbox por rawMessageId, no hace falta el filtro isRead.
+    const filter     = `receivedDateTime gt ${since.toISOString()}`;
     const select     = 'id,conversationId,subject,from,body,receivedDateTime';
     const url        = `${GRAPH}/me/mailFolders/${folderName}/messages?$filter=${encodeURIComponent(filter)}&$select=${select}&$top=20&$orderby=receivedDateTime desc`;
     const res = await fetch(url, { headers: this.h() });
