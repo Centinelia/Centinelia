@@ -2331,6 +2331,11 @@ CATEGORÍAS:
         const forcedToolName = i === 0
           ? detectForcedTool(emailSubject, effectiveBody, attachments, tools)
           : null;
+        if (i === 0) {
+          // Debug 2026-10-07: logear decisión para debuguear casos donde
+          // el modelo NO invoca la tool esperada.
+          console.log(`[inbox-processor force-tool] agentId=${agentId} subject="${(emailSubject ?? '').slice(0, 60)}" attachments=${attachments.length} toolsCount=${tools.length} forcedToolName=${forcedToolName}`);
+        }
 
         let response;
         try {
