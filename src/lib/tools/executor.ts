@@ -6032,6 +6032,25 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       const updated = { ...cfg, familias_catalogo: catalogo };
       const { error } = await supabase.from('organizations').update({ inventory_excel_config: updated }).eq('portal_email', portalEmail);
       if (error) return { ok: false, error: `No pude guardar: ${error.message}` };
+
+      {
+        const { insertMutationLog } = await import('@/lib/inventory/adapter');
+        await insertMutationLog(supabase, {
+          portal_email:    portalEmail,
+          agent_id:        agentId,
+          tool_name:       'inv_definir_familia_modelo',
+          serie:           null,
+          table_row_index: null,
+          before_state:    previa ? { familia: previa } : null,
+          after_state:     { modelo, familia },
+          patched_columns: [],  // No muta Excel; muta inventory_excel_config
+          metadata:        { config_updated: 'familias_catalogo' },
+          ops_charged:     1,
+          success:         true,
+          error_code:      null,
+        });
+      }
+
       return {
         ok: true,
         modelo, familia,
@@ -6468,6 +6487,34 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
 
       const sinCostoCompra = results.filter(r => r.applied && (r.costo_mx ?? 0) === 0).length;
       const notFound = results.filter(r => r.skipped === 'serie_not_found').length;
+
+      // 2026-10-07 audit log — insertMutationLog (ver nota en inv_procesar_oc_qb)
+      {
+        const { insertMutationLog } = await import('@/lib/inventory/adapter');
+        await insertMutationLog(supabase, {
+          portal_email:    portalEmail ?? inv.portalEmail,
+          agent_id:        agentId,
+          tool_name:       'inv_procesar_factura_venta_sf',
+          serie:           null,
+          table_row_index: null,
+          before_state:    null,
+          after_state:     {
+            factura:            facturaStr,
+            fecha_venta:        fechaStr,
+            cliente:            clienteNombre,
+            total_series_cfdi:  ventas.length,
+            aplicados:          appliedCount,
+            no_encontrados:     notFound,
+            sin_costo_compra:   sinCostoCompra,
+          },
+          patched_columns: ['factura', 'fecha_venta', 'mes', 'ano', 'costo_vta', 'utilidad', 'factor', 'cliente'],
+          metadata:        { resultados_muestra: results.slice(0, 10) },
+          ops_charged:     1,
+          success:         appliedCount > 0,
+          error_code:      appliedCount === 0 ? 'no_series_applied' : null,
+        });
+      }
+
       return {
         ok: true,
         factura: facturaStr,
@@ -6563,6 +6610,31 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
           totalCostoMx += costoMx;
         }
       });
+
+      // 2026-10-07 audit log
+      {
+        const { insertMutationLog } = await import('@/lib/inventory/adapter');
+        await insertMutationLog(supabase, {
+          portal_email:    portalEmail ?? inv.portalEmail,
+          agent_id:        agentId,
+          tool_name:       'inv_registrar_tc_factura',
+          serie:           null,
+          table_row_index: null,
+          before_state:    null,
+          after_state:     {
+            fact_trane:     factTrane,
+            tc,
+            updated_rows:   updated,
+            costo_mx_total: Math.round(totalCostoMx * 100) / 100,
+            skipped_count:  skipped.length,
+          },
+          patched_columns: ['tc', 'costo_mx', 'utilidad'],
+          metadata:        { skipped_muestra: skipped.slice(0, 5) },
+          ops_charged:     1,
+          success:         updated > 0,
+          error_code:      updated === 0 ? 'no_rows_updated' : null,
+        });
+      }
 
       return {
         ok: true,
@@ -6696,6 +6768,23 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       await GraphExcel.withSession(inv.token, inv.config.location, async (session) => {
         await GraphExcel.patchCell(inv.token, session, inv.config.sheets.historico.name, `${colLetter}${excelRow}`, bodegaNorm.canonical);
       });
+      {
+        const { insertMutationLog } = await import('@/lib/inventory/adapter');
+        await insertMutationLog(supabase, {
+          portal_email:    portalEmail ?? inv.portalEmail,
+          agent_id:        agentId,
+          tool_name:       'inv_transferir_bodega',
+          serie,
+          table_row_index: found.tableRowIndex,
+          before_state:    null,
+          after_state:     { serie, bodega: bodegaNorm.canonical, bodega_original_input: bodega },
+          patched_columns: ['bodega'],
+          metadata:        null,
+          ops_charged:     1,
+          success:         true,
+          error_code:      null,
+        });
+      }
       return { ok: true, message: `Equipo ${serie} transferido a bodega ${bodegaNorm.canonical}.` };
     }
 
@@ -6727,6 +6816,23 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
           applied++;
         }
       });
+      {
+        const { insertMutationLog } = await import('@/lib/inventory/adapter');
+        await insertMutationLog(supabase, {
+          portal_email:    portalEmail ?? inv.portalEmail,
+          agent_id:        agentId,
+          tool_name:       'inv_normalizar_bodegas',
+          serie:           null,
+          table_row_index: null,
+          before_state:    null,
+          after_state:     { aplicados: applied, total_cambios: changes.length },
+          patched_columns: ['bodega'],
+          metadata:        { cambios_muestra: changes.slice(0, 10) },
+          ops_charged:     1,
+          success:         applied > 0,
+          error_code:      applied === 0 ? 'no_rows_normalized' : null,
+        });
+      }
       return { ok: true, dry_run: false, aplicados: applied, total: changes.length };
     }
 
@@ -7181,6 +7287,34 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
             console.error('[inv_importar_backlog] summary email crashed:', err instanceof Error ? err.message : err);
           }
         }
+      }
+
+      // 2026-10-07 audit log
+      {
+        const { insertMutationLog } = await import('@/lib/inventory/adapter');
+        await insertMutationLog(supabase, {
+          portal_email:    portalEmail,
+          agent_id:        agentId,
+          tool_name:       'inv_importar_backlog',
+          serie:           null,
+          table_row_index: null,
+          before_state:    null,
+          after_state:     {
+            dry_run:        dryRun,
+            mode,
+            total_parsed:   summary.total_parsed,
+            added:          summary.added,
+            updated:        summary.updated,
+            unchanged:      summary.unchanged,
+            deleted:        summary.deleted,
+            errors_count:   summary.errors.length,
+          },
+          patched_columns: ['serie', 'oc', 'modelo', 'descripcion', 'eta'],  // backlog-specific
+          metadata:        { errors_muestra: summary.errors.slice(0, 5), summary_email_sent },
+          ops_charged:     1,
+          success:         !dryRun && (summary.added + summary.updated + summary.deleted) > 0 || (dryRun && summary.total_parsed > 0),
+          error_code:      summary.errors.length > 0 ? 'partial_errors' : null,
+        });
       }
 
       return { ok: true, dry_run: dryRun, summary, message, summary_email_sent };
