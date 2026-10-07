@@ -41,6 +41,52 @@ function stripOwnPrefixes(subject: string): string {
   return subject.replace(CATEGORY_PREFIX_RX, '').trim() || '(sin asunto)';
 }
 
+// 2026-10-07 NAMI DEFAULT-SKIP: Nami solo debe procesar correos que piden
+// explícitamente una acción del Excel de inventario. Default: skip sin cobrar.
+// Caso real: antes del fix, Nami procesaba TODO lo que llegaba al buzón
+// (facturas Home Depot auto, respuestas automáticas de Trane, backlogs semi-
+// automáticos, notifs del propio sistema) y quemaba créditos por correos que
+// no eran su responsabilidad. Regla real del user: "no debe interactuar con
+// los demás correos, vengan de quien vengan — solo con los que piden algo
+// relacionado al Excel". Ver [[feedback-nami-default-skip]].
+const NAMI_EXCEL_KEYWORDS = [
+  /\boc\s*[-#]?\s*\d{3,}/i,                   // "OC 6203", "OC-6203", "OC #6203"
+  /\bfact\s*(trane|sf|f-?\d)/i,               // "FACT TRANE", "fact SF", "FACT F-123"
+  /\bfactura\s+(trane|de\s+venta|de\s+compra|electr[oó]nica)\b/i,
+  /\bbacklog\b/i,
+  /\binventario\b/i,
+  /\bserie\s+[a-z0-9]{4,}/i,
+  /\bmodelo\s+[a-z0-9]{3,}/i,
+  /\bbodega\s+(cenizo|fleteros|trane)/i,
+  /\b(cfdi|xml)\b.*\b(trane|6203|7273|factura)\b/i,
+  /\bregistr[aae]r?\s+(la\s+)?(oc|factura|salida|entrega|equipo|serie)\b/i,
+  /\bprocesar?\s+(la\s+)?(oc|factura|backlog|xml)\b/i,
+  /\brecibir?\s+equipos?\b/i,
+  /\bhoja\s+de\s+salida\b/i,
+  /\bequipos?\s+entregados?\b/i,
+  /\bpagu[eé]\s+la\s+factura\b/i,
+  /\bya\s+(sali[oó]|lleg[oó]|entregamos|vendimos|pagamos)\b.*\b(equipo|serie|factura|oc)\b/i,
+  /\breposici[oó]n\s+de\s+stock\b/i,
+  /\bcliente\s+pag[oó]\b/i,
+  /\banti.*fugas|cold.*plus|manejadora|condensadora|evaporadora|chiller/i,  // product families
+];
+function isNamiExcelTask(subject: string, body: string, attachments: Array<{ name: string; type: string }>): boolean {
+  const subj = subject ?? '';
+  const bodyLow = (body ?? '').slice(0, 800);
+  // Attachment heuristic: PDF/XML/XLSX con nombre que sugiera doc operativo
+  const hasInventoryAttachment = attachments.some(a => {
+    const nameLow = (a.name ?? '').toLowerCase();
+    if (!/\.(pdf|xml|xlsx?|txt)$/i.test(nameLow)) return false;
+    return /factura|oc|backlog|inventario|salida|hoja|cfdi|trane|serie|equipo/.test(nameLow);
+  });
+  if (hasInventoryAttachment) return true;
+  // Keyword en subject o cuerpo
+  for (const rx of NAMI_EXCEL_KEYWORDS) {
+    if (rx.test(subj) || rx.test(bodyLow)) return true;
+  }
+  return false;
+}
+
 interface ProcessedEmail {
   category:           string;
   summary:            string;
@@ -1185,6 +1231,46 @@ export async function processInboxEmail(params: {
       ...dispatcherCols,
     });
     return;
+  }
+
+  // 2026-10-07 NAMI DEFAULT-SKIP GUARD: solo procesa correos que piden acción
+  // explícita del Excel de inventario. Antes Nami procesaba TODO lo que caía al
+  // buzón (facturas Home Depot auto, respuestas auto Trane, backlogs, etc.)
+  // quemando créditos por correos que no eran su responsabilidad. User textual
+  // 2026-10-07: "nami solo debería leer y procesar correos que vayan dirigidos
+  // para que ella ejecute en el excel. Si el correo no pide algo relacionado al
+  // excel por parte de Victoria, no debe interactuar con los demás correos,
+  // vengan de quien vengan". Guard aplica solo a meerkat_role_id='nami'.
+  // Excepciones: existingInboxId (reply a thread Nami ya participó) y
+  // fromSpamFolder (user forzó re-evaluación desde spam).
+  if (!existingInboxId && !fromSpamFolder) {
+    const supabase = createAdminClient();
+    const { data: agentCheck } = await supabase
+      .from('voice_agents')
+      .select('features')
+      .eq('id', agentId)
+      .maybeSingle();
+    const roleId = ((agentCheck?.features as { meerkat_role_id?: string } | undefined) ?? {}).meerkat_role_id;
+    if (roleId === 'nami' && !isNamiExcelTask(emailSubject, effectiveBody, attachments)) {
+      await supabase.from('ops_inbox').insert({
+        agent_id:        agentId,
+        source,
+        raw_message_id:  rawMessageId ?? null,
+        thread_id:       threadId ?? null,
+        email_from:      emailFrom,
+        email_subject:   emailSubject,
+        email_body:      effectiveBody.slice(0, EMAIL_BODY_TRUNCATE_CHARS),
+        attachments,
+        category:        'notificacion',
+        ai_summary:      `Correo no relacionado con el Excel de inventario (Nami default-skip, sin cobro).`,
+        ai_draft:        null,
+        item_type:       'email',
+        status:          'skipped',
+        action_required: false,
+        ...dispatcherCols,
+      });
+      return;
+    }
   }
 
   // C5 — clasificación determinística. Correos obviamente automáticos o
