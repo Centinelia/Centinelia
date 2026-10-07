@@ -6941,9 +6941,16 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       const conceptos = Array.isArray(conceptoArr) ? conceptoArr : conceptoArr ? [conceptoArr] : [];
       if (conceptos.length === 0) return { ok: false, error: 'Factura sin conceptos' };
 
-      // Regex de serie TRANE: patrones alfanuméricos ~10-15 chars con letras+dígitos.
-      // Ej: 25502332JA, 2613HA01706A, 2618HA00044A
-      const SERIE_RE = /\b([0-9A-Z]{8,16}[A-Z])\b/g;
+      // Regex de serie TRANE: patrones alfanuméricos 8-18 chars con AMBOS
+      // letras y dígitos. Antes requería letra al final → fallaba con
+      // residencial inverter cuyas series terminan en dígito.
+      // Ejemplos reales: X2446TO182IH0113 (residencial inverter, OC 6203),
+      // 25502332JA, 2613HA01706A, 2618HA00044A (comercial).
+      // Bug reportado por Nazre 2026-10-07 factura TRANE OC 6203 real.
+      const SERIE_RE = /\b([A-Z0-9]{8,18})\b/g;
+      // Filter helper: debe tener AMBOS al menos 1 letra y 1 dígito (para
+      // excluir strings puramente numéricos como fechas o IDs cortos).
+      const isLikelySerie = (s: string): boolean => /[A-Z]/.test(s) && /\d/.test(s);
 
       const equipos: Array<{ modelo: string; serie: string; usd_unit: number; costo_mx_unit: number; descripcion: string }> = [];
       const skipped: Array<{ modelo: string; reason: string }> = [];
@@ -6960,8 +6967,10 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
           continue;
         }
         const matches = [...descRaw.matchAll(SERIE_RE)].map(m => m[1]);
-        // Deduplicar y remover modelos duplicados en la descripción (ej. modelo aparece como palabra)
-        const series = [...new Set(matches)].filter(s => s !== modelo);
+        // Deduplicar, remover modelo duplicado en la descripción, y aplicar
+        // filter alfanumérico (letras + dígitos ambos). Sin isLikelySerie,
+        // podría matchear "AAP010601" (RFC) o cantidades grandes.
+        const series = [...new Set(matches)].filter(s => s !== modelo && isLikelySerie(s));
         if (series.length === 0) {
           skipped.push({ modelo, reason: 'no encontré series en la descripción' });
           continue;
