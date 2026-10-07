@@ -299,6 +299,35 @@ export async function patchCell(
   await patchRange(token, session, sheet, address, [[value]]);
 }
 
+/**
+ * Autofit columns del rango dado para que el contenido no quede cortado por
+ * ancho de celda. Microsoft Graph calcula el ancho ideal por columna basado
+ * en el contenido actual. Útil tras escribir bulk al Excel (ej. BACKLOG) para
+ * que Camila lea los datos sin tener que ajustar manualmente.
+ *
+ * No falla hard — si Graph lo rechaza (perms, formato, etc.) el pipeline sigue
+ * sin bloquear: solo pierdes el autofit visual, los datos quedan correctos.
+ */
+export async function autofitColumns(
+  token: string,
+  session: ExcelSession,
+  sheet: string,
+  address: string,
+): Promise<void> {
+  try {
+    await graphFetch(
+      `${itemPrefix(session.location)}/workbook/worksheets/${encodeURIComponent(sheet)}/range(address='${encodeURIComponent(address)}')/format/autofitColumns`,
+      {
+        method:  'POST',
+        headers: headers(token, session.id),
+        body:    JSON.stringify({}),
+      },
+    );
+  } catch (err) {
+    console.warn('[graph-excel.autofitColumns] non-fatal:', err instanceof Error ? err.message : err);
+  }
+}
+
 // ─── Worksheets discovery ────────────────────────────────────────────────────
 
 export async function listWorksheets(

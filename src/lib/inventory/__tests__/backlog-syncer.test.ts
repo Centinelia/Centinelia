@@ -4,9 +4,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { BacklogRow } from '../backlog-parser';
 
 vi.mock('../graph-excel', () => ({
-  readRange:    vi.fn(),
-  patchRange:   vi.fn(),
-  withSession:  vi.fn(async (_t, _l, fn) => fn({ id: 's1', persist: true, location: null })),
+  readRange:       vi.fn(),
+  patchRange:      vi.fn(),
+  autofitColumns:  vi.fn(),
+  withSession:     vi.fn(async (_t, _l, fn) => fn({ id: 's1', persist: true, location: null })),
 }));
 
 const BASE_CTX = {

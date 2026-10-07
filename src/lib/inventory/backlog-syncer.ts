@@ -509,6 +509,12 @@ export async function syncBacklogRows(
       await GraphExcel.withSession(ctx.token, ctx.config.location, async session => {
         const address = `${firstColLetter}${resolved.dataStartRow}:${lastColLetter}${writeMaxRow}`;
         await GraphExcel.patchRange(ctx.token, session, config.name, address, allValues);
+        // 2026-10-07 Camila: autofit columnas tras escribir bulk para que el
+        // contenido no quede cortado por ancho de celda. Rango expandido para
+        // incluir el header row (dataStartRow - 1) y así los títulos también
+        // quedan visibles. Non-fatal: si Graph rechaza, pipeline sigue.
+        const headerStart = Math.max(1, resolved.dataStartRow - 1);
+        await GraphExcel.autofitColumns(ctx.token, session, config.name, `${firstColLetter}${headerStart}:${lastColLetter}${writeMaxRow}`);
       });
     } catch (err) {
       summary.errors.push({ row_key: '*', error: err instanceof Error ? err.message : String(err) });
@@ -517,8 +523,10 @@ export async function syncBacklogRows(
   }
 
   // UPSERT: iterar fila por fila
+  let nextAppendRow = computeNextAppendRow(existingIndex, resolved);
+  const upsertStartRow = nextAppendRow;
+  let upsertAnyChange = false;
   await GraphExcel.withSession(ctx.token, ctx.config.location, async session => {
-    let nextAppendRow = computeNextAppendRow(existingIndex, resolved);
     for (const r of parsedRows) {
       const key = rowKey(r, resolved);
       const existing = existingIndex.get(key);
@@ -528,13 +536,22 @@ export async function syncBacklogRows(
           const address = `${firstColLetter}${nextAppendRow}:${lastColLetter}${nextAppendRow}`;
           await GraphExcel.patchRange(ctx.token, session, config.name, address, [newRow]);
           nextAppendRow++;
+          upsertAnyChange = true;
         } else if (!rowsEqualResolved(existing.values, newRow, resolved)) {
           const address = `${firstColLetter}${existing.rowNumber}:${lastColLetter}${existing.rowNumber}`;
           await GraphExcel.patchRange(ctx.token, session, config.name, address, [newRow]);
+          upsertAnyChange = true;
         }
       } catch (err) {
         summary.errors.push({ row_key: key, error: err instanceof Error ? err.message : String(err) });
       }
+    }
+    // Autofit solo si hubo al menos un write (si todo quedó unchanged, no
+    // tiene sentido correr autofit — el user ya ajustó manualmente antes).
+    if (upsertAnyChange) {
+      const headerStart = Math.max(1, resolved.dataStartRow - 1);
+      const endRow = Math.max(nextAppendRow - 1, upsertStartRow);
+      await GraphExcel.autofitColumns(ctx.token, session, config.name, `${firstColLetter}${headerStart}:${lastColLetter}${endRow}`);
     }
   });
 
