@@ -150,23 +150,37 @@ function findToolClaimHallucinations(text: string, actuallyInvoked: Set<string>)
 }
 
 // ── Firma suplantando humano ─────────────────────────────────────────────────
-// Busca al final del draft (últimas 300 chars) menciones a nombres del
+// Busca al final del draft (últimas 400 chars) menciones a nombres del
 // team roster. Si Nami firma "Camila Rodarte" es suplantación.
+//
+// 2026-10-07: pass si el nombre del agente aparece ANTES del nombre humano en
+// la zona de firma. Patrón esperado del template corporate:
+//   "Saludos,\n\nNami\nAsistente de Inventarios\nAC Proyectos\n..."
+// Si el nombre del agente está correctamente al inicio del bloque Y después
+// aparece un nombre humano (ej. en el bloque de empresa que menciona razón
+// social o un contacto adicional), NO es impersonation.
 function findImpersonation(draft: string, teamHumans: string[], agentName: string): string | null {
   if (!draft) return null;
-  const tail = draft.slice(-300);  // zona de firma
+  const tail = draft.slice(-400);  // zona de firma
   const normalizedAgent = agentName.toLowerCase().trim();
+  const tailLow = tail.toLowerCase();
   for (const human of teamHumans) {
     if (!human || human.trim().length < 3) continue;
     const h = human.trim();
-    // Partir en palabras y requerir match del nombre completo (al menos 2 palabras)
     const parts = h.split(/\s+/).filter(p => p.length >= 3);
     if (parts.length < 2) continue;  // single names muy frecuentes, saltar
-    // Si el nombre completo aparece en la zona de firma Y no es el nombre del agente
     const nameRx = new RegExp(`\\b${parts.map(escapeRx).join('\\s+')}\\b`, 'i');
-    if (nameRx.test(tail) && !tail.toLowerCase().includes(normalizedAgent)) {
-      return h;
-    }
+    const humanMatch = tail.match(nameRx);
+    if (!humanMatch) continue;
+
+    // Si el nombre del agente aparece ANTES del humano en el tail, es firma
+    // válida (el agente firma primero, el humano aparece como contacto o
+    // nombre de empresa). Si NO aparece el agente, o aparece DESPUÉS, es
+    // suplantación.
+    const agentIdx = tailLow.indexOf(normalizedAgent);
+    const humanIdx = humanMatch.index ?? -1;
+    if (agentIdx >= 0 && agentIdx < humanIdx) continue;  // firma correcta
+    return h;
   }
   return null;
 }

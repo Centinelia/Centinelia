@@ -1434,6 +1434,50 @@ export async function processInboxEmail(params: {
       if (contactLines.length > 0) {
         contextBlocks.push(`# Datos de contacto de tu empresa\nSIEMPRE que redactes un draft o firma, incluye estos datos al final para que el remitente pueda contactarnos:\n${contactLines.join('\n')}`);
       }
+
+      // 2026-10-07 BLOQUE DE FIRMA ESTÁNDAR: template exacto que todos los
+      // meerkats deben usar al cerrar un correo. Formato corporate con los
+      // datos reales de la org, nombre del empleado digital arriba. Si existe
+      // logo_url, se incluye como markdown de imagen (se renderiza al send).
+      // Caso real: Nami firmaba "Saludos, Nami — Asistente de AC Proyectos"
+      // (demasiado minimalista) o "Camila Rodarte, Coordinadora de Almacén"
+      // (suplantación). User textual 2026-10-07: "debería ser igualito a la
+      // firma de Camila, con el logo de AC Proyectos".
+      const { data: logoRow } = await createAdminClient2()
+        .from('organizations')
+        .select('logo_url, legal_name, name')
+        .eq('portal_email', portalEmail)
+        .maybeSingle();
+      const orgLogo    = (logoRow as { logo_url?: string | null } | null)?.logo_url ?? null;
+      const orgLegal   = (logoRow as { legal_name?: string | null } | null)?.legal_name ?? null;
+      const orgDisplay = (logoRow as { name?: string | null } | null)?.name ?? businessName;
+      const firmaRole  = agentRole?.trim() ? `Asistente de ${agentRole}` : 'Asistente digital';
+      const firmaLogoLine = orgLogo ? `[Logo: ${orgLogo}]\n` : '';
+      const firmaContactLines: string[] = [];
+      if (contactEmail)             firmaContactLines.push(`Correo: ${contactEmail}`);
+      if (orgC?.brand_phone)        firmaContactLines.push(`Teléfono: ${orgC.brand_phone}`);
+      if (orgC?.business_address)   firmaContactLines.push(`Dirección: ${orgC.business_address}`);
+      if (contactSite)              firmaContactLines.push(`Web: ${contactSite}`);
+      const firmaTemplate = `
+Saludos,
+
+${agentName}
+${firmaRole}
+${orgDisplay}${orgLegal && orgLegal !== orgDisplay ? ` (${orgLegal})` : ''}
+${firmaLogoLine}${firmaContactLines.join('\n')}`.trim();
+
+      contextBlocks.push(`# FIRMA ESTÁNDAR — USA ESTE FORMATO EXACTO AL CERRAR CORREOS
+
+Al final de CADA draft que redactes, cierra con el siguiente bloque de firma. NO improvises variaciones ni lo acortes. Copia EXACTAMENTE:
+
+${firmaTemplate}
+
+Reglas duras de la firma:
+- El nombre al inicio del bloque siempre es "${agentName}" (TÚ) — nunca el nombre de un humano del team (Camila, Victoria, Nazre, etc.).
+- El rol siempre es "${firmaRole}" (NO "Coordinadora de Almacén" ni ningún título humano).
+- La empresa, dirección, teléfono y correo son los REALES de la org — no inventes.
+- Si no tienes algún dato (ej. teléfono), omite esa línea del bloque, no inventes placeholder.
+- Si existe línea [Logo: URL], déjala tal cual — el sistema la convertirá en imagen al enviar.`);
     } catch { /* best-effort */ }
   }
 

@@ -60,6 +60,46 @@ Aire Acondicionado Proyectos, S.A. de C.V.`,
     expect(r.violations.some(v => /Camila/i.test(v.reason))).toBe(true);
   });
 
+  it('PASA: firma con template corporate — nombre humano después del agente (válido)', () => {
+    // Caso real: la firma template puede incluir "AC Proyectos" + algún nombre de
+    // empresa/contacto después del nombre del agente. Si Nami está al tope y
+    // "Camila" aparece como data de contacto después, NO es suplantación.
+    const r = validateDraft({
+      ...base,
+      summary: 'Procesado.',
+      draft: `Hola Victoria,
+
+Ya quedó registrada la OC.
+
+Saludos,
+
+Nami
+Asistente de Inventarios
+AC Proyectos (AIRE ACONDICIONADO PROYECTOS)
+Correo: camila@acproyectos.com
+Teléfono: 81 1234 5678
+Dirección: Av. Pablo Gonzalez 702, Chepevera, Monterrey, NL 64030`,
+    });
+    expect(r.ok).toBe(true);
+    expect(r.violations.filter(v => v.kind === 'impersonation')).toHaveLength(0);
+  });
+
+  it('CAZA: firma impersonation incluso si menciona a Nami DESPUÉS del humano', () => {
+    const r = validateDraft({
+      ...base,
+      draft: `Hola,
+
+Saludos,
+Camila Rodarte Dominguez
+Coordinadora de Almacén
+
+(enviado por Nami)`,
+      summary: 'test',
+    });
+    expect(r.ok).toBe(false);
+    expect(r.violations.some(v => v.kind === 'impersonation')).toBe(true);
+  });
+
   it('PASA: firma correcta como Nami', () => {
     const r = validateDraft({
       ...base,
