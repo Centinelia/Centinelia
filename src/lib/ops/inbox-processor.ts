@@ -64,23 +64,32 @@ function detectForcedTool(
   const hasAttachmentOfType = (rx: RegExp) =>
     attachments.some(a => rx.test((a.name ?? '').toLowerCase()) || rx.test((a.type ?? '').toLowerCase()));
 
-  // Regla 1: OC + PDF/XML adjunto
+  // Regla 1: Factura Trane + XML adjunto. CHECK ANTES de la regla OC porque un
+  // reply en el mismo hilo de "Registrar OC6203" + XML adjunto podría disparar
+  // Rule 2 por error. "factura trane" es señal más específica que "OC + número".
+  // También acepta XML con nombre que contenga "factura" o "trane" aunque el
+  // subject no mencione factura explícitamente (ej. reply en thread OC).
+  const hasXmlAttachment = hasAttachmentOfType(/\.xml$|application\/xml/);
+  const hasInvoiceLikeAttachment = attachments.some(a => {
+    const n = (a.name ?? '').toLowerCase();
+    return /\.xml$/.test(n) && (/factura|trane|cfdi|invoice/.test(n));
+  });
+  if (
+    (/\bfactura\s+trane\b/i.test(subj) || /\bfact\s+trane\b/i.test(subj) ||
+     /\bfactura\s+trane\b/i.test(bodyLow) || hasInvoiceLikeAttachment) &&
+    hasXmlAttachment &&
+    availableToolNames.has('inv_procesar_factura_trane')
+  ) {
+    return 'inv_procesar_factura_trane';
+  }
+
+  // Regla 2: OC + PDF/XML adjunto (orden: después de factura trane).
   if (
     /\boc\s*[-#]?\s*[a-z0-9-]+\d/i.test(subj) &&
     hasAttachmentOfType(/\.(pdf|xml|xlsx?)$|application\/(pdf|xml|vnd\.openxmlformats)/) &&
     availableToolNames.has('inv_procesar_oc_qb')
   ) {
     return 'inv_procesar_oc_qb';
-  }
-
-  // Regla 2: Factura Trane + XML adjunto
-  if (
-    (/\bfactura\s+trane\b/i.test(subj) || /\bfact\s+trane\b/i.test(subj) ||
-     /\bfactura\s+trane\b/i.test(bodyLow)) &&
-    hasAttachmentOfType(/\.xml$|application\/xml/) &&
-    availableToolNames.has('inv_procesar_factura_trane')
-  ) {
-    return 'inv_procesar_factura_trane';
   }
 
   // Regla 3: Backlog + PDF adjunto
