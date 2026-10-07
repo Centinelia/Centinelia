@@ -1813,10 +1813,16 @@ ${attachments.map(a => {
   const canReadWithUrl = /^text\//i.test(a.type)
     || /^application\/(json|xml|csv|x-yaml)/i.test(a.type)
     || /\.(csv|txt|json|xml|md|yml|yaml|tsv)$/i.test(a.name);
+  // 2026-10-07: download_url expuesto por enrichWithAttachments cuando el
+  // attachment es PDF/XML grande. Las tools inv_importar_backlog y
+  // similares esperan pdf_url http descargable. Si existe, el LLM lo pasa
+  // directo al tool como arg "pdf_url" o "xml_url".
+  const downloadUrl = (a as { download_url?: string }).download_url;
   const base = `- ${a.name} (${a.type}, ${Math.round(a.size / 1024)}KB)`;
-  return canReadWithUrl
-    ? `${base}\n  URL: ${a.url}\n  → Archivo tabular/text: usa read_url con esta URL (regla crítica arriba).`
-    : base;
+  const parts = [base];
+  if (canReadWithUrl) parts.push(`  URL text: ${a.url}\n  → Archivo tabular/text: usa read_url con esta URL (regla crítica arriba).`);
+  if (downloadUrl)   parts.push(`  URL descargable (válida 2h): ${downloadUrl}\n  → PÁSALA como arg pdf_url/xml_url al tool que la necesite (ej. inv_importar_backlog, procesadores que requieran binario).`);
+  return parts.join('\n');
 }).join('\n')}` : ''}
 ${originalEmailBody ? '(Este email es una respuesta a una solicitud de información previa — el hilo completo está en el cuerpo)' : ''}
 

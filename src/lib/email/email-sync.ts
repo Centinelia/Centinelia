@@ -14,21 +14,36 @@ import type { EmailConnector } from '@/lib/connectors/types';
  */
 async function enrichWithAttachments(
   emailConn: EmailConnector,
-  msg: { id: string; body: string; attachments?: Array<{ id: string; name: string; mimeType: string; size: number }> },
-): Promise<{ body: string; images: Array<{ name: string; base64: string; mimeType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' }>; metas: Array<{ name: string; url: string; type: string; size: number }> }> {
-  const metas = (msg.attachments ?? []).map(a => ({
+  msg: { id: string; subject?: string; body: string; attachments?: Array<{ id: string; name: string; mimeType: string; size: number }> },
+  opts: { portalEmail?: string | null } = {},
+): Promise<{ body: string; images: Array<{ name: string; base64: string; mimeType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' }>; metas: Array<{ name: string; url: string; type: string; size: number; download_url?: string }> }> {
+  const metas: Array<{ name: string; url: string; type: string; size: number; download_url?: string }> = (msg.attachments ?? []).map(a => ({
     name: a.name, url: `gmail:${msg.id}/${a.id}`, type: a.mimeType, size: a.size,
   }));
   if (!msg.attachments || msg.attachments.length === 0) {
     return { body: msg.body, images: [], metas };
   }
-  const processed = await processIncomingAttachments(emailConn, msg.id, msg.attachments);
+  const processed = await processIncomingAttachments(emailConn, msg.id, msg.attachments, {
+    portalEmail: opts.portalEmail ?? null,
+    subject:     msg.subject,
+  });
   let body = msg.body;
   if (processed.docTextBlocks.length > 0) {
     body += `\n\n--- Contenido de documentos adjuntos ---\n${processed.docTextBlocks.join('\n\n')}`;
   }
   if (processed.skipped.length > 0) {
     body += `\n\n[Adjuntos no leídos: ${processed.skipped.join(', ')}]`;
+  }
+  // 2026-10-07 fix sistémico: enriquecer metas con download_url para los
+  // uploads a Storage. Permite a tools como inv_importar_backlog descargar el
+  // PDF binario via http en vez de solo tener el nombre del archivo.
+  if (processed.uploads.length > 0) {
+    const uploadByName = new Map(processed.uploads.map(u => [u.name, u]));
+    for (const m of metas) {
+      const up = uploadByName.get(m.name);
+      if (up) m.download_url = up.download_url;
+    }
+    body += `\n\n[Adjuntos descargables (URL firmada 2h):\n${processed.uploads.map(u => `  • ${u.name} → ${u.download_url}`).join('\n')}]`;
   }
   return { body, images: processed.images, metas };
 }
@@ -224,7 +239,7 @@ async function syncIntegration(integration: EmailIntegration, supabase: ReturnTy
       console.error(`[email-sync] markRead failed for ${msg.id}:`, err)
     );
 
-    const enriched = await enrichWithAttachments(conn.email, msg);
+    const enriched = await enrichWithAttachments(conn.email, msg, { portalEmail: agent.portal_email as string | null });
 
     // ── Ingesta de media para Navi / Navi Agencia ──────────────────────────
     // Se ejecuta en paralelo lógico con el pipeline normal. Cualquier fallo
@@ -318,7 +333,7 @@ async function syncIntegration(integration: EmailIntegration, supabase: ReturnTy
 
         if (existing) continue;
 
-        const enrichedSpam = await enrichWithAttachments(conn.email, msg);
+        const enrichedSpam = await enrichWithAttachments(conn.email, msg, { portalEmail: agent.portal_email as string | null });
 
         await processInboxEmail({
           agentId:          agent.id,
