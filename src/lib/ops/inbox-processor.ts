@@ -31,6 +31,16 @@ const CATEGORY_LABELS: Record<string, string> = {
   otro:         'Otro',
 };
 
+// 2026-10-07: strippea prefijos de categoría propios para prevenir anidación
+// `[Factura] [Factura] [Factura] ...` cuando una notif se re-procesa (defense
+// in depth vs isSelfNotification guard arriba). También strippea `[Email] ` que
+// es el fallback cuando result.category no está en CATEGORY_LABELS.
+// Ver [[feedback-sistema-no-escribe-a-inbox-meerkat]].
+const CATEGORY_PREFIX_RX = /^(\s*\[(Proveedor|Cliente|Urgente|Factura|Notificación|Spam|Otro|Email|Aviso|Alerta|Approval)\]\s*)+/i;
+function stripOwnPrefixes(subject: string): string {
+  return subject.replace(CATEGORY_PREFIX_RX, '').trim() || '(sin asunto)';
+}
+
 interface ProcessedEmail {
   category:           string;
   summary:            string;
@@ -2644,7 +2654,7 @@ CATEGORÍAS:
       });
       await sendEmail({
         to:      notifyTo,
-        subject: `[${CATEGORY_LABELS[result.category] ?? 'Email'}] ${emailSubject || '(sin asunto)'} - envío falló, requiere aprobación`,
+        subject: `[${CATEGORY_LABELS[result.category] ?? 'Email'}] ${stripOwnPrefixes(emailSubject || '')} - envío falló, requiere aprobación`,
         html,
       });
     }
@@ -2671,7 +2681,7 @@ CATEGORÍAS:
     });
     await sendEmail({
       to:      notifyTo,
-      subject: `[${CATEGORY_LABELS[result.category] ?? 'Email'}] ${emailSubject || '(sin asunto)'} — aprobación pendiente`,
+      subject: `[${CATEGORY_LABELS[result.category] ?? 'Email'}] ${stripOwnPrefixes(emailSubject || '')} — aprobación pendiente`,
       html,
     });
   }
