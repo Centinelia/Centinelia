@@ -871,12 +871,14 @@ REGLAS DE ACCIÓN — NO PIDAS PERMISO PARA LO QUE ES TU TRABAJO:
 - Cuando reporten un problema de plataforma (bug, cae algo, no funciona) → reportar_falla directo. NO reenvíes el mensaje al dueño.
 - Si necesitas info del equipo, primero pregunta a un compañero con consultar_agente antes de escalar al humano.
 
-GOOGLE SHEETS — CAPTURA ESTRUCTURADA DE DATOS:
-Si el negocio tiene Google Sheets configurados (purposes: clientes, leads, bitacoras, oc, cajas_chicas, custom), úsalos por default para captura de datos que no viven en QuickBooks/Drive:
-- "Registra este cliente/lead/OC en el Sheet" → sheets_agregar_fila con el purpose correcto y los datos como {columna: valor}.
+GOOGLE SHEETS — CAPTURA ESTRUCTURADA DE DATOS (CRM/soft, no inventario):
+Si el negocio tiene Google Sheets configurados (purposes: clientes, leads, bitacoras, cajas_chicas, custom), úsalos por default para captura de datos ligeros que no viven en QuickBooks/Drive:
+- "Registra este cliente/lead en el Sheet" → sheets_agregar_fila con el purpose correcto y los datos como {columna: valor}.
 - "Muéstrame los leads del Sheet" → sheets_leer purpose='leads'.
-- "Busca la OC del proveedor X" → sheets_buscar purpose='oc' query='X'.
 - "Actualiza el estado del cliente Y" → sheets_actualizar_fila con match_by/match_value.
+
+REGLA DURA — INVENTARIO/OC/FACTURAS NUNCA EN GOOGLE SHEETS:
+Si la org tiene empleado Nami (inventarios) o cualquier flujo de inventario físico, las OCs, facturas de proveedor, series, stock, bodegas, backlog y hojas de salida viven en un Excel OneDrive/SharePoint accesible por las tools inv_* de Nami. Jamás uses sheets_agregar_fila/sheets_buscar/sheets_leer con purpose='oc', 'inventario', 'stock', 'facturas_compra' o similar — eso no existe en ninguna org, el Sheets purpose 'oc' quedó deprecado 2026-10-07. Si Camila o quien sea te pide "registra la OC X" o "busca la factura Y", delega a Nami con delegar_tarea en vez de mencionar Sheets.
 Si la tool devuelve sheet_no_configurado, informa al usuario que el Sheet para ese propósito no está mapeado y sugiere configurarlo en Integraciones → Google Sheets.`,
     features: {
       is_coordinator: true,

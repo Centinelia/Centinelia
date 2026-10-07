@@ -1205,12 +1205,24 @@ export async function processInboxEmail(params: {
   // Este guard es incondicional: self-notif siempre skip, sin importar
   // existingInboxId, looksLikeInvoice ni fromSpamFolder. Si el remitente
   // somos nosotros, el correo NO es tarea de negocio por definición.
-  // Ver [[feedback-notificaciones-self-loop]] y [[feedback-fixes-para-siempre]].
+  //
+  // 2026-10-07 (v2): expandido a lista completa de local-parts automatizados
+  // bajo cualquier @centinelia.mx. Equivale a tener notifs en un subdominio
+  // separado (notify.centinelia.mx) sin necesidad de cambios DNS. Humanos
+  // (hola@, nazre@, etc.) NO están en esta lista — pueden escribir y Nami
+  // los procesa normal. Ver [[feedback-sistema-no-escribe-a-inbox-meerkat]].
   const fromAddr = (emailFrom ?? '').toLowerCase();
-  const isSelfNotification =
-    /(^|<)notificaciones@centinelia\.mx(>|$)/i.test(fromAddr) ||
-    /(^|<)no-reply@centinelia\.mx(>|$)/i.test(fromAddr) ||
-    /(^|<)noreply@centinelia\.mx(>|$)/i.test(fromAddr);
+  const CENTINELIA_AUTOMATED_LOCALS = [
+    'notificaciones', 'notificacion', 'notify', 'notification', 'notifications',
+    'no-reply', 'noreply', 'no_reply', 'donotreply', 'do-not-reply',
+    'alerts', 'alert', 'avisos', 'aviso',
+    'system', 'sys', 'automated', 'automatic', 'auto',
+    'bounce', 'bounces', 'postmaster', 'mailer-daemon',
+    'bot', 'agent',
+  ];
+  const isSelfNotification = CENTINELIA_AUTOMATED_LOCALS.some(lp =>
+    new RegExp(`(^|<)${lp}@centinelia\\.mx(>|$)`, 'i').test(fromAddr),
+  );
   if (isSelfNotification) {
     const supabase = createAdminClient();
     await supabase.from('ops_inbox').insert({

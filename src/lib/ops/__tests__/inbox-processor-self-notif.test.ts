@@ -23,7 +23,10 @@ const SRC = readFileSync(
 
 describe('inbox-processor.ts self-notification guard (regression 2026-10-07)', () => {
   it('tiene guard contra notificaciones@centinelia.mx', () => {
-    expect(SRC).toMatch(/notificaciones@centinelia\\?\.mx/);
+    // La lista automatizada debe incluir 'notificaciones' explícitamente,
+    // y debe construir regex contra @centinelia.mx.
+    expect(SRC).toContain("'notificaciones'");
+    expect(SRC).toContain('@centinelia');
   });
 
   it('guard aparece ANTES del bloque looksLikeInvoice/quickClassifyEmail', () => {
@@ -50,8 +53,22 @@ describe('inbox-processor.ts self-notification guard (regression 2026-10-07)', (
   it('guard también cubre no-reply y noreply @centinelia.mx', () => {
     // Defense in depth: cualquier variante del propio dominio enviando
     // automáticos debe estar atrapada, no solo `notificaciones@`.
-    expect(SRC).toMatch(/no-reply@centinelia\\?\.mx/);
-    expect(SRC).toMatch(/noreply@centinelia\\?\.mx/);
+    const listMatch = SRC.match(/const CENTINELIA_AUTOMATED_LOCALS = \[([\s\S]*?)\];/);
+    expect(listMatch).toBeTruthy();
+    const list = listMatch![1];
+    for (const lp of ['notificaciones', 'notify', 'no-reply', 'noreply', 'alerts', 'avisos', 'system', 'bot', 'postmaster']) {
+      expect(list, `local-part "${lp}" debe estar en CENTINELIA_AUTOMATED_LOCALS`).toContain(`'${lp}'`);
+    }
+  });
+
+  it('guard NO atrapa humanos @centinelia.mx (hola@, nazre@, etc.)', () => {
+    // Nazre o cualquier humano real escribiendo desde @centinelia.mx debe
+    // procesarse normal, no considerarse self-notification.
+    const listMatch = SRC.match(/const CENTINELIA_AUTOMATED_LOCALS = \[([\s\S]*?)\];/);
+    const list = listMatch![1];
+    for (const human of ['hola', 'nazre', 'nazre20', 'contacto', 'ventas', 'soporte']) {
+      expect(list, `local-part "${human}" NO debe estar en lista automatizada`).not.toContain(`'${human}'`);
+    }
   });
 
   it('guard inserta row en ops_inbox con status=skipped', () => {
