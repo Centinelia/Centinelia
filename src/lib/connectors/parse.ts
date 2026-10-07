@@ -12,7 +12,16 @@ const PPTX_MIME  = 'application/vnd.openxmlformats-officedocument.presentationml
 export async function parseFileToText(buffer: Buffer, mimeType: string): Promise<string> {
   const mt = mimeType.split(';')[0].trim().toLowerCase();
 
-  if (mt.startsWith('text/') || mt === 'application/json' || mt === 'text/csv') {
+  if (
+    mt.startsWith('text/') ||
+    mt === 'application/json' ||
+    mt === 'application/xml' ||     // CFDI, SOAP responses, generic XML
+    mt === 'application/soap+xml'
+  ) {
+    // 2026-10-07 bug (reportado Nazre factura TRANE OC 6203): XML CFDI llegó
+    // como attachment pero caía al default "formato no soportado". Para que
+    // Nami (inv_procesar_factura_trane) pueda parsear el XML, el text debe
+    // llegar al email body. XMLs son UTF-8 plain text — basta toString.
     return buffer.toString('utf8');
   }
 
