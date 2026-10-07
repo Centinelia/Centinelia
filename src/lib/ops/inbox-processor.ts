@@ -1079,6 +1079,38 @@ export const EMAIL_TOOL_BY_NAME: Record<string, Anthropic.Tool> = Object.fromEnt
   ].map(t => [t.name, t]),
 );
 
+// 2026-10-07: las tools inv_* nunca se definieron para email context — solo
+// vivían en CHAT_TOOL_BY_NAME. Resultado: Nami tenía las 31 tools en su
+// preset email pero 21 se dropeaban silenciosamente en getToolsForRoleEmail
+// (línea 1088) porque no estaban en EMAIL_TOOL_BY_NAME. En runtime solo
+// quedaban 10 tools (buscar_correo_enviado, delegar_tarea, pedir_a_humano,
+// enviar_correo, consultar_agente, etc. — las universales). Sin inv_* no
+// podía procesar OCs/facturas aunque el prompt se lo pidiera y el force
+// tool_choice detectara el patrón. Caso real TEST-44444 con debug log mostró
+// `has_oc_tool: false, tools_count: 10`.
+//
+// Fix pragmático: carga lazy las inv_* tools desde CHAT_TOOL_BY_NAME (que
+// las tiene ya definidas con schema correcto) y mergealas al EMAIL_TOOL_BY_NAME
+// en runtime. Alternativa correcta a futuro: mover las definiciones inv_* a
+// un shared tools file.
+let invToolsHydrated = false;
+async function hydrateInventoryToolsIntoEmail(): Promise<void> {
+  if (invToolsHydrated) return;
+  invToolsHydrated = true;
+  try {
+    const chatMod = await import('@/app/api/portal/[token]/agent-chat/route');
+    const chatMap = (chatMod as { CHAT_TOOL_BY_NAME?: Record<string, Anthropic.Tool> }).CHAT_TOOL_BY_NAME;
+    if (!chatMap) return;
+    for (const [name, tool] of Object.entries(chatMap)) {
+      if (!name.startsWith('inv_')) continue;
+      if (EMAIL_TOOL_BY_NAME[name]) continue;  // ya definida en email
+      EMAIL_TOOL_BY_NAME[name] = tool;
+    }
+  } catch (err) {
+    console.warn('[inbox-processor] failed to hydrate inv_* tools from chat:', err);
+  }
+}
+
 /**
  * MEERKAT_EMAIL_DISTRIBUTION — preset explícito por meerkat en email.
  *
@@ -1880,6 +1912,10 @@ CATEGORÍAS:
 
     // Fix 2026-08-19: filtrar tools por preset del meerkat (antes todos
     // recibían BASE_EMAIL_TOOLS entero → tool bloat degradaba calidad LLM).
+    //
+    // 2026-10-07: hidrata inv_* tools desde CHAT_TOOL_BY_NAME antes del
+    // lookup. Sin esto las tools inv_* del preset se dropeaban silenciosamente.
+    await hydrateInventoryToolsIntoEmail();
     const presetTools = getToolsForRoleEmail(inboxMeerkatId, qbConnected);
 
     // Capa 2 tool-bloat: filtrar por packs activos del org (después del preset,
