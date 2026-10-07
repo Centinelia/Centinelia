@@ -2645,23 +2645,15 @@ CATEGORÍAS:
     } catch { /* best-effort */ }
   };
 
-  if (finalStatus === 'info_requested' && result.requestToSender && sendReplyFn) {
-    try {
-      const body = stripMarkdown(result.requestToSender);
-      // Info-requested no debería llegar con files generados (el LLM pide info,
-      // no entrega work-product), pero pasamos por si acaso — el flujo es
-      // idempotente y trivial cuando el array está vacío.
-      const genAttachments = await loadGeneratedAttachments();
-      await sendReplyFn(body, genAttachments.length ? genAttachments : undefined);
-      if (item?.id) {
-        await supabase.from('ops_inbox').update({ sent_at: new Date().toISOString() }).eq('id', item.id);
-      }
-      void logAutoReplyToOutbound(body, 'info_requested');
-    } catch (err) {
-      console.error('[ops/inbox-processor] info_requested send failed:', err);
-    }
-
-  } else if (finalStatus === 'auto_replied' && result.draft && sendReplyFn && item) {
+  // 2026-10-07 BUG FIX: antes aquí se enviaba automáticamente el draft de
+  // info_requested al remitente. User textual: "Si se requiere verificacion,
+  // el correo no se debería de enviar hasta que se autorice". El draft queda
+  // en item.ai_draft y aparece en bandeja como pending-approval. El humano
+  // revisa, edita y aprueba (o rechaza) desde "Requieren tu acción".
+  // No se envía nada hasta que apruebe. Thread resume (existingInboxId reply)
+  // sigue funcionando porque transitionInboxItem ya marca pending y el humano
+  // retoma desde ahí.
+  if (finalStatus === 'auto_replied' && result.draft && sendReplyFn && item) {
     try {
       const body = stripMarkdown(result.draft);
       // Files generados durante el loop (create_file / create_document) se
