@@ -2607,13 +2607,23 @@ export async function POST(req: NextRequest, { params }: Params) {
   // (ej. anti-Google-Sheets de Nami) tengan efecto en TODO canal, no solo
   // en los que casualmente leían promptPersonalidad.
   //
-  // Chat variant del role prompt: solo reglas duras anti-hallucination, no el
-  // runbook operativo completo. Prompt completo (~4500 tokens de Nami) rompió
-  // el chat con Camila 2026-10-07 (respuesta basura "1 6203"). Chat variant
-  // extrae solo secciones PROHIBIDO/BANEAD/NUNCA (~800 tokens).
-  // Env AGENT_CHAT_INJECT_ROLE_PROMPT=0 lo desactiva por completo si vuelve
-  // a romper. Default ON con variant chat.
-  const injectRolePrompt = process.env.AGENT_CHAT_INJECT_ROLE_PROMPT !== '0';
+  // 2026-10-07 Chat del portal con role prompt está ROTO para Nami.
+  // Síntomas confirmados en 3 variantes:
+  //   - Prompt completo (~4500 tokens): respuesta "1 6203" (fragmentos text raros)
+  //   - Variant chat con pasos (~800 tokens): respuesta narraba tool calls fake
+  //     ("revisar_mi_inbox_ahora {ok:true, ingested:2}" como texto, IDs falsos)
+  //   - Variant chat sin pasos (~420 tokens): respuesta "08f69d89-UUID 08f69d89-UUID"
+  //     (modelo genera arg del tool como texto en vez de via tool_use del SDK)
+  //
+  // El inbox-processor (correo) SÍ funciona con el role prompt completo porque
+  // no usa streaming. El chat usa stream + tool_use + el modelo se confunde.
+  //
+  // Default OFF hasta debugear por qué el streaming de Anthropic SDK se rompe
+  // con prompts role prescriptivos. Env AGENT_CHAT_INJECT_ROLE_PROMPT=1
+  // reactiva para experimentar. El prompt genérico del chat tiene reglas
+  // suficientes para respuestas conversacionales (con hallucinations que ya
+  // existían antes de esta sesión — no es regresión).
+  const injectRolePrompt = process.env.AGENT_CHAT_INJECT_ROLE_PROMPT === '1';
   let rolePromptBlock = '';
   if (injectRolePrompt) {
     const { buildRolePromptBlock } = await import('@/lib/portal/role-prompt-block');
