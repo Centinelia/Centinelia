@@ -6049,42 +6049,69 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
     // ventana temporal + opcional por tool/serie. Devuelve resumen agregado +
     // muestra de las últimas N acciones legibles para el LLM.
     // ─── Nami revisa su inbox ahora (bypass del cron de 10 min) ─────────────
-    // Introducido 2026-10-06 durante el Meet con Camila: el cron
-    // agent-mailboxes corre cada 10 min, pero cuando Camila le reenvía un
-    // documento (OC, factura TRANE, hoja salida, factura venta SF, PDF
-    // BACKLOG) querría que Nami lo procese en segundos, no esperar al
-    // próximo tick del cron. Esta tool dispara el cron on-demand.
+    // 2026-10-07 BUG FIX: antes solo disparaba /api/cron/agent-mailboxes (SMTP).
+    // Nami en AC usa Outlook via OAuth (email_integrations table), NO SMTP, por
+    // lo que ese cron la skipaba — correos de Camila (RV: REGISTRAR OC 6203)
+    // nunca llegaban aunque la tool reportara éxito. Ahora dispara AMBOS crones
+    // en paralelo: agent-mailboxes (SMTP via smtp_config) + email-sync (Outlook
+    // via email_integrations). El que aplique procesa, el otro skippa sin daño.
     if (toolName === 'revisar_mi_inbox_ahora') {
       const cronSecret = process.env.CRON_SECRET;
       if (!cronSecret) return { ok: false, error: 'CRON_SECRET no configurado en env.', code: 'cron_secret_missing' };
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
       try {
-        const r = await fetch(`${baseUrl}/api/cron/agent-mailboxes`, {
-          method: 'GET',
-          headers: { Authorization: `Bearer ${cronSecret}` },
-        });
-        if (!r.ok) {
-          const body = await r.text();
-          return { ok: false, error: `cron error ${r.status}: ${body.slice(0, 200)}`, code: 'cron_failed' };
+        const [smtpRes, oauthRes] = await Promise.all([
+          fetch(`${baseUrl}/api/cron/agent-mailboxes`, {
+            method: 'GET',
+            headers: { Authorization: `Bearer ${cronSecret}` },
+          }).catch(e => ({ ok: false, status: 0, _err: e instanceof Error ? e.message : 'unknown' } as unknown as Response)),
+          fetch(`${baseUrl}/api/cron/email-sync`, {
+            method: 'GET',
+            headers: { Authorization: `Bearer ${cronSecret}` },
+          }).catch(e => ({ ok: false, status: 0, _err: e instanceof Error ? e.message : 'unknown' } as unknown as Response)),
+        ]);
+
+        let fetched = 0;
+        let enqueued = 0;
+        let skipped = 0;
+        const notes: string[] = [];
+
+        // SMTP cron response: { results: [{ agent_id, fetched, enqueued, skipped, error }] }
+        if (smtpRes.ok) {
+          const data = await smtpRes.json() as { results?: Array<{ agent_id?: string; fetched?: number; enqueued?: number; skipped?: number; error?: string }> };
+          const mine = (data.results ?? []).find(r => r.agent_id === agentId);
+          if (mine) {
+            fetched  += mine.fetched  ?? 0;
+            enqueued += mine.enqueued ?? 0;
+            skipped  += mine.skipped  ?? 0;
+            if (mine.error) notes.push(`SMTP: ${mine.error}`);
+          }
         }
-        const data = await r.json() as { results?: Array<{ agent_id?: string; agent_name?: string; fetched?: number; enqueued?: number; skipped?: number; markedSeen?: number; error?: string }> };
-        const myResults = (data.results ?? []).filter(r => r.agent_id === agentId);
-        if (myResults.length === 0) {
-          return { ok: true, procesados: 0, message: 'Revisé mi inbox pero no encontré correos nuevos pendientes.' };
+
+        // OAuth cron (email-sync) response: { ok, per_agent: { synced, errors } }
+        // No da breakdown per-agent, pero si corrió correctamente debería haber
+        // procesado los correos de Outlook de Nami. Verificación real: contar
+        // rows nuevas de ops_inbox entre antes y después (opcional, next iter).
+        if (oauthRes.ok) {
+          const data = await oauthRes.json() as { ok: boolean; per_agent?: { synced: number; errors: number } };
+          if (data.per_agent) {
+            // Sumamos como heurística — no es 1:1 per agent pero indica actividad
+            notes.push(`OAuth sync: ${data.per_agent.synced} integraciones sincronizadas, ${data.per_agent.errors} errores`);
+          }
         }
-        const mine = myResults[0];
-        const fetched = mine.fetched ?? 0;
-        const enqueued = mine.enqueued ?? 0;
-        const skipped = mine.skipped ?? 0;
-        if (fetched === 0) {
+
+        const anyRan = (smtpRes.ok || oauthRes.ok);
+        if (!anyRan) {
+          return { ok: false, error: 'Ambos crones fallaron', code: 'cron_failed' };
+        }
+        if (fetched === 0 && !notes.length) {
           return { ok: true, procesados: 0, message: 'Revisé mi inbox pero no había correos nuevos.' };
         }
         return {
           ok: true,
           procesados: enqueued,
           fetched, enqueued, skipped,
-          error_detail: mine.error ?? undefined,
-          message: `Revisé mi inbox. ${fetched} correo(s) nuevo(s), ${enqueued} procesado(s)${skipped ? `, ${skipped} saltado(s)` : ''}${mine.error ? `. Nota: ${mine.error}` : '.'}`,
+          message: `Revisé mi inbox. ${fetched > 0 ? `${fetched} correo(s) nuevo(s) por SMTP, ${enqueued} procesado(s). ` : ''}${notes.join('. ')}`,
         };
       } catch (err) {
         return { ok: false, error: `No pude revisar el inbox: ${err instanceof Error ? err.message : 'unknown'}`, code: 'fetch_failed' };
