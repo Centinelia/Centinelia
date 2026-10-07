@@ -2362,6 +2362,91 @@ CATEGORÍAS:
       const jsonMatch = lastText.match(/\{[\s\S]*\}/);
       const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
       result = validateProcessedEmail(parsed);
+
+      // Safety net post-LLM: validar que el draft NO tenga hallucinations
+      // observadas en producción (Google Sheets, "no configurado", mentiras
+      // sobre tool invocations, firma suplantando humano). Si falla, dar UNA
+      // chance de corrección. Si falla otra vez, limpiar el draft y marcar
+      // pending con la razón.
+      // Ver src/lib/ops/draft-validator.ts.
+      try {
+        const { validateDraft } = await import('@/lib/ops/draft-validator');
+        const { loadOrgDirectory } = await import('@/lib/portal/directory');
+        const dir = portalEmail ? await loadOrgDirectory(portalEmail, supabase) : [];
+        const teamHumans = dir
+          .map((p: { name?: string | null }) => (p.name ?? '').trim())
+          .filter(n => n.length >= 3);
+        const draftText = (result.draft ?? result.requestToSender ?? '') as string;
+        const vd = validateDraft({
+          summary:              result.summary,
+          draft:                draftText || null,
+          agentName,
+          teamHumanNames:       teamHumans,
+          toolsActuallyInvoked: toolsInvokedOk,
+        });
+        if (!vd.ok && vd.retryPrompt) {
+          void logLlmCall({
+            source: 'inbox_processor_validator_fail',
+            model:  'claude-sonnet-5-5',
+            usage:  { input_tokens: 0, output_tokens: 0 },
+            agentId,
+            portalEmail,
+            latencyMs: 0,
+            meta: { violations: vd.violations.map(v => v.kind), count: vd.violations.length },
+          });
+          // 1 retry: pedir al LLM que corrija. Como el response original ya no
+          // está en scope aquí (quedó en la última iter del loop), construimos
+          // un turno assistant con el lastText como contenido y pedimos
+          // corrección. Sin tools — este retry es solo de corrección JSON.
+          messages.push({ role: 'assistant', content: lastText });
+          messages.push({ role: 'user',      content: vd.retryPrompt });
+          const retryResp = await anthropic.messages.create({
+            model:      'claude-sonnet-5-5',
+            max_tokens: 2048,
+            system:     [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
+            messages,
+          });
+          const retryText = retryResp.content.find(b => b.type === 'text');
+          const retryRaw = retryText?.type === 'text' ? retryText.text.trim() : '';
+          const retryMatch = retryRaw.match(/\{[\s\S]*\}/);
+          const retryParsed = retryMatch ? JSON.parse(retryMatch[0]) : {};
+          const retryResult = validateProcessedEmail(retryParsed);
+          const retryDraftText = (retryResult.draft ?? retryResult.requestToSender ?? '') as string;
+          const retryVd = validateDraft({
+            summary:              retryResult.summary,
+            draft:                retryDraftText || null,
+            agentName,
+            teamHumanNames:       teamHumans,
+            toolsActuallyInvoked: toolsInvokedOk,
+          });
+          if (retryVd.ok) {
+            // Retry pasó validación — usar su output
+            result = retryResult;
+          } else {
+            // Falló otra vez — limpiar draft, dejar que humano decida.
+            // No podemos permitir que un draft con hallucinations salga.
+            void logLlmCall({
+              source: 'inbox_processor_validator_hard_fail',
+              model:  'claude-sonnet-5-5',
+              usage:  { input_tokens: 0, output_tokens: 0 },
+              agentId,
+              portalEmail,
+              latencyMs: 0,
+              meta: { violations_retry: retryVd.violations.map(v => v.kind), count: retryVd.violations.length },
+            });
+            result = {
+              ...result,
+              draft:           null,
+              requestToSender: null,
+              needsInfo:       false,
+              actionRequired:  true,
+              summary:         `[Draft bloqueado por safety net — ${retryVd.violations.length} violación(es): ${retryVd.violations.map(v => v.kind).join(', ')}]\n\nResumen original: ${result.summary ?? '(ninguno)'}`,
+            };
+          }
+        }
+      } catch (vErr) {
+        console.error('[inbox-processor] draft validator error (fallback: use original result):', vErr);
+      }
     } catch (err) {
       console.error('[ops/inbox-processor] AI error:', err);
     }
