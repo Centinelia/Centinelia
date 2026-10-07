@@ -2382,9 +2382,25 @@ CATEGORÍAS:
           ? detectForcedTool(emailSubject, effectiveBody, attachments, tools)
           : null;
         if (i === 0) {
-          // Debug 2026-10-07: logear decisión para debuguear casos donde
-          // el modelo NO invoca la tool esperada.
-          console.log(`[inbox-processor force-tool] agentId=${agentId} subject="${(emailSubject ?? '').slice(0, 60)}" attachments=${attachments.length} toolsCount=${tools.length} forcedToolName=${forcedToolName}`);
+          // Debug 2026-10-07: logear decisión al DB para poder leerla sin
+          // acceso a Vercel runtime logs. Soluble con llm_call_log existente.
+          void logLlmCall({
+            source:    'inbox_processor_force_tool_decision',
+            model:     'debug',
+            usage:     { input_tokens: 0, output_tokens: 0 },
+            agentId,
+            portalEmail,
+            latencyMs: 0,
+            meta: {
+              subject:         (emailSubject ?? '').slice(0, 100),
+              attachments_count: attachments.length,
+              attachment_names:  attachments.map(a => a.name ?? '?').slice(0, 5),
+              attachment_types:  attachments.map(a => (a as { type?: string }).type ?? '?').slice(0, 5),
+              tools_count:       tools.length,
+              has_oc_tool:       tools.some(t => t.name === 'inv_procesar_oc_qb'),
+              forced_tool_name:  forcedToolName,
+            },
+          });
         }
 
         let response;
