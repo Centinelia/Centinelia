@@ -379,10 +379,16 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
     i.action_required === false || i.category === 'notificacion';
 
   // Tab-filtered ops_inbox items
+  // 2026-10-07 bug fix: info_requested YA se envió automáticamente al remitente
+  // (ver inbox-processor.ts línea ~2648: `if (finalStatus === 'info_requested'
+  // && sendReplyFn) → envía`). Por eso NO va en Pendientes (que implica
+  // "necesita aprobación") sino en "Respondidos sin ti" (ya enviado, el humano
+  // puede reportar si quedó mal). Antes el UI mentía: mostraba botones
+  // Aprobar/Rechazar en algo que ya se había mandado.
   const tabItems = useMemo<InboxItem[]>(() => {
-    if (activeTab === 'pendientes')  return nonInvoiceItems.filter(i => !isFyi(i) && ['pending', 'info_requested'].includes(i.status));
+    if (activeTab === 'pendientes')  return nonInvoiceItems.filter(i => !isFyi(i) && i.status === 'pending');
     if (activeTab === 'escalados')   return nonInvoiceItems.filter(i => !isFyi(i) && i.status === 'escalated');
-    if (activeTab === 'auto')        return nonInvoiceItems.filter(i => !isFyi(i) && i.status === 'auto_replied' && i.auto_mode_decision === 'send');
+    if (activeTab === 'auto')        return nonInvoiceItems.filter(i => !isFyi(i) && ((i.status === 'auto_replied' && i.auto_mode_decision === 'send') || i.status === 'info_requested'));
     if (activeTab === 'notificaciones') return nonInvoiceItems.filter(i => isFyi(i) && i.category !== 'spam');
     if (activeTab === 'spam')        return nonInvoiceItems.filter(i => i.status === 'skipped' && i.category === 'spam');
     // Audit trail: decisiones de rechazo pasadas eran invisibles antes (audit sesión 53).
@@ -413,20 +419,22 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
     );
   }, [tabItems, search, activeCategory, activeScope]);
 
+  // 2026-10-07: info_requested YA se envió, no es "Requieren tu acción".
+  // Solo escalated va en el banner rojo.
   const attentionItems = useMemo(
-    () => filteredItems.filter(i => i.status === 'escalated' || i.status === 'info_requested'),
+    () => filteredItems.filter(i => i.status === 'escalated'),
     [filteredItems]
   );
   const restItems = useMemo(
-    () => filteredItems.filter(i => i.status !== 'escalated' && i.status !== 'info_requested'),
+    () => filteredItems.filter(i => i.status !== 'escalated'),
     [filteredItems]
   );
 
   // Badge counts — sobre nonInvoiceItems (facturas viven en /oficina/facturas)
-  const pendingOpsCount    = nonInvoiceItems.filter(i => !isFyi(i) && ['pending', 'info_requested'].includes(i.status)).length;
+  const pendingOpsCount    = nonInvoiceItems.filter(i => !isFyi(i) && i.status === 'pending').length;
   const pendingBadgeCount  = pendingOpsCount + humanRequests.length;
   const escalatedCount     = nonInvoiceItems.filter(i => !isFyi(i) && i.status === 'escalated').length;
-  const autoCount          = nonInvoiceItems.filter(i => !isFyi(i) && i.status === 'auto_replied' && i.auto_mode_decision === 'send').length;
+  const autoCount          = nonInvoiceItems.filter(i => !isFyi(i) && ((i.status === 'auto_replied' && i.auto_mode_decision === 'send') || i.status === 'info_requested')).length;
   const notifCount         = nonInvoiceItems.filter(i => isFyi(i) && i.category !== 'spam').length;
   const spamCount          = nonInvoiceItems.filter(i => i.status === 'skipped' && i.category === 'spam').length;
   const rejectedCount      = nonInvoiceItems.filter(i => i.status === 'rejected').length;
@@ -460,16 +468,12 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
     const catColorObj = CATEGORY_COLORS[normalizeCategory(item.category)];
     const catColorHex = catColorObj.fg;
     // "actionable": el humano puede aprobar/rechazar/editar el borrador.
-    // Incluye info_requested y escalated — son drafts donde el empleado pidió
-    // intervención humana (info al cliente o decisión) y el humano debe
-    // validar antes de que salga.
-    const isPending       = item.status === 'pending' || item.status === 'info_requested' || item.status === 'escalated';
-    // info_requested / escalated = decisión explícita del empleado de escalar
-    // al humano (no es un "no supe procesar"). Los botones deben aparecer
-    // siempre, sin importar el trustStage ni si auto_mode_decision está lleno.
-    const isInfoRequested = item.status === 'info_requested';
+    // 2026-10-07 bug fix: info_requested YA se envió automáticamente al remitente
+    // en inbox-processor.ts (línea ~2648). Eliminado del isPending — el humano
+    // no aprueba algo que ya se envió. Vive en "Respondidos sin ti" ahora.
+    const isPending       = item.status === 'pending' || item.status === 'escalated';
     const isEscalated     = item.status === 'escalated';
-    const isExplicitEscalation = isInfoRequested || isEscalated;
+    const isExplicitEscalation = isEscalated;
 
     return (
       <div
