@@ -36,7 +36,8 @@ export async function POST(req: NextRequest, { params }: Params) {
     id: string; business_name: string; agent_name: string | null;
     knowledge_base: string | null; role_knowledge_base: string | null;
     role: string | null; teams_user_email: string | null;
-  }>(token, 'id, business_name, agent_name, knowledge_base, role_knowledge_base, role, teams_user_email', supabase);
+    features: Record<string, unknown> | null;
+  }>(token, 'id, business_name, agent_name, knowledge_base, role_knowledge_base, role, teams_user_email, features', supabase);
 
   if (!agent) return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
 
