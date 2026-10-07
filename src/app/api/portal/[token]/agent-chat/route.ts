@@ -2601,23 +2601,13 @@ export async function POST(req: NextRequest, { params }: Params) {
     : '';
 
   // ── Role-specific prompt (promptPersonalidad from meerkat-roles.ts) ──────────
-  // 2026-10-07 BUG FIX: antes el chat NO inyectaba promptPersonalidad del rol.
-  // Causa real por la que Nami seguía hallucinando Google Sheets a pesar de
-  // múltiples fixes: todos los refuerzos vivían en meerkat-roles.ts
-  // promptPersonalidad, que inbox-processor sí usaba pero el chat ignoraba.
-  // Ahora el chat también inyecta el bloque del rol.
-  let rolePromptBlock = '';
-  if (meerkatId) {
-    try {
-      const { MEERKAT_MAP } = await import('@/lib/portal/meerkat-roles');
-      const role = MEERKAT_MAP[meerkatId];
-      if (role?.promptPersonalidad) {
-        rolePromptBlock = `\n## REGLAS Y PROCESO DE TU ROL (${role.nombre} - ${role.rol})\n\n${role.promptPersonalidad}\n`;
-      }
-    } catch (err) {
-      console.warn('[agent-chat] failed to load role prompt:', err);
-    }
-  }
+  // Ver src/lib/portal/role-prompt-block.ts para contexto completo. Fix
+  // sistémico 2026-10-07: todos los canales que inicien conversación con un
+  // meerkat deben inyectar este bloque, para que las reglas del rol
+  // (ej. anti-Google-Sheets de Nami) tengan efecto en TODO canal, no solo
+  // en los que casualmente leían promptPersonalidad.
+  const { buildRolePromptBlock } = await import('@/lib/portal/role-prompt-block');
+  const rolePromptBlock = buildRolePromptBlock({ meerkatRoleId: meerkatId });
 
   const system = `Eres ${agentName}, empleado de ${agent.business_name}${agentRole ? ` con el rol de ${agentRole}` : ''}.
 

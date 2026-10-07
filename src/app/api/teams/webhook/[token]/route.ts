@@ -106,10 +106,18 @@ export async function POST(req: NextRequest, { params }: Params) {
   const roleKb      = (agent.role_knowledge_base as string | null)?.trim() ?? '';
   const role        = (agent.role as string | null)?.trim() ?? '';
 
+  // Role prompt (promptPersonalidad del meerkat) — fix sistémico 2026-10-07.
+  // Ver src/lib/portal/role-prompt-block.ts.
+  const { buildRolePromptBlock } = await import('@/lib/portal/role-prompt-block');
+  const rolePromptBlock = buildRolePromptBlock({
+    meerkatRoleId: ((agent.features as { meerkat_role_id?: string } | null) ?? {}).meerkat_role_id,
+  });
+
   const systemParts = [
     `Eres el asistente de ${agentName} en ${bizName}, respondiendo mensajes de Microsoft Teams en su nombre.`,
     kb     ? `\nCONTEXTO DEL NEGOCIO:\n${kb}`   : '',
     roleKb ? `\nROL ESPECIALIZADO${role ? ` — ${role.toUpperCase()}` : ''}:\n${roleKb}` : '',
+    rolePromptBlock,
     `\nREGLAS PARA RESPONDER EN TEAMS:
 - Mensajes cortos y directos (Teams es chat, no email)
 - Tono profesional pero natural y cercano
