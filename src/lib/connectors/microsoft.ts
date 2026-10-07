@@ -56,20 +56,39 @@ class MicrosoftEmail implements EmailConnector {
       hasAttachments?: boolean;
     }>;
 
-    // Para cada mensaje con hasAttachments, fetch attachment metadata en paralelo
+    // Para cada mensaje con hasAttachments, fetch attachment metadata en paralelo.
+    //
+    // 2026-10-07: Graph no acepta contentId en $select (BadRequest), así que
+    // omitimos el filtro y nos quedamos con todos los campos. isInline SÍ se
+    // puede filtrar en POST-processing. Caso real demo AC: hoja de salida llegó
+    // como JPEG pegada al body con isInline=true → Outlook así clasifica
+    // imágenes pegadas desde clipboard. El attachment real existe en Graph pero
+    // sin filtro inteligente se descartaba junto con logos de firma. Heurística:
+    //   - inline + image/* + size > 5KB → contenido real (foto, screenshot).
+    //   - inline + image/* + size ≤ 5KB → logo/pixel de firma, skipear.
+    //   - no-inline → siempre incluir (adjunto formal).
     const attachmentPromises = messages.map(async m => {
       if (!m.hasAttachments) return [];
       try {
-        const attUrl = `${GRAPH}/me/messages/${encodeURIComponent(m.id)}/attachments?$select=id,name,contentType,size`;
+        const attUrl = `${GRAPH}/me/messages/${encodeURIComponent(m.id)}/attachments`;
         const attRes = await fetch(attUrl, { headers: this.h() });
         if (!attRes.ok) return [];
         const attData = await attRes.json();
-        return ((attData.value ?? []) as Array<{ id: string; name?: string; contentType?: string; size?: number }>).map(a => ({
-          id:       a.id,
-          name:     a.name ?? 'attachment',
-          mimeType: a.contentType ?? 'application/octet-stream',
-          size:     a.size ?? 0,
-        }));
+        const raw = (attData.value ?? []) as Array<{ id: string; name?: string; contentType?: string; size?: number; isInline?: boolean }>;
+        return raw
+          .filter(a => {
+            if (!a.isInline) return true;
+            const mime = (a.contentType ?? '').toLowerCase();
+            if (!mime.startsWith('image/')) return true;
+            // Imagen inline: filtrar logos/pixels de firma (<5KB).
+            return (a.size ?? 0) > 5120;
+          })
+          .map(a => ({
+            id:       a.id,
+            name:     a.name ?? 'attachment',
+            mimeType: a.contentType ?? 'application/octet-stream',
+            size:     a.size ?? 0,
+          }));
       } catch (err) {
         console.warn('[microsoft/fetchUnread] attachment fetch failed for', m.id, err);
         return [];
