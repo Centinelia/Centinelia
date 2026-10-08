@@ -1,5 +1,10 @@
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60;
+// 2026-10-08 Nazre: 60s era insuficiente para flujos reales con 2+ attachments
+// (OC+Factura TRANE). El loop LLM + tool exec + force-draft puede tomar 90-120s.
+// Vercel mataba el flow a los 60s → ops cobradas sin ops_inbox row creado →
+// orphan processing → re-poll creaba race condition. Subir a 300s (plan Pro
+// limit es 300s por function) elimina el crash en el flujo normal.
+export const maxDuration = 300;
 
 import { NextRequest, NextResponse } from 'next/server';
 import { syncAllEmailIntegrations } from '@/lib/email/email-sync';

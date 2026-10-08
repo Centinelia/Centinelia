@@ -80,16 +80,27 @@ function detectForcedTools(
     forced.push('inv_procesar_oc_qb');
   }
 
-  // Regla 2: Factura Trane + XML adjunto (CFDI). También dispara con XML cuyo
-  // nombre contenga factura/trane/cfdi/invoice aunque el subject sea del thread.
+  // Regla 2: Factura Trane + XML CFDI adjunto. Detectamos CFDI por múltiples
+  // señales porque el nombre del XML real de Trane es tipo
+  // "20260623190454_610OINV265296_TRA670207Q71_MX.TRA670207Q71_CI.AAP010601S21.xml"
+  // (sin literal "trane" sino RFC "TRA670207Q71" + folio "INV265296").
+  // Si hay cualquier XML + thread sobre OC → forzar factura_trane; el handler
+  // valida que el emisor del CFDI sea TRA670207Q71 antes de procesar.
   const hasXmlAttachment = hasAttachmentOfType(/\.xml$|application\/xml/);
-  const hasInvoiceLikeAttachment = attachments.some(a => {
+  const hasCfdiLikeAttachment = attachments.some(a => {
     const n = (a.name ?? '').toLowerCase();
-    return /\.xml$/.test(n) && (/factura|trane|cfdi|invoice/.test(n));
+    return /\.xml$/.test(n) && (
+      /factura|trane|cfdi|invoice/.test(n) ||            // nombre explícito
+      /tra\d{6}[a-z]\d{2}/i.test(n) ||                   // RFC Trane TRA670207Q71
+      /\binv\d{4,}/i.test(n) ||                          // folio INV265296
+      /\d{14}_\d+/.test(n)                                // timestamp_folio Trane
+    );
   });
   if (
     (/\bfactura\s+trane\b/i.test(subj) || /\bfact\s+trane\b/i.test(subj) ||
-     /\bfactura\s+trane\b/i.test(bodyLow) || hasInvoiceLikeAttachment) &&
+     /\bfactura\s+trane\b/i.test(bodyLow) || hasCfdiLikeAttachment ||
+     // Thread sobre OC + cualquier XML → asumir que es factura TRANE
+     (hasXmlAttachment && /\boc\s*[-#]?\s*[a-z0-9-]+\d/i.test(subj + ' ' + bodyLow))) &&
     hasXmlAttachment &&
     availableToolNames.has('inv_procesar_factura_trane')
   ) {
