@@ -6260,6 +6260,15 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
 
       const headers = await GraphExcel.getTableHeader(inv.token, inv.config.location, inv.config.sheets.historico.table);
       const cols = inv.config.columns_historico;
+      // 2026-10-08 Nazre bug: config DB tiene "FECHA DE VENTA" / "AÑO" pero
+      // headers del Excel tienen trailing space ("FECHA DE VENTA ", "AÑO ").
+      // headers.indexOf exact match falla → cols no se escriben.
+      // Fix sistémico: match trim-insensitive.
+      const findHdr = (header: string | undefined | null): number => {
+        if (!header) return -1;
+        const target = header.trim().toUpperCase();
+        return headers.findIndex(h => h.trim().toUpperCase() === target);
+      };
       let totalInserted = 0;
       let totalSkippedExisting = 0;
       const porModelo: Array<{ modelo: string; cantidad: number; filas: number }> = [];
@@ -6274,9 +6283,9 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       // Previene duplicados cuando el msg se re-envía o se procesa 2 veces.
       const existingByModelo = new Map<string, number>();
       {
-        const ocIdxLocal = headers.indexOf(cols.oc);
-        const modeloIdxLocal = headers.indexOf(cols.modelo);
-        const serieIdxLocal = headers.indexOf(cols.serie);
+        const ocIdxLocal = findHdr(cols.oc);
+        const modeloIdxLocal = findHdr(cols.modelo);
+        const serieIdxLocal = findHdr(cols.serie);
         if (ocIdxLocal >= 0 && modeloIdxLocal >= 0) {
           const existingRows = await GraphExcel.listTableRows(inv.token, inv.config.location, inv.config.sheets.historico.table);
           for (const r of existingRows) {
@@ -6315,11 +6324,15 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
           const filasAfaltar = Math.max(0, cantidad - alreadyCount);
           totalSkippedExisting += alreadyCount;
           for (let n = 0; n < filasAfaltar; n++) {
-            const rowValues: unknown[] = new Array(headers.length).fill('');
+            // 2026-10-08 Nazre bug FACTOR: celdas no mapeadas se llenaban con
+            // "" → pisaba la fórmula de FACTOR del Excel (XLOOKUP + bucketing).
+            // Fix: default a null — Graph API preserva la fórmula de columnas
+            // calculadas cuando pasas null, pisa cuando pasas "".
+            const rowValues: unknown[] = new Array(headers.length).fill(null);
             const setByLogic = (logic: string, value: unknown) => {
               const header = cols[logic];
               if (!header) return;
-              const idx = headers.indexOf(header);
+              const idx = findHdr(header);
               if (idx >= 0) rowValues[idx] = value;
             };
             setByLogic('oc',           ocFormateada);
@@ -6508,7 +6521,16 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
 
       const headers = await GraphExcel.getTableHeader(inv.token, inv.config.location, inv.config.sheets.historico.table);
       const toLetter = (idx: number): string => { let s = ''; let n = idx; while (n >= 0) { s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26) - 1; } return s; };
-      const letterFor = (header: string | undefined) => { if (!header) return null; const i = headers.indexOf(header); return i >= 0 ? toLetter(i) : null; };
+      // 2026-10-08 Nazre bug FECHA DE VENTA: config DB tiene "FECHA DE VENTA"
+      // y "AÑO" sin trailing space, pero el Excel real tiene "FECHA DE VENTA "
+      // y "AÑO " con trailing space. headers.indexOf exact match devolvía -1
+      // → letterFor devolvía null → cols no se escribían. Fix: trim-insensitive.
+      const findHdrLocal = (header: string | undefined | null): number => {
+        if (!header) return -1;
+        const target = header.trim().toUpperCase();
+        return headers.findIndex(h => h.trim().toUpperCase() === target);
+      };
+      const letterFor = (header: string | undefined) => { const i = findHdrLocal(header); return i >= 0 ? toLetter(i) : null; };
       const Lfactura = letterFor(facturaHeader);
       const Lfecha   = letterFor(fechaVtaHeader);
       const Lmes     = letterFor(mesVtaHeader);
