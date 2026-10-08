@@ -514,7 +514,11 @@ export async function syncBacklogRows(
         // incluir el header row (dataStartRow - 1) y así los títulos también
         // quedan visibles. Non-fatal: si Graph rechaza, pipeline sigue.
         const headerStart = Math.max(1, resolved.dataStartRow - 1);
-        await GraphExcel.autofitColumns(ctx.token, session, config.name, `${firstColLetter}${headerStart}:${lastColLetter}${writeMaxRow}`);
+        const fullRange   = `${firstColLetter}${headerStart}:${lastColLetter}${writeMaxRow}`;
+        const headerRange = `${firstColLetter}${headerStart}:${lastColLetter}${headerStart}`;
+        await GraphExcel.autofitColumns(ctx.token, session, config.name, fullRange);
+        await GraphExcel.applyThinBorders(ctx.token, session, config.name, fullRange);
+        await GraphExcel.applyBoldFont(ctx.token, session, config.name, headerRange);
       });
     } catch (err) {
       summary.errors.push({ row_key: '*', error: err instanceof Error ? err.message : String(err) });
@@ -550,8 +554,12 @@ export async function syncBacklogRows(
     // tiene sentido correr autofit — el user ya ajustó manualmente antes).
     if (upsertAnyChange) {
       const headerStart = Math.max(1, resolved.dataStartRow - 1);
-      const endRow = Math.max(nextAppendRow - 1, upsertStartRow);
-      await GraphExcel.autofitColumns(ctx.token, session, config.name, `${firstColLetter}${headerStart}:${lastColLetter}${endRow}`);
+      const endRow      = Math.max(nextAppendRow - 1, upsertStartRow);
+      const fullRange   = `${firstColLetter}${headerStart}:${lastColLetter}${endRow}`;
+      const headerRange = `${firstColLetter}${headerStart}:${lastColLetter}${headerStart}`;
+      await GraphExcel.autofitColumns(ctx.token, session, config.name, fullRange);
+      await GraphExcel.applyThinBorders(ctx.token, session, config.name, fullRange);
+      await GraphExcel.applyBoldFont(ctx.token, session, config.name, headerRange);
     }
   });
 

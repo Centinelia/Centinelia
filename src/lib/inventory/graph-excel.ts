@@ -328,6 +328,64 @@ export async function autofitColumns(
   }
 }
 
+/**
+ * Aplica bold a la fuente de todas las celdas del rango. Pensado para el
+ * header row de tablas escritas por los syncers — Camila 2026-10-07: "los
+ * títulos de las columnas también tienen bold y las otras no". Fail-safe.
+ */
+export async function applyBoldFont(
+  token: string,
+  session: ExcelSession,
+  sheet: string,
+  address: string,
+): Promise<void> {
+  try {
+    await graphFetch(
+      `${itemPrefix(session.location)}/workbook/worksheets/${encodeURIComponent(sheet)}/range(address='${encodeURIComponent(address)}')/format/font`,
+      {
+        method:  'PATCH',
+        headers: headers(token, session.id),
+        body:    JSON.stringify({ bold: true }),
+      },
+    );
+  } catch (err) {
+    console.warn('[graph-excel.applyBoldFont] non-fatal:', err instanceof Error ? err.message : err);
+  }
+}
+
+/**
+ * Aplica bordes delgados (todos los lados + inside horizontal + inside vertical)
+ * al rango dado. Útil tras escribir bulk para que los datos se vean con formato
+ * de tabla visualmente — Camila 2026-10-07: "le faltan líneas, recuadros y
+ * formato de tabla a la demás información".
+ *
+ * Microsoft Graph requiere 1 PATCH por sideIndex. Se usan los 6 lados estándar
+ * (ignoramos diagonales). Fail-safe: si uno falla, los demás siguen.
+ */
+export async function applyThinBorders(
+  token: string,
+  session: ExcelSession,
+  sheet: string,
+  address: string,
+): Promise<void> {
+  const sides = ['EdgeTop', 'EdgeBottom', 'EdgeLeft', 'EdgeRight', 'InsideHorizontal', 'InsideVertical'] as const;
+  const body = JSON.stringify({ style: 'Continuous', weight: 'Thin', color: '#000000' });
+  for (const side of sides) {
+    try {
+      await graphFetch(
+        `${itemPrefix(session.location)}/workbook/worksheets/${encodeURIComponent(sheet)}/range(address='${encodeURIComponent(address)}')/format/borders/${side}`,
+        {
+          method:  'PATCH',
+          headers: headers(token, session.id),
+          body,
+        },
+      );
+    } catch (err) {
+      console.warn(`[graph-excel.applyThinBorders] non-fatal (${side}):`, err instanceof Error ? err.message : err);
+    }
+  }
+}
+
 // ─── Worksheets discovery ────────────────────────────────────────────────────
 
 export async function listWorksheets(
