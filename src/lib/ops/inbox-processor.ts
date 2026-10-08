@@ -220,6 +220,37 @@ function detectForcedTool(
 }
 
 /**
+ * 2026-10-08 Nazre caso real: Camila/Nazre pide procesar BACKLOG un día que
+ * no es miércoles/viernes con una frase natural ("se que no es miércoles
+ * pero actualízalo", "URGENTE procesa el backlog", "aunque sea jueves hazlo").
+ * El LLM a veces NO infiere force=true porque interpreta el schema de forma
+ * literal (buscaba frase exacta "procésalo ahora aunque no sea miércoles o
+ * viernes"). Resultado: tool devuelve wrong_day_of_week → Nami pide
+ * confirmación → fricción innecesaria.
+ *
+ * Fix sistémico: pre-detectar la intención con regex permisivo en español
+ * natural. Si matchea, deduceForcedToolArgs setea force=true automático.
+ * Doble capa de defensa (schema description mejorado + este helper) → el
+ * LLM capta la intención Y como safety net el detector regex la fuerza.
+ */
+export function shouldForceBacklog(subject: string, body: string): boolean {
+  const text = `${subject}\n${body}`.toLowerCase();
+  // Días que indican que el remitente SABE que no es miércoles/viernes.
+  const diasNoHabiles = /\b(lunes|martes|jueves|s[aá]bado|domingo)\b/;
+  const noEsHabitual = /\b(no\s+(es|toca|sea)|aunque\s+(hoy|sea)|fuera\s+del\s+d[ií]a)\b.{0,40}\b(mi[eé]rcoles|viernes|h[aá]bitual|habitual)\b/;
+  const urgenteBacklog = /\b(urgente|urge|urgencia|emergencia)\b.{0,40}\b(backlog|actuali[zc])/;
+  const procesaloYa = /\b(proc[eé]s[ao](lo)?|actual[ií]z[ao](lo)?|h[aá]zlo?|importa|carga|sincroniza)\b.{0,30}\b(ya|ahora|hoy|urgente)\b/;
+  const noEsperarMiercoles = /\b(no\s+esper[eao]s?|no\s+quiero\s+esperar)\b.{0,40}\b(mi[eé]rcoles|viernes)/;
+  // "aunque sea <día no hábil>" → señal fuerte
+  const auqueSeaDiaNoHabil = new RegExp(`\\baunque\\s+(hoy\\s+)?sea\\s+${diasNoHabiles.source.slice(2, -2)}`);
+  return noEsHabitual.test(text) ||
+    urgenteBacklog.test(text) ||
+    procesaloYa.test(text) ||
+    noEsperarMiercoles.test(text) ||
+    auqueSeaDiaNoHabil.test(text);
+}
+
+/**
  * 2026-10-08 Nazre: cuando el modelo IGNORA el forced tool identificado por
  * detectForcedTool (observado real: thread con history anterior confunde al
  * modelo → responde texto sin invocar la tool obligada). Last-resort: deducir
@@ -273,7 +304,11 @@ async function deduceForcedToolArgs(
   if (toolName === 'inv_importar_backlog') {
     const pdfAtt = ctx.attachments.find(a => /\.pdf$/i.test(a.name));
     if (!pdfAtt?.download_url) return null;
-    return { pdf_url: pdfAtt.download_url, dry_run: false, mode: 'replace' };
+    // 2026-10-08 Nazre fix sistémico: el LLM a veces no infiere force=true
+    // aunque el correo claramente lo pide. Pre-detectar patrones de override
+    // en subject + body (regex permisivo que capta intención en español).
+    const forceOverride = shouldForceBacklog(ctx.emailSubject, ctx.effectiveBody);
+    return { pdf_url: pdfAtt.download_url, dry_run: false, mode: 'replace', ...(forceOverride ? { force: true } : {}) };
   }
   return null;
 }
@@ -2678,16 +2713,22 @@ CATEGORÍAS:
         // para que el modelo invoque la tool como primera acción. Combinado
         // con safety net post-LLM, si el modelo no cumple, el draft se bloquea.
         if (i === 0 && forcedToolName && messages.length > 0 && messages[0].role === 'user') {
+          // 2026-10-08 Nazre: para inv_importar_backlog detectar si el remitente
+          // pide override explícito del día (jueves, lunes, etc.). Si sí, hint
+          // adicional para que el LLM pase force=true.
+          const backlogForceHint = forcedToolName === 'inv_importar_backlog' && shouldForceBacklog(emailSubject ?? '', effectiveBody ?? '')
+            ? ` IMPORTANTE: el remitente pide explícitamente procesar HOY aunque no sea miércoles o viernes (reconoce el día no habitual). Pasa force=true al invocar la tool.`
+            : '';
           const firstMsg = messages[0];
           if (Array.isArray(firstMsg.content)) {
             // El content ya es array de blocks (user prompt + attachments)
             // Append un text block al final con la instrucción forzada
             firstMsg.content.push({
               type: 'text',
-              text: `\n\n[INSTRUCCIÓN CRÍTICA — ANTES DE RESPONDER]\n\nEste correo requiere que invoques la tool \`${forcedToolName}\` como PRIMERA ACCIÓN. No escribas draft, resumen ni json todavía. Invoca \`${forcedToolName}\` AHORA con los datos del correo (subject, body, attachments). Si la tool devuelve error, reporta el error exacto con el nombre literal de la tool — NO inventes razones alternas como "no está configurado" ni pidas re-configurar nada. La tool existe, está disponible, y debes ejecutarla.`,
+              text: `\n\n[INSTRUCCIÓN CRÍTICA — ANTES DE RESPONDER]\n\nEste correo requiere que invoques la tool \`${forcedToolName}\` como PRIMERA ACCIÓN. No escribas draft, resumen ni json todavía. Invoca \`${forcedToolName}\` AHORA con los datos del correo (subject, body, attachments). Si la tool devuelve error, reporta el error exacto con el nombre literal de la tool — NO inventes razones alternas como "no está configurado" ni pidas re-configurar nada. La tool existe, está disponible, y debes ejecutarla.${backlogForceHint}`,
             });
           } else if (typeof firstMsg.content === 'string') {
-            firstMsg.content = firstMsg.content + `\n\n[INSTRUCCIÓN CRÍTICA — ANTES DE RESPONDER]\n\nEste correo requiere que invoques la tool \`${forcedToolName}\` como PRIMERA ACCIÓN. No escribas draft, resumen ni json todavía. Invoca \`${forcedToolName}\` AHORA con los datos del correo. Si la tool devuelve error, reporta el error exacto con el nombre literal de la tool — NO inventes razones alternas.`;
+            firstMsg.content = firstMsg.content + `\n\n[INSTRUCCIÓN CRÍTICA — ANTES DE RESPONDER]\n\nEste correo requiere que invoques la tool \`${forcedToolName}\` como PRIMERA ACCIÓN. No escribas draft, resumen ni json todavía. Invoca \`${forcedToolName}\` AHORA con los datos del correo. Si la tool devuelve error, reporta el error exacto con el nombre literal de la tool — NO inventes razones alternas.${backlogForceHint}`;
           }
         }
         if (i === 0) {
