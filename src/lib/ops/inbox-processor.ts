@@ -1999,22 +1999,31 @@ CATEGORÍAS:
     ? { ok: false as const, error: 'skipped_observador_mode' as const }
     : await consumeAiOp(agentId, 1, { source: 'inbox_processor', reference_id: `${existingInboxId ?? rawMessageId}:processed`, label: 'Procesamiento de bandeja (correo/tarea)' });
 
-  // 2026-10-08 Nazre: si consumeAiOp falla por UNIQUE constraint (ledger dedup),
-  // significa que YA se procesó este msg antes. El overlap de 10 min del poll
-  // puede reprocesar msgs ya hechos. Retornar early para no sobreescribir el
-  // summary válido con uno default (itersUsedF3=0, tools_invoked=[]) que
-  // marca el msg como pending/fallback_no_draft erróneamente.
-  if (!opsResult.ok && 'error' in opsResult && typeof opsResult.error === 'string' && /duplicate|unique|23505/i.test(opsResult.error)) {
-    void logLlmCall({
-      source: 'inbox_processor_dedup_skip',
-      model:  'claude-sonnet-5-5',
-      usage:  { input_tokens: 0, output_tokens: 0 },
-      agentId,
-      portalEmail,
-      latencyMs: 0,
-      meta: { raw_message_id: rawMessageId, reason: 'already_processed_overlap_poll' },
-    });
-    return;
+  // 2026-10-08 Nazre: si consumeAiOp falla por UNIQUE constraint (ledger dedup)
+  // significa que YA se procesó este msg antes (overlap de 10 min del poll).
+  // consumeAiOp retorna {ok:false, used:0, limit:0} sin error string.
+  // Para distinguir dedup vs pool agotado: query ops_inbox — si ya hay row con
+  // status final (no pending/null), es dedup → return early. Si no hay row o
+  // está pending, continuar flow degradado para no silenciar al remitente.
+  if (!opsResult.ok && autoMode !== 'observador') {
+    const { data: existingRow } = await supabase.from('ops_inbox')
+      .select('status, sent_at').eq('agent_id', agentId).eq('raw_message_id', rawMessageId).maybeSingle();
+    const alreadyProcessed = existingRow && (
+      (existingRow as { sent_at?: string | null }).sent_at ||
+      !['pending', null, undefined].includes((existingRow as { status?: string }).status as string | null | undefined)
+    );
+    if (alreadyProcessed) {
+      void logLlmCall({
+        source: 'inbox_processor_dedup_skip',
+        model:  'claude-sonnet-5-5',
+        usage:  { input_tokens: 0, output_tokens: 0 },
+        agentId,
+        portalEmail,
+        latencyMs: 0,
+        meta: { raw_message_id: rawMessageId, reason: 'already_processed_overlap_poll', existing_status: (existingRow as { status?: string }).status },
+      });
+      return;
+    }
   }
 
   // Instrumentación F3 — declaradas al scope del summary log al final del archivo.
