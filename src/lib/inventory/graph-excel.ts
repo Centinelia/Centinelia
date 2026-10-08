@@ -177,11 +177,29 @@ export async function listTableRows(
   tableName: string,
   sessionId?: string,
 ): Promise<ExcelTableRow[]> {
-  const data = await graphFetch(
-    `${itemPrefix(loc)}/workbook/tables/${encodeURIComponent(tableName)}/rows`,
-    { method: 'GET', headers: headers(token, sessionId) },
-  ) as { value: Array<{ index: number; values: unknown[][] }> };
-  return (data.value ?? []).map(r => ({
+  // 2026-10-08 BUG CRÍTICO reportado Nazre: Graph default limita a ~100 rows
+  // por request. La tabla historico de AC Proyectos tiene 5314 rows → sin
+  // paginación, inv_procesar_factura_trane / patchSalidaBySeries / etc. NO
+  // encuentran pre-registros de OCs recientes (que están al final) → crean
+  // duplicados en vez de hacer UPDATE. Caso real OC 6203: 4 filas duplicadas
+  // en el Excel. Fix: pedir $top=5000 + seguir @odata.nextLink hasta agotar.
+  const all: Array<{ index: number; values: unknown[][] }> = [];
+  const PAGE_SIZE = 2000;
+  let skip = 0;
+  while (true) {
+    const url = `${itemPrefix(loc)}/workbook/tables/${encodeURIComponent(tableName)}/rows?$top=${PAGE_SIZE}&$skip=${skip}`;
+    const data = await graphFetch(url, { method: 'GET', headers: headers(token, sessionId) }) as {
+      value: Array<{ index: number; values: unknown[][] }>;
+    };
+    const batch = data.value ?? [];
+    if (batch.length === 0) break;
+    all.push(...batch);
+    if (batch.length < PAGE_SIZE) break;
+    skip += PAGE_SIZE;
+    // Safety guard: tablas con >50k rows son edge case para HVAC
+    if (skip > 50000) { console.warn('[listTableRows] max page limit reached'); break; }
+  }
+  return all.map(r => ({
     index:  r.index,
     values: r.values[0] ?? [],
   }));
