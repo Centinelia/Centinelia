@@ -2011,16 +2011,42 @@ CATEGORÍAS:
       .select('count, created_at').eq('portal_email', portalEmail).eq('reference_id', refIdCheck).gt('count', 0).limit(1);
     const alreadyCharged = (priorLedger?.length ?? 0) > 0;
     if (alreadyCharged) {
+      // 2026-10-08 Nazre: ledger cobró pero puede ser orphan (1er processing
+      // crashó antes de insertar ops_inbox row). Si NO existe row visible,
+      // continuar flow para que el 2do processing cree el row aunque no cobre.
+      // Si row existe con sent_at o status final → es duplicate real, return.
+      const { data: existingRow } = await supabase.from('ops_inbox')
+        .select('id, status, sent_at').eq('agent_id', agentId).eq('raw_message_id', rawMessageId).maybeSingle();
+      const rowReallyProcessed = existingRow && (
+        (existingRow as { sent_at?: string | null }).sent_at ||
+        ['auto_replied', 'info_requested', 'skipped'].includes((existingRow as { status?: string }).status as string)
+      );
+      if (rowReallyProcessed) {
+        void logLlmCall({
+          source: 'inbox_processor_dedup_skip',
+          model:  'claude-sonnet-5-5',
+          usage:  { input_tokens: 0, output_tokens: 0 },
+          agentId,
+          portalEmail,
+          latencyMs: 0,
+          meta: { raw_message_id: rawMessageId, reason: 'ledger_charged_and_row_processed', existing_status: (existingRow as { status?: string }).status },
+        });
+        return;
+      }
+      // Orphan: ledger cobró pero no hay row visible (crash previo). Continuar
+      // sin cobrar (consumeAiOp ya falló → no double-charge) para crear row.
       void logLlmCall({
-        source: 'inbox_processor_dedup_skip',
+        source: 'inbox_processor_orphan_recovery',
         model:  'claude-sonnet-5-5',
         usage:  { input_tokens: 0, output_tokens: 0 },
         agentId,
         portalEmail,
         latencyMs: 0,
-        meta: { raw_message_id: rawMessageId, reason: 'ledger_already_charged', prior_count: (priorLedger as any[])[0].count },
+        meta: { raw_message_id: rawMessageId, reason: 'ledger_charged_but_no_row_or_pending', existing: !!existingRow },
       });
-      return;
+      // IMPORTANTE: forzamos opsResult.ok=true artificialmente para que el flow
+      // entre al loop del LLM. consumeAiOp ya falló por dup → ya cobrado antes.
+      (opsResult as { ok: boolean }).ok = true;
     }
   }
 
