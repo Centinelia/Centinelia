@@ -3210,18 +3210,37 @@ CATEGORÍAS:
     }
 
     if (autoModeVerdict.decision === 'send') {
-      // L3 — evidence check antes del auto-send del classifier
-      const { verifyGoalResponse } = await import('@/lib/tools/goal-verifier');
-      const check = await verifyGoalResponse({
-        userIntent:    effectiveBody,
-        agentResponse: result.draft ?? '',
-        toolsInvoked:  toolsInvokedOk,
-      });
-      if (!check.met) {
-        console.warn('[inbox-processor] auto_replied (auto-mode) bloqueado por verifier:', check.concern);
-        finalStatus = 'pending';
-      } else {
+      // L3 — evidence check antes del auto-send del classifier.
+      //
+      // 2026-10-08 Nazre caso real: Nami procesó hoja de salida (invocó
+      // inv_registrar_salida OK, draft factual, L4 validator OK, bypass
+      // `bypass_write_tool_factual_draft`) pero L3 goal_verifier (Haiku) dio
+      // met=false flaky (reproduciendo 5/5 veces da met=true). Status quedó
+      // pending → reply nunca enviado.
+      //
+      // Fix: skip L3 cuando el bypass fue por `bypass_write_tool_factual_draft`.
+      // Ese bypass ya requiere:
+      //   (a) tool exitosa con write-shape (executedWriteTool=true)
+      //   (b) draft factual sin PROMISE_RE (sin "mañana"/"próximamente"/etc.)
+      //   (c) draft pasó L4 validator (sin hallucinations ni impersonation)
+      // Correr L3 encima es redundante y el Haiku es flaky con tools nuevas
+      // (inv_* no están en los ejemplos del prompt del verifier).
+      const skipL3 = autoModeVerdict.reason === 'bypass_write_tool_factual_draft';
+      if (skipL3) {
         finalStatus = 'auto_replied';
+      } else {
+        const { verifyGoalResponse } = await import('@/lib/tools/goal-verifier');
+        const check = await verifyGoalResponse({
+          userIntent:    effectiveBody,
+          agentResponse: result.draft ?? '',
+          toolsInvoked:  toolsInvokedOk,
+        });
+        if (!check.met) {
+          console.warn('[inbox-processor] auto_replied (auto-mode) bloqueado por verifier:', check.concern);
+          finalStatus = 'pending';
+        } else {
+          finalStatus = 'auto_replied';
+        }
       }
       finalDraft  = result.draft;
     } else if (autoModeVerdict.decision === 'block') {
