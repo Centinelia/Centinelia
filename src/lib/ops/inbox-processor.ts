@@ -1999,6 +1999,24 @@ CATEGORÍAS:
     ? { ok: false as const, error: 'skipped_observador_mode' as const }
     : await consumeAiOp(agentId, 1, { source: 'inbox_processor', reference_id: `${existingInboxId ?? rawMessageId}:processed`, label: 'Procesamiento de bandeja (correo/tarea)' });
 
+  // 2026-10-08 Nazre: si consumeAiOp falla por UNIQUE constraint (ledger dedup),
+  // significa que YA se procesó este msg antes. El overlap de 10 min del poll
+  // puede reprocesar msgs ya hechos. Retornar early para no sobreescribir el
+  // summary válido con uno default (itersUsedF3=0, tools_invoked=[]) que
+  // marca el msg como pending/fallback_no_draft erróneamente.
+  if (!opsResult.ok && 'error' in opsResult && typeof opsResult.error === 'string' && /duplicate|unique|23505/i.test(opsResult.error)) {
+    void logLlmCall({
+      source: 'inbox_processor_dedup_skip',
+      model:  'claude-sonnet-5-5',
+      usage:  { input_tokens: 0, output_tokens: 0 },
+      agentId,
+      portalEmail,
+      latencyMs: 0,
+      meta: { raw_message_id: rawMessageId, reason: 'already_processed_overlap_poll' },
+    });
+    return;
+  }
+
   // Instrumentación F3 — declaradas al scope del summary log al final del archivo.
   // Se actualizan dentro del loop del tool-use (path opsResult.ok && portalEmail).
   let itersUsedF3 = 0;
