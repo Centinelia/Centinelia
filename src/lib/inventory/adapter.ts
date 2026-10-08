@@ -778,19 +778,16 @@ export async function patchSalidaBySeries(
         }
       }
 
-      // 2026-10-08 Nazre: NO escribir FECHA DE VENTA en hoja de salida.
-      // FECHA DE VENTA = fecha de la factura venta SF al cliente (la emite
-      // inv_procesar_factura_venta_sf cuando llegue el CFDI de venta).
-      // La hoja de salida es un evento interno (equipo deja el almacén), no
-      // una venta facturada.
-      //
-      // Folio de la hoja de salida va a RECIBO2 (col.recibo2 según config AC
-      // Proyectos). FOLIO (col.folio_venta) queda para la factura venta.
-      if (input.folio_hoja && col.recibo2) {
-        const recibo2Idx = headersMap[col.recibo2.toUpperCase()];
-        if (recibo2Idx != null) {
-          await GraphExcel.patchCell(ctx.token, session, sheet, `${cellLetter(recibo2Idx)}${abs}`, input.folio_hoja);
-          after_row[recibo2Idx] = input.folio_hoja; patched.push(col.recibo2.toUpperCase());
+      // 2026-10-08 Nazre:
+      // - NO escribir FECHA DE VENTA. Eso va con factura venta SF cuando llegue.
+      // - Folio de la hoja de salida va a FOLIO (col.folio_venta en config).
+      //   FACTURA (col.factura_venta) queda para folio de factura venta SF.
+      //   RECIBO2 es flag 1/0, no folio.
+      if (input.folio_hoja && col.folio_venta) {
+        const folioIdx = headersMap[col.folio_venta.toUpperCase()];
+        if (folioIdx != null) {
+          await GraphExcel.patchCell(ctx.token, session, sheet, `${cellLetter(folioIdx)}${abs}`, input.folio_hoja);
+          after_row[folioIdx] = input.folio_hoja; patched.push(col.folio_venta.toUpperCase());
         }
       }
 
