@@ -16,8 +16,8 @@ async function enrichWithAttachments(
   emailConn: EmailConnector,
   msg: { id: string; subject?: string; body: string; attachments?: Array<{ id: string; name: string; mimeType: string; size: number }> },
   opts: { portalEmail?: string | null } = {},
-): Promise<{ body: string; images: Array<{ name: string; base64: string; mimeType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' }>; metas: Array<{ name: string; url: string; type: string; size: number; download_url?: string }> }> {
-  const metas: Array<{ name: string; url: string; type: string; size: number; download_url?: string }> = (msg.attachments ?? []).map(a => ({
+): Promise<{ body: string; images: Array<{ name: string; base64: string; mimeType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' }>; metas: Array<{ name: string; url: string; type: string; size: number; download_url?: string; storage_path?: string }> }> {
+  const metas: Array<{ name: string; url: string; type: string; size: number; download_url?: string; storage_path?: string }> = (msg.attachments ?? []).map(a => ({
     name: a.name, url: `gmail:${msg.id}/${a.id}`, type: a.mimeType, size: a.size,
   }));
   if (!msg.attachments || msg.attachments.length === 0) {
@@ -41,7 +41,13 @@ async function enrichWithAttachments(
     const uploadByName = new Map(processed.uploads.map(u => [u.name, u]));
     for (const m of metas) {
       const up = uploadByName.get(m.name);
-      if (up) m.download_url = up.download_url;
+      if (up) {
+        m.download_url = up.download_url;
+        // 2026-10-08 Nazre: guardar storage_path persistente para que
+        // replies futuros del mismo thread puedan regenerar signed URLs
+        // frescas en vez de depender del URL original (expira 2h).
+        m.storage_path = up.storage_path;
+      }
     }
     body += `\n\n[Adjuntos descargables (URL firmada 2h):\n${processed.uploads.map(u => `  • ${u.name} → ${u.download_url}`).join('\n')}]`;
   }

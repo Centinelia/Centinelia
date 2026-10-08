@@ -1513,12 +1513,23 @@ export async function processInboxEmail(params: {
         .order('created_at', { ascending: false })
         .limit(5);
       type StoredAtt = { name?: string; type?: string; url?: string; size?: number; storage_path?: string; download_url?: string };
-      const inheritedRaw: StoredAtt[] = [];
+      // Fallback: extraer storage_path del download_url cuando no está guardado
+      // (correos antiguos que se enriquecieron antes de que email-sync lo guardara).
+      // Pattern Supabase signed URL: /storage/v1/object/sign/<bucket>/<path>?token=...
+      const extractStoragePath = (att: StoredAtt): string | null => {
+        if (att.storage_path) return att.storage_path;
+        if (!att.download_url) return null;
+        const m = att.download_url.match(/\/storage\/v1\/object\/sign\/ops-attachments\/([^?]+)/);
+        return m ? decodeURIComponent(m[1]) : null;
+      };
+      const inheritedRaw: Array<StoredAtt & { storage_path: string }> = [];
       for (const row of (prev ?? []) as Array<{ attachments: unknown }>) {
         for (const a of ((row.attachments as StoredAtt[] | null) ?? [])) {
-          if (!a?.storage_path || !a.name) continue;
+          if (!a?.name) continue;
+          const sp = extractStoragePath(a);
+          if (!sp) continue;
           if (inheritedRaw.some(ia => ia.name === a.name)) continue;
-          inheritedRaw.push(a);
+          inheritedRaw.push({ ...a, storage_path: sp });
         }
       }
       if (inheritedRaw.length > 0) {
