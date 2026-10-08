@@ -67,8 +67,15 @@ class MicrosoftEmail implements EmailConnector {
     //   - inline + image/* + size > 5KB → contenido real (foto, screenshot).
     //   - inline + image/* + size ≤ 5KB → logo/pixel de firma, skipear.
     //   - no-inline → siempre incluir (adjunto formal).
+    // 2026-10-08 BUG CRÍTICO reportado Nazre: Camila mandó hoja de salida como
+    // imagen pegada al body (3.2MB). Microsoft Graph reporta hasAttachments=false
+    // para msgs con solo imágenes inline (no cuenta inline como "attachment formal").
+    // Mi early-return con !hasAttachments descartaba el msg → imagen nunca llegaba
+    // al pipeline multimodal → Nami pedía "manda la hoja" cuando ya venía adjunta.
+    // Fix: siempre consultar /attachments. Overhead +1 request HTTP por msg sin
+    // adjunto formal, pero evita perder inline images. El body puede tener
+    // <img src="cid:...> aunque hasAttachments sea false.
     const attachmentPromises = messages.map(async m => {
-      if (!m.hasAttachments) return [];
       try {
         const attUrl = `${GRAPH}/me/messages/${encodeURIComponent(m.id)}/attachments`;
         const attRes = await fetch(attUrl, { headers: this.h() });
