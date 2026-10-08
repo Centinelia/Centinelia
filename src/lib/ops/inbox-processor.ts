@@ -2787,9 +2787,13 @@ CATEGORÍAS:
         if (i === 0 && forcedToolName && messages.length > 0 && messages[0].role === 'user') {
           // 2026-10-08 Nazre: para inv_importar_backlog detectar si el remitente
           // pide override explícito del día (jueves, lunes, etc.). Si sí, hint
-          // adicional para que el LLM pase force=true.
+          // adicional para que el LLM pase force=true + dry_run=false.
+          // El schema dice "APLICA DIRECTAMENTE" pero el LLM a veces prefiere
+          // correr simulación por caution. Con confirmación explícita del
+          // remitente (shouldForceBacklog match), aplicar directo sin pedir
+          // confirmación — ya se autorizó.
           const backlogForceHint = forcedToolName === 'inv_importar_backlog' && shouldForceBacklog(emailSubject ?? '', effectiveBody ?? '')
-            ? ` IMPORTANTE: el remitente pide explícitamente procesar HOY aunque no sea miércoles o viernes (reconoce el día no habitual). Pasa force=true al invocar la tool.`
+            ? ` IMPORTANTE: el remitente pide explícitamente procesar HOY aunque no sea miércoles o viernes (reconoce el día no habitual). Pasa force=true Y dry_run=false al invocar la tool — APLICA LOS CAMBIOS directo sin pedir otra confirmación. Ya fue autorizado explícitamente.`
             : '';
           const firstMsg = messages[0];
           if (Array.isArray(firstMsg.content)) {
