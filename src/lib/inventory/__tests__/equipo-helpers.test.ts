@@ -16,20 +16,32 @@ describe('extractSeerRefVolts — bugs reportados por Nazre en OC 6203 real (202
     expect(extractSeerRefVolts(d).ref).toBeUndefined();
   });
 
-  it('REF sí matchea "R410" cuando viene separado', () => {
-    expect(extractSeerRefVolts('MINI SPLIT 1.5TR R410A').ref).toBe('R410');
-    expect(extractSeerRefVolts('CONDENSADORA R-410A SEER19').ref).toBe('R410');
-    expect(extractSeerRefVolts('EVAPORADOR R32 SEER22').ref).toBe('R32');
+  it('REF sí matchea solo el número cuando viene separado', () => {
+    // 2026-10-08 Nazre: REF solo número, no prefix "R"
+    expect(extractSeerRefVolts('MINI SPLIT 1.5TR R410A').ref).toBe('410');
+    expect(extractSeerRefVolts('CONDENSADORA R-410A SEER19').ref).toBe('410');
+    expect(extractSeerRefVolts('EVAPORADOR R32 SEER22').ref).toBe('32');
   });
 
   it('REF no matchea R19 solo pero SÍ matchea cualquier otro R separado', () => {
     expect(extractSeerRefVolts('SEER19 1.5TR').ref).toBeUndefined();
-    expect(extractSeerRefVolts('SEER19 R410A 1.5TR').ref).toBe('R410');
+    expect(extractSeerRefVolts('SEER19 R410A 1.5TR').ref).toBe('410');
   });
 
-  it('VOLTS parse normal', () => {
+  it('VOLTS parse normal MX (1 o 3 fases, 60Hz)', () => {
     expect(extractSeerRefVolts('Compresor 230/3/60 20TR').volts).toBe('230/3/60');
     expect(extractSeerRefVolts('Trifásico 460/3/60 R410').volts).toBe('460/3/60');
+    expect(extractSeerRefVolts('Monofásico 220/1/60').volts).toBe('220/1/60');
+  });
+
+  it('BUG FIX: VOLTS prioriza formato MX sobre rango europeo', () => {
+    // 2026-10-08 Nazre: CFDI Trane tiene "220-240/50/60/1" pero el formato
+    // operativo MX es "220/1/60". Antes extraía "240/50/60" por el rango.
+    expect(extractSeerRefVolts('Mini Split 220-240/50/60/1 R410').volts).toBe(undefined);
+    // Caso real: desc tiene ambos formatos, el MX gana.
+    expect(extractSeerRefVolts('MINI SPLIT 220-240/50/60/1 220/1/60 R410').volts).toBe('220/1/60');
+    // Caso real OC 6203: desc solo tiene "220/1/60".
+    expect(extractSeerRefVolts('Evaporador SEER19 Trane 1.5TR Heat Pump R410 220/1/60').volts).toBe('220/1/60');
   });
 
   it('Caso real OC 6203 — Evaporador 4MXW2318CF000AA', () => {

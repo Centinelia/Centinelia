@@ -124,9 +124,20 @@ export function extractSeerRefVolts(desc: string): { seer?: string; ref?: string
   const seer = seerMatch ? (seerMatch[1] || seerMatch[2]) : undefined;
   // REF: refrigerante tipo R-410A, R410, R-32, R32. Requiere separador antes
   // de la R para no capturar "R19" de "SEER19". Letra sufijo opcional (A/B).
+  // 2026-10-08 Nazre: Camila usa solo el número (410, 32, 22), no "R410".
   const refM = desc.match(/(?:^|[\s\-,.;:(])R[-\s]?(\d{2,3})[A-Z]?\b/i);
-  const volts = desc.match(/(\d{3}\s*\/\s*\d{1,2}\s*\/\s*\d{1,2})/)?.[1]?.replace(/\s/g, '');
-  return { seer, ref: refM ? 'R' + refM[1] : undefined, volts };
+
+  // VOLTS: priorizar formato MX monofásico/trifásico (/1/60, /3/60) sobre
+  // formato europeo (/50/60). CFDI Trane tiene "220-240/50/60/1" pero el
+  // formato operativo real en MX es "220/1/60" o "440/3/60". Nazre reportó
+  // 2026-10-08: Nami ponía "240/50/60" (del rango CFDI) en vez de "220/1/60".
+  // Orden: 1) MX monofásico/trifásico explícito, 2) formato genérico fallback.
+  // Solo match formato MX (XXX/1/60 o XXX/3/60). Sin fallback — si la desc
+  // viene solo con rango europeo "220-240/50/60/1" dejamos vacío porque ese
+  // dato NO sirve operativamente para AC Proyectos (HVAC MX).
+  const voltsMx = desc.match(/(\d{3})\s*\/\s*([13])\s*\/\s*60\b/);
+  const volts = voltsMx ? `${voltsMx[1]}/${voltsMx[2]}/60` : undefined;
+  return { seer, ref: refM ? refM[1] : undefined, volts };
 }
 
 /**
