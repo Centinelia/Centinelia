@@ -148,9 +148,12 @@ async function deduceForcedToolArgs(
     return null;
   }
   if (toolName === 'inv_procesar_oc_qb') {
-    const pdfAtt = ctx.attachments.find(a => /\.pdf$/i.test(a.name) || a.type === 'application/pdf');
-    if (!pdfAtt?.download_url || !ocNumber) return null;
-    return { pdf_url: pdfAtt.download_url, oc_ac: ocNumber, dry_run: false };
+    // 2026-10-08 Nazre test manual: deduce para OC_qb NO es posible porque el
+    // handler necesita items[] (lista detallada de equipos + cantidades +
+    // precios) extraídos del PDF OC. Parsear el PDF para esto requiere LLM.
+    // Devolvemos null — si el modelo no invocó la tool, no intentamos
+    // bypass. El prompt injection + nudge debe forzar al modelo.
+    return null;
   }
   if (toolName === 'inv_importar_backlog') {
     const pdfAtt = ctx.attachments.find(a => /\.pdf$/i.test(a.name));
