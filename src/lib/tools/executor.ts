@@ -7136,7 +7136,11 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
             if (fechaOc) setByLogic('fecha_oc', fechaOc);
             setByLogic('modelo',         eq.modelo);
             setByLogic('serie',          eq.serie);
-            setByLogic('descripcion',    null);
+            // 2026-10-08 bug fix (Nazre reportó): descripcion se seteaba a null
+            // explícito aunque eq.descripcion ya tenía el texto del concepto
+            // CFDI. Resultado: filas creadas sin DESCRIPCION. Fix: usar la
+            // descripción real del concepto Trane.
+            setByLogic('descripcion',    eq.descripcion || '');
             setByLogic('folio_compra',   folio);
             setByLogic('fecha_compra',   fecha);
             setByLogic('usd',            eq.usd_unit);
