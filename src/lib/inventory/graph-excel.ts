@@ -354,6 +354,33 @@ export async function applyCenterAlignment(
 }
 
 /**
+ * Aplica borde thin a UN lado específico del rango. Útil para restaurar un
+ * borde que se perdió al limpiar las celdas adyacentes (ej. tras clearBorders
+ * del rango inferior, el EdgeTop limpiado = EdgeBottom del data real → el
+ * data queda sin borde inferior visualmente). Fail-safe.
+ */
+export async function applyBorderSide(
+  token: string,
+  session: ExcelSession,
+  sheet: string,
+  address: string,
+  side: 'EdgeTop' | 'EdgeBottom' | 'EdgeLeft' | 'EdgeRight' | 'InsideHorizontal' | 'InsideVertical',
+): Promise<void> {
+  try {
+    await graphFetch(
+      `${itemPrefix(session.location)}/workbook/worksheets/${encodeURIComponent(sheet)}/range(address='${encodeURIComponent(address)}')/format/borders/${side}`,
+      {
+        method:  'PATCH',
+        headers: headers(token, session.id),
+        body:    JSON.stringify({ style: 'Continuous', weight: 'Thin', color: '#000000' }),
+      },
+    );
+  } catch (err) {
+    console.warn(`[graph-excel.applyBorderSide ${side}] non-fatal:`, err instanceof Error ? err.message : err);
+  }
+}
+
+/**
  * Devuelve el rango "usado" de la hoja (hasta dónde llegan content y/o
  * formato aplicados). Útil para detectar bordes sobrantes de versiones
  * anteriores que están abajo del data actual pero mantienen formato.

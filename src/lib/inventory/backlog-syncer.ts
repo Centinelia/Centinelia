@@ -542,6 +542,11 @@ export async function syncBacklogRows(
         if (clearTo >= clearFrom) {
           const leftoverRange = `${firstColLetter}${clearFrom}:${lastColLetter}${clearTo}`;
           await GraphExcel.clearBorders(ctx.token, session, config.name, leftoverRange);
+          // Al limpiar EdgeTop del leftover también borramos el EdgeBottom del
+          // data (son el mismo borde físico en Excel). Re-aplicamos EdgeBottom
+          // a la última fila data para que la tabla cierre visualmente abajo.
+          const lastDataRow = `${firstColLetter}${dataEndRow}:${lastColLetter}${dataEndRow}`;
+          await GraphExcel.applyBorderSide(ctx.token, session, config.name, lastDataRow, 'EdgeBottom');
         }
       });
     } catch (err) {
