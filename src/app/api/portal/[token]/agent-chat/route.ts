@@ -2901,79 +2901,98 @@ ${context}`;
                 ? { ...t, cache_control: { type: 'ephemeral' as const } }
                 : t)
             : sessionTools;
-          const stream = client.messages.stream({
+          // 2026-10-07 Nazre pidió fix streaming+tool_use para TODOS los
+          // empleados. Síntoma: Sonnet 5.5 con streaming+tools "narra" los
+          // tool calls como texto en vez de invocarlos via tool_use del SDK
+          // ("08f69d89-UUID 08f69d89-UUID" como texto, args de tool como
+          // literal). Observado con role prompt + chat portal.
+          //
+          // Fix: cuando hay tools disponibles, usar messages.create() NO
+          // streaming — el modelo devuelve content_blocks completos y bien
+          // formados. Streaming queda solo para chat conversacional sin tools
+          // (preserva la UX de "typing en vivo" donde importa más).
+          const useStreaming = cachedTools.length === 0;
+          const requestParams = {
             model:      __acM,
             max_tokens: 2048,
-            system:     [{ type: 'text', text: systemText, cache_control: { type: 'ephemeral' } }],
+            system:     [{ type: 'text' as const, text: systemText, cache_control: { type: 'ephemeral' as const } }],
             tools:      cachedTools,
-            // Fuerza buscar_documento_oficina en la primera call cuando detectamos
-            // intent de "generar X". Elimina la posibilidad de que el LLM narre
-            // "reviso si hay previo" sin invocar la tool.
             ...(callCount === 1 && forceSearchTool
               ? { tool_choice: { type: 'tool' as const, name: 'buscar_documento_oficina' } }
               : {}),
             messages:   conversationMessages,
-          });
-          stream.finalMessage().then(finalMsg => {
-            void logLlmCall({ source: 'agent_chat', model: __acM, usage: finalMsg.usage, agentId: agent.id as string, portalEmail: (agent.portal_email as string | null) ?? null, latencyMs: Date.now() - __acT, meta: { callCount } });
-          }).catch(err => {
-            void logLlmCall({ source: 'agent_chat', model: __acM, usage: { input_tokens: 0, output_tokens: 0 }, agentId: agent.id as string, portalEmail: (agent.portal_email as string | null) ?? null, latencyMs: Date.now() - __acT, error: err instanceof Error ? err.message : String(err), meta: { callCount } });
-          });
+          };
 
           const assistantBlocks: AssistantBlock[] = [];
-          // Buffer per-block: cuando Sonnet emite múltiples tool_use en un solo
-          // turno (parallel tool calls, default), cada bloque llega en orden
-          // (start → deltas → stop) antes del siguiente. Rastreamos el índice
-          // del content_block actual para bufferizar el JSON en el slot correcto
-          // y NO perder tool_use anteriores. Bug histórico: se sobreescribía
-          // pendingToolId y el orphan tool_use disparaba 400 de Anthropic.
-          const toolInputBuffers = new Map<number, string>();
-          let currentBlockIdx: number | null = null;
           let didToolUse = false;
 
-          for await (const chunk of stream) {
-            if (chunk.type === 'content_block_start') {
-              currentBlockIdx = chunk.index;
-              if (chunk.content_block.type === 'text') {
-                // Si ya emitimos texto en ESTA sesión (esta iteración o previa),
-                // separar visualmente el nuevo párrafo con doble salto de línea.
-                // Sin esto: "…ahora.Lista la propuesta…" se pega directo cuando
-                // el LLM escribe, invoca tool, y vuelve a escribir.
-                if (hasEmittedText) {
-                  send('\n\n');
+          if (useStreaming) {
+            const stream = client.messages.stream(requestParams);
+            stream.finalMessage().then(finalMsg => {
+              void logLlmCall({ source: 'agent_chat', model: __acM, usage: finalMsg.usage, agentId: agent.id as string, portalEmail: (agent.portal_email as string | null) ?? null, latencyMs: Date.now() - __acT, meta: { callCount, streaming: true } });
+            }).catch(err => {
+              void logLlmCall({ source: 'agent_chat', model: __acM, usage: { input_tokens: 0, output_tokens: 0 }, agentId: agent.id as string, portalEmail: (agent.portal_email as string | null) ?? null, latencyMs: Date.now() - __acT, error: err instanceof Error ? err.message : String(err), meta: { callCount, streaming: true } });
+            });
+
+            // Buffer per-block: cuando Sonnet emite múltiples tool_use en un solo
+            // turno (parallel tool calls, default), cada bloque llega en orden
+            // (start → deltas → stop) antes del siguiente.
+            const toolInputBuffers = new Map<number, string>();
+            let currentBlockIdx: number | null = null;
+
+            for await (const chunk of stream) {
+              if (chunk.type === 'content_block_start') {
+                currentBlockIdx = chunk.index;
+                if (chunk.content_block.type === 'text') {
+                  if (hasEmittedText) send('\n\n');
+                  assistantBlocks.push({ type: 'text', text: '' });
+                } else if (chunk.content_block.type === 'tool_use') {
+                  toolInputBuffers.set(chunk.index, '');
+                  assistantBlocks.push({ type: 'tool_use', id: chunk.content_block.id, name: chunk.content_block.name, input: {} });
+                  controller.enqueue(enc.encode(`data: ${JSON.stringify({ tool: chunk.content_block.name })}\n\n`));
                 }
-                assistantBlocks.push({ type: 'text', text: '' });
-              } else if (chunk.content_block.type === 'tool_use') {
-                toolInputBuffers.set(chunk.index, '');
-                assistantBlocks.push({ type: 'tool_use', id: chunk.content_block.id, name: chunk.content_block.name, input: {} });
-                // Emit tool marker to UI so el usuario ve qué está haciendo el agente
-                controller.enqueue(enc.encode(`data: ${JSON.stringify({ tool: chunk.content_block.name })}\n\n`));
+              } else if (chunk.type === 'content_block_delta') {
+                if (chunk.delta.type === 'text_delta') {
+                  send(chunk.delta.text);
+                  if (chunk.delta.text.trim()) hasEmittedText = true;
+                  const last = assistantBlocks.at(-1);
+                  if (last?.type === 'text') last.text += chunk.delta.text;
+                } else if (chunk.delta.type === 'input_json_delta' && currentBlockIdx !== null) {
+                  const prev = toolInputBuffers.get(currentBlockIdx) ?? '';
+                  toolInputBuffers.set(currentBlockIdx, prev + chunk.delta.partial_json);
+                }
+              } else if (chunk.type === 'content_block_stop' && toolInputBuffers.has(chunk.index)) {
+                try {
+                  const parsed = JSON.parse(toolInputBuffers.get(chunk.index) ?? '') as Record<string, unknown>;
+                  const block  = assistantBlocks[chunk.index];
+                  if (block?.type === 'tool_use') block.input = parsed;
+                } catch { /* malformed — keep empty input */ }
+              } else if (chunk.type === 'message_delta' && chunk.delta.stop_reason === 'tool_use') {
+                didToolUse = true;
               }
-            } else if (chunk.type === 'content_block_delta') {
-              if (chunk.delta.type === 'text_delta') {
-                send(chunk.delta.text);
-                if (chunk.delta.text.trim()) hasEmittedText = true;
-                const last = assistantBlocks.at(-1);
-                if (last?.type === 'text') last.text += chunk.delta.text;
-              } else if (chunk.delta.type === 'input_json_delta' && currentBlockIdx !== null) {
-                const prev = toolInputBuffers.get(currentBlockIdx) ?? '';
-                toolInputBuffers.set(currentBlockIdx, prev + chunk.delta.partial_json);
-              }
-            } else if (chunk.type === 'content_block_stop' && toolInputBuffers.has(chunk.index)) {
-              try {
-                const parsed = JSON.parse(toolInputBuffers.get(chunk.index) ?? '') as Record<string, unknown>;
-                const block  = assistantBlocks[chunk.index];
-                if (block?.type === 'tool_use') block.input = parsed;
-              } catch { /* malformed — keep empty input */ }
-            } else if (
-              chunk.type === 'message_delta' &&
-              chunk.delta.stop_reason === 'tool_use'
-            ) {
-              didToolUse = true;
             }
+          } else {
+            // Non-streaming path (hay tools disponibles). Fix del bug donde
+            // streaming+tool_use hace que el modelo narre en vez de invocar.
+            // Trade-off: usuario ve el texto completo de golpe al final del
+            // turno (vs stream en typing). Pero el tool_use funciona bien.
+            const response = await client.messages.create(requestParams);
+            void logLlmCall({ source: 'agent_chat', model: __acM, usage: response.usage, agentId: agent.id as string, portalEmail: (agent.portal_email as string | null) ?? null, latencyMs: Date.now() - __acT, meta: { callCount, streaming: false } });
+            for (const block of response.content) {
+              if (block.type === 'text') {
+                if (hasEmittedText) send('\n\n');
+                send(block.text);
+                if (block.text.trim()) hasEmittedText = true;
+                assistantBlocks.push({ type: 'text', text: block.text });
+              } else if (block.type === 'tool_use') {
+                assistantBlocks.push({ type: 'tool_use', id: block.id, name: block.name, input: block.input as Record<string, unknown> });
+                controller.enqueue(enc.encode(`data: ${JSON.stringify({ tool: block.name })}\n\n`));
+              }
+            }
+            didToolUse = response.stop_reason === 'tool_use';
           }
 
-          // No tool use → text was already streamed, we're done
+          // No tool use → text was already streamed/sent, we're done
           if (!didToolUse) break;
 
           // Colecta TODOS los tool_use del turno (Sonnet puede pedir varios en
