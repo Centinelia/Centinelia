@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { uploadAttachmentToStorage } from '@/lib/email/attachment-reader';
 
 export const dynamic = 'force-dynamic';
@@ -40,17 +40,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
   const { token } = await params;
   if (!token) return NextResponse.json({ error: 'missing_token' }, { status: 400 });
 
-  // Verificar que el token corresponde a un agente activo (gating simple).
-  const supabase = createAdminClient();
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('id, portal_email, active')
-    .eq('portal_token', token)
-    .maybeSingle();
-  if (!agent || !(agent as { active: boolean }).active) {
-    return NextResponse.json({ error: 'invalid_token' }, { status: 401 });
-  }
-  const portalEmail = (agent as { portal_email: string | null }).portal_email;
+  // Auth via cookie session — mismo patrón que agent-chat/route.ts. El portal_token
+  // del URL se usa para scope del upload, no como credencial (sub-users y
+  // múltiples agentes del mismo portal_email usan session cookie compartida).
+  const cookie = req.cookies.get(PORTAL_COOKIE)?.value ?? '';
+  const auth   = await verifySession(cookie);
+  if (!auth) return NextResponse.json({ error: 'not_authenticated' }, { status: 401 });
+
+  const portalEmail = auth.portalEmail ?? null;
 
   let formData: FormData;
   try {
