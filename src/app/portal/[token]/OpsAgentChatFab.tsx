@@ -185,6 +185,7 @@ export default function OpsAgentChatFab({ token, agents }: Props) {
   // metadata (nombre + download_url) para incluirlos en el próximo mensaje.
   const [pendingAttachments, setPendingAttachments] = useState<Array<{ name: string; mimeType: string; size: number; download_url: string }>>([]);
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Bubble state
@@ -246,12 +247,15 @@ export default function OpsAgentChatFab({ token, agents }: Props) {
     const arr = Array.from(files);
     if (arr.length === 0) return;
     setUploading(true);
+    setUploadError(null);
     try {
       const fd = new FormData();
       for (const f of arr) fd.append('files', f);
       const res = await fetch(`/api/portal/${token}/chat-attachment`, { method: 'POST', body: fd });
       if (!res.ok) {
-        console.warn('[chat-attachment] upload failed', res.status);
+        const body = await res.text().catch(() => '');
+        console.warn('[chat-attachment] upload failed', res.status, body);
+        setUploadError(`Error ${res.status}: no pude subir los archivos. ${body.slice(0, 150)}`);
         return;
       }
       const data = await res.json() as {
@@ -260,9 +264,16 @@ export default function OpsAgentChatFab({ token, agents }: Props) {
         rejected?: Array<{ name: string; reason: string }>;
       };
       setPendingAttachments(prev => [...prev, ...(data.attachments ?? [])]);
-      if (data.rejected?.length) console.warn('[chat-attachment] rejected:', data.rejected);
+      if (data.rejected?.length) {
+        console.warn('[chat-attachment] rejected:', data.rejected);
+        setUploadError(`${data.rejected.length} archivo(s) rechazado(s): ${data.rejected.map(r => `${r.name} (${r.reason})`).join(', ')}`);
+      }
+      if ((data.attachments?.length ?? 0) === 0 && !(data.rejected?.length)) {
+        setUploadError('No se subió ningún archivo. Revisa que los tipos sean soportados (PDF, XML, Excel, Word, imágenes).');
+      }
     } catch (err) {
       console.warn('[chat-attachment] exception:', err);
+      setUploadError(`Error de red: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setUploading(false);
     }
@@ -510,6 +521,14 @@ export default function OpsAgentChatFab({ token, agents }: Props) {
 
           {/* Input */}
           <div className="flex flex-col gap-2 px-3 py-3 flex-shrink-0" style={{ borderTop: '1px solid #E8E3F5' }}>
+            {/* Banner de error de upload */}
+            {uploadError && (
+              <div className="flex items-start gap-2 px-2 py-1.5 rounded-lg text-xs"
+                style={{ background: 'rgba(220,38,38,0.08)', color: '#B91C1C', border: '1px solid rgba(220,38,38,0.25)' }}>
+                <span className="flex-1">{uploadError}</span>
+                <button onClick={() => setUploadError(null)} aria-label="Cerrar"><X size={11} /></button>
+              </div>
+            )}
             {/* Preview chips de attachments pendientes */}
             {pendingAttachments.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
