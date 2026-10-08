@@ -553,9 +553,11 @@ export async function patchClienteBySerie(
   const headers = Object.entries(hit.headersMap).sort((a, b) => a[1] - b[1]).map(([h]) => h);
   const before_state = rowToState(headers, hit.row);
 
+  // 2026-10-08 Camila: CLIENTE siempre en MAYÚSCULAS.
+  const clienteUpper = input.cliente_nombre.toUpperCase();
   const patched: string[] = [col.cliente.toUpperCase()];
   const after_row = [...hit.row];
-  after_row[clienteIdx] = input.cliente_nombre;
+  after_row[clienteIdx] = clienteUpper;
   if (vendedorIdx != null && input.vendedor_codigo) {
     after_row[vendedorIdx] = input.vendedor_codigo;
     patched.push(col.vendedor!.toUpperCase());
@@ -568,7 +570,7 @@ export async function patchClienteBySerie(
   await GraphExcel.withSession(ctx.token, ctx.config.location, async session => {
     const sheet = ctx.config.sheets.historico.name;
     const abs = hit.tableRowIndex + ctx.historicoBodyStartRow;
-    await GraphExcel.patchCell(ctx.token, session, sheet, `${cellLetter(clienteIdx)}${abs}`, input.cliente_nombre);
+    await GraphExcel.patchCell(ctx.token, session, sheet, `${cellLetter(clienteIdx)}${abs}`, clienteUpper);
     if (vendedorIdx != null && input.vendedor_codigo) {
       await GraphExcel.patchCell(ctx.token, session, sheet, `${cellLetter(vendedorIdx)}${abs}`, input.vendedor_codigo);
     }
@@ -759,10 +761,12 @@ export async function patchSalidaBySeries(
       // factura venta posterior lo rellene con la razón social del CFDI.
       // isClienteNoIdentificado detecta los marcadores que el LLM puede usar.
       const inputClienteValido = !isClienteNoIdentificado(input.cliente_nombre);
+      // 2026-10-08 Camila: CLIENTE siempre en MAYÚSCULAS.
+      const clienteUpper = input.cliente_nombre.toUpperCase();
       const currentCliente = String(hit.row[clienteIdx] ?? '').trim();
       if (inputClienteValido && isClienteDisponible(currentCliente)) {
-        await GraphExcel.patchCell(ctx.token, session, sheet, `${cellLetter(clienteIdx)}${abs}`, input.cliente_nombre);
-        after_row[clienteIdx] = input.cliente_nombre; patched.push(col.cliente.toUpperCase());
+        await GraphExcel.patchCell(ctx.token, session, sheet, `${cellLetter(clienteIdx)}${abs}`, clienteUpper);
+        after_row[clienteIdx] = clienteUpper; patched.push(col.cliente.toUpperCase());
       } else if (inputClienteValido && currentCliente.toLowerCase() !== input.cliente_nombre.toLowerCase()) {
         conflictMsg = `serie ${s} ya estaba asignada a "${currentCliente}" (no sobre-escribí)`;
         conflicts.push(conflictMsg);

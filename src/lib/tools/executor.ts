@@ -6389,7 +6389,8 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
 
       // Receptor (cliente)
       const receptor = (comprobante['cfdi:Receptor'] ?? comprobante.Receptor) as Record<string, unknown> | undefined;
-      const clienteNombre = String(receptor?.Nombre ?? '').trim() || null;
+      // 2026-10-08 Camila: CLIENTE siempre en MAYÚSCULAS.
+      const clienteNombre = (String(receptor?.Nombre ?? '').trim() || null)?.toUpperCase() ?? null;
 
       // Folio local: concat Serie + Folio → "F-23839A"
       const serie_cfdi = String(comprobante.Serie ?? '').trim().toUpperCase().replace(/\s+/g, '');
