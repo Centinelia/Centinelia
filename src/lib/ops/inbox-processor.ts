@@ -41,6 +41,81 @@ function stripOwnPrefixes(subject: string): string {
   return subject.replace(CATEGORY_PREFIX_RX, '').trim() || '(sin asunto)';
 }
 
+/**
+ * 2026-10-08 Nash reportó issue #127: error 400 Anthropic
+ * "tool_use sin tool_result" en inbox-processor claude-sonnet-5-5. 3
+ * ocurrencias (16:00, 16:13, 16:42 UTC del 8 oct) → inbox de Camila sin
+ * procesarse.
+ *
+ * Causa: en varios lugares post-loop (last-resort LLM iter, force-draft iter,
+ * validator retry) hacemos `anthropic.messages.create` con `[...messages, X]`.
+ * El array `messages` puede quedar en estados que Anthropic rechaza:
+ *   (a) assistant con tool_use sin tool_result adyacente (edge case cuando
+ *       un iter crashea mid-tool-execution o cuando messages se construye
+ *       artificialmente para retries).
+ *   (b) dos messages consecutivos con role=user (último del loop es
+ *       `user: tool_result` y pushemos `user: forceDraftMsg`).
+ *
+ * Fix: sanitizeMessages corre antes de cada create post-loop y:
+ *   1. Agrega tool_result sintético ({ok:false, error:'unresolved_in_loop'})
+ *      para huérfanos tool_use.
+ *   2. Mergea user messages consecutivos combinando su content en uno solo.
+ *   3. Si queda un assistant al final sin su respuesta (no común, pero
+ *      posible), lo deja — Anthropic acepta terminar con assistant.
+ *
+ * Mantiene invariant Anthropic: cada tool_use → tool_result en msg siguiente,
+ * y roles alternados user ↔ assistant.
+ */
+export function sanitizeMessages(msgs: Anthropic.MessageParam[]): Anthropic.MessageParam[] {
+  // Paso 1: rebalancear tool_use huérfanos
+  const rebalanced: Anthropic.MessageParam[] = [];
+  for (let i = 0; i < msgs.length; i++) {
+    const m = msgs[i];
+    rebalanced.push(m);
+    if (m.role !== 'assistant' || !Array.isArray(m.content)) continue;
+    const toolUseIds = (m.content as Array<{ type: string; id?: string }>)
+      .filter(b => b.type === 'tool_use')
+      .map(b => b.id!)
+      .filter(Boolean);
+    if (toolUseIds.length === 0) continue;
+    const next = msgs[i + 1];
+    const existingResults = next?.role === 'user' && Array.isArray(next.content)
+      ? new Set((next.content as Array<{ type: string; tool_use_id?: string }>)
+          .filter(b => b.type === 'tool_result')
+          .map(b => b.tool_use_id!)
+          .filter(Boolean))
+      : new Set<string>();
+    const orphaned = toolUseIds.filter(id => !existingResults.has(id));
+    if (orphaned.length === 0) continue;
+    const syntheticResults: Anthropic.ToolResultBlockParam[] = orphaned.map(id => ({
+      type: 'tool_result',
+      tool_use_id: id,
+      content: JSON.stringify({ ok: false, error: 'tool_use_unresolved_in_loop_rebalanced' }),
+    }));
+    if (next?.role === 'user' && Array.isArray(next.content)) {
+      (next.content as Anthropic.ContentBlockParam[]).push(...syntheticResults);
+    } else {
+      rebalanced.push({ role: 'user', content: syntheticResults });
+    }
+  }
+  // Paso 2: colapsar roles consecutivos (user+user o assistant+assistant)
+  const collapsed: Anthropic.MessageParam[] = [];
+  for (const m of rebalanced) {
+    const last = collapsed[collapsed.length - 1];
+    if (last && last.role === m.role) {
+      // Mergear content. Si alguno es string, convertir ambos a array de text blocks.
+      const toArray = (c: Anthropic.MessageParam['content']): Anthropic.ContentBlockParam[] => {
+        if (typeof c === 'string') return [{ type: 'text', text: c }];
+        return c as Anthropic.ContentBlockParam[];
+      };
+      last.content = [...toArray(last.content), ...toArray(m.content)];
+    } else {
+      collapsed.push({ role: m.role, content: m.content });
+    }
+  }
+  return collapsed;
+}
+
 // 2026-10-07 Force tool_choice en iter 0 del inbox-processor cuando el correo
 // pide inequívocamente una tool específica. Caso real: Nami prefería escalar
 // al humano antes que invocar inv_procesar_oc_qb aunque el correo trajera
@@ -2827,7 +2902,7 @@ CATEGORÍAS:
                 max_tokens: 2048,
                 system:     [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
                 tools:      tools,
-                messages:   [...messages, extraMsg],
+                messages:   sanitizeMessages([...messages, extraMsg]),
               });
               const toolUseBlock = extraResp.content.find(b => b.type === 'tool_use' && b.name === forcedTool);
               void logLlmCall({
@@ -2867,7 +2942,7 @@ CATEGORÍAS:
           model:      'claude-sonnet-5-5',
           max_tokens: 1500,
           system:     [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
-          messages:   [...messages, forceDraftMsg],
+          messages:   sanitizeMessages([...messages, forceDraftMsg]),
         });
         const fdText = forceDraftResp.content.find(b => b.type === 'text');
         if (fdText?.type === 'text') {
@@ -2931,7 +3006,7 @@ CATEGORÍAS:
             model:      'claude-sonnet-5-5',
             max_tokens: 2048,
             system:     [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
-            messages,
+            messages:   sanitizeMessages(messages),
           });
           const retryText = retryResp.content.find(b => b.type === 'text');
           const retryRaw = retryText?.type === 'text' ? retryText.text.trim() : '';
