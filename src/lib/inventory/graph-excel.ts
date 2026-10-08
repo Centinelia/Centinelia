@@ -259,6 +259,38 @@ export async function addTableRow(
   return { index: data.index };
 }
 
+/**
+ * Bulk insert de múltiples filas en una sola call. Microsoft Graph acepta
+ * hasta ~100 rows por request. Para N grande, hacemos chunks de 100.
+ *
+ * Caso real reportado Nazre 2026-10-08: OCs con 200+ líneas (10/año en AC
+ * Proyectos). addTableRow × 200 secuencial toma ~100s y arriesga Vercel
+ * timeout. Esta función reduce a 2-3 calls bulk.
+ */
+export async function addTableRows(
+  token: string,
+  session: ExcelSession,
+  tableName: string,
+  rows: unknown[][],
+): Promise<{ inserted: number }> {
+  if (rows.length === 0) return { inserted: 0 };
+  const CHUNK = 100;
+  let inserted = 0;
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    const chunk = rows.slice(i, i + CHUNK);
+    await graphFetch(
+      `${itemPrefix(session.location)}/workbook/tables/${encodeURIComponent(tableName)}/rows/add`,
+      {
+        method:  'POST',
+        headers: headers(token, session.id),
+        body:    JSON.stringify({ values: chunk }),
+      },
+    );
+    inserted += chunk.length;
+  }
+  return { inserted };
+}
+
 // ─── Ranges ──────────────────────────────────────────────────────────────────
 
 export interface ExcelRange {

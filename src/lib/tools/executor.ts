@@ -6263,6 +6263,10 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       let totalInserted = 0;
       let totalSkippedExisting = 0;
       const porModelo: Array<{ modelo: string; cantidad: number; filas: number }> = [];
+      // 2026-10-08 Nazre OC 200+ líneas: acumular todas las filas y hacer un
+      // bulk insert al final (addTableRows en chunks de 100). Evita 200 calls
+      // secuenciales y riesgo de Vercel timeout.
+      const bulkRowsToInsert: unknown[][] = [];
 
       // 2026-10-08 Nazre: idempotencia. Si ya hay filas con (OC + MODELO) para
       // esta OC, NO re-insertar. Pre-fetch filas existentes de esta OC para
@@ -6344,11 +6348,20 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
             setByLogic('cliente',      'STOCK');
             setByLogic('salida',       1);
             setByLogic('folio_venta',  '-');
-            await GraphExcel.addTableRow(inv.token, session, inv.config.sheets.historico.table, rowValues);
+            // 2026-10-08 Nazre: Bulk insert — acumular rowValues en array,
+            // insertar al final via addTableRows (chunks de 100). OCs de 200+
+            // líneas (10/año) antes hacían 200 calls secuenciales a addTableRow
+            // → ~100s + riesgo Vercel timeout. Ahora 2-3 calls bulk.
+            bulkRowsToInsert.push(rowValues);
             filasInsertadas++;
             totalInserted++;
           }
           porModelo.push({ modelo, cantidad, filas: filasInsertadas });
+        }
+        // Bulk insert al final del withSession para que todas las filas vayan
+        // en el mismo contexto transaccional.
+        if (bulkRowsToInsert.length > 0) {
+          await GraphExcel.addTableRows(inv.token, session, inv.config.sheets.historico.table, bulkRowsToInsert);
         }
       });
 
