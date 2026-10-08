@@ -12,6 +12,7 @@ vi.mock('../graph-excel', () => ({
   setWrapText:            vi.fn(),
   applyCenterAlignment:   vi.fn(),
   clearBorders:           vi.fn(),
+  getUsedRange:           vi.fn().mockResolvedValue(null),
   withSession:            vi.fn(async (_t, _l, fn) => fn({ id: 's1', persist: true, location: null })),
 }));
 

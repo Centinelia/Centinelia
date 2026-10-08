@@ -354,6 +354,29 @@ export async function applyCenterAlignment(
 }
 
 /**
+ * Devuelve el rango "usado" de la hoja (hasta dónde llegan content y/o
+ * formato aplicados). Útil para detectar bordes sobrantes de versiones
+ * anteriores que están abajo del data actual pero mantienen formato.
+ * Fail-safe: retorna null si Graph rechaza.
+ */
+export async function getUsedRange(
+  token: string,
+  session: ExcelSession,
+  sheet: string,
+): Promise<{ rowIndex: number; rowCount: number; columnIndex: number; columnCount: number; address: string } | null> {
+  try {
+    const data = await graphFetch(
+      `${itemPrefix(session.location)}/workbook/worksheets/${encodeURIComponent(sheet)}/usedRange?$select=rowIndex,rowCount,columnIndex,columnCount,address`,
+      { method: 'GET', headers: headers(token, session.id) },
+    ) as { rowIndex: number; rowCount: number; columnIndex: number; columnCount: number; address: string };
+    return data;
+  } catch (err) {
+    console.warn('[graph-excel.getUsedRange] non-fatal:', err instanceof Error ? err.message : err);
+    return null;
+  }
+}
+
+/**
  * Elimina TODOS los bordes del rango (los 6 lados). Útil para limpiar filas
  * sobrantes de una versión anterior del documento que ya no existen en el
  * nuevo (ej. backlog TRANE semana anterior tenía 47 filas, esta semana tiene

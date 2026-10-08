@@ -529,10 +529,18 @@ export async function syncBacklogRows(
         await GraphExcel.applyCenterAlignment(ctx.token, session, config.name, realRange);
         await GraphExcel.autofitColumns(ctx.token, session, config.name, realRange);
         await GraphExcel.applyThinBorders(ctx.token, session, config.name, realRange);
-        // Si había filas sobrantes de versión anterior (ej. 47 filas antes → 45
-        // ahora), limpiar sus bordes para que no queden "cajones vacíos".
-        if (writeMaxRow > dataEndRow) {
-          const leftoverRange = `${firstColLetter}${dataEndRow + 1}:${lastColLetter}${writeMaxRow}`;
+        // Limpiar bordes de filas abajo del data real. Usamos usedRange para
+        // detectar hasta dónde llegan content/formato (ej. backlog semana
+        // anterior con 47 filas → esta semana 41 → filas 42-47 quedan vacías
+        // pero con bordes). Camila lo reportó 2026-10-07.
+        const used = await GraphExcel.getUsedRange(ctx.token, session, config.name);
+        // usedRange.rowIndex es 0-based; +rowCount nos da la última fila usada +1.
+        // Excel row numbers son 1-based, por eso sumamos 1 adicional.
+        const usedLastRow = used ? used.rowIndex + used.rowCount : writeMaxRow;
+        const clearFrom   = dataEndRow + 1;
+        const clearTo     = Math.max(usedLastRow, writeMaxRow);
+        if (clearTo >= clearFrom) {
+          const leftoverRange = `${firstColLetter}${clearFrom}:${lastColLetter}${clearTo}`;
           await GraphExcel.clearBorders(ctx.token, session, config.name, leftoverRange);
         }
       });
