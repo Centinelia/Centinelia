@@ -92,6 +92,46 @@ describe('sanitizeMessages — Nash #127 regression', () => {
     ]);
   });
 
+  it('función es pura — no muta el input', () => {
+    const original = [
+      { role: 'user' as const, content: 'hola' },
+      { role: 'assistant' as const, content: [
+        { type: 'tool_use' as const, id: 'tu_orphan', name: 'inv_x', input: {} },
+      ]},
+      { role: 'user' as const, content: 'texto plano' },
+    ];
+    const snapshot = JSON.parse(JSON.stringify(original));
+    sanitizeMessages(original);
+    expect(JSON.parse(JSON.stringify(original))).toEqual(snapshot);
+  });
+
+  it('regression Nash #127 iter 1: nudge F3 push de response.content con tool_use mixto', () => {
+    // Caso real 2026-10-08 20:55:
+    //   iter 0 produce response con stop_reason=end_turn pero content tiene
+    //   text + 2 tool_use blocks (edge case Anthropic). nudge F3 pushea TODO
+    //   el response.content al assistant turn + user "no llamaste tool".
+    //   iter 1 crashea con 400 "tool_use ids were found without tool_result".
+    const msgs = [
+      { role: 'user' as const, content: 'procesa factura' },
+      { role: 'assistant' as const, content: [
+        { type: 'text' as const, text: 'OK voy a procesar' },
+        { type: 'tool_use' as const, id: 'toolu_017H2H2QzszFa8fuwN5PqWXE', name: 'inv_x', input: {} },
+        { type: 'tool_use' as const, id: 'toolu_017LowsH26E6ZHcBpnQKYA7E', name: 'inv_y', input: {} },
+      ]},
+      { role: 'user' as const, content: 'Espera — no llamaste ninguna herramienta...' },
+    ];
+    const result = sanitizeMessages(msgs);
+    // Debe haber tool_result para ambos tool_use entre assistant y user del nudge
+    const assistant = result.find(m => m.role === 'assistant')!;
+    const assistantIdx = result.indexOf(assistant);
+    const nextUser = result[assistantIdx + 1];
+    expect(nextUser.role).toBe('user');
+    const content = nextUser.content as Array<{ type: string; tool_use_id?: string }>;
+    const resultIds = content.filter(b => b.type === 'tool_result').map(b => b.tool_use_id);
+    expect(resultIds).toContain('toolu_017H2H2QzszFa8fuwN5PqWXE');
+    expect(resultIds).toContain('toolu_017LowsH26E6ZHcBpnQKYA7E');
+  });
+
   it('múltiples tool_use en mismo assistant con tool_result parcial', () => {
     const msgs = [
       { role: 'user' as const, content: 'procesa' },

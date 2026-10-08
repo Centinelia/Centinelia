@@ -67,16 +67,23 @@ function stripOwnPrefixes(subject: string): string {
  * y roles alternados user ↔ assistant.
  */
 export function sanitizeMessages(msgs: Anthropic.MessageParam[]): Anthropic.MessageParam[] {
-  // Paso 1: rebalancear tool_use huérfanos
+  // Función PURA: no muta el input. Devuelve nuevos arrays/objects.
+  // Paso 1: rebalancear tool_use huérfanos (crear tool_result sintético).
+  // Paso 2: colapsar roles consecutivos (user+user o assistant+assistant).
+  const toArray = (c: Anthropic.MessageParam['content']): Anthropic.ContentBlockParam[] => {
+    if (typeof c === 'string') return [{ type: 'text', text: c }];
+    return [...(c as Anthropic.ContentBlockParam[])];
+  };
   const rebalanced: Anthropic.MessageParam[] = [];
   for (let i = 0; i < msgs.length; i++) {
     const m = msgs[i];
-    rebalanced.push(m);
-    if (m.role !== 'assistant' || !Array.isArray(m.content)) continue;
-    const toolUseIds = (m.content as Array<{ type: string; id?: string }>)
-      .filter(b => b.type === 'tool_use')
-      .map(b => b.id!)
-      .filter(Boolean);
+    const toolUseIds = m.role === 'assistant' && Array.isArray(m.content)
+      ? (m.content as Array<{ type: string; id?: string }>)
+          .filter(b => b.type === 'tool_use')
+          .map(b => b.id!)
+          .filter(Boolean)
+      : [];
+    rebalanced.push({ role: m.role, content: typeof m.content === 'string' ? m.content : [...(m.content as Anthropic.ContentBlockParam[])] });
     if (toolUseIds.length === 0) continue;
     const next = msgs[i + 1];
     const existingResults = next?.role === 'user' && Array.isArray(next.content)
@@ -92,22 +99,14 @@ export function sanitizeMessages(msgs: Anthropic.MessageParam[]): Anthropic.Mess
       tool_use_id: id,
       content: JSON.stringify({ ok: false, error: 'tool_use_unresolved_in_loop_rebalanced' }),
     }));
-    if (next?.role === 'user' && Array.isArray(next.content)) {
-      (next.content as Anthropic.ContentBlockParam[]).push(...syntheticResults);
-    } else {
-      rebalanced.push({ role: 'user', content: syntheticResults });
-    }
+    // Insertar nuevo user message con tool_result sintéticos ANTES del next.
+    // El merge-user-consecutivos del paso 2 los combinará si next también es user.
+    rebalanced.push({ role: 'user', content: syntheticResults });
   }
-  // Paso 2: colapsar roles consecutivos (user+user o assistant+assistant)
   const collapsed: Anthropic.MessageParam[] = [];
   for (const m of rebalanced) {
     const last = collapsed[collapsed.length - 1];
     if (last && last.role === m.role) {
-      // Mergear content. Si alguno es string, convertir ambos a array de text blocks.
-      const toArray = (c: Anthropic.MessageParam['content']): Anthropic.ContentBlockParam[] => {
-        if (typeof c === 'string') return [{ type: 'text', text: c }];
-        return c as Anthropic.ContentBlockParam[];
-      };
       last.content = [...toArray(last.content), ...toArray(m.content)];
     } else {
       collapsed.push({ role: m.role, content: m.content });
@@ -2723,7 +2722,7 @@ CATEGORÍAS:
             model:      __ipM,
             max_tokens: 2048,
             system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
-            messages,
+            messages:   sanitizeMessages(messages),
             ...(tools.length && !isLastIter ? { tools } : {}),
           });
           void logLlmCall({ source: 'inbox_processor', model: __ipM, usage: response.usage, agentId, portalEmail, latencyMs: Date.now() - __ipT, meta: { iter: i } });
