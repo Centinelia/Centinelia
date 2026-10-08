@@ -6526,12 +6526,16 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
           const costoCompraIdx = hit.headersMap[costoCompraHeader.toUpperCase()];
           const costoCompra = costoCompraIdx != null ? Number(hit.row[costoCompraIdx] ?? 0) : 0;
           const utilidad = costoCompra > 0 ? Math.round((v.precio_unitario - costoCompra) * 100) / 100 : null;
-          // 2026-10-08 Nazre: 2 decimales (no 4). Fórmula actual: precio/costo
-          // (mark-up multiplier). TODO: verificar fórmula real con Camila —
-          // históricos de AC Proyectos muestran rangos 0.32-0.38 que NO cuadran
-          // con precio/costo (daría 1.2+). Posible margen bruto o cálculo
-          // custom que necesita confirmar.
-          const factor   = costoCompra > 0 ? Math.round((v.precio_unitario / costoCompra) * 100) / 100 : null;
+          // 2026-10-08 Nazre pasó la fórmula real de FACTOR en el Excel:
+          //   =LET(venta;AE; tc;R; lista;XLOOKUP(modelo;STOCK!H;STOCK!M);
+          //        factor; venta/(lista*tc);
+          //        IFS(factor<0.33;0.32; factor<0.35;0.34; factor<0.37;0.36; TRUE;0.38))
+          // Requiere lookup en hoja STOCK (precio de lista USD) + bucketing.
+          // La celda del Excel YA tiene esta fórmula. Si Nami escribe un valor
+          // custom, PISA la fórmula. Solución: no escribir FACTOR, dejar que
+          // Excel la recalcule sola con los otros datos que Nami SÍ escribe
+          // (COSTO VTA, TC, MODELO).
+          const factor   = null;
           const sheet = inv.config.sheets.historico.name;
           if (Lfactura)  await GraphExcel.patchCell(inv.token, session, sheet, `${Lfactura}${abs}`,  facturaStr);
           if (Lfecha)    await GraphExcel.patchCell(inv.token, session, sheet, `${Lfecha}${abs}`,    fechaStr);
@@ -6539,7 +6543,9 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
           if (Lano && anoVenta != null) await GraphExcel.patchCell(inv.token, session, sheet, `${Lano}${abs}`,  anoVenta);
           if (Lcostovta) await GraphExcel.patchCell(inv.token, session, sheet, `${Lcostovta}${abs}`, v.precio_unitario);
           if (Lutilidad && utilidad != null) await GraphExcel.patchCell(inv.token, session, sheet, `${Lutilidad}${abs}`, utilidad);
-          if (Lfactor && factor != null)     await GraphExcel.patchCell(inv.token, session, sheet, `${Lfactor}${abs}`,   factor);
+          // FACTOR: no se escribe. La fórmula del Excel (XLOOKUP + bucket) lo
+          // calcula sola. Si Nami lo escribe, pisa la fórmula.
+          void Lfactor; void factor;
           // CLIENTE: lógica de precedencia + alerta de discrepancia.
           //   - Si vacío/"-"/"STOCK": escribir razón social del CFDI.
           //   - Si tiene nombre comercial (de hoja de salida) y matchea (fuzzy)
