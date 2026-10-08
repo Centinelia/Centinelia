@@ -2905,6 +2905,25 @@ CATEGORÍAS:
       }
     } catch (err) {
       console.error('[ops/inbox-processor] AI error:', err);
+      // 2026-10-08 Nazre reportó bug donde tools ejecutaban OK pero summary
+      // marcaba iters_used=0 + tools_invoked=[] → pending silente. La exception
+      // se capturaba silencioso. Ahora logeamos el error con TODA la metadata
+      // para rastrearlo en producción.
+      void logLlmCall({
+        source: 'inbox_processor_exception',
+        model:  'claude-sonnet-5-5',
+        usage:  { input_tokens: 0, output_tokens: 0 },
+        agentId,
+        portalEmail,
+        latencyMs: 0,
+        error: err instanceof Error ? `${err.name}: ${err.message}\n${(err.stack ?? '').slice(0, 500)}` : String(err),
+        meta: {
+          iters_used_at_catch: itersUsedF3,
+          tools_invoked_at_catch: toolsInvokedOk,
+          subject: emailSubject,
+          raw_message_id: rawMessageId,
+        },
+      });
     }
   } else if (opsResult.ok) {
     // No portalEmail — run a simple single-shot analysis without tools
