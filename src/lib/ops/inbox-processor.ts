@@ -1999,20 +1999,18 @@ CATEGORÍAS:
     ? { ok: false as const, error: 'skipped_observador_mode' as const }
     : await consumeAiOp(agentId, 1, { source: 'inbox_processor', reference_id: `${existingInboxId ?? rawMessageId}:processed`, label: 'Procesamiento de bandeja (correo/tarea)' });
 
-  // 2026-10-08 Nazre: si consumeAiOp falla por UNIQUE constraint (ledger dedup)
-  // significa que YA se procesó este msg antes (overlap de 10 min del poll).
-  // consumeAiOp retorna {ok:false, used:0, limit:0} sin error string.
-  // Para distinguir dedup vs pool agotado: query ops_inbox — si ya hay row con
-  // status final (no pending/null), es dedup → return early. Si no hay row o
-  // está pending, continuar flow degradado para no silenciar al remitente.
-  if (!opsResult.ok && autoMode !== 'observador') {
-    const { data: existingRow } = await supabase.from('ops_inbox')
-      .select('status, sent_at').eq('agent_id', agentId).eq('raw_message_id', rawMessageId).maybeSingle();
-    const alreadyProcessed = existingRow && (
-      (existingRow as { sent_at?: string | null }).sent_at ||
-      !['pending', null, undefined].includes((existingRow as { status?: string }).status as string | null | undefined)
-    );
-    if (alreadyProcessed) {
+  // 2026-10-08 Nazre: race condition del poll causa que el mismo msg se procese
+  // 2 veces. consumeAiOp retorna {ok:false, used:0, limit:0} cuando el RPC falla
+  // por UNIQUE constraint del ledger (sin error string). Para distinguir dedup
+  // vs pool agotado: query ai_ops_log directo — si YA hay entry con mismo
+  // reference_id Y count > 0, un processing previo ya ejecutó y cobró → return
+  // early para no sobreescribir el summary válido del 1er processing.
+  if (!opsResult.ok && autoMode !== 'observador' && portalEmail) {
+    const refIdCheck = `${existingInboxId ?? rawMessageId}:processed`;
+    const { data: priorLedger } = await supabase.from('ai_ops_log')
+      .select('count, created_at').eq('portal_email', portalEmail).eq('reference_id', refIdCheck).gt('count', 0).limit(1);
+    const alreadyCharged = (priorLedger?.length ?? 0) > 0;
+    if (alreadyCharged) {
       void logLlmCall({
         source: 'inbox_processor_dedup_skip',
         model:  'claude-sonnet-5-5',
@@ -2020,7 +2018,7 @@ CATEGORÍAS:
         agentId,
         portalEmail,
         latencyMs: 0,
-        meta: { raw_message_id: rawMessageId, reason: 'already_processed_overlap_poll', existing_status: (existingRow as { status?: string }).status },
+        meta: { raw_message_id: rawMessageId, reason: 'ledger_already_charged', prior_count: (priorLedger as any[])[0].count },
       });
       return;
     }
