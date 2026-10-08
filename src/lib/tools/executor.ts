@@ -6261,7 +6261,31 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       const headers = await GraphExcel.getTableHeader(inv.token, inv.config.location, inv.config.sheets.historico.table);
       const cols = inv.config.columns_historico;
       let totalInserted = 0;
+      let totalSkippedExisting = 0;
       const porModelo: Array<{ modelo: string; cantidad: number; filas: number }> = [];
+
+      // 2026-10-08 Nazre: idempotencia. Si ya hay filas con (OC + MODELO) para
+      // esta OC, NO re-insertar. Pre-fetch filas existentes de esta OC para
+      // contar por modelo. Si existing >= cantidad del item nuevo, skip.
+      // Previene duplicados cuando el msg se re-envía o se procesa 2 veces.
+      const existingByModelo = new Map<string, number>();
+      {
+        const ocIdxLocal = headers.indexOf(cols.oc);
+        const modeloIdxLocal = headers.indexOf(cols.modelo);
+        const serieIdxLocal = headers.indexOf(cols.serie);
+        if (ocIdxLocal >= 0 && modeloIdxLocal >= 0) {
+          const existingRows = await GraphExcel.listTableRows(inv.token, inv.config.location, inv.config.sheets.historico.table);
+          for (const r of existingRows) {
+            const vals = r.values as unknown[];
+            const ocCell = String(vals[ocIdxLocal] ?? '').trim().toUpperCase();
+            if (ocCell !== ocFormateada.toUpperCase()) continue;
+            const modCell = String(vals[modeloIdxLocal] ?? '').trim().toUpperCase();
+            if (!modCell) continue;
+            existingByModelo.set(modCell, (existingByModelo.get(modCell) ?? 0) + 1);
+            void serieIdxLocal;  // reservado por si queremos filtrar por serie-vacía
+          }
+        }
+      }
 
       await GraphExcel.withSession(inv.token, inv.config.location, async (session) => {
         for (const itRaw of itemsRaw) {
@@ -6271,11 +6295,22 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
           const descripcion = it.descripcion ? String(it.descripcion).trim() : '';
           const usdUnit  = it.usd_unit != null ? Number(it.usd_unit) : null;
           if (!modelo || !(cantidad > 0)) continue;
+          // Idempotencia: si ya hay >= cantidad filas con (OC, modelo), skip.
+          const alreadyCount = existingByModelo.get(modelo.toUpperCase()) ?? 0;
+          if (alreadyCount >= cantidad) {
+            totalSkippedExisting += cantidad;
+            porModelo.push({ modelo, cantidad, filas: 0 });
+            continue;
+          }
           const familia = resolveFamiliaFor(modelo, descripcion || modelo);
           const { seer, ref, volts } = extractSeerRefVolts(descripcion);
           const tonelada = extractTonelada(descripcion, modelo);
           let filasInsertadas = 0;
-          for (let n = 0; n < cantidad; n++) {
+          // 2026-10-08 idempotencia parcial: si ya hay alreadyCount filas con
+          // este (OC, modelo), crear solo las faltantes para llegar a cantidad.
+          const filasAfaltar = Math.max(0, cantidad - alreadyCount);
+          totalSkippedExisting += alreadyCount;
+          for (let n = 0; n < filasAfaltar; n++) {
             const rowValues: unknown[] = new Array(headers.length).fill('');
             const setByLogic = (logic: string, value: unknown) => {
               const header = cols[logic];
