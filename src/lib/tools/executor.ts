@@ -6526,7 +6526,12 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
           const costoCompraIdx = hit.headersMap[costoCompraHeader.toUpperCase()];
           const costoCompra = costoCompraIdx != null ? Number(hit.row[costoCompraIdx] ?? 0) : 0;
           const utilidad = costoCompra > 0 ? Math.round((v.precio_unitario - costoCompra) * 100) / 100 : null;
-          const factor   = costoCompra > 0 ? Math.round((v.precio_unitario / costoCompra) * 10000) / 10000 : null;
+          // 2026-10-08 Nazre: 2 decimales (no 4). Fórmula actual: precio/costo
+          // (mark-up multiplier). TODO: verificar fórmula real con Camila —
+          // históricos de AC Proyectos muestran rangos 0.32-0.38 que NO cuadran
+          // con precio/costo (daría 1.2+). Posible margen bruto o cálculo
+          // custom que necesita confirmar.
+          const factor   = costoCompra > 0 ? Math.round((v.precio_unitario / costoCompra) * 100) / 100 : null;
           const sheet = inv.config.sheets.historico.name;
           if (Lfactura)  await GraphExcel.patchCell(inv.token, session, sheet, `${Lfactura}${abs}`,  facturaStr);
           if (Lfecha)    await GraphExcel.patchCell(inv.token, session, sheet, `${Lfecha}${abs}`,    fechaStr);
