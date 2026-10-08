@@ -2750,9 +2750,16 @@ CATEGORÍAS:
   if (result.category === 'spam') {
     finalStatus = 'skipped';
     finalDraft  = null;
-  } else if (result.category === 'notificacion' || result.actionRequired === false) {
+  } else if ((result.category === 'notificacion' || result.actionRequired === false) && toolsInvokedOk.length === 0) {
     // FYI/notification: recibo, alerta de plataforma, confirmación automática.
     // No requiere respuesta humana — se archiva en tab "Notificaciones".
+    //
+    // 2026-10-07 Nazre reportó: backlog TRANE llegaba con subject "Backlog
+    // Actualizado Miercoles" (suena a aviso informativo) → Nami categorizaba
+    // como "notificacion" aunque invocó inv_importar_backlog con éxito →
+    // final_status=skipped silente, sin reply. Fix: si hubo tool exitosa, el
+    // correo NO es notificación (por definición: generó trabajo real). Solo
+    // skippear notificaciones sin acción de tools.
     finalStatus = 'skipped';
     finalDraft  = null;
   } else if (result.needsInfo && result.requestToSender) {
