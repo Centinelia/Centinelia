@@ -9,6 +9,7 @@ vi.mock('../graph-excel', () => ({
   autofitColumns:    vi.fn(),
   applyThinBorders:  vi.fn(),
   applyBoldFont:     vi.fn(),
+  setWrapText:       vi.fn(),
   withSession:       vi.fn(async (_t, _l, fn) => fn({ id: 's1', persist: true, location: null })),
 }));
 

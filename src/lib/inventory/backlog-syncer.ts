@@ -516,9 +516,15 @@ export async function syncBacklogRows(
         const headerStart = Math.max(1, resolved.dataStartRow - 1);
         const fullRange   = `${firstColLetter}${headerStart}:${lastColLetter}${writeMaxRow}`;
         const headerRange = `${firstColLetter}${headerStart}:${lastColLetter}${headerStart}`;
+        // Orden importante: bold ANTES del autofit — el bold hace el texto ~10%
+        // más ancho, si autofit corre primero calcula con texto normal y el
+        // bold aplicado después queda cortado ("ORDERED DATE" → "ORDERE/D DATE").
+        // También: deshabilitar wrap text en header para que no se parta en
+        // múltiples líneas si Excel heredó el formato de alguna celda vecina.
+        await GraphExcel.applyBoldFont(ctx.token, session, config.name, headerRange);
+        await GraphExcel.setWrapText(ctx.token, session, config.name, headerRange, false);
         await GraphExcel.autofitColumns(ctx.token, session, config.name, fullRange);
         await GraphExcel.applyThinBorders(ctx.token, session, config.name, fullRange);
-        await GraphExcel.applyBoldFont(ctx.token, session, config.name, headerRange);
       });
     } catch (err) {
       summary.errors.push({ row_key: '*', error: err instanceof Error ? err.message : String(err) });
@@ -557,9 +563,10 @@ export async function syncBacklogRows(
       const endRow      = Math.max(nextAppendRow - 1, upsertStartRow);
       const fullRange   = `${firstColLetter}${headerStart}:${lastColLetter}${endRow}`;
       const headerRange = `${firstColLetter}${headerStart}:${lastColLetter}${headerStart}`;
+      await GraphExcel.applyBoldFont(ctx.token, session, config.name, headerRange);
+      await GraphExcel.setWrapText(ctx.token, session, config.name, headerRange, false);
       await GraphExcel.autofitColumns(ctx.token, session, config.name, fullRange);
       await GraphExcel.applyThinBorders(ctx.token, session, config.name, fullRange);
-      await GraphExcel.applyBoldFont(ctx.token, session, config.name, headerRange);
     }
   });
 

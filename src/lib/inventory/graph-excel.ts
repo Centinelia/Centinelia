@@ -329,6 +329,33 @@ export async function autofitColumns(
 }
 
 /**
+ * Habilita/deshabilita wrap text en el rango. Útil en header rows para evitar
+ * que títulos como "ORDERED DATE" se partan en 2 líneas ("ORDERE / D DATE")
+ * cuando el autofit se calculó con texto no-bold y después el bold agrandó
+ * el string. Fail-safe.
+ */
+export async function setWrapText(
+  token: string,
+  session: ExcelSession,
+  sheet: string,
+  address: string,
+  wrap: boolean,
+): Promise<void> {
+  try {
+    await graphFetch(
+      `${itemPrefix(session.location)}/workbook/worksheets/${encodeURIComponent(sheet)}/range(address='${encodeURIComponent(address)}')/format`,
+      {
+        method:  'PATCH',
+        headers: headers(token, session.id),
+        body:    JSON.stringify({ wrapText: wrap }),
+      },
+    );
+  } catch (err) {
+    console.warn('[graph-excel.setWrapText] non-fatal:', err instanceof Error ? err.message : err);
+  }
+}
+
+/**
  * Aplica bold a la fuente de todas las celdas del rango. Pensado para el
  * header row de tablas escritas por los syncers — Camila 2026-10-07: "los
  * títulos de las columnas también tienen bold y las otras no". Fail-safe.
