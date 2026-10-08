@@ -2899,7 +2899,32 @@ CATEGORÍAS:
         for (let ti = 0; ti < toolBlocks.length; ti++) {
           const b = toolBlocks[ti];
           const r = parallel[ti];
-          const output: unknown = r.status === 'fulfilled' ? r.value : { ok: false, error: String(r.reason) };
+          let output: unknown = r.status === 'fulfilled' ? r.value : { ok: false, error: String(r.reason) };
+          // 2026-10-08 Nazre safety net: inv_importar_backlog con skipped=
+          // wrong_day_of_week + el remitente YA pidió override → re-invocar
+          // auto con force=true. Evita loop de "Nami pide confirmación,
+          // Nazre reconfirma, Nami no entiende y pide otra vez".
+          if (
+            b.name === 'inv_importar_backlog' &&
+            output && typeof output === 'object' &&
+            (output as { skipped?: unknown; code?: unknown }).skipped === true &&
+            (output as { code?: unknown }).code === 'wrong_day_of_week' &&
+            shouldForceBacklog(emailSubject ?? '', effectiveBody ?? '')
+          ) {
+            try {
+              const argsWithForce = { ...(b.input as Record<string, unknown>), force: true, dry_run: false, mode: 'replace' };
+              output = await executeAgentTool(b.name, argsWithForce, execCtx);
+              void logLlmCall({
+                source: 'inbox_processor_backlog_force_retry',
+                model:  'claude-sonnet-5-5',
+                usage:  { input_tokens: 0, output_tokens: 0 },
+                agentId, portalEmail, latencyMs: 0,
+                meta: { reinvoked_with_force: true },
+              });
+            } catch (err) {
+              console.error('[inbox-processor] backlog force retry failed:', err instanceof Error ? err.message : err);
+            }
+          }
           const okShape = output && typeof output === 'object' && (output as { ok?: unknown }).ok !== false;
           if (okShape) toolsInvokedOk.push(b.name);
           // Capturar files generados por create_file/create_document para
