@@ -111,19 +111,41 @@ function detectForcedTool(
  * args del contexto e invocar directo. Si deducción no es posible, retorna
  * null (caso raro — raiz no procesada queda pending con draft explicativo).
  */
-function deduceForcedToolArgs(
+async function deduceForcedToolArgs(
   toolName: string,
   ctx: { emailSubject: string; effectiveBody: string; attachments: Array<{ name: string; url: string; type: string; size: number; download_url?: string }> },
-): Record<string, unknown> | null {
+): Promise<Record<string, unknown> | null> {
   const ocMatch = ctx.emailSubject.match(/\boc\s*0*(\d+)/i) || ctx.effectiveBody.match(/\boc\s*0*(\d+)/i);
   const ocNumber = ocMatch?.[1];
 
   if (toolName === 'inv_procesar_factura_trane') {
-    // Buscar XML en effectiveBody (parseFileToText lo expande como texto).
-    // El CFDI empieza con "<?xml ... <cfdi:Comprobante".
-    const xmlMatch = ctx.effectiveBody.match(/<\?xml[\s\S]*?<\/cfdi:Comprobante>/);
-    if (!xmlMatch || !ocNumber) return null;
-    return { xml: xmlMatch[0], oc_ac: ocNumber, dry_run: false };
+    // 1. Preferir download_url del XML attachment (fetchear directo, más
+    //    confiable que grep del body truncado a 8000 chars).
+    const xmlAtt = ctx.attachments.find(a => /\.xml$/i.test(a.name) || /xml/i.test(a.type));
+    if (xmlAtt?.download_url && ocNumber) {
+      try {
+        const res = await fetch(xmlAtt.download_url);
+        if (res.ok) {
+          const xmlText = await res.text();
+          if (xmlText.includes('<cfdi:Comprobante')) {
+            return { xml: xmlText, oc_ac: ocNumber, dry_run: false };
+          }
+        }
+      } catch (err) {
+        console.warn('[deduceForcedToolArgs] XML fetch failed:', err instanceof Error ? err.message : err);
+      }
+    }
+    // 2. Fallback: grep del body (regex tolerante — acepta inicio con
+    //    <?xml o directamente con <cfdi:Comprobante si el <?xml se truncó).
+    const xmlMatch = ctx.effectiveBody.match(/<(?:\?xml[\s\S]*?)?cfdi:Comprobante[\s\S]*?<\/cfdi:Comprobante>/);
+    if (xmlMatch && ocNumber) {
+      // Reconstruir XML completo si el <?xml se cortó.
+      const xml = xmlMatch[0].startsWith('<?xml')
+        ? xmlMatch[0]
+        : `<?xml version="1.0" encoding="UTF-8"?>${xmlMatch[0].startsWith('<cfdi') ? '<' : ''}${xmlMatch[0]}`;
+      return { xml, oc_ac: ocNumber, dry_run: false };
+    }
+    return null;
   }
   if (toolName === 'inv_procesar_oc_qb') {
     const pdfAtt = ctx.attachments.find(a => /\.pdf$/i.test(a.name) || a.type === 'application/pdf');
@@ -2645,7 +2667,7 @@ CATEGORÍAS:
       // force-draft normal abajo para generar reply con el resultado.
       if (outerForcedToolName && !toolsInvokedOk.includes(outerForcedToolName)) {
         try {
-          const deducedArgs = deduceForcedToolArgs(outerForcedToolName, { emailSubject, effectiveBody, attachments });
+          const deducedArgs = await deduceForcedToolArgs(outerForcedToolName, { emailSubject, effectiveBody, attachments });
           if (deducedArgs) {
             console.warn('[inbox-processor] forced tool ignored by model, invoking directly:', outerForcedToolName);
             const directResult = await executeAgentTool(outerForcedToolName, deducedArgs, execCtx);
