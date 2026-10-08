@@ -732,13 +732,9 @@ export async function patchSalidaBySeries(
   if (clienteIdx === undefined) {
     throw new Error(`Columna de cliente '${col.cliente}' no encontrada en headersMap. Revisa inventory_excel_config.columns_historico.`);
   }
-  const fechaIdx = headersMap[col.fecha_venta.toUpperCase()];
-  if (fechaIdx === undefined) {
-    throw new Error(`Columna de fecha_venta '${col.fecha_venta}' no encontrada en headersMap. Revisa inventory_excel_config.columns_historico.`);
-  }
+  // fecha_venta ya NO se escribe desde hoja de salida (va con factura venta SF).
+  // vendedorIdx + folio_salida eliminados: el handler usa col.recibo2 para folio.
   const vendedorIdx = col.vendedor ? headersMap[col.vendedor.toUpperCase()] : undefined;
-  const folioSalidaHeader = col.folio_salida ?? 'FOLIO SALIDA';
-  const folioSalidaIdx = headersMap[folioSalidaHeader.toUpperCase()];
 
   await GraphExcel.withSession(ctx.token, ctx.config.location, async session => {
     const sheet = ctx.config.sheets.historico.name;
@@ -782,14 +778,20 @@ export async function patchSalidaBySeries(
         }
       }
 
-      // Overwrite intencional: la fecha de la hoja de salida ES el evento de entrega;
-      // cualquier fecha_venta previa (de registros parciales) se corrige con esta.
-      await GraphExcel.patchCell(ctx.token, session, sheet, `${cellLetter(fechaIdx)}${abs}`, fecha);
-      after_row[fechaIdx] = fecha; patched.push(col.fecha_venta.toUpperCase());
-
-      if (folioSalidaIdx != null && input.folio_hoja) {
-        await GraphExcel.patchCell(ctx.token, session, sheet, `${cellLetter(folioSalidaIdx)}${abs}`, input.folio_hoja);
-        after_row[folioSalidaIdx] = input.folio_hoja; patched.push(folioSalidaHeader.toUpperCase());
+      // 2026-10-08 Nazre: NO escribir FECHA DE VENTA en hoja de salida.
+      // FECHA DE VENTA = fecha de la factura venta SF al cliente (la emite
+      // inv_procesar_factura_venta_sf cuando llegue el CFDI de venta).
+      // La hoja de salida es un evento interno (equipo deja el almacén), no
+      // una venta facturada.
+      //
+      // Folio de la hoja de salida va a RECIBO2 (col.recibo2 según config AC
+      // Proyectos). FOLIO (col.folio_venta) queda para la factura venta.
+      if (input.folio_hoja && col.recibo2) {
+        const recibo2Idx = headersMap[col.recibo2.toUpperCase()];
+        if (recibo2Idx != null) {
+          await GraphExcel.patchCell(ctx.token, session, sheet, `${cellLetter(recibo2Idx)}${abs}`, input.folio_hoja);
+          after_row[recibo2Idx] = input.folio_hoja; patched.push(col.recibo2.toUpperCase());
+        }
       }
 
       series_registradas.push(hit.row[serieColIdx] as string);
