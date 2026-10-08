@@ -329,6 +329,61 @@ export async function autofitColumns(
 }
 
 /**
+ * Centra el contenido horizontal + vertical en todas las celdas del rango.
+ * Pedido Camila 2026-10-07: "centré todo y se ve mejor, más digerible al ojo
+ * humano". Fail-safe.
+ */
+export async function applyCenterAlignment(
+  token: string,
+  session: ExcelSession,
+  sheet: string,
+  address: string,
+): Promise<void> {
+  try {
+    await graphFetch(
+      `${itemPrefix(session.location)}/workbook/worksheets/${encodeURIComponent(sheet)}/range(address='${encodeURIComponent(address)}')/format`,
+      {
+        method:  'PATCH',
+        headers: headers(token, session.id),
+        body:    JSON.stringify({ horizontalAlignment: 'Center', verticalAlignment: 'Center' }),
+      },
+    );
+  } catch (err) {
+    console.warn('[graph-excel.applyCenterAlignment] non-fatal:', err instanceof Error ? err.message : err);
+  }
+}
+
+/**
+ * Elimina TODOS los bordes del rango (los 6 lados). Útil para limpiar filas
+ * sobrantes de una versión anterior del documento que ya no existen en el
+ * nuevo (ej. backlog TRANE semana anterior tenía 47 filas, esta semana tiene
+ * 45 → las 2 filas sobrantes quedan vacías pero con bordes previos). Fail-safe.
+ */
+export async function clearBorders(
+  token: string,
+  session: ExcelSession,
+  sheet: string,
+  address: string,
+): Promise<void> {
+  const sides = ['EdgeTop', 'EdgeBottom', 'EdgeLeft', 'EdgeRight', 'InsideHorizontal', 'InsideVertical'] as const;
+  const body = JSON.stringify({ style: 'None' });
+  for (const side of sides) {
+    try {
+      await graphFetch(
+        `${itemPrefix(session.location)}/workbook/worksheets/${encodeURIComponent(sheet)}/range(address='${encodeURIComponent(address)}')/format/borders/${side}`,
+        {
+          method:  'PATCH',
+          headers: headers(token, session.id),
+          body,
+        },
+      );
+    } catch (err) {
+      console.warn(`[graph-excel.clearBorders] non-fatal (${side}):`, err instanceof Error ? err.message : err);
+    }
+  }
+}
+
+/**
  * Habilita/deshabilita wrap text en el rango. Útil en header rows para evitar
  * que títulos como "ORDERED DATE" se partan en 2 líneas ("ORDERE / D DATE")
  * cuando el autofit se calculó con texto no-bold y después el bold agrandó

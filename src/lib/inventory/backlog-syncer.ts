@@ -514,17 +514,27 @@ export async function syncBacklogRows(
         // incluir el header row (dataStartRow - 1) y así los títulos también
         // quedan visibles. Non-fatal: si Graph rechaza, pipeline sigue.
         const headerStart = Math.max(1, resolved.dataStartRow - 1);
-        const fullRange   = `${firstColLetter}${headerStart}:${lastColLetter}${writeMaxRow}`;
+        // Rango REAL de datos (sin filas vaciadas): header + parsedRows.
+        const dataEndRow  = resolved.dataStartRow + parsedRows.length - 1;
+        const realRange   = `${firstColLetter}${headerStart}:${lastColLetter}${dataEndRow}`;
         const headerRange = `${firstColLetter}${headerStart}:${lastColLetter}${headerStart}`;
         // Orden importante: bold ANTES del autofit — el bold hace el texto ~10%
         // más ancho, si autofit corre primero calcula con texto normal y el
         // bold aplicado después queda cortado ("ORDERED DATE" → "ORDERE/D DATE").
-        // También: deshabilitar wrap text en header para que no se parta en
-        // múltiples líneas si Excel heredó el formato de alguna celda vecina.
+        // Formato pedido Camila 2026-10-07: centrado + bold header + bordes
+        // thin + autofit, aplicado SOLO al rango real (filas sobrantes se
+        // limpian con clearBorders abajo).
         await GraphExcel.applyBoldFont(ctx.token, session, config.name, headerRange);
         await GraphExcel.setWrapText(ctx.token, session, config.name, headerRange, false);
-        await GraphExcel.autofitColumns(ctx.token, session, config.name, fullRange);
-        await GraphExcel.applyThinBorders(ctx.token, session, config.name, fullRange);
+        await GraphExcel.applyCenterAlignment(ctx.token, session, config.name, realRange);
+        await GraphExcel.autofitColumns(ctx.token, session, config.name, realRange);
+        await GraphExcel.applyThinBorders(ctx.token, session, config.name, realRange);
+        // Si había filas sobrantes de versión anterior (ej. 47 filas antes → 45
+        // ahora), limpiar sus bordes para que no queden "cajones vacíos".
+        if (writeMaxRow > dataEndRow) {
+          const leftoverRange = `${firstColLetter}${dataEndRow + 1}:${lastColLetter}${writeMaxRow}`;
+          await GraphExcel.clearBorders(ctx.token, session, config.name, leftoverRange);
+        }
       });
     } catch (err) {
       summary.errors.push({ row_key: '*', error: err instanceof Error ? err.message : String(err) });
@@ -565,6 +575,7 @@ export async function syncBacklogRows(
       const headerRange = `${firstColLetter}${headerStart}:${lastColLetter}${headerStart}`;
       await GraphExcel.applyBoldFont(ctx.token, session, config.name, headerRange);
       await GraphExcel.setWrapText(ctx.token, session, config.name, headerRange, false);
+      await GraphExcel.applyCenterAlignment(ctx.token, session, config.name, fullRange);
       await GraphExcel.autofitColumns(ctx.token, session, config.name, fullRange);
       await GraphExcel.applyThinBorders(ctx.token, session, config.name, fullRange);
     }
