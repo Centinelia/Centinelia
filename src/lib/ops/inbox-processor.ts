@@ -101,6 +101,21 @@ function detectForcedTool(
     return 'inv_importar_backlog';
   }
 
+  // Regla 4 (2026-10-08 Fix B — Nazre): hoja de salida física que llega como
+  // foto. Patrones: subject menciona "salida" o "hoja" O (thread sobre OC +
+  // única imagen inline sin PDF/XML). La imagen se procesa vía vision por el
+  // modelo. Si el modelo rebelde no invoca, el last-resort LLM-iter fuerza.
+  const hasImageOnly = attachments.some(a => (a.type ?? '').toLowerCase().startsWith('image/')) &&
+    !hasAttachmentOfType(/\.(pdf|xml)$|application\/(pdf|xml)/);
+  if (
+    (hasImageOnly || /\b(hoja|salida)\b/i.test(subj) || /\b(hoja|salida)\b/i.test(bodyLow)) &&
+    /\boc\s*[-#]?\s*[a-z0-9-]+\d/i.test(subj + ' ' + bodyLow) &&
+    attachments.some(a => (a.type ?? '').toLowerCase().startsWith('image/')) &&
+    availableToolNames.has('inv_registrar_salida')
+  ) {
+    return 'inv_registrar_salida';
+  }
+
   return null;
 }
 
@@ -2718,6 +2733,50 @@ CATEGORÍAS:
                 latencyMs: 0,
                 meta: { tool: outerForcedToolName, direct: true },
               });
+            }
+          } else if (outerForcedToolName === 'inv_procesar_oc_qb' || outerForcedToolName === 'inv_registrar_salida') {
+            // 2026-10-08 Fix A/B: deduce retornó null porque args no son
+            // deducibles automáticamente (OC_qb necesita items[] del PDF,
+            // registrar_salida necesita datos de imagen con vision). Pero el
+            // modelo YA ignoró el forced tool. Hacer una ITER LLM EXTRA con
+            // prompt estricto + mensaje aislado forzando la invocación.
+            const toolName = outerForcedToolName;
+            const toolHint = toolName === 'inv_procesar_oc_qb'
+              ? `El PDF OC está parseado arriba en el effectiveBody del user message original. DEBES invocar inv_procesar_oc_qb AHORA con oc_numero, fecha_oc (YYYY-MM-DD), items[] (array con {modelo, cantidad, precio_usd, descripcion} por cada equipo que leas del PDF).`
+              : `Hay una imagen de hoja de salida física adjunta (vision). DEBES invocar inv_registrar_salida AHORA con folio_hoja, cliente_nombre, fecha (YYYY-MM-DD), series[] que leas de la imagen. Si no logras leer algún campo pasa "NO IDENTIFICADO" para cliente_nombre.`;
+            const extraMsg: Anthropic.MessageParam = {
+              role: 'user',
+              content: `[LAST-RESORT FORCED INVOCATION]\n\n${toolHint}\n\nNO escribas texto, NO respondas al remitente aún — SOLO invoca la tool. El siguiente turno se dedicará al reply con el resultado.`,
+            };
+            try {
+              const extraResp = await anthropic.messages.create({
+                model:      'claude-sonnet-5-5',
+                max_tokens: 2048,
+                system:     [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
+                tools:      tools,
+                messages:   [...messages, extraMsg],
+              });
+              const toolUseBlock = extraResp.content.find(b => b.type === 'tool_use' && b.name === toolName);
+              void logLlmCall({
+                source: 'inbox_processor_last_resort_llm_iter',
+                model:  'claude-sonnet-5-5',
+                usage:  { input_tokens: extraResp.usage?.input_tokens ?? 0, output_tokens: extraResp.usage?.output_tokens ?? 0 },
+                agentId,
+                portalEmail,
+                latencyMs: 0,
+                meta: { tool: toolName, invoked_now: !!toolUseBlock, stop_reason: extraResp.stop_reason },
+              });
+              if (toolUseBlock && toolUseBlock.type === 'tool_use') {
+                const extraResult = await executeAgentTool(toolUseBlock.name, toolUseBlock.input as Record<string, unknown>, execCtx);
+                const okShape = extraResult && typeof extraResult === 'object' && (extraResult as { ok?: unknown }).ok !== false;
+                if (okShape) {
+                  toolsInvokedOk.push(toolUseBlock.name);
+                  messages.push({ role: 'assistant', content: [{ type: 'tool_use', id: toolUseBlock.id, name: toolUseBlock.name, input: toolUseBlock.input as Record<string, unknown> }] });
+                  messages.push({ role: 'user', content: [{ type: 'tool_result', tool_use_id: toolUseBlock.id, content: JSON.stringify(extraResult) }] });
+                }
+              }
+            } catch (err) {
+              console.error('[inbox-processor] last_resort_llm_iter failed:', err instanceof Error ? err.message : err);
             }
           }
         } catch (err) {
