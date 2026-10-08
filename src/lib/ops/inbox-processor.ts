@@ -1461,7 +1461,7 @@ export async function processInboxEmail(params: {
 }): Promise<void> {
   const {
     agentId, source, rawMessageId, threadId, emailFrom, emailSubject,
-    emailBody, attachments, agentName, businessName,
+    emailBody, attachments: attachmentsIn, agentName, businessName,
     knowledgeBase, roleKB, agentRole, ownerEmail, portalToken, portalEmail,
     autoMode = 'off', approvalEmail, existingInboxId, originalEmailBody,
     fromSpamFolder = false, unmarkSpamFn, sendReplyFn,
@@ -1493,6 +1493,67 @@ export async function processInboxEmail(params: {
   const effectiveBody = originalEmailBody
     ? `${originalEmailBody}\n\n--- Respuesta del remitente ---\n${emailBody}`
     : emailBody;
+
+  // 2026-10-08 Nazre bug sistémico: cuando un reply en thread existente no
+  // trae attachments (solo texto), el inbox-processor no sabe que el correo
+  // original SÍ tenía el PDF/XML. Caso real: Nazre confirma en reply "procesa
+  // el backlog", Nami no puede invocar la tool porque "no hay PDF" aunque el
+  // objeto en Storage sigue vivo. Fix: si attachments=[] + hay thread_id,
+  // buscar correos previos del mismo thread, regenerar signed URLs frescas
+  // desde storage_path (los signed URLs expiran en 2h pero el objeto no).
+  let attachments = attachmentsIn;
+  if (attachments.length === 0 && threadId) {
+    try {
+      const inheritSb = createAdminClient();
+      const { data: prev } = await inheritSb.from('ops_inbox')
+        .select('attachments, created_at')
+        .eq('agent_id', agentId)
+        .eq('thread_id', threadId)
+        .not('id', 'eq', reservedInboxId)
+        .order('created_at', { ascending: false })
+        .limit(5);
+      type StoredAtt = { name?: string; type?: string; url?: string; size?: number; storage_path?: string; download_url?: string };
+      const inheritedRaw: StoredAtt[] = [];
+      for (const row of (prev ?? []) as Array<{ attachments: unknown }>) {
+        for (const a of ((row.attachments as StoredAtt[] | null) ?? [])) {
+          if (!a?.storage_path || !a.name) continue;
+          if (inheritedRaw.some(ia => ia.name === a.name)) continue;
+          inheritedRaw.push(a);
+        }
+      }
+      if (inheritedRaw.length > 0) {
+        const { OPS_ATTACHMENTS_BUCKET } = await import('@/lib/email/attachment-reader');
+        const SIGNED_TTL = 2 * 60 * 60;
+        const refreshed: typeof attachmentsIn = [];
+        for (const a of inheritedRaw) {
+          const signed = await inheritSb.storage.from(OPS_ATTACHMENTS_BUCKET).createSignedUrl(a.storage_path!, SIGNED_TTL);
+          if (signed.error || !signed.data?.signedUrl) continue;
+          refreshed.push({
+            name: a.name!,
+            url:  signed.data.signedUrl,
+            type: a.type ?? 'application/octet-stream',
+            size: a.size ?? 0,
+            download_url: signed.data.signedUrl,
+            storage_path: a.storage_path!,
+          } as typeof attachmentsIn[number]);
+        }
+        if (refreshed.length > 0) {
+          attachments = refreshed;
+          void logLlmCall({
+            source: 'inbox_processor_inherit_attachments',
+            model:  'debug',
+            usage:  { input_tokens: 0, output_tokens: 0 },
+            agentId,
+            portalEmail,
+            latencyMs: 0,
+            meta: { thread_id: threadId, inherited: refreshed.length, names: refreshed.map(r => r.name).slice(0, 5) },
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('[inbox-processor inheritThreadAttachments]', err instanceof Error ? err.message : err);
+    }
+  }
 
   const hasInvoiceAttachment = attachments.some(a =>
     a.type === 'application/pdf' || a.name.toLowerCase().includes('factura') || a.name.toLowerCase().includes('invoice')

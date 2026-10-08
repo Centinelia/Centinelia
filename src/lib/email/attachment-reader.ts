@@ -44,7 +44,7 @@ const MAX_TEXT_CHARS  = 5000;
 const MAX_FILE_BYTES  = 10 * 1024 * 1024; // 10MB por archivo
 const MAX_TOTAL_BYTES = 25 * 1024 * 1024; // 25MB total por email
 
-const OPS_ATTACHMENTS_BUCKET  = 'ops-attachments';
+export const OPS_ATTACHMENTS_BUCKET  = 'ops-attachments';
 const SIGNED_URL_TTL_SECONDS  = 2 * 60 * 60;  // 2 horas
 // MIME types que se suben para que tools los descarguen vía http. Imágenes NO
 // — esas van por vision multimodal (initialUserContent).
