@@ -52,23 +52,36 @@ function stripOwnPrefixes(subject: string): string {
 //   1. Subject matchea /OC + número/ + PDF/XML adjunto → inv_procesar_oc_qb
 //   2. Subject/body menciona "factura trane" + XML adjunto → inv_procesar_factura_trane
 //   3. Subject menciona "backlog" + PDF adjunto → inv_importar_backlog
-function detectForcedTool(
+function detectForcedTools(
   subject: string | null | undefined,
   body: string | null | undefined,
   attachments: Array<{ name: string; type: string }>,
   availableTools: Anthropic.Tool[],
-): string | null {
+): string[] {
   const subj = (subject ?? '').trim();
   const bodyLow = (body ?? '').slice(0, 500).toLowerCase();
   const availableToolNames = new Set(availableTools.map(t => t.name));
   const hasAttachmentOfType = (rx: RegExp) =>
     attachments.some(a => rx.test((a.name ?? '').toLowerCase()) || rx.test((a.type ?? '').toLowerCase()));
 
-  // Regla 1: Factura Trane + XML adjunto. CHECK ANTES de la regla OC porque un
-  // reply en el mismo hilo de "Registrar OC6203" + XML adjunto podría disparar
-  // Rule 2 por error. "factura trane" es señal más específica que "OC + número".
-  // También acepta XML con nombre que contenga "factura" o "trane" aunque el
-  // subject no mencione factura explícitamente (ej. reply en thread OC).
+  // 2026-10-08 Nazre: array en vez de single tool. Correos con OC+Factura
+  // juntos requieren invocar AMBAS tools (inv_procesar_oc_qb crea pre-reg +
+  // inv_procesar_factura_trane las completa con serie/TC/COSTO MX). El last-
+  // resort cubre todas las que falten. Orden importa: factura DESPUÉS de OC
+  // para que las pre-reg existan al momento del match.
+  const forced: string[] = [];
+
+  // Regla 1: OC + PDF/XML adjunto.
+  if (
+    /\boc\s*[-#]?\s*[a-z0-9-]+\d/i.test(subj) &&
+    hasAttachmentOfType(/\.(pdf|xml|xlsx?)$|application\/(pdf|xml|vnd\.openxmlformats)/) &&
+    availableToolNames.has('inv_procesar_oc_qb')
+  ) {
+    forced.push('inv_procesar_oc_qb');
+  }
+
+  // Regla 2: Factura Trane + XML adjunto (CFDI). También dispara con XML cuyo
+  // nombre contenga factura/trane/cfdi/invoice aunque el subject sea del thread.
   const hasXmlAttachment = hasAttachmentOfType(/\.xml$|application\/xml/);
   const hasInvoiceLikeAttachment = attachments.some(a => {
     const n = (a.name ?? '').toLowerCase();
@@ -80,16 +93,7 @@ function detectForcedTool(
     hasXmlAttachment &&
     availableToolNames.has('inv_procesar_factura_trane')
   ) {
-    return 'inv_procesar_factura_trane';
-  }
-
-  // Regla 2: OC + PDF/XML adjunto (orden: después de factura trane).
-  if (
-    /\boc\s*[-#]?\s*[a-z0-9-]+\d/i.test(subj) &&
-    hasAttachmentOfType(/\.(pdf|xml|xlsx?)$|application\/(pdf|xml|vnd\.openxmlformats)/) &&
-    availableToolNames.has('inv_procesar_oc_qb')
-  ) {
-    return 'inv_procesar_oc_qb';
+    forced.push('inv_procesar_factura_trane');
   }
 
   // Regla 3: Backlog + PDF adjunto
@@ -98,13 +102,10 @@ function detectForcedTool(
     hasAttachmentOfType(/\.pdf$|application\/pdf/) &&
     availableToolNames.has('inv_importar_backlog')
   ) {
-    return 'inv_importar_backlog';
+    forced.push('inv_importar_backlog');
   }
 
-  // Regla 4 (2026-10-08 Fix B — Nazre): hoja de salida física que llega como
-  // foto. Patrones: subject menciona "salida" o "hoja" O (thread sobre OC +
-  // única imagen inline sin PDF/XML). La imagen se procesa vía vision por el
-  // modelo. Si el modelo rebelde no invoca, el last-resort LLM-iter fuerza.
+  // Regla 4: hoja de salida física como foto en thread OC.
   const hasImageOnly = attachments.some(a => (a.type ?? '').toLowerCase().startsWith('image/')) &&
     !hasAttachmentOfType(/\.(pdf|xml)$|application\/(pdf|xml)/);
   if (
@@ -113,10 +114,24 @@ function detectForcedTool(
     attachments.some(a => (a.type ?? '').toLowerCase().startsWith('image/')) &&
     availableToolNames.has('inv_registrar_salida')
   ) {
-    return 'inv_registrar_salida';
+    forced.push('inv_registrar_salida');
   }
 
-  return null;
+  return forced;
+}
+
+/**
+ * Backwards-compat: devuelve la primera tool forzada (para el prompt
+ * injection del iter 0 que requiere una sola).
+ */
+function detectForcedTool(
+  subject: string | null | undefined,
+  body: string | null | undefined,
+  attachments: Array<{ name: string; type: string }>,
+  availableTools: Anthropic.Tool[],
+): string | null {
+  const tools = detectForcedTools(subject, body, attachments, availableTools);
+  return tools[0] ?? null;
 }
 
 /**
@@ -2683,8 +2698,11 @@ CATEGORÍAS:
       // toolsInvokedOk, invocar el tool directamente con args deducidos del
       // contexto (subject + attachments). Si el tool corre OK, cae al
       // force-draft normal abajo para generar reply con el resultado.
-      // 2026-10-08 LOG explícito del estado del last-resort check para
-      // diagnosticar por qué no dispara con correos "RE:" (Nazre reportó).
+      // 2026-10-08 Nazre: last-resort ahora itera TODAS las forced tools
+      // (array). Correo con OC+Factura requiere 2 tools; antes solo cubríamos
+      // la primera y la otra quedaba sin ejecutar.
+      const allForcedTools = detectForcedTools(emailSubject, effectiveBody, attachments, tools);
+      const missingForced = allForcedTools.filter(t => !toolsInvokedOk.includes(t));
       void logLlmCall({
         source: 'inbox_processor_last_resort_check',
         model:  'claude-sonnet-5-5',
@@ -2694,13 +2712,15 @@ CATEGORÍAS:
         latencyMs: 0,
         meta: {
           outerForcedToolName,
+          allForcedTools,
+          missingForced,
           toolsInvokedOk,
-          would_invoke: !!(outerForcedToolName && !toolsInvokedOk.includes(outerForcedToolName)),
+          would_invoke: missingForced.length > 0,
         },
       });
-      if (outerForcedToolName && !toolsInvokedOk.includes(outerForcedToolName)) {
+      for (const forcedTool of missingForced) {
         try {
-          const deducedArgs = await deduceForcedToolArgs(outerForcedToolName, { emailSubject, effectiveBody, attachments });
+          const deducedArgs = await deduceForcedToolArgs(forcedTool, { emailSubject, effectiveBody, attachments });
           void logLlmCall({
             source: 'inbox_processor_last_resort_deduce',
             model:  'claude-sonnet-5-5',
@@ -2709,39 +2729,30 @@ CATEGORÍAS:
             portalEmail,
             latencyMs: 0,
             meta: {
-              tool: outerForcedToolName,
+              tool: forcedTool,
               deducedArgs_null: !deducedArgs,
               deducedArgs_keys: deducedArgs ? Object.keys(deducedArgs) : [],
             },
           });
           if (deducedArgs) {
-            console.warn('[inbox-processor] forced tool ignored by model, invoking directly:', outerForcedToolName);
-            const directResult = await executeAgentTool(outerForcedToolName, deducedArgs, execCtx);
+            console.warn('[inbox-processor] forced tool ignored by model, invoking directly:', forcedTool);
+            const directResult = await executeAgentTool(forcedTool, deducedArgs, execCtx);
             const okShape = directResult && typeof directResult === 'object' && (directResult as { ok?: unknown }).ok !== false;
             if (okShape) {
-              toolsInvokedOk.push(outerForcedToolName);
-              // Push como tool_result sintético para que el force-draft lo lea
+              toolsInvokedOk.push(forcedTool);
               const syntheticToolUseId = `direct_${Date.now()}`;
-              messages.push({ role: 'assistant', content: [{ type: 'tool_use', id: syntheticToolUseId, name: outerForcedToolName, input: deducedArgs }] });
+              messages.push({ role: 'assistant', content: [{ type: 'tool_use', id: syntheticToolUseId, name: forcedTool, input: deducedArgs }] });
               messages.push({ role: 'user', content: [{ type: 'tool_result', tool_use_id: syntheticToolUseId, content: JSON.stringify(directResult) }] });
               void logLlmCall({
                 source: 'inbox_processor_forced_tool_direct',
                 model:  'claude-sonnet-5-5',
                 usage:  { input_tokens: 0, output_tokens: 0 },
-                agentId,
-                portalEmail,
-                latencyMs: 0,
-                meta: { tool: outerForcedToolName, direct: true },
+                agentId, portalEmail, latencyMs: 0,
+                meta: { tool: forcedTool, direct: true },
               });
             }
-          } else if (outerForcedToolName === 'inv_procesar_oc_qb' || outerForcedToolName === 'inv_registrar_salida') {
-            // 2026-10-08 Fix A/B: deduce retornó null porque args no son
-            // deducibles automáticamente (OC_qb necesita items[] del PDF,
-            // registrar_salida necesita datos de imagen con vision). Pero el
-            // modelo YA ignoró el forced tool. Hacer una ITER LLM EXTRA con
-            // prompt estricto + mensaje aislado forzando la invocación.
-            const toolName = outerForcedToolName;
-            const toolHint = toolName === 'inv_procesar_oc_qb'
+          } else if (forcedTool === 'inv_procesar_oc_qb' || forcedTool === 'inv_registrar_salida') {
+            const toolHint = forcedTool === 'inv_procesar_oc_qb'
               ? `El PDF OC está parseado arriba en el effectiveBody del user message original. DEBES invocar inv_procesar_oc_qb AHORA con oc_numero, fecha_oc (YYYY-MM-DD), items[] (array con {modelo, cantidad, precio_usd, descripcion} por cada equipo que leas del PDF).`
               : `Hay una imagen de hoja de salida física adjunta (vision). DEBES invocar inv_registrar_salida AHORA con folio_hoja, cliente_nombre, fecha (YYYY-MM-DD), series[] que leas de la imagen. Si no logras leer algún campo pasa "NO IDENTIFICADO" para cliente_nombre.`;
             const extraMsg: Anthropic.MessageParam = {
@@ -2756,15 +2767,13 @@ CATEGORÍAS:
                 tools:      tools,
                 messages:   [...messages, extraMsg],
               });
-              const toolUseBlock = extraResp.content.find(b => b.type === 'tool_use' && b.name === toolName);
+              const toolUseBlock = extraResp.content.find(b => b.type === 'tool_use' && b.name === forcedTool);
               void logLlmCall({
                 source: 'inbox_processor_last_resort_llm_iter',
                 model:  'claude-sonnet-5-5',
                 usage:  { input_tokens: extraResp.usage?.input_tokens ?? 0, output_tokens: extraResp.usage?.output_tokens ?? 0 },
-                agentId,
-                portalEmail,
-                latencyMs: 0,
-                meta: { tool: toolName, invoked_now: !!toolUseBlock, stop_reason: extraResp.stop_reason },
+                agentId, portalEmail, latencyMs: 0,
+                meta: { tool: forcedTool, invoked_now: !!toolUseBlock, stop_reason: extraResp.stop_reason },
               });
               if (toolUseBlock && toolUseBlock.type === 'tool_use') {
                 const extraResult = await executeAgentTool(toolUseBlock.name, toolUseBlock.input as Record<string, unknown>, execCtx);
