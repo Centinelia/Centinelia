@@ -145,8 +145,17 @@ async function syncIntegration(integration: EmailIntegration, supabase: ReturnTy
 
   if (!agent?.client_email) return;
 
+  // 2026-10-08 Nazre reportó: 3 correos de Camila nunca cayeron a ops_inbox
+  // aunque llegaron a Graph. Causa: last_sync_at avanza al momento del poll
+  // (ej. 16:27) pero Microsoft Graph tiene propagación eventual — un msg que
+  // llegó 16:24 puede no aparecer en el fetch de 16:25 → next poll filtra
+  // `receivedDateTime > 16:25` y el msg se pierde para siempre.
+  //
+  // Fix: aplicar un overlap de 10 min al cutoff. Dedup por raw_message_id (ya
+  // existe abajo en el loop) evita re-procesar correos duplicados.
+  const OVERLAP_MS = 10 * 60 * 1000;
   const since = integration.last_sync_at
-    ? new Date(integration.last_sync_at)
+    ? new Date(new Date(integration.last_sync_at).getTime() - OVERLAP_MS)
     : new Date(Date.now() - 24 * 60 * 60 * 1000);
 
   const messages = await conn.email.fetchUnread(since);
