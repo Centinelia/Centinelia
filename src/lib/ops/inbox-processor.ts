@@ -2665,9 +2665,37 @@ CATEGORÍAS:
       // toolsInvokedOk, invocar el tool directamente con args deducidos del
       // contexto (subject + attachments). Si el tool corre OK, cae al
       // force-draft normal abajo para generar reply con el resultado.
+      // 2026-10-08 LOG explícito del estado del last-resort check para
+      // diagnosticar por qué no dispara con correos "RE:" (Nazre reportó).
+      void logLlmCall({
+        source: 'inbox_processor_last_resort_check',
+        model:  'claude-sonnet-5-5',
+        usage:  { input_tokens: 0, output_tokens: 0 },
+        agentId,
+        portalEmail,
+        latencyMs: 0,
+        meta: {
+          outerForcedToolName,
+          toolsInvokedOk,
+          would_invoke: !!(outerForcedToolName && !toolsInvokedOk.includes(outerForcedToolName)),
+        },
+      });
       if (outerForcedToolName && !toolsInvokedOk.includes(outerForcedToolName)) {
         try {
           const deducedArgs = await deduceForcedToolArgs(outerForcedToolName, { emailSubject, effectiveBody, attachments });
+          void logLlmCall({
+            source: 'inbox_processor_last_resort_deduce',
+            model:  'claude-sonnet-5-5',
+            usage:  { input_tokens: 0, output_tokens: 0 },
+            agentId,
+            portalEmail,
+            latencyMs: 0,
+            meta: {
+              tool: outerForcedToolName,
+              deducedArgs_null: !deducedArgs,
+              deducedArgs_keys: deducedArgs ? Object.keys(deducedArgs) : [],
+            },
+          });
           if (deducedArgs) {
             console.warn('[inbox-processor] forced tool ignored by model, invoking directly:', outerForcedToolName);
             const directResult = await executeAgentTool(outerForcedToolName, deducedArgs, execCtx);
