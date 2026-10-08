@@ -123,6 +123,22 @@ async function fetchPeerAgent(agentId: string, portalEmail: string, supabase: Su
   return agents.find(p => (p.role_knowledge_base as string | null)?.trim()) ?? agents[0] ?? null;
 }
 
+/**
+ * 2026-10-08 Nazre bug sistémico FECHA DE VENTA + AÑO: config DB tiene
+ * nombres sin trailing space ("FECHA DE VENTA", "AÑO") pero el Excel real
+ * tiene trailing space ("FECHA DE VENTA ", "AÑO "). headers.indexOf exact
+ * match devolvía -1 y las columnas no se escribían.
+ *
+ * Fix sistémico: todos los handlers inv_* deben usar findHeaderIndex en
+ * vez de headers.indexOf. Match trim-insensitive + case-insensitive.
+ * Previene el bug para SIEMPRE para cualquier columna de cualquier cliente.
+ */
+function findHeaderIndex(headers: string[], header: string | undefined | null): number {
+  if (!header) return -1;
+  const target = header.trim().toUpperCase();
+  return headers.findIndex(h => String(h).trim().toUpperCase() === target);
+}
+
 /** Execute any agent tool by name. Returns the raw result object (JSON-serialisable). */
 export async function executeAgentTool(
   toolName:  string,
@@ -6260,15 +6276,6 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
 
       const headers = await GraphExcel.getTableHeader(inv.token, inv.config.location, inv.config.sheets.historico.table);
       const cols = inv.config.columns_historico;
-      // 2026-10-08 Nazre bug: config DB tiene "FECHA DE VENTA" / "AÑO" pero
-      // headers del Excel tienen trailing space ("FECHA DE VENTA ", "AÑO ").
-      // headers.indexOf exact match falla → cols no se escriben.
-      // Fix sistémico: match trim-insensitive.
-      const findHdr = (header: string | undefined | null): number => {
-        if (!header) return -1;
-        const target = header.trim().toUpperCase();
-        return headers.findIndex(h => h.trim().toUpperCase() === target);
-      };
       let totalInserted = 0;
       let totalSkippedExisting = 0;
       const porModelo: Array<{ modelo: string; cantidad: number; filas: number }> = [];
@@ -6283,9 +6290,9 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       // Previene duplicados cuando el msg se re-envía o se procesa 2 veces.
       const existingByModelo = new Map<string, number>();
       {
-        const ocIdxLocal = findHdr(cols.oc);
-        const modeloIdxLocal = findHdr(cols.modelo);
-        const serieIdxLocal = findHdr(cols.serie);
+        const ocIdxLocal = findHeaderIndex(headers,cols.oc);
+        const modeloIdxLocal = findHeaderIndex(headers,cols.modelo);
+        const serieIdxLocal = findHeaderIndex(headers,cols.serie);
         if (ocIdxLocal >= 0 && modeloIdxLocal >= 0) {
           const existingRows = await GraphExcel.listTableRows(inv.token, inv.config.location, inv.config.sheets.historico.table);
           for (const r of existingRows) {
@@ -6332,7 +6339,7 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
             const setByLogic = (logic: string, value: unknown) => {
               const header = cols[logic];
               if (!header) return;
-              const idx = findHdr(header);
+              const idx = findHeaderIndex(headers,header);
               if (idx >= 0) rowValues[idx] = value;
             };
             setByLogic('oc',           ocFormateada);
@@ -6521,16 +6528,7 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
 
       const headers = await GraphExcel.getTableHeader(inv.token, inv.config.location, inv.config.sheets.historico.table);
       const toLetter = (idx: number): string => { let s = ''; let n = idx; while (n >= 0) { s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26) - 1; } return s; };
-      // 2026-10-08 Nazre bug FECHA DE VENTA: config DB tiene "FECHA DE VENTA"
-      // y "AÑO" sin trailing space, pero el Excel real tiene "FECHA DE VENTA "
-      // y "AÑO " con trailing space. headers.indexOf exact match devolvía -1
-      // → letterFor devolvía null → cols no se escribían. Fix: trim-insensitive.
-      const findHdrLocal = (header: string | undefined | null): number => {
-        if (!header) return -1;
-        const target = header.trim().toUpperCase();
-        return headers.findIndex(h => h.trim().toUpperCase() === target);
-      };
-      const letterFor = (header: string | undefined) => { const i = findHdrLocal(header); return i >= 0 ? toLetter(i) : null; };
+      const letterFor = (header: string | undefined) => { const i = findHeaderIndex(headers, header); return i >= 0 ? toLetter(i) : null; };
       const Lfactura = letterFor(facturaHeader);
       const Lfecha   = letterFor(fechaVtaHeader);
       const Lmes     = letterFor(mesVtaHeader);
@@ -6659,10 +6657,10 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       const usdHeader   = cols.usd          ?? '$ USD';
       const tcHeader    = cols.tc           ?? 'TC';
       const costoHeader = cols.costo_mx     ?? 'COSTO COMPRA (MX)';
-      const factIdx  = headers.indexOf(factHeader);
-      const usdIdx   = headers.indexOf(usdHeader);
-      const tcIdx    = headers.indexOf(tcHeader);
-      const costoIdx = headers.indexOf(costoHeader);
+      const factIdx  = findHeaderIndex(headers, factHeader);
+      const usdIdx   = findHeaderIndex(headers, usdHeader);
+      const tcIdx    = findHeaderIndex(headers, tcHeader);
+      const costoIdx = findHeaderIndex(headers, costoHeader);
       if (factIdx < 0)  return { ok: false, error: `Falta columna "${factHeader}" en el INVENTARIO.` };
       if (usdIdx < 0)   return { ok: false, error: `Falta columna "${usdHeader}" en el INVENTARIO.` };
       if (tcIdx < 0)    return { ok: false, error: `Falta columna "${tcHeader}" en el INVENTARIO.` };
@@ -6693,8 +6691,8 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       // sobrescribe UTILIDAD con precio_venta - costo_compra.
       const utilidadHeader = cols.utilidad_mx;
       const clienteHeader  = cols.cliente;
-      const utilidadIdx = utilidadHeader ? headers.indexOf(utilidadHeader) : -1;
-      const clienteIdx  = clienteHeader  ? headers.indexOf(clienteHeader)  : -1;
+      const utilidadIdx = findHeaderIndex(headers, utilidadHeader);
+      const clienteIdx  = findHeaderIndex(headers, clienteHeader);
       const utilidadLetter = utilidadIdx >= 0 ? colL(utilidadIdx) : null;
       const sheet = inv.config.sheets.historico.name;
 
@@ -6871,7 +6869,7 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       if (!found) return { ok: false, error: `No encontré equipo con serie ${serie}` };
       const headers = await GraphExcel.getTableHeader(inv.token, inv.config.location, inv.config.sheets.historico.table);
       const colHeader = inv.config.columns_historico.bodega;
-      const colIdx = headers.indexOf(colHeader);
+      const colIdx = findHeaderIndex(headers, colHeader);
       if (colIdx < 0) return { ok: false, error: `Columna ${colHeader} no encontrada` };
       const colLetter = String.fromCharCode(65 + colIdx);
       const excelRow = found.tableRowIndex + inv.historicoBodyStartRow;
@@ -6914,7 +6912,7 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
         return { ok: true, dry_run: true, total_a_cambiar: changes.length, cambios_muestra: changes.slice(0, 20) };
       }
       const headers = await GraphExcel.getTableHeader(inv.token, inv.config.location, inv.config.sheets.historico.table);
-      const colIdx = headers.indexOf(inv.config.columns_historico.bodega);
+      const colIdx = findHeaderIndex(headers, inv.config.columns_historico.bodega);
       const colLetter = String.fromCharCode(65 + colIdx);
       let applied = 0;
       await GraphExcel.withSession(inv.token, inv.config.location, async (session) => {
@@ -7136,9 +7134,9 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       const ocHeader     = cols.oc        ?? 'OC';
       const serieHeader  = cols.serie     ?? 'SERIE';
       const modeloHeader = cols.modelo    ?? 'MODELO';
-      const ocIdx     = headers.indexOf(ocHeader);
-      const serieIdx  = headers.indexOf(serieHeader);
-      const modeloIdx = headers.indexOf(modeloHeader);
+      const ocIdx     = findHeaderIndex(headers, ocHeader);
+      const serieIdx  = findHeaderIndex(headers, serieHeader);
+      const modeloIdx = findHeaderIndex(headers, modeloHeader);
 
       let updated = 0;
       let inserted = 0;
@@ -7184,7 +7182,7 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
             const patchByLogic = async (logic: string, value: unknown) => {
               const header = cols[logic];
               if (!header) return;
-              const idx = headers.indexOf(header);
+              const idx = findHeaderIndex(headers, header);
               if (idx < 0) return;
               await GraphExcel.patchCell(inv.token, session, sheet, `${toLetter(idx)}${abs}`, value);
             };
@@ -7207,11 +7205,13 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
             updated++;
           } else {
             // CREATE fallback: no había pre-registro para esta OC+modelo
-            const rowValues: unknown[] = new Array(headers.length).fill('');
+            // 2026-10-08 fill(null) para preservar fórmulas de columnas
+            // calculadas (ej. FACTOR). Pasar "" pisa la fórmula.
+            const rowValues: unknown[] = new Array(headers.length).fill(null);
             const setByLogic = (logic: string, value: unknown) => {
               const header = cols[logic];
               if (!header) return;
-              const idx = headers.indexOf(header);
+              const idx = findHeaderIndex(headers, header);
               if (idx >= 0) rowValues[idx] = value;
             };
             if (ocAcFormateada) setByLogic('oc', ocAcFormateada);
