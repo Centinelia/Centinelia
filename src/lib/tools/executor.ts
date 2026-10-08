@@ -6938,7 +6938,14 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
         return { ok: false, error: `Emisor esperado TRANE (TRA670207Q71). Recibido: ${emisorRfc}. Este parser solo procesa facturas TRANE.` };
       }
 
-      const folio  = String(comprobante.Folio ?? comprobante.Serie ?? 'sin folio');
+      // 2026-10-08 Nazre: Camila referencia la factura TRANE como Serie+Folio
+      // (ej. "610OINV265296", no solo "265296"). CFDI MX divide en Serie=610O
+      // + Folio=INV265296. Concatenamos para construir el identificador real.
+      const serie_cfdi_trane = String(comprobante.Serie ?? '').trim().toUpperCase().replace(/\s+/g, '');
+      const folio_cfdi_trane = String(comprobante.Folio ?? '').trim().toUpperCase().replace(/\s+/g, '');
+      const folio  = serie_cfdi_trane && folio_cfdi_trane
+        ? `${serie_cfdi_trane}${folio_cfdi_trane}`
+        : (folio_cfdi_trane || serie_cfdi_trane || 'sin folio');
       const fecha  = String(comprobante.Fecha ?? '').slice(0, 10);
       const tcRaw  = comprobante.TipoCambio ?? '1';
       const tc     = Number(tcRaw);
@@ -7110,6 +7117,11 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
             if (volts)             await patchByLogic('volts',    volts);
             if (tonelada != null)  await patchByLogic('tonelada', tonelada);
             await patchByLogic('usd', eq.usd_unit);
+            // 2026-10-08 Camila confirmó: el TC del CFDI SIEMPRE es el
+            // correcto, no hay que esperar al TC del pago. Nami escribe
+            // TC + COSTO MX directo con TC_CFDI (= USD × TC).
+            await patchByLogic('tc', tc);
+            await patchByLogic('costo_mx', Number((eq.usd_unit * tc).toFixed(2)));
             updated++;
           } else {
             // CREATE fallback: no había pre-registro para esta OC+modelo
@@ -7128,8 +7140,9 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
             setByLogic('folio_compra',   folio);
             setByLogic('fecha_compra',   fecha);
             setByLogic('usd',            eq.usd_unit);
-            setByLogic('tc',             null);
-            setByLogic('costo_mx',       null);
+            // 2026-10-08 Camila: TC del CFDI es el correcto, escribir directo.
+            setByLogic('tc',             tc);
+            setByLogic('costo_mx',       Number((eq.usd_unit * tc).toFixed(2)));
             setByLogic('estatus',        'PEDIDO');  // Consistente con inv_procesar_oc_qb; 'ASIGNAR' no estaba en el enum.
             setByLogic('bodega',         'ASIGNAR');
             setByLogic('vendedor',       '-');
@@ -7185,18 +7198,12 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
         });
       }
 
-      // 2026-10-07 Nazre: TC del CFDI es el de EMISIÓN (día que Trane emitió
-      // la factura). COSTO MX real = USD × TC_pago (día en que Camila paga,
-      // puede ser semanas después, TC distinto). Hasta que no sepamos el
-      // TC_pago, UTILIDAD/FACTOR no se pueden calcular. En lugar de dejar el
-      // pipeline silente, le damos a Nami un hint explícito para que SIEMPRE
-      // pregunte el TC en el mismo reply donde confirma el procesamiento.
-      //
-      // Flow esperado: Camila manda factura TRANE → Nami la procesa → Nami
-      // responde "Ya registré factura 265296: 2 series actualizadas con fecha
-      // de emisión 23-jun-2026. Para cerrar la utilidad falta el tipo de
-      // cambio del día en que pagues a Trane. ¿Me lo dices aquí cuando lo
-      // tengas, o lo pones directo en la columna TC del Excel?".
+      // 2026-10-08 Nazre: Camila confirmó que el TC del CFDI SIEMPRE es el
+      // correcto para calcular COSTO MX (no hay que esperar al TC del pago).
+      // Nami ahora escribe TC + COSTO MX directo con TC_CFDI arriba. El
+      // pipeline cierra sin pendientes — UTILIDAD/FACTOR se calculan cuando
+      // llegue la factura venta (inv_procesar_factura_venta_sf) que usa el
+      // COSTO MX ya persistido.
       return {
         ok: true, dry_run: false,
         resumen: { folio, fecha, tc, oc_ac: ocAc, emisor: 'TRANE' },
@@ -7204,12 +7211,9 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
         created_new: inserted,
         skipped_count: skipped.length,
         skipped_muestra: skipped.slice(0, 5),
-        pending_tc_payment:  true,
-        tc_emision_cfdi:     tc,
-        follow_up_hint:      `Avísale a quien envió el correo (en el mismo thread) que la factura ${folio} ya quedó registrada con las ${updated} series y su fecha de emisión, pero que para cerrar UTILIDAD/FACTOR falta el tipo de cambio del día del PAGO a Trane (distinto al TC de emisión ${tc}). Dile que puede responder a este correo con el TC cuando lo pague, o anotarlo directo en la columna TC del Excel.`,
         message: `Factura ${folio} procesada: ${updated} fila(s) actualizadas (match con OC ya registrada)` +
                  (inserted > 0 ? ` + ${inserted} fila(s) nuevas creadas (no había pre-registro)` : '') +
-                 `. PENDIENTE: TC de pago (el ${tc} del CFDI es el de emisión; UTILIDAD/FACTOR se calculan con TC_pago).`,
+                 `. TC ${tc} aplicado — COSTO MX calculado para las ${updated + inserted} filas.`,
       };
     }
 

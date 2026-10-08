@@ -104,6 +104,40 @@ function detectForcedTool(
   return null;
 }
 
+/**
+ * 2026-10-08 Nazre: cuando el modelo IGNORA el forced tool identificado por
+ * detectForcedTool (observado real: thread con history anterior confunde al
+ * modelo → responde texto sin invocar la tool obligada). Last-resort: deducir
+ * args del contexto e invocar directo. Si deducción no es posible, retorna
+ * null (caso raro — raiz no procesada queda pending con draft explicativo).
+ */
+function deduceForcedToolArgs(
+  toolName: string,
+  ctx: { emailSubject: string; effectiveBody: string; attachments: Array<{ name: string; url: string; type: string; size: number; download_url?: string }> },
+): Record<string, unknown> | null {
+  const ocMatch = ctx.emailSubject.match(/\boc\s*0*(\d+)/i) || ctx.effectiveBody.match(/\boc\s*0*(\d+)/i);
+  const ocNumber = ocMatch?.[1];
+
+  if (toolName === 'inv_procesar_factura_trane') {
+    // Buscar XML en effectiveBody (parseFileToText lo expande como texto).
+    // El CFDI empieza con "<?xml ... <cfdi:Comprobante".
+    const xmlMatch = ctx.effectiveBody.match(/<\?xml[\s\S]*?<\/cfdi:Comprobante>/);
+    if (!xmlMatch || !ocNumber) return null;
+    return { xml: xmlMatch[0], oc_ac: ocNumber, dry_run: false };
+  }
+  if (toolName === 'inv_procesar_oc_qb') {
+    const pdfAtt = ctx.attachments.find(a => /\.pdf$/i.test(a.name) || a.type === 'application/pdf');
+    if (!pdfAtt?.download_url || !ocNumber) return null;
+    return { pdf_url: pdfAtt.download_url, oc_ac: ocNumber, dry_run: false };
+  }
+  if (toolName === 'inv_importar_backlog') {
+    const pdfAtt = ctx.attachments.find(a => /\.pdf$/i.test(a.name));
+    if (!pdfAtt?.download_url) return null;
+    return { pdf_url: pdfAtt.download_url, dry_run: false, mode: 'replace' };
+  }
+  return null;
+}
+
 // 2026-10-07 NAMI DEFAULT-SKIP: Nami solo debe procesar correos que piden
 // explícitamente una acción del Excel de inventario. Default: skip sin cobrar.
 // Caso real: antes del fix, Nami procesaba TODO lo que llegaba al buzón
@@ -2396,6 +2430,9 @@ CATEGORÍAS:
       initialUserContent.push({ type: 'text', text: `(Imagen adjunta del equipo humano: ${img.name})` });
     }
     const messages: Anthropic.MessageParam[] = [{ role: 'user', content: initialUserContent }];
+    // Elevado al scope de la función para que el last-resort invocation
+    // después del loop pueda consultarlo. Se setea en iter 0 dentro del loop.
+    let outerForcedToolName: string | null = null;
 
     try {
       let lastText = '{}';
@@ -2438,9 +2475,12 @@ CATEGORÍAS:
         // "REGISTRAR OC TEST-99999" — Nami prefería escalar antes que invocar
         // inv_procesar_oc_qb aunque todo apuntaba a ella. Forzar tool_choice
         // elimina la escapatoria. Ver detectForcedTool() abajo.
-        const forcedToolName = i === 0
-          ? detectForcedTool(emailSubject, effectiveBody, attachments, tools)
-          : null;
+        // 2026-10-08 forcedToolName elevado al scope de la función para que
+        // el last-resort invocation después del loop pueda referenciarlo.
+        if (i === 0) {
+          outerForcedToolName = detectForcedTool(emailSubject, effectiveBody, attachments, tools);
+        }
+        const forcedToolName = i === 0 ? outerForcedToolName : null;
         // 2026-10-07: SDK tool_choice: {type:'tool'} NO está soportado por
         // claude-sonnet-5-5 (extended thinking mode) → devuelve 400. Fallback:
         // inyectar instrucción fuerte al final del user message en iter 0
@@ -2592,6 +2632,46 @@ CATEGORÍAS:
       // envia OCs, Facturas y Hojas de Salida le debe de contestar que todo
       // bien o no, que hay un detalle con algún documento, etc".
       //
+      // 2026-10-08 Fix sistémico "forced tool ignorado por modelo rebelde":
+      // Nazre reportó caso real donde Victoria reenvió (RV:) correo con XML
+      // CFDI de factura TRANE, detectForcedTool identificó
+      // inv_procesar_factura_trane, pero el modelo IGNORÓ el forced
+      // instruction + el nudge → tools_invoked=[] → factura no procesada.
+      // El context del thread anterior ("ya registré OC") confundió al modelo.
+      //
+      // Last-resort invocation: si forcedToolName se detectó pero NO está en
+      // toolsInvokedOk, invocar el tool directamente con args deducidos del
+      // contexto (subject + attachments). Si el tool corre OK, cae al
+      // force-draft normal abajo para generar reply con el resultado.
+      if (outerForcedToolName && !toolsInvokedOk.includes(outerForcedToolName)) {
+        try {
+          const deducedArgs = deduceForcedToolArgs(outerForcedToolName, { emailSubject, effectiveBody, attachments });
+          if (deducedArgs) {
+            console.warn('[inbox-processor] forced tool ignored by model, invoking directly:', outerForcedToolName);
+            const directResult = await executeAgentTool(outerForcedToolName, deducedArgs, execCtx);
+            const okShape = directResult && typeof directResult === 'object' && (directResult as { ok?: unknown }).ok !== false;
+            if (okShape) {
+              toolsInvokedOk.push(outerForcedToolName);
+              // Push como tool_result sintético para que el force-draft lo lea
+              const syntheticToolUseId = `direct_${Date.now()}`;
+              messages.push({ role: 'assistant', content: [{ type: 'tool_use', id: syntheticToolUseId, name: outerForcedToolName, input: deducedArgs }] });
+              messages.push({ role: 'user', content: [{ type: 'tool_result', tool_use_id: syntheticToolUseId, content: JSON.stringify(directResult) }] });
+              void logLlmCall({
+                source: 'inbox_processor_forced_tool_direct',
+                model:  'claude-sonnet-5-5',
+                usage:  { input_tokens: 0, output_tokens: 0 },
+                agentId,
+                portalEmail,
+                latencyMs: 0,
+                meta: { tool: outerForcedToolName, direct: true },
+              });
+            }
+          }
+        } catch (err) {
+          console.error('[inbox-processor] forced tool direct invocation failed:', err instanceof Error ? err.message : err);
+        }
+      }
+
       // Fix: si al salir del loop hay tools exitosas Y draft vacío,
       // forzamos UNA llamada final sin tools pidiendo resumen factual del
       // trabajo hecho. Esto garantiza que CADA tool exitosa produzca reply.
