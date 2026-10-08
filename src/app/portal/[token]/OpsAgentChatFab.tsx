@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Send, Loader2, FileText, Download, Zap, Wrench } from 'lucide-react';
+import { X, Send, Loader2, FileText, Download, Zap, Wrench, Paperclip } from 'lucide-react';
 import { marked } from 'marked';
 import { getMeerkatCrop, buildCropTransform } from '@/lib/portal/meerkat-avatar-crop';
 import { formatAgentChatError, type AgentChatErrorBody } from '@/lib/portal/chat-error';
@@ -179,6 +179,13 @@ export default function OpsAgentChatFab({ token, agents }: Props) {
   const [chatHistory, setChatHistory] = useState<Record<string, Message[]>>({});
   const [input, setInput]         = useState('');
   const [streaming, setStreaming] = useState(false);
+  // 2026-10-07 Nazre: habilitar upload de archivos por chat (PDF, XML, XLSX,
+  // DOCX, imágenes, etc.) para TODOS los empleados. Los files se suben al
+  // bucket ops-attachments al momento de seleccionarlos; aquí guardamos los
+  // metadata (nombre + download_url) para incluirlos en el próximo mensaje.
+  const [pendingAttachments, setPendingAttachments] = useState<Array<{ name: string; mimeType: string; size: number; download_url: string }>>([]);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Bubble state
   const [bubble,        setBubble]        = useState<BubbleState | null>(null);
@@ -233,22 +240,64 @@ export default function OpsAgentChatFab({ token, agents }: Props) {
     if (open) inputRef.current?.focus();
   }, [open, selectedId]);
 
+  // Sube archivos seleccionados al bucket ops-attachments. Resultado se
+  // guarda en pendingAttachments para incluirlo en el próximo send().
+  const uploadFiles = useCallback(async (files: FileList | File[]) => {
+    const arr = Array.from(files);
+    if (arr.length === 0) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      for (const f of arr) fd.append('files', f);
+      const res = await fetch(`/api/portal/${token}/chat-attachment`, { method: 'POST', body: fd });
+      if (!res.ok) {
+        console.warn('[chat-attachment] upload failed', res.status);
+        return;
+      }
+      const data = await res.json() as {
+        ok: boolean;
+        attachments: Array<{ name: string; mimeType: string; size: number; download_url: string }>;
+        rejected?: Array<{ name: string; reason: string }>;
+      };
+      setPendingAttachments(prev => [...prev, ...(data.attachments ?? [])]);
+      if (data.rejected?.length) console.warn('[chat-attachment] rejected:', data.rejected);
+    } catch (err) {
+      console.warn('[chat-attachment] exception:', err);
+    } finally {
+      setUploading(false);
+    }
+  }, [token]);
+
   const send = useCallback(async () => {
     const text = input.trim();
-    if (!text || streaming || !selectedAgent) return;
+    const atts = pendingAttachments;
+    if ((!text && atts.length === 0) || streaming || !selectedAgent) return;
 
     const current = chatHistory[selectedId] ?? [welcomeMsg(selectedAgent)];
-    const next: Message[] = [...current, { role: 'user', content: text }];
+    // El Message.content es string — para preview UI, si hay attachments los
+    // mencionamos en el content visible al usuario. El backend recibe los
+    // attachments como campo separado en el request body.
+    const displayContent = text || (atts.length ? `[${atts.length} archivo${atts.length > 1 ? 's' : ''} adjunto${atts.length > 1 ? 's' : ''}]` : '');
+    const next: Message[] = [...current, { role: 'user', content: displayContent }];
 
     setChatHistory(prev => ({ ...prev, [selectedId]: next }));
     setInput('');
+    setPendingAttachments([]);
     setStreaming(true);
 
     try {
       const res = await fetch(`/api/portal/${token}/agent-chat`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ messages: next.map(m => ({ role: m.role, content: m.content })), agentId: selectedId }),
+        body:    JSON.stringify({
+          messages: next.map((m, i) => ({
+            role: m.role,
+            content: m.content,
+            // Solo el último mensaje user lleva attachments.
+            ...(i === next.length - 1 && m.role === 'user' && atts.length > 0 ? { attachments: atts } : {}),
+          })),
+          agentId: selectedId,
+        }),
       });
 
       if (!res.ok || !res.body) {
@@ -316,7 +365,7 @@ export default function OpsAgentChatFab({ token, agents }: Props) {
     } finally {
       setStreaming(false);
     }
-  }, [input, streaming, selectedAgent, selectedId, chatHistory, token]);
+  }, [input, pendingAttachments, streaming, selectedAgent, selectedId, chatHistory, token]);
 
   if (!selectedAgent) return null;
 
@@ -460,41 +509,90 @@ export default function OpsAgentChatFab({ token, agents }: Props) {
           </div>
 
           {/* Input */}
-          <div className="flex items-end gap-2 px-3 py-3 flex-shrink-0" style={{ borderTop: '1px solid #E8E3F5' }}>
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
-              placeholder="Pregunta a tu empleado… (Enter)"
-              disabled={streaming}
-              rows={1}
-              className="flex-1 text-sm outline-none resize-none leading-relaxed"
-              style={{
-                background:   '#FAFAFB',
-                border:       '1px solid #E8E3F5',
-                borderRadius: 12,
-                padding:      '8px 12px',
-                color:        '#1A0A3B',
-                maxHeight:    100,
-                overflowY:    'auto',
-              }}
-            />
-            <button
-              onClick={send}
-              disabled={!input.trim() || streaming}
-              className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all"
-              style={{
-                background: input.trim() && !streaming ? '#6C3BFF' : 'rgba(108,59,255,0.15)',
-                border:     '1px solid rgba(108,59,255,0.3)',
-                opacity:    !input.trim() || streaming ? 0.5 : 1,
-              }}
-            >
-              {streaming
-                ? <Loader2 size={14} color="#A07CFF" className="animate-spin" />
-                : <Send size={14} color={input.trim() ? '#fff' : '#A07CFF'} />
-              }
-            </button>
+          <div className="flex flex-col gap-2 px-3 py-3 flex-shrink-0" style={{ borderTop: '1px solid #E8E3F5' }}>
+            {/* Preview chips de attachments pendientes */}
+            {pendingAttachments.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {pendingAttachments.map((att, i) => (
+                  <div key={i} className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs"
+                    style={{ background: 'rgba(108,59,255,0.1)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.25)' }}>
+                    <FileText size={10} />
+                    <span className="max-w-[150px] truncate">{att.name}</span>
+                    <button
+                      onClick={() => setPendingAttachments(prev => prev.filter((_, j) => j !== i))}
+                      className="hover:opacity-70"
+                      aria-label={`Quitar ${att.name}`}
+                    >
+                      <X size={10} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex items-end gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept="image/*,.pdf,.xml,.xlsx,.xls,.docx,.doc,.csv,.txt,.json"
+                style={{ display: 'none' }}
+                onChange={async e => {
+                  const files = e.target.files;
+                  if (files && files.length > 0) await uploadFiles(files);
+                  if (fileInputRef.current) fileInputRef.current.value = '';
+                }}
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={streaming || uploading}
+                className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all"
+                style={{
+                  background: 'rgba(108,59,255,0.08)',
+                  border:     '1px solid rgba(108,59,255,0.25)',
+                  opacity:    streaming || uploading ? 0.5 : 1,
+                }}
+                title="Adjuntar archivos (PDF, XML, Excel, Word, imágenes)"
+              >
+                {uploading
+                  ? <Loader2 size={14} color="#9B6DFF" className="animate-spin" />
+                  : <Paperclip size={14} color="#9B6DFF" />
+                }
+              </button>
+              <textarea
+                ref={inputRef}
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
+                placeholder="Pregunta a tu empleado… (Enter)"
+                disabled={streaming}
+                rows={1}
+                className="flex-1 text-sm outline-none resize-none leading-relaxed"
+                style={{
+                  background:   '#FAFAFB',
+                  border:       '1px solid #E8E3F5',
+                  borderRadius: 12,
+                  padding:      '8px 12px',
+                  color:        '#1A0A3B',
+                  maxHeight:    100,
+                  overflowY:    'auto',
+                }}
+              />
+              <button
+                onClick={send}
+                disabled={(!input.trim() && pendingAttachments.length === 0) || streaming}
+                className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all"
+                style={{
+                  background: (input.trim() || pendingAttachments.length > 0) && !streaming ? '#6C3BFF' : 'rgba(108,59,255,0.15)',
+                  border:     '1px solid rgba(108,59,255,0.3)',
+                  opacity:    (!input.trim() && pendingAttachments.length === 0) || streaming ? 0.5 : 1,
+                }}
+              >
+                {streaming
+                  ? <Loader2 size={14} color="#A07CFF" className="animate-spin" />
+                  : <Send size={14} color={(input.trim() || pendingAttachments.length > 0) ? '#fff' : '#A07CFF'} />
+                }
+              </button>
+            </div>
           </div>
         </div>
       )}

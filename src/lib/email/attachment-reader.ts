@@ -70,7 +70,7 @@ const UPLOADABLE_MIMES = [
  *    retener). Nazre 2026-10-07: "no sirve guardar tantas versiones del
  *    backlog, siempre cambia".
  */
-async function uploadAttachmentToStorage(
+export async function uploadAttachmentToStorage(
   portalEmail: string | null,
   buffer: Buffer,
   filename: string,
@@ -140,6 +140,70 @@ function detectSingleStateKey(subject: string | undefined, filename: string, mim
  *
  * Diseñado para tolerar fallos: un attachment corrupto NO rompe el batch.
  */
+/**
+ * Variante para chat del portal: los attachments ya están subidos a Storage
+ * (con signed URL), así que fetcheamos por HTTP en vez de pedirle al
+ * connector el buffer. Mismo output que processIncomingAttachments para que
+ * el caller pueda tratar email y chat uniforme.
+ *
+ * Input: cada attachment ya trae download_url (del endpoint /chat-attachment).
+ * Las imágenes se incluyen como vision block + los uploads mantienen la URL
+ * para que el LLM la pase a tools como pdf_url/xml_url.
+ */
+export async function processChatAttachments(
+  attachments: Array<{ name: string; mimeType: string; size: number; download_url: string }>,
+): Promise<ProcessedAttachments> {
+  const result: ProcessedAttachments = { docTextBlocks: [], images: [], uploads: [], skipped: [] };
+  if (!attachments || attachments.length === 0) return result;
+
+  for (const att of attachments) {
+    try {
+      const mime = (att.mimeType ?? 'application/octet-stream').split(';')[0].trim().toLowerCase();
+
+      // Descargar el buffer desde la signed URL (ya está en nuestro bucket).
+      const res = await fetch(att.download_url);
+      if (!res.ok) { result.skipped.push(`${att.name} (fetch ${res.status})`); continue; }
+      const buffer = Buffer.from(await res.arrayBuffer());
+
+      if ((SUPPORTED_IMAGE_MIMES as readonly string[]).includes(mime)) {
+        result.images.push({
+          name:     att.name,
+          base64:   buffer.toString('base64'),
+          mimeType: mime as SupportedImageMime,
+        });
+        continue;
+      }
+
+      // Para PDF/XML/XLSX también exponemos la URL (el LLM puede pasarla
+      // directo a tools como inv_importar_backlog). El text parseado va al
+      // body para que el LLM "vea" el contenido además.
+      if ((UPLOADABLE_MIMES as readonly string[]).includes(mime)) {
+        result.uploads.push({
+          name:         att.name,
+          mimeType:     mime,
+          size:         att.size,
+          download_url: att.download_url,
+          storage_path: '',  // en chat ya viene subido, path interno no relevante
+        });
+      }
+
+      const text = await parseFileToText(buffer, mime);
+      if (text.startsWith('[Formato no soportado') || text.startsWith('[No pude')) {
+        result.skipped.push(`${att.name} (${mime})`);
+        continue;
+      }
+      const truncated = text.length > MAX_TEXT_CHARS
+        ? text.slice(0, MAX_TEXT_CHARS) + `\n[...truncado a ${MAX_TEXT_CHARS} chars]`
+        : text;
+      result.docTextBlocks.push(`### Adjunto: ${att.name}\n${truncated}`);
+    } catch (err) {
+      result.skipped.push(`${att.name} (error: ${err instanceof Error ? err.message : String(err)})`);
+    }
+  }
+
+  return result;
+}
+
 export async function processIncomingAttachments(
   connector: EmailConnector,
   messageId: string,

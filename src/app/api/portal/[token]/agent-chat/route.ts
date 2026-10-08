@@ -2190,7 +2190,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (limited) return limited;
 
   const { messages, agentId } = await req.json() as {
-    messages: { role: string; content: string }[];
+    messages: { role: string; content: string; attachments?: Array<{ name: string; mimeType: string; size: number; download_url: string }> }[];
     agentId?: string;
   };
 
@@ -2837,9 +2837,45 @@ ${context}`;
           }
         }
 
-        let conversationMessages: Anthropic.MessageParam[] = (
-          messages as { role: 'user' | 'assistant'; content: string }[]
-        ).slice(-20);
+        // 2026-10-07 Nazre: habilitar attachments en chat para TODOS los
+        // empleados. Si el último mensaje user trae attachments, los
+        // procesamos (vision para imagen + text parseado + download_url para
+        // tools). Mismo patrón que email vía processChatAttachments.
+        const incomingMsgs = messages as Array<{
+          role: 'user' | 'assistant';
+          content: string;
+          attachments?: Array<{ name: string; mimeType: string; size: number; download_url: string }>;
+        }>;
+        let conversationMessages: Anthropic.MessageParam[] = [];
+        {
+          const sliced = incomingMsgs.slice(-20);
+          for (let i = 0; i < sliced.length; i++) {
+            const m = sliced[i];
+            const isLastUser = i === sliced.length - 1 && m.role === 'user';
+            if (isLastUser && m.attachments && m.attachments.length > 0) {
+              const { processChatAttachments } = await import('@/lib/email/attachment-reader');
+              const processed = await processChatAttachments(m.attachments);
+              let enriched = m.content ?? '';
+              if (processed.docTextBlocks.length > 0) {
+                enriched += `\n\n--- Contenido de documentos adjuntos ---\n${processed.docTextBlocks.join('\n\n')}`;
+              }
+              if (processed.uploads.length > 0) {
+                enriched += `\n\n[Adjuntos descargables (URL firmada 2h):\n${processed.uploads.map(u => `  • ${u.name} → ${u.download_url}`).join('\n')}]`;
+              }
+              if (processed.skipped.length > 0) {
+                enriched += `\n\n[Adjuntos no leídos: ${processed.skipped.join(', ')}]`;
+              }
+              const contentBlocks: Anthropic.ContentBlockParam[] = [{ type: 'text', text: enriched }];
+              for (const img of processed.images) {
+                contentBlocks.push({ type: 'image', source: { type: 'base64', media_type: img.mimeType, data: img.base64 } });
+                contentBlocks.push({ type: 'text', text: `(Imagen adjunta del dueño: ${img.name})` });
+              }
+              conversationMessages.push({ role: 'user', content: contentBlocks });
+            } else {
+              conversationMessages.push({ role: m.role, content: m.content });
+            }
+          }
+        }
 
         const readUrlCountRef: ReadUrlCounter = { value: 0 };
         let callCount    = 0;
