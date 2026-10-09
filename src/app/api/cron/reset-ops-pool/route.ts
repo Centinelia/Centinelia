@@ -25,12 +25,11 @@ export async function GET(req: Request) {
   // get_pool_cap (refactor 2026-09-02) no podía detectar rollover legítimo.
   const { data: due } = await supabase
     .from('organizations')
-    .select('portal_email, pool_reset_date, monthly_ops_used, monthly_ops_pool, billing_model, ops_ledger_enabled, active_contract_id')
+    .select('portal_email, pool_reset_date, billing_model, active_contract_id')
     .or(`pool_reset_date.is.null,pool_reset_date.lte.${today}`);
 
   let annualGrants = 0;
   let stripeSafetyNets = 0;
-  let legacyResets = 0;
   // Skipped no-op (idempotency guard hit o org sin plan/agentes activos).
   // NO es error — el pool_reset_date se avanza igual y el estado final es el
   // deseado. Ver root cause 2026-09-10: sin este contador la alerta reportaba
@@ -41,14 +40,13 @@ export async function GET(req: Request) {
   for (const org of due ?? []) {
     const email = org.portal_email as string;
     const model = org.billing_model as string;
-    const ledgerOn = !!org.ops_ledger_enabled;
 
     try {
-      if (ledgerOn && model === 'annual_prepaid' && org.active_contract_id) {
+      if (model === 'annual_prepaid' && org.active_contract_id) {
         // Annual: cierra ciclo con unused_forfeited + abre con annual_grant
         await supabase.rpc('apply_ops_annual_grant', { p_portal_email: email });
         annualGrants++;
-      } else if (ledgerOn && (model === 'stripe' || !model)) {
+      } else {
         // Idempotency (fix 2026-09-04): antes solo se protegía contra doble
         // ejecución del cron via `reference_id=cron-safety-{today}` (ON CONFLICT
         // DO NOTHING en apply_ops_ledger_entry). Pero si un backfill manual o el
@@ -109,17 +107,8 @@ export async function GET(req: Request) {
           // más abajo y basta con eso. Contar como skipped, no error.
           skippedNoops++;
         }
-      } else {
-        // LEGACY path (flag off): comportamiento actual sin cambios
-        await Promise.all([
-          supabase.from('organizations').update({ monthly_ops_used: 0, pool_reset_date: nextResetIso }).eq('portal_email', email),
-          supabase.from('voice_agents').update({ ai_ops_used: 0 }).eq('portal_email', email),
-        ]);
-        legacyResets++;
-        continue;
       }
 
-      // En path ledger-enabled también actualizamos pool_reset_date
       await supabase.from('organizations')
         .update({ pool_reset_date: nextResetIso })
         .eq('portal_email', email);
@@ -129,7 +118,7 @@ export async function GET(req: Request) {
     }
   }
 
-  const totalProcessed = annualGrants + stripeSafetyNets + legacyResets + skippedNoops;
+  const totalProcessed = annualGrants + stripeSafetyNets + skippedNoops;
   await alertCronPartialFailure(supabase, {
     cronName:  'reset-ops-pool',
     expected:  due?.length ?? 0,
@@ -142,7 +131,6 @@ export async function GET(req: Request) {
     checked:         due?.length ?? 0,
     annualGrants,
     stripeSafetyNets,
-    legacyResets,
     skippedNoops,
     errors:          errors.length ? errors : undefined,
   });

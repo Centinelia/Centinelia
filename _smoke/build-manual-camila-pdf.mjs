@@ -126,10 +126,10 @@ const html = /* html */ `<!doctype html>
   <p>Lo que haces hoy a mano con series, OCs, hojas de salida y el BACKLOG de TRANE, se lo platicas a Nami en tus palabras y ella lo captura por ti.</p>
 
   <h2>Cómo le hablas</h2>
-  <p>Dos formas:</p>
+  <p>Dos canales, cada uno para cosas distintas:</p>
   <ul>
-    <li><strong>Chat del portal:</strong> abres tu portal de Centinelia y le escribes en el chat. Te contesta en segundos.</li>
-    <li><strong>Correo:</strong> le reenvías correos (de Ana, Ángeles, Isabel, de ti misma) y los procesa ella sola. Tarda entre 30 y 60 segundos en responderte.</li>
+    <li><strong>Correo (para procesar documentos):</strong> le reenvías correos con OCs, facturas, hojas de salida y el BACKLOG de TRANE. Nami lee el PDF o XML, extrae lo importante y lo captura en tu Excel. Tarda entre 30 y 60 segundos en responderte.</li>
+    <li><strong>Chat del portal (solo preguntas y correcciones):</strong> abres tu portal de Centinelia y le escribes en el chat. Sirve para consultar algo del inventario (<em>"¿cómo va la OC X?"</em>) o hacer una corrección puntual (<em>"la serie X ya salió"</em>). No es para procesar documentos; esos van por correo.</li>
   </ul>
 
   <h2>Lo que puede hacer hoy</h2>
@@ -140,10 +140,14 @@ const html = /* html */ `<!doctype html>
     <div class="cap"><div class="cap-h">Asignar cliente</div><div class="cap-b">Cuando una chica de ventas te confirma pago.</div></div>
     <div class="cap"><div class="cap-h">Actualizar estatus</div><div class="cap-b">ALMACEN, SEPARADO, ENTREGADO, PENDIENTE.</div></div>
     <div class="cap"><div class="cap-h">Registrar hoja de salida</div><div class="cap-b">Varias series en una sola hoja de folio.</div></div>
-    <div class="cap"><div class="cap-h">Registrar venta</div><div class="cap-b">Folio de factura, fecha, precio y factor.</div></div>
+    <div class="cap"><div class="cap-h">Registrar venta</div><div class="cap-b">Reenvías el XML de la factura y Nami rellena fecha, costo venta, utilidad. El FACTOR lo lleva la fórmula del Excel.</div></div>
     <div class="cap"><div class="cap-h">Actualizar BACKLOG</div><div class="cap-b">Lee el PDF de TRANE y mantiene la hoja al día.</div></div>
     <div class="cap"><div class="cap-h">Correos a Isabel</div><div class="cap-b">Registrar OC o pedir entrega. Te muestra el borrador antes de mandar.</div></div>
     <div class="cap"><div class="cap-h">Acordarse de lo que hizo</div><div class="cap-b">Pregúntale "¿qué procesaste esta semana?" o "¿cómo te fue con la OC X que te mandé?" y ella consulta su propio registro.</div></div>
+    <div class="cap"><div class="cap-h">Avisarte siempre</div><div class="cap-b">Cada correo que te llegue, Nami te contesta. Si procesó algo, te lo dice. Si no era para ella, también te avisa. Nunca se queda callada.</div></div>
+    <div class="cap"><div class="cap-h">Detectar discrepancias</div><div class="cap-b">Si una factura de venta sale a nombre de un cliente distinto al que tenías en la hoja, Nami te lo pregunta antes de sobrescribir.</div></div>
+    <div class="cap"><div class="cap-h">No duplicar</div><div class="cap-b">Si por error le reenvías la misma OC o la misma factura dos veces, Nami lo reconoce y no duplica filas. Te avisa que ya la había procesado antes.</div></div>
+    <div class="cap"><div class="cap-h">Aguantar OCs grandes</div><div class="cap-b">Aunque la OC venga con 100 o 200 líneas, Nami las captura todas en una sola corrida, no se atora.</div></div>
   </div>
 </div>
 
@@ -183,7 +187,7 @@ const html = /* html */ `<!doctype html>
       <div class="ad-head after">Ahora</div>
       <div class="ad-row">
         <div><span class="step-num">5.</span> Abres la factura, lees cada equipo, capturas en Excel: OC, folio, tonelada, modelo, serie, USD, TC, costo. Repites por cada equipo.</div>
-        <div class="ad-after"><span class="step-num">5.</span> Nami lee sola el XML de la factura y agrega todos los equipos al INVENTARIO.</div>
+        <div class="ad-after"><span class="step-num">5.</span> Nami lee sola el XML de la factura y rellena todas las columnas, incluyendo TC y COSTO MX (el TC lo saca del propio XML, no tienes que dictárselo).</div>
       </div>
     </div>
   </div>
@@ -207,12 +211,23 @@ const html = /* html */ `<!doctype html>
       </div>
       <div class="ad-row">
         <div><span class="step-num">8.</span> Ventas te manda folio de factura, entras a Solución Factible, buscas, sacas fecha + precio, calculas factor, capturas en Excel.</div>
-        <div class="ad-after"><span class="step-num">8.</span> Ventas te manda folio + fecha + precio juntos. Le dices a Nami y ella captura todo.</div>
+        <div class="ad-after"><span class="step-num">8.</span> Reenvías el XML de la factura a Nami. Ella rellena FACTURA, FECHA DE VENTA, COSTO VTA y UTILIDAD. El FACTOR lo lleva tu fórmula.</div>
       </div>
     </div>
   </div>
 
   <div class="ad-note" style="margin-top: 8mm;">De 8 pasos, antes hacías los 8 completos. Ahora los pasos 1 y 6 (parte física con QuickBooks y con Nino) siguen siendo tuyos. Los otros 6 los hace Nami contigo platicándole en una frase.</div>
+
+  <div class="block" style="margin-top: 8mm;">
+    <h2>Cómo luce el equipo en la hoja mientras no se vende</h2>
+    <p>Mientras un equipo no tenga cliente asignado, Nami lo deja así en tu INVENTARIO:</p>
+    <ul>
+      <li><strong>CLIENTE</strong> en MAYÚSCULAS como <em>STOCK</em> (nunca con guion ni vacío).</li>
+      <li><strong>SALIDA</strong> en 1 (sigue en bodega, no ha salido).</li>
+      <li><strong>UTILIDAD</strong> igual al COSTO MX (como marcador del valor del equipo pendiente de venta). Cuando Nami procese la factura real de venta, la UTILIDAD cambia al cálculo verdadero (precio de venta menos costo).</li>
+    </ul>
+    <p>Cuando alguna chica te confirme que ese equipo ya tiene cliente, le dices a Nami y el STOCK se cambia al nombre real.</p>
+  </div>
 </div>
 
 <!-- Pag 3: Ejemplos de cómo escribirle -->
@@ -260,19 +275,21 @@ const html = /* html */ `<!doctype html>
       <div class="quien">Nami te contesta</div>
       <div class="texto">"Listo, hoja de salida 4251 registrada con 2 equipos entregados a Mauricio Guerra."</div>
     </div>
+    <p style="margin-top: 2mm; font-size: 10pt; color: var(--muted);">El folio de la hoja (4251) se escribe en la columna FOLIO de cada equipo. Nami cambia ESTATUS a ENTREGADO, pone CONTROL en 1 y SALIDA en 0 (ya no está en bodega).</p>
   </div>
 
   <div class="block">
     <h2>Registrar una venta</h2>
+    <p>Lo más fácil: reenvía por correo (o súbelo al chat) el XML de la factura emitida por Solución Factible y Nami hace todo sola.</p>
     <div class="dialog">
-      <div class="quien">Tú le escribes</div>
-      <div class="texto">"Para la serie 2422H8394A: folio FV-A-2026-0442, fecha hoy, precio 35000, factor 1.4."</div>
+      <div class="quien">Tú le mandas</div>
+      <div class="texto">Reenvías el XML de la factura (CFDI que emitiste al cliente).</div>
     </div>
     <div class="dialog">
       <div class="quien">Nami te contesta</div>
-      <div class="texto">"Listo, venta registrada en serie 2422H8394A: folio FV-A-2026-0442, factor 1.4."</div>
+      <div class="texto">"Factura F-A-442 procesada: 1 serie actualizada, cliente Juan Pérez, fecha de venta hoy, costo venta $35,000 MX, utilidad $12,500 MX."</div>
     </div>
-    <p style="margin-top: 2mm; font-size: 10pt; color: var(--muted);">Por ahora le dictas el factor. Cuando tengamos conectada tu hoja STOCK (próximas semanas), Nami lo calculará sola a partir del precio y el costo que ya tiene registrado — tú solo le dirás folio, fecha y precio.</p>
+    <p style="margin-top: 3mm; font-size: 10pt; color: var(--muted);">La columna FACTOR la calcula tu propia fórmula de la hoja (COSTO VTA / costo compra), Nami no la toca. Si el XML dice que la factura va a un cliente distinto al que tenías en la hoja (por ejemplo tenías "STOCK" o "Juan" y la factura dice "Pedro"), Nami te pregunta en vez de sobrescribir.</p>
   </div>
 </div>
 
@@ -348,20 +365,23 @@ const html = /* html */ `<!doctype html>
   </div>
 
   <div class="block">
-    <h2>Chat del portal (para preguntas y correcciones)</h2>
-    <p>Si quieres preguntar algo o hacer un cambio puntual, chat. Casos típicos:</p>
+    <h2>Chat del portal (solo para preguntas y correcciones puntuales)</h2>
+    <p>El chat NO es para procesar documentos (OC, facturas, BACKLOG). Esos siempre van por correo. El chat te sirve nada más para dos cosas:</p>
     <ul>
-      <li>Preguntar algo sobre el inventario (ejemplos en la página anterior).</li>
-      <li>Correcciones rápidas: "la serie X ya salió", "cambia el cliente de Y a Z", "pon la familia MANEJADORA al modelo W".</li>
-      <li>Pegar directo el XML de una factura (si lo tienes copiado al portapapeles).</li>
-      <li>Dictarle una OC en texto: "procesa esta OC: P.O. 7520, fecha 2026-10-15, 10 piezas de 4TXK a $5,716 y 5 de 4MXD a $7,169."</li>
+      <li><strong>Preguntas sobre el inventario</strong>: "¿cómo va la OC 5624?", "¿cuánto vale el inventario?", "¿qué está pendiente de llegar?", "¿qué procesaste esta semana?".</li>
+      <li><strong>Correcciones rápidas de datos puntuales</strong>: "la serie X ya salió", "cambia el cliente de Y a Z", "pon la familia MANEJADORA al modelo W", "para el modelo W la familia es FAN COIL, acuérdate".</li>
     </ul>
-    <p style="margin-top: 3mm;"><strong>Hoy el chat no tiene botón de subir archivo</strong>. Si tienes un PDF que mandar, va por correo. Pronto le vamos a agregar esa opción al chat.</p>
+    <p style="margin-top: 3mm;">Si tienes un documento (PDF o XML) que capturar, aunque técnicamente el chat lo acepta, siempre funciona mejor por correo. Reenvías el correo y Nami lo procesa en segundos.</p>
   </div>
 
   <div class="card" style="margin-top: 6mm;">
-    <div class="card-title">Qué NO hace Nami en chat</div>
-    <div class="card-body">No contesta cordialidades, "gracias", "ya quedó". Si le mandas correos random (publicidad, newsletters, propaganda), los archiva sin responder. Esto es para que no gaste su atención en cosas que no son del inventario.</div>
+    <div class="card-title">Nami siempre te responde</div>
+    <div class="card-body">Cada correo que te llegue a tu bandeja (de Isabel, de tus chicas de ventas, de Nino), Nami te contesta algo corto. Si procesó algo, te dice qué. Si no era para ella (publicidad, newsletters, cosas sin relación con inventario), de todas formas te avisa que lo vio y lo archivó. Así nunca te quedas con duda de si lo recibió o no.</div>
+  </div>
+
+  <div class="card" style="margin-top: 4mm;">
+    <div class="card-title">Si contestas un correo que ya iba con un archivo</div>
+    <div class="card-body">Si Nami te mandó un correo (por ejemplo pidiéndote clarificación sobre un cliente que no coincide) y le contestas sin volver a adjuntar el XML, no te preocupes: ella recuerda el archivo que venía en el mensaje original de la conversación. No tienes que volver a mandar el adjunto cada vez.</div>
   </div>
 </div>
 
@@ -409,8 +429,23 @@ const html = /* html */ `<!doctype html>
   <p>Miércoles y viernes, cuando llega el BACKLOG de TRANE por correo, Nami lo lee sola y actualiza tu hoja. Si TRANE lo manda otro día (lunes o jueves), Nami lo archiva pero no procesa hasta el siguiente miércoles o viernes. Esto es por tu petición, así no estamos haciendo cambios al BACKLOG todos los días.</p>
 
   <div class="card" style="margin-top: 6mm;">
+    <div class="card-title">Aplica directo, sin preguntarte</div>
+    <div class="card-body">Nami aplica el BACKLOG en el momento, no te pide confirmación. Al terminar te manda un correo corto con el resumen (líneas agregadas, actualizadas, iguales). Si algo se ve raro me avisas y lo arreglamos; si todo bien, no haces nada.</div>
+  </div>
+
+  <div class="card" style="margin-top: 4mm;">
     <div class="card-title">Importante: Nami nunca borra sin pedírtelo</div>
     <div class="card-body">Cuando llega un BACKLOG nuevo, Nami lo compara con el que tienes y sólo <strong>agrega lo nuevo y actualiza lo que cambió</strong>. Si en el PDF nuevo falta una línea que tenías, Nami la deja ahí (no la borra). Si prefieres que un día le des limpieza completa, le dices "Nami, limpia el BACKLOG y pon sólo lo que trae el PDF nuevo" y ahí sí te lo deja de cero.</div>
+  </div>
+
+  <div class="card" style="margin-top: 4mm;">
+    <div class="card-title">Formato pulido del BACKLOG (pedido tuyo)</div>
+    <div class="card-body">Después de escribir, Nami ajusta: ancho de columnas automático para que no se corten los textos, bordes delgados en todas las celdas con datos, encabezados en negritas, y las líneas que tienen el mismo PO + modelo se agrupan juntas para que las veas en bloque.</div>
+  </div>
+
+  <div class="card" style="margin-top: 4mm;">
+    <div class="card-title">Si necesitas actualizar el BACKLOG otro día</div>
+    <div class="card-body">Si por alguna razón necesitas que Nami lo procese un lunes, martes o jueves (porque un cliente urge o cualquier motivo), le dices algo como <em>"actualízalo aunque no sea miércoles"</em> o <em>"hazlo de una vez, no esperes al miércoles"</em>, y ella entiende y lo procesa. El resto del tiempo respeta tu regla de miércoles y viernes.</div>
   </div>
 
   <div class="block">
@@ -445,9 +480,12 @@ const html = /* html */ `<!doctype html>
   <div class="limites">
     <ul>
       <li><strong>QuickBooks:</strong> crear la orden de compra ahí sigue siendo manual tuyo. Si en algún momento migran a QuickBooks Online, lo platicamos para automatizarlo.</li>
-      <li><strong>Solución Factible:</strong> si las chicas te mandan folio + fecha + precio juntos, Nami captura directo. Si solo te mandan folio y tienes que buscar en el portal, ese lookup sigue siendo tuyo.</li>
       <li><strong>Separar los equipos físicamente:</strong> eso lo hace Nino en bodega. Nami captura el resultado cuando le platicas.</li>
       <li><strong>WhatsApp:</strong> Nami no lee WhatsApp. Si llega algo importante por ahí, me lo reenvías por correo y Nami lo procesa.</li>
+      <li><strong>Google Sheets:</strong> Nami nunca escribe ni lee en Google Sheets, está diseñada para tu Excel exclusivamente. Si alguien te dice "mándale a Nami este Google Sheet", no funciona.</li>
+      <li><strong>Inventar familias de equipo:</strong> si llega un modelo que Nami no reconoce, deja la columna FAMILIA vacía y te lo avisa. No se la inventa. Si quieres entrenarla para que aprenda la familia de ese modelo, le dices <em>"para el modelo X la familia es Y, acuérdate"</em>.</li>
+      <li><strong>FACTOR en la hoja:</strong> esa columna la calcula la fórmula de tu Excel con el lookup contra tu lista de precios. Nami no la toca. Ella solo llena FACTURA, FECHA DE VENTA, COSTO VTA y UTILIDAD.</li>
+      <li><strong>Tocar la hoja STOCK:</strong> esa hoja se actualiza sola con tus fórmulas. Nami nunca escribe ahí.</li>
     </ul>
   </div>
 
