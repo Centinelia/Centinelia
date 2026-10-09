@@ -5916,8 +5916,9 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
         }
         const sheetsJson = await sheetsRes.json() as { value?: Array<{ name: string }> };
         const sheetsAvail = (sheetsJson.value ?? []).map(s => s.name);
-        const sheetMatch = sheetsAvail.find(s => s.toLowerCase() === sheetNameRaw.toLowerCase())
-                        ?? sheetsAvail.find(s => s.toLowerCase().includes(sheetNameRaw.toLowerCase()));
+        const target = sheetNameRaw.trim().toLowerCase();
+        const sheetMatch = sheetsAvail.find(s => s.trim().toLowerCase() === target)
+                        ?? sheetsAvail.find(s => s.trim().toLowerCase().includes(target));
         if (!sheetMatch) {
           return { ok: false, error: `Hoja "${sheetNameRaw}" no existe. Hojas disponibles: ${sheetsAvail.join(', ')}`, code: 'sheet_not_found', available_sheets: sheetsAvail };
         }
