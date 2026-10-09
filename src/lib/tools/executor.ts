@@ -1206,37 +1206,34 @@ async function executeAgentToolInner(
           .select('minutes_used, minutes_included, minutes_reset_date')
           .eq('portal_email', targetEmail).maybeSingle(),
         supabase.from('organizations')
-          .select('billing_model, monthly_ops_pool, monthly_ops_used, ops_ledger_enabled, pool_reset_date, business_email')
+          .select('billing_model, pool_reset_date, business_email')
           .eq('portal_email', targetEmail).maybeSingle(),
         supabase.from('account_ops')
           .select('ops_used, ops_included, ops_balance')
           .eq('portal_email', targetEmail).maybeSingle(),
         supabase.from('voice_agents')
-          .select('id, agent_name, business_name, jornada_type, minutes_used, minutes_included, ai_ops_used, ai_ops_limit, active, billing_status')
+          .select('id, agent_name, business_name, jornada_type, minutes_used, minutes_included, ai_ops_limit, active, billing_status')
           .eq('portal_email', targetEmail),
       ]);
       const acctMins = acctMinsRes.data as { minutes_used?: number | null; minutes_included?: number | null; minutes_reset_date?: string | null } | null;
-      const org      = orgRes.data as { billing_model?: string | null; monthly_ops_pool?: number | null; monthly_ops_used?: number | null; ops_ledger_enabled?: boolean | null; pool_reset_date?: string | null; business_email?: string | null } | null;
+      const org      = orgRes.data as { billing_model?: string | null; pool_reset_date?: string | null; business_email?: string | null } | null;
       const acctOps  = acctOpsRes.data as { ops_used?: number | null; ops_included?: number | null; ops_balance?: number | null } | null;
-      const peers    = (peersRes.data ?? []) as Array<{ id: string; agent_name: string | null; business_name: string | null; jornada_type: string | null; minutes_used: number | null; minutes_included: number | null; ai_ops_used: number | null; ai_ops_limit: number | null; active: boolean | null; billing_status: string | null }>;
+      const peers    = (peersRes.data ?? []) as Array<{ id: string; agent_name: string | null; business_name: string | null; jornada_type: string | null; minutes_used: number | null; minutes_included: number | null; ai_ops_limit: number | null; active: boolean | null; billing_status: string | null }>;
       if (!org && !acctMins && peers.length === 0) {
         return { ok: false, error: `No se encontró organización con portal_email=${targetEmail}` };
       }
-      const ledgerEnabled = !!org?.ops_ledger_enabled;
+      // Fuente única post-Fase 3d 2026-10-09: account_ops/account_minutes (mirrors).
       const activePeers   = peers.filter(p => p.active !== false);
       const summedMinIncl = activePeers.reduce((s, p) => s + ((p.minutes_included as number) ?? 0), 0);
       const summedMinUsed = activePeers.reduce((s, p) => s + ((p.minutes_used     as number) ?? 0), 0);
       const summedOpsLim  = activePeers.reduce((s, p) => s + ((p.ai_ops_limit     as number) ?? 0), 0);
-      const summedOpsUsed = activePeers.reduce((s, p) => s + ((p.ai_ops_used      as number) ?? 0), 0);
       const poolActive    = typeof acctMins?.minutes_included === 'number' && acctMins.minutes_included > 0;
       const minutesIncluded = poolActive ? acctMins!.minutes_included! : (summedMinIncl > 0 ? summedMinIncl : 0);
       const minutesUsed     = poolActive ? (acctMins?.minutes_used ?? 0) : summedMinUsed;
-      const orgPoolTotal    = (org?.monthly_ops_pool as number | null) ?? null;
-      const orgPoolUsed     = (org?.monthly_ops_used as number | null) ?? null;
-      const opsLimit = orgPoolTotal != null ? orgPoolTotal : summedOpsLim;
-      const opsUsed  = (ledgerEnabled && typeof acctOps?.ops_used === 'number')
-        ? acctOps.ops_used
-        : orgPoolTotal != null ? (orgPoolUsed ?? 0) : summedOpsUsed;
+      const opsLimit = typeof acctOps?.ops_included === 'number' && acctOps.ops_included > 0
+        ? acctOps.ops_included
+        : summedOpsLim;
+      const opsUsed  = typeof acctOps?.ops_used === 'number' ? acctOps.ops_used : 0;
       return {
         ok: true,
         portal_email:        targetEmail,
@@ -1256,10 +1253,7 @@ async function executeAgentToolInner(
           remaining: Math.max(0, opsLimit - opsUsed),
           pct:       opsLimit > 0 ? Math.round((opsUsed / opsLimit) * 100) : 0,
           reset_date: org?.pool_reset_date ?? null,
-          ledger_enabled: ledgerEnabled,
-          source: (ledgerEnabled && typeof acctOps?.ops_used === 'number')
-            ? 'account_ops'
-            : orgPoolTotal != null ? 'organizations' : 'sum_per_agent',
+          source: typeof acctOps?.ops_used === 'number' ? 'account_ops' : 'sum_per_agent',
         },
         employees: activePeers.map(p => ({
           id:              p.id,
@@ -1267,7 +1261,7 @@ async function executeAgentToolInner(
           jornada_type:    p.jornada_type ?? null,
           billing_status:  p.billing_status ?? null,
         })),
-        note: 'Estos números son la fuente de verdad. Al owner: reporta tal cual; nunca los estimes de memoria. Menciona ledger_enabled=false explícitamente si el owner pregunta detalle, porque ese caso los per-empleado pueden estar stale.',
+        note: 'Estos números son la fuente de verdad del ops_ledger via account_ops. Al owner: reporta tal cual, nunca los estimes de memoria.',
       };
     }
 

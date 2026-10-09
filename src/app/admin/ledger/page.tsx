@@ -31,7 +31,6 @@ interface AgentRow {
   minutes_plan:     string | null;
   minutes_used:     number | null;
   minutes_included: number | null;
-  ai_ops_used:      number | null;
   ai_ops_limit:     number | null;
   billing_status:   string | null;
   active:           boolean;
@@ -61,14 +60,14 @@ interface LedgerRow {
   projMarginPct:    number;
 }
 
-function computeLedger(agent: AgentRow, daysElapsed: number, daysInMonth: number): LedgerRow {
+function computeLedger(agent: AgentRow, opsUsedThisMonth: number, daysElapsed: number, daysInMonth: number): LedgerRow {
   const revenueMxn = agent.minutes_plan
     ? (TIER_PRICE_MXN[agent.minutes_plan as MinutesTier] ?? 0)
     : 0;
 
   const minutesUsed = agent.minutes_used     ?? 0;
   const minutesInc  = agent.minutes_included ?? 0;
-  const opsUsed     = agent.ai_ops_used      ?? 0;
+  const opsUsed     = opsUsedThisMonth;
   const opsLimit    = agent.ai_ops_limit     ?? 0;
 
   const voiceCostUsd  = minutesUsed * VOICE_COST_USD_PER_MIN;
@@ -115,16 +114,31 @@ export default async function LedgerPage() {
   const demoExcl = `(${DEMO_EMAILS.map(e => `"${e}"`).join(',')})`;
   const { data: agentsData } = await supabase
     .from('voice_agents')
-    .select('id, business_name, agent_name, plan, minutes_plan, minutes_used, minutes_included, ai_ops_used, ai_ops_limit, billing_status, active, portal_email, created_at')
+    .select('id, business_name, agent_name, plan, minutes_plan, minutes_used, minutes_included, ai_ops_limit, billing_status, active, portal_email, created_at')
     .not('portal_email', 'in', demoExcl)
     .eq('active', true)
     .order('created_at', { ascending: false });
 
   const agents = (agentsData ?? []) as AgentRow[];
 
+  // Ops consumidas este mes por agente — agregación de ai_ops_log (fuente única
+  // post-Fase 3d 2026-10-09). Reemplaza voice_agents.ai_ops_used stale.
+  const agentIds = agents.map(a => a.id);
+  const { data: opsLogRows } = agentIds.length > 0
+    ? await supabase.from('ai_ops_log')
+        .select('agent_id, count')
+        .in('agent_id', agentIds)
+        .gte('created_at', startMonth.toISOString())
+    : { data: [] };
+  const opsUsedByAgent = new Map<string, number>();
+  for (const r of opsLogRows ?? []) {
+    const aid = (r as { agent_id: string | null }).agent_id;
+    if (aid) opsUsedByAgent.set(aid, (opsUsedByAgent.get(aid) ?? 0) + ((r as { count: number }).count ?? 0));
+  }
+
   const rows = agents
     .filter(a => a.billing_status === 'activo' && a.plan && a.minutes_plan && a.minutes_plan !== 'enterprise')
-    .map(a => computeLedger(a, daysElapsed, daysInMonth))
+    .map(a => computeLedger(a, opsUsedByAgent.get(a.id) ?? 0, daysElapsed, daysInMonth))
     .sort((a, b) => a.marginPct - b.marginPct);   // peor margen primero
 
   // Aggregates

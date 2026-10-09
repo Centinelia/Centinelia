@@ -25,7 +25,6 @@ interface AgentRow {
   active: boolean;
   billing_status: string | null;
   portal_email: string | null;
-  ai_ops_used: number | null;
   ai_ops_limit: number | null;
   minutes_used: number | null;
   minutes_included: number | null;
@@ -48,8 +47,10 @@ async function budgetReport(): Promise<ActionResult> {
   const supabase = createAdminClient();
   const startMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
 
-  const [{ data: agents }, vapiRes, twilioRes] = await Promise.all([
-    supabase.from('voice_agents').select('ai_ops_used, ai_ops_limit'),
+  const [{ data: agents }, { data: opsLogRows }, vapiRes, twilioRes] = await Promise.all([
+    supabase.from('voice_agents').select('ai_ops_limit'),
+    // Fuente única post-Fase 3d 2026-10-09: SUM(ai_ops_log.count) este mes.
+    supabase.from('ai_ops_log').select('count').gte('created_at', startMonth),
     fetch('https://api.vapi.ai/account', {
       headers: { Authorization: `Bearer ${process.env.VAPI_API_KEY}` },
     }).then(r => r.ok ? r.json() : null).catch(() => null),
@@ -61,9 +62,9 @@ async function budgetReport(): Promise<ActionResult> {
       : Promise.resolve(null),
   ]);
 
-  type Ops = { ai_ops_used: number | null; ai_ops_limit: number | null };
-  const opsUsed  = (agents ?? []).reduce((s, a: Ops) => s + (a.ai_ops_used  ?? 0), 0);
-  const opsLimit = (agents ?? []).reduce((s, a: Ops) => s + (a.ai_ops_limit ?? 0), 0);
+  type OpsLimit = { ai_ops_limit: number | null };
+  const opsUsed  = (opsLogRows ?? []).reduce((s, r: { count: number | null }) => s + (r.count ?? 0), 0);
+  const opsLimit = (agents ?? []).reduce((s, a: OpsLimit) => s + (a.ai_ops_limit ?? 0), 0);
   const claudeCost   = opsUsed * HAIKU_COST_PER_OP;
   const claudeBudget = parseFloat(process.env.CLAUDE_MONTHLY_BUDGET ?? '50');
   const claudePct    = Math.round((claudeCost / claudeBudget) * 100);
@@ -87,27 +88,44 @@ async function budgetReport(): Promise<ActionResult> {
 
 async function burnReport(): Promise<ActionResult> {
   const supabase = createAdminClient();
+  const startMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+
   const { data: agents } = await supabase
     .from('voice_agents')
-    .select('id, business_name, portal_email, ai_ops_used, ai_ops_limit, active')
-    .eq('active', true)
-    .order('ai_ops_used', { ascending: false, nullsFirst: false })
-    .limit(10);
+    .select('id, business_name, portal_email, ai_ops_limit, active')
+    .eq('active', true);
 
   if (!agents?.length) return { ok: true, message: 'Sin agentes activos.' };
 
-  const rows = agents.map((a, i) => {
-    const used  = a.ai_ops_used ?? 0;
+  // Agregar ops consumidas este mes por agent_id desde ai_ops_log (fuente única
+  // post-Fase 3d 2026-10-09, reemplaza voice_agents.ai_ops_used stale).
+  const agentIds = agents.map(a => a.id);
+  const { data: opsLog } = await supabase.from('ai_ops_log')
+    .select('agent_id, count')
+    .in('agent_id', agentIds)
+    .gte('created_at', startMonth);
+  const usedByAgent = new Map<string, number>();
+  for (const r of opsLog ?? []) {
+    const aid = (r as { agent_id: string | null }).agent_id;
+    if (aid) usedByAgent.set(aid, (usedByAgent.get(aid) ?? 0) + ((r as { count: number }).count ?? 0));
+  }
+
+  const topTen = agents
+    .map(a => ({ ...a, used: usedByAgent.get(a.id as string) ?? 0 }))
+    .sort((x, y) => y.used - x.used)
+    .slice(0, 10);
+
+  const rows = topTen.map((a, i) => {
     const limit = a.ai_ops_limit ?? 0;
-    const pct   = limit > 0 ? Math.round((used / limit) * 100) : 0;
-    const cost  = fmt$(used * HAIKU_COST_PER_OP);
-    return `${i + 1}. **${a.business_name}** — ${fmtN(used)} / ${fmtN(limit)} ops (${pct}%) · ${cost}`;
+    const pct   = limit > 0 ? Math.round((a.used / limit) * 100) : 0;
+    const cost  = fmt$(a.used * HAIKU_COST_PER_OP);
+    return `${i + 1}. **${a.business_name}** — ${fmtN(a.used)} / ${fmtN(limit)} ops (${pct}%) · ${cost}`;
   });
 
   return {
     ok: true,
     message: [`**Top 10 por burn de ops este mes**`, '', ...rows].join('\n'),
-    data: agents,
+    data: topTen,
   };
 }
 
@@ -117,7 +135,7 @@ async function listAgents(filter: 'active' | 'inactive' | 'all'): Promise<Action
   const supabase = createAdminClient();
   let q = supabase
     .from('voice_agents')
-    .select('id, business_name, agent_name, plan, active, ai_ops_used, ai_ops_limit, minutes_used, minutes_included, portal_email, created_at')
+    .select('id, business_name, agent_name, plan, active, ai_ops_limit, minutes_used, minutes_included, portal_email, created_at')
     .order('created_at', { ascending: false })
     .limit(20);
   if (filter === 'active')   q = q.eq('active', true);
@@ -128,7 +146,7 @@ async function listAgents(filter: 'active' | 'inactive' | 'all'): Promise<Action
 
   const rows = agents.map((a) => {
     const status = a.active ? '🟢' : '⚫';
-    const ops    = `${fmtN(a.ai_ops_used)}/${fmtN(a.ai_ops_limit)} ops`;
+    const ops    = `cap ${fmtN(a.ai_ops_limit)} ops`;
     const mins   = `${fmtN(a.minutes_used)}/${fmtN(a.minutes_included)} min`;
     return `${status} **${a.business_name}** (${a.agent_name ?? 'sin nombre'}) — ${a.plan ?? 'sin plan'} — ${ops} · ${mins}\n    ${a.portal_email ?? '(sin portal)'}`;
   });
@@ -148,7 +166,7 @@ async function findAgent(query: string): Promise<ActionResult> {
 
   const { data: agents } = await supabase
     .from('voice_agents')
-    .select('id, business_name, agent_name, portal_email, active, ai_ops_used, ai_ops_limit, plan')
+    .select('id, business_name, agent_name, portal_email, active, ai_ops_limit, plan')
     .or(`business_name.ilike.%${q}%,agent_name.ilike.%${q}%,portal_email.ilike.%${q}%,id.eq.${q.match(/^[0-9a-f-]{36}$/i) ? q : '00000000-0000-0000-0000-000000000000'}`)
     .limit(10);
 
@@ -179,9 +197,25 @@ async function health(portalEmail: string): Promise<ActionResult> {
 
   const lines: string[] = [`**${portalEmail}** — ${agents.length} agente${agents.length > 1 ? 's' : ''}`, ''];
 
+  // Agregación de ops consumidas este mes por agent_id — fuente única post-Fase 3d.
+  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+  const agentIds = (agents as unknown as { id: string }[]).map(a => a.id);
+  const { data: opsLog } = agentIds.length > 0
+    ? await supabase.from('ai_ops_log')
+        .select('agent_id, count')
+        .in('agent_id', agentIds)
+        .gte('created_at', monthStart)
+    : { data: [] };
+  const usedByAgent = new Map<string, number>();
+  for (const r of opsLog ?? []) {
+    const aid = (r as { agent_id: string | null }).agent_id;
+    if (aid) usedByAgent.set(aid, (usedByAgent.get(aid) ?? 0) + ((r as { count: number }).count ?? 0));
+  }
+
   for (const a of agents as unknown as AgentRow[]) {
     const status  = a.active ? '🟢 activo' : '⚫ inactivo';
-    const ops     = `${fmtN(a.ai_ops_used)} / ${fmtN(a.ai_ops_limit)} ops`;
+    const opsUsedThisMonth = usedByAgent.get(a.id) ?? 0;
+    const ops     = `${fmtN(opsUsedThisMonth)} / ${fmtN(a.ai_ops_limit)} ops`;
     const mins    = `${fmtN(a.minutes_used)} / ${fmtN(a.minutes_included)} min`;
     const billing = a.billing_status ?? '—';
 

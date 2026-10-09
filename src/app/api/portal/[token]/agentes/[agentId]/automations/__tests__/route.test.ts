@@ -78,13 +78,14 @@ describe('GET /automations', () => {
     supabase.setNextResult({
       data: fixtureAgent({
         features: { automations: { heartbeat: { enabled: true } } },
-        ai_ops_used: 42,
         ai_ops_limit: 100,
       }),
       error: null,
     });
     // 2: hasEmailIntegration org check → cuenta encontrada
     supabase.setNextResult({ data: [{ provider: 'gmail', status: 'active' }], error: null });
+    // 3: account_ops lookup (ops_used post-Fase 3d 2026-10-09)
+    supabase.setNextResult({ data: { ops_used: 42 }, error: null });
 
     const res = await GET(makeGetRequest(), {
       params: makeParams({ token: TEST_ORG_TOKEN, agentId: TEST_AGENT_ID }),

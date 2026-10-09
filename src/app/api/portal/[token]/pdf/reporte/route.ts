@@ -54,7 +54,7 @@ export async function GET(req: NextRequest, { params }: Params) {
   // Ver [[handoff-peer-discrimination-fix]] audit 2026-08-18.
   const roster = await getOrgAgentIds(supabase, ctx.agent.portal_email as string | null, ctx.agent.id as string);
 
-  const [callsRes, acctRes, agentsRes, tasksRes, orgRes, acctOpsRes] = await Promise.all([
+  const [callsRes, acctRes, agentsRes, tasksRes, acctOpsRes] = await Promise.all([
     supabase.from('voice_calls')
       .select('outcome, duration_seconds, created_at')
       .in('agent_id', roster)
@@ -67,7 +67,7 @@ export async function GET(req: NextRequest, { params }: Params) {
       : Promise.resolve({ data: null }),
     ctx.agent.portal_email
       ? supabase.from('voice_agents')
-          .select('id, agent_name, business_name, ai_ops_used, ai_ops_limit')
+          .select('id, agent_name, business_name, ai_ops_limit')
           .eq('portal_email', ctx.agent.portal_email as string)
       : Promise.resolve({ data: [] }),
     ctx.agent.portal_email
@@ -76,16 +76,10 @@ export async function GET(req: NextRequest, { params }: Params) {
           .eq('portal_email', ctx.agent.portal_email as string)
           .gte('created_at', from).lte('created_at', to)
       : Promise.resolve({ data: [] }),
-    // Org pool y ledger flag para leer tareas del pool real (evita per-agent stale).
-    ctx.agent.portal_email
-      ? supabase.from('organizations')
-          .select('monthly_ops_pool, monthly_ops_used, ops_ledger_enabled')
-          .eq('portal_email', ctx.agent.portal_email as string)
-          .maybeSingle()
-      : Promise.resolve({ data: null }),
+    // Fuente única post-Fase 3d 2026-10-09: account_ops (mirror del ops_ledger).
     ctx.agent.portal_email
       ? supabase.from('account_ops')
-          .select('ops_used')
+          .select('ops_used, ops_included')
           .eq('portal_email', ctx.agent.portal_email as string)
           .maybeSingle()
       : Promise.resolve({ data: null }),
@@ -93,24 +87,15 @@ export async function GET(req: NextRequest, { params }: Params) {
 
   const calls = callsRes.data ?? [];
   const acct  = (acctRes as any).data;
-  const agentsAgg = ((agentsRes as any).data ?? []) as { id: string; agent_name?: string | null; business_name?: string | null; ai_ops_used?: number; ai_ops_limit?: number }[];
-  // Tasks: fuente pool org-level (con ledger si está enabled). Antes se sumaba
-  // per-agente (ai_ops_used/limit) que quedó stale post-ledger flip — cliente
-  // veía cifras distintas en portal y PDF descargado. Ver
-  // [[feedback-audit-read-path-fidelity]].
-  const org           = (orgRes as any).data as { monthly_ops_pool?: number | null; monthly_ops_used?: number | null; ops_ledger_enabled?: boolean | null } | null;
-  const acctOps       = (acctOpsRes as any).data as { ops_used?: number | null } | null;
-  const ledgerEnabled = !!org?.ops_ledger_enabled;
-  const orgPoolTotal  = (org?.monthly_ops_pool as number | null) ?? null;
-  const orgPoolUsed   = (org?.monthly_ops_used as number | null) ?? null;
-  const tasksTotal = orgPoolTotal != null
-    ? orgPoolTotal
+  const agentsAgg = ((agentsRes as any).data ?? []) as { id: string; agent_name?: string | null; business_name?: string | null; ai_ops_limit?: number }[];
+  const acctOps = (acctOpsRes as any).data as { ops_used?: number | null; ops_included?: number | null } | null;
+
+  // Tasks: fuente única account_ops. Fallback a SUM(ai_ops_limit) para cap
+  // si no hay row del mirror (edge case: standalone sin portal_email).
+  const tasksTotal = typeof acctOps?.ops_included === 'number' && acctOps.ops_included > 0
+    ? acctOps.ops_included
     : agentsAgg.reduce((s, a) => s + (a.ai_ops_limit ?? 0), 0);
-  const tasksUsed = (ledgerEnabled && typeof acctOps?.ops_used === 'number')
-    ? acctOps.ops_used
-    : orgPoolTotal != null
-      ? (orgPoolUsed ?? 0)
-      : agentsAgg.reduce((s, a) => s + (a.ai_ops_used ?? 0), 0);
+  const tasksUsed = typeof acctOps?.ops_used === 'number' ? acctOps.ops_used : 0;
 
   // Tasks breakdown
   const tasksData = ((tasksRes as any).data ?? []) as { status: string; trigger_type: string | null; assigned_to: string | null; goal_met: boolean | null; current_iteration: number | null }[];

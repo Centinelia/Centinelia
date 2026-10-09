@@ -17,7 +17,6 @@ type OrgRow = {
   billing_model:        string | null;
   active_contract_id:   string | null;
   monthly_minutes_used: number | null;
-  monthly_ops_used:     number | null;
   pool_reset_date:      string | null;
   overage_minutes:      number | null;
   overage_ops:          number | null;
@@ -61,10 +60,10 @@ export default async function ContractDetailPage({ params }: Props) {
   if (!contract) notFound();
   const c = contract as AnnualContract;
 
-  const [{ data: orgRaw }, { data: agentsRaw }] = await Promise.all([
+  const [{ data: orgRaw }, { data: agentsRaw }, { data: acctOpsRaw }] = await Promise.all([
     supabase
       .from('organizations')
-      .select('portal_email, name, billing_model, active_contract_id, monthly_minutes_used, monthly_ops_used, pool_reset_date, overage_minutes, overage_ops')
+      .select('portal_email, name, billing_model, active_contract_id, monthly_minutes_used, pool_reset_date, overage_minutes, overage_ops')
       .eq('portal_email', c.organization_email)
       .maybeSingle(),
     supabase
@@ -73,10 +72,18 @@ export default async function ContractDetailPage({ params }: Props) {
       .eq('portal_email', c.organization_email)
       .neq('id', process.env.DEMO_AGENT_ID ?? '')
       .order('business_name'),
+    // ops_used viene de account_ops (mirror del ops_ledger). Reemplaza
+    // organizations.monthly_ops_used stale en Fase 3d 2026-10-09.
+    supabase
+      .from('account_ops')
+      .select('ops_used')
+      .eq('portal_email', c.organization_email)
+      .maybeSingle(),
   ]);
 
   const org    = (orgRaw ?? null) as OrgRow | null;
   const agents = (agentsRaw ?? []) as AgentRow[];
+  const acctOpsUsed = (acctOpsRaw as { ops_used?: number | null } | null)?.ops_used ?? 0;
 
   const status    = STATUS_STYLE[c.status] ?? STATUS_STYLE.draft;
   const days      = daysUntil(c.end_date);
@@ -88,7 +95,7 @@ export default async function ContractDetailPage({ params }: Props) {
   const minutesPct      = minutesPool > 0 ? Math.min((minutesUsed / minutesPool) * 100, 100) : 0;
   const minutesOverage  = isCurrent ? Number(org?.overage_minutes ?? 0) : 0;
 
-  const opsUsed     = isCurrent ? Number(org?.monthly_ops_used ?? 0) : 0;
+  const opsUsed     = isCurrent ? acctOpsUsed : 0;
   const opsPool     = Number(c.monthly_ops_pool ?? 0);
   const opsPct      = opsPool > 0 ? Math.min((opsUsed / opsPool) * 100, 100) : 0;
   const opsOverage  = isCurrent ? Number(org?.overage_ops ?? 0) : 0;

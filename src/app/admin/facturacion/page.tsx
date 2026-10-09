@@ -162,30 +162,38 @@ async function StripeTab() {
 
   const { data: rawAgents } = await supabase
     .from('voice_agents')
-    .select('id, business_name, client_name, plan, minutes_plan, billing_status, stripe_subscription_id, minutes_used, minutes_included, minutes_reset_date, active, portal_email, created_at, ai_ops_used, ai_ops_limit')
+    .select('id, business_name, client_name, plan, minutes_plan, billing_status, stripe_subscription_id, minutes_used, minutes_included, minutes_reset_date, active, portal_email, created_at, ai_ops_limit')
     .neq('id', process.env.DEMO_AGENT_ID ?? '')
     .order('created_at', { ascending: true });
 
   const portalEmails = (rawAgents ?? []).map((a: any) => a.portal_email).filter(Boolean) as string[];
-  const { data: acctData } = portalEmails.length
-    ? await supabase.from('account_minutes').select('portal_email, minutes_used, minutes_included, minutes_reset_date').in('portal_email', portalEmails)
-    : { data: [] };
-  const acctMap = new Map((acctData ?? []).map((m: any) => [m.portal_email, m]));
+  const [acctMinsRes, acctOpsRes] = await Promise.all([
+    portalEmails.length
+      ? supabase.from('account_minutes').select('portal_email, minutes_used, minutes_included, minutes_reset_date').in('portal_email', portalEmails)
+      : Promise.resolve({ data: [] }),
+    portalEmails.length
+      ? supabase.from('account_ops').select('portal_email, ops_used').in('portal_email', portalEmails)
+      : Promise.resolve({ data: [] }),
+  ]);
+  const acctMap   = new Map((acctMinsRes.data ?? []).map((m: any) => [m.portal_email, m]));
+  const opsUsedByEmail = new Map<string, number>();
+  for (const r of acctOpsRes.data ?? []) {
+    opsUsedByEmail.set((r as any).portal_email, ((r as any).ops_used ?? 0) as number);
+  }
 
-  // Sumatorias por portal_email para minutos + tareas (pool de la cuenta).
+  // Sumatorias por portal_email: employee count + cap (ai_ops_limit sum).
+  // ops_used viene de account_ops (fuente única post-Fase 3d 2026-10-09).
   const employeeCountByEmail = new Map<string, number>();
-  const opsUsedByEmail       = new Map<string, number>();
   const opsLimitByEmail      = new Map<string, number>();
   for (const a of (rawAgents ?? [])) {
     if (a.portal_email) {
       employeeCountByEmail.set(a.portal_email, (employeeCountByEmail.get(a.portal_email) ?? 0) + 1);
-      opsUsedByEmail.set(a.portal_email, (opsUsedByEmail.get(a.portal_email) ?? 0) + ((a.ai_ops_used ?? 0) as number));
       opsLimitByEmail.set(a.portal_email, (opsLimitByEmail.get(a.portal_email) ?? 0) + ((a.ai_ops_limit ?? 0) as number));
     }
   }
 
   // Dedupe: 1 fila por portal_email (el primer agente creado = anchor).
-  // Agentes sin portal_email (demos legacy, standalone) mantienen 1 fila per-agent.
+  // Agentes sin portal_email (demos legacy, standalone) mantienen 1 fila per-agent con ops_used=0.
   const seen = new Set<string>();
   const agents = (rawAgents ?? []).filter((a: any) => {
     if (!a.portal_email) return true;
@@ -195,7 +203,7 @@ async function StripeTab() {
   }).map((a: any) => {
     const acct = a.portal_email ? acctMap.get(a.portal_email) : null;
     const employeeCount = a.portal_email ? (employeeCountByEmail.get(a.portal_email) ?? 1) : 1;
-    const opsUsed  = a.portal_email ? (opsUsedByEmail.get(a.portal_email)  ?? 0) : ((a.ai_ops_used  ?? 0) as number);
+    const opsUsed  = a.portal_email ? (opsUsedByEmail.get(a.portal_email)  ?? 0) : 0;
     const opsLimit = a.portal_email ? (opsLimitByEmail.get(a.portal_email) ?? 0) : ((a.ai_ops_limit ?? 0) as number);
     const base = acct
       ? { ...a, minutes_used: acct.minutes_used, minutes_included: acct.minutes_included, minutes_reset_date: acct.minutes_reset_date }

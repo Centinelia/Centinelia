@@ -21,7 +21,6 @@ const ESTIMATED_TAREAS_MO: Record<AutomationName, string> = {
 interface AgentRow {
   id:                     string;
   portal_email:           string;
-  ai_ops_used:            number | null;
   ai_ops_limit:           number | null;
   minutes_reset_date:     string | null;
   features:               Record<string, unknown> | null;
@@ -63,7 +62,7 @@ async function hasEmailIntegration(portalEmail: string): Promise<boolean> {
 
 // GET — return automations state + quota
 export const GET = withPortalAuth<AgentRow>(
-  async (_req, { agent }) => {
+  async (_req, { agent, supabase }) => {
     const auto = (agent!.features?.automations as AutomationsConfig | undefined) ?? {};
     const emailConnected = await hasEmailIntegration(agent!.portal_email);
 
@@ -83,10 +82,15 @@ export const GET = withPortalAuth<AgentRow>(
       {} as Record<AutomationName, unknown>,
     );
 
+    // Pool usado del portal (fuente única post-Fase 3d 2026-10-09: account_ops).
+    const { data: acctOps } = await supabase.from('account_ops')
+      .select('ops_used').eq('portal_email', agent!.portal_email).maybeSingle();
+    const opsUsed = (acctOps as { ops_used?: number | null } | null)?.ops_used ?? 0;
+
     return NextResponse.json({
       automations,
       quota: {
-        used:      agent!.ai_ops_used,
+        used:      opsUsed,
         limit:     agent!.ai_ops_limit,
         resets_at: agent!.minutes_reset_date,
       },
@@ -94,7 +98,7 @@ export const GET = withPortalAuth<AgentRow>(
   },
   {
     loadAgent:   true,
-    agentSelect: 'id, portal_token, portal_email, ai_ops_used, ai_ops_limit, minutes_reset_date, features, heartbeat_config, heartbeat_last_run_at',
+    agentSelect: 'id, portal_token, portal_email, ai_ops_limit, minutes_reset_date, features, heartbeat_config, heartbeat_last_run_at',
   },
 );
 
@@ -164,7 +168,7 @@ export const PATCH = withPortalAuth<AgentRow>(
   },
   {
     loadAgent:       true,
-    agentSelect:     'id, portal_token, portal_email, ai_ops_used, ai_ops_limit, minutes_reset_date, features, heartbeat_config, heartbeat_last_run_at',
+    agentSelect:     'id, portal_token, portal_email, ai_ops_limit, minutes_reset_date, features, heartbeat_config, heartbeat_last_run_at',
     rateLimit:       'configWrite',
     rateLimitPrefix: 'automations',
   },

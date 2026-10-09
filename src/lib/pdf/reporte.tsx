@@ -11,8 +11,8 @@ export interface ReporteData {
   orders:       number;
   minutesUsed:  number;
   minutesTotal: number;
-  tasksUsed:    number;   // ai_ops_used del período
-  tasksTotal:   number;   // ai_ops_limit del período
+  tasksUsed:    number;   // account_ops.ops_used (mirror del ops_ledger)
+  tasksTotal:   number;   // account_ops.ops_included o SUM(ai_ops_limit)
   outcomeBreakdown: { outcome: string; label: string; count: number; color: string }[];
   topHours?:    { hour: number; count: number }[];
   // Detalle de tareas del período (fetchea agent_tasks)

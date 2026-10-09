@@ -46,7 +46,7 @@ export default async function ClientesPage({ searchParams }: Props) {
 
   let query = supabase
     .from('voice_agents')
-    .select('id, client_name, client_email, agent_name, business_name, plan, active, billing_status, portal_email, portal_token, daily_minutes_cap, ai_ops_used, ai_ops_limit, features')
+    .select('id, client_name, client_email, agent_name, business_name, plan, active, billing_status, portal_email, portal_token, daily_minutes_cap, ai_ops_limit, features')
     .neq('id', demoId ?? '')
     .order('client_name', { ascending: true });
 
@@ -62,11 +62,21 @@ export default async function ClientesPage({ searchParams }: Props) {
     client_name:   string;
     client_email:  string | null;
     features:      Record<string, unknown> | null;
-    ai_ops_used:   number | null;
     ai_ops_limit:  number | null;
   };
   const { data: agentsRaw } = await query;
   const agents = (agentsRaw ?? []) as unknown as FetchedAgent[];
+
+  // Ops usadas por portal_email del ciclo actual — fuente única account_ops
+  // (mirror del ops_ledger). Reemplaza suma de voice_agents.ai_ops_used stale.
+  const portalEmails = Array.from(new Set(agents.map(a => a.portal_email).filter(Boolean) as string[]));
+  const { data: acctOpsRows } = portalEmails.length > 0
+    ? await supabase.from('account_ops').select('portal_email, ops_used').in('portal_email', portalEmails)
+    : { data: [] };
+  const opsUsedByPortal = new Map<string, number>();
+  for (const r of acctOpsRows ?? []) {
+    opsUsedByPortal.set((r as { portal_email: string }).portal_email, ((r as { ops_used: number | null }).ops_used) ?? 0);
+  }
 
   // Agrupar por client_email (fallback: client_name) — server-side
   const map = new Map<string, ClientGroup>();
@@ -83,12 +93,11 @@ export default async function ClientesPage({ searchParams }: Props) {
         agents:                [],
         acct_minutes_used:     null,
         acct_minutes_included: null,
-        acct_ops_used:         0,
+        acct_ops_used:         agent.portal_email ? (opsUsedByPortal.get(agent.portal_email) ?? 0) : 0,
         acct_ops_limit:        0,
       });
     }
     const group = map.get(key)!;
-    group.acct_ops_used  += agent.ai_ops_used  ?? 0;
     group.acct_ops_limit += agent.ai_ops_limit ?? 0;
     const meerkatRoleId = ((agent.features ?? {}).meerkat_role_id as string | undefined) ?? null;
     group.agents.push({
