@@ -42,10 +42,11 @@ describe('plans.ts — JORNADA_CONFIG allocations', () => {
   });
 
   it('minutos (voz-heavy) devuelve muchos minutos + pocas tareas', () => {
-    // Rebalance 2026-09-22: Solo Minutos = 350/650/1300 (margen ~69-71%, trade tareas→min razonable).
-    expect(JORNADA_CONFIG.minutos.starter).toMatchObject({ minutes: 350,  aiOps: 20 });
-    expect(JORNADA_CONFIG.minutos.growth ).toMatchObject({ minutes: 650,  aiOps: 20 });
-    expect(JORNADA_CONFIG.minutos.scale  ).toMatchObject({ minutes: 1300, aiOps: 20 });
+    // Rebalance 2026-10-09: 350/650/1300 + 20 ops → 300/550/1100 + 0 ops.
+    // Margen operativo ~72-75% con costo voz $2.72/min real.
+    expect(JORNADA_CONFIG.minutos.starter).toMatchObject({ minutes: 300,  aiOps: 0 });
+    expect(JORNADA_CONFIG.minutos.growth ).toMatchObject({ minutes: 550,  aiOps: 0 });
+    expect(JORNADA_CONFIG.minutos.scale  ).toMatchObject({ minutes: 1100, aiOps: 0 });
   });
 
   it('tareas (ops-heavy) devuelve 0 minutos + muchas tareas', () => {
@@ -137,8 +138,8 @@ describe('plans.ts — jornadaConfigFromPriceId', () => {
     process.env.STRIPE_MINUTOS_STARTER = 'price_test_minutos_starter';
     const result = jornadaConfigFromPriceId('price_test_minutos_starter');
     expect(result?.jornada).toBe('minutos');
-    expect(result?.cfg.minutes).toBe(350);
-    expect(result?.cfg.aiOps).toBe(20);
+    expect(result?.cfg.minutes).toBe(300);
+    expect(result?.cfg.aiOps).toBe(0);
   });
 
   it('matchea NOX (coordinator) scale', () => {
@@ -169,7 +170,7 @@ describe('plans.ts — jornadaConfigFromPriceId', () => {
 describe('plans.ts — resolveTierAllocation', () => {
   it('devuelve JORNADA_CONFIG para meerkat no-coordinator', () => {
     expect(resolveTierAllocation('combinada', 'nelia', 'scale')).toEqual({ minutes: 1000, aiOps: 1000 });
-    expect(resolveTierAllocation('minutos',   'nia',   'growth')).toEqual({ minutes: 650,  aiOps: 20   });
+    expect(resolveTierAllocation('minutos',   'nia',   'growth')).toEqual({ minutes: 550,  aiOps: 0 });
     expect(resolveTierAllocation('tareas',    'nala',  'starter')).toEqual({ minutes: 0,   aiOps: 500  });
   });
 

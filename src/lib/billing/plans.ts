@@ -93,9 +93,13 @@ export const JORNADA_CONFIG: Record<JornadaType, Record<MinutesTier, JornadaTier
     // debajo de Combinada (73%) pero suficientemente holgado, y muy arriba
     // del status quo (55-60%). Cero clientes activos en Solo Minutos al
     // momento del rebalance → sin fricción de renewal.
-    starter:    jt('starter',    350,  20, 'STRIPE_MINUTOS_STARTER'),
-    growth:     jt('growth',     650,  20, 'STRIPE_MINUTOS_GROWTH'),
-    scale:      jt('scale',      1300, 20, 'STRIPE_MINUTOS_SCALE'),
+    // Rebalance 2026-10-09: 350/650/1300 → 300/550/1100 (opción A) + ops=0.
+    // "Solo Minutos" ahora es realmente solo minutos (consistente con el
+    // nombre). Antes tenía 20 ops buffer; se eliminó. Margen operativo real
+    // ~72-75% con costo voz $2.72/min (Vapi + voice_llm Anthropic + Twilio).
+    starter:    jt('starter',    300,  0, 'STRIPE_MINUTOS_STARTER'),
+    growth:     jt('growth',     550,  0, 'STRIPE_MINUTOS_GROWTH'),
+    scale:      jt('scale',      1100, 0, 'STRIPE_MINUTOS_SCALE'),
     enterprise: jt('enterprise', 0,    0,  ''),
   },
   tareas: {

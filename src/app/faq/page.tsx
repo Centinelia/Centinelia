@@ -105,7 +105,7 @@ const CATEGORIES = [
       },
       {
         q: '¿Que son las jornadas? (Combinada, Solo minutos, Solo tareas)',
-        a: 'Cada tier tiene 3 sabores al mismo precio, para ajustar el mix minutos vs tareas segun tu operacion. Combinada (default) mezcla ambos; Solo minutos maximiza voz sin oficina; Solo tareas maximiza oficina sin voz. Distribucion exacta: — Combinada: Media 250 min + 250 tareas, Completa 500 min + 500 tareas, Alta 1,000 min + 1,000 tareas. — Solo minutos: Media 350 min + 20 tareas, Completa 650 min + 20 tareas, Alta 1,300 min + 20 tareas. — Solo tareas: Media 500 tareas + 0 min, Completa 1,000 tareas + 0 min, Alta 2,000 tareas + 0 min. Los coordinadores (Nox, Niva) usan automaticamente Solo tareas, no tienen voz.',
+        a: 'Cada tier tiene 3 sabores al mismo precio, para ajustar el mix minutos vs tareas segun tu operacion. Combinada (default) mezcla ambos; Solo minutos maximiza voz sin oficina; Solo tareas maximiza oficina sin voz. Distribucion exacta: — Combinada: Media 250 min + 250 tareas, Completa 500 min + 500 tareas, Alta 1,000 min + 1,000 tareas. — Solo minutos: Media 300 min (0 tareas), Completa 550 min (0 tareas), Alta 1,100 min (0 tareas). — Solo tareas: Media 500 tareas + 0 min, Completa 1,000 tareas + 0 min, Alta 2,000 tareas + 0 min. Los coordinadores (Nox, Niva) usan automaticamente Solo tareas, no tienen voz.',
       },
       {
         q: '¿Que son las tareas?',
