@@ -46,6 +46,16 @@ export interface ReferenceIdCollisionResult {
  * "duplicate key" (señal del UNIQUE constraint fallando). Agrupa por
  * portal_email + source. Devuelve lista ordenada por cantidad descendente.
  *
+ * 2026-10-09 (segunda vuelta): descarta "same-source retries". El UNIQUE
+ * constraint sobre (portal_email, reference_id, kind) también rechaza
+ * cuando el MISMO source re-llama consumeAiOp (orphan recovery, dedup
+ * fallback, retry externo). En ese caso el primer intento cobró OK (fila
+ * count>0 en ai_ops_log con el mismo source y ref), y el 2do intento
+ * es idempotencia correcta, NO undercharge. Caso real que motivó este
+ * guard: Camila/AC Proyectos 2026-10-09, 15 rechazos del inbox_processor
+ * sobre 12 correos únicos, cada uno con su cobro exitoso en ops_ledger.
+ * Ver [[feedback-fixes-para-siempre]].
+ *
  * Pure-ish: solo lee de Supabase, no envía notificaciones.
  */
 export async function detectReferenceIdCollisions(
@@ -65,8 +75,32 @@ export async function detectReferenceIdCollisions(
 
   const rows = data ?? [];
 
+  // Para cada reject necesitamos saber si existe un cobro exitoso (count>0)
+  // en la misma ventana para el mismo reference_id. Si existe Y es del mismo
+  // source, es idempotencia (same-source retry) → descartar.
+  const refs = Array.from(new Set(rows.map(r => r.reference_id).filter(Boolean))) as string[];
+  const sameSourceCharged = new Set<string>(); // `${portal_email}|${source}|${reference_id}`
+  if (refs.length > 0) {
+    const { data: siblings } = await supabase
+      .from('ai_ops_log')
+      .select('portal_email, source, reference_id, count, created_at')
+      .in('reference_id', refs)
+      .gte('created_at', since)
+      .limit(500);
+    for (const s of siblings ?? []) {
+      if ((s.count ?? 0) > 0 && s.reference_id) {
+        sameSourceCharged.add(`${s.portal_email}|${s.source}|${s.reference_id}`);
+      }
+    }
+  }
+
   const grouped = new Map<string, ReferenceIdCollisionRow>();
   for (const r of rows) {
+    // Skip idempotent same-source retries: ya existe un cobro exitoso
+    // del mismo (portal, source, ref). El UNIQUE constraint hizo su trabajo.
+    const idempotencyKey = `${r.portal_email}|${r.source}|${r.reference_id}`;
+    if (r.reference_id && sameSourceCharged.has(idempotencyKey)) continue;
+
     const key = `${r.portal_email}|${r.source}`;
     const prev = grouped.get(key);
     if (prev) {
