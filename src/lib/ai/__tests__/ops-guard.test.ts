@@ -1,51 +1,55 @@
-// Regression test para fix ops-guard.ts path LEGACY sync insert (2026-09-15).
+// Tests de consumeAiOp (post-eliminación del path legacy, 2026-10-09).
+// Fuente única = ops_ledger. Ver .brain/decisions/2026-10-09-ops-ledger-fuente-unica.md
 //
-// Bug: el path LEGACY (annual_prepaid con ops_ledger_enabled=false) escribía
-// a ai_ops_log dentro de `after()` de next/server. Vercel podía cortar la
-// función antes de completar el INSERT → row perdida = charge sin fila en
-// historial de consumo.
-//
-// Fix: sync try/catch, mismo patrón que Path NEW línea 76.
-//
-// Valida que consumeAiOp(agent, count) — cuando el portal tiene
-// ops_ledger_enabled=false y consumePoolOps consume — inserta a ai_ops_log
-// ANTES de resolver la promise. Sin este fix, con after() el mock de insert
-// nunca se llamaba en ambiente de test (throw fuera de request context) y en
-// prod se perdía en timeout Vercel.
+// Garantías cubiertas:
+// 1. ai_ops_log se inserta SÍNCRONAMENTE (no via after()) para no perder audit
+//    rows por Vercel container termination. Ver bug 2026-09-15 fix original.
+// 2. Si consume_pool_ops RPC falla, se logea error + se deja audit row con
+//    count=0 + rpc_error en context (bug 2026-09-29 Nelia/Tortillería).
+// 3. Si no hay portal_email (agente huérfano), devuelve ok=false sin cobrar.
+// 4. Auto-refill por threshold sigue disparándose vía after() cuando aplica.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { mockInsertAiOpsLog, mockConsumePoolOps, mockRpc } = vi.hoisted(() => ({
-  mockInsertAiOpsLog: vi.fn(),
-  mockConsumePoolOps: vi.fn(),
-  mockRpc:            vi.fn(),
+const { mockInsertAiOpsLog, mockRpc, mockAfterCallbacks, mockExecuteAutoRefill } = vi.hoisted(() => ({
+  mockInsertAiOpsLog:    vi.fn(),
+  mockRpc:               vi.fn(),
+  mockAfterCallbacks:    [] as Array<() => Promise<void> | void>,
+  mockExecuteAutoRefill: vi.fn(),
 }));
 
 vi.mock('next/server', () => ({
-  // Detector: si el fix regresa a after(), el test falla porque el insert
-  // real no se llamó, o Next tira porque no hay request context.
-  after: vi.fn(() => {
-    throw new Error('after() no debe usarse para ai_ops_log (audit gap)');
-  }),
+  // after(): recoge callbacks sin ejecutarlas automáticamente. Esto permite al
+  // test verificar (a) qué se llamó ANTES del after() (sync, p.ej. audit log)
+  // y (b) ejecutar manualmente las callbacks diferidas (auto-refill).
+  after: (cb: () => Promise<void> | void) => {
+    mockAfterCallbacks.push(cb);
+  },
 }));
 
-vi.mock('@/lib/supabase/admin', () => ({
-  createAdminClient: () => ({
+vi.mock('@/lib/billing/auto-refill', () => ({
+  executeAutoRefillOps: mockExecuteAutoRefill,
+}));
+
+vi.mock('@/lib/annual-contracts/pool-consume', () => ({
+  // Legacy — ya no se usa en consumeAiOp pero sigue importado por chargeOrgDirectly.
+  consumePoolOps:          vi.fn(),
+  fireOverageAlertIfNeeded: vi.fn(),
+}));
+
+function makeSupabaseMock(opts: {
+  portalEmail?: string | null;
+  account?: { ops_used: number; ops_included: number } | null;
+  agentCfg?: { auto_refill_ops_enabled?: boolean; auto_refill_ops_threshold?: number; stripe_customer_id?: string | null };
+}) {
+  return () => ({
     from: (table: string) => {
       if (table === 'voice_agents') {
         return {
-          select: () => ({
+          select: (cols: string) => ({
             eq: () => ({
-              maybeSingle: async () => ({ data: { portal_email: 'client@example.com' } }),
-            }),
-          }),
-        };
-      }
-      if (table === 'organizations') {
-        return {
-          select: () => ({
-            eq: () => ({
-              maybeSingle: async () => ({ data: { ops_ledger_enabled: false } }),
+              maybeSingle: async () => ({ data: { portal_email: opts.portalEmail ?? null } }),
+              single:      async () => ({ data: opts.agentCfg ?? {} }),
             }),
           }),
         };
@@ -58,159 +62,82 @@ vi.mock('@/lib/supabase/admin', () => ({
           },
         };
       }
+      if (table === 'account_ops') {
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: async () => ({ data: opts.account ?? null }),
+            }),
+          }),
+        };
+      }
       return {};
     },
-    rpc: vi.fn(),
-  }),
-}));
-
-vi.mock('@/lib/annual-contracts/pool-consume', () => ({
-  consumePoolOps: mockConsumePoolOps,
-  fireOverageAlertIfNeeded: vi.fn(),
-}));
-
-vi.mock('@/lib/billing/auto-refill', () => ({
-  executeAutoRefillOps: vi.fn(),
-}));
+    rpc: (fn: string, args: unknown) => mockRpc(fn, args),
+  });
+}
 
 beforeEach(() => {
   mockInsertAiOpsLog.mockReset();
-  mockConsumePoolOps.mockReset();
+  mockRpc.mockReset();
+  mockExecuteAutoRefill.mockReset();
+  mockExecuteAutoRefill.mockResolvedValue(undefined);
+  mockAfterCallbacks.length = 0;
+  vi.resetModules();
 });
 
-describe('consumeAiOp — path LEGACY sync ai_ops_log insert', () => {
-  it('inserta la fila en ai_ops_log ANTES de resolver la promise (no after())', async () => {
-    mockConsumePoolOps.mockResolvedValue({
-      consumed: true,
-      minutes_used_after: 5,
-      minutes_pool: 100,
-      crossed_100_threshold: false,
-      crossed_120_threshold: false,
-    });
+describe('consumeAiOp — path único via ops_ledger', () => {
+  it('inserta en ai_ops_log SÍNCRONAMENTE antes de resolver (no via after())', async () => {
+    mockRpc.mockResolvedValue({ data: 98, error: null });
+    vi.doMock('@/lib/supabase/admin', () => ({
+      createAdminClient: makeSupabaseMock({
+        portalEmail: 'client@example.com',
+        account:     { ops_used: 2, ops_included: 100 },
+      }),
+    }));
 
     const { consumeAiOp } = await import('../ops-guard');
-    const result = await consumeAiOp('agent-legacy-1', 1, {
-      source: 'test_legacy',
-      label:  'Test legacy path',
+    const result = await consumeAiOp('agent-ok', 1, {
+      source: 'incident_registered',
+      label:  'Test audit sync',
     });
 
     expect(result.ok).toBe(true);
-    // El insert debió ocurrir dentro del await, sin depender de after().
+    // El insert debió haberse completado antes de retornar, independiente de after()
     expect(mockInsertAiOpsLog).toHaveBeenCalledOnce();
     expect(mockInsertAiOpsLog).toHaveBeenCalledWith(
       expect.objectContaining({
-        agent_id:     'agent-legacy-1',
+        agent_id:     'agent-ok',
         portal_email: 'client@example.com',
-        source:       'test_legacy',
+        source:       'incident_registered',
         count:        1,
       }),
     );
   });
 
-  it('no aborta el flow si el insert falla (log-y-sigue)', async () => {
-    mockConsumePoolOps.mockResolvedValue({
-      consumed: true,
-      minutes_used_after: 5,
-      minutes_pool: 100,
-      crossed_100_threshold: false,
-      crossed_120_threshold: false,
-    });
-    mockInsertAiOpsLog.mockImplementation(() => {
-      throw new Error('supabase down');
-    });
-
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const { consumeAiOp } = await import('../ops-guard');
-    // Debe resolver sin throw — el side-effect del pool ya ocurrió; drift
-    // detector es la red de seguridad.
-    const result = await consumeAiOp('agent-legacy-2', 1, { source: 'test_legacy_err' });
-    expect(result.ok).toBe(true);
-    expect(consoleSpy).toHaveBeenCalled();
-    consoleSpy.mockRestore();
-  });
-});
-
-// Regresión para el bug 2026-09-29 (Nelia/Tortillería): en el path NEW
-// (ops_ledger_enabled=true) si consume_pool_ops RPC devolvía error, la
-// función retornaba silently y NO se logueaba nada NI se dejaba audit row.
-// Undercharge invisible que rompía pool accuracy.
-describe('consumeAiOp — path NEW error handling (bug 2026-09-29)', () => {
-  beforeEach(() => {
-    mockRpc.mockReset();
-    // Recablear el mock de supabase para path NEW: ops_ledger_enabled=true
-    // y rpc controlable por test. Requiere resetModules para que la nueva
-    // vi.mock aplique al re-import.
-    vi.resetModules();
-    vi.doMock('@/lib/supabase/admin', () => ({
-      createAdminClient: () => ({
-        from: (table: string) => {
-          if (table === 'voice_agents') {
-            return {
-              select: () => ({
-                eq: () => ({
-                  maybeSingle: async () => ({ data: { portal_email: 'client@example.com' } }),
-                }),
-              }),
-            };
-          }
-          if (table === 'organizations') {
-            return {
-              select: () => ({
-                eq: () => ({
-                  maybeSingle: async () => ({ data: { ops_ledger_enabled: true } }),
-                }),
-              }),
-            };
-          }
-          if (table === 'ai_ops_log') {
-            return {
-              insert: async (row: unknown) => {
-                mockInsertAiOpsLog(row);
-                return { error: null };
-              },
-            };
-          }
-          if (table === 'account_ops') {
-            return {
-              select: () => ({
-                eq: () => ({
-                  maybeSingle: async () => ({ data: { ops_used: 0, ops_included: 100 } }),
-                }),
-              }),
-            };
-          }
-          return {};
-        },
-        rpc: (fn: string, args: unknown) => mockRpc(fn, args),
-      }),
-    }));
-  });
-
-  it('cuando consume_pool_ops falla, logea error y deja audit row con count=0', async () => {
+  it('cuando consume_pool_ops RPC falla, logea error y deja audit row con count=0 + rpc_error', async () => {
     mockRpc.mockResolvedValue({ data: null, error: { message: 'trigger cascade failed', code: 'P0001' } });
+    vi.doMock('@/lib/supabase/admin', () => ({
+      createAdminClient: makeSupabaseMock({ portalEmail: 'client@example.com' }),
+    }));
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const { consumeAiOp } = await import('../ops-guard');
-    const result = await consumeAiOp('agent-new-fail', 2, {
+    const result = await consumeAiOp('agent-fail', 2, {
       source: 'incidencia_notif',
-      label:  'Aviso de queja al encargado por correo (2 recipients)',
       reference_id: 'incident-abc',
     });
 
-    // Retorna ok:false (RPC falló) pero NO throw
     expect(result.ok).toBe(false);
-    // Loguea el error para ser visible en Vercel
     expect(consoleSpy).toHaveBeenCalledWith(
       '[ops-guard] consume_pool_ops RPC failed (undercharge):',
       expect.objectContaining({
-        agentId: 'agent-new-fail',
+        agentId: 'agent-fail',
         count: 2,
         source: 'incidencia_notif',
         reference_id: 'incident-abc',
       }),
     );
-    // Deja audit row con count=0 y rpc_error en context — clave para
-    // que el drift detector vea el intento fallido.
     expect(mockInsertAiOpsLog).toHaveBeenCalledOnce();
     const auditRow = mockInsertAiOpsLog.mock.calls[0][0] as {
       count: number; source: string; reference_id: string; context: string;
@@ -224,28 +151,62 @@ describe('consumeAiOp — path NEW error handling (bug 2026-09-29)', () => {
     consoleSpy.mockRestore();
   });
 
-  it('cuando el RPC es exitoso, sigue insertando el audit row normal (regresión inversa)', async () => {
-    mockRpc.mockResolvedValue({ data: 98, error: null });
+  it('cuando no hay portal_email, devuelve ok=false sin cobrar (agente huérfano)', async () => {
+    vi.doMock('@/lib/supabase/admin', () => ({
+      createAdminClient: makeSupabaseMock({ portalEmail: null }),
+    }));
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const { consumeAiOp } = await import('../ops-guard');
-    const result = await consumeAiOp('agent-new-ok', 1, {
-      source: 'incident_registered',
-      label:  'Registro de queja',
-      reference_id: 'incident-xyz',
-    });
+    const result = await consumeAiOp('agent-huerfano', 1, { source: 'test' });
 
-    expect(result.ok).toBe(true);
-    // Path exitoso NO debe logear el nuevo error
-    expect(consoleSpy).not.toHaveBeenCalledWith(
-      '[ops-guard] consume_pool_ops RPC failed (undercharge):',
-      expect.anything(),
+    expect(result.ok).toBe(false);
+    expect(mockRpc).not.toHaveBeenCalled();
+    expect(consoleSpy).toHaveBeenCalledWith(
+      '[ops-guard] consumeAiOp sin portal_email (agente huérfano):',
+      expect.objectContaining({ agentId: 'agent-huerfano', count: 1 }),
     );
-    // Audit row normal, count=1
-    expect(mockInsertAiOpsLog).toHaveBeenCalledOnce();
-    const auditRow = mockInsertAiOpsLog.mock.calls[0][0] as { count: number; source: string };
-    expect(auditRow.count).toBe(1);
-    expect(auditRow.source).toBe('incident_registered');
     consoleSpy.mockRestore();
+  });
+
+  it('auto-refill se dispara vía after() al cruzar el threshold', async () => {
+    // Antes: balance = 50 + 1 = 51 (prevBalance). Threshold = 50. Balance = 50
+    // ⇒ prevBalance(51) >= 50 && balance(50) < 50 es FALSE porque 50 no es < 50.
+    // Usamos count=2: prev=52, balance=50 → sigue sin cruzar.
+    // Para que cruce: count=5, balance=47, prev=52, threshold=50 → prev>=50, balance<50 ✓
+    mockRpc.mockResolvedValue({ data: 47, error: null });
+    vi.doMock('@/lib/supabase/admin', () => ({
+      createAdminClient: makeSupabaseMock({
+        portalEmail: 'client@example.com',
+        account:     { ops_used: 53, ops_included: 100 },
+        agentCfg:    { auto_refill_ops_enabled: true, auto_refill_ops_threshold: 50, stripe_customer_id: 'cus_x' },
+      }),
+    }));
+
+    const { consumeAiOp } = await import('../ops-guard');
+    await consumeAiOp('agent-threshold', 5, { source: 'test' });
+
+    // after() callback acumulada
+    expect(mockAfterCallbacks).toHaveLength(1);
+    // Ejecuta el callback diferido manualmente
+    await mockAfterCallbacks[0]();
+    expect(mockExecuteAutoRefill).toHaveBeenCalledWith('agent-threshold');
+  });
+
+  it('auto-refill NO se dispara si auto_refill_ops_enabled=false', async () => {
+    mockRpc.mockResolvedValue({ data: 47, error: null });
+    vi.doMock('@/lib/supabase/admin', () => ({
+      createAdminClient: makeSupabaseMock({
+        portalEmail: 'client@example.com',
+        account:     { ops_used: 53, ops_included: 100 },
+        agentCfg:    { auto_refill_ops_enabled: false, auto_refill_ops_threshold: 50, stripe_customer_id: 'cus_x' },
+      }),
+    }));
+
+    const { consumeAiOp } = await import('../ops-guard');
+    await consumeAiOp('agent-no-refill', 5, { source: 'test' });
+
+    await mockAfterCallbacks[0]?.();
+    expect(mockExecuteAutoRefill).not.toHaveBeenCalled();
   });
 });
