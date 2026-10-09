@@ -1,7 +1,6 @@
 import { after } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { executeAutoRefillOps } from '@/lib/billing/auto-refill';
-import { consumePoolOps, fireOverageAlertIfNeeded } from '@/lib/annual-contracts/pool-consume';
 import { validateLedgerEntry, resolveReason } from './ledger-schemas';
 
 // Helper interno: construye metaForValidation desde los campos estructurados
@@ -67,23 +66,17 @@ export interface OpsMeta {
   ficha_ids?:      string[];
 }
 
-// Atomically checks and consumes AI ops from the account pool.
-// 4 paths:
-//   NEW (ops_ledger_enabled=true): consume_pool_ops RPC unifica annual + stripe.
-//   LEGACY (a) annual_prepaid: descuenta del pool en organizations (nunca falla, tracks overage).
-//   LEGACY (b) stripe con portal_email: consume_ai_ops RPC con FOR UPDATE lock.
-//   LEGACY (c) stripe standalone: mismo RPC, account_email=null.
+// Atomically checks and consumes AI ops from the account pool via ops_ledger.
+// 2026-10-09: path legacy eliminado. Todas las orgs usan ledger como fuente única
+// (ver .brain/decisions/2026-10-09-ops-ledger-fuente-unica.md). Si una org no
+// tiene portal_email, no se puede cobrar — devuelve ok:false para no silenciar
+// un gap de billing.
 export async function consumeAiOp(agentId: string, count = 1, meta?: OpsMeta): Promise<OpsResult> {
   const supabase = createAdminClient();
 
   // Fase 7: normalizar reason/source con backwards-compat.
-  // `reason` es el campo nuevo semantico; `source` es el alias legacy.
-  // resolveReason prioriza `reason` si se pasan ambos.
   const resolvedReason = resolveReason(meta?.reason, meta?.source);
 
-  // Validacion defensiva: solo warning, NUNCA bloquea el cobro.
-  // Fix C2 (Round 1): metaForValidation se construye desde campos estructurados
-  // de OpsMeta directamente. Ver buildMetaForValidation para detalles.
   if (resolvedReason !== 'unknown') {
     const validation = validateLedgerEntry(resolvedReason, buildMetaForValidation(meta));
     if (!validation.ok) {
@@ -92,15 +85,14 @@ export async function consumeAiOp(agentId: string, count = 1, meta?: OpsMeta): P
   }
 
   const logPayload = {
-    source:       resolvedReason,    // ai_ops_log.source (backwards-compat con consumption-audit.ts)
-    reason:       resolvedReason,    // ai_ops_log.reason (nuevo campo Fase 7)
+    source:       resolvedReason,
+    reason:       resolvedReason,
     reference_id: meta?.reference_id ?? null,
     label:        meta?.label        ?? null,
     context:      meta?.context      ?? null,
     count,
   };
 
-  // Resolve portal_email + feature flag + billing_model
   const { data: agentRow } = await supabase
     .from('voice_agents')
     .select('portal_email')
@@ -108,142 +100,89 @@ export async function consumeAiOp(agentId: string, count = 1, meta?: OpsMeta): P
     .maybeSingle();
   const portalEmail = (agentRow?.portal_email as string | null) ?? null;
 
-  let ledgerEnabled = false;
-  if (portalEmail) {
-    const { data: orgRow } = await supabase
-      .from('organizations')
-      .select('ops_ledger_enabled')
-      .eq('portal_email', portalEmail)
-      .maybeSingle();
-    ledgerEnabled = !!orgRow?.ops_ledger_enabled;
-  }
-
-  // Path NEW (feature flag on): unifica annual + stripe via consume_pool_ops
-  if (ledgerEnabled && portalEmail) {
-    const { data: newBalance, error } = await supabase.rpc('consume_pool_ops', {
-      p_portal_email: portalEmail,
-      p_agent_id:     agentId,
-      p_ops:          count,
-      p_reference_id: meta?.reference_id ?? null,
-      p_description:  meta?.label ?? meta?.source ?? null,
+  if (!portalEmail) {
+    console.error('[ops-guard] consumeAiOp sin portal_email (agente huérfano):', {
+      agentId, count, reason: resolvedReason, reference_id: meta?.reference_id,
     });
-    // Bug 2026-09-29 (Nelia/Tortillería): incident_registered aparece en
-    // ai_ops_log pero incidencia_notif NO — mismo path, mismo portal, misma
-    // llamada. Root cause probable: RPC falla intermitentemente y esta función
-    // retornaba silent-ok=false, matando también el audit insert. Ahora:
-    // (1) log del error para diagnosticar next-occurrence en Vercel,
-    // (2) audit row igual — con count=0 y rpc_error en context — para que el
-    //     drift detector y consumption-audit vean el intento fallido. Sin el
-    //     audit row, un charge que nunca sucedió es indistinguible de un charge
-    //     exitoso que se perdió: undercharge invisible que viola pool accuracy.
-    if (error) {
-      console.error('[ops-guard] consume_pool_ops RPC failed (undercharge):', {
-        agentId, portalEmail, count,
-        source: meta?.source, reason: meta?.reason,
-        reference_id: meta?.reference_id,
-        error,
-      });
-      try {
-        await supabase.from('ai_ops_log').insert({
-          agent_id: agentId, portal_email: portalEmail,
-          ...logPayload,
-          count: 0,
-          context: JSON.stringify({
-            ...(logPayload.context ? { orig_context: logPayload.context } : {}),
-            rpc_error: (error as { message?: string }).message ?? String(error),
-            intended_count: count,
-          }),
-        });
-      } catch (auditErr) {
-        console.error('[ops-guard] audit insert also failed (double gap):', auditErr);
-      }
-      return { ok: false, used: 0, limit: 0 };
-    }
-
-    const { data: acct } = await supabase
-      .from('account_ops')
-      .select('ops_used, ops_included')
-      .eq('portal_email', portalEmail)
-      .maybeSingle();
-
-    // Compliance Municipio 7-year retention: ai_ops_log DEBE persistir cada op.
-    // ANTES: after() → Vercel podía cortar la función antes de completar el
-    // INSERT → row perdida indistinguible de row nunca ocurrida. Ledger es
-    // source of truth pero ai_ops_log_archive queda con huecos vs ledger.
-    // Ver Scope C2 compliance gap. Ahora es sync (fire-and-await con log-only
-    // error si falla — nunca romper el flow del user por el log).
-    try {
-      await supabase
-        .from('ai_ops_log')
-        .insert({ agent_id: agentId, portal_email: portalEmail, ...logPayload });
-    } catch (err) {
-      console.error('[ops-guard] ai_ops_log insert failed (audit gap):', err);
-    }
-
-    // Balance <=0 = agotado; los grants nuevos vienen del cron
-    return {
-      ok:    (newBalance ?? 0) >= 0,
-      used:  acct?.ops_used ?? 0,
-      limit: acct?.ops_included ?? 0,
-    };
+    return { ok: false, used: 0, limit: 0 };
   }
 
-  // Path LEGACY: código actual sin cambios (annual → consumePoolOps, stripe → consume_ai_ops)
-  if (portalEmail) {
-    const pool = await consumePoolOps(portalEmail, count, supabase);
-    if (pool.consumed) {
-      void fireOverageAlertIfNeeded(portalEmail, {
-        crossed_100_threshold: pool.crossed_100_threshold,
-        crossed_120_threshold: pool.crossed_120_threshold,
-      });
-      // Sync insert (antes iba en after() — Vercel podía cortar la función
-      // antes de completarlo → row perdida = charge sin fila en historial.
-      // Mismo fix que Path NEW línea 76. Ver [[project-centinelia-pool-drift-detector]].
-      try {
-        await supabase
-          .from('ai_ops_log')
-          .insert({ agent_id: agentId, portal_email: portalEmail, ...logPayload });
-      } catch (err) {
-        console.error('[ops-guard] ai_ops_log insert failed (audit gap):', err);
-      }
-      return { ok: true, used: pool.minutes_used_after, limit: pool.minutes_pool };
-    }
-  }
+  const { data: newBalance, error } = await supabase.rpc('consume_pool_ops', {
+    p_portal_email: portalEmail,
+    p_agent_id:     agentId,
+    p_ops:          count,
+    p_reference_id: meta?.reference_id ?? null,
+    p_description:  meta?.label ?? meta?.source ?? null,
+  });
 
-  const { data, error } = await supabase
-    .rpc('consume_ai_ops', { p_agent_id: agentId, p_count: count })
-    .single();
-
-  if (error || !data) return { ok: false, used: 0, limit: 0 };
-
-  const row = data as { ok: boolean; ops_used: number; ops_limit: number; account_email: string | null };
-
-  if (row.ok && row.account_email) {
-    const accountEmail = row.account_email;
-    try {
-      await supabase
-        .from('ai_ops_log')
-        .insert({ agent_id: agentId, portal_email: accountEmail, ...logPayload });
-    } catch (err) {
-      console.error('[ops-guard] ai_ops_log insert failed (audit gap):', err);
-    }
-
-    const remaining = row.ops_limit - row.ops_used;
-    const prevRemaining = remaining + count;
-    after(async () => {
-      const { data: cfg } = await supabase
-        .from('voice_agents')
-        .select('auto_refill_ops_enabled, auto_refill_ops_threshold, stripe_customer_id')
-        .eq('id', agentId)
-        .single();
-      const threshold = (cfg?.auto_refill_ops_threshold as number) ?? 50;
-      if (cfg?.auto_refill_ops_enabled && cfg?.stripe_customer_id && prevRemaining >= threshold && remaining < threshold) {
-        await executeAutoRefillOps(agentId).catch(() => null);
-      }
+  // Bug 2026-09-29 (Nelia/Tortillería): incident_registered aparece en
+  // ai_ops_log pero incidencia_notif NO. RPC fallaba intermitente y la función
+  // retornaba silent ok=false sin audit row → undercharge invisible.
+  // Ahora: logeamos el error y insertamos audit row con count=0 + rpc_error
+  // en context para que el drift detector vea el intento fallido.
+  if (error) {
+    console.error('[ops-guard] consume_pool_ops RPC failed (undercharge):', {
+      agentId, portalEmail, count,
+      source: meta?.source, reason: meta?.reason,
+      reference_id: meta?.reference_id,
+      error,
     });
+    try {
+      await supabase.from('ai_ops_log').insert({
+        agent_id: agentId, portal_email: portalEmail,
+        ...logPayload,
+        count: 0,
+        context: JSON.stringify({
+          ...(logPayload.context ? { orig_context: logPayload.context } : {}),
+          rpc_error: (error as { message?: string }).message ?? String(error),
+          intended_count: count,
+        }),
+      });
+    } catch (auditErr) {
+      console.error('[ops-guard] audit insert also failed (double gap):', auditErr);
+    }
+    return { ok: false, used: 0, limit: 0 };
   }
 
-  return { ok: row.ok, used: row.ops_used, limit: row.ops_limit };
+  const { data: acct } = await supabase
+    .from('account_ops')
+    .select('ops_used, ops_included')
+    .eq('portal_email', portalEmail)
+    .maybeSingle();
+
+  // Compliance Municipio 7-year retention: ai_ops_log DEBE persistir cada op.
+  // Sync insert (no after()) para que Vercel no corte antes del INSERT.
+  try {
+    await supabase
+      .from('ai_ops_log')
+      .insert({ agent_id: agentId, portal_email: portalEmail, ...logPayload });
+  } catch (err) {
+    console.error('[ops-guard] ai_ops_log insert failed (audit gap):', err);
+  }
+
+  // Auto-refill on threshold: si al consumir cruzamos por abajo del threshold
+  // y auto_refill_ops está activo + hay customer stripe → disparar refill.
+  // Migrated desde path legacy — mismo contrato pero contra balance del ledger.
+  const balance     = newBalance ?? 0;
+  const prevBalance = balance + count;
+  after(async () => {
+    const { data: cfg } = await supabase
+      .from('voice_agents')
+      .select('auto_refill_ops_enabled, auto_refill_ops_threshold, stripe_customer_id')
+      .eq('id', agentId)
+      .single();
+    const threshold = (cfg?.auto_refill_ops_threshold as number) ?? 50;
+    if (cfg?.auto_refill_ops_enabled && cfg?.stripe_customer_id && prevBalance >= threshold && balance < threshold) {
+      await executeAutoRefillOps(agentId).catch(() => null);
+    }
+  });
+
+  // Balance <=0 = agotado; los grants nuevos vienen del cron o del webhook.
+  return {
+    ok:    balance >= 0,
+    used:  acct?.ops_used    ?? 0,
+    limit: acct?.ops_included ?? 0,
+  };
 }
 
 // Refunda ops al pool cuando un tool call falla. El LLM ya consumió tokens
@@ -260,63 +199,57 @@ export async function refundOps(agentId: string, count: number, meta?: OpsMeta):
     const supabase = createAdminClient();
     const { data: agentRow } = await supabase
       .from('voice_agents')
-      .select('portal_email, ai_ops_used')
+      .select('portal_email')
       .eq('id', agentId)
       .maybeSingle();
     const portalEmail = (agentRow?.portal_email as string | null) ?? null;
 
-    let ledgerEnabled = false;
-    if (portalEmail) {
-      const { data: orgRow } = await supabase
-        .from('organizations')
-        .select('ops_ledger_enabled')
-        .eq('portal_email', portalEmail)
-        .maybeSingle();
-      ledgerEnabled = !!orgRow?.ops_ledger_enabled;
+    if (!portalEmail) {
+      console.error('[refundOps] sin portal_email (agente huérfano), skip refund', { agentId, count });
+      return;
     }
 
-    if (ledgerEnabled && portalEmail) {
-      await supabase.rpc('apply_ops_ledger_entry', {
-        p_portal_email: portalEmail,
-        p_agent_id:     agentId,
-        p_amount:       count,
-        p_kind:         'refund',
-        p_reference_id: meta?.reference_id ?? null,
-        p_description:  meta?.label ? `Reembolso: ${meta.label}` : 'Reembolso por error en tool',
-      });
-    } else {
-      // Legacy path: decrementar ai_ops_used (bounded a 0)
-      const currentUsed = (agentRow?.ai_ops_used as number) ?? 0;
-      const newUsed = Math.max(0, currentUsed - count);
-      await supabase.from('voice_agents').update({ ai_ops_used: newUsed }).eq('id', agentId);
-      if (portalEmail) {
-        // Reflejar en organizations.monthly_ops_used también (paridad con consumo)
-        const { data: orgUsedRow } = await supabase
-          .from('organizations')
-          .select('monthly_ops_used')
-          .eq('portal_email', portalEmail)
-          .maybeSingle();
-        const orgUsed = (orgUsedRow?.monthly_ops_used as number) ?? 0;
-        await supabase
-          .from('organizations')
-          .update({ monthly_ops_used: Math.max(0, orgUsed - count) })
-          .eq('portal_email', portalEmail);
-      }
-    }
+    await supabase.rpc('apply_ops_ledger_entry', {
+      p_portal_email: portalEmail,
+      p_agent_id:     agentId,
+      p_amount:       count,
+      p_kind:         'refund',
+      p_reference_id: meta?.reference_id ?? null,
+      p_description:  meta?.label ? `Reembolso: ${meta.label}` : 'Reembolso por error en tool',
+    });
   } catch (err) {
     console.error('[refundOps] failed silently', { agentId, count, meta, err });
   }
 }
 
-// Resetea el contador de ops del ciclo. Se llama en renovación mensual
-// (billing webhook + cron reset-ops-pool). Resetea tanto el contador de la
-// org (source of truth) como el per-agente (atribución).
+// Renovación mensual del pool: inserta un grant que lleva el balance del ledger
+// al cap mensual del plan (sum de voice_agents.ai_ops_limit activos). Se llama
+// desde el billing webhook en renovación de suscripción + cron reset-ops-pool
+// al cierre del ciclo.
+//
+// 2026-10-09: era "UPDATE monthly_ops_used = 0" en modelo legacy. En ledger
+// event-sourced, "resetear" no aplica — se aplica un grant que compensa el
+// consumo acumulado del ciclo anterior.
 export async function resetAiOps(portalEmail: string): Promise<void> {
   const supabase = createAdminClient();
-  await Promise.all([
-    supabase.from('organizations').update({ monthly_ops_used: 0 }).eq('portal_email', portalEmail),
-    supabase.from('voice_agents').update({ ai_ops_used: 0 }).eq('portal_email', portalEmail),
-  ]);
+
+  const { data: balance } = await supabase.rpc('get_ops_pool_balance', { p_portal_email: portalEmail });
+  const { data: cap }     = await supabase.rpc('get_ops_pool_cap',     { p_portal_email: portalEmail });
+
+  const currentBalance = (balance as number | null) ?? 0;
+  const monthlyCap     = (cap     as number | null) ?? 0;
+  const grantAmount    = monthlyCap - currentBalance;
+
+  if (grantAmount <= 0) return; // ya en o arriba del cap, no re-grant
+
+  await supabase.rpc('apply_ops_ledger_entry', {
+    p_portal_email: portalEmail,
+    p_agent_id:     null,
+    p_amount:       grantAmount,
+    p_kind:         'grant',
+    p_reference_id: `monthly-reset-${new Date().toISOString().slice(0, 7)}`,
+    p_description:  `Renovación mensual: grant de ${grantAmount} ops para alcanzar cap ${monthlyCap}`,
+  });
 }
 
 // ─── Fase 7 I-2 fix: cobro org-level cuando no hay agente activo ─────────────
@@ -337,23 +270,14 @@ export async function resetAiOps(portalEmail: string): Promise<void> {
 
 /**
  * Cobra ops directamente al nivel del org (sin agente) para casos donde el org
- * no tiene voice_agents activos. Inserta en ai_ops_log con agent_id=null Y
- * decrementa organizations.monthly_ops_used para que el pool refleje el cobro.
- *
- * Fix C1 (Round 1): antes solo insertaba en ai_ops_log (audit log) pero nunca
- * decrementaba el pool. organizations.monthly_ops_used quedaba desajustado:
- * el ledger tenia el registro pero el pool no reflejaba el descuento. Viola
- * feedback_pool_accuracy_top_priority y feedback_zero_debt.
+ * no tiene voice_agents activos. Inserta un debit en ops_ledger con agent_id=null.
  *
  * Uso: cuando getPrimaryAgentId retorna null (org sin agentes activos).
  * Garantiza cero-gap de cobro aunque el org no tenga empleados aun activos.
  *
- * Estrategia de decremento:
- *   1. Para annual_prepaid: llama consumePoolOps (maneja RPC y overage correctamente).
- *   2. Para stripe u otros: UPDATE directo a organizations.monthly_ops_used.
- *   En ambos casos el INSERT en ai_ops_log sigue ocurriendo para audit trail.
- *
- * Defensivo: si el decremento o el insert fallan, logga el error sin throw.
+ * 2026-10-09: migrado de dual-write (monthly_ops_used + ai_ops_log) a solo
+ * ledger. apply_ops_ledger_entry maneja el debit y, para stripe, también
+ * aplica el cap 2x. ai_ops_log se mantiene como audit trail paralelo.
  */
 export async function chargeOrgDirectly(
   portalEmail: string,
@@ -364,7 +288,6 @@ export async function chargeOrgDirectly(
 
   const resolvedReason = resolveReason(meta?.reason, meta?.source);
 
-  // Validacion defensiva (C2 fix: usa buildMetaForValidation)
   if (resolvedReason !== 'unknown') {
     const validation = validateLedgerEntry(resolvedReason, buildMetaForValidation(meta));
     if (!validation.ok) {
@@ -375,40 +298,17 @@ export async function chargeOrgDirectly(
   try {
     const supabase = createAdminClient();
 
-    // ── Paso 1: decrementar el pool org (C1 fix) ──────────────────────────
-    // consumePoolOps retorna consumed=true para annual_prepaid y lo decrementa
-    // via RPC atómica o UPDATE directo según el flag ops_ledger_enabled.
-    // Para stripe/expired retorna consumed=false → hacemos UPDATE directo.
-    let poolDecremented = false;
-    try {
-      const poolResult = await consumePoolOps(portalEmail, count, supabase);
-      if (poolResult.consumed) {
-        poolDecremented = true;
-        void fireOverageAlertIfNeeded(portalEmail, {
-          crossed_100_threshold: poolResult.crossed_100_threshold,
-          crossed_120_threshold: poolResult.crossed_120_threshold,
-        });
-      }
-    } catch (poolErr) {
-      console.warn('[ops-guard] chargeOrgDirectly consumePoolOps failed, intentando UPDATE directo:', poolErr);
-    }
+    // Debit en el ledger (fuente única). amount negativo = consumo.
+    await supabase.rpc('apply_ops_ledger_entry', {
+      p_portal_email: portalEmail,
+      p_agent_id:     null,
+      p_amount:       -count,
+      p_kind:         'consumption',
+      p_reference_id: meta?.reference_id ?? null,
+      p_description:  meta?.label ?? `Cobro org-level sin agente activo (${resolvedReason})`,
+    });
 
-    if (!poolDecremented) {
-      // Fallback para stripe u otros modelos: UPDATE directo con SELECT-then-UPDATE.
-      // Incrementamos monthly_ops_used en `count` de forma segura.
-      const { data: orgRow } = await supabase
-        .from('organizations')
-        .select('monthly_ops_used')
-        .eq('portal_email', portalEmail)
-        .maybeSingle();
-      const current = (orgRow?.monthly_ops_used as number | null) ?? 0;
-      await supabase
-        .from('organizations')
-        .update({ monthly_ops_used: current + count })
-        .eq('portal_email', portalEmail);
-    }
-
-    // ── Paso 2: insertar en ai_ops_log (audit trail) ──────────────────────
+    // Audit trail paralelo (ai_ops_log). Compliance Municipio 7-year retention.
     await supabase.from('ai_ops_log').insert({
       agent_id:     null,
       portal_email: portalEmail,
@@ -422,43 +322,37 @@ export async function chargeOrgDirectly(
 
     console.log(
       '[ops-guard] chargeOrgDirectly: cobro org-level sin agente activo',
-      { portalEmail, count, reason: resolvedReason, poolDecremented },
+      { portalEmail, count, reason: resolvedReason },
     );
   } catch (err) {
     console.error('[ops-guard] chargeOrgDirectly failed (audit gap):', { portalEmail, count, meta, err });
   }
 }
 
-// Fija la cuota mensual de ops de la cuenta. El argumento aiOpsPerAgent viene
+// Fija la cuota mensual por-agente del plan. El argumento aiOpsPerAgent viene
 // de plans.ts (JORNADA_CONFIG[jornada][tier].aiOps o resolveTierAllocation) y
-// mantiene semántica per-agente para no cambiar el pricing histórico: la cuenta
-// paga aiOpsPerAgent × N.
-// Escribe en dos lugares:
-//   organizations.monthly_ops_pool  = source of truth del pool compartido
-//   voice_agents.ai_ops_limit       = valor per-agente (fallback + UI legacy)
+// se escribe en voice_agents.ai_ops_limit, que es CONFIG del plan — no un
+// contador. get_ops_pool_cap() lo lee para calcular el cap 2x en stripe.
+//
+// 2026-10-09: ya no escribe organizations.monthly_ops_pool (campo legacy que
+// se elimina en Fase 4). El cap se deriva de SUM(ai_ops_limit) activos.
 //
 // ⚠️ DEPRECATED behavior: esta función asume que TODOS los agentes tienen el
 // mismo tier (los uniformiza al aiOpsPerAgent). Rompe cuentas heterogéneas
 // (ej: Pneuma con Sofía 100, Noah 500, Niva 3000). Preferir recomputeOrgOpsPool
-// que respeta los tiers individuales. Ver bug 2026-08-09.
+// que respeta los tiers individuales.
 export async function setAiOpsLimit(portalEmail: string, aiOpsPerAgent: number): Promise<void> {
   const supabase = createAdminClient();
-  const { count } = await supabase
-    .from('voice_agents')
-    .select('id', { count: 'exact', head: true })
-    .eq('portal_email', portalEmail);
-  const agentCount = count ?? 0;
-  const poolTotal = aiOpsPerAgent * Math.max(1, agentCount);
-  await Promise.all([
-    supabase.from('organizations').update({ monthly_ops_pool: poolTotal }).eq('portal_email', portalEmail),
-    supabase.from('voice_agents').update({ ai_ops_limit: aiOpsPerAgent }).eq('portal_email', portalEmail),
-  ]);
+  await supabase.from('voice_agents').update({ ai_ops_limit: aiOpsPerAgent }).eq('portal_email', portalEmail);
 }
 
-// Recalcula organizations.monthly_ops_pool sumando el ai_ops_limit de cada
-// agente activo. NO toca los ai_ops_limit individuales — respeta que cada
-// empleado tenga su propio tier. Usar después de cambios per-agente
-// (nuevo empleado, cambio de tier de uno solo, etc.).
+// Devuelve el cap total del org sumando el ai_ops_limit de cada agente activo.
+// Es solo cálculo — no muta. Usar cuando necesites conocer el cap para
+// mostrar en UI o calcular grants mensuales. Fuente de verdad del cap es el
+// RPC get_ops_pool_cap(portal_email) a nivel de DB.
+//
+// 2026-10-09: ya no escribe organizations.monthly_ops_pool. El nombre se
+// mantiene por retrocompatibilidad con los callers; renombrar en Fase 4.
 export async function recomputeOrgOpsPool(portalEmail: string): Promise<number> {
   const supabase = createAdminClient();
   const { data: agents } = await supabase
@@ -466,9 +360,5 @@ export async function recomputeOrgOpsPool(portalEmail: string): Promise<number> 
     .select('ai_ops_limit')
     .eq('portal_email', portalEmail)
     .eq('active', true);
-  const total = (agents ?? []).reduce((sum: number, a) => sum + (((a as { ai_ops_limit?: number }).ai_ops_limit) ?? 0), 0);
-  await supabase.from('organizations')
-    .update({ monthly_ops_pool: total })
-    .eq('portal_email', portalEmail);
-  return total;
+  return (agents ?? []).reduce((sum: number, a) => sum + (((a as { ai_ops_limit?: number }).ai_ops_limit) ?? 0), 0);
 }
