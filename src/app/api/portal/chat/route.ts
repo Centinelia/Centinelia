@@ -229,8 +229,8 @@ Jornadas mensuales (Empleado Centinelia) — sabor **Combinada** (default):
 
 3 sabores de jornada (mismo precio por tier, distribución distinta):
 - **Combinada** (default) — como arriba.
-- **Solo minutos** — Media 350 min/20 tareas · Completa 650 min/20 tareas · Alta 1,300 min/20 tareas.
-- **Solo tareas** — Media 500 tareas/0 min · Completa 1,200 tareas/0 min · Alta 3,000 tareas/0 min.
+- **Solo minutos** — Media 300 min (0 tareas) · Completa 550 min (0 tareas) · Alta 1,100 min (0 tareas).
+- **Solo tareas** — Media 500 tareas/0 min · Completa 1,000 tareas/0 min · Alta 2,000 tareas/0 min.
 
 Coordinadores (Nox, Niva) usan automáticamente el sabor Solo tareas — no tienen voz.
 

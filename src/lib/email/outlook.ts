@@ -7,9 +7,14 @@ const AUTH_BASE = `https://login.microsoftonline.com/${TENANT}/oauth2/v2.0`;
 const MS_BASE = ['offline_access', 'User.Read'];
 
 export const MICROSOFT_SCOPES = {
-  email:    [...MS_BASE, 'Mail.ReadWrite', 'Mail.Send', 'Contacts.ReadWrite'],
+  // 2026-10-09 Nazre: email incluye Files.ReadWrite.All + Sites.ReadWrite.All
+  // para que meerkats con integración de inventario Excel (Nami, etc.) puedan
+  // operar workbooks compartidos con el user (ej. archivo de Victoria compartido
+  // a Camila via OneDrive). Sin estos scopes el token solo accede a /me/drive
+  // directo y falla 403 en workbooks de otros drives.
+  email:    [...MS_BASE, 'Mail.ReadWrite', 'Mail.Send', 'Contacts.ReadWrite', 'Files.ReadWrite.All', 'Sites.ReadWrite.All'],
   calendar: [...MS_BASE, 'Calendars.ReadWrite'],
-  drive:    [...MS_BASE, 'Files.ReadWrite'],
+  drive:    [...MS_BASE, 'Files.ReadWrite.All', 'Sites.ReadWrite.All'],
 } as const;
 
 export type MicrosoftCapability = keyof typeof MICROSOFT_SCOPES;
