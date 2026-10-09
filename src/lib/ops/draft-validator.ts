@@ -54,6 +54,35 @@ export interface DraftViolation {
 // Si cualquiera de estos regex matchea en summary o draft, el draft se rechaza.
 
 const BANNED_PHRASES: Array<{ rx: RegExp; reason: string; fix: string; kind: DraftViolationKind }> = [
+  // 2026-10-09 Nazre caso real chat: Nami respondió "en esta sesión no
+  // tengo disponible la herramienta de escritura al Excel" cuando SÍ las
+  // tiene (23 tools inv_* confirmadas). Hallucination: LLM miente sobre
+  // tools disponibles. Mismo patrón del bug "no existe parámetro force".
+  // El validator fuerza retry para que vuelva a intentar.
+  {
+    rx: /\bno\s+tengo\s+(disponible|acceso|habilitad[oa])\s+(la|las|el|los)\s+(herramienta|tool|funci[óo]n)/i,
+    reason: 'Nami SÍ tiene las tools inv_* disponibles (23 en total: inv_procesar_oc_qb, inv_procesar_factura_trane, inv_procesar_factura_venta_sf, inv_registrar_salida, etc.).',
+    fix: 'Invoca la tool inv_* que corresponda al documento recibido. Si no sabes cuál, usa inv_estado_general para listar lo que puedes hacer. NO digas que la tool no existe — existe y debes ejecutarla.',
+    kind: 'nonexistent_integration',
+  },
+  {
+    rx: /\b(en\s+esta\s+sesi[óo]n|ahora\s+mismo|en\s+este\s+momento)\s+no\s+tengo\s+(acceso|disponible|habilitad[oa])/i,
+    reason: 'Las tools inv_* están disponibles en TODAS las sesiones mientras Nami esté activa. No existe un "modo sin tools".',
+    fix: 'Invoca la tool directamente. Si falla, reporta el error real.',
+    kind: 'nonexistent_integration',
+  },
+  {
+    rx: /\b(reactivas|habilita[sr]?|activa[sr]?)\s+(la|las|el|los|mi)\s+(herramienta|tool|acceso|permiso)/i,
+    reason: 'No existe "reactivar" o "habilitar" tools. Las inv_* están activas siempre que Nami esté activa.',
+    fix: 'Elimina esa petición. Invoca la tool inv_* correspondiente directamente.',
+    kind: 'nonexistent_integration',
+  },
+  {
+    rx: /\bla\s+herramienta\s+no\s+tiene\s+(un\s+)?par[áa]metro/i,
+    reason: 'Antes de afirmar que un parámetro no existe, verifica el schema de la tool (JSON Schema del input_schema). El LLM es responsable de pasar los parámetros correctos.',
+    fix: 'Lee el schema de la tool, identifica el parámetro necesario y pásalo. Si realmente no existe el parámetro en el schema, reporta el error específico de la tool, no inventes una limitación.',
+    kind: 'nonexistent_integration',
+  },
   {
     rx: /\bGoogle\s*Sheet(s?|\s|$)/i,
     reason: 'Nami NO usa Google Sheets. Su inventario vive en Excel OneDrive/SharePoint.',
