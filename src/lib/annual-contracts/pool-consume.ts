@@ -19,10 +19,14 @@ export async function fireOverageAlertIfNeeded(
   if (!threshold) return;
 
   const supabase = createAdminClient();
-  const { data: org } = await supabase.from('organizations')
-    .select('name, active_contract_id, monthly_minutes_used, monthly_ops_used, pool_reset_date')
-    .eq('portal_email', portalEmail)
-    .maybeSingle();
+  const [{ data: org }, { data: acctOps }] = await Promise.all([
+    supabase.from('organizations')
+      .select('name, active_contract_id, monthly_minutes_used, pool_reset_date')
+      .eq('portal_email', portalEmail)
+      .maybeSingle(),
+    // ops consumidas desde account_ops (mirror del ops_ledger, Fase 4 2026-10-09).
+    supabase.from('account_ops').select('ops_used').eq('portal_email', portalEmail).maybeSingle(),
+  ]);
   if (!org?.active_contract_id) return;
 
   const { data: contract } = await supabase.from('annual_contracts')
@@ -40,7 +44,7 @@ export async function fireOverageAlertIfNeeded(
     businessName:       (org.name as string | null) ?? portalEmail,
     contract:           contract as AnnualContract,
     minutesUsed:        (org.monthly_minutes_used as number) ?? 0,
-    opsUsed:            (org.monthly_ops_used as number) ?? 0,
+    opsUsed:            ((acctOps as { ops_used?: number | null } | null)?.ops_used) ?? 0,
     daysRemainingCycle: daysRemaining,
     threshold,
   });
@@ -61,7 +65,7 @@ export interface OrgConsumptionSnapshot {
   monthly_minutes_pool: number;   // 0 si stripe
   monthly_ops_pool:     number;
   monthly_minutes_used: number;
-  monthly_ops_used:     number;
+  monthly_ops_used:     number;   // 2026-10-09: lee de account_ops.ops_used (Fase 4 cleanup)
   overage_minutes:      number;
   overage_ops:          number;
   pool_reset_date:      string | null;
@@ -75,11 +79,13 @@ export async function getPoolSnapshot(
 ): Promise<OrgConsumptionSnapshot | null> {
   const sb = supabase ?? createAdminClient();
 
-  const { data: org } = await sb
-    .from('organizations')
-    .select('billing_model, active_contract_id, monthly_minutes_used, monthly_ops_used, overage_minutes, overage_ops, pool_reset_date')
-    .eq('portal_email', portalEmail)
-    .maybeSingle();
+  const [{ data: org }, { data: acctOps }] = await Promise.all([
+    sb.from('organizations')
+      .select('billing_model, active_contract_id, monthly_minutes_used, overage_minutes, overage_ops, pool_reset_date')
+      .eq('portal_email', portalEmail)
+      .maybeSingle(),
+    sb.from('account_ops').select('ops_used').eq('portal_email', portalEmail).maybeSingle(),
+  ]);
 
   if (!org) return null;
   const model = (org.billing_model as BillingModel) ?? 'stripe';
@@ -104,7 +110,7 @@ export async function getPoolSnapshot(
     monthly_minutes_pool: poolMinutes,
     monthly_ops_pool:     poolOps,
     monthly_minutes_used: (org.monthly_minutes_used as number) ?? 0,
-    monthly_ops_used:     (org.monthly_ops_used as number)     ?? 0,
+    monthly_ops_used:     ((acctOps as { ops_used?: number | null } | null)?.ops_used) ?? 0,
     overage_minutes:      (org.overage_minutes as number)      ?? 0,
     overage_ops:          (org.overage_ops as number)          ?? 0,
     pool_reset_date:      (org.pool_reset_date as string | null) ?? null,
@@ -193,7 +199,9 @@ export async function consumePoolMinutes(
   };
 }
 
-// Descuento equivalente para ops (tools/tareas). Misma semántica.
+// Descuento equivalente para ops (tools/tareas). Solo para annual_prepaid —
+// stripe pasa por consumeAiOp → consume_pool_ops directo.
+// Post-Fase 4 2026-10-09: ledger como fuente única, LEGACY path eliminado.
 export async function consumePoolOps(
   portalEmail: string,
   ops: number,
@@ -201,95 +209,48 @@ export async function consumePoolOps(
 ): Promise<PoolConsumeResult | PoolPassthroughResult> {
   const sb = supabase ?? createAdminClient();
 
-  // Check feature flag
   const { data: orgFlag } = await sb
     .from('organizations')
-    .select('ops_ledger_enabled, billing_model')
+    .select('billing_model')
     .eq('portal_email', portalEmail)
     .maybeSingle();
 
-  const ledgerEnabled = !!orgFlag?.ops_ledger_enabled;
   const model = (orgFlag?.billing_model as BillingModel) ?? 'stripe';
+  if (model !== 'annual_prepaid') {
+    return { consumed: false, billing_model: model === 'expired' ? 'expired' : 'stripe' };
+  }
 
-  // NEW path: ledger event-sourced (aplica tanto a stripe como annual)
-  if (ledgerEnabled) {
-    // Solo annual pasa por consumePoolOps hoy — para stripe consumeAiOp llama consume_pool_ops directo
-    if (model !== 'annual_prepaid') {
-      return { consumed: false, billing_model: model === 'expired' ? 'expired' : 'stripe' };
-    }
+  await sb.rpc('consume_pool_ops', {
+    p_portal_email: portalEmail,
+    p_agent_id:     null,
+    p_ops:          ops,
+    p_reference_id: null,
+    p_description:  null,
+  });
 
-    const { data: newBalance } = await sb.rpc('consume_pool_ops', {
-      p_portal_email: portalEmail,
-      p_agent_id:     null,
-      p_ops:          ops,
-      p_reference_id: null,
-      p_description:  null,
-    });
-
-    const { data: acct } = await sb
-      .from('account_ops')
+  const [{ data: acct }, { data: org }] = await Promise.all([
+    sb.from('account_ops')
       .select('ops_used, ops_included')
       .eq('portal_email', portalEmail)
-      .maybeSingle();
-
-    const { data: org } = await sb
-      .from('organizations')
+      .maybeSingle(),
+    sb.from('organizations')
       .select('overage_ops')
       .eq('portal_email', portalEmail)
-      .maybeSingle();
+      .maybeSingle(),
+  ]);
 
-    const pool = acct?.ops_included ?? 0;
-    const used = acct?.ops_used ?? 0;
-    const overage = (org?.overage_ops as number) ?? 0;
-    const pctPrev = pool > 0 ? ((used - ops) / pool) * 100 : 0;
-    const pctNext = pool > 0 ? (used / pool) * 100 : 0;
-
-    return {
-      consumed:              true,
-      billing_model:         'annual_prepaid',
-      minutes_used_after:    used,
-      minutes_pool:          pool,
-      overage_after:         overage,
-      crossed_100_threshold: pctPrev < 100 && pctNext >= 100,
-      crossed_120_threshold: pctPrev < 120 && pctNext >= 120,
-    };
-  }
-
-  // LEGACY path: código actual sin cambios
-  const snap = await getPoolSnapshot(portalEmail, sb);
-  if (!snap) {
-    const { data: org } = await sb
-      .from('organizations')
-      .select('billing_model')
-      .eq('portal_email', portalEmail)
-      .maybeSingle();
-    return { consumed: false, billing_model: ((org?.billing_model as BillingModel) ?? 'stripe') === 'expired' ? 'expired' : 'stripe' };
-  }
-
-  const prev = snap.monthly_ops_used;
-  const next = prev + ops;
-  const pool = snap.monthly_ops_pool;
-  const prevOverBy = Math.max(0, prev - pool);
-  const nextOverBy = Math.max(0, next - pool);
-  const overageDelta = nextOverBy - prevOverBy;
-  const newOverage = snap.overage_ops + overageDelta;
-
-  await sb.from('organizations')
-    .update({
-      monthly_ops_used: next,
-      overage_ops:      newOverage,
-    })
-    .eq('portal_email', portalEmail);
-
-  const pctPrev = pool > 0 ? (prev / pool) * 100 : 0;
-  const pctNext = pool > 0 ? (next / pool) * 100 : 0;
+  const pool = acct?.ops_included ?? 0;
+  const used = acct?.ops_used ?? 0;
+  const overage = (org?.overage_ops as number) ?? 0;
+  const pctPrev = pool > 0 ? ((used - ops) / pool) * 100 : 0;
+  const pctNext = pool > 0 ? (used / pool) * 100 : 0;
 
   return {
     consumed:              true,
     billing_model:         'annual_prepaid',
-    minutes_used_after:    next,     // reusamos el nombre por comodidad
+    minutes_used_after:    used,
     minutes_pool:          pool,
-    overage_after:         newOverage,
+    overage_after:         overage,
     crossed_100_threshold: pctPrev < 100 && pctNext >= 100,
     crossed_120_threshold: pctPrev < 120 && pctNext >= 120,
   };

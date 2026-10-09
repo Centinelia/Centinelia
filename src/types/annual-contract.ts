@@ -35,7 +35,6 @@ export interface OrganizationBillingState {
   billing_model:           BillingModel;
   active_contract_id:      string | null;
   monthly_minutes_used:    number;
-  monthly_ops_used:        number;
   pool_reset_date:         string | null;
   overage_minutes:         number;
   overage_ops:             number;

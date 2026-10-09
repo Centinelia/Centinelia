@@ -113,15 +113,19 @@ async function sendRenewalReminder(sb: Supabase, contract: AnnualContract, urgen
   const rcp = await resolveRecipient(sb, contract.organization_email);
   if (!rcp) return;
 
-  // Average usage del ciclo actual (aproximación: monthly_used del mes en curso).
-  const { data: org } = await sb.from('organizations').select('monthly_minutes_used, monthly_ops_used').eq('portal_email', contract.organization_email).maybeSingle();
+  // Average usage del ciclo actual. Minutos del org (scope separado), ops de
+  // account_ops (mirror del ops_ledger, post-Fase 4 2026-10-09).
+  const [{ data: org }, { data: acctOps }] = await Promise.all([
+    sb.from('organizations').select('monthly_minutes_used').eq('portal_email', contract.organization_email).maybeSingle(),
+    sb.from('account_ops').select('ops_used').eq('portal_email', contract.organization_email).maybeSingle(),
+  ]);
 
   const html = annualContractRenewalReminderHtml({
     businessName:   rcp.businessName,
     contract,
     urgency,
     avgMinutesUsed: (org?.monthly_minutes_used as number) ?? 0,
-    avgOpsUsed:     (org?.monthly_ops_used as number)     ?? 0,
+    avgOpsUsed:     ((acctOps as { ops_used?: number | null } | null)?.ops_used) ?? 0,
   });
 
   const label = urgency === '60d' ? 'Renovación · 60 días' : 'Renovación urgente · 15 días';
@@ -180,7 +184,6 @@ async function maybeResetPool(sb: Supabase, portalEmail: string, today: string):
   await sb.from('organizations')
     .update({
       monthly_minutes_used: 0,
-      monthly_ops_used:     0,
       overage_minutes:      0,
       overage_ops:          0,
       pool_reset_date:      addMonth(resetDate),
