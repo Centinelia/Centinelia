@@ -195,7 +195,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           : Promise.resolve([] as any[]),
         supabase
           .from('organizations')
-          .select('knowledge_base, owner_profile, business_description, business_email, business_hours, business_website, website_knowledge, email_brand_color, brand_color_secondary, brand_website, business_address, brand_phone, email_footer_text, billing_model, contract_accepted_at, contract_ip, contract_signer_name, multilingual, brand_voice_guide, banned_terms, directory, monthly_ops_pool, monthly_ops_used, fallback_phone_number, ops_ledger_enabled')
+          .select('knowledge_base, owner_profile, business_description, business_email, business_hours, business_website, website_knowledge, email_brand_color, brand_color_secondary, brand_website, business_address, brand_phone, email_footer_text, billing_model, contract_accepted_at, contract_ip, contract_signer_name, multilingual, brand_voice_guide, banned_terms, directory, fallback_phone_number')
           .eq('portal_email', agent.portal_email)
           .single()
           .then(r => r.data),
@@ -207,7 +207,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           .then(r => r.data),
         supabase
           .from('voice_agents')
-          .select('id, ai_ops_used, ai_ops_limit, minutes_used, minutes_included, active')
+          .select('id, ai_ops_limit, minutes_used, minutes_included, active')
           .eq('portal_email', agent.portal_email)
           .then(r => r.data),
         getOrCreateSerial(agent.portal_email).catch(() => null),
@@ -363,7 +363,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   // fallback ladder. Ver [[feedback-audit-read-path-fidelity]].
   const poolStatus = computePoolStatus({
     acctMins,
-    orgSettings,
     acctOps:     acctOpsRes as { ops_used?: number | null; ops_included?: number | null } | null,
     peerAgents:  (opsAgents ?? []) as any[],
     agentFallback: agent as any,
@@ -609,9 +608,21 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
     if (aid) callsByAgentId[aid] = (callsByAgentId[aid] ?? 0) + 1;
   }
 
+  // Per-agent ops consumed este ciclo (fuente única: ai_ops_log, mirror del
+  // ops_ledger). Reemplaza voice_agents.ai_ops_used stale (eliminado en Fase 3
+  // 2026-10-09). Query extra: 1 roundtrip con agregación en memoria.
   const opsById: Record<string, number> = {};
-  for (const a of opsAgents ?? []) {
-    opsById[(a as any).id as string] = ((a as any).ai_ops_used as number) ?? 0;
+  const opsAgentIds = (opsAgents ?? []).map((a: any) => a.id as string).filter(Boolean);
+  if (opsAgentIds.length > 0 && agent.portal_email) {
+    const { data: opsRows } = await supabase
+      .from('ai_ops_log')
+      .select('agent_id, count')
+      .in('agent_id', opsAgentIds)
+      .gte('created_at', cycleStartIso);
+    for (const r of opsRows ?? []) {
+      const aid = (r as { agent_id: string | null }).agent_id;
+      if (aid) opsById[aid] = (opsById[aid] ?? 0) + ((r as { count: number }).count ?? 0);
+    }
   }
 
   const teamToday = allClientAgents.map(a => ({

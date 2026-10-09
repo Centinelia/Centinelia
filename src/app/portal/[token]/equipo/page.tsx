@@ -54,7 +54,7 @@ export default async function UsuariosPage({ params }: Props) {
   const supabase = createAdminClient();
   const agent = await getPrimaryAgentFromToken<Record<string, any>>(
     token,
-    'portal_email, business_name, logo_url, active, billing_status, plan, stripe_customer_id, features, giro_template, minutes_included, minutes_used, ai_ops_used, ai_ops_limit',
+    'portal_email, business_name, logo_url, active, billing_status, plan, stripe_customer_id, features, giro_template, minutes_included, minutes_used, ai_ops_limit',
     supabase,
   );
   if (!agent) notFound();

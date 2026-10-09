@@ -305,7 +305,7 @@ export default async function AgentesPage({ params }: Props) {
   const { data: agentsRaw } = lookupEmail
     ? await supabase
         .from('voice_agents')
-        .select('id, agent_name, role, plan, phone_number, active, client_paused, billing_status, portal_token, features, business_name, ai_ops_used, jornada_type')
+        .select('id, agent_name, role, plan, phone_number, active, client_paused, billing_status, portal_token, features, business_name, jornada_type')
         .eq('portal_email', lookupEmail)
         .neq('billing_status', 'pendiente_pago')
         .order('created_at', { ascending: true })
@@ -356,7 +356,20 @@ export default async function AgentesPage({ params }: Props) {
     (a.active as boolean) && !(a.client_paused as boolean) && (a.billing_status as string) !== 'pago_fallido'
   ).length;
   const totalCallsMonth = Object.values(callCountMap).reduce<number>((sum, c) => sum + (c as number), 0);
-  const totalOpsMonth   = agents.reduce((sum, a) => sum + ((a.ai_ops_used as number) ?? 0), 0);
+
+  // Ops por agente del mes (fuente única: ai_ops_log, mirror del ops_ledger).
+  // Reemplaza voice_agents.ai_ops_used stale (eliminado en Fase 3 2026-10-09).
+  const { data: opsLogRows } = agentIds.length > 0
+    ? await supabase.from('ai_ops_log').select('agent_id, count')
+        .in('agent_id', agentIds)
+        .gte('created_at', monthStart.toISOString())
+    : { data: [] };
+  const opsCountMap: Record<string, number> = {};
+  for (const r of opsLogRows ?? []) {
+    const id = (r as { agent_id: string }).agent_id;
+    opsCountMap[id] = (opsCountMap[id] ?? 0) + (((r as { count: number }).count) ?? 0);
+  }
+  const totalOpsMonth = Object.values(opsCountMap).reduce<number>((sum, c) => sum + (c as number), 0);
   const agentsWithRole  = agents.filter(a => !!((a.role as string | null)?.trim())).length;
   const rolePct         = agents.length > 0 ? Math.round((agentsWithRole / agents.length) * 100) : 0;
 
@@ -651,7 +664,7 @@ export default async function AgentesPage({ params }: Props) {
                 <div className="flex items-center gap-1.5">
                   <Zap size={13} style={{ color: '#9B8FB5' }} strokeWidth={2.25} />
                   <span className="text-[18px] font-bold tabular-nums leading-none" style={{ color: '#1A0A3B' }}>
-                    {(a.ai_ops_used as number) ?? 0}
+                    {opsCountMap[a.id as string] ?? 0}
                   </span>
                 </div>
                 <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#9B8FB5', letterSpacing: '0.05em' }}>

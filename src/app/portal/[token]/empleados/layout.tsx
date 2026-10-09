@@ -34,9 +34,9 @@ export default async function AgentesLayout({
   const modules = session?.isSubUser ? (session.modules ?? []) : undefined;
 
   const supabase = createAdminClient();
-  const agent = await getPrimaryAgentFromToken<{ business_name: string; logo_url: string | null; portal_email: string | null; features: Record<string, unknown> | null; stripe_customer_id: string | null; minutes_included: number | null; minutes_used: number | null; ai_ops_used: number | null; ai_ops_limit: number | null }>(
+  const agent = await getPrimaryAgentFromToken<{ business_name: string; logo_url: string | null; portal_email: string | null; features: Record<string, unknown> | null; stripe_customer_id: string | null; minutes_included: number | null; minutes_used: number | null; ai_ops_limit: number | null }>(
     token,
-    'business_name, logo_url, portal_email, features, stripe_customer_id, minutes_included, minutes_used, ai_ops_used, ai_ops_limit',
+    'business_name, logo_url, portal_email, features, stripe_customer_id, minutes_included, minutes_used, ai_ops_limit',
     supabase,
   );
   if (!agent) notFound();
@@ -75,10 +75,8 @@ export default async function AgentesLayout({
       })
     : null;
 
-  // Pool status via helper — ver src/lib/portal/pool-status.ts. Cubre el
-  // bug de fallback ladder (`??` sobre 0) + falta de check ops_ledger_enabled
-  // que este layout tenía antes (mostraba `monthly_ops_used` legacy congelado
-  // post-flip).
+  // Pool status via helper — ver src/lib/portal/pool-status.ts. Fuente única
+  // (account_ops como mirror del ops_ledger) desde Fase 3 2026-10-09.
   const { minutesIncluded, minutesUsed, minutesRemain, aiOpsUsed, aiOpsLimit } =
     await loadPoolStatus(supabase, lookupEmail, agent as any);
 

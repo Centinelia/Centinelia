@@ -30,9 +30,9 @@ export default async function OficinaLayout({
   const session     = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
 
   const supabase = createAdminClient();
-  const agent = await getPrimaryAgentFromToken<{ business_name: string; logo_url: string | null; portal_email: string | null; minutes_included: number | null; minutes_used: number | null; ai_ops_used: number | null; ai_ops_limit: number | null; stripe_customer_id: string | null; features: Record<string, unknown> | null; agent_name: string | null }>(
+  const agent = await getPrimaryAgentFromToken<{ business_name: string; logo_url: string | null; portal_email: string | null; minutes_included: number | null; minutes_used: number | null; ai_ops_limit: number | null; stripe_customer_id: string | null; features: Record<string, unknown> | null; agent_name: string | null }>(
     token,
-    'business_name, logo_url, portal_email, minutes_included, minutes_used, ai_ops_used, ai_ops_limit, stripe_customer_id, features, agent_name',
+    'business_name, logo_url, portal_email, minutes_included, minutes_used, ai_ops_limit, stripe_customer_id, features, agent_name',
     supabase,
   );
   if (!agent) notFound();
