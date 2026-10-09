@@ -5894,6 +5894,69 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       };
     }
 
+    if (toolName === 'inv_leer_hoja') {
+      // 2026-10-09 Nazre: tool genérica para que Nami responda preguntas de
+      // cualquier pestaña del Excel (STOCK, PROVEEDORES, histórico, etc.).
+      // Fallback cuando otras tools inv_* no cubren la consulta específica.
+      // Guard: max 1000 celdas para evitar context overflow.
+      const sheetNameRaw = String(toolInput.sheet_name ?? '').trim();
+      if (!sheetNameRaw) return { ok: false, error: 'sheet_name es requerido' };
+      const rangeArg = toolInput.range ? String(toolInput.range).trim() : null;
+      const includeFormulas = toolInput.include_formulas === true;
+      try {
+        // Resolver nombre case-insensitive leyendo lista de hojas del workbook
+        const sheetsListUrl = `https://graph.microsoft.com/v1.0${
+          inv.config.location.scope.type === 'site'
+            ? `/sites/${inv.config.location.scope.siteId}/drives/${inv.config.location.scope.driveId}`
+            : '/me/drive'
+        }/items/${inv.config.location.itemId}/workbook/worksheets`;
+        const sheetsRes = await fetch(sheetsListUrl, { headers: { Authorization: `Bearer ${inv.token}` } });
+        if (!sheetsRes.ok) {
+          return { ok: false, error: `No pude listar hojas del Excel: ${sheetsRes.status}`, code: 'graph_error' };
+        }
+        const sheetsJson = await sheetsRes.json() as { value?: Array<{ name: string }> };
+        const sheetsAvail = (sheetsJson.value ?? []).map(s => s.name);
+        const sheetMatch = sheetsAvail.find(s => s.toLowerCase() === sheetNameRaw.toLowerCase())
+                        ?? sheetsAvail.find(s => s.toLowerCase().includes(sheetNameRaw.toLowerCase()));
+        if (!sheetMatch) {
+          return { ok: false, error: `Hoja "${sheetNameRaw}" no existe. Hojas disponibles: ${sheetsAvail.join(', ')}`, code: 'sheet_not_found', available_sheets: sheetsAvail };
+        }
+        // Determinar range: usedRange si no se especifica
+        let addressUsed = rangeArg;
+        if (!addressUsed) {
+          const urBase = `https://graph.microsoft.com/v1.0${
+            inv.config.location.scope.type === 'site'
+              ? `/sites/${inv.config.location.scope.siteId}/drives/${inv.config.location.scope.driveId}`
+              : '/me/drive'
+          }/items/${inv.config.location.itemId}/workbook/worksheets/${encodeURIComponent(sheetMatch)}/usedRange(valuesOnly=true)`;
+          const urRes = await fetch(urBase, { headers: { Authorization: `Bearer ${inv.token}` } });
+          if (!urRes.ok) {
+            return { ok: false, error: `No pude leer usedRange: ${urRes.status}`, code: 'graph_error' };
+          }
+          const urJson = await urRes.json() as { address?: string };
+          addressUsed = urJson.address?.split('!').pop() ?? 'A1';
+        }
+        const r = await GraphExcel.readRange(inv.token, inv.config.location, sheetMatch, addressUsed);
+        const rowsCount = r.values.length;
+        const colsCount = rowsCount > 0 ? r.values[0].length : 0;
+        const totalCells = rowsCount * colsCount;
+        if (totalCells > 1000) {
+          return {
+            ok: false, error: `Rango ${addressUsed} tiene ${totalCells} celdas (${rowsCount}×${colsCount}), supera el límite de 1000. Acota con el parámetro range (ej. "A1:J50").`,
+            code: 'range_too_large', rows: rowsCount, cols: colsCount, total_cells: totalCells,
+          };
+        }
+        return {
+          ok: true, sheet: sheetMatch, address: r.address, rows: rowsCount, cols: colsCount,
+          values: r.values,
+          ...(includeFormulas ? { formulas: r.formulas ?? [] } : {}),
+          message: `Hoja "${sheetMatch}" rango ${r.address}: ${rowsCount} fila(s) × ${colsCount} columna(s).`,
+        };
+      } catch (err) {
+        return { ok: false, error: `Error leyendo hoja: ${err instanceof Error ? err.message : 'unknown'}`, code: 'exception' };
+      }
+    }
+
     if (toolName === 'inv_consultar_backlog') {
       const sheetCfg = inv.config.sheets?.backlog;
       if (!sheetCfg?.name) return { ok: false, error: 'La organización no tiene BACKLOG configurado' };
@@ -6242,6 +6305,20 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
       const ocNumero = String(toolInput.oc_numero ?? '').trim();
       const fechaOc  = String(toolInput.fecha_oc ?? '').trim();
       const itemsRaw = Array.isArray(toolInput.items) ? toolInput.items : [];
+      // 2026-10-09 Nazre: CLIENTE por default debe quedar vacío, NO "STOCK".
+      // Camila: STOCK solo cuando ella explícitamente dice "estos equipos
+      // son para stock" / "todos los equipos son stock". Si Nami pone STOCK
+      // por default, otra pestaña calcula disponibilidad y marca equipos
+      // como vendibles cuando en realidad ya tienen cliente comprometido.
+      // Params nuevos:
+      //   all_stock: true  → CLIENTE='STOCK' en todas las filas de esta OC
+      //   stock_modelos: ['3MXW1612A1000AA', ...] → STOCK solo en esos modelos
+      // Omite ambos si el correo no menciona STOCK explícitamente.
+      const allStock = toolInput.all_stock === true;
+      const stockModelosList = Array.isArray(toolInput.stock_modelos)
+        ? toolInput.stock_modelos.map(m => String(m).trim().toUpperCase()).filter(Boolean)
+        : [];
+      const stockModelosSet = new Set(stockModelosList);
       if (!ocNumero) return { ok: false, error: 'oc_numero es requerido (ej. 7119)' };
       if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaOc)) return { ok: false, error: 'fecha_oc debe ser YYYY-MM-DD (del día que generaste la OC en QB)' };
       if (itemsRaw.length === 0) return { ok: false, error: 'items es requerido (lista de equipos de la OC)' };
@@ -6361,11 +6438,12 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
             setByLogic('estatus',      'PEDIDO');
             setByLogic('bodega',       'ASIGNAR');
             setByLogic('vendedor',     '-');
-            // Patrón de Camila 2026-10-06 (verificado contra 972 filas reales
-            // con CLIENTE=STOCK): default para OC nueva sin cliente asignado
-            // es "STOCK" (no "-"), y SALIDA=1 porque sigue en bodega hasta que
-            // se entregue (ENTREGADO → SALIDA=0 via inv_registrar_salida).
-            setByLogic('cliente',      'STOCK');
+            // 2026-10-09 Nazre: default CLIENTE vacío. STOCK solo si Camila
+            // lo pide explícito (all_stock=true o modelo en stock_modelos).
+            // Supersedes patrón 2026-10-06 que ponía STOCK por default y
+            // creaba bug: otra pestaña contaba STOCK como disponibilidad real.
+            const esStock = allStock || stockModelosSet.has(modelo.toUpperCase());
+            if (esStock) setByLogic('cliente', 'STOCK');
             setByLogic('salida',       1);
             setByLogic('folio_venta',  '-');
             // 2026-10-08 Nazre: Bulk insert — acumular rowValues en array,
@@ -7257,7 +7335,9 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
             setByLogic('estatus',        'PEDIDO');  // Consistente con inv_procesar_oc_qb; 'ASIGNAR' no estaba en el enum.
             setByLogic('bodega',         'ASIGNAR');
             setByLogic('vendedor',       '-');
-            setByLogic('cliente',        'STOCK');  // 2026-10-06: patrón Camila, STOCK = disponible.
+            // 2026-10-09 Nazre: CLIENTE vacío por default. STOCK solo cuando
+            // Camila lo pide explícito. Supersedes 2026-10-06 que ponía STOCK
+            // por default (creaba bug: otra pestaña contaba como disponible).
             setByLogic('salida',         1);        // Sigue en bodega hasta ENTREGADO.
             setByLogic('folio_venta',    '-');
             setByLogic('qb',             'OPEN');

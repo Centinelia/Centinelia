@@ -298,7 +298,7 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
     'inv_notificar_trane_registro_oc', 'inv_solicitar_entrega_trane',
     'inv_registrar_tc_factura', 'inv_procesar_factura_venta_sf',
     'inv_procesar_oc_qb', 'inv_definir_familia_modelo', 'inv_buscar_mis_acciones',
-    'inv_buscar_por_oc', 'inv_buscar_por_fact_trane', 'inv_estado_general', 'inv_consultar_backlog',
+    'inv_buscar_por_oc', 'inv_buscar_por_fact_trane', 'inv_estado_general', 'inv_consultar_backlog', 'inv_leer_hoja',
     'llamar_a', 'buscar_directorio', 'enviar_correo',
   ],
   // Nalú — analista de tesorería. Procesa statements bancarios, reconciliación,

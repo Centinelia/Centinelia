@@ -1459,6 +1459,19 @@ const INV_CONSULTAR_BACKLOG_TOOL: Anthropic.Tool = {
     required: [],
   },
 };
+const INV_LEER_HOJA_TOOL: Anthropic.Tool = {
+  name: 'inv_leer_hoja',
+  description: 'Nami: lee cualquier pestaña del Excel de inventario para responder preguntas de Camila sobre contenido que no cubre otra tool. Devuelve los valores + fórmulas del rango solicitado. Úsala para "qué dice la pestaña X", "muéstrame la fila N de la hoja Y", "¿cuánto hay en STOCK por modelo?", "cómo está mi hoja PROVEEDORES". NO uses esto para reemplazar las tools inv_buscar_* (que ya consultan el histórico): úsalo cuando Camila pregunta por una pestaña distinta a HISTORICO/BACKLOG. Max 1000 celdas por llamada (si rango es grande, pide a Camila que acote).',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      sheet_name: { type: 'string', description: 'Nombre de la pestaña exacto como aparece en el Excel (ej. "STOCK", "PROVEEDORES", "HISTORICO", "BACKLOG"). Case-insensitive.' },
+      range:      { type: 'string', description: 'Rango opcional estilo A1 (ej. "A1:J50"). Default: UsedRange (toda la data existente). Para hojas grandes especifica rango acotado para evitar context overflow.' },
+      include_formulas: { type: 'boolean', description: 'Default false. Si true, devuelve las fórmulas crudas de cada celda además de los valores calculados. Útil para debuggear celdas calculadas (ej. FACTOR del histórico).' },
+    },
+    required: ['sheet_name'],
+  },
+};
 const REVISAR_MI_INBOX_AHORA_TOOL: Anthropic.Tool = {
   name: 'revisar_mi_inbox_ahora',
   description: 'Nami: dispara una revisión INMEDIATA de tu buzón IMAP sin esperar al cron (que corre cada 10 min). Úsala cuando Camila diga "ya te mandé un correo, léelo" / "revisa tu bandeja" / "acabo de reenviarte la OC" / "ya te mandé la factura TRANE". Procesa en segundos cualquier correo nuevo con la OC/factura/BACKLOG que acabe de llegar.',
@@ -1470,7 +1483,7 @@ const REVISAR_MI_INBOX_AHORA_TOOL: Anthropic.Tool = {
 };
 const INV_PROCESAR_OC_QB_TOOL: Anthropic.Tool = {
   name: 'inv_procesar_oc_qb',
-  description: 'Nami: cuando Camila te reenvía o te dicta una OC de QuickBooks, crea en INVENTARIO una fila por cada pieza. Rellena OC (formato OC07119), FECHA OC, QB=OPEN, MODELO, DESCRIPCION, FAMILIA, TR, REF, SEER, VOLTS, USD (unitario). SERIE queda vacía (se llenará cuando llegue la factura TRANE). ESTATUS=PEDIDO, BODEGA=ASIGNAR. Úsala INMEDIATAMENTE cuando Camila diga "hice la OC X" o te reenvíe el PDF de la OC.',
+  description: 'Nami: cuando Camila te reenvía o te dicta una OC de QuickBooks, crea en INVENTARIO una fila por cada pieza. Rellena OC (formato OC07119), FECHA OC, QB=OPEN, MODELO, DESCRIPCION, FAMILIA, TR, REF, SEER, VOLTS, USD (unitario). SERIE queda vacía (se llenará cuando llegue la factura TRANE). ESTATUS=PEDIDO, BODEGA=ASIGNAR. CLIENTE queda VACÍO por default (NO "STOCK"). Camila usa el valor STOCK solo cuando lo indica explícitamente en el correo con frases tipo "estos equipos son para stock", "todos para stock", o especifica series/modelos concretos que son stock. Si lo pide, pasa all_stock=true o stock_modelos=[...]. Úsala INMEDIATAMENTE cuando Camila diga "hice la OC X" o te reenvíe el PDF de la OC.',
   input_schema: {
     type: 'object' as const,
     properties: {
@@ -1490,6 +1503,8 @@ const INV_PROCESAR_OC_QB_TOOL: Anthropic.Tool = {
           required: ['modelo', 'cantidad'],
         },
       },
+      all_stock:    { type: 'boolean', description: 'Default false. Pasa true SOLO cuando Camila dice explícito que TODOS los equipos de esta OC son para stock (ej. "todos para stock", "pon todo en STOCK"). Riesgo si lo pones por default: equipos ya comprometidos a cliente aparecen como vendibles.' },
+      stock_modelos:{ type: 'array', items: { type: 'string' }, description: 'Lista de modelos específicos que son para stock. Pásalos cuando Camila dice "estos equipos X y Y son stock, el resto no". Omite si Camila no menciona stock para ningún modelo.' },
     },
     required: ['oc_numero', 'fecha_oc', 'items'],
   },
@@ -2092,6 +2107,7 @@ export const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
   inv_buscar_por_fact_trane:       INV_BUSCAR_POR_FACT_TRANE_TOOL,
   inv_estado_general:              INV_ESTADO_GENERAL_TOOL,
   inv_consultar_backlog:           INV_CONSULTAR_BACKLOG_TOOL,
+  inv_leer_hoja:                   INV_LEER_HOJA_TOOL,
   revisar_mi_inbox_ahora:          REVISAR_MI_INBOX_AHORA_TOOL,
   inv_agregar_equipo:        INV_AGREGAR_EQUIPO_TOOL,
   inv_actualizar_estatus:    INV_ACTUALIZAR_ESTATUS_TOOL,

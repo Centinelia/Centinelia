@@ -172,6 +172,7 @@ export const SKILL_PACKS: SkillPack[] = [
       'inv_buscar_por_fact_trane',
       'inv_estado_general',
       'inv_consultar_backlog',
+      'inv_leer_hoja',
       'revisar_mi_inbox_ahora',
     ],
     source: 'organizations.inventory_excel_config',
