@@ -1,0 +1,41 @@
+{
+  "emisor": {
+    "rfc": "AAMN951208I25",
+    "regimenFiscal": "612",
+    "nombre": "NAZRE HASSAM MIGUEL ASSAD MORALES"
+  },
+  "receptor": {
+    "rfc": "AAP010601S21",
+    "nombre": "AIRE ACONDICIONADO PROYECTOS",
+    "usoCfdi": "G03",
+    "regimenFiscal": "601",
+    "domicilioFiscal": "64030"
+  },
+  "lugarExpedicion": "64997",
+  "formaPago": "03",
+  "metodoPago": "PUE",
+  "moneda": "MXN",
+  "conceptos": [
+    {
+      "claveProdServ": "81111500",
+      "claveUnidad": "E48",
+      "cantidad": 1,
+      "descripcion": "Mensualidad 2 de 4 - periodo octubre 2026. Servicios de consultoría e implementación - Proyectos Nami y Naia (inventarios y nómina). Análisis, configuración, capacitación y acompañamiento presencial.",
+      "valorUnitario": 20000,
+      "importe": 20000,
+      "iva": 3200
+    }
+  ],
+  "subtotal": 20000,
+  "iva": 3200,
+  "total": 23200,
+  "csd": {
+    "cerPem": "",
+    "keyPem": "",
+    "noCertificado": ""
+  },
+  "pacCredentials": {
+    "usuario": "",
+    "password": ""
+  }
+}
