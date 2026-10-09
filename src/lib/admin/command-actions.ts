@@ -214,23 +214,38 @@ async function resetOps(portalEmail: string): Promise<ActionResult> {
   const supabase = createAdminClient();
   const { data: before } = await supabase
     .from('voice_agents')
-    .select('id, business_name, ai_ops_used')
+    .select('id, business_name')
     .eq('portal_email', portalEmail);
 
   if (!before?.length) return { ok: false, message: `Sin agentes para ${portalEmail}.` };
 
-  const { error } = await supabase
-    .from('voice_agents')
-    .update({ ai_ops_used: 0 })
-    .eq('portal_email', portalEmail);
+  // Modelo event-sourced: "reset" = aplicar un ajuste al ledger que lleve el
+  // balance al cap mensual del plan. No tocamos ai_ops_limit (es config).
+  const { data: balanceRaw } = await supabase.rpc('get_ops_pool_balance', { p_portal_email: portalEmail });
+  const { data: capRaw }     = await supabase.rpc('get_ops_pool_cap',     { p_portal_email: portalEmail });
+  const balance = (balanceRaw as number | null) ?? 0;
+  const cap     = (capRaw     as number | null) ?? 0;
+  const delta   = cap - balance;
 
-  if (error) return { ok: false, message: `Error: ${error.message}` };
+  if (delta === 0) {
+    return { ok: true, message: `Balance de ${portalEmail} ya está en el cap (${cap}). No hay reset que aplicar.`, data: { balance, cap } };
+  }
 
-  const summary = before.map(a => `- ${a.business_name}: ${fmtN(a.ai_ops_used)} → 0`).join('\n');
+  const { error } = await supabase.rpc('apply_ops_ledger_entry', {
+    p_portal_email: portalEmail,
+    p_agent_id:     null,
+    p_amount:       delta,
+    p_kind:         delta > 0 ? 'grant' : 'adjustment',
+    p_reference_id: `admin-reset-${new Date().toISOString().slice(0, 10)}`,
+    p_description:  `Admin reset: ajuste de ${delta > 0 ? '+' : ''}${delta} para llevar balance al cap ${cap}`,
+  });
+
+  if (error) return { ok: false, message: `Error aplicando ajuste al ledger: ${error.message}` };
+
   return {
     ok: true,
-    message: `**Ops reseteadas para ${portalEmail}** (${before.length} agente${before.length > 1 ? 's' : ''})\n\n${summary}`,
-    data: { affected: before.length },
+    message: `**Balance reseteado al cap para ${portalEmail}**\n\n- Balance antes: ${fmtN(balance)}\n- Cap mensual: ${fmtN(cap)}\n- Ajuste aplicado: ${delta > 0 ? '+' : ''}${fmtN(delta)}\n- Afecta a ${before.length} agente${before.length > 1 ? 's' : ''} del portal`,
+    data: { affected: before.length, balance_before: balance, cap, delta },
   };
 }
 
@@ -268,26 +283,35 @@ async function grantOps(portalEmail: string, count: number): Promise<ActionResul
   const supabase = createAdminClient();
   const { data: before } = await supabase
     .from('voice_agents')
-    .select('id, business_name, ai_ops_limit')
+    .select('id, business_name')
     .eq('portal_email', portalEmail);
 
   if (!before?.length) return { ok: false, message: `Sin agentes para ${portalEmail}.` };
 
-  // Incrementa ai_ops_limit en cada agente del portal
-  const updates = before.map(a =>
-    supabase
-      .from('voice_agents')
-      .update({ ai_ops_limit: (a.ai_ops_limit ?? 0) + count })
-      .eq('id', a.id)
-  );
-  const results = await Promise.allSettled(updates);
-  const failed  = results.filter(r => r.status === 'rejected').length;
+  // Credit one-shot al ledger (NO cambia ai_ops_limit del plan).
+  // El credit respeta el cap 2x automáticamente via apply_ops_ledger_entry
+  // (si excede, se emite un rollover_cap debit).
+  const { data: balanceBefore } = await supabase.rpc('get_ops_pool_balance', { p_portal_email: portalEmail });
+  const { error } = await supabase.rpc('apply_ops_ledger_entry', {
+    p_portal_email: portalEmail,
+    p_agent_id:     null,
+    p_amount:       count,
+    p_kind:         'grant',
+    p_reference_id: `admin-grant-${new Date().toISOString().slice(0, 10)}-${count}`,
+    p_description:  `Admin grant: +${count} ops one-shot (no cambia el plan)`,
+  });
 
-  const summary = before.map(a => `- ${a.business_name}: ${fmtN(a.ai_ops_limit)} → ${fmtN((a.ai_ops_limit ?? 0) + count)}`).join('\n');
+  if (error) return { ok: false, message: `Error aplicando grant al ledger: ${error.message}` };
+
+  const { data: balanceAfter } = await supabase.rpc('get_ops_pool_balance', { p_portal_email: portalEmail });
+
   return {
-    ok: failed === 0,
-    message: `**+${count} ops otorgadas a ${portalEmail}** (${before.length - failed}/${before.length} agentes)\n\n${summary}`,
-    data: { granted: count, affected: before.length - failed },
+    ok: true,
+    message: `**+${count} ops otorgadas a ${portalEmail}** (one-shot al ledger, plan no modificado)\n\n` +
+             `- Balance antes: ${fmtN((balanceBefore as number | null) ?? 0)}\n` +
+             `- Balance después: ${fmtN((balanceAfter as number | null) ?? 0)}\n` +
+             `- Afecta a ${before.length} agente${before.length > 1 ? 's' : ''} del portal (pool compartido)`,
+    data: { granted: count, affected: before.length, balance_before: balanceBefore, balance_after: balanceAfter },
   };
 }
 

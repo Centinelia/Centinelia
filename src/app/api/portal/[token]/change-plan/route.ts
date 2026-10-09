@@ -5,7 +5,6 @@ import { requirePortalAccess } from '@/lib/portal/access';
 import { getPrimaryAgentFromToken } from '@/lib/portal/org-token';
 import { FEATURE_PLAN_CONFIG, JORNADA_CONFIG, resolveTierAllocation } from '@/lib/billing/plans';
 import type { JornadaType } from '@/types/agent';
-import { setAiOpsLimit } from '@/lib/ai/ops-guard';
 import { PLAN_FEATURES } from '@/types/agent';
 import type { Plan } from '@/types/agent';
 import type { MinutesTier } from '@/lib/billing/plans';
@@ -188,32 +187,21 @@ export async function POST(req: NextRequest, { params }: Params) {
     }
   }
 
-  // Ops ledger paralelo (solo si org tiene ops_ledger habilitado).
+  // Credit/debit al ops ledger por el delta del cambio de plan.
   if (opsDelta !== 0 && portalEmail) {
-    const { data: org } = await supabase
-      .from('organizations')
-      .select('ops_ledger_enabled')
-      .eq('portal_email', portalEmail)
-      .maybeSingle();
-    if (org?.ops_ledger_enabled) {
-      const { error: opsLedErr } = await supabase.rpc('apply_ops_ledger_entry', {
-        p_portal_email: portalEmail,
-        p_agent_id:     agent.id,
-        p_amount:       opsDelta,
-        p_kind:         changeKind,
-        p_reference_id: `plan_change_${agent.id}_${Date.now()}`,
-        p_description:  `Cambio de plan ${changeLabel} · ${opsDelta >= 0 ? '+' : ''}${opsDelta} tareas`,
-      });
-      if (opsLedErr) console.error('[change-plan] apply_ops_ledger_entry falló', opsLedErr);
-    }
+    const { error: opsLedErr } = await supabase.rpc('apply_ops_ledger_entry', {
+      p_portal_email: portalEmail,
+      p_agent_id:     agent.id,
+      p_amount:       opsDelta,
+      p_kind:         changeKind,
+      p_reference_id: `plan_change_${agent.id}_${Date.now()}`,
+      p_description:  `Cambio de plan ${changeLabel} · ${opsDelta >= 0 ? '+' : ''}${opsDelta} tareas`,
+    });
+    if (opsLedErr) console.error('[change-plan] apply_ops_ledger_entry falló', opsLedErr);
   }
 
-  // Recompute pool de ops SIEMPRE (no solo cuando cambia plan). Un cambio de
-  // tier también cambia ai_ops_limit del agente y por tanto la suma org-level.
+  // Refresh minutes cache para reflejar el nuevo minutes_included del plan.
   if (portalEmail) {
-    const { recomputeOrgOpsPool } = await import('@/lib/ai/ops-guard');
-    await recomputeOrgOpsPool(portalEmail);
-    // Refresh minutes cache para reflejar el nuevo minutes_included del plan.
     const { error: refreshErr } = await supabase.rpc('refresh_pool_cache', { p_portal_email: portalEmail });
     if (refreshErr) console.error('[change-plan] refresh_pool_cache falló', refreshErr);
   }
