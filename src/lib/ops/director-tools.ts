@@ -85,7 +85,7 @@ export async function reviewTeamPerformance(args: {
 
   const { data: agents } = await supabase
     .from('voice_agents')
-    .select('id, agent_name, role, ai_ops_used')
+    .select('id, agent_name, role')
     .eq('portal_email', portalEmail)
     .eq('active', true);
   const agentIds = (agents ?? []).map(a => a.id as string);
@@ -98,12 +98,22 @@ export async function reviewTeamPerformance(args: {
     };
   }
 
-  const [callsR, tasksR, docsR, inboxR] = await Promise.all([
+  const [callsR, tasksR, docsR, inboxR, opsR] = await Promise.all([
     supabase.from('voice_calls').select('agent_id, duration_seconds').in('agent_id', agentIds).gte('created_at', sinceIso).lt('created_at', untilIso),
     supabase.from('agent_tasks').select('assigned_to, status').eq('portal_email', portalEmail).gte('created_at', sinceIso).lt('created_at', untilIso),
     supabase.from('ops_documents').select('agent_id').eq('portal_email', portalEmail).gte('created_at', sinceIso).lt('created_at', untilIso),
     supabase.from('ops_inbox').select('agent_id, auto_reply_sent').in('agent_id', agentIds).gte('created_at', sinceIso).lt('created_at', untilIso),
+    // Ops consumidas por agente en la ventana — fuente única ai_ops_log
+    // (mirror del ops_ledger). Reemplaza voice_agents.ai_ops_used stale en
+    // Fase 3d 2026-10-09.
+    supabase.from('ai_ops_log').select('agent_id, count').in('agent_id', agentIds).gte('created_at', sinceIso).lt('created_at', untilIso),
   ]);
+
+  const opsByAgent = new Map<string, number>();
+  for (const r of opsR.data ?? []) {
+    const aid = (r as { agent_id: string | null }).agent_id;
+    if (aid) opsByAgent.set(aid, (opsByAgent.get(aid) ?? 0) + ((r as { count: number }).count ?? 0));
+  }
 
   const rows: TeamPerformanceRow[] = [];
   for (const a of agents ?? []) {
@@ -123,7 +133,7 @@ export async function reviewTeamPerformance(args: {
       docs_created: docs.length,
       emails_in:    inbox.length,
       emails_out:   inbox.filter(i => i.auto_reply_sent).length,
-      ops_used:     Number(a.ai_ops_used ?? 0),
+      ops_used:     opsByAgent.get(id) ?? 0,
     });
   }
 

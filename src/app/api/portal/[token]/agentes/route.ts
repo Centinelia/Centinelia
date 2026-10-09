@@ -213,11 +213,18 @@ export async function POST(
             p_description:  `Bypass: activación nuevo empleado +${alloc.minutes} min`,
           });
         }
-        // Recompute pool desde ai_ops_limit individuales (respeta tiers
-        // heterogéneos). El nuevo agente ya tiene su ai_ops_limit correcto
-        // sembrado por createPortalAgent (con el tier explícito).
-        const { recomputeOrgOpsPool } = await import('@/lib/ai/ops-guard');
-        await recomputeOrgOpsPool(base.portal_email);
+        // Grant inicial de ops al ledger (nuevo agente aporta su ai_ops_limit
+        // al cap total via get_ops_pool_cap, pero el balance arranca en 0).
+        if (alloc.aiOps > 0) {
+          await supabase.rpc('apply_ops_ledger_entry', {
+            p_portal_email: base.portal_email,
+            p_agent_id:     newAgent.id,
+            p_amount:       alloc.aiOps,
+            p_kind:         'setup_new_agent',
+            p_reference_id: null,
+            p_description:  `Bypass: activación nuevo empleado +${alloc.aiOps} tareas`,
+          });
+        }
       }
       return NextResponse.json({ token: newAgent.portal_token, agent_id: newAgent.id });
     } catch (e: any) {

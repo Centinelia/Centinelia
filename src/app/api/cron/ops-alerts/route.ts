@@ -2,11 +2,14 @@
 //
 // Circuit breaker de consumo de tareas del POOL COMPARTIDO por cuenta:
 // - El pool es de cuenta (portal_email), compartido entre todos los empleados.
-//   Pool total = SUM(ai_ops_limit) · Pool usado = SUM(ai_ops_used) sobre
-//   los voice_agents activos de esa cuenta.
+//   Pool total = account_ops.ops_included (mirror del ops_ledger) o fallback
+//   SUM(ai_ops_limit) de agentes activos. Pool usado = account_ops.ops_used.
 // - Encuentra cuentas donde el pool está >= 80% agotado.
 // - Manda un correo al dueño de la cuenta (portal_email, fallback client_email)
 //   explicando cuánto queda y quiénes están consumiendo más este mes.
+// - Per-agent breakdown: agregación de ai_ops_log por agent_id en el ciclo
+//   actual (post-cleanup Fase 3b 2026-10-09, antes era voice_agents.ai_ops_used
+//   stale).
 // - Rate-limit: 1 aviso por cuenta cada 7 días. La marca se guarda en
 //   features.admin_ops_alert_sent_at de todos los agentes de la cuenta.
 // - Complementa a maybeSendQuotaEmail, que dispara cuando el pool llega a 100%
@@ -31,10 +34,10 @@ interface Agent {
   client_email:       string | null;
   portal_email:       string | null;
   portal_token:       string | null;
-  ai_ops_used:        number;
   ai_ops_limit:       number;
   minutes_reset_date: string | null;
   features:           Record<string, unknown> | null;
+  opsThisCycle:       number; // agregado desde ai_ops_log
 }
 
 interface Account {
@@ -43,7 +46,6 @@ interface Account {
   poolUsed:      number;
   poolLimit:     number;
   pct:           number;
-  ledgerEnabled: boolean; // si true, per-agent counters están stale → oculta breakdown
 }
 
 export async function GET(req: NextRequest) {
@@ -57,13 +59,14 @@ export async function GET(req: NextRequest) {
 
   const { data: agents } = await supabase
     .from('voice_agents')
-    .select('id, agent_name, business_name, client_email, portal_email, portal_token, ai_ops_used, ai_ops_limit, minutes_reset_date, features')
+    .select('id, agent_name, business_name, client_email, portal_email, portal_token, ai_ops_limit, minutes_reset_date, features')
     .eq('active', true)
     .gt('ai_ops_limit', 0);
 
   // Group agents by portal_email (= account). Pool is per-account, so we sum.
-  const byAccount = new Map<string, Agent[]>();
-  for (const a of (agents ?? []) as Agent[]) {
+  type AgentRow = Omit<Agent, 'opsThisCycle'>;
+  const byAccount = new Map<string, AgentRow[]>();
+  for (const a of (agents ?? []) as AgentRow[]) {
     if (!a.portal_email) continue;
     const key = a.portal_email.toLowerCase();
     const list = byAccount.get(key) ?? [];
@@ -71,37 +74,28 @@ export async function GET(req: NextRequest) {
     byAccount.set(key, list);
   }
 
+  // Ciclo actual: desde el primer día del mes natural (en UTC — el reset del
+  // pool corre en UTC via cron reset-ops-pool). Usado para agregar
+  // consumption per-agent desde ai_ops_log.
+  const cycleStartIso = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+
   const now = Date.now();
   const overThreshold: Account[] = [];
   for (const [portalEmail, list] of byAccount) {
-    // Pool source of truth: organizations + account_ops (si ledger enabled).
-    // Antes se sumaba per-agente que quedó stale post-migración ledger — el
-    // alert 80% se disparaba con números viejos y la tabla per-agente mostraba
-    // "Nia consumió 340 tareas" cuando el portal decía 15. Ver
-    // [[feedback-audit-read-path-fidelity]].
-    const { data: org } = await supabase.from('organizations')
-      .select('monthly_ops_pool, monthly_ops_used, ops_ledger_enabled')
+    // Pool fuente única: account_ops (mirror del ops_ledger). Si no hay row,
+    // caemos a SUM(ai_ops_limit) activos como cap derivado y used=0.
+    const { data: acctOps } = await supabase.from('account_ops')
+      .select('ops_used, ops_included')
       .eq('portal_email', portalEmail)
       .maybeSingle();
-    const ledgerEnabled = !!(org as { ops_ledger_enabled?: boolean } | null)?.ops_ledger_enabled;
-    const orgPoolTotal  = ((org as { monthly_ops_pool?: number | null } | null)?.monthly_ops_pool as number | null) ?? null;
-    const orgPoolUsed   = ((org as { monthly_ops_used?: number | null } | null)?.monthly_ops_used as number | null) ?? null;
 
-    let acctOpsUsed: number | null = null;
-    if (ledgerEnabled) {
-      const { data: acctOps } = await supabase.from('account_ops')
-        .select('ops_used').eq('portal_email', portalEmail).maybeSingle();
-      acctOpsUsed = (acctOps as { ops_used?: number | null } | null)?.ops_used ?? null;
-    }
+    const acctOpsIncluded = (acctOps as { ops_included?: number | null } | null)?.ops_included ?? null;
+    const acctOpsUsed     = (acctOps as { ops_used?: number | null } | null)?.ops_used ?? null;
 
-    const poolLimit = orgPoolTotal != null
-      ? orgPoolTotal
+    const poolLimit = typeof acctOpsIncluded === 'number' && acctOpsIncluded > 0
+      ? acctOpsIncluded
       : list.reduce((s, a) => s + (a.ai_ops_limit ?? 0), 0);
-    const poolUsed = (ledgerEnabled && typeof acctOpsUsed === 'number')
-      ? acctOpsUsed
-      : orgPoolTotal != null
-        ? (orgPoolUsed ?? 0)
-        : list.reduce((s, a) => s + (a.ai_ops_used ?? 0), 0);
+    const poolUsed = typeof acctOpsUsed === 'number' ? acctOpsUsed : 0;
 
     if (poolLimit <= 0) continue;
     if (poolUsed < THRESHOLD * poolLimit) continue;
@@ -114,13 +108,27 @@ export async function GET(req: NextRequest) {
     });
     if (alertedRecently) continue;
 
+    // Agregación per-agent del ciclo (reemplaza voice_agents.ai_ops_used stale)
+    const agentIds = list.map(a => a.id);
+    const { data: opsRows } = agentIds.length > 0
+      ? await supabase.from('ai_ops_log')
+          .select('agent_id, count')
+          .in('agent_id', agentIds)
+          .gte('created_at', cycleStartIso)
+      : { data: [] };
+    const opsCountMap: Record<string, number> = {};
+    for (const r of opsRows ?? []) {
+      const id = (r as { agent_id: string | null }).agent_id;
+      if (id) opsCountMap[id] = (opsCountMap[id] ?? 0) + (((r as { count: number }).count) ?? 0);
+    }
+    const agentsWithOps: Agent[] = list.map(a => ({ ...a, opsThisCycle: opsCountMap[a.id] ?? 0 }));
+
     overThreshold.push({
       portalEmail,
-      agents: list,
+      agents: agentsWithOps,
       poolUsed,
       poolLimit,
       pct: (poolUsed / poolLimit) * 100,
-      ledgerEnabled,
     });
   }
 
@@ -163,14 +171,14 @@ export async function GET(req: NextRequest) {
       ? `https://www.centinelia.mx/portal/${token}?tab=cuenta#comprar`
       : 'https://www.centinelia.mx';
 
-    // Top-N consumers this month.
+    // Top-N consumers this month (desde ai_ops_log agregado).
     const topConsumers = [...account.agents]
-      .filter(a => (a.ai_ops_used ?? 0) > 0)
-      .sort((a, b) => (b.ai_ops_used ?? 0) - (a.ai_ops_used ?? 0))
+      .filter(a => a.opsThisCycle > 0)
+      .sort((a, b) => b.opsThisCycle - a.opsThisCycle)
       .slice(0, TOP_N);
 
     const consumerRows = topConsumers.map(a => {
-      const share = account.poolUsed > 0 ? Math.round(((a.ai_ops_used ?? 0) / account.poolUsed) * 100) : 0;
+      const share = account.poolUsed > 0 ? Math.round((a.opsThisCycle / account.poolUsed) * 100) : 0;
       const shareBar = `
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:6px">
           <tr>
@@ -190,7 +198,7 @@ export async function GET(req: NextRequest) {
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
               <tr>
                 <td style="color:#F1EEFF;font-size:14px;font-weight:600">${a.agent_name ?? 'Sin nombre'}</td>
-                <td style="color:#C8BEE8;font-size:13px;text-align:right"><strong style="color:#F1EEFF">${a.ai_ops_used ?? 0}</strong> tareas · ${share}%</td>
+                <td style="color:#C8BEE8;font-size:13px;text-align:right"><strong style="color:#F1EEFF">${a.opsThisCycle}</strong> tareas · ${share}%</td>
               </tr>
             </table>
             ${shareBar}
@@ -249,11 +257,8 @@ export async function GET(req: NextRequest) {
         <p style="color:#F1EEFF;font-size:14px;line-height:1.7;margin:0 0 12px">Tus <strong style="color:#F1EEFF">${teamSize} ${teamSize === 1 ? 'empleado' : 'empleados'}</strong> comparten un pool mensual de <strong style="color:#F1EEFF">${account.poolLimit}</strong> tareas. Cada tarea es una acción de fondo: revisar tu bandeja, generar reportes semanales, aprender de conversaciones nuevas, etc.</p>
         <p style="color:#F1EEFF;font-size:14px;line-height:1.7;margin:0">Cuando el pool llegue al 100%, las tareas de fondo se pausan automáticamente hasta que compres tareas extras o llegue la renovación del <strong style="color:#F1EEFF">${resetStr}</strong>.</p>
       `) +
-      // Breakdown per-agent SOLO si NO estamos en ledger mode. Cuando
-      // ops_ledger_enabled=true, voice_agents.ai_ops_used se congela post-flip
-      // y mostrar el top-N sería mentir. Mejor no mostrar la sección que
-      // mostrar cifras stale. Ver [[feedback-audit-read-path-fidelity]].
-      (topConsumers.length > 1 && !account.ledgerEnabled
+      // Breakdown per-agent desde ai_ops_log (fuente real post-cleanup 2026-10-09).
+      (topConsumers.length > 1
         ? infoCard(`
             ${sectionLabel('Quiénes están consumiendo más')}
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">

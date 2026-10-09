@@ -21,7 +21,6 @@ interface AgentRow {
   billing_status:        string | null;
   minutes_used:          number | null;
   minutes_included:      number | null;
-  ai_ops_used:           number | null;
   ai_ops_limit:          number | null;
   portal_email:          string | null;
   plan:                  string | null;
@@ -62,7 +61,7 @@ export default async function InicioPage() {
     twilioBalance,
   ] = await Promise.all([
     supabase.from('voice_agents')
-      .select('id, business_name, active, billing_status, minutes_used, minutes_included, ai_ops_used, ai_ops_limit, portal_email, plan, minutes_plan, approval_email, grace_period_ends_at')
+      .select('id, business_name, active, billing_status, minutes_used, minutes_included, ai_ops_limit, portal_email, plan, minutes_plan, approval_email, grace_period_ends_at')
       .not('portal_email', 'in', demoExcl)
       .order('created_at', { ascending: false }),
     supabase.from('voice_calls')
@@ -118,8 +117,23 @@ export default async function InicioPage() {
   const callsYestN  = (callsYest  ?? []).length;
   const callsDelta  = callsYestN > 0 ? Math.round(((callsTodayN - callsYestN) / callsYestN) * 100) : null;
 
+  // Ops consumed por agente este mes — agregación de ai_ops_log (mirror del
+  // ops_ledger). Reemplaza voice_agents.ai_ops_used stale en Fase 3d 2026-10-09.
+  const agentIds = agentList.map(a => a.id);
+  const { data: opsLogByAgent } = agentIds.length > 0
+    ? await supabase.from('ai_ops_log')
+        .select('agent_id, count')
+        .in('agent_id', agentIds)
+        .gte('created_at', monthStartIso)
+    : { data: [] };
+  const opsUsedByAgent = new Map<string, number>();
+  for (const r of opsLogByAgent ?? []) {
+    const aid = (r as { agent_id: string | null }).agent_id;
+    if (aid) opsUsedByAgent.set(aid, (opsUsedByAgent.get(aid) ?? 0) + ((r as { count: number }).count ?? 0));
+  }
+
   // KPIs
-  const opsUsedTotal    = agentList.reduce((s, a) => s + (a.ai_ops_used  ?? 0), 0);
+  const opsUsedTotal    = Array.from(opsUsedByAgent.values()).reduce((s, n) => s + n, 0);
   const opsLimitTotal   = agentList.reduce((s, a) => s + (a.ai_ops_limit ?? 0), 0);
   const opsPct          = opsLimitTotal > 0 ? Math.round((opsUsedTotal / opsLimitTotal) * 100) : 0;
 
@@ -299,12 +313,12 @@ export default async function InicioPage() {
     });
   }
 
-  const criticalOps = agentList.filter(a => a.active && a.ai_ops_limit && (a.ai_ops_used ?? 0) / a.ai_ops_limit >= 0.9);
+  const criticalOps = agentList.filter(a => a.active && a.ai_ops_limit && (opsUsedByAgent.get(a.id) ?? 0) / a.ai_ops_limit >= 0.9);
   if (criticalOps.length > 0) {
     alerts.push({
       severity: 'med',
       label:    criticalOps.length === 1
-                  ? `${criticalOps[0].business_name}: tareas ${pctLabel(criticalOps[0].ai_ops_used ?? 0, criticalOps[0].ai_ops_limit!)}`
+                  ? `${criticalOps[0].business_name}: tareas ${pctLabel(opsUsedByAgent.get(criticalOps[0].id) ?? 0, criticalOps[0].ai_ops_limit!)}`
                   : `${criticalOps.length} clientes con tareas > 90%`,
       sub:      nameList(criticalOps),
       href:     criticalOps.length === 1 ? clientLink(criticalOps[0]) : searchLink(criticalOps[0].business_name),

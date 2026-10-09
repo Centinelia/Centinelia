@@ -38,7 +38,6 @@ interface Agent {
   portal_token:       string | null;
   minutes_used:       number;
   minutes_included:   number;
-  ai_ops_used:        number;
   ai_ops_limit:       number;
   minutes_reset_date: string | null;
   features:           Record<string, unknown> | null;
@@ -64,7 +63,7 @@ export async function GET(req: NextRequest) {
 
   const { data: agents } = await supabase
     .from('voice_agents')
-    .select('id, agent_name, business_name, client_email, portal_email, portal_token, minutes_used, minutes_included, ai_ops_used, ai_ops_limit, minutes_reset_date, features')
+    .select('id, agent_name, business_name, client_email, portal_email, portal_token, minutes_used, minutes_included, ai_ops_limit, minutes_reset_date, features')
     .eq('active', true);
 
   // Agrupa por portal_email (cuenta). Pool es por-cuenta.
@@ -107,32 +106,22 @@ export async function GET(req: NextRequest) {
     const daysInCycle = Math.max(1, Math.round((cycleEnd.getTime() - resetDate.getTime()) / 86400000));
     const daysLeftInCycle = Math.max(0, Math.ceil((cycleEnd.getTime() - now.getTime()) / 86400000));
 
-    // Pool source of truth: account_minutes + organizations (o account_ops si
-    // ledger enabled). Antes se sumaba per-agente que quedó stale post-migración
-    // — la alerta se disparaba con números que no coincidían con lo que el
-    // cliente ve en portal. Ver [[feedback-audit-read-path-fidelity]].
-    const [acctMinsRes, orgRes] = await Promise.all([
+    // Pool source of truth: account_minutes + account_ops (mirrors de los
+    // dos ledgers). Post-cleanup Fase 3b 2026-10-09: eliminado el fallback a
+    // organizations.monthly_ops_pool/used y voice_agents.ai_ops_used (todos
+    // legacy stale).
+    const [acctMinsRes, acctOpsRes] = await Promise.all([
       supabase.from('account_minutes')
         .select('minutes_used, minutes_included')
         .eq('portal_email', portalEmail)
         .maybeSingle(),
-      supabase.from('organizations')
-        .select('monthly_ops_pool, monthly_ops_used, ops_ledger_enabled')
+      supabase.from('account_ops')
+        .select('ops_used, ops_included')
         .eq('portal_email', portalEmail)
         .maybeSingle(),
     ]);
     const acctMins = acctMinsRes.data;
-    const org      = orgRes.data as { monthly_ops_pool?: number | null; monthly_ops_used?: number | null; ops_ledger_enabled?: boolean | null } | null;
-    const ledgerEnabled = !!org?.ops_ledger_enabled;
-    const orgPoolTotal  = (org?.monthly_ops_pool as number | null) ?? null;
-    const orgPoolUsed   = (org?.monthly_ops_used as number | null) ?? null;
-
-    let acctOpsUsed: number | null = null;
-    if (ledgerEnabled) {
-      const { data: acctOps } = await supabase.from('account_ops')
-        .select('ops_used').eq('portal_email', portalEmail).maybeSingle();
-      acctOpsUsed = (acctOps as { ops_used?: number | null } | null)?.ops_used ?? null;
-    }
+    const acctOps  = acctOpsRes.data as { ops_used?: number | null; ops_included?: number | null } | null;
 
     const activePeers = list;
     const minutesIncluded = (typeof acctMins?.minutes_included === 'number' && acctMins.minutes_included > 0)
@@ -141,14 +130,10 @@ export async function GET(req: NextRequest) {
     const minutesUsed = (typeof acctMins?.minutes_included === 'number' && acctMins.minutes_included > 0)
       ? (acctMins.minutes_used ?? 0)
       : activePeers.reduce((s, a) => s + (a.minutes_used ?? 0), 0);
-    const opsLimit = orgPoolTotal != null
-      ? orgPoolTotal
+    const opsLimit = typeof acctOps?.ops_included === 'number' && acctOps.ops_included > 0
+      ? acctOps.ops_included
       : activePeers.reduce((s, a) => s + (a.ai_ops_limit ?? 0), 0);
-    const opsUsed = (ledgerEnabled && typeof acctOpsUsed === 'number')
-      ? acctOpsUsed
-      : orgPoolTotal != null
-        ? (orgPoolUsed ?? 0)
-        : activePeers.reduce((s, a) => s + (a.ai_ops_used ?? 0), 0);
+    const opsUsed = typeof acctOps?.ops_used === 'number' ? acctOps.ops_used : 0;
 
     const projections: Projection[] = [];
 

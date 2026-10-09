@@ -67,7 +67,6 @@ export function fixtureAgent(overrides: Record<string, unknown> = {}) {
     tool_overrides:        null,
     heartbeat_config:      { enabled: false },
     heartbeat_last_run_at: null,
-    ai_ops_used:           0,
     ai_ops_limit:          100,
     minutes_reset_date:    '2026-10-01',
     ...overrides,

@@ -2,7 +2,7 @@
 import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { FEATURE_PLAN_CONFIG, TIER_PRICE_MXN, TIER_LABELS, jornadaConfigFromPriceId, nextResetDate, JORNADA_CONFIG, NOX_JORNADA_CONFIG, resolveTierAllocation } from '@/lib/billing/plans';
-import { resetAiOps, setAiOpsLimit, recomputeOrgOpsPool } from '@/lib/ai/ops-guard';
+import { resetAiOps } from '@/lib/ai/ops-guard';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { sendEmail, paymentFailedHtml, welcomeHtml } from '@/lib/email/send';
 import { maybeNotifyRolloverLoss, maybeNotifyPoolLoss } from '@/lib/billing/rollover-cap-notify';
@@ -16,9 +16,9 @@ import type { Plan, JornadaType } from '@/types/agent';
 import type { MinutesTier } from '@/lib/billing/plans';
 import type Stripe from 'stripe';
 
-// Helper: escribe al ops ledger cuando el flag esta activo.
-// La legacy path (resetAiOps / setAiOpsLimit / ai_ops_limit UPDATE) se mantiene
-// inline en cada sitio; este helper es ADICIONAL cuando ops_ledger_enabled = true.
+// Helper: escribe credit al ops_ledger. Fuente única de verdad del saldo
+// de ops post-cleanup 2026-10-09. UPDATEs paralelos a ai_ops_limit viven
+// inline en cada sitio porque ai_ops_limit es CONFIG del plan (no estado).
 async function creditOpsToPool(
   supabase: ReturnType<typeof createAdminClient>,
   args: {
@@ -30,24 +30,14 @@ async function creditOpsToPool(
     description: string;
   }
 ): Promise<void> {
-  const { data: org } = await supabase
-    .from('organizations')
-    .select('ops_ledger_enabled')
-    .eq('portal_email', args.portalEmail)
-    .maybeSingle();
-
-  if (org?.ops_ledger_enabled) {
-    await supabase.rpc('apply_ops_ledger_entry', {
-      p_portal_email: args.portalEmail,
-      p_agent_id:     args.agentId,
-      p_amount:       args.amount,
-      p_kind:         args.kind,
-      p_reference_id: args.referenceId,
-      p_description:  args.description,
-    });
-  }
-  // Legacy path se mantiene inline en cada sitio (no lo movemos aqui para no
-  // acoplar los flujos annual/stripe existentes).
+  await supabase.rpc('apply_ops_ledger_entry', {
+    p_portal_email: args.portalEmail,
+    p_agent_id:     args.agentId,
+    p_amount:       args.amount,
+    p_kind:         args.kind,
+    p_reference_id: args.referenceId,
+    p_description:  args.description,
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -223,7 +213,7 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        // Ops delta credit via ledger (ADICIONAL al legacy ai_ops_limit UPDATE arriba)
+        // Ops delta credit via ledger (ai_ops_limit arriba es solo CONFIG del plan)
         if (opsDelta > 0 && upgradeEmail) {
           await creditOpsToPool(supabase, {
             portalEmail: upgradeEmail,
@@ -304,21 +294,16 @@ export async function POST(req: NextRequest) {
 
         const { data: agent } = await supabase
           .from('voice_agents')
-          .select('id, portal_email, ai_ops_limit')
+          .select('id, portal_email')
           .eq('id', agentId)
           .single();
 
         if (!agent) break;
 
         const portalEmail = agent.portal_email as string | null;
-        let ledgerEnabled = false;
-        if (portalEmail) {
-          const { data: org } = await supabase
-            .from('organizations')
-            .select('ops_ledger_enabled')
-            .eq('portal_email', portalEmail)
-            .maybeSingle();
-          ledgerEnabled = !!org?.ops_ledger_enabled;
+        if (!portalEmail) {
+          console.error('[billing-webhook] extra_ops sin portal_email — skip', { agentId, ops, session_id: session.id });
+          break;
         }
 
         // Idempotency capa 2 (belt-and-suspenders): el gate top-level
@@ -326,7 +311,7 @@ export async function POST(req: NextRequest) {
         // adicional protege contra el caso raro de que Stripe emita 2 eventos
         // DIFERENTES (event.id distinto) para el mismo checkout — visto en
         // ambientes de test cuando se resimula un pago.
-        if (session.id && ledgerEnabled && portalEmail) {
+        if (session.id) {
           const { data: dup } = await supabase
             .from('ops_ledger')
             .select('id')
@@ -337,42 +322,16 @@ export async function POST(req: NextRequest) {
           if (dup) { break; }
         }
 
-        if (ledgerEnabled && portalEmail) {
-          // NEW path: escribe al ledger, cap 2x aplicado automaticamente por RPC
-          await supabase.rpc('apply_ops_ledger_entry', {
-            p_portal_email: portalEmail,
-            p_agent_id:     agentId,
-            p_amount:       ops,
-            p_kind:         'extra_ops_purchase',
-            p_reference_id: primaryRef,
-            p_description:  `Compra de ${ops} tareas extra`,
-          });
-          after(() => maybeNotifyPoolLoss(supabase, { portalEmail, referenceId: primaryRef, resource: 'ops' }));
-        } else {
-          // LEGACY: sin ledger, aplica al agente ESPECÍFICO que compró (nunca
-          // homogenizar tiers de peers). Luego recompute el pool org-level para
-          // que quede consistente con la suma real de tiers heterogéneos.
-          const newOpsLimit = ((agent.ai_ops_limit as number) ?? 0) + ops;
-          await supabase.from('voice_agents')
-            .update({ ai_ops_limit: newOpsLimit }).eq('id', agentId);
-          if (portalEmail) {
-            await recomputeOrgOpsPool(portalEmail);
-            // Marker de idempotencia para legacy path (sin ledger).
-            if (session.id) {
-              await supabase.from('platform_incidents').insert({
-                title:                 `Crédito extra_ops legacy — ${ops} tareas`,
-                description:            `Aplicado a agent_id=${agentId} vía checkout ${session.id}. Marker de idempotencia.`,
-                priority:              'low',
-                source:                'extra_ops_credit',
-                source_id:             session.id,
-                affected_portal_email: portalEmail,
-                status:                'resolved',
-                assigned_to:           'nash',
-                resolution:            `+${ops} tareas aplicadas correctamente.`,
-              });
-            }
-          }
-        }
+        // Credit al ledger (cap 2x aplicado automáticamente por RPC)
+        await supabase.rpc('apply_ops_ledger_entry', {
+          p_portal_email: portalEmail,
+          p_agent_id:     agentId,
+          p_amount:       ops,
+          p_kind:         'extra_ops_purchase',
+          p_reference_id: primaryRef,
+          p_description:  `Compra de ${ops} tareas extra`,
+        });
+        after(() => maybeNotifyPoolLoss(supabase, { portalEmail, referenceId: primaryRef, resource: 'ops' }));
 
         break;
       }
@@ -528,7 +487,7 @@ export async function POST(req: NextRequest) {
               p_description:  `Activación de nuevo empleado: +${alloc.minutes} min`,
             });
           }
-          // Ops credit via ledger (ADICIONAL a ai_ops_limit UPDATE arriba)
+          // Ops credit via ledger (ai_ops_limit arriba es solo CONFIG del plan)
           const opsForNew = alloc.aiOps ?? 0;
           if (opsForNew > 0) {
             await creditOpsToPool(supabase, {
@@ -540,9 +499,6 @@ export async function POST(req: NextRequest) {
               description: `Activación de nuevo empleado: +${opsForNew} tareas`,
             });
           }
-          // Recompute pool sumando cada agente (respeta tiers heterogéneos).
-          // NO usar setAiOpsLimit — sobreescribiría los tiers individuales.
-          await recomputeOrgOpsPool(activationEmail);
         }
 
         const vapiId = await createVapiAssistant(pendingAgent as VoiceAgent).catch((err: unknown) => {
@@ -631,7 +587,7 @@ export async function POST(req: NextRequest) {
       }
 
       if (activationEmail) {
-        // Ops credit via ledger (ADICIONAL a ai_ops_limit UPDATE arriba)
+        // Ops credit via ledger (ai_ops_limit arriba es solo CONFIG del plan)
         if (jornadaAlloc.aiOps > 0) {
           await creditOpsToPool(supabase, {
             portalEmail: activationEmail,
@@ -642,9 +598,6 @@ export async function POST(req: NextRequest) {
             description: `Activación de nuevo empleado: +${jornadaAlloc.aiOps} tareas`,
           });
         }
-        // Recompute pool desde individual ai_ops_limit (respeta tiers heterogéneos).
-        // NO usar setAiOpsLimit — sobreescribiría los tiers de los peers.
-        await recomputeOrgOpsPool(activationEmail);
       }
 
       // Re-associate Vapi assistant when reactivating
@@ -854,7 +807,7 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // Reset AI ops counter on monthly renewal (legacy path — se mantiene)
+      // Renovación mensual: inserta grant al ledger que lleva el balance al cap del plan.
       if (renewalEmail) await resetAiOps(renewalEmail);
 
       // Ops credit via ledger en renovacion (ADICIONAL al resetAiOps legacy arriba).

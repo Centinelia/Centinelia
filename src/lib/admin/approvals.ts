@@ -82,7 +82,7 @@ export async function grantOpsChecks(portalEmail: string, count: number): Promis
   // Check 1: agente(s) existen y están activos
   const { data: agents } = await supabase
     .from('voice_agents')
-    .select('id, business_name, active, ai_ops_used, ai_ops_limit')
+    .select('id, business_name, active, ai_ops_limit')
     .eq('portal_email', portalEmail);
 
   if (!agents?.length) {
@@ -96,18 +96,19 @@ export async function grantOpsChecks(portalEmail: string, count: number): Promis
     detail: `${active.length}/${agents.length} agentes activos en el portal`,
   });
 
-  // Check 2: no está ya al 200% del límite (indicador de abuso)
-  const overLimit = agents.filter(a => {
-    const used  = a.ai_ops_used  ?? 0;
-    const limit = a.ai_ops_limit ?? 0;
-    return limit > 0 && used > limit * 2;
-  });
+  // Check 2: pool no está ya al 200% del cap (indicador de abuso).
+  // Post-Fase 3d 2026-10-09: usa account_ops (fuente única) + cap desde SUM(ai_ops_limit).
+  const { data: acctOps } = await supabase.from('account_ops')
+    .select('ops_used').eq('portal_email', portalEmail).maybeSingle();
+  const cap    = agents.reduce((s, a) => s + ((a.ai_ops_limit as number) ?? 0), 0);
+  const used   = (acctOps as { ops_used?: number | null } | null)?.ops_used ?? 0;
+  const overLimit = cap > 0 && used > cap * 2;
   checks.push({
     name:   'not_severely_over',
-    passed: overLimit.length === 0,
-    detail: overLimit.length === 0
-      ? 'Ningún agente > 200% del límite'
-      : `${overLimit.length} agente(s) ya sobre 200% (posible abuso)`,
+    passed: !overLimit,
+    detail: overLimit
+      ? `Pool al ${Math.round((used / cap) * 100)}% del cap (${used}/${cap}, > 200% posible abuso)`
+      : `Pool al ${cap > 0 ? Math.round((used / cap) * 100) : 0}% del cap (${used}/${cap})`,
   });
 
   // Check 3: budget diario de grants no excedido

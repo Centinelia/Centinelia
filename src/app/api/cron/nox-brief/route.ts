@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
 
   const { data: noxAgents, error } = await supabase
     .from('voice_agents')
-    .select('id, agent_name, business_name, client_email, transfer_whatsapp, portal_email, timezone, brief_del_dia_config, brief_del_dia_last_run_at, features, ai_ops_used, ai_ops_limit, minutes_reset_date, portal_token')
+    .select('id, agent_name, business_name, client_email, transfer_whatsapp, portal_email, timezone, brief_del_dia_config, brief_del_dia_last_run_at, features, ai_ops_limit, minutes_reset_date, portal_token')
     .eq('active', true)
     .not('brief_del_dia_config', 'is', null);
 
@@ -105,7 +105,6 @@ export async function GET(req: NextRequest) {
           client_email:       (agent.client_email as string | null) ?? null,
           agent_name:         (agent.agent_name as string | null) ?? null,
           business_name:      (agent.business_name as string | null) ?? null,
-          ai_ops_used:        (agent.ai_ops_used as number) ?? 0,
           ai_ops_limit:       (agent.ai_ops_limit as number) ?? 0,
           minutes_reset_date: (agent.minutes_reset_date as string | null) ?? null,
           portal_token:       (agent.portal_token as string | null) ?? null,
