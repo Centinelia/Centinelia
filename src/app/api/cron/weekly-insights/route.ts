@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
   // All active agents with weekly_insights opted in
   const { data: agents } = await supabase
     .from('voice_agents')
-    .select('id, business_name, role, portal_email, client_email, agent_name, ai_ops_used, ai_ops_limit, minutes_reset_date, portal_token, features, timezone')
+    .select('id, business_name, role, portal_email, client_email, agent_name, ai_ops_limit, minutes_reset_date, portal_token, features, timezone')
     .eq('active', true)
     .not('portal_email', 'is', null)
     .eq('features->automations->weekly_insights->>enabled', 'true');

@@ -19,10 +19,14 @@ export async function GET(req: NextRequest) {
 
   const supabase = createAdminClient();
 
-  // Todas las orgs annual_prepaid con contrato activo
+  // Todas las orgs annual_prepaid con contrato activo. monthly_ops_used (del
+  // sistema legacy ops) se eliminó del select en Fase 3b 2026-10-09 — el
+  // digest solo mide overage de minutos, no de ops. monthly_minutes_used
+  // sigue en organizations hasta que la limpieza de minutos tenga su propia
+  // migración (scope separado: minutes_ledger + account_minutes).
   const { data: orgs } = await supabase
     .from('organizations')
-    .select('portal_email, name, active_contract_id, monthly_minutes_used, monthly_ops_used, pool_reset_date')
+    .select('portal_email, name, active_contract_id, monthly_minutes_used, pool_reset_date')
     .eq('billing_model', 'annual_prepaid')
     .not('active_contract_id', 'is', null);
 

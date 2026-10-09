@@ -26,7 +26,7 @@ export const GET = defineCron({
 
   const { data: agents } = await supabase
     .from('voice_agents')
-    .select('id, agent_name, business_name, client_email, portal_email, timezone, heartbeat_config, heartbeat_last_run_at, ai_ops_used, ai_ops_limit, minutes_reset_date, portal_token, features')
+    .select('id, agent_name, business_name, client_email, portal_email, timezone, heartbeat_config, heartbeat_last_run_at, ai_ops_limit, minutes_reset_date, portal_token, features')
     .eq('active', true)
     .not('heartbeat_config', 'is', null);
 

@@ -64,10 +64,20 @@ export async function GET(req: NextRequest) {
         ).then(r => r.ok ? r.json() : null).catch(() => null)
       : Promise.resolve(null),
 
-    createAdminClient()
-      .from('voice_agents')
-      .select('ai_ops_used')
-      .neq('id', process.env.DEMO_AGENT_ID ?? ''),
+    // Ops totales consumidas este mes: suma de account_ops (mirror del ops_ledger)
+    // excluyendo el org del demo si aplica. Reemplaza voice_agents.ai_ops_used
+    // stale en Fase 3c 2026-10-09.
+    (async () => {
+      const sb = createAdminClient();
+      const { data: demoAgent } = process.env.DEMO_AGENT_ID
+        ? await sb.from('voice_agents').select('portal_email').eq('id', process.env.DEMO_AGENT_ID).maybeSingle()
+        : { data: null };
+      const demoPortal = (demoAgent as { portal_email?: string | null } | null)?.portal_email ?? null;
+
+      let q = sb.from('account_ops').select('ops_used');
+      if (demoPortal) q = q.neq('portal_email', demoPortal);
+      return q;
+    })(),
 
     process.env.ELEVENLABS_API_KEY
       ? fetch('https://api.elevenlabs.io/v1/user/subscription', {
@@ -78,8 +88,8 @@ export async function GET(req: NextRequest) {
 
   const vapiBalance  = typeof vapiRes?.balance   === 'number' ? vapiRes.balance   : null;
   const twilioBalance = twilioRes?.balance ? parseFloat(twilioRes.balance) : null;
-  const totalOpsUsed  = ((opsRes.data ?? []) as { ai_ops_used: number }[])
-    .reduce((s, a) => s + (a.ai_ops_used ?? 0), 0);
+  const totalOpsUsed  = ((opsRes.data ?? []) as { ops_used: number | null }[])
+    .reduce((s, a) => s + (a.ops_used ?? 0), 0);
   const claudeCost    = totalOpsUsed * CLAUDE_COST_PER_OP;
 
   // Build alert list

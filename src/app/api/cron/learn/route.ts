@@ -137,7 +137,7 @@ export async function GET(req: NextRequest) {
   // Ver commits ae177a76 y patrón synthetic org row en connector-tools.ts.
   const { data: agents } = await supabase
     .from('voice_agents')
-    .select('id, agent_name, business_name, role, role_knowledge_base, portal_email, active, client_email, ai_ops_used, ai_ops_limit, minutes_reset_date, portal_token, features, timezone')
+    .select('id, agent_name, business_name, role, role_knowledge_base, portal_email, active, client_email, ai_ops_limit, minutes_reset_date, portal_token, features, timezone')
     .eq('active', true)
     .eq('features->automations->learn->>enabled', 'true');
 

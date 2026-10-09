@@ -17,7 +17,6 @@ interface AgentSubset {
   client_email:       string | null;
   agent_name:         string | null;
   business_name:      string | null;
-  ai_ops_used:        number;
   ai_ops_limit:       number;
   minutes_reset_date: string | null;
   portal_token:       string | null;
@@ -48,28 +47,18 @@ export async function maybeSendQuotaEmail(agent: AgentSubset, automation: Automa
     : 'https://www.centinelia.mx';
   const dateStr = new Date().toLocaleDateString('es-MX', { month: 'long', day: 'numeric' });
 
-  // Pool org-level: preferir account_ops / organizations sobre per-agent counters
-  // que quedan stale post-ledger flip. Ver [[feedback-audit-read-path-fidelity]].
-  let poolUsed  = agent.ai_ops_used;
+  // Pool fuente única: account_ops (mirror del ops_ledger). Fallback a
+  // agent.ai_ops_limit (CONFIG del plan) para el cap si no hay row del mirror.
+  // Post-cleanup Fase 3c 2026-10-09: eliminado el fallback a monthly_ops_pool/used.
+  let poolUsed  = 0;
   let poolLimit = agent.ai_ops_limit;
   if (agent.portal_email) {
-    const [orgRes, acctOpsRes] = await Promise.all([
-      supabase.from('organizations')
-        .select('monthly_ops_pool, monthly_ops_used, ops_ledger_enabled')
-        .eq('portal_email', agent.portal_email).maybeSingle(),
-      supabase.from('account_ops')
-        .select('ops_used, ops_included')
-        .eq('portal_email', agent.portal_email).maybeSingle(),
-    ]);
-    const org     = orgRes.data as { monthly_ops_pool?: number | null; monthly_ops_used?: number | null; ops_ledger_enabled?: boolean | null } | null;
-    const acctOps = acctOpsRes.data as { ops_used?: number | null; ops_included?: number | null } | null;
-    const ledgerEnabled = !!org?.ops_ledger_enabled;
-    const orgPoolTotal  = (org?.monthly_ops_pool as number | null) ?? null;
-    const orgPoolUsed   = (org?.monthly_ops_used as number | null) ?? null;
-    if (orgPoolTotal != null) poolLimit = orgPoolTotal;
-    else if (typeof acctOps?.ops_included === 'number' && acctOps.ops_included > 0) poolLimit = acctOps.ops_included;
-    if (ledgerEnabled && typeof acctOps?.ops_used === 'number') poolUsed = acctOps.ops_used;
-    else if (orgPoolTotal != null) poolUsed = orgPoolUsed ?? 0;
+    const { data: acctOps } = await supabase.from('account_ops')
+      .select('ops_used, ops_included')
+      .eq('portal_email', agent.portal_email).maybeSingle();
+    const o = acctOps as { ops_used?: number | null; ops_included?: number | null } | null;
+    if (typeof o?.ops_included === 'number' && o.ops_included > 0) poolLimit = o.ops_included;
+    if (typeof o?.ops_used === 'number') poolUsed = o.ops_used;
   }
 
   const agentLabel = agent.agent_name?.trim() || agent.business_name?.trim() || 'Tu empleado';
