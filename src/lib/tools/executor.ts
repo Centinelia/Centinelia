@@ -7144,26 +7144,51 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
 
       // Precarga: busca filas pre-registradas (OC + MODELO + SERIE vacía) de UNA sola vez.
       // Luego cada equipo .shift() del bucket por modelo (FIFO).
+      // 2026-10-09 Nazre bug duplicados: adicionalmente trackeamos SERIES ya
+      // procesadas con el mismo FACT_TRANE para evitar re-crear la fila cuando
+      // Camila reenvía el mismo correo 3+ veces. Antes el flow era:
+      //   1er envío: match pre-reg → PATCH serie en fila existente.
+      //   2do envío: no hay pre-reg (serie ya llena) → CREATE duplicado.
+      // Fix: si existe fila con (SERIE + FACT_TRANE) match → skip (ya procesada).
+      const factTraneHeader = cols.factura_compra ?? 'FACT TRANE';
+      const factTraneIdx = findHeaderIndex(headers, factTraneHeader);
       type PreregRow = { tableRowIndex: number; modelo: string };
       const preregByModelo = new Map<string, PreregRow[]>();
+      const alreadyProcessed = new Set<string>();  // key: "SERIE|FACT_TRANE"
       if (ocAcFormateada && ocIdx >= 0 && serieIdx >= 0 && modeloIdx >= 0) {
         const existingRows = await GraphExcel.listTableRows(inv.token, inv.config.location, tableName);
         const ocNorm = ocAcFormateada.toUpperCase();
+        const factNorm = folio.toUpperCase();
         for (const r of existingRows) {
           const vals = r.values as unknown[];
           const ocCell = String(vals[ocIdx] ?? '').trim().toUpperCase();
           if (ocCell !== ocNorm) continue;
           const serieCell = String(vals[serieIdx] ?? '').trim();
-          if (serieCell && serieCell !== '-') continue;
           const modelo = String(vals[modeloIdx] ?? '').trim().toUpperCase();
+          // Dedup check: (SERIE llena + mismo FACT_TRANE) = ya procesada.
+          if (serieCell && serieCell !== '-' && factTraneIdx >= 0) {
+            const factCell = String(vals[factTraneIdx] ?? '').trim().toUpperCase();
+            if (factCell === factNorm) {
+              alreadyProcessed.add(`${serieCell.toUpperCase()}|${factNorm}`);
+            }
+          }
+          if (serieCell && serieCell !== '-') continue;
           if (!modelo) continue;
           if (!preregByModelo.has(modelo)) preregByModelo.set(modelo, []);
           preregByModelo.get(modelo)!.push({ tableRowIndex: r.index, modelo });
         }
       }
+      let skippedDup = 0;
 
       await GraphExcel.withSession(inv.token, inv.config.location, async (session) => {
         for (const eq of equipos) {
+          // 2026-10-09 dedup: si (SERIE + FACT_TRANE) ya fue procesada
+          // previamente para esta OC (reenvío del mismo correo), skip.
+          const dupKey = `${eq.serie.toUpperCase()}|${folio.toUpperCase()}`;
+          if (alreadyProcessed.has(dupKey)) {
+            skippedDup++;
+            continue;
+          }
           const familia = inferFamilia(eq.descripcion, eq.modelo);
           const { seer, ref, volts } = extractSeerRefVolts(eq.descripcion);
           const tonelada = extractTonelada(eq.descripcion, eq.modelo);
@@ -7296,10 +7321,12 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
         matched_updated: updated,
         created_new: inserted,
         skipped_count: skipped.length,
+        skipped_dup_count: skippedDup,
         skipped_muestra: skipped.slice(0, 5),
         message: `Factura ${folio} procesada: ${updated} fila(s) actualizadas (match con OC ya registrada)` +
                  (inserted > 0 ? ` + ${inserted} fila(s) nuevas creadas (no había pre-registro)` : '') +
-                 `. TC ${tc} aplicado — COSTO MX calculado para las ${updated + inserted} filas.`,
+                 (skippedDup > 0 ? ` + ${skippedDup} fila(s) omitidas por dedup (ya procesadas previamente con misma SERIE+FACT_TRANE)` : '') +
+                 `. TC ${tc} aplicado${(updated + inserted) > 0 ? ` — COSTO MX calculado para las ${updated + inserted} filas` : ''}.`,
       };
     }
 
