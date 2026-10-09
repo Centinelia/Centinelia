@@ -1621,6 +1621,47 @@ export async function processInboxEmail(params: {
     return;
   }
 
+  // 2026-10-09 Nazre: whitelist de remitentes por agent. Nami debe responder
+  // SOLO a Camila + Victoria (AC Proyectos). Caso real: respondió a
+  // angeles@acproyectos.com y a correos de proveedores. Config vive en
+  // voice_agents.features.allowed_sender_emails: string[]. Si está vacío,
+  // sin filtro (compat). Si tiene emails, pasa solo match (case-insensitive).
+  // Excepciones: existingInboxId (reply a thread que Nami ya respondió —
+  // continuación del flow), fromSpamFolder (re-eval manual).
+  if (!existingInboxId && !fromSpamFolder) {
+    const supabase = createAdminClient();
+    const { data: agentAllowCheck } = await supabase
+      .from('voice_agents')
+      .select('features')
+      .eq('id', agentId)
+      .maybeSingle();
+    const allowedList = ((agentAllowCheck?.features as { allowed_sender_emails?: string[] } | undefined) ?? {}).allowed_sender_emails;
+    if (Array.isArray(allowedList) && allowedList.length > 0) {
+      const fromLow = (fromAddr || '').toLowerCase();
+      const match = allowedList.some(allowed => fromLow.includes(String(allowed).toLowerCase().trim()));
+      if (!match) {
+        await supabase.from('ops_inbox').insert({
+          agent_id:        agentId,
+          source,
+          raw_message_id:  rawMessageId ?? null,
+          thread_id:       threadId ?? null,
+          email_from:      emailFrom,
+          email_subject:   emailSubject,
+          email_body:      effectiveBody.slice(0, EMAIL_BODY_TRUNCATE_CHARS),
+          attachments,
+          category:        'notificacion',
+          ai_summary:      `Remitente ${fromAddr} no está en whitelist del empleado (allowed_sender_emails). Sin cobro.`,
+          ai_draft:        null,
+          item_type:       'email',
+          status:          'skipped',
+          action_required: false,
+          ...dispatcherCols,
+        });
+        return;
+      }
+    }
+  }
+
   // 2026-10-07 NAMI DEFAULT-SKIP GUARD: solo procesa correos que piden acción
   // explícita del Excel de inventario. Antes Nami procesaba TODO lo que caía al
   // buzón (facturas Home Depot auto, respuestas auto Trane, backlogs, etc.)
