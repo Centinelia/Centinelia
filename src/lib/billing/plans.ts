@@ -78,9 +78,11 @@ function jt(
 
 export const JORNADA_CONFIG: Record<JornadaType, Record<MinutesTier, JornadaTierConfig>> = {
   combinada: {
-    starter:    jt('starter',    250,  300,  'STRIPE_COMBINADA_STARTER', 'STRIPE_PRO_STARTER'),
-    growth:     jt('growth',     500,  600,  'STRIPE_COMBINADA_GROWTH',  'STRIPE_PRO_GROWTH'),
-    scale:      jt('scale',      1000, 1200, 'STRIPE_COMBINADA_SCALE',   'STRIPE_PRO_SCALE'),
+    // Rebalance 2026-10-09: ops bajan para optimizar margen operativo (voz + ops).
+    // Ratios iguales 1:1 (min:ops) — más consistente y margen Anthropic ~80%.
+    starter:    jt('starter',    250,  250,  'STRIPE_COMBINADA_STARTER', 'STRIPE_PRO_STARTER'),
+    growth:     jt('growth',     500,  500,  'STRIPE_COMBINADA_GROWTH',  'STRIPE_PRO_GROWTH'),
+    scale:      jt('scale',      1000, 1000, 'STRIPE_COMBINADA_SCALE',   'STRIPE_PRO_SCALE'),
     enterprise: jt('enterprise', 0,    0,    ''),
   },
   minutos: {
@@ -111,10 +113,12 @@ export const JORNADA_CONFIG: Record<JornadaType, Record<MinutesTier, JornadaTier
 
 // ─── Coordinadores (Nox/Niva): tareas-only, sin llamadas ────────────────────
 
+// Rebalance 2026-10-09: growth 1200→1000, scale 3000→2000 (consistente con
+// jornada tareas, mismo motivo de margen).
 export const NOX_JORNADA_CONFIG: Record<MinutesTier, JornadaTierConfig> = {
   starter:    { label: 'Media Jornada',    minutes: 0, aiOps:  500, mxn: TIER_PRICE_MXN.starter, priceId: () => process.env.STRIPE_NOX_STARTER! },
-  growth:     { label: 'Jornada Completa', minutes: 0, aiOps: 1200, mxn: TIER_PRICE_MXN.growth,  priceId: () => process.env.STRIPE_NOX_GROWTH! },
-  scale:      { label: 'Alta Demanda',     minutes: 0, aiOps: 3000, mxn: TIER_PRICE_MXN.scale,   priceId: () => process.env.STRIPE_NOX_SCALE! },
+  growth:     { label: 'Jornada Completa', minutes: 0, aiOps: 1000, mxn: TIER_PRICE_MXN.growth,  priceId: () => process.env.STRIPE_NOX_GROWTH! },
+  scale:      { label: 'Alta Demanda',     minutes: 0, aiOps: 2000, mxn: TIER_PRICE_MXN.scale,   priceId: () => process.env.STRIPE_NOX_SCALE! },
   enterprise: { label: 'Empresarial',      minutes: 0, aiOps:    0, mxn: 0,                       priceId: () => '' },
 };
 

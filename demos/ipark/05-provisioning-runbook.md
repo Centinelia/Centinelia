@@ -68,14 +68,62 @@ En `/portal/{TOKEN}/oficina/integraciones/facturacion` (con el token del portal 
 
 - **Modo:** test (checkbox activo)
 
-## Paso 3 — Seed de la bandeja con los 10 correos (15 min)
+### Valores fijos por negocio (defaults del `CfdiInput` para IPark)
+
+Estos valores NO los extrae Nala del correo del cliente. Se setean una sola vez al provisionar la org, y el pipeline los inyecta automáticamente al armar el `CfdiInput` antes de mandarlo al PAC (o al TXT del Conector C1).
+
+Ubicación recomendada: columna `business_defaults` (JSON) de `organizations`, o en el `agent.business_context` si no hay columna dedicada. Si se agrega como columna nueva, nombre sugerido: `invoicing_defaults`.
+
+```json
+{
+  "moneda": "MXN",
+  "metodo_pago_default": "PUE",
+  "exportacion": "01",
+  "tipo_comprobante_default": "I",
+  "concepto_defaults": {
+    "clave_prod_serv": "90111500",
+    "clave_unidad": "E48",
+    "objeto_imp": "02"
+  },
+  "iva_rate": 0.16,
+  "forma_pago_fallback": "01",
+  "serie_default": "CEN",
+  "publico_en_general": {
+    "rfc": "XAXX010101000",
+    "razon_social": "PUBLICO EN GENERAL",
+    "regimen_fiscal": "616",
+    "uso_cfdi": "S01"
+  },
+  "extranjero_sin_rfc_mx": {
+    "rfc": "XEXX010101000",
+    "regimen_fiscal": "616",
+    "uso_cfdi": "S01"
+  }
+}
+```
+
+Justificación por valor:
+- **moneda MXN**: IPark cobra en pesos siempre.
+- **metodo_pago PUE**: el cliente paga a la salida en exhibición única. Nunca PPD en estacionamientos.
+- **exportacion 01**: no es operación de exportación (campo nuevo de CFDI 4.0, obligatorio).
+- **tipo_comprobante I**: factura de ingreso. Nala puede sobrescribir a E (egreso) para notas de crédito o P (pago) para REP si el caso lo justifica.
+- **clave_prod_serv 90111500**: código SAT para "Servicios de estacionamiento".
+- **clave_unidad E48**: código SAT para "Unidad de servicio".
+- **objeto_imp 02**: el servicio sí es objeto de impuesto (campo nuevo de CFDI 4.0).
+- **iva_rate 0.16**: tasa estándar. Si en el futuro IPark opera en franja fronteriza, cambiar a 0.08 por sucursal.
+- **forma_pago_fallback 01**: default si el sistema de IPark no entrega la forma de pago real para un folio dado.
+- **serie_default CEN**: Centinelia. Reservada por IPark para trazabilidad de los CFDIs que emite Nala.
+
+El `txt-builder.ts` del adapter C1 leerá estos defaults al armar cada TXT. Para orgs no-IPark que usen InvoiceOne C1 a futuro, los defaults serán distintos (otro tipo de negocio = otra clave_prod_serv y clave_unidad).
+
+## Paso 3 — Seed de la bandeja con los 16 correos (20 min)
 
 Opción A — vía SQL directo (más rápido si tienes acceso):
 
 Ejecuta este SQL en Supabase (reemplaza `<AGENT_ID>` con el `id` del voice_agent Nala creado):
 
 ```sql
--- ipark-demo: seed inbox con 10 correos fixture
+-- ipark-demo: seed inbox con 16 correos fixture
 -- Fuente: demos/ipark/02-fixtures-correos.md
 
 INSERT INTO ops_inbox (agent_id, source, email_from, email_subject, email_body, category, status, action_required, item_type, created_at)
@@ -128,7 +176,37 @@ VALUES
   -- #10 Corrección de factura
   ('<AGENT_ID>', 'demo_seed', 'admin@constructoralm.com.mx', 'Error en factura emitida',
    'Buen día, la factura que nos generaron ayer (UUID F8A7C2B1-4E9D-4A2F-9C1B-88AA33BB44CC) tiene mal el régimen fiscal — quedó como 601 y debe ser 603. Pueden corregirla? Saludos, Admin Constructora LM',
-   'factura', 'pending', true, 'email', NOW() - INTERVAL '30 hours');
+   'factura', 'pending', true, 'email', NOW() - INTERVAL '30 hours'),
+
+  -- #11 Público en general (sin RFC)
+  ('<AGENT_ID>', 'demo_seed', 'jose.hernandez@gmail.com', 'Factura por mi estacionamiento',
+   'Buen día, dejé mi auto en IPark MTY la semana pasada y quiero pedir mi factura. No tengo RFC propio, soy persona física sin actividad empresarial. Pueden hacerla a nombre de público en general? Folio del boleto: 2104892. Gracias. José Hernández',
+   'factura', 'pending', true, 'email', NOW() - INTERVAL '32 hours'),
+
+  -- #12 Nota de crédito (cliente dice que le cobraron de más)
+  ('<AGENT_ID>', 'demo_seed', 'patricia.luna@consultoresjl.com', 'Error de cobro en estancia MTY',
+   'Buenas tardes, el 20 de septiembre dejé mi auto en IPark MTY y lo recogí el 23 (3 días). Al salir me cobraron por 5 días cuando solo fueron 3. Ya tengo la factura emitida (UUID 4F2E8A1B-9D3C-4A7F-B2E1-77CC88DD99EE) por el monto incorrecto. Necesito que me emitan la nota de crédito por los 2 días de más y me reembolsen la diferencia. Datos fiscales: RFC CJL180815KS4, razón social Consultores JL SA de CV, régimen 601, uso G03, CP 66220. Quedo pendiente. Patricia Luna',
+   'factura', 'pending', true, 'email', NOW() - INTERVAL '34 hours'),
+
+  -- #13 Múltiples boletos en el mismo correo
+  ('<AGENT_ID>', 'demo_seed', 'tesoreria@grupoindustrial.mx', 'Facturación consolidada 3 estancias septiembre',
+   'Hola, nuestro director tuvo 3 viajes en septiembre y necesitamos facturar las 3 estancias en IPark MTY. Folios: 2089115, 2093440, 2098772. Fechas aproximadas: 1-3 sept, 10-12 sept, 22-25 sept. Datos para los 3 CFDIs: RFC GIN150820RM3, razón social Grupo Industrial del Norte SA de CV, régimen 601, uso G03, CP 64000. Pueden enviarlas por separado o en una sola si es posible? Gracias. Tesorería',
+   'factura', 'pending', true, 'email', NOW() - INTERVAL '36 hours'),
+
+  -- #14 Asistente ejecutiva (correo de entrega distinto)
+  ('<AGENT_ID>', 'demo_seed', 'ana.rodriguez@grupomex.com.mx', 'Factura para el Lic. Mendoza',
+   'Buenas tardes, soy la asistente del Lic. Carlos Mendoza. Él viajó la semana pasada y dejó su auto en IPark MTY (folio 2101223). Les pido de favor que la factura la envíen directamente a él al correo cmendoza@grupomex.com.mx. A mí me pueden poner en copia. Datos fiscales (de la empresa): RFC GME150312J78, razón social Grupo Mex Consultores SC, régimen 601, uso G03, CP 66220. Gracias. Ana Rodríguez, Asistente Dirección General',
+   'factura', 'pending', true, 'email', NOW() - INTERVAL '38 hours'),
+
+  -- #15 Cliente escribió antes del pago
+  ('<AGENT_ID>', 'demo_seed', 'fernando.cantu@startupmx.io', 'Factura próxima estancia',
+   'Hola, buenas tardes. Estoy en el aeropuerto de Monterrey ahora mismo, acabo de dejar mi auto en IPark para un viaje a Guadalajara. Regreso el jueves. Quiero adelantarles los datos para que me manden la factura directo cuando regrese y pague. Boleto: 2110887 (acabo de entrar). RFC CAFE880912TY5, razón social Fernando Cantú (persona física), régimen 612, uso G03, CP 66260. Gracias. Fernando',
+   'factura', 'pending', true, 'email', NOW() - INTERVAL '40 hours'),
+
+  -- #16 Correo duplicado (dedup esperado — mismo folio que #1)
+  ('<AGENT_ID>', 'demo_seed', 'laura.morales@grupomex.com.mx', 'Re: Solicitud de factura estancia MTY',
+   'Hola, hace unas horas les pedí la factura por mi estancia (del 3 al 6 de septiembre, folio 2087341) con los datos de Grupo Mex Consultores. Pueden confirmar si ya quedó? No he recibido el XML. Gracias, Laura',
+   'factura', 'pending', true, 'email', NOW() - INTERVAL '42 hours');
 ```
 
 Opción B — vía admin UI si existe endpoint de seeding: no hay uno construido. Recomendado: SQL directo arriba.
@@ -148,12 +226,15 @@ En `/portal/{TOKEN}/oficina/equipo` (o donde configures directorio):
 Antes de la llamada:
 
 - [ ] Log in al portal de IPark demo, ir a `/portal/{TOKEN}/oficina/bandeja`
-- [ ] Confirmar que los 10 correos aparecen listados
+- [ ] Confirmar que los 16 correos aparecen listados
 - [ ] Correr manual (o esperar al cron `email-runner`) para que Nala procese la bandeja
 - [ ] Verificar visualmente que:
-  - 5 correos (los de facturación) tienen decisión: procesar / responder / escalar según fixture
+  - 11 correos de facturación tienen decisión: procesar / responder / escalar según fixture
   - 5 correos (queja/marketing/notificaciones) tienen decisión: skipped / ignorar
 - [ ] Abrir uno de los procesados (Correo #1 Grupo Mex) y verificar que el "timbrado" mock funciona: UUID generado, XML válido, PDF renderizado
+- [ ] Verificar que el correo #16 (duplicado de #1) NO vuelve a timbrar — detecta el folio ya procesado y responde con el UUID original
+- [ ] Verificar que el correo #11 (público en general) aplica XAXX010101000 + S01 + 616 correctamente
+- [ ] Verificar que el correo #15 (pre-pago) NO timbra y queda marcado como "pendiente de pago"
 
 Si algo falla, arreglarlo antes de la llamada. Si todo pasa, estás listo.
 

@@ -60,9 +60,9 @@ Después, jornada mensual según volumen:
 
 | Jornada | Minutos | Tareas | Precio/mes | Llamadas aprox/día |
 |---------|---------|--------|------------|--------------------|
-| Media Jornada | 250 min | 300 tareas | $2,997 MXN | ~4 |
-| Jornada Completa | 500 min | 600 tareas | $5,994 MXN | ~8 |
-| Alta Demanda | 1,000 min | 1,200 tareas | $11,988 MXN | ~17 |
+| Media Jornada | 250 min | 250 tareas | $2,997 MXN | ~4 |
+| Jornada Completa | 500 min | 500 tareas | $5,994 MXN | ~8 |
+| Alta Demanda | 1,000 min | 1,000 tareas | $11,988 MXN | ~17 |
 
 Todos los precios + IVA 16%. Sin contratos de permanencia. La jornada se aumenta o reduce cuando la operación cambie, desde el portal.
 
@@ -70,7 +70,7 @@ Todos los precios + IVA 16%. Sin contratos de permanencia. La jornada se aumenta
 
 | Sabor | Media Jornada | Jornada Completa | Alta Demanda |
 |-------|---------------|------------------|--------------|
-| Combinada (default) | 250 min + 300 tareas | 500 min + 600 tareas | 1,000 min + 1,200 tareas |
+| Combinada (default) | 250 min + 250 tareas | 500 min + 500 tareas | 1,000 min + 1,000 tareas |
 | Solo minutos | 350 min + 20 tareas | 650 min + 20 tareas | 1,300 min + 20 tareas |
 | Solo tareas | 500 tareas (0 min) | 1,000 tareas (0 min) | 2,000 tareas (0 min) |
 

@@ -66,9 +66,9 @@ const JORNADA_TABS: { id: JornadaId; label: string; icon: React.ReactNode; color
 
 const JORNADA_TIERS: Record<JornadaId, { id: string; label: string; subtitle: string; minutes: number; ops: number; price: number; callsPerDay?: number; popular?: boolean }[]> = {
   combinada: [
-    { id: 'starter', label: 'Media Jornada',    subtitle: 'Ideal para organizaciones pequeñas.',          minutes: 250,  ops: 300,  price: 2997,  callsPerDay: 4  },
-    { id: 'growth',  label: 'Jornada Completa', subtitle: 'Ideal para la mayoría de las organizaciones.', minutes: 500,  ops: 600,  price: 5994,  callsPerDay: 8, popular: true },
-    { id: 'scale',   label: 'Alta Demanda',     subtitle: 'Ideal para operaciones con alto volumen.',     minutes: 1000, ops: 1200, price: 11988, callsPerDay: 17 },
+    { id: 'starter', label: 'Media Jornada',    subtitle: 'Ideal para organizaciones pequeñas.',          minutes: 250,  ops: 250,  price: 2997,  callsPerDay: 4  },
+    { id: 'growth',  label: 'Jornada Completa', subtitle: 'Ideal para la mayoría de las organizaciones.', minutes: 500,  ops: 500,  price: 5994,  callsPerDay: 8, popular: true },
+    { id: 'scale',   label: 'Alta Demanda',     subtitle: 'Ideal para operaciones con alto volumen.',     minutes: 1000, ops: 1000, price: 11988, callsPerDay: 17 },
   ],
   minutos: [
     { id: 'starter', label: 'Media Jornada',    subtitle: 'Más minutos, canal de voz dedicado.',         minutes: 350,  ops: 20, price: 2997,  callsPerDay: 6  },

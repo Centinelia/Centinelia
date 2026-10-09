@@ -56,6 +56,18 @@ GROUP BY v.id, v.agent_name, v.business_name, v.active
 HAVING MAX(c.created_at) IS NULL;
 ```
 
+**Números bloqueados por org (señal de spam/bot sostenido):**
+```sql
+SELECT portal_email, COUNT(*) as total_bloqueados,
+       MAX(created_at) as ultimo_bloqueo
+FROM blocked_numbers
+GROUP BY portal_email
+HAVING COUNT(*) >= 5
+ORDER BY total_bloqueados DESC;
+```
+
+Flag si una org tiene ≥5 bloqueados o si agregó ≥3 en las últimas 24h — señal de ataque sostenido o bot campaign. Para contar hits reales del hook (403 en /api/voice/inbound), buscar en Vercel runtime logs la línea `"Caller number is blocked for this organization"` — vive en el response del endpoint cuando bloquea.
+
 **Errores de webhook (ops fallidas):**
 ```sql
 SELECT agent_id, COUNT(*) as ops_fallidas
@@ -83,6 +95,9 @@ AGENTES INACTIVOS (>7 días sin llamadas):
 
 OPS FALLIDAS:
 - [agente]: N errores
+
+NÚMEROS BLOQUEADOS (orgs con ≥5 en blocklist):
+- [org]: N números bloqueados (último: [fecha])
 
 ACCIONES RECOMENDADAS:
 1. [acción concreta]

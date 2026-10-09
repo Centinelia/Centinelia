@@ -36,9 +36,9 @@ describe('plans.ts — constantes de tier', () => {
 
 describe('plans.ts — JORNADA_CONFIG allocations', () => {
   it('combinada devuelve mix minutos + tareas', () => {
-    expect(JORNADA_CONFIG.combinada.starter).toMatchObject({ minutes: 250,  aiOps: 300  });
-    expect(JORNADA_CONFIG.combinada.growth ).toMatchObject({ minutes: 500,  aiOps: 600  });
-    expect(JORNADA_CONFIG.combinada.scale  ).toMatchObject({ minutes: 1000, aiOps: 1200 });
+    expect(JORNADA_CONFIG.combinada.starter).toMatchObject({ minutes: 250,  aiOps: 250  });
+    expect(JORNADA_CONFIG.combinada.growth ).toMatchObject({ minutes: 500,  aiOps: 500  });
+    expect(JORNADA_CONFIG.combinada.scale  ).toMatchObject({ minutes: 1000, aiOps: 1000 });
   });
 
   it('minutos (voz-heavy) devuelve muchos minutos + pocas tareas', () => {
@@ -81,8 +81,8 @@ describe('plans.ts — JORNADA_CONFIG allocations', () => {
 describe('plans.ts — NOX_JORNADA_CONFIG', () => {
   it('escalona ops sin voz', () => {
     expect(NOX_JORNADA_CONFIG.starter).toMatchObject({ minutes: 0, aiOps:  500, mxn: 2997  });
-    expect(NOX_JORNADA_CONFIG.growth ).toMatchObject({ minutes: 0, aiOps: 1200, mxn: 5994  });
-    expect(NOX_JORNADA_CONFIG.scale  ).toMatchObject({ minutes: 0, aiOps: 3000, mxn: 11988 });
+    expect(NOX_JORNADA_CONFIG.growth ).toMatchObject({ minutes: 0, aiOps: 1000, mxn: 5994  });
+    expect(NOX_JORNADA_CONFIG.scale  ).toMatchObject({ minutes: 0, aiOps: 2000, mxn: 11988 });
   });
 
   it('labels usan nomenclatura Coordinador (Media Jornada, Jornada Completa, Alta Demanda)', () => {
@@ -118,7 +118,7 @@ describe('plans.ts — jornadaConfigFromPriceId', () => {
     expect(result).toEqual({
       jornada: 'combinada',
       tier:    'scale',
-      cfg:     expect.objectContaining({ minutes: 1000, aiOps: 1200, mxn: 11988 }),
+      cfg:     expect.objectContaining({ minutes: 1000, aiOps: 1000, mxn: 11988 }),
       isCoordinator: false,
     });
   });
@@ -146,7 +146,7 @@ describe('plans.ts — jornadaConfigFromPriceId', () => {
     const result = jornadaConfigFromPriceId('price_test_nox_scale');
     expect(result?.jornada).toBe('coordinator');
     expect(result?.tier).toBe('scale');
-    expect(result?.cfg.aiOps).toBe(3000);
+    expect(result?.cfg.aiOps).toBe(2000);
     expect(result?.isCoordinator).toBe(true);
   });
 
@@ -168,14 +168,14 @@ describe('plans.ts — jornadaConfigFromPriceId', () => {
 
 describe('plans.ts — resolveTierAllocation', () => {
   it('devuelve JORNADA_CONFIG para meerkat no-coordinator', () => {
-    expect(resolveTierAllocation('combinada', 'nelia', 'scale')).toEqual({ minutes: 1000, aiOps: 1200 });
+    expect(resolveTierAllocation('combinada', 'nelia', 'scale')).toEqual({ minutes: 1000, aiOps: 1000 });
     expect(resolveTierAllocation('minutos',   'nia',   'growth')).toEqual({ minutes: 650,  aiOps: 20   });
     expect(resolveTierAllocation('tareas',    'nala',  'starter')).toEqual({ minutes: 0,   aiOps: 500  });
   });
 
   it('devuelve NOX_JORNADA_CONFIG para coordinator (nox)', () => {
-    expect(resolveTierAllocation('combinada', 'nox', 'scale')).toEqual({ minutes: 0, aiOps: 3000 });
-    expect(resolveTierAllocation(undefined,   'nox', 'growth')).toEqual({ minutes: 0, aiOps: 1200 });
+    expect(resolveTierAllocation('combinada', 'nox', 'scale')).toEqual({ minutes: 0, aiOps: 2000 });
+    expect(resolveTierAllocation(undefined,   'nox', 'growth')).toEqual({ minutes: 0, aiOps: 1000 });
   });
 
   it('devuelve NOX_JORNADA_CONFIG para coordinator (niva)', () => {
@@ -183,13 +183,13 @@ describe('plans.ts — resolveTierAllocation', () => {
   });
 
   it('default combinada cuando jornadaType es undefined', () => {
-    expect(resolveTierAllocation(undefined, 'nelia', 'scale')).toEqual({ minutes: 1000, aiOps: 1200 });
+    expect(resolveTierAllocation(undefined, 'nelia', 'scale')).toEqual({ minutes: 1000, aiOps: 1000 });
   });
 
   it('coordinator ignora jornadaType (siempre tareas-only)', () => {
-    expect(resolveTierAllocation('combinada', 'nox', 'scale')).toEqual({ minutes: 0, aiOps: 3000 });
-    expect(resolveTierAllocation('minutos',   'nox', 'scale')).toEqual({ minutes: 0, aiOps: 3000 });
-    expect(resolveTierAllocation('tareas',    'nox', 'scale')).toEqual({ minutes: 0, aiOps: 3000 });
+    expect(resolveTierAllocation('combinada', 'nox', 'scale')).toEqual({ minutes: 0, aiOps: 2000 });
+    expect(resolveTierAllocation('minutos',   'nox', 'scale')).toEqual({ minutes: 0, aiOps: 2000 });
+    expect(resolveTierAllocation('tareas',    'nox', 'scale')).toEqual({ minutes: 0, aiOps: 2000 });
   });
 });
 

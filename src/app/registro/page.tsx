@@ -158,17 +158,17 @@ const AGENT_PLANS: AgentPlanDef[] = [
 type TierDef = { id: FormTier; label: string; minutes: number; aiOps: number; price: number; popular?: boolean };
 
 const TIERS: TierDef[] = [
-  { id: 'starter', label: 'Media Jornada',    minutes: 250,  aiOps: 300,  price: 2997 },
-  { id: 'growth',  label: 'Jornada Completa', minutes: 500,  aiOps: 600,  price: 5994, popular: true },
-  { id: 'scale',   label: 'Alta Demanda',     minutes: 1000, aiOps: 1200, price: 11988 },
+  { id: 'starter', label: 'Media Jornada',    minutes: 250,  aiOps: 250,  price: 2997 },
+  { id: 'growth',  label: 'Jornada Completa', minutes: 500,  aiOps: 500,  price: 5994, popular: true },
+  { id: 'scale',   label: 'Alta Demanda',     minutes: 1000, aiOps: 1000, price: 11988 },
 ];
 
 // Ops-only tiers for Nox (no minutes cost)
 type NoxTierDef = { id: FormTier; label: string; aiOps: number; price: number; popular?: boolean; desc: string };
 const NOX_TIERS: NoxTierDef[] = [
   { id: 'starter', label: 'Media Jornada',    aiOps:  500, price: 2997,  desc: 'Ideal para organizaciones en crecimiento.' },
-  { id: 'growth',  label: 'Jornada Completa', aiOps: 1200, price: 5994,  popular: true, desc: 'Para organizaciones con operación constante.' },
-  { id: 'scale',   label: 'Alta Demanda',     aiOps: 3000, price: 11988, desc: 'Diseñado para operaciones de alto volumen.' },
+  { id: 'growth',  label: 'Jornada Completa', aiOps: 1000, price: 5994,  popular: true, desc: 'Para organizaciones con operación constante.' },
+  { id: 'scale',   label: 'Alta Demanda',     aiOps: 2000, price: 11988, desc: 'Diseñado para operaciones de alto volumen.' },
 ];
 
 // Roles for the 3×3 grid — excludes coordinator (Nox gets its own card above)
