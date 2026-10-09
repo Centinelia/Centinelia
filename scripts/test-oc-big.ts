@@ -13,20 +13,41 @@ async function main() {
 
   // Extraer items via LLM
   const anthropic = new Anthropic();
-  const resp = await anthropic.messages.create({
-    model: 'claude-sonnet-5-5',
-    max_tokens: 4096,
-    messages: [{
-      role: 'user',
-      content: `Extrae los items de esta OC. Responde SOLO JSON con esta forma:
+  const { logLlmCall } = await import('../src/lib/observability/llm-log');
+  const MODEL = 'claude-sonnet-5-5';
+  const t0Llm = Date.now();
+  let resp;
+  try {
+    resp = await anthropic.messages.create({
+      model:      MODEL,
+      max_tokens: 4096,
+      messages:   [{
+        role:    'user',
+        content: `Extrae los items de esta OC. Responde SOLO JSON con esta forma:
 {"oc_numero": "...", "fecha_oc": "YYYY-MM-DD", "items": [{"modelo": "...", "cantidad": N, "descripcion": "...", "usd_unit": NNN}]}
 
 Si un modelo aparece múltiples veces, consolidar sumando cantidades.
 
 OC TEXT:
 ${text.slice(0, 15000)}`,
-    }],
-  });
+      }],
+    });
+    await logLlmCall({
+      source:    'script_test_oc_big',
+      model:     MODEL,
+      usage:     resp.usage,
+      latencyMs: Date.now() - t0Llm,
+    });
+  } catch (err) {
+    await logLlmCall({
+      source:    'script_test_oc_big',
+      model:     MODEL,
+      usage:     { input_tokens: 0, output_tokens: 0 },
+      latencyMs: Date.now() - t0Llm,
+      error:     err instanceof Error ? err.message : String(err),
+    });
+    throw err;
+  }
   const txt = resp.content.find(b => b.type === 'text');
   const jsonStr = txt && txt.type === 'text' ? txt.text : '';
   const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
