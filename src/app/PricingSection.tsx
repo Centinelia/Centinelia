@@ -77,8 +77,8 @@ const JORNADA_TIERS: Record<JornadaId, { id: string; label: string; subtitle: st
   ],
   tareas: [
     { id: 'starter', label: 'Media Jornada',    subtitle: 'Sin llamadas: solo inteligencia y tareas.',   minutes: 0, ops: 500,  price: 2997  },
-    { id: 'growth',  label: 'Jornada Completa', subtitle: 'Para equipos con alta carga de tareas.',      minutes: 0, ops: 1200, price: 5994,  popular: true },
-    { id: 'scale',   label: 'Alta Demanda',     subtitle: 'Automatización de alto volumen.',             minutes: 0, ops: 3000, price: 11988 },
+    { id: 'growth',  label: 'Jornada Completa', subtitle: 'Para equipos con alta carga de tareas.',      minutes: 0, ops: 1000, price: 5994,  popular: true },
+    { id: 'scale',   label: 'Alta Demanda',     subtitle: 'Automatización de alto volumen.',             minutes: 0, ops: 2000, price: 11988 },
   ],
 };
 

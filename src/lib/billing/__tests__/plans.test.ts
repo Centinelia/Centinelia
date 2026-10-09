@@ -50,8 +50,8 @@ describe('plans.ts — JORNADA_CONFIG allocations', () => {
 
   it('tareas (ops-heavy) devuelve 0 minutos + muchas tareas', () => {
     expect(JORNADA_CONFIG.tareas.starter).toMatchObject({ minutes: 0, aiOps: 500  });
-    expect(JORNADA_CONFIG.tareas.growth ).toMatchObject({ minutes: 0, aiOps: 1200 });
-    expect(JORNADA_CONFIG.tareas.scale  ).toMatchObject({ minutes: 0, aiOps: 3000 });
+    expect(JORNADA_CONFIG.tareas.growth ).toMatchObject({ minutes: 0, aiOps: 1000 });
+    expect(JORNADA_CONFIG.tareas.scale  ).toMatchObject({ minutes: 0, aiOps: 2000 });
   });
 
   it('enterprise siempre queda en 0/0', () => {
@@ -128,7 +128,7 @@ describe('plans.ts — jornadaConfigFromPriceId', () => {
     const result = jornadaConfigFromPriceId('price_test_tareas_growth');
     expect(result?.jornada).toBe('tareas');
     expect(result?.tier).toBe('growth');
-    expect(result?.cfg.aiOps).toBe(1200);
+    expect(result?.cfg.aiOps).toBe(1000);
     expect(result?.cfg.minutes).toBe(0);
     expect(result?.isCoordinator).toBe(false);
   });

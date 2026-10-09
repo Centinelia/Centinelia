@@ -84,7 +84,7 @@ Jornadas disponibles (asignación mensual):
 |---------------|-----------------------|-----------------------|------------------------|
 | Combinada     | 250 min + 300 tareas  | 500 min + 600 tareas  | 1,000 min + 1,200 tareas |
 | Solo Minutos  | 350 min + 20 tareas   | 650 min + 20 tareas   | 1,300 min + 20 tareas   |
-| Solo Tareas   | 500 tareas            | 1,200 tareas          | 3,000 tareas            |
+| Solo Tareas   | 500 tareas            | 1,000 tareas          | 2,000 tareas            |
 
 Los directores (Nox y Niva) son coordinadores tareas-only: 500 / 1,200 / 3,000 tareas por tier, sin minutos de voz.
 

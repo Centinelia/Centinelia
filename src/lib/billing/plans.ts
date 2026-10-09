@@ -97,9 +97,14 @@ export const JORNADA_CONFIG: Record<JornadaType, Record<MinutesTier, JornadaTier
     enterprise: jt('enterprise', 0,    0,  ''),
   },
   tareas: {
+    // Rebalance 2026-10-09: growth 1200→1000, scale 3000→2000. Precios iguales.
+    // Motivo: tareas/scale a $4.00/op era el precio efectivo más bajo del
+    // catálogo (margen operativo ~55-60%). Al bajar ops los 3 tiers quedan a
+    // $5.99/op (consistente con starter) → margen Anthropic ~80% uniforme.
+    // Cero clientes activos en tareas/growth/scale al momento del rebalance.
     starter:    jt('starter',    0, 500,  'STRIPE_TAREAS_STARTER'),
-    growth:     jt('growth',     0, 1200, 'STRIPE_TAREAS_GROWTH'),
-    scale:      jt('scale',      0, 3000, 'STRIPE_TAREAS_SCALE'),
+    growth:     jt('growth',     0, 1000, 'STRIPE_TAREAS_GROWTH'),
+    scale:      jt('scale',      0, 2000, 'STRIPE_TAREAS_SCALE'),
     enterprise: jt('enterprise', 0, 0,    ''),
   },
 };
