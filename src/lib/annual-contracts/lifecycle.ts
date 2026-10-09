@@ -250,7 +250,6 @@ export async function activateScheduledDrafts(supabase?: Supabase, now?: string)
         billing_model:        'annual_prepaid',
         active_contract_id:   draft.id,
         monthly_minutes_used: 0,
-        monthly_ops_used:     0,
         overage_minutes:      0,
         overage_ops:          0,
         pool_reset_date:      addMonth(draft.start_date),
