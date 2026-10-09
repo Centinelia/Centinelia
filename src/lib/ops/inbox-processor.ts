@@ -1621,13 +1621,20 @@ export async function processInboxEmail(params: {
     return;
   }
 
-  // 2026-10-09 Nazre: whitelist de remitentes por agent. Nami debe responder
-  // SOLO a Camila + Victoria (AC Proyectos). Caso real: respondió a
-  // angeles@acproyectos.com y a correos de proveedores. Config vive en
-  // voice_agents.features.allowed_sender_emails: string[]. Si está vacío,
-  // sin filtro (compat). Si tiene emails, pasa solo match (case-insensitive).
-  // Excepciones: existingInboxId (reply a thread que Nami ya respondió —
-  // continuación del flow), fromSpamFolder (re-eval manual).
+  // 2026-10-09 Nazre: whitelist de remitentes por agent (2 niveles).
+  //   allowed_sender_emails:         pueden procesar Y recibir reply
+  //   allowed_processor_only_emails: procesa el correo (ejecuta tools) pero
+  //                                  NUNCA recibe reply. Caso Trane Isabel con
+  //                                  BACKLOG auto: queremos inv_importar_backlog
+  //                                  pero no mandar reply al no-reply@trane.
+  // Si allowed_sender_emails está vacío → sin filtro (backwards compat).
+  // Si tiene emails: no-match → skip total sin cobrar.
+  // Si match en processor_only → procesa pero skip del send-reply al final.
+  // Caso real angeles@acproyectos.com respondido 2026-10-09; Camila:
+  // solo camila + victoria pueden recibir reply.
+  // Excepciones: existingInboxId (reply a thread que Nami ya respondió),
+  // fromSpamFolder (re-eval manual).
+  let suppressReplyBySenderPolicy = false;
   if (!existingInboxId && !fromSpamFolder) {
     const supabase = createAdminClient();
     const { data: agentAllowCheck } = await supabase
@@ -1635,11 +1642,15 @@ export async function processInboxEmail(params: {
       .select('features')
       .eq('id', agentId)
       .maybeSingle();
-    const allowedList = ((agentAllowCheck?.features as { allowed_sender_emails?: string[] } | undefined) ?? {}).allowed_sender_emails;
-    if (Array.isArray(allowedList) && allowedList.length > 0) {
+    const allowFeatures = (agentAllowCheck?.features as { allowed_sender_emails?: string[]; allowed_processor_only_emails?: string[] } | undefined) ?? {};
+    const allowedList = allowFeatures.allowed_sender_emails ?? [];
+    const processorOnlyList = allowFeatures.allowed_processor_only_emails ?? [];
+    const hasFilter = allowedList.length > 0 || processorOnlyList.length > 0;
+    if (hasFilter) {
       const fromLow = (fromAddr || '').toLowerCase();
-      const match = allowedList.some(allowed => fromLow.includes(String(allowed).toLowerCase().trim()));
-      if (!match) {
+      const matchReply = allowedList.some(e => fromLow.includes(String(e).toLowerCase().trim()));
+      const matchProcessorOnly = processorOnlyList.some(e => fromLow.includes(String(e).toLowerCase().trim()));
+      if (!matchReply && !matchProcessorOnly) {
         await supabase.from('ops_inbox').insert({
           agent_id:        agentId,
           source,
@@ -1650,7 +1661,7 @@ export async function processInboxEmail(params: {
           email_body:      effectiveBody.slice(0, EMAIL_BODY_TRUNCATE_CHARS),
           attachments,
           category:        'notificacion',
-          ai_summary:      `Remitente ${fromAddr} no está en whitelist del empleado (allowed_sender_emails). Sin cobro.`,
+          ai_summary:      `Remitente ${fromAddr} no está en whitelist del empleado (allowed_sender_emails/allowed_processor_only_emails). Sin cobro.`,
           ai_draft:        null,
           item_type:       'email',
           status:          'skipped',
@@ -1658,6 +1669,9 @@ export async function processInboxEmail(params: {
           ...dispatcherCols,
         });
         return;
+      }
+      if (!matchReply && matchProcessorOnly) {
+        suppressReplyBySenderPolicy = true;
       }
     }
   }
@@ -3625,6 +3639,11 @@ CATEGORÍAS:
   // No se envía nada hasta que apruebe. Thread resume (existingInboxId reply)
   // sigue funcionando porque transitionInboxItem ya marca pending y el humano
   // retoma desde ahí.
+  // 2026-10-09: si suppressReplyBySenderPolicy, saltar send-reply (procesor-only
+  // emails: Trane Isabel con backlog, etc. — ejecutar tools pero no responder).
+  if (suppressReplyBySenderPolicy && finalStatus === 'auto_replied') {
+    finalStatus = 'skipped';
+  }
   if (finalStatus === 'auto_replied' && result.draft && sendReplyFn && item) {
     try {
       const body = stripMarkdown(result.draft);
