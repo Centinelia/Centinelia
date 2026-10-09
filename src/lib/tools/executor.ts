@@ -5914,8 +5914,13 @@ ${numOp ? `<strong>Núm operación:</strong> ${numOp}<br/>` : ''}
         if (!sheetsRes.ok) {
           return { ok: false, error: `No pude listar hojas del Excel: ${sheetsRes.status}`, code: 'graph_error' };
         }
-        const sheetsJson = await sheetsRes.json() as { value?: Array<{ name: string }> };
-        const sheetsAvail = (sheetsJson.value ?? []).map(s => s.name);
+        // 2026-10-09 Nazre: filtrar hojas hidden/veryHidden — Camila solo debe
+        // ver sus pestañas visibles. Las hidden suelen ser de infra interna
+        // (lookups, catálogos backend) que confunden si se exponen al cliente.
+        const sheetsJson = await sheetsRes.json() as { value?: Array<{ name: string; visibility?: string }> };
+        const sheetsAvail = (sheetsJson.value ?? [])
+          .filter(s => (s.visibility ?? 'Visible').toLowerCase() === 'visible')
+          .map(s => s.name);
         const target = sheetNameRaw.trim().toLowerCase();
         const sheetMatch = sheetsAvail.find(s => s.trim().toLowerCase() === target)
                         ?? sheetsAvail.find(s => s.trim().toLowerCase().includes(target));
