@@ -41,6 +41,7 @@ function makeSupabaseMock(opts: {
   portalEmail?: string | null;
   account?: { ops_used: number; ops_included: number } | null;
   agentCfg?: { auto_refill_ops_enabled?: boolean; auto_refill_ops_threshold?: number; stripe_customer_id?: string | null };
+  billingPausedAt?: string | null;
 }) {
   return () => ({
     from: (table: string) => {
@@ -50,6 +51,17 @@ function makeSupabaseMock(opts: {
             eq: () => ({
               maybeSingle: async () => ({ data: { portal_email: opts.portalEmail ?? null } }),
               single:      async () => ({ data: opts.agentCfg ?? {} }),
+            }),
+          }),
+        };
+      }
+      if (table === 'organizations') {
+        // Default: billing_paused_at=null (cobro normal). Tests que necesitan
+        // bypass por org usan el `wireMocks` helper del describe block de bypass.
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: async () => ({ data: { billing_paused_at: opts.billingPausedAt ?? null } }),
             }),
           }),
         };
@@ -208,5 +220,132 @@ describe('consumeAiOp — path único via ops_ledger', () => {
 
     await mockAfterCallbacks[0]?.();
     expect(mockExecuteAutoRefill).not.toHaveBeenCalled();
+  });
+});
+
+// 2026-10-10 billing bypass — flag organizations.billing_paused_at + per-call
+// meta.bypassCharge. Caso que motivó: AC Proyectos post-Fase 1 esperando
+// pago Mes 2. Pool vacío intencional; Nami debe seguir procesando correos
+// sin empujar balance a negativo ni gatillar drift de pool provisioning.
+describe('consumeAiOp — bypass path (billing_paused_at + meta.bypassCharge)', () => {
+  beforeEach(() => {
+    mockRpc.mockReset();
+    mockInsertAiOpsLog.mockReset();
+    vi.resetModules();
+  });
+
+  function wireMocks(opts: { billing_paused_at: string | null; ops_ledger_enabled?: boolean }) {
+    vi.doMock('@/lib/supabase/admin', () => ({
+      createAdminClient: () => ({
+        from: (table: string) => {
+          if (table === 'voice_agents') {
+            return {
+              select: () => ({
+                eq: () => ({
+                  maybeSingle: async () => ({ data: { portal_email: 'client@example.com' } }),
+                }),
+              }),
+            };
+          }
+          if (table === 'organizations') {
+            return {
+              select: () => ({
+                eq: () => ({
+                  maybeSingle: async () => ({
+                    data: {
+                      ops_ledger_enabled: opts.ops_ledger_enabled ?? true,
+                      billing_paused_at:  opts.billing_paused_at,
+                    },
+                  }),
+                }),
+              }),
+            };
+          }
+          if (table === 'ai_ops_log') {
+            return {
+              insert: async (row: unknown) => { mockInsertAiOpsLog(row); return { error: null }; },
+            };
+          }
+          if (table === 'account_ops') {
+            return {
+              select: () => ({
+                eq: () => ({
+                  maybeSingle: async () => ({ data: { ops_used: 0, ops_included: 100 } }),
+                }),
+              }),
+            };
+          }
+          return {};
+        },
+        rpc: (fn: string, args: unknown) => mockRpc(fn, args),
+      }),
+    }));
+  }
+
+  it('org con billing_paused_at: NO llama RPC, deja audit count=0, return ok', async () => {
+    wireMocks({ billing_paused_at: '2026-10-10T18:00:00Z' });
+    const { consumeAiOp } = await import('../ops-guard');
+    const result = await consumeAiOp('agent-paused', 1, {
+      source: 'inbox_processor',
+      reference_id: 'msg-1:processed',
+    });
+    expect(result.ok).toBe(true);
+    expect(result.used).toBe(0);
+    expect(mockRpc).not.toHaveBeenCalled();
+    expect(mockInsertAiOpsLog).toHaveBeenCalledOnce();
+    const row = mockInsertAiOpsLog.mock.calls[0][0] as { count: number; context: string };
+    expect(row.count).toBe(0);
+    const ctx = JSON.parse(row.context);
+    expect(ctx.bypass).toBe('org_billing_paused');
+    expect(ctx.intended_count).toBe(1);
+    expect(ctx.billing_paused_at).toBe('2026-10-10T18:00:00Z');
+  });
+
+  it('meta.bypassCharge=true (sin flag org): NO llama RPC, deja audit, return ok', async () => {
+    wireMocks({ billing_paused_at: null });
+    const { consumeAiOp } = await import('../ops-guard');
+    const result = await consumeAiOp('agent-admin-bypass', 3, {
+      source:       'inbox_processor',
+      reference_id: 'admin-triggered-xyz',
+      bypassCharge: true,
+    });
+    expect(result.ok).toBe(true);
+    expect(result.used).toBe(0);
+    expect(mockRpc).not.toHaveBeenCalled();
+    expect(mockInsertAiOpsLog).toHaveBeenCalledOnce();
+    const row = mockInsertAiOpsLog.mock.calls[0][0] as { count: number; context: string };
+    expect(row.count).toBe(0);
+    const ctx = JSON.parse(row.context);
+    expect(ctx.bypass).toBe('meta_bypass_charge');
+    expect(ctx.intended_count).toBe(3);
+  });
+
+  it('org sin pausa y meta sin bypassCharge: cobro normal (regresión inversa)', async () => {
+    wireMocks({ billing_paused_at: null });
+    mockRpc.mockResolvedValue({ data: 95, error: null });
+    const { consumeAiOp } = await import('../ops-guard');
+    const result = await consumeAiOp('agent-normal', 1, {
+      source: 'inbox_processor',
+      reference_id: 'normal-ref',
+    });
+    expect(result.ok).toBe(true);
+    expect(mockRpc).toHaveBeenCalledWith('consume_pool_ops', expect.objectContaining({
+      p_portal_email: 'client@example.com',
+      p_ops: 1,
+    }));
+    expect(mockInsertAiOpsLog).toHaveBeenCalledOnce();
+    const row = mockInsertAiOpsLog.mock.calls[0][0] as { count: number };
+    expect(row.count).toBe(1);
+  });
+
+  it('bypass path NO throws si el audit insert falla', async () => {
+    wireMocks({ billing_paused_at: '2026-10-10T18:00:00Z' });
+    mockInsertAiOpsLog.mockImplementation(() => { throw new Error('supabase down'); });
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { consumeAiOp } = await import('../ops-guard');
+    const result = await consumeAiOp('agent-paused-audit-fail', 1, { source: 'inbox_processor' });
+    expect(result.ok).toBe(true);
+    expect(consoleSpy).toHaveBeenCalled();
+    consoleSpy.mockRestore();
   });
 });

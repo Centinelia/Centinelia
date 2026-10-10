@@ -64,6 +64,16 @@ export interface OpsMeta {
   trigger_source?: string;
   action_types?:   string[];
   ficha_ids?:      string[];
+
+  /**
+   * Bypass per-call: cuando true, consumeAiOp registra audit en ai_ops_log
+   * pero NO decrementa el pool. Return ok:true para no bloquear downstream.
+   * Uso: scripts admin / smoke tests / operaciones iniciadas por Nazre
+   * desde esta sesión Claude Code. Equivalente per-call al flag
+   * `organizations.billing_paused_at` (que aplica a toda la org).
+   * Ver `.brain/decisions/...` y feedback_billing_bypass_from_admin.md
+   */
+  bypassCharge?:   boolean;
 }
 
 // Atomically checks and consumes AI ops from the account pool via ops_ledger.
@@ -105,6 +115,42 @@ export async function consumeAiOp(agentId: string, count = 1, meta?: OpsMeta): P
       agentId, count, reason: resolvedReason, reference_id: meta?.reference_id,
     });
     return { ok: false, used: 0, limit: 0 };
+  }
+
+  // Lee billing_paused_at per-org. Si la org está en pausa (ej. AC esperando
+  // pago Mes 2) → bypass. Combina con meta.bypassCharge (per-call desde
+  // Claude Code / admin / scripts). Ver `.brain/policies/billing-bypass-from-claude-code.md`.
+  const { data: orgRow } = await supabase
+    .from('organizations')
+    .select('billing_paused_at')
+    .eq('portal_email', portalEmail)
+    .maybeSingle();
+  const billingPausedAt = (orgRow?.billing_paused_at as string | null) ?? null;
+
+  // Bypass path: la operación procede pero NO cobra al pool. Dos fuentes:
+  //   (a) meta.bypassCharge: scripts/admin/Claude Code invocando explícito.
+  //   (b) organizations.billing_paused_at: toda la org en pausa.
+  // En ambos casos: audit en ai_ops_log con count=0 + reason del bypass,
+  // y return ok:true/used:0/limit:0 para que downstream no bloquee.
+  if (meta?.bypassCharge || billingPausedAt) {
+    const bypassReason = meta?.bypassCharge ? 'meta_bypass_charge' : 'org_billing_paused';
+    try {
+      await supabase.from('ai_ops_log').insert({
+        agent_id:     agentId,
+        portal_email: portalEmail,
+        ...logPayload,
+        count:        0,
+        context: JSON.stringify({
+          ...(logPayload.context ? { orig_context: logPayload.context } : {}),
+          bypass:          bypassReason,
+          intended_count:  count,
+          ...(billingPausedAt ? { billing_paused_at: billingPausedAt } : {}),
+        }),
+      });
+    } catch (err) {
+      console.error('[ops-guard] audit insert failed on bypass path:', err);
+    }
+    return { ok: true, used: 0, limit: 0 };
   }
 
   const { data: newBalance, error } = await supabase.rpc('consume_pool_ops', {
