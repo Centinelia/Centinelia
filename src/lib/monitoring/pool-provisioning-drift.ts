@@ -53,6 +53,18 @@ export async function detectPoolProvisioningAnomalies(
     const bal = typeof balance === 'number' ? balance : 0;
     if (bal > 0) continue;
 
+    // 2026-10-10: skip orgs con billing pausado explícito (billing_paused_at
+    // IS NOT NULL). Caso AC Proyectos: pool vaciado intencional esperando
+    // pago Mes 2, el bypass en consumeAiOp garantiza que no se decremente —
+    // no hay dolor del cliente ni 429, alertar sería ruido. Ver
+    // `.brain/policies/billing-bypass-from-claude-code.md`.
+    const { data: orgRow } = await supabase
+      .from('organizations')
+      .select('billing_paused_at')
+      .eq('portal_email', portalEmail)
+      .maybeSingle();
+    if (orgRow?.billing_paused_at) continue;
+
     // Gate on `ops_used > 0` para evitar flagear orgs sin tráfico: test fixtures
     // zombie (Navi afterAll que falló), demos sin uso, orgs recién provisionadas
     // dentro de la ventana de seeding. Si nadie ha intentado consumir aún no hay

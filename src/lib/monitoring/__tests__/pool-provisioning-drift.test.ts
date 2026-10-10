@@ -6,10 +6,11 @@ import { describe, it, expect } from 'vitest';
 import { detectPoolProvisioningAnomalies } from '../pool-provisioning-drift';
 
 interface MockState {
-  activeAgents:      Array<{ portal_email: string; active: boolean }>;
-  balanceByOrg:      Map<string, number>;
-  grantExistsByOrg:  Map<string, boolean>;
-  opsUsedByOrg:      Map<string, number>;
+  activeAgents:        Array<{ portal_email: string; active: boolean }>;
+  balanceByOrg:        Map<string, number>;
+  grantExistsByOrg:    Map<string, boolean>;
+  opsUsedByOrg:        Map<string, number>;
+  billingPausedByOrg?: Map<string, string | null>;  // 2026-10-10: orgs con pago pausado se skipean
 }
 
 function mockSupabase(state: MockState) {
@@ -32,6 +33,17 @@ function mockSupabase(state: MockState) {
                 limit: () => Promise.resolve({
                   data: state.grantExistsByOrg.get(portalEmail) ? [{ id: 'grant-uuid' }] : [],
                 }),
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === 'organizations') {
+        return {
+          select: () => ({
+            eq: (_col: string, portalEmail: string) => ({
+              maybeSingle: () => Promise.resolve({
+                data: { billing_paused_at: state.billingPausedByOrg?.get(portalEmail) ?? null },
               }),
             }),
           }),
@@ -137,5 +149,35 @@ describe('detectPoolProvisioningAnomalies', () => {
     });
     const result = await detectPoolProvisioningAnomalies(supa);
     expect(result).toEqual([]);
+  });
+
+  // 2026-10-10: AC Proyectos post-Fase 1 esperando pago Mes 2. Pool vaciado
+  // intencional + billing_paused_at seteado. consumeAiOp bypass garantiza
+  // que no haya decremento → no hay dolor del cliente. Alertar aquí sería
+  // ruido (ya sabemos que la org está en pausa a propósito). Ver
+  // `.brain/policies/billing-bypass-from-claude-code.md`.
+  it('org con billing_paused_at seteado → no flag (bypass intencional)', async () => {
+    const supa = mockSupabase({
+      activeAgents:        [{ portal_email: 'camila@acproyectos.com', active: true }],
+      balanceByOrg:        new Map([['camila@acproyectos.com', 0]]),
+      grantExistsByOrg:    new Map([['camila@acproyectos.com', true]]),
+      opsUsedByOrg:        new Map([['camila@acproyectos.com', 1097]]),
+      billingPausedByOrg:  new Map([['camila@acproyectos.com', '2026-10-10T17:30:00Z']]),
+    });
+    const result = await detectPoolProvisioningAnomalies(supa);
+    expect(result).toEqual([]);
+  });
+
+  it('org sin billing_paused_at pero balance <=0 → sí flag (regresión inversa)', async () => {
+    const supa = mockSupabase({
+      activeAgents:        [{ portal_email: 'real-problem@example.com', active: true }],
+      balanceByOrg:        new Map([['real-problem@example.com', -3]]),
+      grantExistsByOrg:    new Map([['real-problem@example.com', true]]),
+      opsUsedByOrg:        new Map([['real-problem@example.com', 500]]),
+      billingPausedByOrg:  new Map([['real-problem@example.com', null]]),
+    });
+    const result = await detectPoolProvisioningAnomalies(supa);
+    expect(result).toHaveLength(1);
+    expect(result[0].reason).toBe('exhausted_no_refill');
   });
 });
