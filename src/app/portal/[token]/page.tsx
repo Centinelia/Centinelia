@@ -151,22 +151,15 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   // porque '' es falsy.
   const lookupEmail = session?.portalEmail || (agent as any).portal_email || null;
 
-  // cycleStartIso: inicio del ciclo actual (primer día del mes de reset)
-  // Se computa a partir de agent.minutes_reset_date para poder usarlo en el
-  // Promise.all sin necesitar esperar acctMins (que viene del mismo batch).
+  // cycleStartIso: inicio del ciclo actual = día 1 del mes natural MX.
+  // El cron reset-minutes estandariza `account_minutes.minutes_reset_date` al
+  // día 1 del próximo mes MX ([[feedback-facturacion-dia-1-standard]]), así
+  // que el ciclo activo siempre es [día 1 este mes, día 1 próximo mes).
+  // Antes se derivaba de `agent.minutes_reset_date` que queda stale para
+  // cuentas Stripe (ver bug Tortillería 2026-10-12 y [[account-cycle]]).
   const cycleStartIso = (() => {
-    const raw = (agent as any).minutes_reset_date as string | null | undefined;
-    if (!raw) {
-      // fallback: primer día del mes en curso
-      const now = new Date();
-      return new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-    }
-    const resetNext = new Date(raw + 'T00:00:00');
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    while (resetNext < today) resetNext.setMonth(resetNext.getMonth() + 1);
-    const cycleStart = new Date(resetNext);
-    cycleStart.setMonth(cycleStart.getMonth() - 1);
-    return cycleStart.toISOString();
+    const mxYm = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Mexico_City', year: 'numeric', month: '2-digit' }).format(new Date());
+    return `${mxYm.slice(0, 7)}-01T00:00:00-06:00`;
   })();
 
   // ─── Batch 1: paralelizar TODAS las queries org-scoped que dependen de
