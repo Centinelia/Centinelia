@@ -6,28 +6,68 @@
 //
 // Lógica:
 //   - Para cada cuenta (portal_email): suma pool (minutos y tareas) y consumo.
-//   - Calcula ritmo: avgPerDay = usado / diasDesdeReset.
+//   - Calcula ritmo: avgPerDay = usado / diasDesdeReset (del ciclo real, día 1 MX).
 //   - Proyecta al fin del mes: proj = avgPerDay * diasEnMes.
 //   - Si proj > pool * 1.05 (5% overshoot para evitar false positives cerca
 //     de 100%), envía correo.
 //   - Rate-limit: una vez por ciclo billing (marca en features.projection_alert_sent_at,
-//     compara contra minutes_reset_date del ciclo actual).
+//     compara contra el inicio del ciclo actual).
 //
 // Skip cuando:
 //   - Pool = 0 (cuenta sin plan)
-//   - daysSinceReset < 3 (muy temprano para proyectar)
+//   - daysSinceReset < 7 (muy temprano para proyectar — extrapolar 3-6 días a
+//     31 amplifica cualquier spike y manda alertas falsas; subido de 3 a 7 tras
+//     bug Tortillería 2026-10-12 que extrapoló 3 días a "71% sobre plan").
 //   - Ya se envió esta alerta en el ciclo actual
+//
+// Bug Tortillería 2026-10-12: antes leía `voice_agents.minutes_reset_date` que
+// queda stale para cuentas Stripe (el cron reset-minutes solo actualiza
+// `account_minutes.minutes_reset_date`). Ahora pasa por loadAccountCycle que
+// usa account_minutes como fuente única.
 
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { sendEmail, shell, heading, badge, infoCard, btn, sectionLabel } from '@/lib/email/send';
+import { sendEmail, shell, heading, badge, infoCard, btn, sectionLabel, progressBar } from '@/lib/email/send';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
 import { claimCronRun, releaseCronRun } from '@/lib/cron/lock';
+import { loadAccountCycle } from '@/lib/portal/account-cycle';
 
 const OVERSHOOT_THRESHOLD = 1.05;  // 5% overshoot para gatillar alerta
-const MIN_DAYS_TO_PROJECT = 3;
+const MIN_DAYS_TO_PROJECT = 7;     // 7 días mínimo (fix Tortillería 2026-10-12)
+
+const MESES_ES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+
+function formatResetDateHuman(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso.slice(0, 10));
+  if (!m) return iso;
+  const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+  return `${d} de ${MESES_ES[mo - 1]} de ${y}`;
+}
+
+function renderProjectionCard(p: Projection): string {
+  const label      = p.unit === 'min' ? 'Minutos' : 'Tareas';
+  const unitHuman  = p.unit === 'min' ? 'min' : 'tareas';
+  const usagePct   = Math.min(100, Math.round(p.used / p.pool * 100));
+  const projPct    = Math.min(100, Math.round(p.projected / p.pool * 100));
+  // Barra que muestra lo usado (sólido) y la proyección adicional (semi).
+  const barColor   = projPct >= 100 ? '#F87171' : '#FBBF24';
+  const projNum    = p.projected.toLocaleString('es-MX');
+  const usedNum    = p.used.toLocaleString('es-MX');
+  const planNum    = p.pool.toLocaleString('es-MX');
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="#2A1B5C" style="background:#2A1B5C;background-color:#2A1B5C;border:1px solid #3D2E6A;border-radius:12px;margin-bottom:16px">
+    <tr><td bgcolor="#2A1B5C" style="background:#2A1B5C;background-color:#2A1B5C;padding:20px">
+      <p style="color:#8C7FB8;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin:0 0 6px">${label}</p>
+      <p style="color:#F1EEFF;font-size:30px;font-weight:800;line-height:1.1;margin:0 0 2px">~${projNum} <span style="color:#C8BEE8;font-size:16px;font-weight:600">${unitHuman}</span></p>
+      <p style="color:#C8BEE8;font-size:13px;margin:0 0 14px">proyectados al cierre del ciclo</p>
+      ${progressBar(projPct, barColor)}
+      <p style="color:#C8BEE8;font-size:12px;margin:10px 0 0;line-height:1.5">
+        Van <strong style="color:#F1EEFF">${usedNum}</strong> de <strong style="color:#F1EEFF">${planNum}</strong> ${unitHuman} usados (${usagePct}%) · ritmo actual ~<strong style="color:#F1EEFF">${p.avgPerDay}</strong> por día.
+      </p>
+    </td></tr>
+  </table>`;
+}
 
 interface Agent {
   id:                 string;
@@ -83,7 +123,7 @@ export async function GET(req: NextRequest) {
     businessName: string;
     portalUrl:    string;
     projections:  Projection[];
-    resetDate:    string | null;
+    resetDate:    string;
     daysLeftInCycle: number;
     agentIds:     string[];
   }> = [];
@@ -92,19 +132,18 @@ export async function GET(req: NextRequest) {
     const primary = list[0];
     if (!primary) continue;
 
-    // Reset date determina el ciclo billing actual
-    const resetIso = primary.minutes_reset_date;
-    if (!resetIso) continue;
-    const resetDate = new Date(resetIso);
-    if (isNaN(resetDate.getTime())) continue;
+    // Ciclo billing viene de account_minutes.minutes_reset_date (día 1 próximo
+    // mes MX, actualizado por reset-minutes cron). NO leemos voice_agents aquí
+    // porque queda stale para cuentas Stripe — ver bug Tortillería 2026-10-12
+    // en [[account-cycle]].
+    const cycle = await loadAccountCycle(supabase, portalEmail, {
+      agentResetDate: primary.minutes_reset_date,  // fallback solo si no hay account_minutes
+    }, now);
+    if (!cycle) continue;
+    if (cycle.daysSinceReset < MIN_DAYS_TO_PROJECT) continue;
 
-    const daysSinceReset = Math.max(1, Math.floor((now.getTime() - resetDate.getTime()) / 86400000));
-    if (daysSinceReset < MIN_DAYS_TO_PROJECT) continue;
-
-    // Fin del ciclo = reset + 1 mes calendario (más preciso que +30d fijo).
-    const cycleEnd = new Date(resetDate); cycleEnd.setMonth(cycleEnd.getMonth() + 1);
-    const daysInCycle = Math.max(1, Math.round((cycleEnd.getTime() - resetDate.getTime()) / 86400000));
-    const daysLeftInCycle = Math.max(0, Math.ceil((cycleEnd.getTime() - now.getTime()) / 86400000));
+    const { daysInCycle, daysSinceReset, daysLeftInCycle } = cycle;
+    const resetDate = new Date(cycle.cycleStart);  // inicio del ciclo, para rate-limit
 
     // Pool source of truth: account_minutes + account_ops (mirrors de los
     // dos ledgers). Post-cleanup Fase 3b 2026-10-09: eliminado el fallback a
@@ -192,7 +231,7 @@ export async function GET(req: NextRequest) {
       businessName,
       portalUrl: `${appUrl}/portal/${primaryToken}?tab=cuenta#comprar`,
       projections,
-      resetDate: resetIso,
+      resetDate: cycle.resetDate,
       daysLeftInCycle,
       agentIds: list.map(a => a.id),
     });
@@ -209,18 +248,18 @@ export async function GET(req: NextRequest) {
         ? `[Aviso] Tus minutos no van a alcanzar este mes, ${alert.businessName}`
         : `[Aviso] Tus tareas no van a alcanzar este mes, ${alert.businessName}`;
 
+    const resetHuman = formatResetDateHuman(alert.resetDate);
     const body = [
-      heading(`Vas a rebasar tu plan este mes`),
-      badge(`${alert.daysLeftInCycle} días restantes en el ciclo`, '#F59E0B'),
-      ...alert.projections.map(p => infoCard(
-        `<strong>${p.unit === 'min' ? 'Minutos' : 'Tareas'}</strong><br/>` +
-        `Ritmo actual: ~${p.avgPerDay} por día. A este paso llegarás a ~${p.projected.toLocaleString('es-MX')} ${p.unit === 'min' ? 'minutos' : 'tareas'} usadas al terminar el ciclo, ${p.overshoot}% por encima de tu plan de ${p.pool.toLocaleString('es-MX')}.`
-      )),
-      sectionLabel('¿Qué hacer?'),
+      heading(`Tu plan podría quedar corto este mes`, alert.businessName),
+      badge(`Tu ciclo renueva el ${resetHuman}`, '#F59E0B'),
+      ...alert.projections.map(p => renderProjectionCard(p)),
+      sectionLabel('Qué puedes hacer'),
       infoCard(
-        `Puedes comprar saldo extra ahora (se suma al instante, no afecta el plan) o activar recarga automática para que se recargue solo cuando baje de un umbral. También puedes ajustar el uso de tus empleados.`
+        `<p style="color:#C8BEE8;font-size:14px;line-height:1.6;margin:0 0 8px"><strong style="color:#F1EEFF">1.</strong> Comprar saldo extra: se suma al instante, no cambia tu plan.</p>` +
+        `<p style="color:#C8BEE8;font-size:14px;line-height:1.6;margin:0 0 8px"><strong style="color:#F1EEFF">2.</strong> Activar recarga automática con umbral: se repone solo cuando baja del límite que tú elijas.</p>` +
+        `<p style="color:#C8BEE8;font-size:14px;line-height:1.6;margin:0"><strong style="color:#F1EEFF">3.</strong> Ajustar el uso de tus empleados en la configuración.</p>`
       ),
-      btn('Comprar saldo o activar recarga', alert.portalUrl),
+      btn('Ver mi cuenta y recargar', alert.portalUrl),
     ].join('');
     const html = shell(body);
 

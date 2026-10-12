@@ -8,6 +8,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { sendEmail, shell, heading, badge, infoCard, btn, sectionLabel } from '@/lib/email/send';
+import { loadAccountCycle } from '@/lib/portal/account-cycle';
 
 const DEMO_EMAILS = new Set(['demo@centinelia.mx', 'centinelia.dev@gmail.com']);
 
@@ -75,8 +76,14 @@ export async function maybeNotifyPoolLoss(
     if (list.length === 0) return;
 
     const primary = list[0];
-    const resetIso = primary.minutes_reset_date;
-    const resetDate = resetIso ? new Date(resetIso) : null;
+    // Ciclo billing desde account_minutes (día 1 próximo mes MX, fresco).
+    // Antes leía primary.minutes_reset_date, stale para cuentas Stripe → el
+    // rate-limit comparaba contra fecha vieja y podía re-notificar en el mismo
+    // ciclo. Ver bug Tortillería 2026-10-12 y [[account-cycle]].
+    const cycle = await loadAccountCycle(supabase, portalEmail, {
+      agentResetDate: primary.minutes_reset_date,
+    });
+    const resetDate = cycle ? new Date(cycle.cycleStart + 'T00:00:00Z') : null;
 
     // Rate-limit: ya se envio alerta en este ciclo para este resource → skip.
     // Legacy back-compat para minutos: si el flag nuevo no existe pero existe el
@@ -105,7 +112,9 @@ export async function maybeNotifyPoolLoss(
     });
     if (alreadyAlerted) return;
 
-    // Sumar TODA la perdida del ciclo (no solo este evento) — mas informativo
+    // Sumar TODA la perdida del ciclo (no solo este evento) — mas informativo.
+    // cycleStartIso viene de cycle.cycleStart (día 1 mes actual MX), no del
+    // reset-date del agente (que era stale).
     const cycleStartIso = resetDate?.toISOString() ?? new Date(Date.now() - 30 * 86_400_000).toISOString();
     const { data: cycleRows } = await supabase
       .from(table)

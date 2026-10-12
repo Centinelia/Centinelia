@@ -19,9 +19,10 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { sendEmail, shell, heading, badge, infoCard, btn, sectionLabel } from '@/lib/email/send';
+import { sendEmail, shell, badge, infoCard, btn, sectionLabel } from '@/lib/email/send';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
 import { claimCronRun, releaseCronRun } from '@/lib/cron/lock';
+import { loadAccountCycle } from '@/lib/portal/account-cycle';
 
 const THRESHOLD     = 0.8;                  // 80% del pool compartido
 const RATE_LIMIT_MS = 7 * 24 * 60 * 60 * 1000;
@@ -74,10 +75,11 @@ export async function GET(req: NextRequest) {
     byAccount.set(key, list);
   }
 
-  // Ciclo actual: desde el primer día del mes natural (en UTC — el reset del
-  // pool corre en UTC via cron reset-ops-pool). Usado para agregar
-  // consumption per-agent desde ai_ops_log.
-  const cycleStartIso = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+  // Ciclo actual: desde el primer día del mes natural MX. Usado para agregar
+  // consumption per-agent desde ai_ops_log. Antes usaba new Date().getMonth()
+  // local (dependía del tz del server); ahora anclado a MX tz vía Intl.
+  const _mxToday = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Mexico_City', year: 'numeric', month: '2-digit' }).format(new Date());
+  const cycleStartIso = `${_mxToday.slice(0, 7)}-01T00:00:00-06:00`;
 
   const now = Date.now();
   const overThreshold: Account[] = [];
@@ -152,14 +154,15 @@ export async function GET(req: NextRequest) {
     // Warm-yellow at 80–89%, red at 90%+
     const alertColor = pct >= 90 ? '#F87171' : '#FBBF24';
 
-    // Reset date: earliest across agents (they should share one but be safe).
-    // Parseo con `T00:00:00` para que el server UTC no interprete la fecha
-    // como medianoche UTC = día anterior en México (off-by-one).
-    const resetDates = account.agents.map(a => a.minutes_reset_date).filter(Boolean) as string[];
-    resetDates.sort();
-    const resetIso = resetDates[0] ?? null;
-    const resetStr = resetIso
-      ? new Date(resetIso + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long' })
+    // Reset date: fuente única account_minutes (día 1 próximo mes MX). Antes
+    // sumaba voice_agents.minutes_reset_date (stale para Stripe) y mostraba
+    // fecha incorrecta en el correo. Ver bug Tortillería 2026-10-12 y
+    // [[account-cycle]].
+    const cycle = await loadAccountCycle(supabase, account.portalEmail, {
+      agentResetDate: account.agents.find(a => a.minutes_reset_date)?.minutes_reset_date ?? null,
+    });
+    const resetStr = cycle
+      ? new Date(cycle.resetDate + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long' })
       : 'el próximo ciclo';
 
     // Business label for the header subtitle.

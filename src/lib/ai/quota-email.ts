@@ -1,6 +1,7 @@
 import { sendEmail, shell, heading, infoCard, btn } from '@/lib/email/send';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getOrgToken } from '@/lib/portal/org-token';
+import { loadAccountCycle } from '@/lib/portal/account-cycle';
 import type { AutomationName } from '@/types/agent';
 
 const LABELS: Record<AutomationName, string> = {
@@ -34,12 +35,16 @@ export async function maybeSendQuotaEmail(agent: AgentSubset, automation: Automa
   }
 
   const label = LABELS[automation];
-  // Typo fix: "resetee" no es palabra; usar "renueva". Además el date parse
-  // con `T00:00:00` evita off-by-one por tz México vs UTC del server.
-  const resetSentence = agent.minutes_reset_date
-    ? `El pool se renueva el ${new Date(agent.minutes_reset_date + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}, o`
-    : `El pool se renueva en el próximo ciclo, o`;
   const supabase = createAdminClient();
+  // Fecha de renovación desde account_minutes (día 1 próximo mes MX). Antes
+  // leía agent.minutes_reset_date, stale para cuentas Stripe. Ver bug Tortillería
+  // 2026-10-12 y [[account-cycle]].
+  const cycle = await loadAccountCycle(supabase, agent.portal_email ?? null, {
+    agentResetDate: agent.minutes_reset_date,
+  });
+  const resetSentence = cycle
+    ? `El pool se renueva el ${new Date(cycle.resetDate + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}, o`
+    : `El pool se renueva en el próximo ciclo, o`;
   const orgToken = agent.portal_email ? await getOrgToken(agent.portal_email, supabase) : null;
   const tokenForUrl = orgToken ?? agent.portal_token;
   const portalUrl = tokenForUrl

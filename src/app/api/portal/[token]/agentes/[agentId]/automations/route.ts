@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { withPortalAuth } from '@/lib/portal/with-portal-auth';
+import { loadAccountCycle } from '@/lib/portal/account-cycle';
 import type { AutomationName, AutomationsConfig } from '@/types/agent';
 
 const VALID_AUTOMATIONS: AutomationName[] = ['heartbeat', 'weekly_insights', 'learn'];
@@ -87,12 +88,19 @@ export const GET = withPortalAuth<AgentRow>(
       .select('ops_used').eq('portal_email', agent!.portal_email).maybeSingle();
     const opsUsed = (acctOps as { ops_used?: number | null } | null)?.ops_used ?? 0;
 
+    // Fecha de renovación desde account_minutes (día 1 próximo mes MX). Antes
+    // leía agent.minutes_reset_date, stale para cuentas Stripe. Ver bug
+    // Tortillería 2026-10-12 y [[account-cycle]].
+    const cycle = await loadAccountCycle(supabase, agent!.portal_email, {
+      agentResetDate: agent!.minutes_reset_date,
+    });
+
     return NextResponse.json({
       automations,
       quota: {
         used:      opsUsed,
         limit:     agent!.ai_ops_limit,
-        resets_at: agent!.minutes_reset_date,
+        resets_at: cycle?.resetDate ?? agent!.minutes_reset_date,
       },
     });
   },
