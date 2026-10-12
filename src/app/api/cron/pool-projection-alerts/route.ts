@@ -49,13 +49,20 @@ function formatResetDateHuman(iso: string): string {
 function renderProjectionCard(p: Projection): string {
   const label      = p.unit === 'min' ? 'Minutos' : 'Tareas';
   const unitHuman  = p.unit === 'min' ? 'min' : 'tareas';
-  const usagePct   = Math.min(100, Math.round(p.used / p.pool * 100));
-  const projPct    = Math.min(100, Math.round(p.projected / p.pool * 100));
-  // Barra que muestra lo usado (sólido) y la proyección adicional (semi).
+  // Progress bar y "% usado" se calculan contra PLAN BASE (lo contratado),
+  // consistente con el threshold de la alerta. Si hay rollover (pool > base),
+  // se aclara en una línea aparte.
+  const usagePct   = Math.min(100, Math.round(p.used / p.planBase * 100));
+  const projPct    = Math.min(100, Math.round(p.projected / p.planBase * 100));
   const barColor   = projPct >= 100 ? '#F87171' : '#FBBF24';
   const projNum    = p.projected.toLocaleString('es-MX');
   const usedNum    = p.used.toLocaleString('es-MX');
-  const planNum    = p.pool.toLocaleString('es-MX');
+  const planNum    = p.planBase.toLocaleString('es-MX');
+  const hasRollover = p.pool > p.planBase;
+  const rolloverAmt = p.pool - p.planBase;
+  const rolloverNote = hasRollover
+    ? `<p style="color:#8C7FB8;font-size:12px;margin:6px 0 0;line-height:1.5;font-style:italic">Además cuentas con <strong style="color:#C8BEE8">${rolloverAmt.toLocaleString('es-MX')} ${unitHuman}</strong> de saldo acumulado del ciclo anterior.</p>`
+    : '';
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="#2A1B5C" style="background:#2A1B5C;background-color:#2A1B5C;border:1px solid #3D2E6A;border-radius:12px;margin-bottom:16px">
     <tr><td bgcolor="#2A1B5C" style="background:#2A1B5C;background-color:#2A1B5C;padding:20px">
       <p style="color:#8C7FB8;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin:0 0 6px">${label}</p>
@@ -63,8 +70,9 @@ function renderProjectionCard(p: Projection): string {
       <p style="color:#C8BEE8;font-size:13px;margin:0 0 14px">proyectados al cierre del ciclo</p>
       ${progressBar(projPct, barColor)}
       <p style="color:#C8BEE8;font-size:12px;margin:10px 0 0;line-height:1.5">
-        Van <strong style="color:#F1EEFF">${usedNum}</strong> de <strong style="color:#F1EEFF">${planNum}</strong> ${unitHuman} usados (${usagePct}%) · ritmo actual ~<strong style="color:#F1EEFF">${p.avgPerDay}</strong> por día.
+        Van <strong style="color:#F1EEFF">${usedNum}</strong> de <strong style="color:#F1EEFF">${planNum}</strong> ${unitHuman} de tu plan (${usagePct}%) · ritmo actual ~<strong style="color:#F1EEFF">${p.avgPerDay}</strong> por día.
       </p>
+      ${rolloverNote}
     </td></tr>
   </table>`;
 }
@@ -85,10 +93,11 @@ interface Agent {
 
 interface Projection {
   used:      number;
-  pool:      number;
+  pool:      number;    // Pool total disponible (incluye rollover) — usado en display
+  planBase:  number;    // Plan base contratado — usado en display + threshold
   avgPerDay: number;
   projected: number;
-  overshoot: number;
+  overshoot: number;    // % sobre planBase (lo contratado), NO sobre pool
   unit:      'min' | 'tareas';
 }
 
@@ -149,7 +158,14 @@ export async function GET(req: NextRequest) {
     // dos ledgers). Post-cleanup Fase 3b 2026-10-09: eliminado el fallback a
     // organizations.monthly_ops_pool/used y voice_agents.ai_ops_used (todos
     // legacy stale).
-    const [acctMinsRes, acctOpsRes] = await Promise.all([
+    // Plan base contratado via RPC (lo que el cliente paga este mes, sin
+    // rollover). Separado de `included` que es el pool total disponible
+    // (plan + rollover acumulado, cap 2×). Antes se evaluaba overshoot contra
+    // `included` y el correo decía "71% sobre plan de 2,000" cuando el plan
+    // real contratado era 1,000 (Tortillería 2026-10-12). Ahora:
+    //   - threshold aplica a planBase (si rebasas lo contratado, avisas)
+    //   - display muestra planBase; si pool > planBase, aclara rollover.
+    const [acctMinsRes, acctOpsRes, planBaseMinRes, planBaseOpsRes] = await Promise.all([
       supabase.from('account_minutes')
         .select('minutes_used, minutes_included')
         .eq('portal_email', portalEmail)
@@ -158,9 +174,13 @@ export async function GET(req: NextRequest) {
         .select('ops_used, ops_included')
         .eq('portal_email', portalEmail)
         .maybeSingle(),
+      supabase.rpc('get_plan_base_minutes', { p_portal_email: portalEmail }),
+      supabase.rpc('get_plan_base_ops',     { p_portal_email: portalEmail }),
     ]);
     const acctMins = acctMinsRes.data;
     const acctOps  = acctOpsRes.data as { ops_used?: number | null; ops_included?: number | null } | null;
+    const planBaseMinutes = (planBaseMinRes.data as number | null) ?? 0;
+    const planBaseOps     = (planBaseOpsRes.data as number | null) ?? 0;
 
     const activePeers = list;
     const minutesIncluded = (typeof acctMins?.minutes_included === 'number' && acctMins.minutes_included > 0)
@@ -174,31 +194,37 @@ export async function GET(req: NextRequest) {
       : activePeers.reduce((s, a) => s + (a.ai_ops_limit ?? 0), 0);
     const opsUsed = typeof acctOps?.ops_used === 'number' ? acctOps.ops_used : 0;
 
+    // Fallback: si el RPC no devolvió plan base (ej. cuenta sin suscripción
+    // Stripe activa), usar el pool actual como aproximación — mantiene
+    // comportamiento anterior.
+    const planBaseMinutesSafe = planBaseMinutes > 0 ? planBaseMinutes : minutesIncluded;
+    const planBaseOpsSafe     = planBaseOps     > 0 ? planBaseOps     : opsLimit;
+
     const projections: Projection[] = [];
 
-    if (minutesIncluded > 0) {
+    if (minutesIncluded > 0 && planBaseMinutesSafe > 0) {
       const avg = minutesUsed / daysSinceReset;
       const proj = avg * daysInCycle;
-      if (proj > minutesIncluded * OVERSHOOT_THRESHOLD) {
+      if (proj > planBaseMinutesSafe * OVERSHOOT_THRESHOLD) {
         projections.push({
-          used: minutesUsed, pool: minutesIncluded,
+          used: minutesUsed, pool: minutesIncluded, planBase: planBaseMinutesSafe,
           avgPerDay: Math.round(avg * 10) / 10,
           projected: Math.round(proj),
-          overshoot: Math.round((proj / minutesIncluded - 1) * 100),
+          overshoot: Math.round((proj / planBaseMinutesSafe - 1) * 100),
           unit: 'min',
         });
       }
     }
 
-    if (opsLimit > 0) {
+    if (opsLimit > 0 && planBaseOpsSafe > 0) {
       const avg = opsUsed / daysSinceReset;
       const proj = avg * daysInCycle;
-      if (proj > opsLimit * OVERSHOOT_THRESHOLD) {
+      if (proj > planBaseOpsSafe * OVERSHOOT_THRESHOLD) {
         projections.push({
-          used: opsUsed, pool: opsLimit,
+          used: opsUsed, pool: opsLimit, planBase: planBaseOpsSafe,
           avgPerDay: Math.round(avg * 10) / 10,
           projected: Math.round(proj),
-          overshoot: Math.round((proj / opsLimit - 1) * 100),
+          overshoot: Math.round((proj / planBaseOpsSafe - 1) * 100),
           unit: 'tareas',
         });
       }

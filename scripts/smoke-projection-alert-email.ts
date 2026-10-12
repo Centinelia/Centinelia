@@ -16,15 +16,20 @@ function formatResetDateHuman(iso: string): string {
   const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
   return `${d} de ${MESES_ES[mo - 1]} de ${y}`;
 }
-function renderProjectionCard(p: { unit: 'min' | 'tareas'; projected: number; used: number; pool: number; avgPerDay: number; overshoot: number }): string {
+function renderProjectionCard(p: { unit: 'min' | 'tareas'; projected: number; used: number; pool: number; planBase: number; avgPerDay: number; overshoot: number }): string {
   const label      = p.unit === 'min' ? 'Minutos' : 'Tareas';
   const unitHuman  = p.unit === 'min' ? 'min' : 'tareas';
-  const usagePct   = Math.min(100, Math.round(p.used / p.pool * 100));
-  const projPct    = Math.min(100, Math.round(p.projected / p.pool * 100));
+  const usagePct   = Math.min(100, Math.round(p.used / p.planBase * 100));
+  const projPct    = Math.min(100, Math.round(p.projected / p.planBase * 100));
   const barColor   = projPct >= 100 ? '#F87171' : '#FBBF24';
   const projNum    = p.projected.toLocaleString('es-MX');
   const usedNum    = p.used.toLocaleString('es-MX');
-  const planNum    = p.pool.toLocaleString('es-MX');
+  const planNum    = p.planBase.toLocaleString('es-MX');
+  const hasRollover = p.pool > p.planBase;
+  const rolloverAmt = p.pool - p.planBase;
+  const rolloverNote = hasRollover
+    ? `<p style="color:#8C7FB8;font-size:12px;margin:6px 0 0;line-height:1.5;font-style:italic">Además cuentas con <strong style="color:#C8BEE8">${rolloverAmt.toLocaleString('es-MX')} ${unitHuman}</strong> de saldo acumulado del ciclo anterior.</p>`
+    : '';
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="#2A1B5C" style="background:#2A1B5C;background-color:#2A1B5C;border:1px solid #3D2E6A;border-radius:12px;margin-bottom:16px">
     <tr><td bgcolor="#2A1B5C" style="background:#2A1B5C;background-color:#2A1B5C;padding:20px">
       <p style="color:#8C7FB8;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin:0 0 6px">${label}</p>
@@ -32,8 +37,9 @@ function renderProjectionCard(p: { unit: 'min' | 'tareas'; projected: number; us
       <p style="color:#C8BEE8;font-size:13px;margin:0 0 14px">proyectados al cierre del ciclo</p>
       ${progressBar(projPct, barColor)}
       <p style="color:#C8BEE8;font-size:12px;margin:10px 0 0;line-height:1.5">
-        Van <strong style="color:#F1EEFF">${usedNum}</strong> de <strong style="color:#F1EEFF">${planNum}</strong> ${unitHuman} usados (${usagePct}%) · ritmo actual ~<strong style="color:#F1EEFF">${p.avgPerDay}</strong> por día.
+        Van <strong style="color:#F1EEFF">${usedNum}</strong> de <strong style="color:#F1EEFF">${planNum}</strong> ${unitHuman} de tu plan (${usagePct}%) · ritmo actual ~<strong style="color:#F1EEFF">${p.avgPerDay}</strong> por día.
       </p>
+      ${rolloverNote}
     </td></tr>
   </table>`;
 }
@@ -43,8 +49,10 @@ function renderProjectionCard(p: { unit: 'min' | 'tareas'; projected: number; us
 const businessName = 'Tortillas Estrella';
 const resetDate = '2026-11-01';
 const projections = [
-  { unit: 'min' as const,    projected: 3420, used: 331,  pool: 2000, avgPerDay: 110.3, overshoot: 71  },
-  { unit: 'tareas' as const, projected: 4030, used: 390,  pool: 1300, avgPerDay: 130.0, overshoot: 210 },
+  // Minutos: plan base 1,000 (scale combinada); pool 2,000 porque hay rollover
+  { unit: 'min' as const,    projected: 3420, used: 331,  pool: 2000, planBase: 1000, avgPerDay: 110.3, overshoot: 242 },
+  // Tareas: plan base 1,300 (scale + 300 pro setup bonus); sin rollover
+  { unit: 'tareas' as const, projected: 4030, used: 390,  pool: 1300, planBase: 1300, avgPerDay: 130.0, overshoot: 210 },
 ];
 
 const resetHuman = formatResetDateHuman(resetDate);
