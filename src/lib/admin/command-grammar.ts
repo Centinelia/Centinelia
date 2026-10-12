@@ -98,7 +98,7 @@ const SPECS: CmdSpec[] = [
     regex: new RegExp(`^\\s*reset\\s+ops\\s+(${EMAIL_RE.source})\\s*$`, 'i'),
     build: (m) => ({ kind: 'reset_ops', portalEmail: m[1].toLowerCase() }),
     trace: (m) => `reset ops ${m[1].toLowerCase()}`,
-    help:  '`reset ops <email>` — pone ai_ops_used = 0 en los agentes del portal',
+    help:  '`reset ops <email>` — inserta ajuste en ops_ledger para llevar el balance del portal al cap del plan',
   },
   {
     name:  'grant ops',
