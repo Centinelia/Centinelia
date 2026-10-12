@@ -20,20 +20,27 @@ export const dynamic = 'force-dynamic';
 
 const BATCH_SIZE = 5000;
 
+// 2026-10-12 fix: `pk_column` es REQUIRED (no default a 'id'). Antes
+// se asumía 'id' para todas las tablas y el cron fallaba con
+// "column stripe_webhook_events.id does not exist [42703]" porque esa
+// tabla usa `event_id` (Stripe event id) como PK. Hacer el tipo required
+// obliga a declarar la PK explícita al agregar cualquier rule nueva —
+// fix sistémico (ver [[feedback-fixes-para-siempre]]).
 interface CleanupRule {
   table:      string;
-  column:     string;
+  pk_column:  string;   // PK para batched SELECT + IN delete. NO asumir 'id'.
+  column:     string;   // Columna de timestamp (age_days se compara contra ésta).
   age_days:   number;
   extra_where?: string;
   label:      string;
 }
 
-const RULES: CleanupRule[] = [
-  { table: 'llm_call_log',           column: 'created_at', age_days: 365,   label: 'LLM call observability (1 año)' },
-  { table: 'tool_call_log',          column: 'created_at', age_days: 90,    label: 'Tool call debug (90 días)' },
-  { table: 'platform_incidents',     column: 'updated_at', age_days: 365, extra_where: `status IN ('resolved','closed')`, label: 'Incidents resueltos (1 año)' },
-  { table: 'stripe_webhook_events',  column: 'processed_at', age_days: 90,  label: 'Stripe webhook dedupe (90 días)' },
-  { table: 'ai_ops_log',             column: 'created_at', age_days: 365 * 7, label: 'AI ops log (7 años retention Municipio)' },
+export const RULES: CleanupRule[] = [
+  { table: 'llm_call_log',           pk_column: 'id',       column: 'created_at',   age_days: 365,     label: 'LLM call observability (1 año)' },
+  { table: 'tool_call_log',          pk_column: 'id',       column: 'created_at',   age_days: 90,      label: 'Tool call debug (90 días)' },
+  { table: 'platform_incidents',     pk_column: 'id',       column: 'updated_at',   age_days: 365, extra_where: `status IN ('resolved','closed')`, label: 'Incidents resueltos (1 año)' },
+  { table: 'stripe_webhook_events',  pk_column: 'event_id', column: 'processed_at', age_days: 90,      label: 'Stripe webhook dedupe (90 días)' },
+  { table: 'ai_ops_log',             pk_column: 'id',       column: 'created_at',   age_days: 365 * 7, label: 'AI ops log (7 años retention Municipio)' },
 ];
 
 export async function GET(req: Request) {
@@ -68,14 +75,15 @@ export async function GET(req: Request) {
       }
 
       // Batched delete para tablas SIN tamper-protection trigger.
+      // 2026-10-12 fix: `rule.pk_column` dinámico — ver nota al RULES array.
       while (true) {
-        const selectQuery = supabase.from(rule.table).select('id').lt(rule.column, cutoff).limit(BATCH_SIZE);
+        const selectQuery = supabase.from(rule.table).select(rule.pk_column).lt(rule.column, cutoff).limit(BATCH_SIZE);
         const { data: rowsToDelete, error: selErr } = await selectQuery;
         if (selErr) throw selErr;
         if (!rowsToDelete || rowsToDelete.length === 0) break;
 
-        const ids = rowsToDelete.map(r => r.id as string);
-        let deleteQuery = supabase.from(rule.table).delete().in('id', ids);
+        const ids = rowsToDelete.map(r => (r as unknown as Record<string, unknown>)[rule.pk_column] as string);
+        let deleteQuery = supabase.from(rule.table).delete().in(rule.pk_column, ids);
         if (rule.table === 'platform_incidents') {
           deleteQuery = deleteQuery.in('status', ['resolved', 'closed']);
         }
