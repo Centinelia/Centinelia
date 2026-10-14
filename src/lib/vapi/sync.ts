@@ -1231,6 +1231,106 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
       server: server('exec/replicar_contenido_entre_cuentas'),
     };
 
+    // ─── Pack hr_nomina (Naia + reloj checador) ─────────────────────────────
+    case 'rrhh_registrar_empleado': return {
+      type: 'function',
+      function: {
+        name: 'rrhh_registrar_empleado',
+        description: 'Naia: da de alta o actualiza un empleado en el catálogo del reloj checador. Úsala cuando la operadora de nómina te diga que entró alguien nuevo o cuando te dicte el sueldo diario de alguien ya registrado (hace upsert).',
+        parameters: {
+          type: 'object',
+          properties: {
+            reloj_id:      { type: 'string', description: 'Número que el reloj asigna al empleado (ej. "15").' },
+            nombre:        { type: 'string', description: 'Nombre completo del empleado.' },
+            hora_entrada:  { type: 'string', description: 'Hora oficial de entrada HH:MM (opcional, default según config de la org).' },
+            sueldo_diario: { type: 'number', description: 'Sueldo diario en pesos (opcional). Si se pasa, se usa como monto de la falta cuando ese empleado no se presenta.' },
+            nota:          { type: 'string', description: 'Nota libre (opcional).' },
+          },
+          required: ['reloj_id', 'nombre'],
+        },
+      },
+      server: server('exec/rrhh_registrar_empleado'),
+    };
+    case 'rrhh_dar_baja_empleado': return {
+      type: 'function',
+      function: {
+        name: 'rrhh_dar_baja_empleado',
+        description: 'Naia: marca un empleado como inactivo. Deja de contarse en cálculos, pero sigue en el histórico.',
+        parameters: {
+          type: 'object',
+          properties: {
+            reloj_id: { type: 'string', description: 'Número del empleado en el reloj.' },
+            nota:     { type: 'string', description: 'Motivo o nota de la baja (opcional).' },
+          },
+          required: ['reloj_id'],
+        },
+      },
+      server: server('exec/rrhh_dar_baja_empleado'),
+    };
+    case 'rrhh_registrar_descansos_mensuales': return {
+      type: 'function',
+      function: {
+        name: 'rrhh_registrar_descansos_mensuales',
+        description: 'Naia: captura los días de descanso autorizados del mes para una lista de empleados. Un empleado puede tener uno o varios días. Reemplaza el registro previo del mismo mes.',
+        parameters: {
+          type: 'object',
+          properties: {
+            anio:      { type: 'integer', description: 'Año (ej. 2026).' },
+            mes:       { type: 'integer', description: 'Mes 1-12.' },
+            descansos: {
+              type: 'array',
+              description: 'Un elemento por empleado. Cada uno trae su reloj_id y las fechas YYYY-MM-DD de descanso.',
+              items: {
+                type: 'object',
+                properties: {
+                  reloj_id: { type: 'string' },
+                  fechas:   { type: 'array', items: { type: 'string', description: 'YYYY-MM-DD' } },
+                },
+                required: ['reloj_id', 'fechas'],
+              },
+            },
+          },
+          required: ['anio', 'mes', 'descansos'],
+        },
+      },
+      server: server('exec/rrhh_registrar_descansos_mensuales'),
+    };
+    case 'rrhh_registrar_vacaciones_autorizadas': return {
+      type: 'function',
+      function: {
+        name: 'rrhh_registrar_vacaciones_autorizadas',
+        description: 'Naia: registra un periodo de vacaciones autorizado para un empleado. Esos días no se cuentan como falta.',
+        parameters: {
+          type: 'object',
+          properties: {
+            reloj_id:     { type: 'string', description: 'Número del empleado en el reloj.' },
+            fecha_inicio: { type: 'string', description: 'YYYY-MM-DD inclusive.' },
+            fecha_fin:    { type: 'string', description: 'YYYY-MM-DD inclusive.' },
+            nota:         { type: 'string', description: 'Nota (opcional).' },
+          },
+          required: ['reloj_id', 'fecha_inicio', 'fecha_fin'],
+        },
+      },
+      server: server('exec/rrhh_registrar_vacaciones_autorizadas'),
+    };
+    case 'rrhh_procesar_quincena_desde_excel': return {
+      type: 'function',
+      function: {
+        name: 'rrhh_procesar_quincena_desde_excel',
+        description: 'Naia: procesa el Excel exportado del reloj checador y devuelve una hoja Excel con retardos, faltas y montos por empleado, lista para anexar a la nómina.',
+        parameters: {
+          type: 'object',
+          properties: {
+            excel_url:    { type: 'string', description: 'URL del Excel exportado del reloj. Puede ser https:// o ruta del bucket "<bucket>/<file>".' },
+            fecha_inicio: { type: 'string', description: 'Primer día de la quincena YYYY-MM-DD inclusive.' },
+            fecha_fin:    { type: 'string', description: 'Último día que se calcula (según política de la org, suele ser 1 día antes del cierre real).' },
+          },
+          required: ['excel_url', 'fecha_inicio', 'fecha_fin'],
+        },
+      },
+      server: server('exec/rrhh_procesar_quincena_desde_excel'),
+    };
+
     default: {
       // Meefi demo tools (7) — declaradas en el preset de Nelia pero antes sin case
       // aquí, así que buildToolDef retornaba null y el meerkat alucinaba la

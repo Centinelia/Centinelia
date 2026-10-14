@@ -238,6 +238,16 @@ const KNOWN_DROPS = {
     'inv_importar_backlog',
     'inv_normalizar_bodegas',
     'inv_reporte_utilidad',
+    // Pack hr_nomina (Naia + reloj checador) — tools opt-in per-org vía
+    // tool_overrides.enabled + organizations.features.rrhh_nomina_v1. No se
+    // listan en MEERKAT_VOICE_DISTRIBUTION a propósito: la base de Naia queda
+    // intacta y solo las orgs con el pack activo las reciben. Ver
+    // .brain/skills/naia-reloj-checador-ac-proyectos.md
+    'rrhh_registrar_empleado',
+    'rrhh_dar_baja_empleado',
+    'rrhh_registrar_descansos_mensuales',
+    'rrhh_registrar_vacaciones_autorizadas',
+    'rrhh_procesar_quincena_desde_excel',
   ]),
   // Tools que en VOICE_TO_CHAT están mapeadas pero no tienen entrada en
   // CHAT_TOOL_BY_NAME todavía. Rare porque el rename 2026-08-19 alineó

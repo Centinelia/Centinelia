@@ -157,6 +157,13 @@ export const VOICE_TO_CHAT: Record<string, string | null> = {
   usar_media_del_cliente:            'usar_media_del_cliente',
   listar_cuentas_gestionadas:        'listar_cuentas_gestionadas',
   replicar_contenido_entre_cuentas:  'replicar_contenido_entre_cuentas',
+
+  // Pack hr_nomina (Naia + reloj checador). Mismo nombre en los 3 canales.
+  rrhh_registrar_empleado:               'rrhh_registrar_empleado',
+  rrhh_dar_baja_empleado:                'rrhh_dar_baja_empleado',
+  rrhh_registrar_descansos_mensuales:    'rrhh_registrar_descansos_mensuales',
+  rrhh_registrar_vacaciones_autorizadas: 'rrhh_registrar_vacaciones_autorizadas',
+  rrhh_procesar_quincena_desde_excel:    'rrhh_procesar_quincena_desde_excel',
 };
 
 /**

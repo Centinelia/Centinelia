@@ -25,6 +25,7 @@ export interface OrgPackContext {
   has_contracts?:       boolean;
   has_sheets?:          boolean;
   has_hr?:              boolean;
+  has_hr_nomina?:       boolean;
   has_field_dispatch?:  boolean;
   has_tramites?:        boolean;
   has_incidencia_flow?: boolean;
@@ -138,6 +139,17 @@ export const SKILL_PACKS: SkillPack[] = [
     tools: ['registrar_falta', 'consultar_vacaciones', 'solicitar_permiso', 'verificar_incidencia'],
     source: 'features.hr_enabled',
     activeCheck: ctx => !!ctx.has_hr,
+  },
+  {
+    id: 'hr_nomina', label: 'RRHH Nómina (reloj checador)',
+    description: 'Procesa Excel de reloj checador, calcula retardos y faltas por reglas del cliente, mantiene catálogo de empleados + descansos + vacaciones.',
+    tools: [
+      'rrhh_registrar_empleado', 'rrhh_dar_baja_empleado',
+      'rrhh_registrar_descansos_mensuales', 'rrhh_registrar_vacaciones_autorizadas',
+      'rrhh_procesar_quincena_desde_excel',
+    ],
+    source: 'organizations.features.rrhh_nomina_v1',
+    activeCheck: ctx => !!ctx.has_hr_nomina,
   },
   {
     id: 'campo_dispatch', label: 'Despacho de campo',
@@ -304,5 +316,6 @@ export async function resolveOrgPackContext(
     has_fichas_informativas: orgFeatures.fichas_informativas === true,
     has_perfiles_vivos:      orgFeatures.perfiles_vivos === true,
     has_social_publishing:   socialPublishingEnabled(orgFeatures),
+    has_hr_nomina:           orgFeatures.rrhh_nomina_v1 === true,
   };
 }

@@ -1099,6 +1099,88 @@ const HR_EMAIL_TOOLS: Anthropic.Tool[] = [
   },
 ];
 
+// ── Pack hr_nomina (Naia + reloj checador) ───────────────────────────────
+// Spec: .brain/skills/naia-reloj-checador-ac-proyectos.md
+const RRHH_NOMINA_EMAIL_TOOLS: Anthropic.Tool[] = [
+  {
+    name:        'rrhh_registrar_empleado',
+    description: 'Naia: da de alta o actualiza un empleado del reloj checador (upsert) cuando el correo reporta un alta nueva o incluye el sueldo diario de alguien.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        reloj_id:      { type: 'string', description: 'Número que el reloj asigna al empleado.' },
+        nombre:        { type: 'string', description: 'Nombre completo del empleado.' },
+        hora_entrada:  { type: 'string', description: 'Hora oficial de entrada HH:MM (opcional).' },
+        sueldo_diario: { type: 'number', description: 'Sueldo diario en pesos (opcional). Se usa como monto de la falta cuando ese empleado no se presenta.' },
+        nota:          { type: 'string' },
+      },
+      required: ['reloj_id', 'nombre'],
+    },
+  },
+  {
+    name:        'rrhh_dar_baja_empleado',
+    description: 'Naia: marca un empleado como inactivo cuando el correo reporta una baja.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        reloj_id: { type: 'string' },
+        nota:     { type: 'string' },
+      },
+      required: ['reloj_id'],
+    },
+  },
+  {
+    name:        'rrhh_registrar_descansos_mensuales',
+    description: 'Naia: captura los días de descanso autorizados del mes cuando el correo (típicamente del jefe de departamento al inicio del mes) los informa.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        anio:      { type: 'integer' },
+        mes:       { type: 'integer', description: 'Mes 1-12.' },
+        descansos: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              reloj_id: { type: 'string' },
+              fechas:   { type: 'array', items: { type: 'string', description: 'YYYY-MM-DD' } },
+            },
+            required: ['reloj_id', 'fechas'],
+          },
+        },
+      },
+      required: ['anio', 'mes', 'descansos'],
+    },
+  },
+  {
+    name:        'rrhh_registrar_vacaciones_autorizadas',
+    description: 'Naia: registra vacaciones autorizadas de un empleado cuando el correo adjunta la hoja autorizada.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        reloj_id:     { type: 'string' },
+        fecha_inicio: { type: 'string', description: 'YYYY-MM-DD inclusive.' },
+        fecha_fin:    { type: 'string', description: 'YYYY-MM-DD inclusive.' },
+        nota:         { type: 'string' },
+      },
+      required: ['reloj_id', 'fecha_inicio', 'fecha_fin'],
+    },
+  },
+  {
+    name:        'rrhh_procesar_quincena_desde_excel',
+    description: 'Naia: procesa el Excel del reloj checador que viene adjunto o referenciado por URL y devuelve hoja Excel con retardos y faltas calculados por empleado, lista para anexar a nómina.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        excel_url:    { type: 'string', description: 'URL del Excel (https:// o ruta "<bucket>/<file>" del storage).' },
+        fecha_inicio: { type: 'string', description: 'Primer día de la quincena YYYY-MM-DD.' },
+        fecha_fin:    { type: 'string', description: 'Último día que se calcula YYYY-MM-DD.' },
+      },
+      required: ['excel_url', 'fecha_inicio', 'fecha_fin'],
+    },
+  },
+];
+
 // ── Gobierno / trámites externos (Nara) ──────────────────────────────────
 const GOBIERNO_EMAIL_TOOLS: Anthropic.Tool[] = [
   {
@@ -1290,6 +1372,7 @@ export const EMAIL_TOOL_BY_NAME: Record<string, Anthropic.Tool> = Object.fromEnt
     ...QB_EMAIL_TOOLS,
     ...CICLO_OC_CFDI_EMAIL_TOOLS,
     ...HR_EMAIL_TOOLS,
+    ...RRHH_NOMINA_EMAIL_TOOLS,
     ...GOBIERNO_EMAIL_TOOLS,
     ...CAMPO_EMAIL_TOOLS,
     ...DRIVE_MGMT_EMAIL_TOOLS,

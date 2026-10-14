@@ -1943,6 +1943,86 @@ const REPLICAR_CONTENIDO_ENTRE_CUENTAS_TOOL: Anthropic.Tool = {
   },
 };
 
+// ─── Pack hr_nomina (Naia + reloj checador) ────────────────────────────────
+// Spec: .brain/skills/naia-reloj-checador-ac-proyectos.md
+const RRHH_REGISTRAR_EMPLEADO_TOOL: Anthropic.Tool = {
+  name: 'rrhh_registrar_empleado',
+  description: 'Naia: da de alta o actualiza un empleado del reloj checador (upsert). Úsala para altas nuevas o cuando la operadora te dicte el sueldo diario de alguien ya registrado.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      reloj_id:      { type: 'string', description: 'Número que el reloj asigna al empleado.' },
+      nombre:        { type: 'string', description: 'Nombre completo del empleado.' },
+      hora_entrada:  { type: 'string', description: 'Hora oficial de entrada HH:MM (opcional).' },
+      sueldo_diario: { type: 'number', description: 'Sueldo diario en pesos (opcional). Si se pasa, se usa como monto de la falta cuando ese empleado no se presenta.' },
+      nota:          { type: 'string', description: 'Nota libre (opcional).' },
+    },
+    required: ['reloj_id', 'nombre'],
+  },
+};
+const RRHH_DAR_BAJA_EMPLEADO_TOOL: Anthropic.Tool = {
+  name: 'rrhh_dar_baja_empleado',
+  description: 'Naia: marca un empleado como inactivo. Deja de contarse en cálculos, pero sigue en el histórico.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      reloj_id: { type: 'string' },
+      nota:     { type: 'string', description: 'Motivo o nota de la baja (opcional).' },
+    },
+    required: ['reloj_id'],
+  },
+};
+const RRHH_REGISTRAR_DESCANSOS_MENSUALES_TOOL: Anthropic.Tool = {
+  name: 'rrhh_registrar_descansos_mensuales',
+  description: 'Naia: captura los días de descanso autorizados del mes para una lista de empleados. Reemplaza el registro previo del mismo mes.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      anio:      { type: 'integer' },
+      mes:       { type: 'integer', description: 'Mes 1-12.' },
+      descansos: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            reloj_id: { type: 'string' },
+            fechas:   { type: 'array', items: { type: 'string', description: 'YYYY-MM-DD' } },
+          },
+          required: ['reloj_id', 'fechas'],
+        },
+      },
+    },
+    required: ['anio', 'mes', 'descansos'],
+  },
+};
+const RRHH_REGISTRAR_VACACIONES_AUTORIZADAS_TOOL: Anthropic.Tool = {
+  name: 'rrhh_registrar_vacaciones_autorizadas',
+  description: 'Naia: registra un rango de vacaciones autorizado para un empleado. Esos días no se cuentan como falta.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      reloj_id:     { type: 'string' },
+      fecha_inicio: { type: 'string', description: 'YYYY-MM-DD inclusive.' },
+      fecha_fin:    { type: 'string', description: 'YYYY-MM-DD inclusive.' },
+      nota:         { type: 'string' },
+    },
+    required: ['reloj_id', 'fecha_inicio', 'fecha_fin'],
+  },
+};
+const RRHH_PROCESAR_QUINCENA_DESDE_EXCEL_TOOL: Anthropic.Tool = {
+  name: 'rrhh_procesar_quincena_desde_excel',
+  description: 'Naia: procesa el Excel exportado del reloj checador y devuelve hoja Excel con retardos y faltas por empleado, lista para anexar a nómina. Si faltan montos en la configuración, devuelve clasificación sin cálculo monetario.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      excel_url:    { type: 'string', description: 'URL del Excel exportado del reloj (https:// o ruta "<bucket>/<file>").' },
+      fecha_inicio: { type: 'string', description: 'Primer día de la quincena YYYY-MM-DD inclusive.' },
+      fecha_fin:    { type: 'string', description: 'Último día que se calcula YYYY-MM-DD inclusive (típicamente un día antes del cierre).' },
+    },
+    required: ['excel_url', 'fecha_inicio', 'fecha_fin'],
+  },
+};
+
 const ALL_TOOLS = [
   DELEGAR_TAREA_TOOL,
   CONSULTAR_AGENTE_TOOL,
@@ -2016,6 +2096,12 @@ const ALL_TOOLS = [
   USAR_MEDIA_DEL_CLIENTE_TOOL,
   LISTAR_CUENTAS_GESTIONADAS_TOOL,
   REPLICAR_CONTENIDO_ENTRE_CUENTAS_TOOL,
+  // Pack hr_nomina
+  RRHH_REGISTRAR_EMPLEADO_TOOL,
+  RRHH_DAR_BAJA_EMPLEADO_TOOL,
+  RRHH_REGISTRAR_DESCANSOS_MENSUALES_TOOL,
+  RRHH_REGISTRAR_VACACIONES_AUTORIZADAS_TOOL,
+  RRHH_PROCESAR_QUINCENA_DESDE_EXCEL_TOOL,
 ];
 
 // VOICE_TO_CHAT y UNIVERSAL_TOOLS viven en src/lib/tools/channel-mapping.ts
@@ -2137,6 +2223,12 @@ export const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
   usar_media_del_cliente:            USAR_MEDIA_DEL_CLIENTE_TOOL,
   listar_cuentas_gestionadas:        LISTAR_CUENTAS_GESTIONADAS_TOOL,
   replicar_contenido_entre_cuentas:  REPLICAR_CONTENIDO_ENTRE_CUENTAS_TOOL,
+  // Pack hr_nomina (Naia + reloj checador)
+  rrhh_registrar_empleado:               RRHH_REGISTRAR_EMPLEADO_TOOL,
+  rrhh_dar_baja_empleado:                RRHH_DAR_BAJA_EMPLEADO_TOOL,
+  rrhh_registrar_descansos_mensuales:    RRHH_REGISTRAR_DESCANSOS_MENSUALES_TOOL,
+  rrhh_registrar_vacaciones_autorizadas: RRHH_REGISTRAR_VACACIONES_AUTORIZADAS_TOOL,
+  rrhh_procesar_quincena_desde_excel:    RRHH_PROCESAR_QUINCENA_DESDE_EXCEL_TOOL,
 };
 
 // Nash-only tools — nunca en ALL_TOOLS, se agregan condicionalmente cuando

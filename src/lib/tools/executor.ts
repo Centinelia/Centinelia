@@ -223,6 +223,13 @@ async function executeAgentToolInner(
     return runNaviTool(toolName, toolInput, { agentId, portalEmail, supabase });
   }
 
+  // ── Pack hr_nomina (Naia + RRHH + reloj checador) ────────────────────────
+  // Spec: .brain/skills/naia-reloj-checador-ac-proyectos.md
+  const { RRHH_TOOL_NAMES, executeRrhhTool } = await import('./executors/rrhh');
+  if (RRHH_TOOL_NAMES.has(toolName)) {
+    return executeRrhhTool(toolName, toolInput, ctx);
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
   // read_url
   // ─────────────────────────────────────────────────────────────────────────
