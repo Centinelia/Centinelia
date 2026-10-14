@@ -98,9 +98,19 @@ Fuente: WhatsApp de Lucero Longoria (+52 1 81 1786 9746, `lucero@porteoglobal.co
 
 ## Reloj físico
 
-Foto compartida por Lucero 2026-10-13: **BioCheck** (pantalla azul, teclado numérico 0-9, lector de huella grande inferior, logo "BioCheck" en la base). Lucero dijo "será biocheck" con incertidumbre leve.
+- **Marca:** BioCheck
+- **Modelo:** **TA-3400** (confirmado por Lucero 2026-10-14, Porteo todavía no sabe la variante exacta de capacidad 30 / 40 / 75 empleados).
 
-Implicación opción B (SDK directo): BioCheck es marca china (Shenzhen BioCheck Tech). Tienen SDK para C#/Delphi pero menos documentación pública que ZKTeco. **Para evaluar opción B necesitamos modelo exacto** (plaquita trasera: ej. "BioCheck X628", "T4-C", etc.). Mientras tanto, opción A (procesar Excel por correo) sigue siendo el camino recomendado.
+Implicaciones opción B (SDK directo, no bloqueante hoy):
+
+- La serie BioCheck TA-3xxx es casi siempre **ZKTeco-compatible** bajo el capot (BioCheck es rebrand común). Protocolo típico: **ZKProtocol sobre TCP:4370**. La librería Python `pyzk` suele funcionar directo.
+- Conectividad típica del TA-3400: TCP/IP (RJ45) + USB flash drive para export. Algunos SKU soportan WiFi.
+- Capacidad: TA-3400 típicamente 3000 huellas / 100k registros. Las variantes "30/40/75 empleados" que Lucero menciona suenan a licencia del software administrador, no al firmware del aparato — para AC Proyectos (equipo chico) cualquier variante alcanza.
+- Para hacer Opción B viable necesitamos:
+  1. IP local del reloj (Porteo la tiene) + puerto 4370 accesible.
+  2. VPN AC/Porteo ↔ Centinelia, o reverse SSH tunnel desde un worker on-prem, o migrar el reloj a algún gateway en Supabase/VPS.
+  3. 1-2 días de desarrollo (prueba de conexión `pyzk` + worker cron que sincroniza cada hora a `rrhh_biocheck_logs`).
+- **No urgente.** Opción A (procesar Excel por correo/chat) ya cubre el caso de uso y está en prod. Opción B solo tiene sentido si AC/Porteo quieren eliminar el paso manual de exportar Excel.
 
 ## Memoria estructurada que necesita Naia (Fase 2)
 
