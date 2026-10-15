@@ -75,6 +75,55 @@ Output esperado:
 
 **No implementar hasta cerrar los acuerdos pendientes abajo.** Sin reglas acordadas la tool es un adivinador.
 
+## Dos grupos de empleados en AC (confirmado 2026-10-15)
+
+AC Proyectos tiene **dos modelos de cálculo distintos**, no uno solo:
+
+### Grupo A — Administrativos (default)
+
+Modelo: **check-in vs hora de entrada fija.**
+
+- Hora entrada 8:00 AM, cero tolerancia.
+- 8:01-8:29 → retardo base $200
+- 8:30-9:29 → retardo doble $400
+- 9:30+ (o sin checada) → falta = sueldo diario del empleado
+- Lógica implementada en `classifyDay` + `rrhh_nomina_config` + `rrhh_empleados`. **Correcta y en prod.**
+
+### Grupo B — Operativos (7 excepciones, turno 12 horas)
+
+Reloj_ids: 120 (Alberto Arquieta), 215 (Sherlyn), 144 (Luis Avila), 158 (Rigoberto Garcia), 186 (Jose Cruz), 187 (Hector Avila), 217 (Jancarlo).
+
+Modelo: **tiempo total trabajado vs horas requeridas** (no vs hora de entrada fija). Confirmado por Lucero 2026-10-15 textual:
+
+> "sí, ellos sí tienen tolerancia, mientras cubran las 12 horas, si llegan despues pero se van antes si se le aplicaria el rebaje"
+
+Fórmula:
+```
+tiempo_trabajado = ultima_checada_del_dia - primera_checada_del_dia
+if tiempo_trabajado >= 12h → OK, $0
+if tiempo_trabajado <  12h → rebaje escalonado (base/doble/falta según minutos faltantes)
+```
+
+Rebajes: base $50 / doble $100 (ya en `rrhh_empleados.monto_retardo_base_mxn` + `monto_retardo_doble_mxn` para esos 7 reloj_ids).
+
+**Umbrales de minutos faltantes NO definidos todavía.** Datos pendientes de Lucero:
+1. Minutos faltantes que disparan rebaje base vs doble (ej. 1-30 min base, 30-90 min doble, probable paralelo con admin).
+2. Minutos faltantes (o patrón "no checó salida") que ya cuenta como falta completa.
+3. Horas requeridas por operativo: ¿todos exactamente 12h, o varía?
+4. Comportamiento si solo checó entrada (sin salida).
+
+**Status implementación operativos: PAUSADA 2026-10-15.** La lógica actual del `classifyDay` les aplica reglas de admin (check-in vs hora fija 8:00), que no es correcta para operativos — les cobraría retardo si llegan después de 8:00 aunque hayan cubierto las 12 horas. **No procesar quincena de operativos hasta implementar la ruta "turno cubierto" en el clasificador.**
+
+### Plan Fase 2a.2 (desbloquea cuando Lucero mande umbrales)
+
+- Agregar columna `rrhh_empleados.turno_horas_requeridas NUMERIC(4,2)` (NULL = usar modelo admin check-in; valor = usar modelo turno cubierto).
+- Nueva ruta en `classifyDay` (o función hermana `classifyDayTurnoCubierto`) que calcula tiempo trabajado y aplica escalonado por minutos faltantes.
+- `process-quincena` detecta modo por empleado (si `turno_horas_requeridas` presente → modo turno; si no → modo check-in).
+- Script seed de los 7 operativos actualiza `turno_horas_requeridas = 12`.
+- Tests nuevos para ambos modos.
+
+Esfuerzo estimado: 2-3 h cuando lleguen los umbrales.
+
 ## Acuerdos con AC Proyectos (9/10 cerrados por Lucero 2026-10-13)
 
 Fuente: WhatsApp de Lucero Longoria (+52 1 81 1786 9746, `lucero@porteoglobal.com`) a Nazre, 2026-10-13 16:36. **Lucero sí trabaja para AC Proyectos**, enfocada en Porteo. **AC Proyectos y Porteo Global son dos empresas del mismo dueño** (Porteo = línea de trailers). El "servidor de Porteo" del PPTX es infra interna del grupo, no un proveedor externo. Para efectos de Centinelia: una sola org cliente (AC Proyectos), Lucero es operadora autorizada.
