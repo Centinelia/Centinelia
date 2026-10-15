@@ -1951,11 +1951,13 @@ const RRHH_REGISTRAR_EMPLEADO_TOOL: Anthropic.Tool = {
   input_schema: {
     type: 'object' as const,
     properties: {
-      reloj_id:      { type: 'string', description: 'Número que el reloj asigna al empleado.' },
-      nombre:        { type: 'string', description: 'Nombre completo del empleado.' },
-      hora_entrada:  { type: 'string', description: 'Hora oficial de entrada HH:MM (opcional).' },
-      sueldo_diario: { type: 'number', description: 'Sueldo diario en pesos (opcional). Si se pasa, se usa como monto de la falta cuando ese empleado no se presenta.' },
-      nota:          { type: 'string', description: 'Nota libre (opcional).' },
+      reloj_id:            { type: 'string', description: 'Número que el reloj asigna al empleado.' },
+      nombre:              { type: 'string', description: 'Nombre completo del empleado.' },
+      hora_entrada:        { type: 'string', description: 'Hora oficial de entrada HH:MM (opcional).' },
+      sueldo_diario:       { type: 'number', description: 'Sueldo diario en pesos (opcional). Se usa como monto de la falta.' },
+      monto_retardo_base:  { type: 'number', description: 'Override opcional del monto de retardo base para este empleado.' },
+      monto_retardo_doble: { type: 'number', description: 'Override opcional del monto de retardo doble para este empleado.' },
+      nota:                { type: 'string', description: 'Nota libre (opcional).' },
     },
     required: ['reloj_id', 'nombre'],
   },

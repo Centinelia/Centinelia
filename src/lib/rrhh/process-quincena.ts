@@ -40,12 +40,14 @@ export interface ProcesarQuincenaOutput {
 }
 
 interface EmpleadoRow {
-  id:                string;
-  reloj_id:          string;
-  nombre:            string;
-  hora_entrada:      string;
-  sueldo_diario_mxn: number | null;
-  activo:            boolean;
+  id:                      string;
+  reloj_id:                string;
+  nombre:                  string;
+  hora_entrada:            string;
+  sueldo_diario_mxn:       number | null;
+  monto_retardo_base_mxn:  number | null;
+  monto_retardo_doble_mxn: number | null;
+  activo:                  boolean;
 }
 
 interface DescansoRow {
@@ -92,7 +94,7 @@ export async function procesarQuincena(input: ProcesarQuincenaInput): Promise<Pr
   // 2. Catálogos: config, empleados, descansos, vacaciones, festivos
   const [cfgRes, empRes, festRes] = await Promise.all([
     supabase.from('rrhh_nomina_config').select('*').eq('portal_email', portalEmail).maybeSingle(),
-    supabase.from('rrhh_empleados').select('id, reloj_id, nombre, hora_entrada, sueldo_diario_mxn, activo').eq('portal_email', portalEmail).eq('activo', true),
+    supabase.from('rrhh_empleados').select('id, reloj_id, nombre, hora_entrada, sueldo_diario_mxn, monto_retardo_base_mxn, monto_retardo_doble_mxn, activo').eq('portal_email', portalEmail).eq('activo', true),
     supabase.from('rrhh_festivos_mx_lft').select('fecha').gte('fecha', fechaInicio).lte('fecha', fechaFin),
   ]);
 
@@ -191,7 +193,11 @@ export async function procesarQuincena(input: ProcesarQuincenaInput): Promise<Pr
         isFestivo:  festivos.has(fecha),
         isDescanso: descansoSet.has(`${emp.id}|${fecha}`),
         isVacacion: isVacacion(emp.id, fecha),
-      }, emp.sueldo_diario_mxn);
+      }, {
+        sueldoDiario: emp.sueldo_diario_mxn,
+        retardoBase:  emp.monto_retardo_base_mxn,
+        retardoDoble: emp.monto_retardo_doble_mxn,
+      });
       dias.push(classified);
     }
     resultados.push({ relojId: emp.reloj_id, nombre: emp.nombre, dias });

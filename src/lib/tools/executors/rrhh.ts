@@ -62,13 +62,21 @@ export async function executeRrhhTool(
     const nombre       = String(toolInput.nombre   ?? '').trim();
     const horaEntrada  = typeof toolInput.hora_entrada === 'string' && /^\d{2}:\d{2}$/.test(toolInput.hora_entrada) ? toolInput.hora_entrada : null;
     const nota         = typeof toolInput.nota === 'string' ? toolInput.nota.trim() : null;
-    const sueldoRaw    = toolInput.sueldo_diario ?? toolInput.sueldo_diario_mxn;
-    let   sueldoDiario: number | null = null;
-    if (sueldoRaw !== undefined && sueldoRaw !== null && sueldoRaw !== '') {
-      const n = typeof sueldoRaw === 'number' ? sueldoRaw : Number(String(sueldoRaw).replace(/[,$\s]/g, ''));
-      if (!isFinite(n) || n < 0) return { ok: false, error: 'sueldo_diario inválido (debe ser número positivo en pesos).' };
-      sueldoDiario = n;
-    }
+    const parseMoney = (raw: unknown, label: string): { ok: true; val: number | null } | { ok: false; error: string } => {
+      if (raw === undefined || raw === null || raw === '') return { ok: true, val: null };
+      const n = typeof raw === 'number' ? raw : Number(String(raw).replace(/[,$\s]/g, ''));
+      if (!isFinite(n) || n < 0) return { ok: false, error: `${label} inválido (debe ser número positivo en pesos).` };
+      return { ok: true, val: n };
+    };
+    const parsedSueldo = parseMoney(toolInput.sueldo_diario ?? toolInput.sueldo_diario_mxn, 'sueldo_diario');
+    if (!parsedSueldo.ok) return { ok: false, error: parsedSueldo.error };
+    const parsedRetBase = parseMoney(toolInput.monto_retardo_base ?? toolInput.monto_retardo_base_mxn, 'monto_retardo_base');
+    if (!parsedRetBase.ok) return { ok: false, error: parsedRetBase.error };
+    const parsedRetDoble = parseMoney(toolInput.monto_retardo_doble ?? toolInput.monto_retardo_doble_mxn, 'monto_retardo_doble');
+    if (!parsedRetDoble.ok) return { ok: false, error: parsedRetDoble.error };
+    const sueldoDiario       = parsedSueldo.val;
+    const montoRetardoBase   = parsedRetBase.val;
+    const montoRetardoDoble  = parsedRetDoble.val;
     if (!relojId) return { ok: false, error: 'reloj_id es requerido (número del empleado en el reloj).' };
     if (!nombre)  return { ok: false, error: 'nombre es requerido.' };
 
@@ -80,20 +88,29 @@ export async function executeRrhhTool(
       registrado_por: actor,
       nota,
     };
-    if (horaEntrada) payload.hora_entrada = horaEntrada;
-    if (sueldoDiario !== null) payload.sueldo_diario_mxn = sueldoDiario;
+    if (horaEntrada)                payload.hora_entrada            = horaEntrada;
+    if (sueldoDiario !== null)      payload.sueldo_diario_mxn       = sueldoDiario;
+    if (montoRetardoBase !== null)  payload.monto_retardo_base_mxn  = montoRetardoBase;
+    if (montoRetardoDoble !== null) payload.monto_retardo_doble_mxn = montoRetardoDoble;
 
     const { data, error } = await supabase.from('rrhh_empleados')
       .upsert(payload, { onConflict: 'portal_email,reloj_id' })
-      .select('id, reloj_id, nombre, hora_entrada, sueldo_diario_mxn')
+      .select('id, reloj_id, nombre, hora_entrada, sueldo_diario_mxn, monto_retardo_base_mxn, monto_retardo_doble_mxn')
       .single();
     if (error) return { ok: false, error: error.message };
 
-    const sueldoMsg = data?.sueldo_diario_mxn ? ` Sueldo diario: $${Number(data.sueldo_diario_mxn).toFixed(2)}.` : ' (sueldo diario pendiente — necesario para calcular faltas).';
+    const partes: string[] = [`Empleado "${data?.nombre}" registrado con ID de reloj ${data?.reloj_id} y hora de entrada ${data?.hora_entrada}.`];
+    if (data?.sueldo_diario_mxn)       partes.push(`Sueldo diario: $${Number(data.sueldo_diario_mxn).toFixed(2)}.`);
+    else                               partes.push('Sueldo diario pendiente (necesario para calcular faltas).');
+    if (data?.monto_retardo_base_mxn || data?.monto_retardo_doble_mxn) {
+      const base  = data.monto_retardo_base_mxn  ? `$${Number(data.monto_retardo_base_mxn).toFixed(2)}` : '(global)';
+      const doble = data.monto_retardo_doble_mxn ? `$${Number(data.monto_retardo_doble_mxn).toFixed(2)}` : '(global)';
+      partes.push(`Montos retardo propios: base ${base}, doble ${doble}.`);
+    }
     return {
       ok: true,
       empleado_id: data?.id,
-      message: `Empleado "${data?.nombre}" registrado con ID de reloj ${data?.reloj_id} y hora de entrada ${data?.hora_entrada}.${sueldoMsg}`,
+      message: partes.join(' '),
     };
   }
 

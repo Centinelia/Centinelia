@@ -1240,11 +1240,13 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
         parameters: {
           type: 'object',
           properties: {
-            reloj_id:      { type: 'string', description: 'Número que el reloj asigna al empleado (ej. "15").' },
-            nombre:        { type: 'string', description: 'Nombre completo del empleado.' },
-            hora_entrada:  { type: 'string', description: 'Hora oficial de entrada HH:MM (opcional, default según config de la org).' },
-            sueldo_diario: { type: 'number', description: 'Sueldo diario en pesos (opcional). Si se pasa, se usa como monto de la falta cuando ese empleado no se presenta.' },
-            nota:          { type: 'string', description: 'Nota libre (opcional).' },
+            reloj_id:            { type: 'string', description: 'Número que el reloj asigna al empleado (ej. "15").' },
+            nombre:              { type: 'string', description: 'Nombre completo del empleado.' },
+            hora_entrada:        { type: 'string', description: 'Hora oficial de entrada HH:MM (opcional, default según config de la org).' },
+            sueldo_diario:       { type: 'number', description: 'Sueldo diario en pesos (opcional). Se usa como monto de la falta cuando ese empleado no se presenta.' },
+            monto_retardo_base:  { type: 'number', description: 'Override opcional del monto de retardo base para este empleado (en pesos). Si se pasa, gana sobre el valor global de la org.' },
+            monto_retardo_doble: { type: 'number', description: 'Override opcional del monto de retardo doble para este empleado (en pesos). Si se pasa, gana sobre el valor global de la org.' },
+            nota:                { type: 'string', description: 'Nota libre (opcional).' },
           },
           required: ['reloj_id', 'nombre'],
         },

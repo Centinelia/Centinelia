@@ -148,6 +148,56 @@ describe('sueldo per-empleado tiene prioridad sobre monto_falta global', () => {
   });
 });
 
+describe('montos de retardo per-empleado tienen prioridad sobre globales (operativos AC)', () => {
+  // Reglas reales AC Proyectos:
+  //   Admin global:    base=$200, doble=$400, falta=$500 fallback.
+  //   Operativo override: base=$50, doble=$100, sueldo diario=$450.
+  const montosAdmin = { retardoBase: 200, retardoDoble: 400, falta: 500 };
+  const empleadoOperativo = { sueldoDiario: 450, retardoBase: 50, retardoDoble: 100 };
+
+  it('retardo_base usa override $50 del operativo, no $200 del admin', () => {
+    const r = classifyDay('2026-10-15', at('08:15'), rulesAC, montosAdmin, sinContexto, empleadoOperativo);
+    expect(r.classification).toBe('retardo_base');
+    expect(r.monto).toBe(50);
+  });
+
+  it('retardo_doble usa override $100 del operativo, no $400 del admin', () => {
+    const r = classifyDay('2026-10-15', at('08:45'), rulesAC, montosAdmin, sinContexto, empleadoOperativo);
+    expect(r.classification).toBe('retardo_doble');
+    expect(r.monto).toBe(100);
+  });
+
+  it('falta usa sueldo diario del operativo ($450), no monto_falta global ($500)', () => {
+    const r = classifyDay('2026-10-15', null, rulesAC, montosAdmin, sinContexto, empleadoOperativo);
+    expect(r.classification).toBe('falta');
+    expect(r.monto).toBe(450);
+  });
+
+  it('override parcial (solo retardoBase): doble cae al global', () => {
+    const soloBase = { retardoBase: 50 };
+    const r1 = classifyDay('2026-10-15', at('08:15'), rulesAC, montosAdmin, sinContexto, soloBase);
+    expect(r1.monto).toBe(50);
+    const r2 = classifyDay('2026-10-15', at('08:45'), rulesAC, montosAdmin, sinContexto, soloBase);
+    expect(r2.monto).toBe(400); // fallback global
+  });
+
+  it('empleado admin sin overrides usa valores globales $200/$400', () => {
+    const admin = { sueldoDiario: 650 };
+    const r1 = classifyDay('2026-10-15', at('08:15'), rulesAC, montosAdmin, sinContexto, admin);
+    expect(r1.monto).toBe(200);
+    const r2 = classifyDay('2026-10-15', at('08:45'), rulesAC, montosAdmin, sinContexto, admin);
+    expect(r2.monto).toBe(400);
+    const r3 = classifyDay('2026-10-15', null, rulesAC, montosAdmin, sinContexto, admin);
+    expect(r3.monto).toBe(650); // sueldo diario propio
+  });
+
+  it('backwards compat: pasar number como 6to arg sigue funcionando como sueldoDiario', () => {
+    const r = classifyDay('2026-10-15', null, rulesAC, montosAdmin, sinContexto, 720);
+    expect(r.classification).toBe('falta');
+    expect(r.monto).toBe(720);
+  });
+});
+
 describe('firstCheckInOfDay', () => {
   it('devuelve la checada más temprana', () => {
     const t = [at('09:00'), at('08:05'), at('14:30')];

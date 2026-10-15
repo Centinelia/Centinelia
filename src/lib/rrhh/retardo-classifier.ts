@@ -67,16 +67,31 @@ function dateOnly(d: Date): string {
  * checada del día (null si no checó). Context indica si el día es festivo /
  * descanso / vacación (precedencia: festivo > vacaciones > descanso > checada).
  */
+export interface MontosEmpleado {
+  /** Sueldo diario en pesos. Si está presente, se usa como monto de la falta. */
+  sueldoDiario?:  number | null;
+  /** Override del monto de retardo base. Si está presente, gana sobre montos.retardoBase global. */
+  retardoBase?:   number | null;
+  /** Override del monto de retardo doble. Si está presente, gana sobre montos.retardoDoble global. */
+  retardoDoble?:  number | null;
+}
+
 export function classifyDay(
   fecha:    string,                        // 'YYYY-MM-DD'
   checkIn:  Date | null,
   rules:    ClassificationRules,
   montos:   ClassificationMontos,
   context:  DayContext,
-  /** Sueldo diario del empleado en pesos. Si está presente, se usa como monto de la falta (prioridad sobre montos.falta global). Si es null/undefined, cae al fallback. */
-  sueldoDiarioEmpleado?: number | null,
+  /** Overrides per-empleado. Si cualquier campo está presente (no null/undefined), gana sobre el valor global de montos. */
+  empleado: MontosEmpleado | number | null = null,
 ): ClassifiedDay {
-  const montoFaltaEfectivo = sueldoDiarioEmpleado ?? montos.falta;
+  // Backwards compat: si llega number directo o null, se interpreta como sueldoDiario (comportamiento legacy).
+  const emp: MontosEmpleado = typeof empleado === 'number' || empleado === null
+    ? { sueldoDiario: empleado }
+    : empleado;
+  const montoFaltaEfectivo        = emp.sueldoDiario  ?? montos.falta;
+  const montoRetardoBaseEfectivo  = emp.retardoBase   ?? montos.retardoBase;
+  const montoRetardoDobleEfectivo = emp.retardoDoble  ?? montos.retardoDoble;
 
   // Precedencia: festivo > vacaciones > descanso. Esos días no cuentan ni retardo ni falta.
   if (context.isFestivo)  return { fecha, classification: 'festivo',    minutosRetraso: null, monto: null, checkIn };
@@ -104,12 +119,12 @@ export function classifyDay(
     return { fecha, classification: 'ok',           minutosRetraso: 0,     monto: 0,                  checkIn };
   }
   if (delta < rules.umbralRetardoDobleMin) {
-    return { fecha, classification: 'retardo_base', minutosRetraso: delta, monto: montos.retardoBase, checkIn };
+    return { fecha, classification: 'retardo_base', minutosRetraso: delta, monto: montoRetardoBaseEfectivo,  checkIn };
   }
   if (delta < rules.umbralFaltaMin) {
-    return { fecha, classification: 'retardo_doble', minutosRetraso: delta, monto: montos.retardoDoble, checkIn };
+    return { fecha, classification: 'retardo_doble', minutosRetraso: delta, monto: montoRetardoDobleEfectivo, checkIn };
   }
-  return   { fecha, classification: 'falta',        minutosRetraso: delta, monto: montoFaltaEfectivo,  checkIn };
+  return   { fecha, classification: 'falta',         minutosRetraso: delta, monto: montoFaltaEfectivo,        checkIn };
 }
 
 /** Devuelve la primera checada del día para una lista de timestamps ordenada. */
