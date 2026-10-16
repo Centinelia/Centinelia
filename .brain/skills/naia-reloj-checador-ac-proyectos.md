@@ -75,7 +75,93 @@ Output esperado:
 
 **No implementar hasta cerrar los acuerdos pendientes abajo.** Sin reglas acordadas la tool es un adivinador.
 
-## Cuatro grupos de empleados en AC (confirmado 2026-10-16)
+## Catálogo completo (confirmado 2026-10-16 vía `no. empleados.xlsx` + Lucero)
+
+**38 reloj_ids reales** del BioCheck TA-3400. 37 matchean con sueldos del Excel de nómina; `LUIS SANCHEZ (223)` está en reloj pero no tiene sueldo capturado (alta reciente). 5 personas con sueldo no checan reloj (incluida Lucero misma + Roberto Mendiola + Jose Manuel Reyes + Kevin Delgado + Jesus Esparza — probables externos o campo).
+
+### Mapeo reloj↔sueldo↔grupo (37 empleados)
+
+**Admin estándar (hora 8:00 AM, umbrales 30/90, montos $200 base / $400 doble):**
+
+| reloj_id | Nombre oficial | Mensual |
+|---|---|---|
+| 2 | Horacio Antonino Flores Montoya | $9,000 |
+| 3 | Alma Delia Duque Cuevas | $7,000 |
+| 4 | Adriana Patricia Gallegos Sanchez | $9,000 |
+| 5 | Perla Elizabeth Bautista Renovato | $6,000 |
+| 8 | Samuel Saenz Gonzalez | $10,000 |
+| 15 | Leonardo Cardenas Puente | $6,000 |
+| 17 | Isaac Quintana Mora | $5,000 |
+| 20 | Enrique Jordan Moreno Gutierrez | $9,000 |
+| 21 | Hilario Juarez Valdez | $9,000 |
+| 26 | Gonzalo Cardenas Puente | $10,000 |
+| 29 | Ricardo Coronel Solis | $10,000 |
+| 30 | Karina Adilia Galan Diaz | $9,000 |
+| 97 | Brenda Yazmin Rodriguez Heredia | $6,500 |
+| 102 | Cytlaly Tanary Diaz Gallegos | $7,000 |
+| 113 | Nelly Nazarea Gonzalez Marmolejo | $7,500 |
+| 125 | Carlos Daniel Flores Rosales | $7,000 |
+| 135 | Julio Enrique Olvera Quirino | $9,000 |
+| 138 | Jose Alberto Gorra Portugal | $10,000 |
+| 150 | Noryko Alejandra Rodriguez Ceniceros | $7,000 |
+| 181 | Christopher Alan Gonzalez Marmolejo | $6,000 |
+| 182 | Jose Alejandro Cano Velazquez | $6,000 |
+| 185 | Reu Domingo Agudo Canseco | $8,000 |
+| 202 | Luis Gabriel Hernandez Chavez | $10,000 |
+| 210 | Luis Enrique Torres Ramirez | $5,000 |
+| 211 | Erick Fernando Aguilar Murillo | $9,000 |
+| 213 | Fernandez Mogon Juan Manuel | $6,000 |
+| 216 | Clemente Hernandez Rodriguez | $12,000 |
+| 222 | Edgar Alejandro Torres Marquez | $5,000 |
+
+**Admin con hora distinta — Omar Castillo:**
+
+| reloj_id | Nombre | Hora entrada | Mensual | Nota |
+|---|---|---|---|---|
+| 122 | Manuel Omar Castillo Reyes | **9:00 AM** (9h hasta 6pm) | $11,000 (cálculo 733.33 × 15) | Lucero 2026-10-16: "aplica también la regla de checada incompleta $100 para él" |
+
+**Operativos turno cubierto 12h (6):**
+
+| reloj_id | Nombre | Mensual | Diario /30 |
+|---|---|---|---|
+| 215 | Sherlyn Alexandra Alvarez Balboa | $6,500 | $216.67 |
+| 144 | Luis Martin Avila Sandoval | $7,500 | $250.00 |
+| 158 | Rigoberto Garcia Vera | $7,500 | $250.00 |
+| 186 | Jose Alfredo Cruz Hernandez | $7,500 | $250.00 |
+| 187 | Hector Eli Avila Sandoval | $7,500 | $250.00 |
+| 217 | Jan Carlo Hernandez Garcia | $6,500 | $216.67 |
+
+**Operativo turno cubierto 10h — Alberto Arquieta** (ajuste 2026-10-16, no era 12h):
+
+| reloj_id | Nombre | Horas base | Mensual |
+|---|---|---|---|
+| 120 | Alberto Arquieta Gonzalez | **10h** (8am-6pm) | $8,000 |
+
+Lucero textual sobre Alberto: *"su horario es de 8:00 a 6:00 pm, pero depende mucho en cuanto hay de trabajo"* + *"si por ejemplo hoy a los que son de un solo turno les dieron oportunidad de llegar 2 horas tarde o de plano tomarlo como vacaciones, yo no puedo aplicar eso en monitoreo lo que hago es que pago extras por esperar al relevo y pongo una compensación por no retirarse"*. Alberto es monitoreo: cubre 10h base, si se queda más se le pagan extras **fuera del sistema** (Lucero lo gestiona manual). Dentro del sistema solo se contabilizan retardos si no cubre las 10h.
+
+**Operativo turno cubierto medio día — Amelia Ramos** (horas por confirmar):
+
+| reloj_id | Nombre | Horas | Mensual | Nota |
+|---|---|---|---|---|
+| 219 | Amelia Ramos Herrera | **?** ("sale a medio día") | $4,000 | Lucero 2026-10-16: "se le calcula como a los operativos, mientras que cubra las horas". Pendiente confirmar horas requeridas (asumo 4h tentativo). |
+
+**Alta reciente sin sueldo capturado:**
+
+| reloj_id | Nombre | Sueldo | Grupo |
+|---|---|---|---|
+| 223 | Luis Sanchez | pendiente | pendiente |
+
+### Personas con sueldo pero sin reloj (no se procesan por ahora)
+
+- Erika Lucero Longoria Martinez — operadora de nómina
+- Roberto Mendiola Ibarra
+- Jose Manuel Reyes Hernandez
+- Kevin Delgado Rodriguez
+- Jesus Esparza Lopez
+
+Probables externos / campo / no sujetos a reloj. Si eventualmente deben procesarse, Lucero los registra manual.
+
+### Grupos legados (deprecated por catálogo completo arriba)
 
 Lucero cerró lógica y mandó `EMPLEADOS-SUELDOS.xlsx` (42 empleados, sueldos mensuales, dividir /30 para diario). El panorama final:
 

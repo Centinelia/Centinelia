@@ -74,9 +74,32 @@ export async function executeRrhhTool(
     if (!parsedRetBase.ok) return { ok: false, error: parsedRetBase.error };
     const parsedRetDoble = parseMoney(toolInput.monto_retardo_doble ?? toolInput.monto_retardo_doble_mxn, 'monto_retardo_doble');
     if (!parsedRetDoble.ok) return { ok: false, error: parsedRetDoble.error };
-    const sueldoDiario       = parsedSueldo.val;
-    const montoRetardoBase   = parsedRetBase.val;
-    const montoRetardoDoble  = parsedRetDoble.val;
+    const parsedChecIncompleta = parseMoney(toolInput.checada_incompleta_monto ?? toolInput.checada_incompleta_monto_mxn, 'checada_incompleta_monto');
+    if (!parsedChecIncompleta.ok) return { ok: false, error: parsedChecIncompleta.error };
+    const sueldoDiario            = parsedSueldo.val;
+    const montoRetardoBase        = parsedRetBase.val;
+    const montoRetardoDoble       = parsedRetDoble.val;
+    const checadaIncompletaMonto  = parsedChecIncompleta.val;
+
+    // Turno cubierto (operativos): horas requeridas + ventana opcional.
+    let turnoHorasRequeridas: number | null = null;
+    const thRaw = toolInput.turno_horas_requeridas;
+    if (thRaw !== undefined && thRaw !== null && thRaw !== '') {
+      const n = typeof thRaw === 'number' ? thRaw : Number(String(thRaw).replace(/[,\s]/g, ''));
+      if (!isFinite(n) || n <= 0 || n > 24) return { ok: false, error: 'turno_horas_requeridas inválido (debe ser > 0 y <= 24).' };
+      turnoHorasRequeridas = n;
+    }
+    const parseTime = (raw: unknown, label: string): { ok: true; val: string | null } | { ok: false; error: string } => {
+      if (raw === undefined || raw === null || raw === '') return { ok: true, val: null };
+      const s = String(raw).trim();
+      if (!/^\d{2}:\d{2}(:\d{2})?$/.test(s)) return { ok: false, error: `${label} inválido (HH:MM).` };
+      return { ok: true, val: s.length === 5 ? `${s}:00` : s };
+    };
+    const parsedVentanaDesde = parseTime(toolInput.ventana_entrada_desde, 'ventana_entrada_desde');
+    if (!parsedVentanaDesde.ok) return { ok: false, error: parsedVentanaDesde.error };
+    const parsedVentanaHasta = parseTime(toolInput.ventana_entrada_hasta, 'ventana_entrada_hasta');
+    if (!parsedVentanaHasta.ok) return { ok: false, error: parsedVentanaHasta.error };
+
     if (!relojId) return { ok: false, error: 'reloj_id es requerido (número del empleado en el reloj).' };
     if (!nombre)  return { ok: false, error: 'nombre es requerido.' };
 
@@ -88,20 +111,29 @@ export async function executeRrhhTool(
       registrado_por: actor,
       nota,
     };
-    if (horaEntrada)                payload.hora_entrada            = horaEntrada;
-    if (sueldoDiario !== null)      payload.sueldo_diario_mxn       = sueldoDiario;
-    if (montoRetardoBase !== null)  payload.monto_retardo_base_mxn  = montoRetardoBase;
-    if (montoRetardoDoble !== null) payload.monto_retardo_doble_mxn = montoRetardoDoble;
+    if (horaEntrada)                     payload.hora_entrada                 = horaEntrada;
+    if (sueldoDiario !== null)           payload.sueldo_diario_mxn            = sueldoDiario;
+    if (montoRetardoBase !== null)       payload.monto_retardo_base_mxn       = montoRetardoBase;
+    if (montoRetardoDoble !== null)      payload.monto_retardo_doble_mxn      = montoRetardoDoble;
+    if (checadaIncompletaMonto !== null) payload.checada_incompleta_monto_mxn = checadaIncompletaMonto;
+    if (turnoHorasRequeridas !== null)   payload.turno_horas_requeridas       = turnoHorasRequeridas;
+    if (parsedVentanaDesde.val)          payload.ventana_entrada_desde        = parsedVentanaDesde.val;
+    if (parsedVentanaHasta.val)          payload.ventana_entrada_hasta        = parsedVentanaHasta.val;
 
     const { data, error } = await supabase.from('rrhh_empleados')
       .upsert(payload, { onConflict: 'portal_email,reloj_id' })
-      .select('id, reloj_id, nombre, hora_entrada, sueldo_diario_mxn, monto_retardo_base_mxn, monto_retardo_doble_mxn')
+      .select('id, reloj_id, nombre, hora_entrada, sueldo_diario_mxn, monto_retardo_base_mxn, monto_retardo_doble_mxn, turno_horas_requeridas, checada_incompleta_monto_mxn')
       .single();
     if (error) return { ok: false, error: error.message };
 
-    const partes: string[] = [`Empleado "${data?.nombre}" registrado con ID de reloj ${data?.reloj_id} y hora de entrada ${data?.hora_entrada}.`];
+    const partes: string[] = [`Empleado "${data?.nombre}" registrado con ID de reloj ${data?.reloj_id}.`];
+    if (data?.turno_horas_requeridas) {
+      partes.push(`Modo turno cubierto: ${Number(data.turno_horas_requeridas)}h requeridas.`);
+    } else {
+      partes.push(`Modo admin: hora de entrada ${data?.hora_entrada}.`);
+    }
     if (data?.sueldo_diario_mxn)       partes.push(`Sueldo diario: $${Number(data.sueldo_diario_mxn).toFixed(2)}.`);
-    else                               partes.push('Sueldo diario pendiente (necesario para calcular faltas).');
+    else                               partes.push('Sueldo diario pendiente.');
     if (data?.monto_retardo_base_mxn || data?.monto_retardo_doble_mxn) {
       const base  = data.monto_retardo_base_mxn  ? `$${Number(data.monto_retardo_base_mxn).toFixed(2)}` : '(global)';
       const doble = data.monto_retardo_doble_mxn ? `$${Number(data.monto_retardo_doble_mxn).toFixed(2)}` : '(global)';

@@ -31,13 +31,14 @@ export interface OutputMetadata {
 }
 
 const CLASSIFICATION_LABELS: Record<Classification, string> = {
-  ok:            'Puntual',
-  retardo_base:  'Retardo',
-  retardo_doble: 'Retardo doble',
-  falta:         'Falta',
-  descanso:      'Descanso',
-  vacaciones:    'Vacaciones',
-  festivo:       'Festivo',
+  ok:                 'Puntual',
+  retardo_base:       'Retardo',
+  retardo_doble:      'Retardo doble',
+  falta:              'Falta',
+  checada_incompleta: 'Checada incompleta',
+  descanso:           'Descanso',
+  vacaciones:         'Vacaciones',
+  festivo:            'Festivo',
 };
 
 function fmtHHMM(d: Date | null): string {
@@ -100,6 +101,7 @@ export async function generateNominaExcel(
     { header: 'Retardos',          key: 'retB',      width: 10 },
     { header: 'Retardos dobles',   key: 'retD',      width: 14 },
     { header: 'Faltas',            key: 'falt',      width: 8  },
+    { header: 'Checadas incompl.', key: 'inc',       width: 16 },
     { header: 'Descansos',         key: 'desc',      width: 10 },
     { header: 'Vacaciones',        key: 'vac',       width: 10 },
     { header: 'Festivos',          key: 'fest',      width: 10 },
@@ -119,6 +121,7 @@ export async function generateNominaExcel(
       retB:    count('retardo_base'),
       retD:    count('retardo_doble'),
       falt:    count('falta'),
+      inc:     count('checada_incompleta'),
       desc:    count('descanso'),
       vac:     count('vacaciones'),
       fest:    count('festivo'),

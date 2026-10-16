@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { classifyDay, firstCheckInOfDay, dateOnly } from '../retardo-classifier';
+import { classifyDay, classifyDayTurnoCubierto, firstCheckInOfDay, lastCheckOutOfDay, dateOnly } from '../retardo-classifier';
 
 const rulesAC = {
   horaEntrada:           '08:00',
@@ -195,6 +195,106 @@ describe('montos de retardo per-empleado tienen prioridad sobre globales (operat
     const r = classifyDay('2026-10-15', null, rulesAC, montosAdmin, sinContexto, 720);
     expect(r.classification).toBe('falta');
     expect(r.monto).toBe(720);
+  });
+});
+
+describe('classifyDayTurnoCubierto (modelo operativos AC)', () => {
+  // Reglas: turno de 12h, umbrales 30/90 min faltantes, montos $50/$100/sueldo.
+  const rulesTurno12 = { horasRequeridas: 12, umbralRetardoDobleMin: 30, umbralFaltaMin: 90 };
+  const montosGlobal = { retardoBase: 200, retardoDoble: 400, falta: 500 };  // admin global (fallback si empleado no tiene overrides)
+  const empleadoOperativo = { sueldoDiario: 250, retardoBase: 50, retardoDoble: 100 };
+  const sinContexto = { isFestivo: false, isDescanso: false, isVacacion: false };
+
+  function at(fecha: string, hhmm: string): Date {
+    const [h, m] = hhmm.split(':').map(Number);
+    const [y, mo, d] = fecha.split('-').map(Number);
+    return new Date(Date.UTC(y, mo - 1, d, h, m, 0));
+  }
+
+  it('entra 8:00 sale 20:00 (12h exactas) → ok', () => {
+    const r = classifyDayTurnoCubierto('2026-10-15', at('2026-10-15', '08:00'), at('2026-10-15', '20:00'), rulesTurno12, montosGlobal, sinContexto, empleadoOperativo);
+    expect(r.classification).toBe('ok');
+    expect(r.monto).toBe(0);
+  });
+
+  it('entra 7:30 sale 20:30 (13h, cubre con sobra) → ok', () => {
+    const r = classifyDayTurnoCubierto('2026-10-15', at('2026-10-15', '07:30'), at('2026-10-15', '20:30'), rulesTurno12, montosGlobal, sinContexto, empleadoOperativo);
+    expect(r.classification).toBe('ok');
+  });
+
+  it('entra 8:30 sale 20:00 (11h30, faltan 30 min) → retardo_doble $100', () => {
+    const r = classifyDayTurnoCubierto('2026-10-15', at('2026-10-15', '08:30'), at('2026-10-15', '20:00'), rulesTurno12, montosGlobal, sinContexto, empleadoOperativo);
+    expect(r.classification).toBe('retardo_doble');
+    expect(r.minutosRetraso).toBe(30);
+    expect(r.monto).toBe(100);
+  });
+
+  it('entra 8:10 sale 20:00 (11h50, faltan 10 min) → retardo_base $50', () => {
+    const r = classifyDayTurnoCubierto('2026-10-15', at('2026-10-15', '08:10'), at('2026-10-15', '20:00'), rulesTurno12, montosGlobal, sinContexto, empleadoOperativo);
+    expect(r.classification).toBe('retardo_base');
+    expect(r.minutosRetraso).toBe(10);
+    expect(r.monto).toBe(50);
+  });
+
+  it('ejemplo oficial Lucero: entra 9:30 sale 20:30 (11h, faltan 60 min) → retardo_doble $100', () => {
+    const r = classifyDayTurnoCubierto('2026-10-15', at('2026-10-15', '09:30'), at('2026-10-15', '20:30'), rulesTurno12, montosGlobal, sinContexto, empleadoOperativo);
+    expect(r.classification).toBe('retardo_doble');
+    expect(r.minutosRetraso).toBe(60);
+    expect(r.monto).toBe(100);
+  });
+
+  it('entra 10:00 sale 20:00 (10h, faltan 120 min) → falta (sueldo diario)', () => {
+    const r = classifyDayTurnoCubierto('2026-10-15', at('2026-10-15', '10:00'), at('2026-10-15', '20:00'), rulesTurno12, montosGlobal, sinContexto, empleadoOperativo);
+    expect(r.classification).toBe('falta');
+    expect(r.minutosRetraso).toBe(120);
+    expect(r.monto).toBe(250);
+  });
+
+  it('sin checadas → falta', () => {
+    const r = classifyDayTurnoCubierto('2026-10-15', null, null, rulesTurno12, montosGlobal, sinContexto, empleadoOperativo);
+    expect(r.classification).toBe('falta');
+    expect(r.monto).toBe(250);
+  });
+
+  it('solo entrada (sin salida) → checada_incompleta con monto NULL (orquestador decide)', () => {
+    const r = classifyDayTurnoCubierto('2026-10-15', at('2026-10-15', '08:00'), null, rulesTurno12, montosGlobal, sinContexto, empleadoOperativo);
+    expect(r.classification).toBe('checada_incompleta');
+    expect(r.monto).toBeNull();
+  });
+
+  it('solo salida (sin entrada) → checada_incompleta con monto NULL', () => {
+    const r = classifyDayTurnoCubierto('2026-10-15', null, at('2026-10-15', '20:00'), rulesTurno12, montosGlobal, sinContexto, empleadoOperativo);
+    expect(r.classification).toBe('checada_incompleta');
+  });
+
+  it('festivo gana sobre falta aunque no haya checadas', () => {
+    const r = classifyDayTurnoCubierto('2026-09-16', null, null, rulesTurno12, montosGlobal, { isFestivo: true, isDescanso: false, isVacacion: false }, empleadoOperativo);
+    expect(r.classification).toBe('festivo');
+    expect(r.monto).toBeNull();
+  });
+
+  it('turno 10h (Alberto): entra 8:00 sale 18:00 (10h exactas) → ok', () => {
+    const rules10h = { horasRequeridas: 10, umbralRetardoDobleMin: 30, umbralFaltaMin: 90 };
+    const r = classifyDayTurnoCubierto('2026-10-15', at('2026-10-15', '08:00'), at('2026-10-15', '18:00'), rules10h, montosGlobal, sinContexto, { sueldoDiario: 266.67, retardoBase: 50, retardoDoble: 100 });
+    expect(r.classification).toBe('ok');
+  });
+
+  it('turno 4h (Amelia hipotético): entra 8:00 sale 12:30 (4h30, cubre) → ok', () => {
+    const rules4h = { horasRequeridas: 4, umbralRetardoDobleMin: 30, umbralFaltaMin: 90 };
+    const r = classifyDayTurnoCubierto('2026-10-15', at('2026-10-15', '08:00'), at('2026-10-15', '12:30'), rules4h, montosGlobal, sinContexto, { sueldoDiario: 133.33, retardoBase: 50, retardoDoble: 100 });
+    expect(r.classification).toBe('ok');
+  });
+});
+
+describe('lastCheckOutOfDay', () => {
+  it('devuelve la última', () => {
+    const t = [new Date('2026-10-15T08:00:00Z'), new Date('2026-10-15T20:00:00Z'), new Date('2026-10-15T14:30:00Z')];
+    const r = lastCheckOutOfDay(t);
+    expect(r?.toISOString()).toBe('2026-10-15T20:00:00.000Z');
+  });
+
+  it('lista vacía → null', () => {
+    expect(lastCheckOutOfDay([])).toBeNull();
   });
 });
 
