@@ -167,7 +167,7 @@ export default function PricingSection() {
                     background: `radial-gradient(ellipse at top left, ${a.color}20 0%, transparent 60%)`,
                     pointerEvents: 'none',
                   }} />
-                  <p className="text-xs font-semibold text-center relative" style={{ color: `${a.color}cc`, letterSpacing: '0.01em', lineHeight: 1.6 }}>
+                  <p className="text-xs font-semibold text-center relative" style={{ color: '#C4A8FF', letterSpacing: '0.01em', lineHeight: 1.6 }}>
                     Incluye todo lo necesario<br />para empezar desde el primer día.
                   </p>
                 </div>
