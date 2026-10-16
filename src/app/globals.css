@@ -620,6 +620,13 @@ select option {
 
 .glow-border-inline { display: inline-block; }
 
+/* El hijo directo hereda el radius del wrapper para que las esquinas calcen
+   con el ring del ::before. Sin esto, elementos como <Link> sin border-radius
+   propio se ven cuadrados dentro del halo redondo. */
+.glow-border > :first-child {
+  border-radius: var(--glow-radius, 16px);
+}
+
 /* Mobile: suavizar el giro (menos CPU, se siente menos frenético) */
 @media (max-width: 768px) {
   .glow-border::before { animation-duration: calc(var(--glow-speed, 4s) * 1.75); }
