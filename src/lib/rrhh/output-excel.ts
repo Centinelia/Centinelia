@@ -70,7 +70,7 @@ export async function generateNominaExcel(
     { header: 'Día',            key: 'dia',        width: 6  },
     { header: 'Entrada',        key: 'entrada',    width: 10 },
     { header: 'Clasificación',  key: 'clasif',     width: 16 },
-    { header: 'Min retraso',    key: 'minRetraso', width: 12 },
+    { header: 'Min desviación', key: 'minRetraso', width: 14 },
     { header: 'Monto',          key: 'monto',      width: 12 },
   ];
   detalle.getRow(1).font = { bold: true };
