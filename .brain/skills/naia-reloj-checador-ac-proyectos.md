@@ -75,7 +75,25 @@ Output esperado:
 
 **No implementar hasta cerrar los acuerdos pendientes abajo.** Sin reglas acordadas la tool es un adivinador.
 
-## Dos grupos de empleados en AC (confirmado 2026-10-15)
+## Cuatro grupos de empleados en AC (confirmado 2026-10-16)
+
+Lucero cerró lógica y mandó `EMPLEADOS-SUELDOS.xlsx` (42 empleados, sueldos mensuales, dividir /30 para diario). El panorama final:
+
+| Grupo | # empleados | Modelo | Hora/Turno | Montos |
+|---|---|---|---|---|
+| A. Admin estándar | ~33 (reloj_ids pendientes) | check-in vs hora fija | 8:00 AM | $200 / $400 / sueldo |
+| B. Operativos turno 12h | 7 (identificados) | turno cubierto escalonado | 12h, ventana entrada 8-9 AM | $50 / $100 / sueldo |
+| C. Omar Castillo | 1 (pendiente reloj_id) | check-in vs hora fija (asumido) | 9:00-18:00 (9h) | ? / ? / sueldo |
+| D. Amelia Ramos | 1 (pendiente reloj_id) | "sale a medio día" | medio turno | ? / ? / sueldo |
+
+### Reglas transversales (todos los grupos)
+
+- **Checada incompleta** (solo entrada o solo salida en el día): rebaje fijo **$100** para todos. Excepción: Omar Castillo (regla pendiente de confirmar).
+- **Falta** (no checó en absoluto): se cobra sueldo diario, salvo que haya hoja de vacaciones autorizada.
+- **Festivos LFT**: no cuentan ni retardo ni falta (ya seedados hasta 2030).
+- **Descansos mensuales**: no cuentan (los asignan jefes de depto al inicio del mes).
+
+### Dos grupos de empleados en AC (deprecated por 4 grupos arriba)
 
 AC Proyectos tiene **dos modelos de cálculo distintos**, no uno solo:
 
@@ -91,7 +109,19 @@ Modelo: **check-in vs hora de entrada fija.**
 
 ### Grupo B — Operativos (7 excepciones, turno 12 horas)
 
-Reloj_ids: 120 (Alberto Arquieta), 215 (Sherlyn), 144 (Luis Avila), 158 (Rigoberto Garcia), 186 (Jose Cruz), 187 (Hector Avila), 217 (Jancarlo).
+Catálogo completo con nombres oficiales y sueldos (confirmado 2026-10-16 vía EMPLEADOS-SUELDOS.xlsx):
+
+| reloj_id | Nombre oficial | Mensual | Diario /30 |
+|---|---|---|---|
+| 120 | Alberto Arquieta Gonzalez | $8,000 | $266.67 |
+| 215 | Sherlyn Alexandra Alvarez Balboa | $6,500 | $216.67 |
+| 144 | Luis Martin Avila Sandoval | $7,500 | $250.00 |
+| 158 | Rigoberto Garcia Vera | $7,500 | $250.00 |
+| 186 | Jose Alfredo Cruz Hernandez | $7,500 | $250.00 |
+| 187 | Hector Eli Avila Sandoval | $7,500 | $250.00 |
+| 217 | Jan Carlo Hernandez Garcia | $6,500 | $216.67 |
+
+**Caso especial Alberto Arquieta**: Lucero textual 2026-10-16: *"Alberto Arquieta puede tener el turno de 8hrs pero hay dias que va 12hrs, mientras que cubra el horario esta bien"*. Esto implica que `turno_horas_requeridas` no es fijo per-empleado sino **per-día** para Alberto. Pendiente: definir cómo Naia sabe qué turno aplicó ese día (¿Lucero lo captura por adelantado al inicio del mes? ¿Se infiere al cierre?).
 
 Modelo: **tiempo total trabajado vs horas requeridas** (no vs hora de entrada fija). Confirmado por Lucero 2026-10-15 textual:
 
@@ -106,23 +136,45 @@ if tiempo_trabajado <  12h → rebaje escalonado (base/doble/falta según minuto
 
 Rebajes: base $50 / doble $100 (ya en `rrhh_empleados.monto_retardo_base_mxn` + `monto_retardo_doble_mxn` para esos 7 reloj_ids).
 
-**Umbrales de minutos faltantes NO definidos todavía.** Datos pendientes de Lucero:
-1. Minutos faltantes que disparan rebaje base vs doble (ej. 1-30 min base, 30-90 min doble, probable paralelo con admin).
-2. Minutos faltantes (o patrón "no checó salida") que ya cuenta como falta completa.
-3. Horas requeridas por operativo: ¿todos exactamente 12h, o varía?
-4. Comportamiento si solo checó entrada (sin salida).
+**Umbrales de minutos faltantes CONFIRMADOS por Lucero 2026-10-16:**
+
+- Minutos faltantes **1-30**: retardo base **$50**
+- Minutos faltantes **30-90**: retardo doble **$100**
+- Minutos faltantes **90+** o no checó entrada ni salida: **falta** (sueldo diario)
+- Solo checó entrada **o** solo salida: **$100 fijo** (regla transversal, no escalada)
+- Si no checó nada: falta, salvo que haya hoja de vacaciones autorizada
+
+**Ventana permitida de entrada**: 8:00-9:00 AM. Después de 9:00 es tiempo faltante y aplica escalonado.
+
+**Ejemplo oficial de Lucero**: entra 9:30, sale 20:30 (8:30 PM) → trabajó 11h → faltó 60 min → rebaje $100.
 
 **Status implementación operativos: PAUSADA 2026-10-15.** La lógica actual del `classifyDay` les aplica reglas de admin (check-in vs hora fija 8:00), que no es correcta para operativos — les cobraría retardo si llegan después de 8:00 aunque hayan cubierto las 12 horas. **No procesar quincena de operativos hasta implementar la ruta "turno cubierto" en el clasificador.**
 
-### Plan Fase 2a.2 (desbloquea cuando Lucero mande umbrales)
+### Plan Fase 2a.2 — DATOS DE LÓGICA LISTOS, bloqueado por reloj_ids
 
-- Agregar columna `rrhh_empleados.turno_horas_requeridas NUMERIC(4,2)` (NULL = usar modelo admin check-in; valor = usar modelo turno cubierto).
-- Nueva ruta en `classifyDay` (o función hermana `classifyDayTurnoCubierto`) que calcula tiempo trabajado y aplica escalonado por minutos faltantes.
-- `process-quincena` detecta modo por empleado (si `turno_horas_requeridas` presente → modo turno; si no → modo check-in).
-- Script seed de los 7 operativos actualiza `turno_horas_requeridas = 12`.
-- Tests nuevos para ambos modos.
+Datos listos ✅:
+- Umbrales escalonados 1-30 / 30-90 / 90+ confirmados.
+- Checada incompleta = $100 fijo confirmado.
+- Ventana operativos 8-9 AM confirmada.
+- Sueldos mensuales de los 42 empleados confirmados.
 
-Esfuerzo estimado: 2-3 h cuando lleguen los umbrales.
+Bloqueado pendiente ❌:
+- Reloj_ids de los ~33 administrativos (Lucero debe mandar export del reloj o lista nombre↔reloj_id).
+- Reloj_id de Omar Castillo + confirmar si aplica regla "checada incompleta = $100".
+- Reloj_id de Amelia Ramos + horario exacto "medio día".
+- Caso Alberto Arquieta turno flexible 8h/12h: cómo se captura el turno del día.
+
+Implementación cuando se desbloquee:
+- Nueva columna `rrhh_empleados.turno_horas_requeridas NUMERIC(4,2)` (NULL = modelo admin check-in; valor = modelo turno cubierto).
+- Nueva columna `rrhh_empleados.ventana_entrada_desde TIME` + `ventana_entrada_hasta TIME` (operativos: 08:00-09:00).
+- Nueva columna `rrhh_empleados.checada_incompleta_monto_mxn NUMERIC(10,2)` (NULL = usa fallback global; valor = $100 para operativos).
+- Nueva ruta `classifyDayTurnoCubierto` en el clasificador.
+- Nueva regla transversal "checada incompleta" aplicada en `process-quincena` después del clasificador.
+- `process-quincena` detecta modo por empleado y aplica la ruta correspondiente.
+- Caso Alberto: posible nueva tabla `rrhh_turnos_dia` (empleado_id + fecha + horas) alimentada al inicio del mes.
+- Tests nuevos para los 2 modos + checada incompleta + ventana + Alberto flexible.
+
+Esfuerzo estimado: 4-6 h cuando lleguen los reloj_ids.
 
 ## Acuerdos con AC Proyectos (9/10 cerrados por Lucero 2026-10-13)
 
