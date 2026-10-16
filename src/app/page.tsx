@@ -22,6 +22,7 @@ import TeamFlowSection from './TeamFlowSection';
 import ReglasManifesto from './ReglasManifesto';
 import FaqLanding from './FaqLanding';
 import BeforeAfterSection from './BeforeAfterSection';
+import GlowBorder from './GlowBorder';
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -259,16 +260,18 @@ export default function LandingPage() {
 
             {/* CTAs */}
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3">
-              <Link
-                href="/registro"
-                className="cta-pulse flex items-center gap-2 px-7 py-3.5 rounded-2xl text-sm font-bold transition-all hover:opacity-90 hover:scale-[1.02]"
-                style={{
-                  background: 'linear-gradient(135deg, #6C3BFF, #9B6DFF)',
-                  color:      '#fff',
-                }}
-              >
-                Contratar ahora <ArrowRight size={15} />
-              </Link>
+              <GlowBorder inline radius={16} thickness={2} speed={3.5}>
+                <Link
+                  href="/registro"
+                  className="flex items-center gap-2 px-7 py-3.5 text-sm font-bold transition-all hover:opacity-90 hover:scale-[1.02]"
+                  style={{
+                    background: 'linear-gradient(135deg, #6C3BFF, #9B6DFF)',
+                    color:      '#fff',
+                  }}
+                >
+                  Contratar ahora <ArrowRight size={15} />
+                </Link>
+              </GlowBorder>
               <a
                 href="#demo"
                 className="flex items-center gap-2 px-7 py-3.5 rounded-2xl text-sm font-medium transition-colors"
@@ -921,13 +924,15 @@ export default function LandingPage() {
           {/* Buttons */}
           <AnimatedSection delay={0.32}>
             <div className="flex flex-col sm:flex-row items-center gap-3">
-              <Link
-                href="/registro"
-                className="cta-pulse inline-flex items-center gap-2 px-10 py-4 rounded-2xl font-bold text-sm"
-                style={{ background: 'linear-gradient(135deg, #6C3BFF, #9B6DFF)', color: '#fff', boxShadow: '0 8px 36px rgba(108,59,255,0.45)' }}
-              >
-                Incorporar mi primer Centinelia <ArrowRight size={15} />
-              </Link>
+              <GlowBorder inline radius={16} thickness={2} speed={3.5}>
+                <Link
+                  href="/registro"
+                  className="inline-flex items-center gap-2 px-10 py-4 font-bold text-sm"
+                  style={{ background: 'linear-gradient(135deg, #6C3BFF, #9B6DFF)', color: '#fff', boxShadow: '0 8px 36px rgba(108,59,255,0.45)' }}
+                >
+                  Incorporar mi primer Centinelia <ArrowRight size={15} />
+                </Link>
+              </GlowBorder>
               <a
                 href="tel:+528116333559"
                 className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-sm font-medium"

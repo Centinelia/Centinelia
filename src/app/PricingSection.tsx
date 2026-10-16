@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Check, Star, Clock, Zap, Phone } from 'lucide-react';
 import AnimatedSection from './AnimatedSection';
+import GlowBorder from './GlowBorder';
 import { FEATURE_PLAN_CONFIG } from '@/lib/billing/plans';
 
 const fmt = (n: number) => new Intl.NumberFormat('es-MX').format(n);
@@ -113,21 +114,21 @@ export default function PricingSection() {
             </div>
           </AnimatedSection>
 
-          {AGENT_TYPES.map((a, i) => (
-            <AnimatedSection key={a.id} delay={i * 0.09} className="flex-1 flex flex-col">
-            <div
-              className="rounded-2xl p-6 flex flex-col flex-1 relative"
-              style={{
-                background: a.popular ? `linear-gradient(145deg, ${a.color}22, ${a.color}0a)` : 'rgba(255,255,255,0.04)',
-                border: `1px solid ${a.popular ? a.color + '55' : 'rgba(255,255,255,0.09)'}`,
-                boxShadow: a.popular ? `0 12px 48px ${a.color}30` : 'none',
-                backdropFilter: 'blur(12px)',
-              }}
-            >
-              {a.popular && (
-                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3,
-                  background: `linear-gradient(90deg, ${a.color}, ${a.color}88)` }} />
-              )}
+          {AGENT_TYPES.map((a, i) => {
+            const card = (
+              <div
+                className="rounded-2xl p-6 flex flex-col flex-1 relative"
+                style={{
+                  background: a.popular ? `linear-gradient(145deg, ${a.color}22, ${a.color}0a)` : 'rgba(255,255,255,0.04)',
+                  border: a.popular ? 'none' : '1px solid rgba(255,255,255,0.09)',
+                  boxShadow: a.popular ? `0 12px 48px ${a.color}30` : 'none',
+                  // backdrop-filter removido en popular: el blur creaba un stacking context
+                  // que ocultaba el ::before del wrapper GlowBorder y mataba el halo visible.
+                  backdropFilter: a.popular ? undefined : 'blur(12px)',
+                }}
+              >
+                {/* Nota: cuando popular, el "top accent" lo da el conic-gradient
+                    animado del wrapper GlowBorder; eliminamos la barra estática. */}
               <div className="flex items-center justify-between mb-4">
                 <p className="font-bold" style={{ color: '#fff', fontSize: '1.1rem' }}>{a.name}</p>
               </div>
@@ -172,8 +173,17 @@ export default function PricingSection() {
                 </div>
               </div>
             </div>
-            </AnimatedSection>
-          ))}
+            );
+            return (
+              <AnimatedSection key={a.id} delay={i * 0.09} className="flex-1 flex flex-col">
+                {a.popular ? (
+                  <GlowBorder radius={16} thickness={3} speed={5} className="flex-1 flex flex-col">
+                    {card}
+                  </GlowBorder>
+                ) : card}
+              </AnimatedSection>
+            );
+          })}
         </div>
 
         {/* ── Columna derecha: Paso 2 ── */}

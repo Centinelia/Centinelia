@@ -558,3 +558,77 @@ select option {
   background: var(--surface-sunken, #F5F5F7);
   color: var(--text-primary, #1A0A3B);
 }
+
+/* ── Premium rotating glow border ──────────────────────────────────────────
+   Approach: pseudo-elemento ::before como "halo" externo con inset negativo.
+   El wrapper NO toca el layout del hijo (sin padding, sin bg). El halo vive
+   afuera del card gracias a `inset: calc(-1 * thickness)`, se ve como filo
+   gradient alrededor. `isolation: isolate` crea stacking context local para
+   que `z-index: -1` del ::before quede atrás del contenido pero adentro del
+   wrapper. Degrada bien: sin @property (Firefox hasta 128) queda un filo
+   estático con el gradiente inicial. */
+@property --glow-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes glow-spin {
+  to { --glow-angle: 360deg; }
+}
+
+.glow-border {
+  position: relative;
+  /* Sin display forzado: default <div> es block. Si el call site pasa
+     className="flex flex-col" (ej. pricing card con altura compartida),
+     Tailwind lo pone en flex y el hijo con flex-1 se expande a toda la
+     altura — evita gap/compactación en cards de altura variable. */
+  border-radius: var(--glow-radius, 16px);
+  isolation: isolate;
+}
+
+.glow-border::before {
+  content: '';
+  position: absolute;
+  inset: calc(-1 * var(--glow-thickness, 2px));
+  border-radius: calc(var(--glow-radius, 16px) + var(--glow-thickness, 2px));
+  padding: var(--glow-thickness, 2px);
+  background: conic-gradient(
+    from var(--glow-angle),
+    #6C3BFF,
+    #C4A8FF,
+    #9B6DFF,
+    #C4A8FF,
+    #6C3BFF
+  );
+  animation: glow-spin var(--glow-speed, 4s) linear infinite;
+  will-change: --glow-angle;
+  pointer-events: none;
+  /* Mask-composite trick: muestra el conic SOLO en el padding (ring exterior),
+     deja el content area 100% transparente — así el gradient no se ve a
+     través del card, solo como filo alrededor. Independiente del bg/opacity/
+     backdrop-filter del hijo. */
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+          mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+}
+
+.glow-border-inline { display: inline-block; }
+
+/* Mobile: suavizar el giro (menos CPU, se siente menos frenético) */
+@media (max-width: 768px) {
+  .glow-border::before { animation-duration: calc(var(--glow-speed, 4s) * 1.75); }
+}
+
+/* Accesibilidad: respetar reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .glow-border::before {
+    animation: none;
+    background: linear-gradient(135deg, #6C3BFF 0%, #9B6DFF 50%, #C4A8FF 100%);
+  }
+}
