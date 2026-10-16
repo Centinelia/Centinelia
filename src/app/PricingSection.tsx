@@ -289,9 +289,13 @@ export default function PricingSection() {
                           <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>tareas/mes</span>
                         </div>
                       )}
-                      {/* Bullet secundario: qué extra viene incluido en el sabor */}
+                      {/* Bullet secundario: qué extra viene incluido en el sabor.
+                           Mismo patrón que el número grande arriba: color del recurso
+                           solo cuando está seleccionado, blanco translúcido cuando no. */}
                       <p className="text-xs mt-0.5" style={{
-                        color: jornadaId === 'tareas' ? `${MIN_COLOR}c0` : `${TASK_COLOR}d0`,
+                        color: isSelected
+                          ? (jornadaId === 'tareas' ? `${MIN_COLOR}c0` : `${TASK_COLOR}d0`)
+                          : 'rgba(255,255,255,0.55)',
                       }}>
                         {jornadaId === 'combinada'
                           ? `${t.ops} tareas incluidas`
