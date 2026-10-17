@@ -7,10 +7,11 @@ import {
   Phone, Building2, User, Utensils, Stethoscope,
   Smartphone, ShoppingBag, Landmark, GraduationCap, Clock, Zap,
   UserPlus, CalendarCheck, Users, PhoneCall, PhoneForwarded, Wrench, Network,
+  Sparkles, Rocket,
   type LucideProps,
 } from 'lucide-react';
 import Image from 'next/image';
-import { MEERKAT_MAP, PUBLIC_MEERKAT_ROLES, type MeerkatRoleId } from '@/lib/portal/meerkat-roles';
+import { MEERKAT_MAP, PUBLIC_MEERKAT_ROLES, isOperationRole, avatarImgStyle, type MeerkatRoleId } from '@/lib/portal/meerkat-roles';
 import { FEATURE_LABELS } from '@/types/agent';
 import { JORNADA_CONFIG } from '@/lib/billing/plans';
 
@@ -222,6 +223,14 @@ const ROLE_PREVIEW: Partial<Record<MeerkatRoleId, { subtitle: string; bullets: s
     subtitle: 'Cada factura con datos perfectos',
     bullets:  ['Timbra CFDIs verificando RFC, régimen y uso', 'Copia órdenes de compra tal cual sin inventar', 'Archiva XML, PDF y acuse en el servidor local', 'Escala al dueño cuando el monto rebasa el límite'],
   },
+  nalu:  {
+    subtitle: 'Tesorería y conciliación bancaria',
+    bullets:  ['Concilia banca contra la contabilidad diario', 'Detecta diferencias y las flagea', 'Entrega el reporte financiero cada mañana', 'Alerta cuando los saldos están bajos'],
+  },
+  nami:  {
+    subtitle: 'Inventario multi-bodega bajo control',
+    bullets:  ['Lleva conteo de stock por bodega', 'Detecta faltantes antes de que te duelan', 'Procesa órdenes de compra y entradas', 'Reporta valor del inventario'],
+  },
   nox:   {
     subtitle: 'El que mantiene todo en orden',
     bullets:  ['Enruta correos al agente correcto', 'Monitorea tareas delegadas y escala las vencidas', 'Genera reportes de operación automáticos', 'Sin llamadas: coordinación pura, máxima eficiencia'],
@@ -429,6 +438,7 @@ function MeerkatCard({
 }: { roleId: MeerkatRoleId; selected: boolean; onClick: () => void }) {
   const role      = MEERKAT_MAP[roleId];
   const [err, setErr] = useState(false);
+  const isOperation = isOperationRole(roleId);
 
   const hasImg = !!role.imagen && !err;
 
@@ -462,6 +472,7 @@ function MeerkatCard({
               width: '100%', height: '100%',
               objectFit: 'contain', objectPosition: 'bottom center',
               ...(roleId === 'nia' && { transform: 'scale(1.09)', transformOrigin: 'bottom center' }),
+              ...(roleId === 'nami' && { transform: 'scale(1.05)', transformOrigin: 'bottom center' }),
             }}
           />
         ) : (
@@ -481,6 +492,23 @@ function MeerkatCard({
             background: role.color, display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             <Check size={11} color="#fff" />
+          </div>
+        )}
+        {isOperation && !selected && (
+          <div style={{
+            position: 'absolute', top: 6, right: 6,
+            padding: '2px 7px',
+            borderRadius: 999,
+            background: 'rgba(26,10,59,0.78)',
+            color: '#C4A8FF',
+            fontSize: 9,
+            fontWeight: 700,
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            border: '1px solid rgba(196,168,255,0.35)',
+            backdropFilter: 'blur(4px)',
+          }}>
+            A medida
           </div>
         )}
       </div>
@@ -622,15 +650,27 @@ function RegistroInner() {
   const rawRole  = params.get('role') as MeerkatRoleId | null;
   const initPlan: FormPlan       = rawPlan && validPlans.includes(rawPlan) ? rawPlan : 'pro';
   const initTier: FormTier       = rawTier && validTiers.includes(rawTier) ? rawTier : 'growth';
-  const initRole: MeerkatRoleId | null = rawRole && validRoles.includes(rawRole) ? rawRole : null;
+  // Deep-link `?role=X`: aceptamos cualquier rol (incluido Operación) — el modal
+  // se dispara en handleNext al dar "Continuar". Esto deja ver el panel de
+  // capacidades antes de pedir diagnóstico. Si no hay deep-link, Nia queda
+  // pre-seleccionada como principal.
+  const initRoleFromUrl: MeerkatRoleId | null = rawRole && validRoles.includes(rawRole) ? rawRole : null;
+  const initRole: MeerkatRoleId = initRoleFromUrl ?? 'nia';
 
-  const [step,          setStep]         = useState<1 | 2 | 3 | 4>(initRole ? 2 : 1);
+  // Si vino con rol explícito en URL (incluso Nia), saltamos a step 2.
+  // Si solo fue el default a Nia, nos quedamos en step 1 para que el usuario
+  // explore el roster y confirme (o cambie) antes de avanzar.
+  const [step,          setStep]         = useState<1 | 2 | 3 | 4>(
+    initRoleFromUrl && !isOperationRole(initRoleFromUrl) ? 2 : 1
+  );
   const [loading,       setLoading]      = useState(false);
   const [error,         setError]        = useState('');
   const [submitted,     setSubmitted]    = useState(false);
 
   // Step 1 — Meerkat
   const [meerkatRoleId, setMeerkatRoleId] = useState<MeerkatRoleId | null>(initRole);
+  // Modal cuando el usuario quiere continuar con un meerkat de Operación. null = cerrado.
+  const [operationModalRole, setOperationModalRole] = useState<MeerkatRoleId | null>(null);
 
   // Step 2 — Plan
   const [plan, setPlan]     = useState<FormPlan>(initPlan);
@@ -713,8 +753,14 @@ function RegistroInner() {
       if (!raw) return;
       const saved = JSON.parse(raw) as Record<string, unknown>;
       // No sobrescribir si URL trae role/plan/tier explícito (deep-link intent).
+      // No restaurar meerkat Operación guardado: el default Nia debe ganar hasta
+      // que el usuario re-elija explícitamente en esta sesión.
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      if (!rawRole && typeof saved.meerkatRoleId === 'string') setMeerkatRoleId(saved.meerkatRoleId as MeerkatRoleId);
+      if (
+        !rawRole &&
+        typeof saved.meerkatRoleId === 'string' &&
+        !isOperationRole(saved.meerkatRoleId as MeerkatRoleId)
+      ) setMeerkatRoleId(saved.meerkatRoleId as MeerkatRoleId);
       if (!rawPlan && typeof saved.plan === 'string')          setPlan(saved.plan as FormPlan);
       if (!rawTier && typeof saved.tier === 'string')          setTier(saved.tier as FormTier);
       if (typeof saved.jornada === 'string')          setJornada(saved.jornada as 'combinada' | 'minutos' | 'tareas');
@@ -836,6 +882,8 @@ function RegistroInner() {
   };
 
   const handleSelectMeerkat = (roleId: MeerkatRoleId) => {
+    // Operación se puede seleccionar normal para que el usuario vea el panel
+    // de capacidades. El gate dispara el modal en handleNext (Continuar).
     if (meerkatRoleId === roleId) { setMeerkatRoleId(null); setAgentName(''); setError(''); return; }
     const role = MEERKAT_MAP[roleId];
     setMeerkatRoleId(roleId);
@@ -848,6 +896,14 @@ function RegistroInner() {
     setError('');
     if (step === 1) {
       if (!meerkatRoleId) { setError('Elige un empleado para continuar'); return; }
+      // Gate Operación: dispara modal de diagnóstico en vez de avanzar al form
+      // self-serve. El overlay desktop se cierra para que el modal quede en
+      // primer plano.
+      if (isOperationRole(meerkatRoleId)) {
+        setOverlayOpen(false);
+        setOperationModalRole(meerkatRoleId);
+        return;
+      }
       setOverlayOpen(false);
       setStep(2);
     } else if (step === 2) {
@@ -1077,142 +1133,9 @@ function RegistroInner() {
               Cada Centinelia domina una especialidad. Juntos forman un equipo extraordinario.
             </p>
 
-            {/* Director General duo — Nox + Niva (featured 2-col grid above specialists) */}
-            <div className="mb-3">
-              <div className="grid grid-cols-2 gap-3 mb-2">
-                {(['nox', 'niva'] as const).map(dirId => {
-                  const dir = MEERKAT_MAP[dirId];
-                  const sel = meerkatRoleId === dirId;
-                  return (
-                    <button
-                      key={dirId}
-                      type="button"
-                      onClick={() => { handleSelectMeerkat(dirId); }}
-                      style={{
-                        background:    sel ? `${dir.color}18` : 'rgba(255,255,255,0.03)',
-                        border:        `2px solid ${sel ? dir.color : 'rgba(255,255,255,0.07)'}`,
-                        borderRadius:  16,
-                        padding:       0,
-                        cursor:        'pointer',
-                        transition:    'border-color 0.15s, background 0.15s, transform 0.1s',
-                        transform:     sel ? 'scale(1.02)' : 'scale(1)',
-                        overflow:      'hidden',
-                        display:       'flex',
-                        flexDirection: 'column',
-                        alignItems:    'center',
-                        textAlign:     'center',
-                      }}
-                    >
-                      {/* Image */}
-                      <div style={{ width: '100%', aspectRatio: '1', position: 'relative', overflow: 'hidden', background: '#F4F0FF' }}>
-                        <img
-                          src={dir.imagen!}
-                          alt={dir.nombre}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%' }}
-                        />
-                        {sel && (
-                          <div style={{ position: 'absolute', top: 6, right: 6, width: 20, height: 20, borderRadius: '50%', background: dir.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Check size={11} color="#fff" />
-                          </div>
-                        )}
-                        {/* Director badge */}
-                        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '4px 8px 5px', background: `linear-gradient(to top, ${dir.color}ee, ${dir.color}55)` }}>
-                          <span style={{ fontSize: 9, fontWeight: 700, color: '#fff', letterSpacing: '0.07em', textTransform: 'uppercase' }}>
-                            Director{dir.genero === 'F' ? 'a' : ''} General
-                          </span>
-                        </div>
-                      </div>
-                      {/* Text */}
-                      <div style={{ padding: '10px 8px 12px', width: '100%', background: 'rgba(255,255,255,0.07)' }}>
-                        <div style={{ fontWeight: 700, fontSize: 15, color: '#fff', lineHeight: 1.2 }}>{dir.nombre}</div>
-                        <div style={{ fontSize: 11, fontWeight: 600, color: lightenColor(dir.color, 0.45), marginTop: 4, lineHeight: 1.3 }}>
-                          {dir.tagline}
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Inline panel for selected director */}
-              {(meerkatRoleId === 'nox' || meerkatRoleId === 'niva') && selectedMeerkat && (() => {
-                const preview = ROLE_PREVIEW[selectedMeerkat.id as keyof typeof ROLE_PREVIEW];
-                if (!preview) return null;
-                return (
-                  <div className="rounded-2xl overflow-hidden"
-                    style={{ border: `1px solid ${selectedMeerkat.color}50`, background: `${selectedMeerkat.color}18` }}>
-                    <div className="px-4 py-3.5" style={{ borderBottom: `1px solid ${selectedMeerkat.color}35` }}>
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <div style={{ fontWeight: 700, color: '#fff', fontSize: 14 }}>{selectedMeerkat.nombre}</div>
-                          <div style={{ fontSize: 11, color: lightenColor(selectedMeerkat.color, 0.45), fontWeight: 600, marginTop: 2 }}>{selectedMeerkat.rol}</div>
-                        </div>
-                        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.38)', maxWidth: 180, textAlign: 'right', lineHeight: 1.45, flexShrink: 0 }}>
-                          {selectedMeerkat.descripcion}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="px-4 py-3">
-                      <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.28)', marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>
-                        {preview.subtitle}
-                      </p>
-                      <div className="flex flex-col gap-1.5 mb-4">
-                        {preview.bullets.map(b => (
-                          <div key={b} className="flex items-center gap-2">
-                            <Check size={10} style={{ color: lightenColor(selectedMeerkat.color, 0.45), flexShrink: 0 }} />
-                            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)' }}>{b}</span>
-                          </div>
-                        ))}
-                      </div>
-                      <CapabilityChipsRegistro
-                        features={selectedMeerkat.features as Record<string, unknown>}
-                        color={selectedMeerkat.color}
-                        isCoordinator={true}
-                      />
-                      {/* Price summary — visible on mobile */}
-                      <div className="sm:hidden mb-5 rounded-xl px-3 py-2.5"
-                        style={{ background: `${selectedMeerkat.color}14`, border: `1px solid ${selectedMeerkat.color}28` }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(255,255,255,0.45)', marginBottom: 3 }}>
-                          <span>Instalación</span>
-                          <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.75)' }}>$14,990 + IVA</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>
-                          <span>Mensualidad</span>
-                          <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.75)' }}>desde $2,997 + IVA/mes</span>
-                        </div>
-                      </div>
-                      <button
-                        onClick={handleNext}
-                        className="sm:hidden w-full py-3 rounded-xl font-semibold text-sm text-white flex items-center justify-center gap-2 transition-opacity hover:opacity-90"
-                        style={{ background: `linear-gradient(135deg, ${selectedMeerkat.color}, ${selectedMeerkat.color}99)` }}
-                      >
-                        Continuar con {selectedMeerkat.nombre} <ChevronRight size={15} />
-                      </button>
-                      <button
-                        onClick={() => setOverlayOpen(true)}
-                        className="hidden sm:flex w-full py-3 rounded-xl font-semibold text-sm text-white items-center justify-center gap-2 transition-opacity hover:opacity-90"
-                        style={{ background: `linear-gradient(135deg, ${selectedMeerkat.color}, ${selectedMeerkat.color}99)` }}
-                      >
-                        Continuar con {selectedMeerkat.nombre} <ChevronRight size={15} />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-
-            {/* Divider before the specialists grid */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-              <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.06)' }} />
-              <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                Equipo Especializado
-              </span>
-              <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.06)' }} />
-            </div>
-
             {/* Grid split into rows of 3 with inline capabilities panel */}
             <div className="flex flex-col gap-1 mb-6">
-              {[0, 1, 2].map(rowIdx => {
+              {Array.from({ length: Math.ceil(GRID_ROLES.length / 3) }, (_, i) => i).map(rowIdx => {
                 const rowRoles = GRID_ROLES.slice(rowIdx * 3, rowIdx * 3 + 3);
                 const selectedIndex = meerkatRoleId
                   ? GRID_ROLES.findIndex(r => r.id === meerkatRoleId)
@@ -1244,7 +1167,21 @@ function RegistroInner() {
                           <div className="px-4 py-3.5" style={{ borderBottom: `1px solid ${selectedMeerkat.color}35` }}>
                             <div className="flex items-center justify-between gap-3">
                               <div>
-                                <div style={{ fontWeight: 700, color: '#fff', fontSize: 14 }}>{selectedMeerkat.nombre}</div>
+                                <div className="flex items-center gap-2">
+                                  <div style={{ fontWeight: 700, color: '#fff', fontSize: 14 }}>{selectedMeerkat.nombre}</div>
+                                  {isOperationRole(selectedMeerkat.id) && (
+                                    <span style={{
+                                      padding: '2px 7px', borderRadius: 999,
+                                      background: 'rgba(26,10,59,0.78)',
+                                      color: '#C4A8FF',
+                                      fontSize: 9, fontWeight: 700,
+                                      letterSpacing: '0.08em', textTransform: 'uppercase',
+                                      border: '1px solid rgba(196,168,255,0.35)',
+                                    }}>
+                                      A medida
+                                    </span>
+                                  )}
+                                </div>
                                 <div style={{ fontSize: 11, color: lightenColor(selectedMeerkat.color, 0.45), fontWeight: 600, marginTop: 2 }}>{selectedMeerkat.rol}</div>
                               </div>
                               <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.38)', maxWidth: 180, textAlign: 'right', lineHeight: 1.45, flexShrink: 0 }}>
@@ -1267,12 +1204,20 @@ function RegistroInner() {
                                         <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)' }}>{b}</span>
                                       </div>
                                     ))}
+                                    <div className="flex items-center gap-2" style={{ marginTop: 2 }}>
+                                      <span style={{
+                                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                        width: 10, height: 10, borderRadius: 3,
+                                        background: `${selectedMeerkat.color}30`,
+                                        color: lightenColor(selectedMeerkat.color, 0.45),
+                                        fontSize: 9, fontWeight: 700,
+                                        flexShrink: 0,
+                                      }}>+</span>
+                                      <span style={{ fontSize: 11, fontStyle: 'italic', color: 'rgba(255,255,255,0.42)' }}>
+                                        Y más, que diseñamos a tu operación.
+                                      </span>
+                                    </div>
                                   </div>
-                                  <CapabilityChipsRegistro
-                                    features={selectedMeerkat.features as Record<string, unknown>}
-                                    color={selectedMeerkat.color}
-                                    isCoordinator={false}
-                                  />
                                 </>
                               );
                             })()}
@@ -1295,9 +1240,18 @@ function RegistroInner() {
                             >
                               Continuar con {selectedMeerkat.nombre} <ChevronRight size={15} />
                             </button>
-                            {/* Desktop: open full overlay */}
+                            {/* Desktop: para Operación salta directo al modal
+                                (vía handleNext que detecta el gate). Para Nia
+                                (self-serve) abre el overlay de product detail
+                                con pricing exacto. */}
                             <button
-                              onClick={() => setOverlayOpen(true)}
+                              onClick={() => {
+                                if (isOperationRole(selectedMeerkat.id)) {
+                                  handleNext();
+                                } else {
+                                  setOverlayOpen(true);
+                                }
+                              }}
                               className="hidden sm:flex w-full py-3 rounded-xl font-semibold text-sm text-white items-center justify-center gap-2 transition-opacity hover:opacity-90"
                               style={{ background: `linear-gradient(135deg, ${selectedMeerkat.color}, #9B6DFF)` }}
                             >
@@ -2349,6 +2303,306 @@ function RegistroInner() {
         </div>
       </div>
     )}
+
+    {/* ─── Modal scoping Operación ─────────────────────────────────────── */}
+    {operationModalRole && (() => {
+      const modalRole = MEERKAT_MAP[operationModalRole];
+      const timeline = [
+        { icon: Sparkles, label: 'Diagnóstico', sub: 'Llamada corta' },
+        { icon: Wrench,   label: 'Setup',       sub: '2 a 3 semanas' },
+        { icon: Rocket,   label: 'Go-live',     sub: 'Supervisión 90 días' },
+      ];
+      return (
+        <div
+          onClick={() => setOperationModalRole(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 100,
+            background: 'rgba(10,3,30,0.78)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 20,
+            animation: 'fadeIn 0.2s ease-out',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: 'linear-gradient(140deg, #1A0A3B 0%, #0D0520 100%)',
+              borderRadius: 24,
+              border: `1px solid ${modalRole.color}40`,
+              boxShadow: [
+                `0 24px 72px rgba(0,0,0,0.6)`,
+                `0 0 0 1px rgba(196,168,255,0.08)`,
+                `0 0 80px ${modalRole.color}22`,
+              ].join(', '),
+              maxWidth: 760, width: '100%',
+              overflow: 'hidden',
+              position: 'relative',
+              animation: 'modalIn 0.28s cubic-bezier(0.16, 1, 0.3, 1)',
+            }}
+          >
+            {/* Decorative orbs */}
+            <div style={{
+              position: 'absolute', top: -120, right: -80,
+              width: 320, height: 320,
+              background: `radial-gradient(circle, ${modalRole.color}33 0%, transparent 65%)`,
+              pointerEvents: 'none', zIndex: 0,
+              filter: 'blur(8px)',
+            }} />
+            <div style={{
+              position: 'absolute', bottom: -100, left: -60,
+              width: 260, height: 260,
+              background: `radial-gradient(circle, rgba(155,109,255,0.12) 0%, transparent 60%)`,
+              pointerEvents: 'none', zIndex: 0,
+              filter: 'blur(10px)',
+            }} />
+
+            {/* Close */}
+            <button
+              type="button"
+              onClick={() => setOperationModalRole(null)}
+              aria-label="Cerrar"
+              style={{
+                position: 'absolute', top: 14, right: 14,
+                width: 32, height: 32, borderRadius: '50%',
+                background: 'rgba(255,255,255,0.07)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                color: 'rgba(255,255,255,0.75)',
+                cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                zIndex: 5,
+              }}
+            >
+              <X size={14} />
+            </button>
+
+            {/* 2-col layout: meerkat grande izq, content der */}
+            <div className="grid grid-cols-1 sm:grid-cols-[0.75fr_1fr]" style={{ position: 'relative', zIndex: 1 }}>
+
+              {/* Columna meerkat big — llena todo el alto del modal.
+                  Fondo lavanda consistente para todos los meerkats. */}
+              <div style={{
+                position: 'relative',
+                minHeight: 440,
+                display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+                background: 'linear-gradient(180deg, rgba(196,168,255,0.22) 0%, rgba(196,168,255,0.06) 100%)',
+                borderRight: '1px solid rgba(255,255,255,0.05)',
+                padding: '14px 16px 0',
+                overflow: 'hidden',
+              }}>
+                {/* Halo detrás */}
+                <div style={{
+                  position: 'absolute',
+                  bottom: 0, left: '50%', transform: 'translateX(-50%)',
+                  width: '90%', height: '50%',
+                  background: `radial-gradient(ellipse at bottom, ${modalRole.color}66 0%, transparent 70%)`,
+                  filter: 'blur(16px)',
+                  pointerEvents: 'none',
+                }} />
+                {/* Meerkat image big. object-fit: cover + anclado a left bottom:
+                    llena ambas dimensiones sin dejar whitespace arriba. El crop
+                    cae del lado derecho (donde sostienen el instrumento/laptop/
+                    tablet/libro) que es sacrificable; la cara se preserva.
+                    Scale extra para los que aún quedan algo chicos. */}
+                {modalRole.imagen && (() => {
+                  // Per-meerkat tuning del modal hero. Nova/Nami/Neo tuneados
+                  // con cover + left bottom + translate/scale (así quedaron
+                  // "bien" validados por Nazre). Resto queda con contain +
+                  // bottom center a tamaño natural, sin fill forzado.
+                  const CUSTOM_SET = new Set<MeerkatRoleId>(['nova', 'nami', 'neo']);
+                  const isCustom = CUSTOM_SET.has(modalRole.id);
+                  const modalScaleMap: Partial<Record<MeerkatRoleId, number>> = {
+                    nami: 1.06,
+                  };
+                  const modalTranslateXMap: Partial<Record<MeerkatRoleId, number>> = {
+                    neo:  10,
+                    nami: 15,
+                  };
+                  const sc = modalScaleMap[modalRole.id] ?? 1;
+                  const tx = modalTranslateXMap[modalRole.id] ?? 0;
+                  const transforms: string[] = [];
+                  if (tx !== 0) transforms.push(`translateX(${tx}%)`);
+                  if (sc !== 1) transforms.push(`scale(${sc})`);
+                  return (
+                  <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    zIndex: 1,
+                  }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={modalRole.imagen}
+                      alt={modalRole.nombre}
+                      style={{
+                        width: '100%', height: '100%',
+                        objectFit: isCustom ? 'cover' : 'contain',
+                        objectPosition: isCustom ? 'left bottom' : 'bottom center',
+                        transform: transforms.length ? transforms.join(' ') : 'none',
+                        transformOrigin: 'center bottom',
+                        filter: `drop-shadow(0 16px 32px ${modalRole.color}55)`,
+                      }}
+                    />
+                  </div>
+                  );
+                })()}
+              </div>
+
+              {/* Columna content */}
+              <div style={{ padding: '32px 28px 28px' }}>
+                {/* Chip liquid glass arriba */}
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  padding: '6px 12px', borderRadius: 999,
+                  background: 'rgba(255,255,255,0.07)',
+                  backdropFilter: 'blur(20px) saturate(150%)',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  marginBottom: 16,
+                  boxShadow: `0 0 24px ${modalRole.color}22`,
+                }}>
+                  <span style={{
+                    width: 6, height: 6, borderRadius: '50%',
+                    background: modalRole.color,
+                    boxShadow: `0 0 8px ${modalRole.color}`,
+                  }} />
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, letterSpacing: '0.1em',
+                    textTransform: 'uppercase', color: '#C4A8FF',
+                  }}>
+                    Centinelia Operación · A medida
+                  </span>
+                </div>
+
+                {/* Título */}
+                <h2 style={{
+                  fontSize: 'clamp(1.4rem, 3vw, 1.8rem)',
+                  fontWeight: 800, color: '#fff',
+                  lineHeight: 1.1, marginBottom: 10, letterSpacing: '-0.02em',
+                }}>
+                  Diseñemos a{' '}
+                  <span style={{
+                    background: `linear-gradient(135deg, ${modalRole.color}, #C4A8FF)`,
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                  }}>
+                    {modalRole.nombre}
+                  </span>{' '}
+                  para ti
+                </h2>
+
+                {/* Subtítulo */}
+                <p style={{
+                  fontSize: 13.5, color: 'rgba(255,255,255,0.6)',
+                  lineHeight: 1.55, marginBottom: 18,
+                }}>
+                  {modalRole.rol} es un rol que diseñamos a tu operación. Agendamos diagnóstico, acordamos alcance e integramos con los sistemas que ya usas.
+                </p>
+
+                {/* Mini timeline */}
+                <div style={{
+                  display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
+                  gap: 8, marginBottom: 22,
+                }}>
+                  {timeline.map((step, i) => {
+                    const Icon = step.icon;
+                    return (
+                      <div key={step.label} style={{
+                        position: 'relative',
+                        padding: '10px 10px',
+                        borderRadius: 10,
+                        background: 'rgba(255,255,255,0.03)',
+                        border: '1px solid rgba(255,255,255,0.06)',
+                        textAlign: 'left',
+                      }}>
+                        {/* Número en esquina superior derecha */}
+                        <span style={{
+                          position: 'absolute', top: 6, right: 8,
+                          fontSize: 10, fontWeight: 800, letterSpacing: '0.05em',
+                          color: 'rgba(255,255,255,0.35)', fontFamily: 'monospace',
+                        }}>
+                          {i + 1}
+                        </span>
+                        <div style={{
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          width: 24, height: 24, borderRadius: 7,
+                          background: `${modalRole.color}22`,
+                          border: `1px solid ${modalRole.color}44`,
+                          marginBottom: 6,
+                        }}>
+                          <Icon size={12} color={lightenColor(modalRole.color, 0.4)} />
+                        </div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#fff', lineHeight: 1.2 }}>
+                          {step.label}
+                        </div>
+                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', marginTop: 2 }}>
+                          {step.sub}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* CTAs */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <a
+                    href={`/cotizar?role=${operationModalRole}`}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                      padding: '14px 20px',
+                      background: `linear-gradient(135deg, ${modalRole.color}, #9B6DFF)`,
+                      color: '#fff',
+                      borderRadius: 12,
+                      fontWeight: 700, fontSize: 14,
+                      textDecoration: 'none',
+                      boxShadow: `0 8px 28px ${modalRole.color}55`,
+                      transition: 'transform 0.15s ease',
+                    }}
+                  >
+                    Agendar diagnóstico con {modalRole.nombre}
+                    <ChevronRight size={15} />
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => setOperationModalRole(null)}
+                    style={{
+                      padding: '10px 20px',
+                      background: 'transparent',
+                      color: 'rgba(255,255,255,0.55)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: 12,
+                      fontWeight: 600, fontSize: 12.5,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Elegir otro empleado
+                  </button>
+                </div>
+
+                {/* Línea de énfasis self-serve: lavanda para destacar */}
+                <p style={{
+                  fontSize: 11.5, color: '#C4A8FF',
+                  lineHeight: 1.55, marginTop: 14, textAlign: 'center',
+                  fontWeight: 500,
+                }}>
+                  Si buscas auto-contratar hoy, el único rol self-serve es{' '}
+                  <strong style={{ color: '#fff', fontWeight: 700 }}>Nia</strong>, nuestra recepcionista digital.
+                </p>
+              </div>
+
+            </div>
+          </div>
+
+          {/* Keyframes para animaciones */}
+          <style jsx>{`
+            @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+            @keyframes modalIn {
+              from { opacity: 0; transform: scale(0.96) translateY(8px); }
+              to   { opacity: 1; transform: scale(1) translateY(0); }
+            }
+          `}</style>
+        </div>
+      );
+    })()}
 
     </div>
   );

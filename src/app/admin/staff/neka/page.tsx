@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { isAdmin } from '@/lib/admin/auth';
-import { MEERKAT_ROLES } from '@/lib/portal/meerkat-roles';
+import { MEERKAT_ROLES, avatarImgStyle } from '@/lib/portal/meerkat-roles';
 import { getCentineliaFiscalConfig, isFacturamaSandbox } from '@/lib/invoicing/facturama/centinelia-preset';
 import { ArrowLeft, FileText, ShieldCheck, KeyRound, Zap, MessageCircle, MailCheck, Users, Clock, Receipt } from 'lucide-react';
 
@@ -50,13 +50,7 @@ export default async function NekaConfigPage() {
             <img
               src={NEKA.imagen}
               alt={NEKA.nombre}
-              style={{
-                width: '100%', height: '100%',
-                objectFit: 'cover',
-                objectPosition: NEKA.avatarPosition ?? 'center 3%',
-                transform: NEKA.avatarScale && NEKA.avatarScale !== 1 ? `scale(${NEKA.avatarScale})` : 'none',
-                transformOrigin: NEKA.avatarPosition ?? 'center 3%',
-              }}
+              style={avatarImgStyle(NEKA)}
             />
           </span>
         )}

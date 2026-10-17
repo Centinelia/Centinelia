@@ -26,18 +26,9 @@ import GlowBorder from './GlowBorder';
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
-const DIRECTORS = {
-  nombres: 'Nox & Niva',
-  rol:     'Dirección',
-  tagline: 'Encuentran orden donde otros ven caos',
-  desc:    'Dirigen a todo el equipo. Distribuyen trabajo, supervisan resultados y mantienen a todos sincronizados para que tu operación funcione sola.',
-  color:   '#6C3BFF',
-  img:     '/meerkats/nox-niva.png',
-};
-
 const TEAM = [
   { nombre: 'Nia',   rol: 'Recepción',           tagline: 'Nunca se le escapa un dato',                  desc: 'Atiende llamadas, agenda citas y recibe cada solicitud.',                                color: '#6C3BFF', img: '/meerkats/nia.png',  imgPad: '0px' },
-  { nombre: 'Noah',  rol: 'Ventas',              tagline: 'Siempre al teléfono, siempre cerrando',       desc: 'Llama prospectos, califica leads y cierra oportunidades nuevas.',                        color: '#22c55e', img: '/meerkats/noah.png'  },
+  { nombre: 'Noah',  rol: 'Ventas',              tagline: 'Siempre cerrando',                            desc: 'Llama prospectos, califica leads y cierra oportunidades nuevas.',                        color: '#22c55e', img: '/meerkats/noah.png'  },
   { nombre: 'Nara',  rol: 'Coordinación',        tagline: 'Carpeta en mano, todo bajo control',          desc: 'Coordina procesos, da seguimiento y mantiene la operación en orden.',                    color: '#4338CA', img: '/meerkats/nara.png'  },
   { nombre: 'Neo',   rol: 'Tecnología',          tagline: 'Laptop abierta, problema resuelto',           desc: 'Resuelve tickets, gestiona incidentes y mantiene los sistemas activos.',                 color: '#06b6d4', img: '/meerkats/neo.png'  },
   { nombre: 'Naia',  rol: 'Recursos Humanos',    tagline: 'Con lupa: nada se le escapa',                 desc: 'Organiza vacaciones, permisos y expedientes del equipo.',                                color: '#ec4899', img: '/meerkats/naia.png'  },
@@ -502,54 +493,6 @@ export default function LandingPage() {
             </p>
           </AnimatedSection>
 
-          {/* Org chart: Nox al tope, equipo debajo */}
-
-          {/* Dirección — Nox & Niva */}
-          <AnimatedSection className="flex justify-center mb-1">
-            <div
-              className="rounded-2xl overflow-hidden w-full"
-              style={{
-                maxWidth: 480,
-                background: C.surface,
-                border: `1.5px solid ${DIRECTORS.color}40`,
-                boxShadow: `0 4px 28px ${DIRECTORS.color}15`,
-              }}
-            >
-              <div style={{ height: 200, background: `${DIRECTORS.color}08`, position: 'relative' }}>
-                <Image src={DIRECTORS.img} alt="Nox y Niva" fill sizes="480px"
-                  style={{ objectFit: 'contain', objectPosition: 'bottom center' }} />
-              </div>
-              <div style={{ padding: '12px 16px 14px', borderTop: `2px solid ${DIRECTORS.color}` }}>
-                <p style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: DIRECTORS.color, marginBottom: 2 }}>
-                  {DIRECTORS.rol}
-                </p>
-                <h3 className="font-bold" style={{ fontSize: '1.05rem', color: C.text, lineHeight: 1.2, marginBottom: 3 }}>
-                  {DIRECTORS.nombres}
-                </h3>
-                <p style={{ fontSize: '0.72rem', fontStyle: 'italic', color: DIRECTORS.color, opacity: 0.85, lineHeight: 1.3, marginBottom: 6 }}>
-                  {DIRECTORS.tagline}
-                </p>
-                <p style={{ fontSize: '0.75rem', color: C.textSub, lineHeight: 1.5 }}>{DIRECTORS.desc}</p>
-              </div>
-            </div>
-          </AnimatedSection>
-
-          {/* Red organizacional — desktop: tronco + barra + 4 caídas | mobile: tronco simple */}
-          <div className="hidden sm:block relative mb-0" style={{ height: 40 }}>
-            <div style={{ position: 'absolute', left: '50%', top: 0, width: 1, height: '55%', background: 'rgba(108,59,255,0.20)' }} />
-            <div style={{ position: 'absolute', left: '12.5%', right: '12.5%', top: '55%', height: 1, background: 'rgba(108,59,255,0.20)' }} />
-            {['12.5%', '37.5%', '62.5%', '87.5%'].map(l => (
-              <div key={l} style={{ position: 'absolute', left: l, top: '55%', width: 1, height: '45%', background: 'rgba(108,59,255,0.20)' }} />
-            ))}
-          </div>
-          <div className="sm:hidden relative mb-0" style={{ height: 40 }}>
-            <div style={{ position: 'absolute', left: '50%', top: 0, width: 1, height: '55%', background: 'rgba(108,59,255,0.20)' }} />
-            <div style={{ position: 'absolute', left: '25%', right: '25%', top: '55%', height: 1, background: 'rgba(108,59,255,0.20)' }} />
-            {['25%', '75%'].map(l => (
-              <div key={l} style={{ position: 'absolute', left: l, top: '55%', width: 1, height: '45%', background: 'rgba(108,59,255,0.20)' }} />
-            ))}
-          </div>
-
           {/* Fila 1 — 4 empleados */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {TEAM.slice(0, 4).map((m, i) => (
@@ -564,7 +507,11 @@ export default function LandingPage() {
                 >
                   <div style={{ height: 130, background: `${m.color}0d`, position: 'relative' }}>
                     <Image src={m.img} alt={m.nombre} fill sizes="220px"
-                      style={{ objectFit: 'contain', objectPosition: 'bottom center', padding: (m as any).imgPad ?? '6px 6px 0' }} />
+                      style={{
+                        objectFit: 'contain', objectPosition: 'bottom center',
+                        padding: (m as any).imgPad ?? '6px 6px 0',
+                        ...(m.nombre === 'Nami' && { transform: 'scale(1.05)', transformOrigin: 'bottom center' }),
+                      }} />
                   </div>
                   <div style={{ padding: '10px 12px 12px', borderTop: `2px solid ${m.color}` }}>
                     <p style={{ fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: m.color, marginBottom: 2 }}>
@@ -600,7 +547,11 @@ export default function LandingPage() {
                   >
                     <div style={{ height: 130, background: `${m.color}0d`, position: 'relative' }}>
                       <Image src={m.img} alt={m.nombre} fill sizes="220px"
-                        style={{ objectFit: 'contain', objectPosition: 'bottom center', padding: (m as any).imgPad ?? '6px 6px 0' }} />
+                        style={{
+                        objectFit: 'contain', objectPosition: 'bottom center',
+                        padding: (m as any).imgPad ?? '6px 6px 0',
+                        ...(m.nombre === 'Nami' && { transform: 'scale(1.05)', transformOrigin: 'bottom center' }),
+                      }} />
                     </div>
                     <div style={{ padding: '10px 12px 12px', borderTop: `2px solid ${m.color}` }}>
                       <p style={{ fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: m.color, marginBottom: 2 }}>

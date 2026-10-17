@@ -148,16 +148,7 @@ export default function PricingSection() {
                   </li>
                 ))}
               </ul>
-              {/* Nox popping out above the closing box, recargado a la derecha */}
               <div className="relative mt-4">
-                <div className="absolute w-[120px] h-[165px] sm:w-[185px] sm:h-[245px]" style={{ bottom: '100%', right: 8 }}>
-                  <Image
-                    src="/meerkats/avatar/nox.png"
-                    alt="Nox"
-                    fill
-                    style={{ objectFit: 'contain', objectPosition: 'bottom center' }}
-                  />
-                </div>
                 <div className="rounded-xl px-4 py-4 relative overflow-hidden" style={{
                   background: `linear-gradient(135deg, ${a.color}18, ${a.color}08)`,
                   border: `1px solid ${a.color}30`,
@@ -340,10 +331,6 @@ export default function PricingSection() {
       <AnimatedSection>
         <p className="text-xs my-4 text-center" style={{ color: 'rgba(255,255,255,0.35)' }}>
           Aumenta o reduce la jornada cuando tu operación cambie.
-          <br className="hidden sm:inline" />
-          <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.28)' }}>
-            Los coordinadores (Nox, Niva) usan automáticamente la tarifa Solo tareas: no atienden llamadas.
-          </span>
         </p>
       </AnimatedSection>
 

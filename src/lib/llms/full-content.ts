@@ -66,7 +66,7 @@ Sin contratos de permanencia. Los minutos no usados acumulan al mes siguiente ha
 const ROSTER = [
   { nombre: 'Nox y Niva', rol: 'Dirección',           tagline: 'Encuentran orden donde otros ven caos',        desc: 'Distribuyen trabajo, supervisan resultados y mantienen a todo el equipo sincronizado. Son coordinadores, no atienden llamadas directamente.' },
   { nombre: 'Nia',        rol: 'Recepción',           tagline: 'Nunca se le escapa un dato',                    desc: 'Atiende llamadas entrantes, agenda citas, captura leads y recibe cada solicitud.' },
-  { nombre: 'Noah',       rol: 'Ventas',              tagline: 'Siempre al teléfono, siempre cerrando',         desc: 'Llama prospectos, califica leads y cierra oportunidades nuevas.' },
+  { nombre: 'Noah',       rol: 'Ventas',              tagline: 'Siempre cerrando',                              desc: 'Llama prospectos, califica leads y cierra oportunidades nuevas.' },
   { nombre: 'Nara',       rol: 'Coordinación',        tagline: 'Carpeta en mano, todo bajo control',            desc: 'Coordina procesos, da seguimiento y mantiene la operación en orden.' },
   { nombre: 'Neo',        rol: 'Tecnología',          tagline: 'Laptop abierta, problema resuelto',             desc: 'Resuelve tickets, gestiona incidentes y mantiene los sistemas activos.' },
   { nombre: 'Naia',       rol: 'Recursos Humanos',    tagline: 'Con lupa: nada se le escapa',                   desc: 'Organiza vacaciones, permisos y expedientes del equipo.' },

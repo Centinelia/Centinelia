@@ -3,21 +3,10 @@ import { createClient } from '@supabase/supabase-js';
 import { sendEmail, empresarialConfirmationHtml } from '@/lib/email/send';
 
 /*
-  SQL — run once in Supabase:
-
-  CREATE TABLE enterprise_quotes (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    created_at  TIMESTAMPTZ DEFAULT NOW(),
-    empresa     TEXT NOT NULL,
-    industria   TEXT,
-    nombre      TEXT NOT NULL,
-    apellido    TEXT NOT NULL,
-    correo      TEXT NOT NULL,
-    telefono    TEXT NOT NULL,
-    empleados   TEXT NOT NULL,
-    mensaje     TEXT,
-    status      TEXT DEFAULT 'nuevo'
-  );
+  Schema vive en migrations/. Última evolución 2026-10-17:
+  `meerkat_role_id` + `preguntas` agregados, `empleados` ahora nullable
+  (default '1') porque /cotizar?role=X esconde el campo en UI.
+  Ver: migrations/20261017_enterprise_quotes_role_and_questions.sql
 */
 
 const supabase = createClient(
@@ -30,16 +19,22 @@ const ADMIN_EMAIL = 'hola@centinelia.mx';
 function notifHtml(data: {
   empresa: string; industria: string; nombre: string; apellido: string;
   correo: string; telefono: string; empleados: string; mensaje: string;
+  meerkat_role_id: string | null; preguntas: string;
 }) {
-  const rows = [
+  const rows: Array<[string, string]> = [
     ['Empresa',    data.empresa],
     ['Industria',  data.industria || '—'],
     ['Nombre',     `${data.nombre} ${data.apellido}`],
     ['Correo',     data.correo],
     ['Teléfono',   data.telefono],
-    ['Empleados',  data.empleados],
-    ['Mensaje',    data.mensaje || '—'],
   ];
+  if (data.meerkat_role_id) {
+    rows.push(['Empleado digital', data.meerkat_role_id.toUpperCase()]);
+  } else {
+    rows.push(['Empleados', data.empleados || '—']);
+  }
+  rows.push(['Operación',   data.mensaje || '—']);
+  rows.push(['Dudas cliente', data.preguntas || '—']);
 
   const C = { bg: '#120726', card: 'rgba(255,255,255,0.055)', border: 'rgba(255,255,255,0.10)', accent: '#9B6DFF', text: '#e2e8f0', sub: 'rgba(255,255,255,0.58)', mute: 'rgba(255,255,255,0.35)' };
 
@@ -66,14 +61,25 @@ function notifHtml(data: {
 export async function POST(req: NextRequest) {
   const body = await req.json();
 
-  const { empresa, industria = '', nombre, apellido, correo, telefono, empleados, mensaje = '' } = body;
+  const {
+    empresa, industria = '', nombre, apellido, correo, telefono,
+    empleados = '', mensaje = '', preguntas = '',
+    meerkat_role_id = null,
+  } = body;
 
-  if (!empresa || !nombre || !apellido || !correo || !telefono || !empleados) {
+  // `empleados` deja de ser requerido cuando viene `meerkat_role_id`: en /cotizar
+  // escondemos el campo "¿Cuántos?" porque no tiene sentido pedir "cuántos Noahs".
+  // Default DB '1' aplica para esos registros.
+  const empleadosRequired = !meerkat_role_id;
+  if (!empresa || !nombre || !apellido || !correo || !telefono || (empleadosRequired && !empleados)) {
     return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 });
   }
 
   await supabase.from('enterprise_quotes').insert({
-    empresa, industria, nombre, apellido, correo, telefono, empleados, mensaje,
+    empresa, industria, nombre, apellido, correo, telefono,
+    empleados: empleados || '1',
+    mensaje, preguntas,
+    meerkat_role_id,
   });
 
   await Promise.all([
@@ -84,8 +90,13 @@ export async function POST(req: NextRequest) {
     }),
     sendEmail({
       to:      ADMIN_EMAIL,
-      subject: `Nueva solicitud empresarial: ${empresa}`,
-      html:    notifHtml({ empresa, industria, nombre, apellido, correo, telefono, empleados, mensaje }),
+      subject: meerkat_role_id
+        ? `Solicitud de diagnóstico (${String(meerkat_role_id).toUpperCase()}): ${empresa}`
+        : `Nueva solicitud empresarial: ${empresa}`,
+      html:    notifHtml({
+        empresa, industria, nombre, apellido, correo, telefono,
+        empleados, mensaje, preguntas, meerkat_role_id,
+      }),
     }),
   ]);
 

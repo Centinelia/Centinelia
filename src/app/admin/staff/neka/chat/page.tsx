@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Send, Loader2, Wrench, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { MEERKAT_ROLES } from '@/lib/portal/meerkat-roles';
+import { MEERKAT_ROLES, avatarImgStyle } from '@/lib/portal/meerkat-roles';
 
 const NEKA = MEERKAT_ROLES.find(r => r.id === 'neka')!;
 
@@ -112,13 +112,7 @@ export default function NekaChatPage() {
               <img
                 src={NEKA.imagen}
                 alt="Neka"
-                style={{
-                  width: '100%', height: '100%',
-                  objectFit: 'cover',
-                  objectPosition: NEKA.avatarPosition ?? 'center 3%',
-                  transform: NEKA.avatarScale && NEKA.avatarScale !== 1 ? `scale(${NEKA.avatarScale})` : 'none',
-                  transformOrigin: NEKA.avatarPosition ?? 'center 3%',
-                }}
+                style={avatarImgStyle(NEKA)}
               />
             </span>
           )}

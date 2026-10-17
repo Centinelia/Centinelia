@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, Plus, CreditCard, Users, Settings, Phone, Home, Terminal, DollarSign, ShieldCheck, GitBranch, Flag, Activity, AlertOctagon, Wrench, Network, LifeBuoy, Wallet, Package, RotateCcw, Sparkles } from 'lucide-react';
+import { BarChart3, Plus, CreditCard, Users, Settings, Phone, Home, Terminal, DollarSign, ShieldCheck, GitBranch, Flag, Activity, AlertOctagon, Wrench, Network, LifeBuoy, Wallet, Package, RotateCcw, Sparkles, Crop } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 interface NavItem { href: string; icon: LucideIcon; label: string; }
@@ -35,9 +35,10 @@ const groups: NavGroup[] = [
   {
     group: 'Sistema',
     items: [
-      { href: '/admin/versiones', icon: GitBranch, label: 'Versiones' },
-      { href: '/admin/flags',     icon: Flag,      label: 'Feature flags' },
-      { href: '/admin/tools',     icon: Wrench,    label: 'Tools' },
+      { href: '/admin/versiones',     icon: GitBranch, label: 'Versiones' },
+      { href: '/admin/flags',         icon: Flag,      label: 'Feature flags' },
+      { href: '/admin/tools',         icon: Wrench,    label: 'Tools' },
+      { href: '/admin/avatar-tuner',  icon: Crop,      label: 'Avatar tuner' },
     ],
   },
   {

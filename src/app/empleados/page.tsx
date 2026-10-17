@@ -83,7 +83,7 @@ const CONTENT: Record<string, {
   },
   noah: {
     rolLabel: 'Ventas',
-    tagline:  'Siempre al teléfono, siempre cerrando',
+    tagline:  'Siempre cerrando',
     subtitle: 'Prospección y cierre sin descanso',
     bullets:  [
       'Califica prospectos con preguntas clave en la llamada',

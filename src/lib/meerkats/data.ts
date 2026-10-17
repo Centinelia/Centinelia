@@ -162,7 +162,7 @@ const NIA: Meerkat = {
 
 const NOAH: Meerkat = {
   slug: 'noah', nombre: 'Noah', rol: 'Ventas', categoria: 'operacion',
-  tagline: 'Siempre al teléfono, siempre cerrando.',
+  tagline: 'Siempre cerrando.',
   color: '#22c55e', image: '/meerkats/noah.png',
   descCorta: 'Vendedor digital que llama prospectos, califica leads y cierra oportunidades sin descanso.',
   descLarga: 'Noah es el vendedor digital que hace lo que ningún vendedor humano quiere hacer: llamar cientos de prospectos fríos con la misma energía en la llamada uno que en la llamada cien. Califica según el perfil ideal del cliente, agenda demos con los mejores y le entrega al equipo humano solo las oportunidades más calientes.',

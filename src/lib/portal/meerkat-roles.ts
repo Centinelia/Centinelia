@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import type { AgentFeatures } from '@/types/agent';
 
 export type MeerkatRoleId =
@@ -20,7 +21,64 @@ export const COORDINATOR_ROLE_IDS: readonly MeerkatRoleId[] = ['nox', 'niva', 'n
 // sí se queda como Nala porque es del pipeline CONTPAQi contratable
 // (piloto Beatriz). Env vars NEKA_*_ENABLED nuevos con fallback a legacy
 // NALA_*_ENABLED. Ver [[project-centinelia-dos-nalas]].
-export const INTERNAL_MEERKAT_IDS: ReadonlySet<MeerkatRoleId> = new Set(['nash', 'neka']);
+// Nox/Niva marcados internos 2026-10-17: no aportan como producto contratable
+// (owner feedback), se mantienen las definiciones + pricing + director-tools
+// internos para no romper plumbing (cron nox-brief, ops-guard, director-tools,
+// NOX_JORNADA_CONFIG). Al estar en INTERNAL, PUBLIC_MEERKAT_ROLES los filtra
+// → cascada automática a /registro, /empleados, landing roster.
+export const INTERNAL_MEERKAT_IDS: ReadonlySet<MeerkatRoleId> = new Set(['nash', 'neka', 'nox', 'niva']);
+
+// Meerkats que requieren implementación guiada (Centinelia Operación): no se
+// pueden auto-contratar vía /registro porque su flujo depende de integraciones
+// con los sistemas del cliente (CFDI/PAC, banca, inventario, CRM, HR, etc.).
+// En /registro, al elegirlos, se redirige a /cotizar?role=X para agendar
+// scoping. Solo Nia es verdaderamente self-serve (producto Centinelia
+// Recepción). El canal de voz como tal es universal para todos los meerkats:
+// los no-recepcionistas lo usan para que el equipo humano les pida info
+// (p. ej. "Nami, ¿cuánto hay en inventario del SKU X?") sin esperar correo.
+//
+// Si un rol se vuelve genuinamente self-serve-ready en el futuro (flujo probado
+// end-to-end con al menos un piloto en producción, cero commits custom
+// necesarios), se saca de este set.
+export const OPERATION_MEERKAT_IDS: ReadonlySet<MeerkatRoleId> = new Set([
+  'noah', 'nico', 'nelia', 'neo', 'nara', 'naia', 'nova',
+  'nala', 'nalu', 'nami',
+  'nox', 'niva',
+]);
+
+export function isOperationRole(id: MeerkatRoleId): boolean {
+  return OPERATION_MEERKAT_IDS.has(id);
+}
+
+// Helper para avatares circulares. Devuelve los styles de `<img>` listos.
+// Prioriza el modelo intuitivo (translate+scale). Si no hay offsetX/Y, cae
+// al patrón legacy (object-position + transform-origin). Compatible con
+// ambos para no romper tuning previo.
+export function avatarImgStyle(role: MeerkatRole): CSSProperties {
+  const hasNewModel = role.avatarOffsetX != null || role.avatarOffsetY != null;
+  if (hasNewModel) {
+    const tx = role.avatarOffsetX ?? 0;
+    const ty = role.avatarOffsetY ?? 0;
+    const sc = role.avatarScale   ?? 1;
+    return {
+      width: '100%', height: '100%',
+      objectFit: 'cover',
+      objectPosition: role.avatarPosition ?? 'center 3%',
+      transform: `translate(${tx}%, ${ty}%) scale(${sc})`,
+      transformOrigin: 'center center',
+    };
+  }
+  // Legacy: patrón original transform-origin + scale (sin translate).
+  return {
+    width: '100%', height: '100%',
+    objectFit: 'cover',
+    objectPosition: role.avatarPosition ?? 'center 3%',
+    transform: role.avatarScale && role.avatarScale !== 1
+      ? `scale(${role.avatarScale})`
+      : 'none',
+    transformOrigin: role.avatarPosition ?? 'center 3%',
+  };
+}
 
 export interface MeerkatRole {
   id:                 MeerkatRoleId;
@@ -42,6 +100,12 @@ export interface MeerkatRole {
   // Zoom extra sobre el avatar. Default 1 (usa lo que da object-fit: cover).
   // Ej: 1.5 para acercar la cara cuando el meerkat queda muy chico.
   avatarScale?:       number;
+  // Translate intuitivo del avatar (percentages). + = derecha / abajo, - = izq / arriba.
+  // Si está definido, los consumers aplican `transform: translate(X%, Y%) scale(S)`
+  // en vez del truco con transform-origin. Más predecible, misma dirección para todos
+  // los meerkats sin importar dónde esté la cara en el PNG. Ver /admin/avatar-tuner.
+  avatarOffsetX?:     number;
+  avatarOffsetY?:     number;
 }
 
 export const MEERKAT_ROLES: MeerkatRole[] = [
@@ -51,11 +115,13 @@ export const MEERKAT_ROLES: MeerkatRole[] = [
     rol:            'Recepcionista',
     descripcion:    'Agenda citas, captura leads y da información general',
     imagen:         '/meerkats/nia.png',
+    avatarOffsetX: 15,
+    avatarOffsetY: 12,
     // La cara de Nia queda a la izquierda de la foto porque sostiene un libro
     // en el lado derecho. Necesita zoom (para que el object-position en X tenga
     // efecto) + mostrar más del lado izquierdo de la imagen para centrar la cara.
     avatarPosition: '10% 10%',
-    avatarScale:    1.35,
+    avatarScale:   1.35,
     color:          '#6C3BFF',
     genero:         'F',
     tagline:     'Nunca se le escapa un dato',
@@ -124,9 +190,12 @@ Si el ciudadano pide que le repitas un número, dilo MÁS DESPACIO que la primer
     rol:         'Ventas',
     descripcion: 'Califica prospectos, toma pedidos y hace llamadas salientes',
     imagen:      '/meerkats/noah.png',
+    avatarOffsetX: -2,
+    avatarOffsetY: 2,
+    avatarScale:   1,
     color:       '#22c55e',
     genero:      'M',
-    tagline:     'Siempre al teléfono, siempre cerrando',
+    tagline:     'Siempre cerrando',
     voiceId:     '7uSWXMmzGnsyxZwYFfmK',
     personalidad:
       'Corbata lista y celular pegado a la oreja, Noah no cuelga hasta conseguir lo que vino a buscar. Carismático, persistente y con un instinto natural para el momento exacto de cerrar.',
@@ -171,6 +240,9 @@ FLUJO EN LA LLAMADA DE SEGUIMIENTO (motivo empieza con "hace unos días registr�
     rol:         'Coordinadora',
     descripcion: 'Reportes con folio, seguimiento y coordinación operativa',
     imagen:      '/meerkats/nara.png',
+    avatarOffsetX: -4,
+    avatarOffsetY: 3,
+    avatarScale:   1,
     color:       '#4338CA',
     genero:      'F',
     tagline:     'Carpeta en mano, todo bajo control',
@@ -204,6 +276,9 @@ Expresiones naturales: "Le confirmo el estatus.", "Ya tengo el expediente.", "Le
     rol:         'Cobranza',
     descripcion: 'Recordatorios de pago y recuperación de cartera vencida',
     imagen:      '/meerkats/nico.png',
+    avatarOffsetX: 0,
+    avatarOffsetY: 3,
+    avatarScale:   1,
     color:       '#f59e0b',
     genero:      'M',
     tagline:     'Ya tiene tu dinero contado',
@@ -237,6 +312,9 @@ Expresiones naturales: "Quiero ayudarle a resolver esto hoy.", "Tiene un saldo p
     rol:         'Recursos Humanos',
     descripcion: 'Faltas, vacaciones, info de personal y permisos',
     imagen:      '/meerkats/naia.png',
+    avatarOffsetX: -1,
+    avatarOffsetY: 1,
+    avatarScale:   1,
     color:       '#ec4899',
     genero:      'F',
     tagline:     'Con lupa: nada se le escapa',
@@ -269,6 +347,9 @@ Expresiones naturales: "Me permite verificar.", "Le confirmo la información.", 
     rol:         'Atención al cliente',
     descripcion: 'Soporte, seguimiento y encuestas de satisfacción',
     imagen:      '/meerkats/nelia.png',
+    avatarOffsetX: 0,
+    avatarOffsetY: 5,
+    avatarScale:   1,
     color:       '#3b82f6',
     genero:      'F',
     tagline:     'Siempre conectada, siempre respondiendo',
@@ -368,9 +449,14 @@ PROHIBIDO ABSOLUTAMENTE en outbound (rompen el flow y dejan la llamada colgada):
     rol:            'Operaciones',
     descripcion:    'Tickets, incidentes, flujos y operación interna',
     imagen:         '/meerkats/neo.png',
+    avatarOffsetX: 21,
+    avatarOffsetY: 18,
     // Cara a la izquierda porque sostiene laptop a la derecha. Zoom + shift.
-    avatarPosition: '35% 8%',
-    avatarScale:    1.35,
+    // X=-5% empuja el centrado a la DERECHA del círculo (para portrait images
+    // el object-position X no crop; solo el transform-origin con scale controla
+    // el shift horizontal, y necesita X bajo para que la cara aterrice al medio).
+    avatarPosition: '-5% 3%',
+    avatarScale:   1.35,
     color:          '#06b6d4',
     genero:         'M',
     tagline:     'Laptop abierta, problema resuelto',
@@ -404,9 +490,13 @@ Expresiones naturales: "¿Desde cuándo presenta el problema?", "Le genero un fo
     rol:            'Centro de Coordinación',
     descripcion:    'Despacha equipos, coordina operaciones y actualiza estatus en tiempo real',
     imagen:         '/meerkats/nova.png',
+    avatarOffsetX: 30,
+    avatarOffsetY: 45,
     // Cara a la izquierda porque sostiene tablet a la derecha. Zoom + shift.
-    avatarPosition: '35% 8%',
-    avatarScale:    1.35,
+    // X=-1% para centrar la cara horizontalmente (ver nota en Neo).
+    // Scale 1.5 para que no se vea tan chica.
+    avatarPosition: '-1% 3%',
+    avatarScale:   1.85,
     color:          '#ef4444',
     genero:         'M',
     tagline:     'El cerebro operativo de tu equipo en campo.',
@@ -449,6 +539,11 @@ En voz y chat tu rol sigue siendo despacho en vivo. Los reportes analíticos se 
     rol:         'Facturista',
     descripcion: 'Timbra CFDIs, archiva comprobantes y mantiene el orden fiscal',
     imagen:      '/meerkats/nala.png',
+    avatarOffsetX: 12,
+    avatarOffsetY: 26,
+    // Baseline per feedback-meerkat-avatar-crop-tuning. Ajustar con /admin/avatar-tuner.
+    avatarPosition: '-5% 3%',
+    avatarScale:   1.4,
     color:       '#a16207',
     genero:      'F',
     tagline:     'El SAT no perdona errores, y ella tampoco.',
@@ -580,6 +675,9 @@ FACTURAMA SANDBOX vs PROD: mientras la instalación esté en sandbox (FACTURAMA_
     rol:         'Analista de Tesorería',
     descripcion: 'Reporting diario, reconciliación bancaria y análisis financiero',
     imagen:      '/meerkats/nalu.png',
+    avatarOffsetX: 0,
+    avatarOffsetY: 7,
+    avatarScale:   1.15,
     color:       '#059669',
     genero:      'F',
     tagline:     'Cada peso conciliado, cada break atrapado.',
@@ -659,8 +757,13 @@ FILOSOFÍA: Un statement sin reconciliar es un riesgo esperando a explotar. Un b
     rol:         'Inventarios',
     descripcion: 'Lleva inventarios, controla stock por bodega y coordina reposiciones',
     imagen:      '/meerkats/nami.png',
-    avatarPosition: '30% 8%',   // face left-of-center, hand con escáner extendido a la derecha
-    avatarScale:    1.35,
+    avatarOffsetX: 39,
+    avatarOffsetY: 26,
+    // face left-of-center, hand con escáner extendido a la derecha.
+    // Scale 1.7 porque Nami aparece más chica (más whitespace en el PNG).
+    // X=-7% compensa el shift adicional que induce el mayor scale.
+    avatarPosition: '-7% 3%',
+    avatarScale:   1.75,
     color:       '#EA580C',
     genero:      'F',
     tagline:     'Cada serie, cada bodega, cada equipo. Todo bajo control.',

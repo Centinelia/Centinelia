@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { isAdmin } from '@/lib/admin/auth';
-import { INTERNAL_MEERKAT_IDS, MEERKAT_ROLES } from '@/lib/portal/meerkat-roles';
+import { INTERNAL_MEERKAT_IDS, MEERKAT_ROLES, avatarImgStyle } from '@/lib/portal/meerkat-roles';
 import { Sparkles, Terminal, Settings, ShieldAlert, ArrowRight } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -72,13 +72,7 @@ export default async function StaffPage() {
                     <img
                       src={role.imagen}
                       alt={role.nombre}
-                      style={{
-                        width: '100%', height: '100%',
-                        objectFit: 'cover',
-                        objectPosition: role.avatarPosition ?? 'center 3%',
-                        transform: role.avatarScale && role.avatarScale !== 1 ? `scale(${role.avatarScale})` : 'none',
-                        transformOrigin: role.avatarPosition ?? 'center 3%',
-                      }}
+                      style={avatarImgStyle(role)}
                     />
                   </span>
                 ) : (
